@@ -40,7 +40,7 @@ func (g *AsGeoJSON) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *AsGeoJSON) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 func (g *AsGeoJSON) String() string {

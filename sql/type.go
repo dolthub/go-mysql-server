@@ -198,6 +198,13 @@ type DecimalType interface {
 	Scale() uint8
 }
 
+// JsonType represents the JSON type.
+// https://dev.mysql.com/doc/refman/8.0/en/json.html
+// The type of the returned value is JSONValue.
+type JsonType interface {
+	Type
+}
+
 type Type2 interface {
 	Type
 
@@ -551,7 +558,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return types.CreateSetType(ct.EnumValues, collation)
 	case "json":
-		return JSON, nil
+		return types.JSON, nil
 	case "geometry":
 		return types.GeometryType{}, nil
 	case "geometrycollection":

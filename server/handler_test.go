@@ -578,7 +578,7 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "text", Type: types.Text},
 		{Name: "mediumtext", Type: types.MediumText},
 		{Name: "longtext", Type: types.LongText},
-		{Name: "json", Type: sql.JSON},
+		{Name: "json", Type: types.JSON},
 
 		// Geometry Types
 		{Name: "geometry", Type: types.GeometryType{}},

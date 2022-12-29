@@ -77,7 +77,7 @@ func TestJsonArrayAgg_JSON(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.JSON, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.JSON, "field", true))
 	b, _ := j.NewBuffer()
 	b.Update(ctx, sql.NewRow(sql.MustJSON(`{"key1": "value1", "key2": "value2"}`)))
 

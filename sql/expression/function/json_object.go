@@ -79,7 +79,7 @@ func (j JSONObject) String() string {
 }
 
 func (j JSONObject) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 func (j JSONObject) IsNullable() bool {

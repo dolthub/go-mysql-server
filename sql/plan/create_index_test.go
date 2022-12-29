@@ -92,7 +92,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: types.Blob},
-		{Name: "b", Source: "foo", Type: sql.JSON},
+		{Name: "b", Source: "foo", Type: types.JSON},
 		{Name: "c", Source: "foo", Type: types.Text},
 	}), nil)
 
@@ -126,7 +126,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 		"idx",
 		NewResolvedTable(table, nil, nil),
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(1, sql.JSON, "foo", "a", true),
+			expression.NewGetFieldWithTable(1, types.JSON, "foo", "a", true),
 		},
 		"mock",
 		make(map[string]string),

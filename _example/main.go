@@ -83,7 +83,7 @@ func createTestDatabase(ctx *sql.Context) *memory.Database {
 	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "email", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
-		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
+		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},
 		{Name: "created_at", Type: types.Datetime, Nullable: false, Source: tableName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tableName, table)

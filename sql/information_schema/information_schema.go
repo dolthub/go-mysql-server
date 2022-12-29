@@ -236,7 +236,7 @@ var columnStatisticsSchema = Schema{
 	{Name: "SCHEMA_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnStatisticsTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnStatisticsTableName},
 	{Name: "COLUMN_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnStatisticsTableName},
-	{Name: "HISTOGRAM", Type: JSON, Default: nil, Nullable: false, Source: ColumnStatisticsTableName},
+	{Name: "HISTOGRAM", Type: types.JSON, Default: nil, Nullable: false, Source: ColumnStatisticsTableName},
 }
 
 var columnsSchema = Schema{
@@ -269,8 +269,8 @@ var columnsExtensionsSchema = Schema{
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
 	{Name: "COLUMN_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
-	{Name: "ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
-	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
+	{Name: "ENGINE_ATTRIBUTE", Type: types.JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
+	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: types.JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 }
 
 var enabledRolesSchema = Schema{
@@ -660,8 +660,8 @@ var tableConstraintsExtensionsSchema = Schema{
 	{Name: "CONSTRAINT_SCHEMA", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TableConstraintsExtensionsTableName},
 	{Name: "CONSTRAINT_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TableConstraintsExtensionsTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TableConstraintsExtensionsTableName},
-	{Name: "ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
-	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
+	{Name: "ENGINE_ATTRIBUTE", Type: types.JSON, Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
+	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: types.JSON, Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
 }
 
 var tablePrivilegesSchema = Schema{
@@ -701,8 +701,8 @@ var tablesExtensionsSchema = Schema{
 	{Name: "TABLE_CATALOG", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TablesExtensionsTableName},
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TablesExtensionsTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TablesExtensionsTableName},
-	{Name: "ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: TablesExtensionsTableName},
-	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: TablesExtensionsTableName},
+	{Name: "ENGINE_ATTRIBUTE", Type: types.JSON, Default: nil, Nullable: true, Source: TablesExtensionsTableName},
+	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: types.JSON, Default: nil, Nullable: true, Source: TablesExtensionsTableName},
 }
 
 var tablespacesSchema = Schema{
@@ -719,7 +719,7 @@ var tablespacesSchema = Schema{
 
 var tablespacesExtensionsSchema = Schema{
 	{Name: "TABLESPACE_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 268), Default: nil, Nullable: false, Source: TablespacesExtensionsTableName},
-	{Name: "ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: TablespacesExtensionsTableName},
+	{Name: "ENGINE_ATTRIBUTE", Type: types.JSON, Default: nil, Nullable: true, Source: TablespacesExtensionsTableName},
 }
 
 var triggersSchema = Schema{

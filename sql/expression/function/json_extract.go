@@ -68,7 +68,7 @@ func (j *JSONExtract) Resolved() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (j *JSONExtract) Type() sql.Type { return sql.JSON }
+func (j *JSONExtract) Type() sql.Type { return types.JSON }
 
 // Eval implements the sql.Expression interface.
 func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

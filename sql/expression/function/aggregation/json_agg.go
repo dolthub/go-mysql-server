@@ -71,7 +71,7 @@ func (j *JSONObjectAgg) String() string {
 
 // Type implements the Expression interface.
 func (j *JSONObjectAgg) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 // IsNullable implements the Expression interface.

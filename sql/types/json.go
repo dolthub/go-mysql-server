@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,31 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 var (
-	jsonValueType = reflect.TypeOf((*JSONValue)(nil)).Elem()
+	jsonValueType = reflect.TypeOf((*sql.JSONValue)(nil)).Elem()
 
 	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
 )
 
-var JSON JsonType = JsonType_{}
-
-// JsonType represents the JSON type.
-// https://dev.mysql.com/doc/refman/8.0/en/json.html
-// The type of the returned value is JSONValue.
-type JsonType interface {
-	Type
-}
+var JSON sql.JsonType = JsonType_{}
 
 type JsonType_ struct{}
 
@@ -50,69 +43,69 @@ func (t JsonType_) Compare(a interface{}, b interface{}) (int, error) {
 		return 0, err
 	}
 	// todo: making a context here is expensive
-	return a.(JSONValue).Compare(NewEmptyContext(), b.(JSONValue))
+	return a.(sql.JSONValue).Compare(sql.NewEmptyContext(), b.(sql.JSONValue))
 }
 
 // Convert implements Type interface.
 func (t JsonType_) Convert(v interface{}) (doc interface{}, err error) {
 	switch v := v.(type) {
-	case JSONValue:
+	case sql.JSONValue:
 		return v, nil
 	case []byte:
 		if int64(len(v)) > MaxJsonFieldByteLength {
-			return nil, types.ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
+			return nil, ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
 		}
 		err = json.Unmarshal(v, &doc)
 		if err != nil {
-			return nil, ErrInvalidJson.New(err.Error())
+			return nil, sql.ErrInvalidJson.New(err.Error())
 		}
 	case string:
-		charsetMaxLength := Collation_Default.CharacterSet().MaxLength()
+		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
 		length := int64(len(v)) * charsetMaxLength
 		if length > MaxJsonFieldByteLength {
-			return nil, types.ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
+			return nil, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
 		}
 		err = json.Unmarshal([]byte(v), &doc)
 		if err != nil {
-			return nil, ErrInvalidJson.New(err.Error())
+			return nil, sql.ErrInvalidJson.New(err.Error())
 		}
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
 		if b, berr := json.Marshal(v); berr == nil {
 			if int64(len(b)) > MaxJsonFieldByteLength {
-				return nil, types.ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
+				return nil, ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
 			}
 			err = json.Unmarshal(b, &doc)
 			if err != nil {
-				return nil, ErrInvalidJson.New(err.Error())
+				return nil, sql.ErrInvalidJson.New(err.Error())
 			}
 		}
 	}
 	if err != nil {
 		return nil, err
 	}
-	return JSONDocument{Val: doc}, nil
+	return sql.JSONDocument{Val: doc}, nil
 }
 
 // Equals implements the Type interface.
-func (t JsonType_) Equals(otherType Type) bool {
+func (t JsonType_) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(JsonType_)
 	return ok
 }
 
 // MaxTextResponseByteLength implements the Type interface
 func (t JsonType_) MaxTextResponseByteLength() uint32 {
-	return uint32(MaxJsonFieldByteLength*Collation_Default.CharacterSet().MaxLength()) - 1
+	return uint32(MaxJsonFieldByteLength*sql.Collation_Default.CharacterSet().MaxLength()) - 1
 }
 
 // Promote implements the Type interface.
-func (t JsonType_) Promote() Type {
+func (t JsonType_) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t JsonType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t JsonType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -122,14 +115,14 @@ func (t JsonType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value
 	if err != nil {
 		return sqltypes.NULL, err
 	}
-	js := jsVal.(JSONValue)
+	js := jsVal.(sql.JSONValue)
 
 	s, err := js.ToString(ctx)
 	if err != nil {
 		return sqltypes.NULL, err
 	}
 
-	val := types.AppendAndSliceString(dest, s)
+	val := AppendAndSliceString(dest, s)
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }

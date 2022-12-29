@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestIssue361(t *testing.T) {
@@ -26,7 +27,7 @@ func TestIssue361(t *testing.T) {
 
 	t.Run("Update", func(*testing.T) {
 		table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "json", Type: sql.JSON, Nullable: false, Source: name},
+			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 
 		old := sql.NewRow(sql.JSONDocument{Val: []string{"foo", "bar"}})
@@ -41,7 +42,7 @@ func TestIssue361(t *testing.T) {
 
 	t.Run("Delete", func(*testing.T) {
 		table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "json", Type: sql.JSON, Nullable: false, Source: name},
+			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 
 		row := sql.NewRow(sql.JSONDocument{Val: []string{"foo", "bar"}})

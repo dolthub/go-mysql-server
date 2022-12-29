@@ -7407,7 +7407,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "js",
-				Type: sql.JSON,
+				Type: types.JSON,
 			},
 		},
 	},

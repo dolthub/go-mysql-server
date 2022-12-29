@@ -206,7 +206,7 @@ func TestStringCreateString(t *testing.T) {
 		{sqltypes.Text, LongTextBlobMax + 1, sql.Collation_Default, StringType_{}, true},
 
 		// JSON strings can also come in over the wire as VARBINARY types, and JSON allows a much larger length limit (1GB).
-		{sqltypes.VarBinary, sql.MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType_{}, true},
+		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType_{}, true},
 		{sqltypes.VarChar, varcharVarbinaryMax + 1, sql.Collation_Default, StringType_{}, true},
 
 		// Default collation is not valid for these types

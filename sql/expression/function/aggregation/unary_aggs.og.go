@@ -548,7 +548,7 @@ func NewJsonArray(e sql.Expression) *JsonArray {
 }
 
 func (a *JsonArray) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 func (a *JsonArray) IsNullable() bool {

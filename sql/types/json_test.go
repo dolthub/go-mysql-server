@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
 	"reflect"
 	"testing"
 
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
-
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -87,8 +87,8 @@ func TestJsonCompare(t *testing.T) {
 		name := fmt.Sprintf("%v_%v__%d", test.left, test.right, test.cmp)
 		t.Run(name, func(t *testing.T) {
 			cmp, err := JSON.Compare(
-				MustJSON(test.left),
-				MustJSON(test.right),
+				sql.MustJSON(test.left),
+				sql.MustJSON(test.right),
 			)
 			require.NoError(t, err)
 			assert.Equal(t, test.cmp, cmp)
@@ -105,14 +105,14 @@ func TestJsonConvert(t *testing.T) {
 		expectedVal interface{}
 		expectedErr bool
 	}{
-		{`""`, MustJSON(`""`), false},
-		{[]int{1, 2}, MustJSON(`[1, 2]`), false},
-		{`{"a": true, "b": 3}`, MustJSON(`{"a":true,"b":3}`), false},
-		{[]byte(`{"a": true, "b": 3}`), MustJSON(`{"a":true,"b":3}`), false},
-		{testStruct{Field: "test"}, MustJSON(`{"field":"test"}`), false},
-		{MustJSON(`{"field":"test"}`), MustJSON(`{"field":"test"}`), false},
-		{[]string{}, MustJSON(`[]`), false},
-		{[]string{`555-555-5555`}, MustJSON(`["555-555-5555"]`), false},
+		{`""`, sql.MustJSON(`""`), false},
+		{[]int{1, 2}, sql.MustJSON(`[1, 2]`), false},
+		{`{"a": true, "b": 3}`, sql.MustJSON(`{"a":true,"b":3}`), false},
+		{[]byte(`{"a": true, "b": 3}`), sql.MustJSON(`{"a":true,"b":3}`), false},
+		{testStruct{Field: "test"}, sql.MustJSON(`{"field":"test"}`), false},
+		{sql.MustJSON(`{"field":"test"}`), sql.MustJSON(`{"field":"test"}`), false},
+		{[]string{}, sql.MustJSON(`[]`), false},
+		{[]string{`555-555-5555`}, sql.MustJSON(`["555-555-5555"]`), false},
 	}
 
 	for _, test := range tests {
@@ -144,7 +144,7 @@ func TestJsonSQL(t *testing.T) {
 		{`"555-555-555"`, false},
 		{`{}`, false},
 		{`{"field":"test"}`, false},
-		{MustJSON(`{"field":"test"}`), false},
+		{sql.MustJSON(`{"field":"test"}`), false},
 		{"1", false},
 		{`[1,2,3]`, false},
 		{[]int{1, 2, 3}, false},
@@ -154,31 +154,31 @@ func TestJsonSQL(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.val), func(t *testing.T) {
-			val, err := JSON.SQL(NewEmptyContext(), nil, test.val)
+			val, err := JSON.SQL(sql.NewEmptyContext(), nil, test.val)
 			if test.expectedErr {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, querypb.Type_JSON, val.Type())
+				assert.Equal(t, query.Type_JSON, val.Type())
 			}
 		})
 	}
 
 	// test that nulls are null
 	t.Run(fmt.Sprintf("%v", nil), func(t *testing.T) {
-		val, err := JSON.SQL(NewEmptyContext(), nil, nil)
+		val, err := JSON.SQL(sql.NewEmptyContext(), nil, nil)
 		require.NoError(t, err)
-		assert.Equal(t, querypb.Type_NULL_TYPE, val.Type())
+		assert.Equal(t, query.Type_NULL_TYPE, val.Type())
 	})
 }
 
 func TestValuer(t *testing.T) {
-	var empty JSONDocument
+	var empty sql.JSONDocument
 	res, err := empty.Value()
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
 
-	withVal := JSONDocument{
+	withVal := sql.JSONDocument{
 		Val: map[string]string{
 			"a": "one",
 		},

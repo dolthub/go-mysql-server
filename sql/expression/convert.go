@@ -99,7 +99,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDouble, ConvertToReal:
 		return types.Float64
 	case ConvertToJSON:
-		return sql.JSON
+		return types.JSON
 	case ConvertToSigned:
 		return types.Int64
 	case ConvertToTime:
@@ -231,7 +231,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return d, nil
 	case ConvertToJSON:
-		js, err := sql.JSON.Convert(val)
+		js, err := types.JSON.Convert(val)
 		if err != nil {
 			return nil, err
 		}

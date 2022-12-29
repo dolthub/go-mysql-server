@@ -63,7 +63,7 @@ func IsInteger(t sql.Type) bool {
 
 // IsJSON returns true if the specified type is a JSON type.
 func IsJSON(t sql.Type) bool {
-	_, ok := t.(sql.JsonType_)
+	_, ok := t.(JsonType_)
 	return ok
 }
 

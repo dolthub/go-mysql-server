@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_ARRAY([val[, val] ...])
@@ -77,7 +78,7 @@ func (j *JSONArray) String() string {
 
 // Type implements the Expression interface.
 func (j *JSONArray) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 // IsNullable implements the Expression interface.

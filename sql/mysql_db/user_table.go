@@ -159,7 +159,7 @@ func init() {
 		Nullable: false,
 	}
 	json_nullable_default_nil := &sql.Column{
-		Type:     sql.JSON,
+		Type:     types.JSON,
 		Default:  nil,
 		Nullable: true,
 	}
