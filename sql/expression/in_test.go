@@ -28,7 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
-var testEnumType = sql.MustCreateEnumType([]string{"", "one", "two"}, sql.Collation_Default)
+var testEnumType = types.MustCreateEnumType([]string{"", "one", "two"}, sql.Collation_Default)
 
 var testSetType = types.MustCreateSetType([]string{"", "one", "two"}, sql.Collation_Default)
 

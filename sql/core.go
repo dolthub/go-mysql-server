@@ -281,9 +281,9 @@ func TypesEqual(a, b Type) bool {
 	// Some types cannot be compared structurally as they contain non-comparable types (such as slices), so we handle
 	// those separately.
 	switch at := a.(type) {
-	case EnumType_:
+	case types.EnumType_:
 		aEnumType := at
-		bEnumType := b.(EnumType_)
+		bEnumType := b.(types.EnumType_)
 		if len(aEnumType.indexToVal) != len(bEnumType.indexToVal) {
 			return false
 		}

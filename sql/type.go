@@ -134,6 +134,23 @@ type SetType interface {
 	Values() []string
 }
 
+// EnumType represents the ENUM type.
+// https://dev.mysql.com/doc/refman/8.0/en/enum.html
+// The type of the returned value is uint16.
+type EnumType interface {
+	Type
+	// At returns the string at the given index, as well if the string was found.
+	At(index int) (string, bool)
+	CharacterSet() CharacterSetID
+	Collation() CollationID
+	// IndexOf returns the index of the given string. If the string was not found, then this returns -1.
+	IndexOf(v string) int
+	// NumberOfElements returns the number of enumerations.
+	NumberOfElements() uint16
+	// Values returns the elements, in order, of every enumeration.
+	Values() []string
+}
+
 type Type2 interface {
 	Type
 
@@ -479,7 +496,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateEnumType(ct.EnumValues, collation)
+		return types.CreateEnumType(ct.EnumValues, collation)
 	case "set":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {

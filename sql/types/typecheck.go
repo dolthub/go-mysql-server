@@ -162,7 +162,7 @@ func IsTimestampType(t sql.Type) bool {
 
 // IsEnum checks if t is a enum
 func IsEnum(t sql.Type) bool {
-	_, ok := t.(sql.EnumType_)
+	_, ok := t.(EnumType_)
 	return ok
 }
 
