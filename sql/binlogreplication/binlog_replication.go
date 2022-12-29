@@ -20,8 +20,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// TODO: error out if sql-server is not running!
-
 // BinlogReplicaController allows callers to control a binlog replica. Providers built on go-mysql-server may optionally
 // implement this interface and use it when constructing a SQL engine in order to receive callbacks when replication
 // statements (e.g. START REPLICA, SHOW REPLICA STATUS) are being handled.
@@ -56,14 +54,14 @@ type ReplicaStatus struct {
 	SourceRetryCount      uint
 	ReplicaIoRunning      string
 	ReplicaSqlRunning     string
-	LastSqlErrNumber      string // Alias for LastErrNumber
+	LastSqlErrNumber      uint   // Alias for LastErrNumber
 	LastSqlError          string // Alias for LastError
-	LastIoErrNumber       string
+	LastIoErrNumber       uint
 	LastIoError           string
 	SourceServerId        string
 	SourceServerUuid      string
-	LastSqlErrorTimestamp time.Time
-	LastIoErrorTimestamp  time.Time
+	LastSqlErrorTimestamp *time.Time
+	LastIoErrorTimestamp  *time.Time
 	RetrievedGtidSet      string
 	ExecutedGtidSet       string
 	AutoPosition          bool
