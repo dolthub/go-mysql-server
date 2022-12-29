@@ -75,7 +75,7 @@ func (r *RegexpLike) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpLike) Type() sql.Type { return sql.Int8 }
+func (r *RegexpLike) Type() sql.Type { return types.Int8 }
 
 // IsNullable implements the sql.Expression interface.
 func (r *RegexpLike) IsNullable() bool { return true }

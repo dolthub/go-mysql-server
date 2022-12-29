@@ -65,7 +65,7 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:     "a",
-						Type:     sql.Int32,
+						Type:     types.Int32,
 						Nullable: true,
 					}, {
 						Name:     "b",
@@ -109,7 +109,7 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
@@ -131,7 +131,7 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 						Comment:    "hello",
@@ -155,7 +155,7 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
@@ -187,7 +187,7 @@ func TestParse(t *testing.T) {
 					Schema: sql.NewPrimaryKeySchema(
 						sql.Schema{{
 							Name:       "a",
-							Type:       sql.Int32,
+							Type:       types.Int32,
 							Nullable:   false,
 							PrimaryKey: true,
 						}, {
@@ -220,7 +220,7 @@ func TestParse(t *testing.T) {
 					Schema: sql.NewPrimaryKeySchema(
 						sql.Schema{{
 							Name:       "a",
-							Type:       sql.Int32,
+							Type:       types.Int32,
 							Nullable:   false,
 							PrimaryKey: true,
 						}, {
@@ -252,12 +252,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}}, 1, 0),
@@ -291,7 +291,7 @@ func TestParse(t *testing.T) {
 					Schema: sql.NewPrimaryKeySchema(
 						sql.Schema{{
 							Name:       "a",
-							Type:       sql.Int32,
+							Type:       types.Int32,
 							Nullable:   false,
 							PrimaryKey: true,
 						}, {
@@ -323,12 +323,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -354,12 +354,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -383,12 +383,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -412,12 +412,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -441,12 +441,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -470,12 +470,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -499,12 +499,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -534,12 +534,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b_id",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -568,12 +568,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b_id",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -602,12 +602,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b_id",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -636,12 +636,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b_id",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -670,12 +670,12 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b_id",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -705,17 +705,17 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b_id",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}, {
 						Name:       "c_id",
-						Type:       sql.Int64,
+						Type:       types.Int64,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -744,17 +744,17 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}, {
 						Name:       "b_id",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   true,
 						PrimaryKey: false,
 					}, {
 						Name:       "c_id",
-						Type:       sql.Int64,
+						Type:       types.Int64,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -783,7 +783,7 @@ func TestParse(t *testing.T) {
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}}),
@@ -791,7 +791,7 @@ func TestParse(t *testing.T) {
 						Name: "",
 						Expr: expression.NewGreaterThan(
 							expression.NewUnresolvedColumn("a"),
-							expression.NewLiteral(int8(0), sql.Int8),
+							expression.NewLiteral(int8(0), types.Int8),
 						),
 						Enforced: true,
 					}},
@@ -817,13 +817,13 @@ CREATE TABLE t4
 						{
 							Name:     "c1",
 							Source:   "t4",
-							Type:     sql.Int32,
+							Type:     types.Int32,
 							Nullable: true,
 						},
 						{
 							Name:     "c2",
 							Source:   "t4",
-							Type:     sql.Int32,
+							Type:     types.Int32,
 							Nullable: true,
 						},
 					}),
@@ -838,7 +838,7 @@ CREATE TABLE t4
 						{
 							Expr: expression.NewGreaterThan(
 								expression.NewUnresolvedColumn("c1"),
-								expression.NewLiteral(int8(10), sql.Int8),
+								expression.NewLiteral(int8(10), types.Int8),
 							),
 							Enforced: true,
 						},
@@ -846,7 +846,7 @@ CREATE TABLE t4
 							Name: "c2_positive",
 							Expr: expression.NewGreaterThan(
 								expression.NewUnresolvedColumn("c2"),
-								expression.NewLiteral(int8(0), sql.Int8),
+								expression.NewLiteral(int8(0), types.Int8),
 							),
 							Enforced: true,
 						},
@@ -882,19 +882,19 @@ CREATE TABLE t2
 						{
 							Name:     "c1",
 							Source:   "t2",
-							Type:     sql.Int32,
+							Type:     types.Int32,
 							Nullable: true,
 						},
 						{
 							Name:     "c2",
 							Source:   "t2",
-							Type:     sql.Int32,
+							Type:     types.Int32,
 							Nullable: true,
 						},
 						{
 							Name:     "c3",
 							Source:   "t2",
-							Type:     sql.Int32,
+							Type:     types.Int32,
 							Nullable: true,
 						},
 					}),
@@ -909,7 +909,7 @@ CREATE TABLE t2
 						{
 							Expr: expression.NewGreaterThan(
 								expression.NewUnresolvedColumn("c1"),
-								expression.NewLiteral(int8(10), sql.Int8),
+								expression.NewLiteral(int8(10), types.Int8),
 							),
 							Enforced: true,
 						},
@@ -917,14 +917,14 @@ CREATE TABLE t2
 							Name: "c2_positive",
 							Expr: expression.NewGreaterThan(
 								expression.NewUnresolvedColumn("c2"),
-								expression.NewLiteral(int8(0), sql.Int8),
+								expression.NewLiteral(int8(0), types.Int8),
 							),
 							Enforced: true,
 						},
 						{
 							Expr: expression.NewLessThan(
 								expression.NewUnresolvedColumn("c3"),
-								expression.NewLiteral(int8(100), sql.Int8),
+								expression.NewLiteral(int8(100), types.Int8),
 							),
 							Enforced: true,
 						},
@@ -932,7 +932,7 @@ CREATE TABLE t2
 							Name: "c1_nonzero",
 							Expr: expression.NewEquals(
 								expression.NewUnresolvedColumn("c1"),
-								expression.NewLiteral(int8(0), sql.Int8),
+								expression.NewLiteral(int8(0), types.Int8),
 							),
 							Enforced: true,
 						},
@@ -957,7 +957,7 @@ CREATE TABLE t2
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}}),
@@ -965,7 +965,7 @@ CREATE TABLE t2
 						Name: "",
 						Expr: expression.NewGreaterThan(
 							expression.NewUnresolvedColumn("a"),
-							expression.NewLiteral(int8(0), sql.Int8),
+							expression.NewLiteral(int8(0), types.Int8),
 						),
 						Enforced: true,
 					}},
@@ -982,7 +982,7 @@ CREATE TABLE t2
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}}),
@@ -990,7 +990,7 @@ CREATE TABLE t2
 						Name: "ch1",
 						Expr: expression.NewGreaterThan(
 							expression.NewUnresolvedColumn("a"),
-							expression.NewLiteral(int8(0), sql.Int8),
+							expression.NewLiteral(int8(0), types.Int8),
 						),
 						Enforced: true,
 					}},
@@ -1007,7 +1007,7 @@ CREATE TABLE t2
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}}),
@@ -1015,7 +1015,7 @@ CREATE TABLE t2
 						Name: "",
 						Expr: expression.NewGreaterThan(
 							expression.NewUnresolvedColumn("a"),
-							expression.NewLiteral(int8(0), sql.Int8),
+							expression.NewLiteral(int8(0), types.Int8),
 						),
 						Enforced: true,
 					}},
@@ -1032,7 +1032,7 @@ CREATE TABLE t2
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:       "a",
-						Type:       sql.Int32,
+						Type:       types.Int32,
 						Nullable:   false,
 						PrimaryKey: true,
 					}}),
@@ -1040,7 +1040,7 @@ CREATE TABLE t2
 						Name: "",
 						Expr: expression.NewGreaterThan(
 							expression.NewUnresolvedColumn("a"),
-							expression.NewLiteral(int8(0), sql.Int8),
+							expression.NewLiteral(int8(0), types.Int8),
 						),
 						Enforced: false,
 					}},
@@ -1057,7 +1057,7 @@ CREATE TABLE t2
 				&plan.TableSpec{
 					Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 						Name:     "a",
-						Type:     sql.Int32,
+						Type:     types.Int32,
 						Nullable: true,
 					}, {
 						Name:     "b",
@@ -1154,7 +1154,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.Int32,
+					Type:     types.Int32,
 					Nullable: false,
 				}, nil,
 			),
@@ -1165,7 +1165,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.Int32,
+					Type:     types.Int32,
 					Nullable: false,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "42", nil, true),
@@ -1178,7 +1178,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.Int32,
+					Type:     types.Int32,
 					Nullable: false,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "-42.0", nil, true),
@@ -1191,7 +1191,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.Int32,
+					Type:     types.Int32,
 					Nullable: false,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "((2+2)/2)", nil, true),
@@ -1217,7 +1217,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.Float32,
+					Type:     types.Float32,
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "32.0", nil, true),
@@ -1230,7 +1230,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.Int32,
+					Type:     types.Int32,
 					Nullable: true,
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "1", nil, true),
 				}, &sql.ColumnOrder{First: true},
@@ -1242,7 +1242,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase("mydb"),
 				plan.NewUnresolvedTable("mytable", "mydb"), &sql.Column{
 					Name:     "bar",
-					Type:     sql.Int32,
+					Type:     types.Int32,
 					Nullable: true,
 					Comment:  "otherdb",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "1", nil, true),
@@ -1441,7 +1441,7 @@ CREATE TABLE t2
 					Name: "",
 					Expr: expression.NewGreaterThan(
 						expression.NewUnresolvedColumn("a"),
-						expression.NewLiteral(int8(0), sql.Int8),
+						expression.NewLiteral(int8(0), types.Int8),
 					),
 					Enforced: true,
 				},
@@ -1455,7 +1455,7 @@ CREATE TABLE t2
 					Name: "ch1",
 					Expr: expression.NewGreaterThan(
 						expression.NewUnresolvedColumn("a"),
-						expression.NewLiteral(int8(0), sql.Int8),
+						expression.NewLiteral(int8(0), types.Int8),
 					),
 					Enforced: true,
 				},
@@ -1469,7 +1469,7 @@ CREATE TABLE t2
 					Name: "",
 					Expr: expression.NewGreaterThan(
 						expression.NewUnresolvedColumn("a"),
-						expression.NewLiteral(int8(0), sql.Int8),
+						expression.NewLiteral(int8(0), types.Int8),
 					),
 					Enforced: true,
 				},
@@ -1690,12 +1690,12 @@ CREATE TABLE t2
 				plan.NewValueDerivedTable(
 					plan.NewValues([][]sql.Expression{
 						{
-							expression.NewLiteral(int8(1), sql.Int8),
-							expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
 						},
 						{
-							expression.NewLiteral(int8(3), sql.Int8),
-							expression.NewLiteral(int8(4), sql.Int8),
+							expression.NewLiteral(int8(3), types.Int8),
+							expression.NewLiteral(int8(4), types.Int8),
 						},
 					}),
 					"a"),
@@ -1711,13 +1711,13 @@ CREATE TABLE t2
 					plan.NewValues([][]sql.Expression{
 						{
 							expression.NewArithmetic(
-								expression.NewLiteral(int8(1), sql.Int8),
-								expression.NewLiteral(int8(1), sql.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
 								"+",
 							),
 							expression.NewArithmetic(
-								expression.NewLiteral(int8(2), sql.Int8),
-								expression.NewLiteral(int8(2), sql.Int8),
+								expression.NewLiteral(int8(2), types.Int8),
+								expression.NewLiteral(int8(2), types.Int8),
 								"+",
 							),
 						},
@@ -1731,7 +1731,7 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT column_0 FROM (values row(1,2), row(3,4)) a limit 1`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
+			plan: plan.NewLimit(expression.NewLiteral(int8(1), types.Int8),
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("column_0"),
@@ -1739,12 +1739,12 @@ CREATE TABLE t2
 					plan.NewValueDerivedTable(
 						plan.NewValues([][]sql.Expression{
 							{
-								expression.NewLiteral(int8(1), sql.Int8),
-								expression.NewLiteral(int8(2), sql.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
+								expression.NewLiteral(int8(2), types.Int8),
 							},
 							{
-								expression.NewLiteral(int8(3), sql.Int8),
-								expression.NewLiteral(int8(4), sql.Int8),
+								expression.NewLiteral(int8(3), types.Int8),
+								expression.NewLiteral(int8(4), types.Int8),
 							},
 						}),
 						"a"),
@@ -1800,7 +1800,7 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT foo, bar FROM foo LIMIT 10;`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8),
+			plan: plan.NewLimit(expression.NewLiteral(int8(10), types.Int8),
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("foo"),
@@ -1832,7 +1832,7 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT foo, bar FROM foo WHERE foo = bar LIMIT 10;`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8),
+			plan: plan.NewLimit(expression.NewLiteral(int8(10), types.Int8),
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("foo"),
@@ -1850,7 +1850,7 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
+			plan: plan.NewLimit(expression.NewLiteral(int8(1), types.Int8),
 				plan.NewSort(
 					[]sql.SortField{
 						{
@@ -1872,7 +1872,7 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
+			plan: plan.NewLimit(expression.NewLiteral(int8(1), types.Int8),
 				plan.NewSort(
 					[]sql.SortField{
 						{
@@ -1890,7 +1890,7 @@ CREATE TABLE t2
 						plan.NewFilter(
 							expression.NewEquals(
 								expression.NewUnresolvedColumn("qux"),
-								expression.NewLiteral(int8(1), sql.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
 							),
 							plan.NewUnresolvedTable("foo", ""),
 						),
@@ -2016,14 +2016,14 @@ CREATE TABLE t2
 			input: `INSERT INTO t1 (col1, col2) VALUES ('a', 1)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 				expression.NewLiteral("a", types.LongText),
-				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(1), types.Int8),
 			}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 		},
 		{
 			input: `INSERT INTO mydb.t1 (col1, col2) VALUES ('a', 1)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase("mydb"), plan.NewUnresolvedTable("t1", "mydb"), plan.NewValues([][]sql.Expression{{
 				expression.NewLiteral("a", types.LongText),
-				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(1), types.Int8),
 			}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 		},
 		{
@@ -2036,7 +2036,7 @@ CREATE TABLE t2
 		{
 			input: `INSERT INTO t1 VALUES (b'0111')`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
-				expression.NewLiteral(uint64(7), sql.Uint64),
+				expression.NewLiteral(uint64(7), types.Uint64),
 			}}), false, []string{}, []sql.Expression{}, false),
 		},
 		{
@@ -2072,7 +2072,7 @@ CREATE TABLE t2
 			input: `REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 				expression.NewLiteral("a", types.LongText),
-				expression.NewLiteral(int8(1), sql.Int8),
+				expression.NewLiteral(int8(1), types.Int8),
 			}}), true, []string{"col1", "col2"}, []sql.Expression{}, false),
 		},
 		{
@@ -2227,8 +2227,8 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT foo, bar FROM foo LIMIT 2 OFFSET 5;`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(2), sql.Int8),
-				plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.NewProject(
+			plan: plan.NewLimit(expression.NewLiteral(int8(2), types.Int8),
+				plan.NewOffset(expression.NewLiteral(int8(5), types.Int8), plan.NewProject(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewUnresolvedColumn("bar"),
@@ -2239,8 +2239,8 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT foo, bar FROM foo LIMIT 5,2;`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(2), sql.Int8),
-				plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.NewProject(
+			plan: plan.NewLimit(expression.NewLiteral(int8(2), types.Int8),
+				plan.NewOffset(expression.NewLiteral(int8(5), types.Int8), plan.NewProject(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("foo"),
 						expression.NewUnresolvedColumn("bar"),
@@ -2258,7 +2258,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("a"),
-						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
 					),
 					plan.NewUnresolvedTable("foo", ""),
 				),
@@ -2364,9 +2364,9 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewNot(
 						expression.NewBetween(
-							expression.NewLiteral(int8(1), sql.Int8),
-							expression.NewLiteral(int8(2), sql.Int8),
-							expression.NewLiteral(int8(5), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
+							expression.NewLiteral(int8(5), types.Int8),
 						),
 					),
 					plan.NewUnresolvedTable("foo", ""),
@@ -2379,9 +2379,9 @@ CREATE TABLE t2
 				[]sql.Expression{expression.NewStar()},
 				plan.NewFilter(
 					expression.NewBetween(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(2), sql.Int8),
-						expression.NewLiteral(int8(5), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
+						expression.NewLiteral(int8(2), types.Int8),
+						expression.NewLiteral(int8(5), types.Int8),
 					),
 					plan.NewUnresolvedTable("foo", ""),
 				),
@@ -2419,12 +2419,12 @@ CREATE TABLE t2
 						false,
 						nil,
 						expression.NewTuple(
-							expression.NewLiteral(int8(1), sql.Int8),
-							expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
 						),
 						expression.NewTuple(
-							expression.NewLiteral(int8(3), sql.Int8),
-							expression.NewLiteral(int8(4), sql.Int8),
+							expression.NewLiteral(int8(3), types.Int8),
+							expression.NewLiteral(int8(4), types.Int8),
 						),
 					),
 					plan.NewUnresolvedTable("b", ""),
@@ -2438,7 +2438,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewBindVar("foo_id"),
-						expression.NewLiteral(int8(2), sql.Int8),
+						expression.NewLiteral(int8(2), types.Int8),
 					),
 					plan.NewUnresolvedTable("foo", ""),
 				),
@@ -2453,7 +2453,7 @@ CREATE TABLE t2
 						expression.NewAnd(
 							expression.NewEquals(
 								expression.NewBindVar("v1"),
-								expression.NewLiteral(int8(2), sql.Int8),
+								expression.NewLiteral(int8(2), types.Int8),
 							),
 							expression.NewEquals(
 								expression.NewUnresolvedQualifiedColumn("foo", "s"),
@@ -2497,7 +2497,7 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("CAST(-3 AS UNSIGNED)",
-						expression.NewConvert(expression.NewLiteral(int8(-3), sql.Int8), expression.ConvertToUnsigned),
+						expression.NewConvert(expression.NewLiteral(int8(-3), types.Int8), expression.ConvertToUnsigned),
 					),
 				},
 				plan.NewUnresolvedTable("foo", ""),
@@ -2508,7 +2508,7 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("2 = 2",
-						expression.NewEquals(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(2), sql.Int8))),
+						expression.NewEquals(expression.NewLiteral(int8(2), types.Int8), expression.NewLiteral(int8(2), types.Int8))),
 				},
 				plan.NewUnresolvedTable("foo", ""),
 			),
@@ -2570,10 +2570,10 @@ CREATE TABLE t2
 				[]sql.Expression{expression.NewStar()},
 				plan.NewFilter(
 					expression.NewInTuple(
-						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
 						expression.NewTuple(
 							expression.NewLiteral("1", types.LongText),
-							expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
 						),
 					),
 					plan.NewUnresolvedTable("foo", ""),
@@ -2586,10 +2586,10 @@ CREATE TABLE t2
 				[]sql.Expression{expression.NewStar()},
 				plan.NewFilter(
 					expression.NewNotInTuple(
-						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
 						expression.NewTuple(
 							expression.NewLiteral("1", types.LongText),
-							expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
 						),
 					),
 					plan.NewUnresolvedTable("foo", ""),
@@ -2633,14 +2633,14 @@ CREATE TABLE t2
 			plan: plan.NewSort(
 				[]sql.SortField{
 					{
-						Column:       expression.NewLiteral(int8(2), sql.Int8),
-						Column2:      expression.NewLiteral(int8(2), sql.Int8),
+						Column:       expression.NewLiteral(int8(2), types.Int8),
+						Column2:      expression.NewLiteral(int8(2), types.Int8),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
 					{
-						Column:       expression.NewLiteral(int8(1), sql.Int8),
-						Column2:      expression.NewLiteral(int8(1), sql.Int8),
+						Column:       expression.NewLiteral(int8(1), types.Int8),
+						Column2:      expression.NewLiteral(int8(1), types.Int8),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
@@ -2682,8 +2682,8 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("- 4 - - 80",
 						expression.NewMinus(
-							expression.NewLiteral(int8(-4), sql.Int8),
-							expression.NewLiteral(int8(-80), sql.Int8),
+							expression.NewLiteral(int8(-4), types.Int8),
+							expression.NewLiteral(int8(-80), types.Int8),
 						),
 					),
 				},
@@ -2710,7 +2710,7 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("1 + 1",
-						expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+						expression.NewPlus(expression.NewLiteral(int8(1), types.Int8), expression.NewLiteral(int8(1), types.Int8))),
 				},
 				plan.NewResolvedDualTable(),
 			),
@@ -2720,7 +2720,7 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("foo",
-						expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+						expression.NewPlus(expression.NewLiteral(int8(1), types.Int8), expression.NewLiteral(int8(1), types.Int8))),
 				},
 				plan.NewResolvedDualTable(),
 			),
@@ -2730,8 +2730,8 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("1 * (2 + 1)",
-						expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
-							expression.NewPlus(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+						expression.NewMult(expression.NewLiteral(int8(1), types.Int8),
+							expression.NewPlus(expression.NewLiteral(int8(2), types.Int8), expression.NewLiteral(int8(1), types.Int8))),
 					),
 				},
 				plan.NewResolvedDualTable(),
@@ -2743,8 +2743,8 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("(0 - 1) * (1 | 1)",
 						expression.NewMult(
-							expression.NewMinus(expression.NewLiteral(int8(0), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
-							expression.NewBitOr(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+							expression.NewMinus(expression.NewLiteral(int8(0), types.Int8), expression.NewLiteral(int8(1), types.Int8)),
+							expression.NewBitOr(expression.NewLiteral(int8(1), types.Int8), expression.NewLiteral(int8(1), types.Int8)),
 						),
 					),
 				},
@@ -2757,8 +2757,8 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("(1 << 3) % (2 div 1)",
 						expression.NewMod(
-							expression.NewShiftLeft(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(3), sql.Int8)),
-							expression.NewIntDiv(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+							expression.NewShiftLeft(expression.NewLiteral(int8(1), types.Int8), expression.NewLiteral(int8(3), types.Int8)),
+							expression.NewIntDiv(expression.NewLiteral(int8(2), types.Int8), expression.NewLiteral(int8(1), types.Int8))),
 					),
 				},
 				plan.NewResolvedDualTable(),
@@ -2784,7 +2784,7 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("'1.0' + 2",
 						expression.NewPlus(
-							expression.NewLiteral("1.0", types.LongText), expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral("1.0", types.LongText), expression.NewLiteral(int8(2), types.Int8),
 						),
 					),
 				},
@@ -2892,7 +2892,7 @@ CREATE TABLE t2
 							expression.NewUnresolvedFunction(
 								"max", true, nil, expression.NewUnresolvedColumn("i"),
 							),
-							expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
 						),
 					),
 				},
@@ -2964,7 +2964,7 @@ CREATE TABLE t2
 			input: `SET autocommit=1, foo="bar", baz=ON, qux=bareword`,
 			plan: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewUnresolvedColumn("autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
+					expression.NewSetField(expression.NewUnresolvedColumn("autocommit"), expression.NewLiteral(int8(1), types.Int8)),
 					expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("bar", types.LongText)),
 					expression.NewSetField(expression.NewUnresolvedColumn("baz"), expression.NewLiteral("ON", types.LongText)),
 					expression.NewSetField(expression.NewUnresolvedColumn("qux"), expression.NewUnresolvedColumn("bareword")),
@@ -2975,7 +2975,7 @@ CREATE TABLE t2
 			input: `SET @@session.autocommit=1, foo="true"`,
 			plan: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session), expression.NewLiteral(int8(1), sql.Int8)),
+					expression.NewSetField(expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session), expression.NewLiteral(int8(1), types.Int8)),
 					expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("true", types.LongText)),
 				},
 			),
@@ -2984,8 +2984,8 @@ CREATE TABLE t2
 			input: `SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
 			plan: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("NET_READ_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), sql.Int16)),
-					expression.NewSetField(expression.NewSystemVar("NET_WRITE_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), sql.Int16)),
+					expression.NewSetField(expression.NewSystemVar("NET_READ_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), types.Int16)),
+					expression.NewSetField(expression.NewSystemVar("NET_WRITE_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), types.Int16)),
 				},
 			),
 		},
@@ -3053,7 +3053,7 @@ CREATE TABLE t2
 		},
 		{
 			input: `SELECT /*+ JOIN_ORDER(a,b) */ * FROM b join a on c = d limit 5`,
-			plan: plan.NewLimit(expression.NewLiteral(int8(5), sql.Int8),
+			plan: plan.NewLimit(expression.NewLiteral(int8(5), types.Int8),
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewStar(),
@@ -3300,11 +3300,11 @@ CREATE TABLE t2
 		},
 		{
 			input: `SHOW WARNINGS LIMIT 10`,
-			plan:  plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
+			plan:  plan.NewLimit(expression.NewLiteral(int8(10), types.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
 		},
 		{
 			input: `SHOW WARNINGS LIMIT 5,10`,
-			plan:  plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+			plan:  plan.NewLimit(expression.NewLiteral(int8(10), types.Int8), plan.NewOffset(expression.NewLiteral(int8(5), types.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 		},
 		{
 			input: "SHOW CREATE DATABASE `foo`",
@@ -3331,11 +3331,11 @@ CREATE TABLE t2
 							expression.NewUnresolvedColumn("foo"),
 							[]expression.CaseBranch{
 								{
-									Cond:  expression.NewLiteral(int8(1), sql.Int8),
+									Cond:  expression.NewLiteral(int8(1), types.Int8),
 									Value: expression.NewLiteral("foo", types.LongText),
 								},
 								{
-									Cond:  expression.NewLiteral(int8(2), sql.Int8),
+									Cond:  expression.NewLiteral(int8(2), types.Int8),
 									Value: expression.NewLiteral("bar", types.LongText),
 								},
 							},
@@ -3355,11 +3355,11 @@ CREATE TABLE t2
 							expression.NewUnresolvedColumn("foo"),
 							[]expression.CaseBranch{
 								{
-									Cond:  expression.NewLiteral(int8(1), sql.Int8),
+									Cond:  expression.NewLiteral(int8(1), types.Int8),
 									Value: expression.NewLiteral("foo", types.LongText),
 								},
 								{
-									Cond:  expression.NewLiteral(int8(2), sql.Int8),
+									Cond:  expression.NewLiteral(int8(2), types.Int8),
 									Value: expression.NewLiteral("bar", types.LongText),
 								},
 							},
@@ -3381,14 +3381,14 @@ CREATE TABLE t2
 								{
 									Cond: expression.NewEquals(
 										expression.NewUnresolvedColumn("foo"),
-										expression.NewLiteral(int8(1), sql.Int8),
+										expression.NewLiteral(int8(1), types.Int8),
 									),
 									Value: expression.NewLiteral("foo", types.LongText),
 								},
 								{
 									Cond: expression.NewEquals(
 										expression.NewUnresolvedColumn("foo"),
-										expression.NewLiteral(int8(2), sql.Int8),
+										expression.NewLiteral(int8(2), types.Int8),
 									),
 									Value: expression.NewLiteral("bar", types.LongText),
 								},
@@ -3555,7 +3555,7 @@ CREATE TABLE t2
 						expression.NewArithmetic(
 							expression.NewLiteral("2018-05-01", types.LongText),
 							expression.NewInterval(
-								expression.NewLiteral(int8(1), sql.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
 								"DAY",
 							),
 							"+",
@@ -3573,7 +3573,7 @@ CREATE TABLE t2
 						expression.NewArithmetic(
 							expression.NewLiteral("2018-05-01", types.LongText),
 							expression.NewInterval(
-								expression.NewLiteral(int8(1), sql.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
 								"DAY",
 							),
 							"-",
@@ -3590,7 +3590,7 @@ CREATE TABLE t2
 					expression.NewAlias("INTERVAL 1 DAY + '2018-05-01'",
 						expression.NewArithmetic(
 							expression.NewInterval(
-								expression.NewLiteral(int8(1), sql.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
 								"DAY",
 							),
 							expression.NewLiteral("2018-05-01", types.LongText),
@@ -3610,13 +3610,13 @@ CREATE TABLE t2
 							expression.NewArithmetic(
 								expression.NewLiteral("2018-05-01", types.LongText),
 								expression.NewInterval(
-									expression.NewLiteral(int8(1), sql.Int8),
+									expression.NewLiteral(int8(1), types.Int8),
 									"DAY",
 								),
 								"+",
 							),
 							expression.NewInterval(
-								expression.NewLiteral(int8(1), sql.Int8),
+								expression.NewLiteral(int8(1), types.Int8),
 								"DAY",
 							),
 							"+",
@@ -3631,7 +3631,7 @@ CREATE TABLE t2
 			plan: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
-					expression.NewLiteral(int8(5), sql.Int8),
+					expression.NewLiteral(int8(5), types.Int8),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
@@ -3650,7 +3650,7 @@ CREATE TABLE t2
 			plan: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedColumn("i"),
-					expression.NewLiteral(int8(5), sql.Int8),
+					expression.NewLiteral(int8(5), types.Int8),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{expression.NewUnresolvedColumn("foo")},
@@ -3664,7 +3664,7 @@ CREATE TABLE t2
 			plan: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
-					expression.NewLiteral(int8(5), sql.Int8),
+					expression.NewLiteral(int8(5), types.Int8),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
@@ -3683,7 +3683,7 @@ CREATE TABLE t2
 				plan.NewHaving(
 					expression.NewGreaterThan(
 						expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
-						expression.NewLiteral(int8(5), sql.Int8),
+						expression.NewLiteral(int8(5), types.Int8),
 					),
 					plan.NewGroupBy(
 						[]sql.Expression{
@@ -3705,8 +3705,8 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
 					),
 				),
 			),
@@ -3719,8 +3719,8 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
 					),
 				),
 			),
@@ -3733,8 +3733,8 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
 					),
 				),
 			),
@@ -3747,8 +3747,8 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("foo", ""),
 					plan.NewUnresolvedTable("bar", ""),
 					expression.NewEquals(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
+						expression.NewLiteral(int8(1), types.Int8),
 					),
 				),
 			),
@@ -3833,7 +3833,7 @@ CREATE TABLE t2
 						expression.NewUnresolvedFunction("sum", true, nil,
 							expression.NewDistinctExpression(
 								expression.NewUnresolvedFunction("power", false, nil,
-									expression.NewUnresolvedColumn("a"), expression.NewLiteral(int8(2), sql.Int8)))))},
+									expression.NewUnresolvedColumn("a"), expression.NewLiteral(int8(2), types.Int8)))))},
 				[]sql.Expression{},
 				plan.NewUnresolvedTable("foo", ""),
 			),
@@ -4045,8 +4045,8 @@ CREATE TABLE t2
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRowsNPrecedingToNFollowingFrame(
-							expression.NewLiteral(int8(1), sql.Int8),
-							expression.NewLiteral(int8(1), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
 						), "", ""),
 						),
 					),
@@ -4062,8 +4062,8 @@ CREATE TABLE t2
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRowsNFollowingToNFollowingFrame(
-							expression.NewLiteral(int8(1), sql.Int8),
-							expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
 						), "", ""),
 						),
 					),
@@ -4092,7 +4092,7 @@ CREATE TABLE t2
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRowsCurrentRowToNFollowingFrame(
-							expression.NewLiteral(int8(1), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
 						), "", "")),
 					),
 				},
@@ -4120,7 +4120,7 @@ CREATE TABLE t2
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
-							expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral(int8(2), types.Int8),
 						), "", "")),
 					),
 				},
@@ -4149,7 +4149,7 @@ CREATE TABLE t2
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
 							expression.NewInterval(
-								expression.NewLiteral(int8(5), sql.Int8),
+								expression.NewLiteral(int8(5), types.Int8),
 								"DAY",
 							),
 						), "", "")),
@@ -4184,8 +4184,8 @@ CREATE TABLE t2
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRangeNPrecedingToNFollowingFrame(
-							expression.NewLiteral(int8(1), sql.Int8),
-							expression.NewLiteral(int8(1), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
 						), "", "")),
 					),
 				},
@@ -4213,7 +4213,7 @@ CREATE TABLE t2
 						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRangeCurrentRowToNFollowingFrame(
-							expression.NewLiteral(int8(1), sql.Int8),
+							expression.NewLiteral(int8(1), types.Int8),
 						), "", "")),
 					),
 				},
@@ -4229,7 +4229,7 @@ CREATE TABLE t2
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
 							expression.NewInterval(
-								expression.NewLiteral(int8(5), sql.Int8),
+								expression.NewLiteral(int8(5), types.Int8),
 								"DAY",
 							),
 						), "", ""),
@@ -4472,21 +4472,21 @@ CREATE TABLE t2
 						plan.NewSubqueryAlias("cte1", "select 1 union select n + 1 from cte1 where n < 10",
 							plan.NewUnion(plan.NewProject(
 								[]sql.Expression{
-									expression.NewLiteral(int8(1), sql.Int8),
+									expression.NewLiteral(int8(1), types.Int8),
 								},
 								plan.NewResolvedDualTable(),
 							), plan.NewProject(
 								[]sql.Expression{
 									expression.NewArithmetic(
 										expression.NewUnresolvedColumn("n"),
-										expression.NewLiteral(int8(1), sql.Int8),
+										expression.NewLiteral(int8(1), types.Int8),
 										sqlparser.PlusStr,
 									),
 								},
 								plan.NewFilter(
 									expression.NewLessThan(
 										expression.NewUnresolvedColumn("n"),
-										expression.NewLiteral(int8(10), sql.Int8),
+										expression.NewLiteral(int8(10), types.Int8),
 									),
 									plan.NewUnresolvedTable("cte1", ""),
 								),
@@ -4623,18 +4623,18 @@ CREATE TABLE t2
 			input: `SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`,
 			plan: plan.NewProject(
 				[]sql.Expression{
-					expression.NewLiteral(int8(math.MinInt8), sql.Int8),
-					expression.NewLiteral(int8(math.MaxInt8), sql.Int8),
-					expression.NewLiteral(uint8(math.MaxUint8), sql.Uint8),
-					expression.NewLiteral(int16(math.MinInt16), sql.Int16),
-					expression.NewLiteral(int16(math.MaxInt16), sql.Int16),
-					expression.NewLiteral(uint16(math.MaxUint16), sql.Uint16),
-					expression.NewLiteral(int32(math.MinInt32), sql.Int32),
-					expression.NewLiteral(int32(math.MaxInt32), sql.Int32),
-					expression.NewLiteral(uint32(math.MaxUint32), sql.Uint32),
-					expression.NewLiteral(int64(math.MinInt64), sql.Int64),
-					expression.NewLiteral(int64(math.MaxInt64), sql.Int64),
-					expression.NewLiteral(uint64(math.MaxUint64), sql.Uint64),
+					expression.NewLiteral(int8(math.MinInt8), types.Int8),
+					expression.NewLiteral(int8(math.MaxInt8), types.Int8),
+					expression.NewLiteral(uint8(math.MaxUint8), types.Uint8),
+					expression.NewLiteral(int16(math.MinInt16), types.Int16),
+					expression.NewLiteral(int16(math.MaxInt16), types.Int16),
+					expression.NewLiteral(uint16(math.MaxUint16), types.Uint16),
+					expression.NewLiteral(int32(math.MinInt32), types.Int32),
+					expression.NewLiteral(int32(math.MaxInt32), types.Int32),
+					expression.NewLiteral(uint32(math.MaxUint32), types.Uint32),
+					expression.NewLiteral(int64(math.MinInt64), types.Int64),
+					expression.NewLiteral(int64(math.MaxInt64), types.Int64),
+					expression.NewLiteral(uint64(math.MaxUint64), types.Uint64),
 				},
 				plan.NewResolvedDualTable(),
 			),
@@ -4693,34 +4693,34 @@ CREATE TABLE t2
 		{
 			input: `SELECT 2 UNION SELECT 3`,
 			plan: plan.NewUnion(plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), true, nil, nil),
 		},
 		{
 			input: `(SELECT 2) UNION (SELECT 3)`,
 			plan: plan.NewUnion(plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), true, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION ALL SELECT 3 UNION DISTINCT SELECT 4`,
 			plan: plan.NewUnion(plan.NewUnion(plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), false, nil, nil),
 				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, nil),
 		},
@@ -4728,14 +4728,14 @@ CREATE TABLE t2
 			input: `SELECT 2 UNION SELECT 3 UNION ALL SELECT 4`,
 			plan: plan.NewUnion(
 				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, nil),
 				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), false, nil, nil),
 		},
@@ -4743,14 +4743,14 @@ CREATE TABLE t2
 			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4`,
 			plan: plan.NewUnion(
 				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, nil),
 				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, nil),
 		},
@@ -4758,14 +4758,14 @@ CREATE TABLE t2
 			input: `SELECT 2 UNION (SELECT 3 UNION SELECT 4)`,
 			plan: plan.NewUnion(
 				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 					plan.NewResolvedDualTable(),
 				),
 				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, nil),
 				true, nil, nil,
@@ -4774,20 +4774,20 @@ CREATE TABLE t2
 		{
 			input: `SELECT 2 UNION ALL SELECT 3`,
 			plan: plan.NewUnion(plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), false, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION DISTINCT SELECT 3`,
 			plan: plan.NewUnion(plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), plan.NewProject(
-				[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
 			), true, nil, nil),
 		},
@@ -4795,34 +4795,34 @@ CREATE TABLE t2
 			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4 LIMIT 10`,
 			plan: plan.NewUnion(
 				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, nil),
 				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, expression.NewLiteral(int8(10), sql.Int8), nil),
+				), true, expression.NewLiteral(int8(10), types.Int8), nil),
 		},
 		{
 			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4 ORDER BY 2`,
 			plan: plan.NewUnion(
 				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(2), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(2), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(3), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, nil),
 				plan.NewProject(
-					[]sql.Expression{expression.NewLiteral(int8(4), sql.Int8)},
+					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
 				), true, nil, []sql.SortField{
 					{
-						Column:       expression.NewLiteral(int8(2), sql.Int8),
-						Column2:      expression.NewLiteral(int8(2), sql.Int8),
+						Column:       expression.NewLiteral(int8(2), types.Int8),
+						Column2:      expression.NewLiteral(int8(2), types.Int8),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
@@ -4869,13 +4869,13 @@ END;`,
 					{
 						Direction: plan.ProcedureParamDirection_Inout,
 						Name:      "a",
-						Type:      sql.Int32,
+						Type:      types.Int32,
 						Variadic:  false,
 					},
 					{
 						Direction: plan.ProcedureParamDirection_In,
 						Name:      "b",
-						Type:      sql.Int16,
+						Type:      types.Int16,
 						Variadic:  false,
 					},
 				},
@@ -4885,9 +4885,9 @@ END;`,
 				nil,
 				plan.NewBeginEndBlock(
 					plan.NewBlock([]sql.Node{
-						plan.NewDeclareVariables([]string{"c"}, sql.Int64, nil),
+						plan.NewDeclareVariables([]string{"c"}, types.Int64, nil),
 						plan.NewDeclareCursor("cur1", plan.NewProject(
-							[]sql.Expression{expression.NewLiteral(int8(1), sql.Int8)},
+							[]sql.Expression{expression.NewLiteral(int8(1), types.Int8)},
 							plan.NewResolvedDualTable(),
 						)),
 						plan.NewOpen("cur1"),
@@ -5203,59 +5203,59 @@ func TestParseColumnTypeString(t *testing.T) {
 	}{
 		{
 			"tinyint",
-			sql.Int8,
+			types.Int8,
 		},
 		{
 			"SMALLINT",
-			sql.Int16,
+			types.Int16,
 		},
 		{
 			"MeDiUmInT",
-			sql.Int24,
+			types.Int24,
 		},
 		{
 			"INT",
-			sql.Int32,
+			types.Int32,
 		},
 		{
 			"BIGINT",
-			sql.Int64,
+			types.Int64,
 		},
 		{
 			"TINYINT UNSIGNED",
-			sql.Uint8,
+			types.Uint8,
 		},
 		{
 			"SMALLINT UNSIGNED",
-			sql.Uint16,
+			types.Uint16,
 		},
 		{
 			"MEDIUMINT UNSIGNED",
-			sql.Uint24,
+			types.Uint24,
 		},
 		{
 			"INT UNSIGNED",
-			sql.Uint32,
+			types.Uint32,
 		},
 		{
 			"BIGINT UNSIGNED",
-			sql.Uint64,
+			types.Uint64,
 		},
 		{
 			"BOOLEAN",
-			sql.Int8,
+			types.Int8,
 		},
 		{
 			"FLOAT",
-			sql.Float32,
+			types.Float32,
 		},
 		{
 			"DOUBLE",
-			sql.Float64,
+			types.Float64,
 		},
 		{
 			"REAL",
-			sql.Float64,
+			types.Float64,
 		},
 		{
 			"DECIMAL",

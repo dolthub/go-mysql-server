@@ -28,7 +28,7 @@ import (
 func TestTuple(t *testing.T) {
 	require := require.New(t)
 
-	typ := CreateTuple(Int32, types.LongText, Int64)
+	typ := CreateTuple(types.Int32, types.LongText, types.Int64)
 	_, err := typ.Convert("foo")
 	require.Error(err)
 	require.True(ErrNotTuple.Is(err))

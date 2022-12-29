@@ -943,10 +943,10 @@ func resolveColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapp
 		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
 			switch val := literalExpr.Value().(type) {
 			case float32:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
+				newDefault.Expression = expression.NewLiteral(-val, types.Float32)
 				isLiteral = true
 			case float64:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
+				newDefault.Expression = expression.NewLiteral(-val, types.Float64)
 				isLiteral = true
 			}
 		}

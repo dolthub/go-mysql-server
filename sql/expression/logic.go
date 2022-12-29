@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // And checks whether two expressions are true.
@@ -60,7 +61,7 @@ func (a *And) DebugString() string {
 
 // Type implements the Expression interface.
 func (*And) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // Eval implements the Expression interface.
@@ -126,7 +127,7 @@ func (o *Or) DebugString() string {
 
 // Type implements the Expression interface.
 func (*Or) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // Eval implements the Expression interface.
@@ -190,7 +191,7 @@ func (x *Xor) DebugString() string {
 
 // Type implements the Expression interface.
 func (*Xor) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // Eval implements the Expression interface.

@@ -120,7 +120,7 @@ func TestLocate(t *testing.T) {
 			row := sql.Row{tt.Substr, tt.Str}
 
 			if tt.Start != nil {
-				exprs = append(exprs, expression.NewGetField(2, sql.Int32, "start", false))
+				exprs = append(exprs, expression.NewGetField(2, types.Int32, "start", false))
 				row = append(row, *tt.Start)
 			}
 

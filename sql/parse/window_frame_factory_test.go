@@ -3,6 +3,7 @@ package parse
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
@@ -28,7 +29,7 @@ func TestWindowFrameGetters(t *testing.T) {
 					},
 				},
 			},
-			Expected: expression.NewLiteral(int8(1), sql.Int8),
+			Expected: expression.NewLiteral(int8(1), types.Int8),
 		},
 		{
 			Name: "start preceding nil",
@@ -51,7 +52,7 @@ func TestWindowFrameGetters(t *testing.T) {
 					},
 				},
 			},
-			Expected: expression.NewLiteral(int8(1), sql.Int8),
+			Expected: expression.NewLiteral(int8(1), types.Int8),
 		},
 		{
 			Name: "end preceding nil",
@@ -74,7 +75,7 @@ func TestWindowFrameGetters(t *testing.T) {
 					},
 				},
 			},
-			Expected: expression.NewLiteral(int8(1), sql.Int8),
+			Expected: expression.NewLiteral(int8(1), types.Int8),
 		},
 		{
 			Name: "start following nil",
@@ -97,7 +98,7 @@ func TestWindowFrameGetters(t *testing.T) {
 					},
 				},
 			},
-			Expected: expression.NewLiteral(int8(1), sql.Int8),
+			Expected: expression.NewLiteral(int8(1), types.Int8),
 		},
 		{
 			Name: "end following nil",

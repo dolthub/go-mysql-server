@@ -64,8 +64,8 @@ func TestInSubquery(t *testing.T) {
 		{
 			"left and right don't have the same cols",
 			expression.NewTuple(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			),
 			project(
 				expression.NewGetField(1, types.Text, "foo", false),
@@ -152,11 +152,11 @@ func TestNotInSubquery(t *testing.T) {
 		{
 			"left and right don't have the same cols",
 			expression.NewTuple(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			),
 			project(
-				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(2), types.Int64),
 			),
 			nil,
 			nil,

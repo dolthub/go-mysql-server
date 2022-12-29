@@ -65,7 +65,7 @@ func NewLike(left, right, escape sql.Expression) sql.Expression {
 }
 
 // Type implements the sql.Expression interface.
-func (l *Like) Type() sql.Type { return sql.Boolean }
+func (l *Like) Type() sql.Type { return types.Boolean }
 
 // Eval implements the sql.Expression interface.
 func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

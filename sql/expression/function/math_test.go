@@ -31,7 +31,7 @@ import (
 func TestRand(t *testing.T) {
 	r, _ := NewRand()
 
-	assert.Equal(t, sql.Float64, r.Type())
+	assert.Equal(t, types.Float64, r.Type())
 	assert.Equal(t, "rand()", r.String())
 
 	f, err := r.Eval(nil, nil)
@@ -51,9 +51,9 @@ func TestRand(t *testing.T) {
 }
 
 func TestRandWithSeed(t *testing.T) {
-	r, _ := NewRand(expression.NewLiteral(10, sql.Int8))
+	r, _ := NewRand(expression.NewLiteral(10, types.Int8))
 
-	assert.Equal(t, sql.Float64, r.Type())
+	assert.Equal(t, types.Float64, r.Type())
 	assert.Equal(t, "rand(10)", r.String())
 
 	f, err := r.Eval(nil, nil)
@@ -272,7 +272,7 @@ func TestMod(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mod, err := f.Fn(expression.NewLiteral(test.left, sql.Int32), expression.NewLiteral(test.right, sql.Int32))
+			mod, err := f.Fn(expression.NewLiteral(test.left, types.Int32), expression.NewLiteral(test.right, types.Int32))
 			res, err := mod.Eval(nil, nil)
 			assert.NoError(t, err)
 			if r, ok := res.(decimal.Decimal); ok {

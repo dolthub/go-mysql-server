@@ -36,7 +36,7 @@ func (in *InTuple) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 }
 
 func (in *InTuple) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 func (in *InTuple) Left() sql.Expression {

@@ -51,7 +51,7 @@ func (s *StrCmp) Description() string {
 
 // Type implements the Expression interface.
 func (s *StrCmp) Type() sql.Type {
-	return sql.Int8
+	return types.Int8
 }
 
 func (s *StrCmp) String() string {

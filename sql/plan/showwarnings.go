@@ -50,7 +50,7 @@ func (ShowWarnings) String() string {
 func (ShowWarnings) Schema() sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Level", Type: types.LongText, Nullable: false},
-		&sql.Column{Name: "Code", Type: sql.Int32, Nullable: true},
+		&sql.Column{Name: "Code", Type: types.Int32, Nullable: true},
 		&sql.Column{Name: "Message", Type: types.LongText, Nullable: false},
 	}
 }

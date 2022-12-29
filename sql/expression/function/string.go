@@ -38,7 +38,7 @@ type Ascii struct {
 var _ sql.FunctionExpression = (*Ascii)(nil)
 
 func NewAscii(arg sql.Expression) sql.Expression {
-	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
+	return &Ascii{NewUnaryFunc(arg, "ASCII", types.Uint8)}
 }
 
 // Description implements sql.FunctionExpression
@@ -134,7 +134,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
-		n, err := sql.Int64.Convert(arg)
+		n, err := types.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -411,28 +411,28 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 		return int64(v), nil
 	case uint64:
 		if v > math.MaxInt64 {
-			return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+			return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
 		}
 		return int64(v), nil
 	case float32:
 		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
 			return int64(v), nil
 		}
-		return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+		return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
 	case float64:
 		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
 			return int64(v), nil
 		}
-		return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+		return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
 	case decimal.Decimal:
 		if v.GreaterThan(decimal.NewFromInt(math.MaxInt64)) || v.LessThan(decimal.NewFromInt(math.MinInt64)) {
-			return 0, sql.ErrOutOfRange.New(v.String(), sql.Int64)
+			return 0, sql.ErrValueOutOfRange.New(v.String(), types.Int64)
 		}
 		return v.IntPart(), nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
-			return 0, sql.ErrInvalidValue.New(v, sql.Int64.String())
+			return 0, sql.ErrInvalidValue.New(v, types.Int64.String())
 		}
 		return i, nil
 	case string:
@@ -444,7 +444,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 		// If that fails, try as a float and truncate it to integral
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return 0, sql.ErrInvalidValue.New(v, sql.Int64.String())
+			return 0, sql.ErrInvalidValue.New(v, types.Int64.String())
 		}
 		return int64(f), nil
 	case bool:
@@ -455,7 +455,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 	case nil:
 		return 0, nil
 	default:
-		return 0, sql.ErrInvalidValueType.New(v, sql.Int64.String())
+		return 0, sql.ErrInvalidValueType.New(v, types.Int64.String())
 	}
 }
 
@@ -467,7 +467,7 @@ type Bitlength struct {
 var _ sql.FunctionExpression = (*Bitlength)(nil)
 
 func NewBitlength(arg sql.Expression) sql.Expression {
-	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}
+	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", types.Int32)}
 }
 
 // FunctionName implements sql.FunctionExpression

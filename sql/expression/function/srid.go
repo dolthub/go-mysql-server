@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -54,7 +55,7 @@ func (s *SRID) Description() string {
 // Type implements the sql.Expression interface.
 func (s *SRID) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Int32
+		return types.Int32
 	} else {
 		return s.ChildExpressions[0].Type()
 	}
@@ -103,7 +104,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.Uint32.Convert(v)
+	val, err := types.Uint32.Convert(v)
 	if err != nil {
 		return nil, err
 	}

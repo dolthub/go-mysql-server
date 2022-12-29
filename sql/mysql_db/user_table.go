@@ -154,8 +154,8 @@ func init() {
 		Nullable: true,
 	}
 	int_unsigned_not_null_default_0 := &sql.Column{
-		Type:     sql.Uint32,
-		Default:  mustDefault(expression.NewLiteral(uint32(0), sql.Uint32), sql.Uint32, true, false),
+		Type:     types.Uint32,
+		Default:  mustDefault(expression.NewLiteral(uint32(0), types.Uint32), types.Uint32, true, false),
 		Nullable: false,
 	}
 	json_nullable_default_nil := &sql.Column{
@@ -164,7 +164,7 @@ func init() {
 		Nullable: true,
 	}
 	smallint_unsigned_nullable_default_nil := &sql.Column{
-		Type:     sql.Uint16,
+		Type:     types.Uint16,
 		Default:  nil,
 		Nullable: true,
 	}

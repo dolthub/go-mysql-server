@@ -104,7 +104,7 @@ func (s *Substring) Eval(
 		return nil, nil
 	}
 
-	start, err = sql.Int64.Convert(start)
+	start, err = types.Int64.Convert(start)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (s *Substring) Eval(
 			return nil, nil
 		}
 
-		len, err = sql.Int64.Convert(len)
+		len, err = types.Int64.Convert(len)
 		if err != nil {
 			return nil, err
 		}
@@ -238,7 +238,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = sql.Int64.Convert(ex)
+	ex, err = types.Int64.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +355,7 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = sql.Int64.Convert(len)
+	len, err = types.Int64.Convert(len)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +455,7 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = sql.Int64.Convert(len)
+	len, err = types.Int64.Convert(len)
 	if err != nil {
 		return nil, err
 	}
@@ -593,7 +593,7 @@ func (i Instr) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (Instr) Type() sql.Type { return sql.Int64 }
+func (Instr) Type() sql.Type { return types.Int64 }
 
 // WithChildren implements the Expression interface.
 func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {

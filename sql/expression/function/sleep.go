@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Sleep is a function that just waits for the specified number of seconds
@@ -59,7 +60,7 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	child, err = sql.Float64.Convert(child)
+	child, err = types.Float64.Convert(child)
 	if err != nil {
 		return nil, err
 	}
@@ -95,5 +96,5 @@ func (s *Sleep) WithChildren(children ...sql.Expression) (sql.Expression, error)
 
 // Type implements the Expression interface.
 func (s *Sleep) Type() sql.Type {
-	return sql.Int32
+	return types.Int32
 }

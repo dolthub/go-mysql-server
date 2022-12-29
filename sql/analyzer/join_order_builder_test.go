@@ -216,19 +216,19 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				plan.NewInnerJoin(
 					tableNode("a"),
 					tableNode("b"),
-					expression.NewLiteral(true, sql.Boolean),
+					expression.NewLiteral(true, types.Boolean),
 				),
 				plan.NewInnerJoin(
 					tableNode("c"),
 					tableNode("d"),
-					expression.NewLiteral(true, sql.Boolean),
+					expression.NewLiteral(true, types.Boolean),
 				),
 				newEq("a.x=c.x"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeInner, "0000", "1100", "1000", "0100", nil, expression.NewLiteral(true, sql.Boolean), ""), // A x B
-				newEdge2(plan.JoinTypeInner, "0000", "0011", "0010", "0001", nil, expression.NewLiteral(true, sql.Boolean), ""), // C x D
-				newEdge2(plan.JoinTypeFullOuter, "1010", "1111", "1100", "0011", nil, newEq("a.x=c.x"), ""),                     // (AB) x (CD)
+				newEdge2(plan.JoinTypeInner, "0000", "1100", "1000", "0100", nil, expression.NewLiteral(true, types.Boolean), ""), // A x B
+				newEdge2(plan.JoinTypeInner, "0000", "0011", "0010", "0001", nil, expression.NewLiteral(true, types.Boolean), ""), // C x D
+				newEdge2(plan.JoinTypeFullOuter, "1010", "1111", "1100", "0011", nil, newEq("a.x=c.x"), ""),                       // (AB) x (CD)
 			},
 		},
 		{
@@ -274,8 +274,8 @@ func newEq(eq string) sql.Expression {
 	left := strings.Split(vars[0], ".")
 	right := strings.Split(vars[1], ".")
 	return expression.NewEquals(
-		expression.NewGetFieldWithTable(0, sql.Int64, left[0], left[1], false),
-		expression.NewGetFieldWithTable(0, sql.Int64, right[0], right[1], false),
+		expression.NewGetFieldWithTable(0, types.Int64, left[0], left[1], false),
+		expression.NewGetFieldWithTable(0, types.Int64, right[0], right[1], false),
 	)
 }
 
@@ -441,7 +441,7 @@ func TestAssociativeTransforms(t *testing.T) {
 }
 
 var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "i", Type: sql.Int64, Nullable: true},
+	{Name: "i", Type: types.Int64, Nullable: true},
 	{Name: "s", Type: types.Text, Nullable: true},
 })
 

@@ -263,7 +263,7 @@ func TestTrackProcess(t *testing.T) {
 	node := plan.NewInnerJoin(
 		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
 		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
-		expression.NewLiteral(int64(1), sql.Int64),
+		expression.NewLiteral(int64(1), types.Int64),
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(sqle.NewProcessList()))
@@ -703,7 +703,7 @@ func (s SimpleTableFunction) Schema() sql.Schema {
 		},
 		&sql.Column{
 			Name: "two",
-			Type: sql.Int64,
+			Type: types.Int64,
 		},
 	}
 

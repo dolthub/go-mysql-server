@@ -38,8 +38,8 @@ func TestBinary(t *testing.T) {
 		expected []byte
 	}{
 		{"hi", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("hi")},
-		{int8(1), sql.Int8, []byte("1")},
-		{true, sql.Boolean, []byte("true")},
+		{int8(1), types.Int8, []byte("1")},
+		{true, types.Boolean, []byte("true")},
 		{"hello", types.LongText, []byte("hello")},
 	}
 

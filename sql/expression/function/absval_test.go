@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
@@ -44,21 +45,21 @@ func TestAbsValue(t *testing.T) {
 	toDecimal1616 := func(x float64) interface{} { return decimal.NewFromFloat(x) }
 
 	signedTypes := map[sql.Type]toTypeFunc{
-		sql.Int64: toInt64,
-		sql.Int32: toInt32,
-		sql.Int24: toInt,
-		sql.Int16: toInt16,
-		sql.Int8:  toInt8}
+		types.Int64: toInt64,
+		types.Int32: toInt32,
+		types.Int24: toInt,
+		types.Int16: toInt16,
+		types.Int8:  toInt8}
 	unsignedTypes := map[sql.Type]toTypeFunc{
-		sql.Uint64: toUint64,
-		sql.Uint32: toUint32,
-		sql.Uint24: toUint,
-		sql.Uint16: toUint16,
-		sql.Uint8:  toUint8}
+		types.Uint64: toUint64,
+		types.Uint32: toUint32,
+		types.Uint24: toUint,
+		types.Uint16: toUint16,
+		types.Uint8:  toUint8}
 	floatTypes := map[sql.Type]toTypeFunc{
-		sql.Float64: toFloat64,
-		sql.Float32: toFloat32,
-		decimal1616: toDecimal1616,
+		types.Float64: toFloat64,
+		types.Float32: toFloat32,
+		decimal1616:   toDecimal1616,
 	}
 
 	testCases := []struct {

@@ -142,7 +142,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	length, err = sql.Int64.Convert(length)
+	length, err = types.Int64.Convert(length)
 	if err != nil {
 		return nil, err
 	}

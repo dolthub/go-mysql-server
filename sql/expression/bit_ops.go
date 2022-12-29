@@ -89,16 +89,16 @@ func (b *BitOp) Type() sql.Type {
 	}
 
 	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return sql.Float64
+		return types.Float64
 	}
 
 	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-		return sql.Uint64
+		return types.Uint64
 	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-		return sql.Int64
+		return types.Int64
 	}
 
-	return sql.Float64
+	return types.Float64
 }
 
 // WithChildren implements the Expression interface.

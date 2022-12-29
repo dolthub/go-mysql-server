@@ -32,7 +32,7 @@ func TestDescribe(t *testing.T) {
 
 	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: types.Text},
-		{Name: "c2", Type: sql.Int32},
+		{Name: "c2", Type: types.Int32},
 	}), nil)
 
 	d := NewDescribe(NewResolvedTable(table, nil, nil))

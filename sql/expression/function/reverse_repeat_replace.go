@@ -153,7 +153,7 @@ func (r *Repeat) Eval(
 		return nil, err
 	}
 
-	count, err = sql.Int32.Convert(count)
+	count, err = types.Int32.Convert(count)
 	if err != nil {
 		return nil, err
 	}

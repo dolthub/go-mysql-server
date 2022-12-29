@@ -22,19 +22,20 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestExpandStars(t *testing.T) {
 	f := getRule(expandStarsId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int32, Source: "mytable"},
-		{Name: "b", Type: sql.Int32, Source: "mytable"},
+		{Name: "a", Type: types.Int32, Source: "mytable"},
+		{Name: "b", Type: types.Int32, Source: "mytable"},
 	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c", Type: sql.Int32, Source: "mytable2"},
-		{Name: "d", Type: sql.Int32, Source: "mytable2"},
+		{Name: "c", Type: types.Int32, Source: "mytable2"},
+		{Name: "d", Type: types.Int32, Source: "mytable2"},
 	}), nil)
 
 	testCases := []analyzerFnTestCase{
@@ -46,8 +47,8 @@ func TestExpandStars(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			),
@@ -63,8 +64,8 @@ func TestExpandStars(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+					expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "d", false),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(table, nil, nil),
@@ -86,12 +87,12 @@ func TestExpandStars(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
-					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
-					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "d", false),
+					expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "d", false),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(table, nil, nil),
@@ -114,13 +115,13 @@ func TestExpandStars(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
-					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "d", false),
 					expression.NewUnresolvedColumn("foo"),
-					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
-					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
+					expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "c", false),
+					expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "d", false),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(table, nil, nil),
@@ -139,8 +140,8 @@ func TestExpandStars(t *testing.T) {
 			),
 			expected: plan.NewGroupBy(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 				},
 				nil,
 				plan.NewResolvedTable(table, nil, nil),
@@ -151,13 +152,13 @@ func TestExpandStars(t *testing.T) {
 			node: plan.NewWindow(
 				[]sql.Expression{
 					expression.NewStar(),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
 						sql.NewWindowDefinition([]sql.Expression{
-							expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+							expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 						}, sql.SortFields{
 							{
-								Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+								Column: expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
 							},
 						}, nil, "", ""),
 					)),
@@ -166,15 +167,15 @@ func TestExpandStars(t *testing.T) {
 			),
 			expected: plan.NewWindow(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
 						sql.NewWindowDefinition([]sql.Expression{
-							expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+							expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 						}, sql.SortFields{
 							{
-								Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+								Column: expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
 							},
 						}, nil, "", ""),
 					)),
@@ -194,8 +195,8 @@ func TestExpandStars(t *testing.T) {
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			),
@@ -211,10 +212,10 @@ func TestExpandStars(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "b", false),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			),

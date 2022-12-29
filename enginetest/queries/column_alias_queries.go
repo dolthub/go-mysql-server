@@ -37,7 +37,7 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "cOl",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
@@ -47,7 +47,7 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "cOl",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 					{
 						Name: "COL",
@@ -98,7 +98,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "COL2",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{
@@ -127,7 +127,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "coL2",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{
@@ -146,7 +146,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "TimeStamp",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{

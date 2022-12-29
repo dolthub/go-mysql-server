@@ -100,9 +100,9 @@ func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
 			// Both Empty and All may seem like strange inclusions, but if only one range is given we need some
 			// expression to evaluate, otherwise our expression would be a nil expression which would panic.
 			case sql.RangeType_Empty:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(2, sql.Int8))
+				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(2, types.Int8))
 			case sql.RangeType_All:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(1, sql.Int8))
+				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(1, types.Int8))
 			case sql.RangeType_EqualNull:
 				rangeColumnExpr = expression.NewIsNull(idx.Exprs[i])
 			case sql.RangeType_GreaterThan:
@@ -221,29 +221,29 @@ type ExpressionsIndex interface {
 func getType(val interface{}) (interface{}, sql.Type) {
 	switch val := val.(type) {
 	case int:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int8:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint8:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int16:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint16:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int32:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint32:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int64:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint64:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case float32:
-		return float64(val), sql.Float64
+		return float64(val), types.Float64
 	case float64:
-		return float64(val), sql.Float64
+		return float64(val), types.Float64
 	case string:
 		return val, types.LongText
 	case nil:

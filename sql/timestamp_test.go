@@ -31,6 +31,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
+// TODO: move these tests into enginetest package
 func Test_TimestampBindings_CanBeConverted(t *testing.T) {
 	db, close := newDatabase()
 	defer close()

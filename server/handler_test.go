@@ -587,20 +587,20 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "linestring", Type: sql.LineStringType{}},
 
 		// Integer Types
-		{Name: "uint8", Type: sql.Uint8},
-		{Name: "int8", Type: sql.Int8},
-		{Name: "uint16", Type: sql.Uint16},
-		{Name: "int16", Type: sql.Int16},
-		{Name: "uint24", Type: sql.Uint24},
-		{Name: "int24", Type: sql.Int24},
-		{Name: "uint32", Type: sql.Uint32},
-		{Name: "int32", Type: sql.Int32},
-		{Name: "uint64", Type: sql.Uint64},
-		{Name: "int64", Type: sql.Int64},
+		{Name: "uint8", Type: types.Uint8},
+		{Name: "int8", Type: types.Int8},
+		{Name: "uint16", Type: types.Uint16},
+		{Name: "int16", Type: types.Int16},
+		{Name: "uint24", Type: types.Uint24},
+		{Name: "int24", Type: types.Int24},
+		{Name: "uint32", Type: types.Uint32},
+		{Name: "int32", Type: types.Int32},
+		{Name: "uint64", Type: types.Uint64},
+		{Name: "int64", Type: types.Int64},
 
 		// Floating Point and Decimal Types
-		{Name: "float32", Type: sql.Float32},
-		{Name: "float64", Type: sql.Float64},
+		{Name: "float32", Type: types.Float32},
+		{Name: "float64", Type: types.Float64},
 		{Name: "decimal10_0", Type: sql.MustCreateDecimalType(10, 0)},
 		{Name: "decimal60_30", Type: sql.MustCreateDecimalType(60, 30)},
 
@@ -877,8 +877,8 @@ func TestBindingsToExprs(t *testing.T) {
 				"timestamp": &query.BindVariable{Type: query.Type_TIMESTAMP, Value: []byte("2020-10-20T12:00:00Z")},
 			},
 			map[string]sql.Expression{
-				"i8":        expression.NewLiteral(int64(12), sql.Int64),
-				"u64":       expression.NewLiteral(uint64(4096), sql.Uint64),
+				"i8":        expression.NewLiteral(int64(12), types.Int64),
+				"u64":       expression.NewLiteral(uint64(4096), types.Uint64),
 				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, types.MustCreateBinary(query.Type_VARBINARY, int64(3))),
 				"text":      expression.NewLiteral("four score and seven years ago...", types.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
 				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
@@ -985,7 +985,7 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
 
-	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}}), nil)
+	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
 	tableTest.EnablePrimaryKeyIndexes()
 
 	for i := 0; i < 1010; i++ {

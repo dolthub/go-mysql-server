@@ -94,9 +94,9 @@ func TestHexRoundTrip(t *testing.T) {
 		{"C", types.Text, "0C"},
 		{"8F", types.Text, "8F"},
 		{"ABCD", types.Text, "ABCD"},
-		{int64(1), sql.Int64, "01"},
-		{int8(11), sql.Int64, "11"},
-		{uint16(375), sql.Int64, "0375"},
+		{int64(1), types.Int64, "01"},
+		{int8(11), types.Int64, "11"},
+		{uint16(375), types.Int64, "0375"},
 	}
 
 	for _, test := range tests {

@@ -16,52 +16,52 @@ import (
 func TestApplyHashIn(t *testing.T) {
 	ctx := &sql.Context{}
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Int64, Source: "foo"},
-		{Name: "c", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: types.Int64, Source: "foo"},
+		{Name: "b", Type: types.Int64, Source: "foo"},
+		{Name: "c", Type: types.Int64, Source: "foo"},
 		{Name: "d", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
 	}), nil)
 
 	hitLiteral, _ := expression.NewHashInTuple(
 		ctx,
-		expression.NewGetField(0, sql.Int64, "foo", false),
+		expression.NewGetField(0, types.Int64, "foo", false),
 		expression.NewTuple(
-			expression.NewLiteral(int64(2), sql.Int64),
-			expression.NewLiteral(int64(1), sql.Int64),
-			expression.NewLiteral(int64(0), sql.Int64),
+			expression.NewLiteral(int64(2), types.Int64),
+			expression.NewLiteral(int64(1), types.Int64),
+			expression.NewLiteral(int64(0), types.Int64),
 		),
 	)
 
 	hitTuple, _ := expression.NewHashInTuple(
 		ctx,
 		expression.NewTuple(
-			expression.NewGetField(0, sql.Int64, "a", false),
-			expression.NewGetField(1, sql.Int64, "b", false),
+			expression.NewGetField(0, types.Int64, "a", false),
+			expression.NewGetField(1, types.Int64, "b", false),
 		),
 		expression.NewTuple(
-			expression.NewTuple(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
-			expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
-			expression.NewTuple(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
+			expression.NewTuple(expression.NewLiteral(int64(2), types.Int64), expression.NewLiteral(int64(1), types.Int64)),
+			expression.NewTuple(expression.NewLiteral(int64(1), types.Int64), expression.NewLiteral(int64(0), types.Int64)),
+			expression.NewTuple(expression.NewLiteral(int64(0), types.Int64), expression.NewLiteral(int64(0), types.Int64)),
 		),
 	)
 
 	hitHeteroTuple, _ := expression.NewHashInTuple(
 		ctx,
 		expression.NewTuple(
-			expression.NewGetField(0, sql.Int64, "a", false),
+			expression.NewGetField(0, types.Int64, "a", false),
 			expression.NewGetField(3, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "d", false),
 		),
 		expression.NewTuple(
 			expression.NewTuple(
-				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(2), types.Int64),
 				expression.NewLiteral("a", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 			),
 			expression.NewTuple(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 				expression.NewLiteral("b", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 			),
 			expression.NewTuple(
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 				expression.NewLiteral("c", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 			),
 		),
@@ -69,9 +69,9 @@ func TestApplyHashIn(t *testing.T) {
 
 	child := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-			expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
-			expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
+			expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
+			expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", false),
 		},
 		plan.NewResolvedTable(table, nil, nil),
 	)
@@ -81,11 +81,11 @@ func TestApplyHashIn(t *testing.T) {
 			name: "filter with literals converted to hash in",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewGetField(0, sql.Int64, "foo", false),
+					expression.NewGetField(0, types.Int64, "foo", false),
 					expression.NewTuple(
-						expression.NewLiteral(int64(2), sql.Int64),
-						expression.NewLiteral(int64(1), sql.Int64),
-						expression.NewLiteral(int64(0), sql.Int64),
+						expression.NewLiteral(int64(2), types.Int64),
+						expression.NewLiteral(int64(1), types.Int64),
+						expression.NewLiteral(int64(0), types.Int64),
 					),
 				),
 				child,
@@ -100,16 +100,16 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewAnd(
 					expression.NewInTuple(
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewGetField(0, types.Int64, "foo", false),
 						expression.NewTuple(
-							expression.NewLiteral(int64(2), sql.Int64),
-							expression.NewLiteral(int64(1), sql.Int64),
-							expression.NewLiteral(int64(0), sql.Int64),
+							expression.NewLiteral(int64(2), types.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
+							expression.NewLiteral(int64(0), types.Int64),
 						),
 					),
 					expression.NewEquals(
 						expression.NewBindVar("foo_id"),
-						expression.NewLiteral(int8(2), sql.Int8),
+						expression.NewLiteral(int8(2), types.Int8),
 					),
 				),
 				child,
@@ -119,7 +119,7 @@ func TestApplyHashIn(t *testing.T) {
 					hitLiteral,
 					expression.NewEquals(
 						expression.NewBindVar("foo_id"),
-						expression.NewLiteral(int8(2), sql.Int8),
+						expression.NewLiteral(int8(2), types.Int8),
 					),
 				),
 				child,
@@ -130,13 +130,13 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewTuple(
-						expression.NewGetField(0, sql.Int64, "a", false),
-						expression.NewGetField(1, sql.Int64, "b", false),
+						expression.NewGetField(0, types.Int64, "a", false),
+						expression.NewGetField(1, types.Int64, "b", false),
 					),
 					expression.NewTuple(
-						expression.NewTuple(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
-						expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
-						expression.NewTuple(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
+						expression.NewTuple(expression.NewLiteral(int64(2), types.Int64), expression.NewLiteral(int64(1), types.Int64)),
+						expression.NewTuple(expression.NewLiteral(int64(1), types.Int64), expression.NewLiteral(int64(0), types.Int64)),
+						expression.NewTuple(expression.NewLiteral(int64(0), types.Int64), expression.NewLiteral(int64(0), types.Int64)),
 					),
 				),
 				child,
@@ -151,20 +151,20 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewTuple(
-						expression.NewGetField(0, sql.Int64, "a", false),
+						expression.NewGetField(0, types.Int64, "a", false),
 						expression.NewGetField(3, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "d", false),
 					),
 					expression.NewTuple(
 						expression.NewTuple(
-							expression.NewLiteral(int64(2), sql.Int64),
+							expression.NewLiteral(int64(2), types.Int64),
 							expression.NewLiteral("a", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 						),
 						expression.NewTuple(
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 							expression.NewLiteral("b", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 						),
 						expression.NewTuple(
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 							expression.NewLiteral("c", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 						),
 					),
@@ -182,25 +182,25 @@ func TestApplyHashIn(t *testing.T) {
 				expression.NewInTuple(
 					expression.NewTuple(
 						expression.NewTuple(
-							expression.NewGetField(0, sql.Int64, "a", false),
-							expression.NewGetField(1, sql.Int64, "b", false),
+							expression.NewGetField(0, types.Int64, "a", false),
+							expression.NewGetField(1, types.Int64, "b", false),
 						),
-						expression.NewGetField(1, sql.Int64, "b", false),
+						expression.NewGetField(1, types.Int64, "b", false),
 					),
 					expression.NewTuple(
 						expression.NewTuple(
 							expression.NewTuple(
-								expression.NewLiteral(int64(2), sql.Int64),
-								expression.NewLiteral(int64(1), sql.Int64),
+								expression.NewLiteral(int64(2), types.Int64),
+								expression.NewLiteral(int64(1), types.Int64),
 							),
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 						),
 						expression.NewTuple(
 							expression.NewTuple(
-								expression.NewLiteral(int64(2), sql.Int64),
-								expression.NewLiteral(int64(1), sql.Int64),
+								expression.NewLiteral(int64(2), types.Int64),
+								expression.NewLiteral(int64(1), types.Int64),
 							),
-							expression.NewLiteral(int64(0), sql.Int64),
+							expression.NewLiteral(int64(0), types.Int64),
 						),
 					),
 				),
@@ -211,25 +211,25 @@ func TestApplyHashIn(t *testing.T) {
 					ctx,
 					expression.NewTuple(
 						expression.NewTuple(
-							expression.NewGetField(0, sql.Int64, "a", false),
-							expression.NewGetField(1, sql.Int64, "b", false),
+							expression.NewGetField(0, types.Int64, "a", false),
+							expression.NewGetField(1, types.Int64, "b", false),
 						),
-						expression.NewGetField(1, sql.Int64, "b", false),
+						expression.NewGetField(1, types.Int64, "b", false),
 					),
 					expression.NewTuple(
 						expression.NewTuple(
 							expression.NewTuple(
-								expression.NewLiteral(int64(2), sql.Int64),
-								expression.NewLiteral(int64(1), sql.Int64),
+								expression.NewLiteral(int64(2), types.Int64),
+								expression.NewLiteral(int64(1), types.Int64),
 							),
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 						),
 						expression.NewTuple(
 							expression.NewTuple(
-								expression.NewLiteral(int64(2), sql.Int64),
-								expression.NewLiteral(int64(1), sql.Int64),
+								expression.NewLiteral(int64(2), types.Int64),
+								expression.NewLiteral(int64(1), types.Int64),
 							),
-							expression.NewLiteral(int64(0), sql.Int64),
+							expression.NewLiteral(int64(0), types.Int64),
 						),
 					),
 				),
@@ -240,10 +240,10 @@ func TestApplyHashIn(t *testing.T) {
 			name: "skip filter with binding",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewGetField(0, sql.Int64, "foo", false),
+					expression.NewGetField(0, types.Int64, "foo", false),
 					expression.NewTuple(
-						expression.NewLiteral(int64(2), sql.Int64),
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int64(2), types.Int64),
+						expression.NewLiteral(int64(1), types.Int64),
 						expression.NewBindVar("foo_id"),
 					),
 				),
@@ -251,10 +251,10 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewGetField(0, sql.Int64, "foo", false),
+					expression.NewGetField(0, types.Int64, "foo", false),
 					expression.NewTuple(
-						expression.NewLiteral(int64(2), sql.Int64),
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int64(2), types.Int64),
+						expression.NewLiteral(int64(1), types.Int64),
 						expression.NewBindVar("foo_id"),
 					),
 				),
@@ -266,11 +266,11 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewPlus(
-						expression.NewLiteral(4, sql.Int64),
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewLiteral(4, types.Int64),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					),
 					expression.NewTuple(
-						expression.NewLiteral(6, sql.Int64),
+						expression.NewLiteral(6, types.Int64),
 					),
 				),
 				child,
@@ -279,11 +279,11 @@ func TestApplyHashIn(t *testing.T) {
 				mustNewHashInTuple(
 					ctx,
 					expression.NewPlus(
-						expression.NewLiteral(4, sql.Int64),
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewLiteral(4, types.Int64),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					),
 					expression.NewTuple(
-						expression.NewLiteral(6, sql.Int64),
+						expression.NewLiteral(6, types.Int64),
 					),
 				),
 				child,
@@ -293,11 +293,11 @@ func TestApplyHashIn(t *testing.T) {
 			name: "skip filter with arithmetic on right",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(6, sql.Int64),
+					expression.NewLiteral(6, types.Int64),
 					expression.NewTuple(
 						expression.NewPlus(
-							expression.NewLiteral(4, sql.Int64),
-							expression.NewGetField(0, sql.Int64, "foo", false),
+							expression.NewLiteral(4, types.Int64),
+							expression.NewGetField(0, types.Int64, "foo", false),
 						),
 					),
 				),
@@ -305,11 +305,11 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(6, sql.Int64),
+					expression.NewLiteral(6, types.Int64),
 					expression.NewTuple(
 						expression.NewPlus(
-							expression.NewLiteral(4, sql.Int64),
-							expression.NewGetField(0, sql.Int64, "foo", false),
+							expression.NewLiteral(4, types.Int64),
+							expression.NewGetField(0, types.Int64, "foo", false),
 						),
 					),
 				),
@@ -375,7 +375,7 @@ func TestApplyHashIn(t *testing.T) {
 						expression.NewLiteral(int64(0), sql.Null),
 					),
 					expression.NewTuple(
-						expression.NewLiteral(int64(0), sql.Int64),
+						expression.NewLiteral(int64(0), types.Int64),
 					),
 				),
 				child,
@@ -387,7 +387,7 @@ func TestApplyHashIn(t *testing.T) {
 						expression.NewLiteral(int64(0), sql.Null),
 					),
 					expression.NewTuple(
-						expression.NewLiteral(int64(0), sql.Int64),
+						expression.NewLiteral(int64(0), types.Int64),
 					),
 				),
 				child,
@@ -397,7 +397,7 @@ func TestApplyHashIn(t *testing.T) {
 			name: "skip filter with is null on right",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsNull(
 							expression.NewLiteral(int64(0), sql.Null),
@@ -408,7 +408,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsNull(
 							expression.NewLiteral(int64(0), sql.Null),
@@ -426,7 +426,7 @@ func TestApplyHashIn(t *testing.T) {
 						expression.NewLiteral(int64(0), sql.Null),
 					),
 					expression.NewTuple(
-						expression.NewLiteral(int64(0), sql.Int64),
+						expression.NewLiteral(int64(0), types.Int64),
 					),
 				),
 				child,
@@ -438,7 +438,7 @@ func TestApplyHashIn(t *testing.T) {
 						expression.NewLiteral(int64(0), sql.Null),
 					),
 					expression.NewTuple(
-						expression.NewLiteral(int64(0), sql.Int64),
+						expression.NewLiteral(int64(0), types.Int64),
 					),
 				),
 				child,
@@ -448,7 +448,7 @@ func TestApplyHashIn(t *testing.T) {
 			name: "skip filter with is true on right",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsTrue(
 							expression.NewLiteral(int64(0), sql.Null),
@@ -459,7 +459,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsTrue(
 							expression.NewLiteral(int64(0), sql.Null),
@@ -474,11 +474,11 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewConvert(
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewGetField(0, types.Int64, "foo", false),
 						"char",
 					),
 					expression.NewTuple(
-						expression.NewLiteral(int64(0), sql.Int64),
+						expression.NewLiteral(int64(0), types.Int64),
 					),
 				),
 				child,
@@ -487,11 +487,11 @@ func TestApplyHashIn(t *testing.T) {
 				mustNewHashInTuple(
 					ctx,
 					expression.NewConvert(
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewGetField(0, types.Int64, "foo", false),
 						"char",
 					),
 					expression.NewTuple(
-						expression.NewLiteral(int64(0), sql.Int64),
+						expression.NewLiteral(int64(0), types.Int64),
 					),
 				),
 				child,
@@ -501,10 +501,10 @@ func TestApplyHashIn(t *testing.T) {
 			name: "skip filter with cast on right",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewConvert(
-							expression.NewGetField(0, sql.Int64, "foo", false),
+							expression.NewGetField(0, types.Int64, "foo", false),
 							"char",
 						),
 					),
@@ -513,10 +513,10 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewConvert(
-							expression.NewGetField(0, sql.Int64, "foo", false),
+							expression.NewGetField(0, types.Int64, "foo", false),
 							"char",
 						),
 					),
@@ -528,18 +528,18 @@ func TestApplyHashIn(t *testing.T) {
 			name: "skip filter with get field on right",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					),
 				),
 				child,
 			),
 			expected: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					),
 				),
 				child,

@@ -20,6 +20,8 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // HistogramBucket represents a bucket in a histogram
@@ -106,7 +108,7 @@ func NewHistogramMapFromTable(ctx *Context, t Table) (HistogramMap, error) {
 					continue
 				}
 
-				val, err := Float64.Convert(row[i])
+				val, err := types.Float64.Convert(row[i])
 				if err != nil {
 					continue // silently skip unsupported column types for now
 				}

@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -57,7 +58,7 @@ func TestSRID(t *testing.T) {
 	t.Run("change SRID to 0", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}),
-			expression.NewLiteral(0, sql.Int32))
+			expression.NewLiteral(0, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -68,7 +69,7 @@ func TestSRID(t *testing.T) {
 	t.Run("change SRID to 4326", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 0, X: 123.4, Y: 56.789}, sql.PointType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -79,7 +80,7 @@ func TestSRID(t *testing.T) {
 	t.Run("change SRID to invalid 1234", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 0, X: 123.4, Y: 56.789}, sql.PointType{}),
-			expression.NewLiteral(1234, sql.Int32))
+			expression.NewLiteral(1234, types.Int32))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -95,7 +96,7 @@ func TestSRID(t *testing.T) {
 	t.Run("change SRID of linestring to 4326", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.LineStringType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -106,7 +107,7 @@ func TestSRID(t *testing.T) {
 	t.Run("change SRID of polygon to 4326", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}, sql.PolygonType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -185,7 +186,7 @@ func TestSRID(t *testing.T) {
 		require := require.New(t)
 
 		f, err := NewSRID(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.GeometryType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -197,7 +198,7 @@ func TestSRID(t *testing.T) {
 		require := require.New(t)
 
 		f, err := NewSRID(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.GeometryType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -209,7 +210,7 @@ func TestSRID(t *testing.T) {
 		require := require.New(t)
 
 		f, err := NewSRID(expression.NewLiteral(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}, sql.GeometryType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -221,7 +222,7 @@ func TestSRID(t *testing.T) {
 		require := require.New(t)
 
 		f, err := NewSRID(expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.GeometryType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -233,7 +234,7 @@ func TestSRID(t *testing.T) {
 		require := require.New(t)
 
 		f, err := NewSRID(expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}, sql.GeometryType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -246,7 +247,7 @@ func TestSRID(t *testing.T) {
 		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
 		poly := sql.Polygon{Lines: []sql.LineString{line}}
 		f, err := NewSRID(expression.NewLiteral(sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{poly}}, sql.GeometryType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -267,7 +268,7 @@ func TestSRID(t *testing.T) {
 			poly,
 		}}
 		f, err := NewSRID(expression.NewLiteral(g, sql.GeometryType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -299,7 +300,7 @@ func TestSRID(t *testing.T) {
 	t.Run("return type with two arguments", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.LineStringType{}),
-			expression.NewLiteral(4326, sql.Int32))
+			expression.NewLiteral(4326, types.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

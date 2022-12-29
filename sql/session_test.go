@@ -19,6 +19,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +38,7 @@ func TestSessionConfig(t *testing.T) {
 
 	typ, v, err = sess.GetUserVariable(ctx, "foo")
 	require.NoError(err)
-	require.Equal(Int64, typ)
+	require.Equal(types.Int64, typ)
 	require.Equal(int64(1), v)
 
 	require.Equal(uint16(0), sess.WarningCount())

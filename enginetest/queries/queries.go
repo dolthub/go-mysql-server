@@ -680,7 +680,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
@@ -698,7 +698,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
@@ -716,7 +716,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
@@ -734,7 +734,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
@@ -788,11 +788,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "pk DIV 2",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "sum_and_min",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 		},
 	},
@@ -805,11 +805,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "pk DIV 2",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "SUM(`c3`) +    min( c3 )",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 		},
 	},
@@ -846,7 +846,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "s",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
@@ -941,7 +941,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "a",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "b",
@@ -966,7 +966,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: sql.Float64,
+				Type: types.Float64,
 			},
 			{
 				Name: "column_1",
@@ -983,7 +983,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: sql.Float64,
+				Type: types.Float64,
 			},
 			{
 				Name: "d",
@@ -1978,7 +1978,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: `"1" + '1'`,
-				Type: sql.Float64,
+				Type: types.Float64,
 			},
 		},
 	},
@@ -2469,7 +2469,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "'a' NOT IN ('b','c',null,'d')",
-				Type: sql.Boolean,
+				Type: types.Boolean,
 			},
 		},
 	},
@@ -8213,11 +8213,11 @@ var BrokenQueries = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "I",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
@@ -8239,11 +8239,11 @@ var BrokenQueries = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "I",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
@@ -8265,11 +8265,11 @@ var BrokenQueries = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "I",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",

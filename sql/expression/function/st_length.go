@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // STLength is a function that returns the STLength of a LineString
@@ -50,7 +51,7 @@ func (s *STLength) Description() string {
 
 // Type implements the sql.Expression interface.
 func (s *STLength) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 func (s *STLength) String() string {

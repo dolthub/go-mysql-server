@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-var rangeType = sql.Uint8
+var rangeType = types.Uint8
 
 func TestRangeOverlapTwoColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()

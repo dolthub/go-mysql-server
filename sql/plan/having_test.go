@@ -32,8 +32,8 @@ func TestHaving(t *testing.T) {
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text, Nullable: true},
 		{Name: "col2", Type: types.Text, Nullable: true},
-		{Name: "col3", Type: sql.Int32, Nullable: true},
-		{Name: "col4", Type: sql.Int64, Nullable: true},
+		{Name: "col3", Type: types.Int32, Nullable: true},
+		{Name: "col4", Type: types.Int64, Nullable: true},
 	})
 	child := memory.NewTable("test", childSchema, nil)
 
@@ -73,8 +73,8 @@ func TestHaving(t *testing.T) {
 
 	f = NewHaving(
 		expression.NewEquals(
-			expression.NewGetField(2, sql.Int32, "col3", true),
-			expression.NewLiteral(int32(1111), sql.Int32),
+			expression.NewGetField(2, types.Int32, "col3", true),
+			expression.NewLiteral(int32(1111), types.Int32),
 		),
 		NewResolvedTable(child, nil, nil),
 	)
@@ -92,8 +92,8 @@ func TestHaving(t *testing.T) {
 
 	f = NewHaving(
 		expression.NewEquals(
-			expression.NewGetField(3, sql.Int64, "col4", true),
-			expression.NewLiteral(int64(4444), sql.Int64),
+			expression.NewGetField(3, types.Int64, "col4", true),
+			expression.NewLiteral(int64(4444), types.Int64),
 		),
 		NewResolvedTable(child, nil, nil),
 	)

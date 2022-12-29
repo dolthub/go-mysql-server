@@ -62,23 +62,23 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 		return types.Datetime
 	}
 	if types.IsNumber(left) && types.IsNumber(right) {
-		if left == sql.Float64 || right == sql.Float64 {
-			return sql.Float64
+		if left == types.Float64 || right == types.Float64 {
+			return types.Float64
 		}
-		if left == sql.Float32 || right == sql.Float32 {
-			return sql.Float32
+		if left == types.Float32 || right == types.Float32 {
+			return types.Float32
 		}
 		if types.IsDecimal(left) || types.IsDecimal(right) {
 			return sql.MustCreateDecimalType(65, 10)
 		}
-		if left == sql.Uint64 && types.IsSigned(right) ||
-			right == sql.Uint64 && types.IsSigned(left) {
+		if left == types.Uint64 && types.IsSigned(right) ||
+			right == types.Uint64 && types.IsSigned(left) {
 			return sql.MustCreateDecimalType(65, 10)
 		}
 		if !types.IsSigned(left) && !types.IsSigned(right) {
-			return sql.Uint64
+			return types.Uint64
 		} else {
-			return sql.Int64
+			return types.Int64
 		}
 	}
 	if types.IsJSON(left) && types.IsJSON(right) {

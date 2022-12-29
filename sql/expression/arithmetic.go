@@ -143,22 +143,22 @@ func (a *Arithmetic) Type() sql.Type {
 	}
 
 	if types.IsTime(lTyp) && types.IsTime(rTyp) {
-		return sql.Int64
+		return types.Int64
 	}
 
 	if !types.IsNumber(lTyp) || !types.IsNumber(rTyp) {
-		return sql.Float64
+		return types.Float64
 	}
 
 	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-		return sql.Uint64
+		return types.Uint64
 	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-		return sql.Int64
+		return types.Int64
 	}
 
 	// if one is uint and the other is int of any size, then use int64
 	if types.IsInteger(lTyp) && types.IsInteger(rTyp) {
-		return sql.Int64
+		return types.Int64
 	}
 
 	return floatOrDecimalType(a)
@@ -629,15 +629,15 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func (e *UnaryMinus) Type() sql.Type {
 	typ := e.Child.Type()
 	if !types.IsNumber(typ) {
-		return sql.Float64
+		return types.Float64
 	}
 
-	if typ == sql.Uint32 {
-		return sql.Int32
+	if typ == types.Uint32 {
+		return types.Int32
 	}
 
-	if typ == sql.Uint64 {
-		return sql.Int64
+	if typ == types.Uint64 {
+		return types.Int64
 	}
 
 	return e.Child.Type()

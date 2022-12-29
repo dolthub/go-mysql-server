@@ -158,7 +158,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 
 		// Convert to int32
-		pos, err = sql.Int32.Convert(pos)
+		pos, err = types.Int32.Convert(pos)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +190,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 
 		// Convert occurrence to int32
-		occ, err = sql.Int32.Convert(occ)
+		occ, err = types.Int32.Convert(occ)
 		if err != nil {
 			return nil, err
 		}

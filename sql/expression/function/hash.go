@@ -166,7 +166,7 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	count, err := sql.Int64.Convert(countArg)
+	count, err := types.Int64.Convert(countArg)
 	if err != nil {
 		return nil, err
 	}

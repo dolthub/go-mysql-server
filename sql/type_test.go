@@ -36,7 +36,7 @@ func TestIsGeometry(t *testing.T) {
 func TestIsJSON(t *testing.T) {
 	assert.True(t, types.IsJSON(JSON))
 	assert.False(t, types.IsJSON(types.Blob))
-	assert.False(t, types.IsJSON(NumberTypeImpl_{}))
+	assert.False(t, types.IsJSON(types.NumberTypeImpl_{}))
 	assert.False(t, types.IsJSON(types.StringType_{}))
 }
 
@@ -47,14 +47,14 @@ func TestFloatCovert(t *testing.T) {
 		expected Type
 		err      bool
 	}{
-		{"20", "2", Float32, false},
+		{"20", "2", types.Float32, false},
 		{"-1", "", nil, true},
 		{"54", "", nil, true},
-		{"", "", Float32, false},
-		{"0", "", Float32, false},
-		{"24", "", Float32, false},
-		{"25", "", Float64, false},
-		{"53", "", Float64, false},
+		{"", "", types.Float32, false},
+		{"0", "", types.Float32, false},
+		{"24", "", types.Float32, false},
+		{"25", "", types.Float64, false},
+		{"53", "", types.Float64, false},
 	}
 
 	for _, test := range tests {

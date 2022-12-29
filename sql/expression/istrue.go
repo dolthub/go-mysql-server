@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // IsTrue is an expression that checks if an expression is true.
@@ -41,7 +42,7 @@ func NewIsFalse(child sql.Expression) *IsTrue {
 
 // Type implements the Expression interface.
 func (*IsTrue) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // IsNullable implements the Expression interface.

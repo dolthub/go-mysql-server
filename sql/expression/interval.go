@@ -39,7 +39,7 @@ func NewInterval(child sql.Expression, unit string) *Interval {
 }
 
 // Type implements the sql.Expression interface.
-func (i *Interval) Type() sql.Type { return sql.Uint64 }
+func (i *Interval) Type() sql.Type { return types.Uint64 }
 
 // IsNullable implements the sql.Expression interface.
 func (i *Interval) IsNullable() bool { return i.Child.IsNullable() }
@@ -130,7 +130,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 			return nil, errInvalidIntervalUnit.New(i.Unit)
 		}
 	} else {
-		val, err = sql.Int64.Convert(val)
+		val, err = types.Int64.Convert(val)
 		if err != nil {
 			return nil, err
 		}

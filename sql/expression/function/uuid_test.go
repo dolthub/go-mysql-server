@@ -59,8 +59,8 @@ func TestIsUUID(t *testing.T) {
 		{"uuid form 2", types.LongText, "12345678123456781234567812345678", int8(1)},
 		{"uuid form 3", types.LongText, "12345678-1234-5678-1234-567812345678", int8(1)},
 		{"NULL", sql.Null, nil, nil},
-		{"random int", sql.Int8, 1, int8(0)},
-		{"random bool", sql.Boolean, false, int8(0)},
+		{"random int", types.Int8, 1, int8(0)},
+		{"random bool", types.Boolean, false, int8(0)},
 		{"random string", types.LongText, "12345678-dasd-fasdf8", int8(0)},
 		{"swapped uuid", types.LongText, "5678-1234-12345678-1234-567812345678", int8(0)},
 	}
@@ -87,9 +87,9 @@ func TestUUIDToBinValid(t *testing.T) {
 		swapValue interface{}
 		expected  interface{}
 	}{
-		{"valid uuid; swap=0", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, sql.Int8, int8(0), "6CCD780CBABA102695645B8C656024DB"},
+		{"valid uuid; swap=0", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, types.Int8, int8(0), "6CCD780CBABA102695645B8C656024DB"},
 		{"valid uuid; swap=nil", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, sql.Null, nil, "6CCD780CBABA102695645B8C656024DB"},
-		{"valid uuid; swap=1", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, sql.Int8, int8(1), "1026BABA6CCD780C95645B8C656024DB"},
+		{"valid uuid; swap=1", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, types.Int8, int8(1), "1026BABA6CCD780C95645B8C656024DB"},
 		{"valid uuid; no swap", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", false, nil, nil, "6CCD780CBABA102695645B8C656024DB"},
 		{"null uuid; no swap", sql.Null, nil, false, nil, nil, nil},
 	}
@@ -126,9 +126,9 @@ func TestUUIDToBinFailing(t *testing.T) {
 		swapType  sql.Type
 		swapValue interface{}
 	}{
-		{"bad swap value", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", sql.Int8, int8(2)},
-		{"bad uuid value", types.LongText, "sdasdsad", sql.Int8, int8(0)},
-		{"bad uuid value2", sql.Int8, int8(0), sql.Int8, int8(0)},
+		{"bad swap value", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", types.Int8, int8(2)},
+		{"bad uuid value", types.LongText, "sdasdsad", types.Int8, int8(0)},
+		{"bad uuid value2", types.Int8, int8(0), types.Int8, int8(0)},
 	}
 
 	for _, tt := range failingTestCases {
@@ -165,8 +165,8 @@ func TestBinToUUID(t *testing.T) {
 		swapValue interface{}
 		expected  interface{}
 	}{
-		{"valid uuid; swap=0", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("lxºº & d[e`$Û"), true, sql.Int8, int8(0), "6c78c2ba-c2ba-2026-2064-5b656024c39b"},
-		{"valid uuid; swap=1", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("&ººlÍxd[e`$Û"), true, sql.Int8, int8(1), "ba6cc38d-bac2-26c2-7864-5b656024c39b"},
+		{"valid uuid; swap=0", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("lxºº & d[e`$Û"), true, types.Int8, int8(0), "6c78c2ba-c2ba-2026-2064-5b656024c39b"},
+		{"valid uuid; swap=1", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("&ººlÍxd[e`$Û"), true, types.Int8, int8(1), "ba6cc38d-bac2-26c2-7864-5b656024c39b"},
 		{"valid uuid; no swap", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("lxºº & d[e`$Û"), false, nil, nil, "6c78c2ba-c2ba-2026-2064-5b656024c39b"},
 		{"null input", sql.Null, nil, false, nil, nil, nil},
 	}
@@ -199,9 +199,9 @@ func TestBinToUUIDFailing(t *testing.T) {
 		swapType  sql.Type
 		swapValue interface{}
 	}{
-		{"bad swap value", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), "helo", sql.Int8, int8(2)},
-		{"bad binary value", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), "sdasdsad", sql.Int8, int8(0)},
-		{"bad input value", sql.Int8, int8(0), sql.Int8, int8(0)},
+		{"bad swap value", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), "helo", types.Int8, int8(2)},
+		{"bad binary value", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), "sdasdsad", types.Int8, int8(0)},
+		{"bad input value", types.Int8, int8(0), types.Int8, int8(0)},
 	}
 
 	for _, tt := range failingTestCases {

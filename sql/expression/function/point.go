@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Point is a function that returns a point type containing values Y and Y.
@@ -87,7 +88,7 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := sql.Float64.Convert(x)
+	_x, err := types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := sql.Float64.Convert(y)
+	_y, err := types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}

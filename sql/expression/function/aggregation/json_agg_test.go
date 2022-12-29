@@ -17,6 +17,7 @@ package aggregation
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,7 +27,7 @@ import (
 func TestJsonArrayAgg_Name(t *testing.T) {
 	assert := require.New(t)
 
-	m := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("JSON_ARRAYAGG(field)", m.String())
 }
 
@@ -34,7 +35,7 @@ func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := j.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(float64(7)))
@@ -49,7 +50,7 @@ func TestJsonArrayAgg_Strings(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := j.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("hi"))
@@ -64,7 +65,7 @@ func TestJsonArrayAgg_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := j.NewBuffer()
 
 	v, err := b.Eval(ctx)

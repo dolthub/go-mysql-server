@@ -52,7 +52,7 @@ func (i *InetAton) String() string {
 }
 
 func (i *InetAton) Type() sql.Type {
-	return sql.Uint32
+	return types.Uint32
 }
 
 func (i *InetAton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -223,7 +223,7 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert val into int
-	ipv4int, err := sql.Int32.Convert(val)
+	ipv4int, err := types.Int32.Convert(val)
 	if ipv4int != nil && err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 	}

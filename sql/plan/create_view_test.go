@@ -28,7 +28,7 @@ import (
 
 func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Source: "mytable", Type: sql.Int32},
+		{Name: "i", Source: "mytable", Type: types.Int32},
 		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
 
@@ -37,7 +37,7 @@ func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 	subqueryAlias := NewSubqueryAlias("myview", "select i",
 		NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
 			},
 			NewUnresolvedTable("dual", ""),
 		),
@@ -100,8 +100,8 @@ func TestReplaceExistingViewNative(t *testing.T) {
 		NewProject(
 			[]sql.Expression{
 				expression.NewArithmetic(
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "i", true),
-					expression.NewLiteral(1, sql.Int8),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "i", true),
+					expression.NewLiteral(1, types.Int8),
 					"+",
 				),
 			},

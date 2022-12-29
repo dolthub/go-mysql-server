@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +32,7 @@ func TestGrantTableData(t *testing.T) {
 		sql.Schema{
 			&sql.Column{
 				Name:       "pk",
-				Type:       sql.Int64,
+				Type:       types.Int64,
 				Default:    nil,
 				Nullable:   false,
 				Source:     "test",
@@ -39,7 +40,7 @@ func TestGrantTableData(t *testing.T) {
 			},
 			&sql.Column{
 				Name:       "val1",
-				Type:       sql.Int64,
+				Type:       types.Int64,
 				Default:    nil,
 				Nullable:   false,
 				Source:     "test",
@@ -47,7 +48,7 @@ func TestGrantTableData(t *testing.T) {
 			},
 			&sql.Column{
 				Name:       "val2",
-				Type:       sql.Int64,
+				Type:       types.Int64,
 				Default:    nil,
 				Nullable:   false,
 				Source:     "test",

@@ -36,13 +36,13 @@ func TestDateAdd(t *testing.T) {
 	require.Error(err)
 
 	_, err = NewDateAdd(expression.NewLiteral("2018-05-02", types.LongText),
-		expression.NewLiteral(int64(1), sql.Int64),
+		expression.NewLiteral(int64(1), types.Int64),
 	)
 	require.Error(err)
 
 	f, err := NewDateAdd(expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(
-			expression.NewLiteral(int64(1), sql.Int64),
+			expression.NewLiteral(int64(1), types.Int64),
 			"DAY",
 		),
 	)
@@ -78,13 +78,13 @@ func TestDateSub(t *testing.T) {
 	require.Error(err)
 
 	_, err = NewDateSub(expression.NewLiteral("2018-05-02", types.LongText),
-		expression.NewLiteral(int64(1), sql.Int64),
+		expression.NewLiteral(int64(1), types.Int64),
 	)
 	require.Error(err)
 
 	f, err := NewDateSub(expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(
-			expression.NewLiteral(int64(1), sql.Int64),
+			expression.NewLiteral(int64(1), types.Int64),
 			"DAY",
 		),
 	)
@@ -163,7 +163,7 @@ func TestUnixTimestamp(t *testing.T) {
 	require.Equal(uint16(0), ctx.WarningCount())
 
 	// When MySQL can't convert the expression to a date, it always returns 0 and sets a warning
-	ut, err = NewUnixTimestamp(expression.NewLiteral(1577995200, sql.Int64))
+	ut, err = NewUnixTimestamp(expression.NewLiteral(1577995200, types.Int64))
 	require.NoError(err)
 	result, err = ut.Eval(ctx, nil)
 	require.NoError(err)
@@ -190,9 +190,9 @@ func TestUnixTimestamp(t *testing.T) {
 func TestFromUnixtime(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewUnixTimestamp(expression.NewLiteral(0, sql.Int64))
+	_, err := NewUnixTimestamp(expression.NewLiteral(0, types.Int64))
 	require.NoError(err)
 
-	_, err = NewUnixTimestamp(expression.NewLiteral(1447430881, sql.Int64))
+	_, err = NewUnixTimestamp(expression.NewLiteral(1447430881, types.Int64))
 	require.NoError(err)
 }

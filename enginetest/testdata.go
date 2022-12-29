@@ -67,7 +67,7 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 
 		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},
 				{Name: "s", Type: types.Text, Source: "myhistorytable"},
 			}), "2019-01-01")
 
@@ -87,7 +87,7 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 
 		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},
 				{Name: "s", Type: types.Text, Source: "myhistorytable"},
 			}), "2019-01-02")
 
@@ -111,7 +111,7 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 
 		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},
 				{Name: "s", Type: types.Text, Source: "myhistorytable"},
 			}), "2019-01-03")
 

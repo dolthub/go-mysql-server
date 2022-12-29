@@ -30,7 +30,7 @@ func TestConcatWithSeparator(t *testing.T) {
 		f, err := NewConcatWithSeparator(expression.NewLiteral(",", types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral(5, types.LongText),
-			expression.NewLiteral(true, sql.Boolean),
+			expression.NewLiteral(true, types.Boolean),
 		)
 		require.NoError(err)
 
@@ -44,7 +44,7 @@ func TestConcatWithSeparator(t *testing.T) {
 		f, err := NewConcatWithSeparator(expression.NewLiteral(",", types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral("", types.LongText),
-			expression.NewLiteral(true, sql.Boolean),
+			expression.NewLiteral(true, types.Boolean),
 		)
 		require.NoError(err)
 
@@ -58,7 +58,7 @@ func TestConcatWithSeparator(t *testing.T) {
 		f, err := NewConcatWithSeparator(expression.NewLiteral(",", types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral(nil, types.LongText),
-			expression.NewLiteral(true, sql.Boolean),
+			expression.NewLiteral(true, types.Boolean),
 		)
 		require.NoError(err)
 
@@ -72,7 +72,7 @@ func TestConcatWithSeparator(t *testing.T) {
 		f, err := NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral(5, types.LongText),
-			expression.NewLiteral(true, sql.Boolean),
+			expression.NewLiteral(true, types.Boolean),
 		)
 		require.NoError(err)
 
@@ -88,12 +88,12 @@ func TestNewConcatWithSeparator(t *testing.T) {
 	_, err := NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText))
 	require.NoError(err)
 
-	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText), expression.NewLiteral(nil, types.Int64))
 	require.NoError(err)
 
 	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText),
-		expression.NewLiteral(nil, sql.Boolean),
-		expression.NewLiteral(nil, sql.Int64),
+		expression.NewLiteral(nil, types.Boolean),
+		expression.NewLiteral(nil, types.Int64),
 		expression.NewLiteral(nil, types.LongText),
 	)
 	require.NoError(err)

@@ -40,11 +40,11 @@ func valueToExpr(v driver.Value) (sql.Expression, error) {
 	var err error
 	switch v := v.(type) {
 	case int64:
-		typ = sql.Int64
+		typ = types.Int64
 	case float64:
-		typ = sql.Float64
+		typ = types.Float64
 	case bool:
-		typ = sql.Boolean
+		typ = types.Boolean
 	case []byte:
 		typ, err = types.CreateStringWithDefaults(sqltypes.Blob, int64(len(v)))
 	case string:

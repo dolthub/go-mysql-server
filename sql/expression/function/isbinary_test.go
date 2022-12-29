@@ -45,7 +45,7 @@ func TestIsBinary(t *testing.T) {
 }
 
 func TestSubstringArity(t *testing.T) {
-	expr := expression.NewGetField(0, sql.Int64, "foo", false)
+	expr := expression.NewGetField(0, types.Int64, "foo", false)
 	testCases := []struct {
 		name string
 		args []sql.Expression

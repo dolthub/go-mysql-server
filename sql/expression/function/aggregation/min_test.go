@@ -28,7 +28,7 @@ import (
 func TestMin_Name(t *testing.T) {
 	assert := require.New(t)
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("MIN(field)", m.String())
 }
 
@@ -36,7 +36,7 @@ func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(int32(7)))
@@ -88,7 +88,7 @@ func TestMin_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(nil))
@@ -104,7 +104,7 @@ func TestMin_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := m.NewBuffer()
 
 	v, err := b.Eval(ctx)
@@ -116,7 +116,7 @@ func TestMin_Distinct(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ := m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
@@ -131,7 +131,7 @@ func TestMin_Distinct(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(1, v)
 
-	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ = m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())

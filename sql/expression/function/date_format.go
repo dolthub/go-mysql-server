@@ -108,7 +108,7 @@ func secondsStr(t time.Time) string {
 }
 
 func yearWeek(mode int32, t time.Time) (int32, int32) {
-	yw := YearWeek{expression.NewLiteral(t, types.Datetime), expression.NewLiteral(mode, sql.Int32)}
+	yw := YearWeek{expression.NewLiteral(t, types.Datetime), expression.NewLiteral(mode, types.Int32)}
 	res, _ := yw.Eval(nil, nil)
 	yr := res.(int32) / 100
 	wk := res.(int32) % 100

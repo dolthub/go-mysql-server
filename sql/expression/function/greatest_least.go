@@ -126,7 +126,7 @@ func compEval(
 	}
 
 	switch returnType {
-	case sql.Int64:
+	case types.Int64:
 		return int64(selectedNum), nil
 	case types.LongText:
 		return selectedString, nil
@@ -182,11 +182,11 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 	if allString {
 		return types.LongText, nil
 	} else if allInt {
-		return sql.Int64, nil
+		return types.Int64, nil
 	} else if allDatetime {
 		return types.Datetime, nil
 	} else {
-		return sql.Float64, nil
+		return types.Float64, nil
 	}
 }
 

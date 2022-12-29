@@ -32,7 +32,7 @@ func TestConv(t *testing.T) {
 		expected interface{}
 	}{
 		// NULL inputs
-		{"n is nil", sql.Int32, sql.NewRow(nil, 16, 2), nil},
+		{"n is nil", types.Int32, sql.NewRow(nil, 16, 2), nil},
 		{"fromBase is nil", types.LongText, sql.NewRow('a', nil, 2), nil},
 		{"toBase is nil", types.LongText, sql.NewRow('a', 16, nil), nil},
 
@@ -83,8 +83,8 @@ func TestConv(t *testing.T) {
 	for _, tt := range testCases {
 		f := NewConv(
 			expression.NewGetField(0, tt.nType, "N", false),
-			expression.NewGetField(1, sql.Int64, "FromBase", false),
-			expression.NewGetField(2, sql.Int64, "ToBase", false),
+			expression.NewGetField(1, types.Int64, "FromBase", false),
+			expression.NewGetField(2, types.Int64, "ToBase", false),
 		)
 
 		t.Run(tt.name, func(t *testing.T) {

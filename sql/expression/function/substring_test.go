@@ -27,8 +27,8 @@ import (
 func TestSubstring(t *testing.T) {
 	f, err := NewSubstring(
 		expression.NewGetField(0, types.LongText, "str", true),
-		expression.NewGetField(1, sql.Int32, "start", false),
-		expression.NewGetField(2, sql.Int64, "len", false),
+		expression.NewGetField(1, types.Int32, "start", false),
+		expression.NewGetField(2, types.Int64, "len", false),
 	)
 	require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func TestSubstringIndex(t *testing.T) {
 	f := NewSubstringIndex(
 		expression.NewGetField(0, types.LongText, "str", true),
 		expression.NewGetField(1, types.LongText, "delim", true),
-		expression.NewGetField(2, sql.Int64, "count", false),
+		expression.NewGetField(2, types.Int64, "count", false),
 	)
 	testCases := []struct {
 		name     string
@@ -157,7 +157,7 @@ func TestInstr(t *testing.T) {
 func TestLeft(t *testing.T) {
 	f := NewLeft(
 		expression.NewGetField(0, types.LongText, "str", true),
-		expression.NewGetField(1, sql.Int64, "len", false),
+		expression.NewGetField(1, types.Int64, "len", false),
 	)
 
 	testCases := []struct {
@@ -197,7 +197,7 @@ func TestLeft(t *testing.T) {
 func TestRight(t *testing.T) {
 	f := NewRight(
 		expression.NewGetField(0, types.LongText, "str", true),
-		expression.NewGetField(1, sql.Int64, "len", false),
+		expression.NewGetField(1, types.Int64, "len", false),
 	)
 
 	testCases := []struct {

@@ -97,15 +97,15 @@ func (c *Convert) Type() sql.Type {
 		//TODO: these values are completely arbitrary, we need to get the given precision/scale and store it
 		return sql.MustCreateDecimalType(65, 10)
 	case ConvertToDouble, ConvertToReal:
-		return sql.Float64
+		return types.Float64
 	case ConvertToJSON:
 		return sql.JSON
 	case ConvertToSigned:
-		return sql.Int64
+		return types.Int64
 	case ConvertToTime:
 		return types.Time
 	case ConvertToUnsigned:
-		return sql.Uint64
+		return types.Uint64
 	default:
 		return sql.Null
 	}
@@ -225,9 +225,9 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		d, err := sql.Float64.Convert(value)
+		d, err := types.Float64.Convert(value)
 		if err != nil {
-			return sql.Float64.Zero(), nil
+			return types.Float64.Zero(), nil
 		}
 		return d, nil
 	case ConvertToJSON:
@@ -241,9 +241,9 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		num, err := sql.Int64.Convert(value)
+		num, err := types.Int64.Convert(value)
 		if err != nil {
-			return sql.Int64.Zero(), nil
+			return types.Int64.Zero(), nil
 		}
 
 		return num, nil
@@ -258,11 +258,11 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		num, err := sql.Uint64.Convert(value)
+		num, err := types.Uint64.Convert(value)
 		if err != nil {
-			num, err = sql.Int64.Convert(value)
+			num, err = types.Int64.Convert(value)
 			if err != nil {
-				return sql.Uint64.Zero(), nil
+				return types.Uint64.Zero(), nil
 			}
 			return uint64(num.(int64)), nil
 		}

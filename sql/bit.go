@@ -149,10 +149,10 @@ func (t BitType_) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(val.Decimal)
 	case decimal.Decimal:
 		val = val.Round(0)
-		if val.GreaterThan(dec_uint64_max) {
+		if val.GreaterThan(types.dec_uint64_max) {
 			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
-		if val.LessThan(dec_int64_min) {
+		if val.LessThan(types.dec_int64_min) {
 			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
 		value = uint64(val.IntPart())

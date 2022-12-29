@@ -131,7 +131,7 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{X: 0.123456789, Y: 0.987654321}, sql.PointType{}),
-			expression.NewLiteral(3, sql.Int64),
+			expression.NewLiteral(3, types.Int64),
 		)
 		require.NoError(err)
 
@@ -143,7 +143,7 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{X: 0.123456789, Y: 0.987654321}, sql.PointType{}),
-			expression.NewLiteral(20, sql.Int64),
+			expression.NewLiteral(20, types.Int64),
 		)
 		require.NoError(err)
 
@@ -155,8 +155,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{X: 123.45678, Y: 456.789}, sql.PointType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -168,8 +168,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 100, Y: 2}, {X: 1, Y: 200}}}, sql.LineStringType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -181,8 +181,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}, sql.PolygonType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -194,8 +194,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.MultiPoint{Points: []sql.Point{{X: 100, Y: 2}, {X: 1, Y: 200}}}, sql.MultiPointType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -207,8 +207,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}}, sql.MultiLineStringType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -222,8 +222,8 @@ func TestAsGeoJSON(t *testing.T) {
 		poly := sql.Polygon{Lines: []sql.LineString{line}}
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, sql.MultiPolygonType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -236,8 +236,8 @@ func TestAsGeoJSON(t *testing.T) {
 		g := sql.GeomColl{}
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(g, sql.GeomCollType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -258,8 +258,8 @@ func TestAsGeoJSON(t *testing.T) {
 		g := sql.GeomColl{Geoms: []sql.GeometryValue{point, line, poly, mpoint, mline, mpoly, gColl}}
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(g, sql.GeomCollType{}),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64))
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -279,8 +279,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}),
-			expression.NewLiteral(1, sql.Int64),
-			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
+			expression.NewLiteral(2, types.Int64),
 		)
 		require.NoError(err)
 
@@ -296,8 +296,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}),
-			expression.NewLiteral(1, sql.Int64),
-			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
+			expression.NewLiteral(2, types.Int64),
 		)
 		require.NoError(err)
 
@@ -319,8 +319,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}),
-			expression.NewLiteral(1, sql.Int64),
-			expression.NewLiteral(4, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
+			expression.NewLiteral(4, types.Int64),
 		)
 		require.NoError(err)
 
@@ -342,8 +342,8 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(nil, sql.Null),
-			expression.NewLiteral(2, sql.Int64),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -356,7 +356,7 @@ func TestAsGeoJSON(t *testing.T) {
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}),
 			expression.NewLiteral(nil, sql.Null),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
 
@@ -368,7 +368,7 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}),
-			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(2, types.Int64),
 			expression.NewLiteral(nil, sql.Null),
 		)
 		require.NoError(err)
@@ -475,7 +475,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
 			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, types.Blob),
-			expression.NewLiteral(1, sql.Int32),
+			expression.NewLiteral(1, types.Int32),
 		)
 		require.NoError(err)
 
@@ -486,7 +486,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
 			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, types.Blob),
-			expression.NewLiteral(2, sql.Int32),
+			expression.NewLiteral(2, types.Int32),
 		)
 		require.NoError(err)
 
@@ -497,8 +497,8 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
 			expression.NewLiteral(`{"type":"Point", "coordinates":[1,2]}`, types.Blob),
-			expression.NewLiteral(1, sql.Int32),
-			expression.NewLiteral(0, sql.Int32),
+			expression.NewLiteral(1, types.Int32),
+			expression.NewLiteral(0, types.Int32),
 		)
 		require.NoError(err)
 
@@ -509,8 +509,8 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
 			expression.NewLiteral(`{"type":"LineString", "coordinates":[[1,2],[3,4]]}`, types.Blob),
-			expression.NewLiteral(1, sql.Int32),
-			expression.NewLiteral(0, sql.Int32),
+			expression.NewLiteral(1, types.Int32),
+			expression.NewLiteral(0, types.Int32),
 		)
 		require.NoError(err)
 
@@ -521,8 +521,8 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
 			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, types.Blob),
-			expression.NewLiteral(1, sql.Int32),
-			expression.NewLiteral(0, sql.Int32),
+			expression.NewLiteral(1, types.Int32),
+			expression.NewLiteral(0, types.Int32),
 		)
 		require.NoError(err)
 

@@ -705,6 +705,9 @@ var (
 
 	// ErrNoAutoIncrementCol is returned when there is no auto increment column defined on a table.
 	ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
+
+	// ErrValueOutOfRange is returned when a value is out of range for a type.
+	ErrValueOutOfRange = errors.NewKind("%v out of range for %v")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

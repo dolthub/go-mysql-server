@@ -237,7 +237,7 @@ func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{},
 	case float32, float64:
 		return nil, errors.New("received a float when it should be an int")
 	}
-	x, err = sql.Int64.Convert(x)
+	x, err = types.Int64.Convert(x)
 	if err != nil {
 		return nil, err
 	}

@@ -130,7 +130,7 @@ func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // This conversion truncates nVal as its first subpart that is convertable.
 // nVal is treated as unsigned except nVal is negative.
 func convertFromBase(nVal string, fromBase interface{}) interface{} {
-	fromBase, err := sql.Int64.Convert(fromBase)
+	fromBase, err := types.Int64.Convert(fromBase)
 	if err != nil {
 		return nil
 	}
@@ -192,7 +192,7 @@ func convertFromBase(nVal string, fromBase interface{}) interface{} {
 // convertToBase returns result of whole CONV function in string format, empty string if to input is invalid.
 // The sign of toBase decides whether result is formatted as signed or unsigned.
 func convertToBase(val interface{}, toBase interface{}) string {
-	toBase, err := sql.Int64.Convert(toBase)
+	toBase, err := types.Int64.Convert(toBase)
 	if err != nil {
 		return ""
 	}

@@ -28,7 +28,7 @@ func TestLPad(t *testing.T) {
 	f, err := NewPad(
 		lPadType,
 		expression.NewGetField(0, types.LongText, "str", false),
-		expression.NewGetField(1, sql.Int64, "len", false),
+		expression.NewGetField(1, types.Int64, "len", false),
 		expression.NewGetField(2, types.LongText, "padStr", false),
 	)
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestRPad(t *testing.T) {
 	f, err := NewPad(
 		rPadType,
 		expression.NewGetField(0, types.LongText, "str", false),
-		expression.NewGetField(1, sql.Int64, "len", false),
+		expression.NewGetField(1, types.Int64, "len", false),
 		expression.NewGetField(2, types.LongText, "padStr", false),
 	)
 	require.NoError(t, err)

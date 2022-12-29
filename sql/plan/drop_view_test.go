@@ -31,7 +31,7 @@ import (
 // create the view.
 func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Source: "mytable", Type: sql.Int32},
+		{Name: "i", Source: "mytable", Type: types.Int32},
 		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
 
@@ -40,7 +40,7 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 	subqueryAlias := NewSubqueryAlias("myview", "select i",
 		NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
 			},
 			NewUnresolvedTable("dual", ""),
 		),

@@ -42,8 +42,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), sql.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -57,8 +57,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), sql.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -72,8 +72,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_INCREMENT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), sql.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_LIMIT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_INCREMENT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_LIMIT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},

@@ -212,19 +212,19 @@ func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
 	if types.IsFloat(s.Type) {
 		return s.Type
 	} else if types.IsFloat(e.Type()) {
-		return sql.Float64
+		return types.Float64
 	}
 
 	if types.IsSigned(s.Type) {
 		return s.Type
 	} else if types.IsSigned(e.Type()) {
-		return sql.Int64
+		return types.Int64
 	}
 
 	if types.IsUnsigned(s.Type) {
 		return s.Type
 	} else if types.IsUnsigned(e.Type()) {
-		return sql.Uint64
+		return types.Uint64
 	}
 
 	return s.Type

@@ -168,7 +168,7 @@ func (d *DateDiff) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (d *DateDiff) Type() sql.Type { return sql.Int64 }
+func (d *DateDiff) Type() sql.Type { return types.Int64 }
 
 // WithChildren implements the Expression interface.
 func (d *DateDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -268,7 +268,7 @@ func (t *TimestampDiff) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (t *TimestampDiff) Type() sql.Type { return sql.Int64 }
+func (t *TimestampDiff) Type() sql.Type { return types.Int64 }
 
 // WithChildren implements the Expression interface.
 func (t *TimestampDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {

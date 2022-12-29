@@ -36,7 +36,7 @@ func TestMaxIterations(t *testing.T) {
 	tName := "my-table"
 	db := memory.NewDatabase("mydb")
 	table := memory.NewTable(tName, sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: tName},
+		{Name: "i", Type: types.Int32, Source: tName},
 		{Name: "t", Type: types.Text, Source: tName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tName, table)
@@ -51,7 +51,7 @@ func TestMaxIterations(t *testing.T) {
 				count++
 				name := fmt.Sprintf("mytable-%v", count)
 				table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "i", Type: sql.Int32, Source: name},
+					{Name: "i", Type: types.Int32, Source: name},
 					{Name: "t", Type: types.Text, Source: name},
 				}), db.GetForeignKeyCollection())
 				n = plan.NewResolvedTable(table, nil, nil)
@@ -67,7 +67,7 @@ func TestMaxIterations(t *testing.T) {
 	require.True(ErrMaxAnalysisIters.Is(err))
 	require.Equal(
 		plan.NewResolvedTable(memory.NewTable("mytable-8", sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "i", Type: sql.Int32, Source: "mytable-8"},
+			{Name: "i", Type: types.Int32, Source: "mytable-8"},
 			{Name: "t", Type: types.Text, Source: "mytable-8"},
 		}), db.GetForeignKeyCollection()), nil, nil),
 		analyzed,
@@ -183,7 +183,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 				),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "history_index"),
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 				),
 			),
 			plan.NewNaturalJoin(
@@ -225,7 +225,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 		{Name: "repository_id", Source: "ref_commits", Type: types.Text},
 		{Name: "ref_name", Source: "ref_commits", Type: types.Text},
 		{Name: "commit_hash", Source: "ref_commits", Type: types.Text},
-		{Name: "history_index", Source: "ref_commits", Type: sql.Int64},
+		{Name: "history_index", Source: "ref_commits", Type: types.Int64},
 	}), nil)
 
 	db := memory.NewDatabase("")
@@ -250,7 +250,7 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewNaturalJoin(
 					plan.NewInnerJoin(
@@ -274,11 +274,11 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewUnion(plan.NewProject(
 					[]sql.Expression{
-						expression.NewLiteral(1, sql.Int64),
+						expression.NewLiteral(1, types.Int64),
 					},
 					plan.NewUnresolvedTable("mytable", ""),
 				), plan.NewProject(
@@ -293,15 +293,15 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewFilter(
 				expression.NewEquals(
-					expression.NewLiteral(1, sql.Int64),
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
+					expression.NewLiteral(1, types.Int64),
 				),
 				plan.NewWindow(
 					[]sql.Expression{
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false),
 						),
-						expression.NewGetFieldWithTable(1, sql.Int64, "a", "x", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "a", "x", false),
 						expression.NewBindVar("v1"),
 					},
 					plan.NewProject(
@@ -316,8 +316,8 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewFilter(
 				expression.NewEquals(
-					expression.NewLiteral(1, sql.Int64),
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
+					expression.NewLiteral(1, types.Int64),
 				),
 				plan.NewSubqueryAlias("cte1", "select x from a",
 					plan.NewProject(
@@ -337,7 +337,7 @@ func TestDeepCopyNode(t *testing.T) {
 			cop, err := DeepCopyNode(tt.node)
 			require.NoError(t, err)
 			cop, _, err = plan.ApplyBindings(cop, map[string]sql.Expression{
-				"v1": expression.NewLiteral(1, sql.Int64),
+				"v1": expression.NewLiteral(1, types.Int64),
 				"v2": expression.NewLiteral("x", types.Text),
 			})
 			require.NoError(t, err)

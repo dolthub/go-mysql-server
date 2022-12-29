@@ -47,12 +47,12 @@ func (p process) toRow() sql.Row {
 }
 
 var processListSchema = sql.Schema{
-	{Name: "Id", Type: sql.Int64},
+	{Name: "Id", Type: types.Int64},
 	{Name: "User", Type: types.LongText},
 	{Name: "Host", Type: types.LongText},
 	{Name: "db", Type: types.LongText},
 	{Name: "Command", Type: types.LongText},
-	{Name: "Time", Type: sql.Int64},
+	{Name: "Time", Type: types.Int64},
 	{Name: "State", Type: types.LongText},
 	{Name: "Info", Type: types.LongText},
 }

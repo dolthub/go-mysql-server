@@ -86,7 +86,7 @@ func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 // Type implements the sql.Expression interface.
-func (l *Length) Type() sql.Type { return sql.Int32 }
+func (l *Length) Type() sql.Type { return types.Int32 }
 
 func (l *Length) String() string {
 	if l.CountType == NumBytes {

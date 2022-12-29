@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Not is a node that negates an expression.
@@ -32,7 +33,7 @@ func NewNot(child sql.Expression) *Not {
 
 // Type implements the Expression interface.
 func (e *Not) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // Eval implements the Expression interface.

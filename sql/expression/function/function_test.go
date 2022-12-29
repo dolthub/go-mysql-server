@@ -60,31 +60,31 @@ func assertResultType(t *testing.T, expectedType sql.Type, result interface{}) {
 
 	switch result.(type) {
 	case uint8:
-		assert.Equal(t, expectedType, sql.Uint8)
+		assert.Equal(t, expectedType, types.Uint8)
 	case int8:
-		assert.Equal(t, expectedType, sql.Int8)
+		assert.Equal(t, expectedType, types.Int8)
 	case uint16:
-		assert.Equal(t, expectedType, sql.Uint16)
+		assert.Equal(t, expectedType, types.Uint16)
 	case int16:
-		assert.Equal(t, expectedType, sql.Int16)
+		assert.Equal(t, expectedType, types.Int16)
 	case uint32, uint:
-		assert.Equal(t, expectedType, sql.Uint32)
+		assert.Equal(t, expectedType, types.Uint32)
 	case int32, int:
-		assert.Equal(t, expectedType, sql.Int32)
+		assert.Equal(t, expectedType, types.Int32)
 	case uint64:
-		assert.Equal(t, expectedType, sql.Uint64)
+		assert.Equal(t, expectedType, types.Uint64)
 	case int64:
-		assert.Equal(t, expectedType, sql.Int64)
+		assert.Equal(t, expectedType, types.Int64)
 	case float64:
-		assert.Equal(t, expectedType, sql.Float64)
+		assert.Equal(t, expectedType, types.Float64)
 	case float32:
-		assert.Equal(t, expectedType, sql.Float32)
+		assert.Equal(t, expectedType, types.Float32)
 	case string:
 		assert.True(t, types.IsText(expectedType))
 	case time.Time:
 		assert.Equal(t, expectedType, types.Datetime)
 	case bool:
-		assert.Equal(t, expectedType, sql.Boolean)
+		assert.Equal(t, expectedType, types.Boolean)
 	case []byte:
 		assert.Equal(t, expectedType, types.LongBlob)
 	default:
@@ -287,33 +287,33 @@ func toLiteralExpression(input interface{}) *expression.Literal {
 
 	switch val := input.(type) {
 	case bool:
-		return expression.NewLiteral(val, sql.Boolean)
+		return expression.NewLiteral(val, types.Boolean)
 	case int8:
-		return expression.NewLiteral(val, sql.Int8)
+		return expression.NewLiteral(val, types.Int8)
 	case uint8:
-		return expression.NewLiteral(val, sql.Int8)
+		return expression.NewLiteral(val, types.Int8)
 	case int16:
-		return expression.NewLiteral(val, sql.Int16)
+		return expression.NewLiteral(val, types.Int16)
 	case uint16:
-		return expression.NewLiteral(val, sql.Uint16)
+		return expression.NewLiteral(val, types.Uint16)
 	case int32:
-		return expression.NewLiteral(val, sql.Int32)
+		return expression.NewLiteral(val, types.Int32)
 	case uint32:
-		return expression.NewLiteral(val, sql.Uint32)
+		return expression.NewLiteral(val, types.Uint32)
 	case int64:
-		return expression.NewLiteral(val, sql.Int64)
+		return expression.NewLiteral(val, types.Int64)
 	case uint64:
-		return expression.NewLiteral(val, sql.Uint64)
+		return expression.NewLiteral(val, types.Uint64)
 	case int:
-		return expression.NewLiteral(val, sql.Int32)
+		return expression.NewLiteral(val, types.Int32)
 	case uint:
-		return expression.NewLiteral(val, sql.Uint32)
+		return expression.NewLiteral(val, types.Uint32)
 	case float32:
-		return expression.NewLiteral(val, sql.Float32)
+		return expression.NewLiteral(val, types.Float32)
 	case float64:
-		return expression.NewLiteral(val, sql.Float64)
+		return expression.NewLiteral(val, types.Float64)
 	case decimal.Decimal:
-		return expression.NewLiteral(val, sql.Float64)
+		return expression.NewLiteral(val, types.Float64)
 	case string:
 		return expression.NewLiteral(val, types.Text)
 	case time.Time:

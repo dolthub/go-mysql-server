@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -54,7 +55,7 @@ func (s *STX) Description() string {
 // Type implements the sql.Expression interface.
 func (s *STX) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
 		return sql.PointType{}
 	}
@@ -109,7 +110,7 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := sql.Float64.Convert(x)
+	_x, err := types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func (s *STY) Description() string {
 // Type implements the sql.Expression interface.
 func (s *STY) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
 		return sql.PointType{}
 	}
@@ -201,7 +202,7 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := sql.Float64.Convert(y)
+	_y, err := types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +243,7 @@ func (l *Longitude) Description() string {
 // Type implements the sql.Expression interface.
 func (l *Longitude) Type() sql.Type {
 	if len(l.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
 		return sql.PointType{}
 	}
@@ -302,7 +303,7 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	x, err = sql.Float64.Convert(x)
+	x, err = types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +346,7 @@ func (l *Latitude) Description() string {
 // Type implements the sql.Expression interface.
 func (l *Latitude) Type() sql.Type {
 	if len(l.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
 		return sql.PointType{}
 	}
@@ -406,7 +407,7 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	y, err = sql.Float64.Convert(y)
+	y, err = types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}

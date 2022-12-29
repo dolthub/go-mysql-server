@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = ConnectionID{}
 
 func NewConnectionID() sql.Expression {
 	return ConnectionID{
-		NoArgFunc: NoArgFunc{"connection_id", sql.Uint32},
+		NoArgFunc: NoArgFunc{"connection_id", types.Uint32},
 	}
 }
 

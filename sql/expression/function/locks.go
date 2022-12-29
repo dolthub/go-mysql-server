@@ -130,7 +130,7 @@ func NewIsFreeLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 				UnaryExpression: expression.UnaryExpression{e},
 				ls:              ls,
 				funcName:        "is_free_lock",
-				retType:         sql.Int8,
+				retType:         types.Int8,
 			},
 		}
 	}
@@ -166,7 +166,7 @@ func NewIsUsedLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 				UnaryExpression: expression.UnaryExpression{e},
 				ls:              ls,
 				funcName:        "is_used_lock",
-				retType:         sql.Uint32,
+				retType:         types.Uint32,
 			},
 		}
 	}
@@ -202,7 +202,7 @@ func NewReleaseLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 				UnaryExpression: expression.UnaryExpression{e},
 				ls:              ls,
 				funcName:        "release_lock",
-				retType:         sql.Int8,
+				retType:         types.Int8,
 			},
 		}
 	}
@@ -314,7 +314,7 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName()), err)
 	}
 
-	timeout, err := sql.Int64.Convert(rightVal)
+	timeout, err := types.Int64.Convert(rightVal)
 
 	if err != nil {
 		return nil, fmt.Errorf("illegal value for timeout %v", timeout)
@@ -354,7 +354,7 @@ func (gl *GetLock) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 // Type implements the Expression interface.
 func (gl *GetLock) Type() sql.Type {
-	return sql.Int8
+	return types.Int8
 }
 
 type ReleaseAllLocks struct {
@@ -367,7 +367,7 @@ var _ sql.FunctionExpression = ReleaseAllLocks{}
 func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
 	return func() sql.Expression {
 		return ReleaseAllLocks{
-			NoArgFunc: NoArgFunc{"release_all_locks", sql.Int32},
+			NoArgFunc: NoArgFunc{"release_all_locks", types.Int32},
 			ls:        ls,
 		}
 	}

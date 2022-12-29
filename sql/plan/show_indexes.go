@@ -64,13 +64,13 @@ func (n *ShowIndexes) String() string {
 func (n *ShowIndexes) Schema() sql.Schema {
 	return sql.Schema{
 		&sql.Column{Name: "Table", Type: types.LongText},
-		&sql.Column{Name: "Non_unique", Type: sql.Int32},
+		&sql.Column{Name: "Non_unique", Type: types.Int32},
 		&sql.Column{Name: "Key_name", Type: types.LongText},
-		&sql.Column{Name: "Seq_in_index", Type: sql.Int32},
+		&sql.Column{Name: "Seq_in_index", Type: types.Int32},
 		&sql.Column{Name: "Column_name", Type: types.LongText, Nullable: true},
 		&sql.Column{Name: "Collation", Type: types.LongText, Nullable: true},
-		&sql.Column{Name: "Cardinality", Type: sql.Int64},
-		&sql.Column{Name: "Sub_part", Type: sql.Int64, Nullable: true},
+		&sql.Column{Name: "Cardinality", Type: types.Int64},
+		&sql.Column{Name: "Sub_part", Type: types.Int64, Nullable: true},
 		&sql.Column{Name: "Packed", Type: types.LongText, Nullable: true},
 		&sql.Column{Name: "Null", Type: types.LongText},
 		&sql.Column{Name: "Index_type", Type: types.LongText},

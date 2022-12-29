@@ -162,7 +162,7 @@ func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.Windo
 		if err != nil {
 			continue
 		}
-		val, err := sql.Float64.Convert(v)
+		val, err := types.Float64.Convert(v)
 		if err != nil || val == nil {
 			val = float64(0)
 			nullCnt += 1
@@ -316,7 +316,7 @@ func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 			continue
 		}
 
-		val, err := sql.Uint64.Convert(v)
+		val, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -383,7 +383,7 @@ func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sq
 			continue
 		}
 
-		val, err := sql.Uint64.Convert(v)
+		val, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -451,7 +451,7 @@ func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 		}
 
 		// TODO: handle strings
-		val, err := sql.Uint64.Convert(v)
+		val, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}

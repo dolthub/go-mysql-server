@@ -140,7 +140,7 @@ func (u IsUUID) String() string {
 }
 
 func (u IsUUID) Type() sql.Type {
-	return sql.Int8
+	return types.Int8
 }
 
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -294,7 +294,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, err = sql.Int8.Convert(sf)
+	sf, err = types.Int8.Convert(sf)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +450,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, err = sql.Int8.Convert(sf)
+	sf, err = types.Int8.Convert(sf)
 	if err != nil {
 		return nil, err
 	}

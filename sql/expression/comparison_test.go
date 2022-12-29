@@ -54,7 +54,7 @@ var comparisonCases = map[sql.Type]map[int][][]interface{}{
 			{nil, nil},
 		},
 	},
-	sql.Int32: {
+	types.Int32: {
 		testEqual: {
 			{int32(1), int32(1)},
 			{int32(0), int32(0)},
@@ -95,7 +95,7 @@ var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
 			{nil, nil},
 		},
 	},
-	sql.Int32: {
+	types.Int32: {
 		testRegexp: {
 			{int32(1), int32(1)},
 			{int32(0), int32(0)},
@@ -116,7 +116,7 @@ func TestEquals(t *testing.T) {
 		require.NotNil(get1)
 		eq := expression.NewEquals(get0, get1)
 		require.NotNil(eq)
-		require.Equal(sql.Boolean, eq.Type())
+		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -143,7 +143,7 @@ func TestNullSafeEquals(t *testing.T) {
 		require.NotNil(get1)
 		seq := expression.NewNullSafeEquals(get0, get1)
 		require.NotNil(seq)
-		require.Equal(sql.Int8, seq.Type())
+		require.Equal(types.Int8, seq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -174,7 +174,7 @@ func TestLessThan(t *testing.T) {
 		require.NotNil(get1)
 		eq := expression.NewLessThan(get0, get1)
 		require.NotNil(eq)
-		require.Equal(sql.Boolean, eq.Type())
+		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -201,7 +201,7 @@ func TestGreaterThan(t *testing.T) {
 		require.NotNil(get1)
 		eq := expression.NewGreaterThan(get0, get1)
 		require.NotNil(eq)
-		require.Equal(sql.Boolean, eq.Type())
+		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -239,7 +239,7 @@ func testRegexpCases(t *testing.T) {
 			for _, pair := range cases {
 				eq := expression.NewRegexp(get0, get1)
 				require.NotNil(eq)
-				require.Equal(sql.Boolean, eq.Type())
+				require.Equal(types.Boolean, eq.Type())
 
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)

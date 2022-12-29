@@ -31,26 +31,26 @@ func TestEraseProjection(t *testing.T) {
 	f := getRule(eraseProjectionId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{
-		Name: "i", Source: "mytable", Type: sql.Int64,
+		Name: "i", Source: "mytable", Type: types.Int64,
 	}}), nil)
 
 	expected := plan.NewSort(
-		[]sql.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
+		[]sql.SortField{{Column: expression.NewGetField(2, types.Int64, "foo", false)}},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-				expression.NewGetField(1, sql.Int64, "bar", false),
-				expression.NewAlias("foo", expression.NewLiteral(1, sql.Int64)),
+				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+				expression.NewGetField(1, types.Int64, "bar", false),
+				expression.NewAlias("foo", expression.NewLiteral(1, types.Int64)),
 			},
 			plan.NewFilter(
 				expression.NewEquals(
-					expression.NewLiteral(1, sql.Int64),
-					expression.NewGetField(1, sql.Int64, "bar", false),
+					expression.NewLiteral(1, types.Int64),
+					expression.NewGetField(1, types.Int64, "bar", false),
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-						expression.NewAlias("bar", expression.NewLiteral(2, sql.Int64)),
+						expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+						expression.NewAlias("bar", expression.NewLiteral(2, types.Int64)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -60,9 +60,9 @@ func TestEraseProjection(t *testing.T) {
 
 	node := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-			expression.NewGetField(1, sql.Int64, "bar", false),
-			expression.NewGetField(2, sql.Int64, "foo", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+			expression.NewGetField(1, types.Int64, "bar", false),
+			expression.NewGetField(2, types.Int64, "foo", false),
 		},
 		expected,
 	)
@@ -129,18 +129,18 @@ func TestOptimizeDistinct(t *testing.T) {
 
 func TestMoveJoinConditionsToFilter(t *testing.T) {
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "t1", Type: sql.Int64},
-		{Name: "b", Source: "t1", Type: sql.Int64},
+		{Name: "a", Source: "t1", Type: types.Int64},
+		{Name: "b", Source: "t1", Type: types.Int64},
 	}), nil)
 
 	t2 := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c", Source: "t2", Type: sql.Int64},
-		{Name: "d", Source: "t2", Type: sql.Int64},
+		{Name: "c", Source: "t2", Type: types.Int64},
+		{Name: "d", Source: "t2", Type: types.Int64},
 	}), nil)
 
 	t3 := memory.NewTable("t3", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "e", Source: "t3", Type: sql.Int64},
-		{Name: "f", Source: "t3", Type: sql.Int64},
+		{Name: "e", Source: "t3", Type: types.Int64},
+		{Name: "f", Source: "t3", Type: types.Int64},
 	}), nil)
 
 	rule := getRule(moveJoinCondsToFilterId)

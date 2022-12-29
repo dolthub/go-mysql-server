@@ -96,7 +96,7 @@ func (y *Year) Description() string {
 func (y *Year) String() string { return fmt.Sprintf("%s(%s)", y.FunctionName(), y.Child) }
 
 // Type implements the Expression interface.
-func (y *Year) Type() sql.Type { return sql.Int32 }
+func (y *Year) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (y *Year) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -136,7 +136,7 @@ func (m *Month) Description() string {
 func (m *Month) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
-func (m *Month) Type() sql.Type { return sql.Int32 }
+func (m *Month) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (m *Month) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -176,7 +176,7 @@ func (d *Day) Description() string {
 func (d *Day) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
 
 // Type implements the Expression interface.
-func (d *Day) Type() sql.Type { return sql.Int32 }
+func (d *Day) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (d *Day) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -217,7 +217,7 @@ func (d *Weekday) Description() string {
 func (d *Weekday) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
 
 // Type implements the Expression interface.
-func (d *Weekday) Type() sql.Type { return sql.Int32 }
+func (d *Weekday) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (d *Weekday) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -257,7 +257,7 @@ func (h *Hour) Description() string {
 func (h *Hour) String() string { return fmt.Sprintf("%s(%s)", h.FunctionName(), h.Child) }
 
 // Type implements the Expression interface.
-func (h *Hour) Type() sql.Type { return sql.Int32 }
+func (h *Hour) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (h *Hour) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -297,7 +297,7 @@ func (m *Minute) Description() string {
 func (m *Minute) String() string { return fmt.Sprintf("%s(%d)", m.FunctionName(), m.Child) }
 
 // Type implements the Expression interface.
-func (m *Minute) Type() sql.Type { return sql.Int32 }
+func (m *Minute) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (m *Minute) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -337,7 +337,7 @@ func (s *Second) Description() string {
 func (s *Second) String() string { return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child) }
 
 // Type implements the Expression interface.
-func (s *Second) Type() sql.Type { return sql.Int32 }
+func (s *Second) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (s *Second) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -378,7 +378,7 @@ func (d *DayOfWeek) Description() string {
 func (d *DayOfWeek) String() string { return fmt.Sprintf("DAYOFWEEK(%s)", d.Child) }
 
 // Type implements the Expression interface.
-func (d *DayOfWeek) Type() sql.Type { return sql.Int32 }
+func (d *DayOfWeek) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (d *DayOfWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -418,7 +418,7 @@ func (d *DayOfYear) Description() string {
 func (d *DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child) }
 
 // Type implements the Expression interface.
-func (d *DayOfYear) Type() sql.Type { return sql.Int32 }
+func (d *DayOfYear) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (d *DayOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -465,7 +465,7 @@ func NewYearWeek(args ...sql.Expression) (sql.Expression, error) {
 	} else if len(args) > 1 && expression.IsBindVar(args[1]) {
 		yw.mode = args[1]
 	} else {
-		yw.mode = expression.NewLiteral(0, sql.Int64)
+		yw.mode = expression.NewLiteral(0, types.Int64)
 	}
 
 	return yw, nil
@@ -484,7 +484,7 @@ func (d *YearWeek) Description() string {
 func (d *YearWeek) String() string { return fmt.Sprintf("YEARWEEK(%s, %d)", d.date, d.mode) }
 
 // Type implements the Expression interface.
-func (d *YearWeek) Type() sql.Type { return sql.Int32 }
+func (d *YearWeek) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -511,7 +511,7 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		if i64, err := sql.Int64.Convert(val); err == nil {
+		if i64, err := types.Int64.Convert(val); err == nil {
 			if mode, ok = i64.(int64); ok {
 				mode %= 8 // mode in [0, 7]
 			}
@@ -560,7 +560,7 @@ func NewWeek(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 && args[1].Resolved() && types.IsInteger(args[1].Type()) {
 		w.mode = args[1]
 	} else {
-		w.mode = expression.NewLiteral(0, sql.Int64)
+		w.mode = expression.NewLiteral(0, types.Int64)
 	}
 
 	return w, nil
@@ -579,7 +579,7 @@ func (d *Week) Description() string {
 func (d *Week) String() string { return fmt.Sprintf("WEEK(%s, %d)", d.date, d.mode) }
 
 // Type implements the Expression interface.
-func (d *Week) Type() sql.Type { return sql.Int32 }
+func (d *Week) Type() sql.Type { return types.Int32 }
 
 // Eval implements the Expression interface.
 func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -607,7 +607,7 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		if i64, err := sql.Int64.Convert(val); err == nil {
+		if i64, err := types.Int64.Convert(val); err == nil {
 			if mode, ok = i64.(int64); ok {
 				mode %= 8 // mode in [0, 7]
 			}
@@ -773,7 +773,7 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
 	} else if len(args) == 1 {
 		argType := args[0].Type().Promote()
-		if argType != sql.Int64 && argType != sql.Uint64 {
+		if argType != types.Int64 && argType != types.Uint64 {
 			return nil, sql.ErrInvalidType.New(args[0].Type().String())
 		}
 		// todo: making a context here is expensive
@@ -781,7 +781,7 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		precisionArg, err := sql.Int32.Convert(val)
+		precisionArg, err := types.Int32.Convert(val)
 
 		if err != nil {
 			return nil, err
@@ -789,7 +789,7 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 
 		n := int(precisionArg.(int32))
 		if n < 0 || n > 6 {
-			return nil, sql.ErrOutOfRange.New("precision", "now")
+			return nil, sql.ErrValueOutOfRange.New("precision", "now")
 		}
 		precision = &n
 	}
@@ -894,7 +894,7 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
 	} else if len(args) == 1 {
 		argType := args[0].Type().Promote()
-		if argType != sql.Int64 && argType != sql.Uint64 {
+		if argType != types.Int64 && argType != types.Uint64 {
 			return nil, sql.ErrInvalidType.New(args[0].Type().String())
 		}
 		// todo: making a context here is expensive
@@ -902,7 +902,7 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		precisionArg, err := sql.Int32.Convert(val)
+		precisionArg, err := types.Int32.Convert(val)
 
 		if err != nil {
 			return nil, err
@@ -910,7 +910,7 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 
 		n := int(precisionArg.(int32))
 		if n < 0 || n > 6 {
-			return nil, sql.ErrOutOfRange.New("precision", "utc_timestamp")
+			return nil, sql.ErrValueOutOfRange.New("precision", "utc_timestamp")
 		}
 		precision = &n
 	}
@@ -1101,7 +1101,7 @@ func (m *Microsecond) Description() string {
 }
 
 func NewMicrosecond(arg sql.Expression) sql.Expression {
-	return &Microsecond{NewUnaryDatetimeFunc(arg, "MICROSECOND", sql.Uint64)}
+	return &Microsecond{NewUnaryDatetimeFunc(arg, "MICROSECOND", types.Uint64)}
 }
 
 func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -1162,7 +1162,7 @@ type TimeToSec struct {
 var _ sql.FunctionExpression = (*TimeToSec)(nil)
 
 func NewTimeToSec(arg sql.Expression) sql.Expression {
-	return &TimeToSec{NewUnaryDatetimeFunc(arg, "TIME_TO_SEC", sql.Uint64)}
+	return &TimeToSec{NewUnaryDatetimeFunc(arg, "TIME_TO_SEC", types.Uint64)}
 }
 
 // Description implements sql.FunctionExpression
@@ -1195,7 +1195,7 @@ type WeekOfYear struct {
 var _ sql.FunctionExpression = (*WeekOfYear)(nil)
 
 func NewWeekOfYear(arg sql.Expression) sql.Expression {
-	return &WeekOfYear{NewUnaryDatetimeFunc(arg, "WEEKOFYEAR", sql.Uint64)}
+	return &WeekOfYear{NewUnaryDatetimeFunc(arg, "WEEKOFYEAR", types.Uint64)}
 }
 
 // Description implements sql.FunctionExpression

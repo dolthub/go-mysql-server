@@ -53,7 +53,7 @@ func IsBit(t sql.Type) bool {
 
 // IsFloat checks if t is float type.
 func IsFloat(t sql.Type) bool {
-	return t == sql.Float32 || t == sql.Float64
+	return t == Float32 || t == Float64
 }
 
 // IsInteger checks if t is an integer type.
@@ -85,7 +85,7 @@ func IsNull(ex sql.Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t sql.Type) bool {
 	switch t.(type) {
-	case sql.NumberTypeImpl_, sql.DecimalType_, sql.BitType_, sql.YearType_, sql.SystemBoolType_:
+	case NumberTypeImpl_, sql.DecimalType_, sql.BitType_, sql.YearType_, sql.SystemBoolType_:
 		return true
 	default:
 		return false
@@ -98,7 +98,7 @@ func IsSigned(t sql.Type) bool {
 	if _, ok := t.(sql.SystemBoolType_); ok {
 		return true
 	}
-	return t == sql.Int8 || t == sql.Int16 || t == sql.Int24 || t == sql.Int32 || t == sql.Int64
+	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
 }
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
@@ -182,6 +182,6 @@ func IsTuple(t sql.Type) bool {
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t sql.Type) bool {
-	return t == sql.Uint8 || t == sql.Uint16 || t == sql.Uint24 || t == sql.Uint32 || t == sql.Uint64
+	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
 }
 

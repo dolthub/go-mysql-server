@@ -118,7 +118,7 @@ func TestApplyBindings(t *testing.T) {
 			),
 			map[string]sql.Expression{
 				"strvar": expression.NewLiteral("Four score and seven years ago...", types.LongText),
-				"intvar": expression.NewLiteral(int8(10), sql.Int8),
+				"intvar": expression.NewLiteral(int8(10), types.Int8),
 			},
 			NewProject(
 				[]sql.Expression{
@@ -138,7 +138,7 @@ func TestApplyBindings(t *testing.T) {
 						),
 						expression.NewLessThan(
 							expression.NewUnresolvedColumn("icol"),
-							expression.NewLiteral(int8(10), sql.Int8),
+							expression.NewLiteral(int8(10), types.Int8),
 						),
 					),
 					NewUnresolvedTable("t1", ""),

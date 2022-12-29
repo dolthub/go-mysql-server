@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Area is a function that returns the Area of a Polygon
@@ -45,7 +46,7 @@ func (a *Area) Description() string {
 
 // Type implements the sql.Expression interface.
 func (a *Area) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 func (a *Area) String() string {

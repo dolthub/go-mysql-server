@@ -188,7 +188,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		if s == nil {
 			return nil, nil
 		}
-		s, err = sql.Uint32.Convert(s)
+		s, err = types.Uint32.Convert(s)
 		if err != nil {
 			return nil, err
 		}

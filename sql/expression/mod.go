@@ -83,7 +83,7 @@ func (m *Mod) Type() sql.Type {
 	}
 
 	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return sql.Float64
+		return types.Float64
 	}
 
 	// for division operation, it's either float or decimal.Decimal type

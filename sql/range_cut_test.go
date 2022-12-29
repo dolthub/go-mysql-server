@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,11 +50,11 @@ func TestRangeCutCompare(t *testing.T) {
 		{BelowNull{}, BelowNull{}, 0},
 	} {
 		t.Run(fmt.Sprintf("%s/%s = %d", testcase.left.String(), testcase.right.String(), testcase.res), func(t *testing.T) {
-			res, err := testcase.left.Compare(testcase.right, Int8)
+			res, err := testcase.left.Compare(testcase.right, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, testcase.res, res, "forward Compare")
 
-			res, err = testcase.right.Compare(testcase.left, Int8)
+			res, err = testcase.right.Compare(testcase.left, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, -testcase.res, res, "reverse Compare")
 		})

@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
@@ -22,16 +22,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNumberCompare(t *testing.T) {
 	tests := []struct {
-		typ         Type
+		typ         sql.Type
 		val1        interface{}
 		val2        interface{}
 		expectedCmp int
@@ -165,7 +165,7 @@ func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 
 func TestNumberConvert(t *testing.T) {
 	tests := []struct {
-		typ         Type
+		typ         sql.Type
 		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
@@ -237,28 +237,28 @@ func TestNumberConvert(t *testing.T) {
 }
 
 func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
-	val, err := Boolean.SQL(NewEmptyContext(), nil, true)
+	val, err := Boolean.SQL(sql.NewEmptyContext(), nil, true)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(1)", val.String())
 
-	val, err = Boolean.SQL(NewEmptyContext(), nil, false)
+	val, err = Boolean.SQL(sql.NewEmptyContext(), nil, false)
 	require.NoError(t, err)
 	assert.Equal(t, "INT8(0)", val.String())
 }
 
 func TestNumberSQL_NumberFromString(t *testing.T) {
-	val, err := Int64.SQL(NewEmptyContext(), nil, "not a number")
+	val, err := Int64.SQL(sql.NewEmptyContext(), nil, "not a number")
 	require.NoError(t, err)
 	assert.Equal(t, "not a number", val.ToString())
 
-	val, err = Float64.SQL(NewEmptyContext(), nil, "also not a number")
+	val, err = Float64.SQL(sql.NewEmptyContext(), nil, "also not a number")
 	require.NoError(t, err)
 	assert.Equal(t, "also not a number", val.ToString())
 }
 
 func TestNumberString(t *testing.T) {
 	tests := []struct {
-		typ         Type
+		typ         sql.Type
 		expectedStr string
 	}{
 		{Boolean, "tinyint"},

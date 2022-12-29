@@ -104,7 +104,7 @@ func (d *Div) Type() sql.Type {
 	}
 
 	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return sql.Float64
+		return types.Float64
 	}
 
 	// for division operation, it's either float or decimal.Decimal type
@@ -283,7 +283,7 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 		switch c := expr.(type) {
 		case *GetField:
 			if types.IsFloat(c.Type()) {
-				resType = sql.Float64
+				resType = types.Float64
 				return false
 			}
 			if types.IsDecimal(c.Type()) {
@@ -306,7 +306,7 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 		return true
 	})
 
-	if resType == sql.Float64 {
+	if resType == types.Float64 {
 		return resType
 	}
 
@@ -591,17 +591,17 @@ func (i *IntDiv) Type() sql.Type {
 	}
 
 	if types.IsTime(lTyp) && types.IsTime(rTyp) {
-		return sql.Int64
+		return types.Int64
 	}
 
 	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return sql.Float64
+		return types.Float64
 	}
 
 	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-		return sql.Uint64
+		return types.Uint64
 	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-		return sql.Int64
+		return types.Int64
 	}
 
 	// using max precision which is 65.

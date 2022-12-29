@@ -17,35 +17,36 @@ package sql
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTryIntersect(t *testing.T) {
-	res, ok, err := LessThanRangeColumnExpr(6, Int8).TryIntersect(GreaterThanRangeColumnExpr(-1, Int8))
+	res, ok, err := LessThanRangeColumnExpr(6, types.Int8).TryIntersect(GreaterThanRangeColumnExpr(-1, types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, RangeType_OpenOpen, res.Type())
 
-	res, ok, err = NotNullRangeColumnExpr(Int8).TryIntersect(AllRangeColumnExpr(Int8))
+	res, ok, err = NotNullRangeColumnExpr(types.Int8).TryIntersect(AllRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, RangeType_GreaterThan, res.Type())
 	assert.False(t, RangeCutIsBinding(res.LowerBound))
 
-	_, ok, err = NotNullRangeColumnExpr(Int8).TryIntersect(NullRangeColumnExpr(Int8))
+	_, ok, err = NotNullRangeColumnExpr(types.Int8).TryIntersect(NullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.False(t, ok)
-	_, ok, err = NullRangeColumnExpr(Int8).TryIntersect(NotNullRangeColumnExpr(Int8))
+	_, ok, err = NullRangeColumnExpr(types.Int8).TryIntersect(NotNullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 }
 
 func TestTryUnion(t *testing.T) {
-	res, ok, err := NotNullRangeColumnExpr(Int8).TryUnion(NullRangeColumnExpr(Int8))
+	res, ok, err := NotNullRangeColumnExpr(types.Int8).TryUnion(NullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, RangeType_All, res.Type())
-	res, ok, err = NullRangeColumnExpr(Int8).TryUnion(NotNullRangeColumnExpr(Int8))
+	res, ok, err = NullRangeColumnExpr(types.Int8).TryUnion(NotNullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, RangeType_All, res.Type())

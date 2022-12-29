@@ -199,7 +199,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 				return nil, nil, nil, err
 			}
 
-			return l, r, sql.Float64, nil
+			return l, r, types.Float64, nil
 		}
 
 		if types.IsSigned(leftType) || types.IsSigned(rightType) {
@@ -208,7 +208,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 				return nil, nil, nil, err
 			}
 
-			return l, r, sql.Int64, nil
+			return l, r, types.Int64, nil
 		}
 
 		l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
@@ -216,7 +216,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return nil, nil, nil, err
 		}
 
-		return l, r, sql.Uint64, nil
+		return l, r, types.Uint64, nil
 	}
 
 	left, right, err := convertLeftAndRight(left, right, ConvertToChar)
@@ -243,7 +243,7 @@ func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}
 
 // Type implements the Expression interface.
 func (*comparison) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // Left implements Comparer interface
@@ -316,7 +316,7 @@ func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEqual
 
 // Type implements the Expression interface.
 func (e *NullSafeEquals) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {

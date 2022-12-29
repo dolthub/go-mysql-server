@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Dimension is a function that converts a spatial type into WKT format (alias for AsText)
@@ -50,7 +51,7 @@ func (p *Dimension) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *Dimension) Type() sql.Type {
-	return sql.Int32
+	return types.Int32
 }
 
 func (p *Dimension) String() string {

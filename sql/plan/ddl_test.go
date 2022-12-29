@@ -35,7 +35,7 @@ func TestCreateTable(t *testing.T) {
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: types.Text},
-		{Name: "c2", Type: sql.Int32},
+		{Name: "c2", Type: types.Int32},
 	})
 
 	require.NoError(createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent))
@@ -63,7 +63,7 @@ func TestDropTable(t *testing.T) {
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: types.Text},
-		{Name: "c2", Type: sql.Int32},
+		{Name: "c2", Type: types.Int32},
 	})
 
 	require.NoError(createTable(t, db, "testTable1", s, IfNotExistsAbsent, IsTempTableAbsent))

@@ -29,11 +29,11 @@ import (
 
 func TestJoinSchema(t *testing.T) {
 	t1 := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Int64},
+		{Name: "a", Source: "foo", Type: types.Int64},
 	}), nil), nil, nil)
 
 	t2 := NewResolvedTable(memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "b", Source: "bar", Type: sql.Int64},
+		{Name: "b", Source: "bar", Type: types.Int64},
 	}), nil), nil, nil)
 
 	t.Run("inner", func(t *testing.T) {
@@ -41,8 +41,8 @@ func TestJoinSchema(t *testing.T) {
 		result := j.Schema()
 
 		require.Equal(t, sql.Schema{
-			{Name: "a", Source: "foo", Type: sql.Int64},
-			{Name: "b", Source: "bar", Type: sql.Int64},
+			{Name: "a", Source: "foo", Type: types.Int64},
+			{Name: "b", Source: "bar", Type: types.Int64},
 		}, result)
 	})
 
@@ -51,8 +51,8 @@ func TestJoinSchema(t *testing.T) {
 		result := j.Schema()
 
 		require.Equal(t, sql.Schema{
-			{Name: "a", Source: "foo", Type: sql.Int64},
-			{Name: "b", Source: "bar", Type: sql.Int64, Nullable: true},
+			{Name: "a", Source: "foo", Type: types.Int64},
+			{Name: "b", Source: "bar", Type: types.Int64, Nullable: true},
 		}, result)
 	})
 
@@ -61,8 +61,8 @@ func TestJoinSchema(t *testing.T) {
 		result := j.Schema()
 
 		require.Equal(t, sql.Schema{
-			{Name: "a", Source: "foo", Type: sql.Int64, Nullable: true},
-			{Name: "b", Source: "bar", Type: sql.Int64},
+			{Name: "a", Source: "foo", Type: types.Int64, Nullable: true},
+			{Name: "b", Source: "bar", Type: types.Int64},
 		}, result)
 	})
 }
@@ -133,12 +133,12 @@ func TestInnerJoinEmpty(t *testing.T) {
 
 func BenchmarkInnerJoin(b *testing.B) {
 	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Int64},
+		{Name: "a", Source: "foo", Type: types.Int64},
 		{Name: "b", Source: "foo", Type: types.Text},
 	}), nil)
 
 	t2 := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "bar", Type: sql.Int64},
+		{Name: "a", Source: "bar", Type: types.Int64},
 		{Name: "b", Source: "bar", Type: types.Text},
 	}), nil)
 
@@ -151,15 +151,15 @@ func BenchmarkInnerJoin(b *testing.B) {
 		NewResolvedTable(t1, nil, nil),
 		NewResolvedTable(t2, nil, nil),
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Int64, "a", false),
-			expression.NewGetField(2, sql.Int64, "a", false),
+			expression.NewGetField(0, types.Int64, "a", false),
+			expression.NewGetField(2, types.Int64, "a", false),
 		),
 	)
 
 	n2 := NewFilter(
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Int64, "a", false),
-			expression.NewGetField(2, sql.Int64, "a", false),
+			expression.NewGetField(0, types.Int64, "a", false),
+			expression.NewGetField(2, types.Int64, "a", false),
 		),
 		NewCrossJoin(
 			NewResolvedTable(t1, nil, nil),
@@ -252,7 +252,7 @@ func TestLeftJoin(t *testing.T) {
 		expression.NewEquals(
 			expression.NewPlus(
 				expression.NewGetField(2, types.Text, "lcol3", false),
-				expression.NewLiteral(int32(2), sql.Int32),
+				expression.NewLiteral(int32(2), types.Int32),
 			),
 			expression.NewGetField(6, types.Text, "rcol3", false),
 		))

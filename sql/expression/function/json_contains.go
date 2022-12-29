@@ -105,7 +105,7 @@ func (j *JSONContains) String() string {
 }
 
 func (j *JSONContains) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 func (j *JSONContains) IsNullable() bool {

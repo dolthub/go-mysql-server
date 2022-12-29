@@ -54,6 +54,13 @@ const (
 	TimestampDatetimeLayout = "2006-01-02 15:04:05.999999"
 )
 
+const (
+	// False is the numeric representation of False as defined by MySQL.
+	False = int8(0)
+	// True is the numeric representation of True as defined by MySQL.
+	True = int8(1)
+)
+
 // Type represents a SQL type.
 type Type interface {
 	// Compare returns an integer comparing two values.
@@ -79,6 +86,16 @@ type Type interface {
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
+}
+
+// NumberType represents all integer and floating point types.
+// https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+// https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
+// The type of the returned value is one of the following: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64.
+type NumberType interface {
+	Type
+	IsSigned() bool
+	IsFloat() bool
 }
 
 // TimeType represents the TIME type.
@@ -140,41 +157,41 @@ type SystemVariableType interface {
 func ApproximateTypeFromValue(val interface{}) Type {
 	switch v := val.(type) {
 	case bool:
-		return Boolean
+		return types.Boolean
 	case int:
 		if strconv.IntSize == 32 {
-			return Int32
+			return types.Int32
 		}
-		return Int64
+		return types.Int64
 	case int64:
-		return Int64
+		return types.Int64
 	case int32:
-		return Int32
+		return types.Int32
 	case int16:
-		return Int16
+		return types.Int16
 	case int8:
-		return Int8
+		return types.Int8
 	case uint:
 		if strconv.IntSize == 32 {
-			return Uint32
+			return types.Uint32
 		}
-		return Uint64
+		return types.Uint64
 	case uint64:
-		return Uint64
+		return types.Uint64
 	case uint32:
-		return Uint32
+		return types.Uint32
 	case uint16:
-		return Uint16
+		return types.Uint16
 	case uint8:
-		return Uint8
+		return types.Uint8
 	case types.Timespan, time.Duration:
 		return types.Time
 	case time.Time:
 		return types.Datetime
 	case float32:
-		return Float32
+		return types.Float32
 	case float64:
-		return Float64
+		return types.Float64
 	case string:
 		typ, err := types.CreateString(sqltypes.VarChar, int64(len(v)), Collation_Default)
 		if err != nil {
@@ -197,11 +214,11 @@ func ApproximateTypeFromValue(val interface{}) Type {
 		str := v.String()
 		dotIdx := strings.Index(str, ".")
 		if len(str) > 66 {
-			return Float64
+			return types.Float64
 		} else if dotIdx == -1 {
 			typ, err := CreateDecimalType(uint8(len(str)), 0)
 			if err != nil {
-				return Float64
+				return types.Float64
 			}
 			return typ
 		} else {
@@ -209,13 +226,13 @@ func ApproximateTypeFromValue(val interface{}) Type {
 			scale := uint8(len(str) - dotIdx - 1)
 			typ, err := CreateDecimalType(precision, scale)
 			if err != nil {
-				return Float64
+				return types.Float64
 			}
 			return typ
 		}
 	case decimal.NullDecimal:
 		if !v.Valid {
-			return Float64
+			return types.Float64
 		}
 		return ApproximateTypeFromValue(v.Decimal)
 	case nil:
@@ -229,32 +246,32 @@ func ApproximateTypeFromValue(val interface{}) Type {
 func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	switch strings.ToLower(ct.Type) {
 	case "boolean", "bool":
-		return Int8, nil
+		return types.Int8, nil
 	case "tinyint":
 		if ct.Unsigned {
-			return Uint8, nil
+			return types.Uint8, nil
 		}
-		return Int8, nil
+		return types.Int8, nil
 	case "smallint":
 		if ct.Unsigned {
-			return Uint16, nil
+			return types.Uint16, nil
 		}
-		return Int16, nil
+		return types.Int16, nil
 	case "mediumint":
 		if ct.Unsigned {
-			return Uint24, nil
+			return types.Uint24, nil
 		}
-		return Int24, nil
+		return types.Int24, nil
 	case "int", "integer":
 		if ct.Unsigned {
-			return Uint32, nil
+			return types.Uint32, nil
 		}
-		return Int32, nil
+		return types.Int32, nil
 	case "bigint":
 		if ct.Unsigned {
-			return Uint64, nil
+			return types.Uint64, nil
 		}
-		return Int64, nil
+		return types.Int64, nil
 	case "float":
 		if ct.Length != nil {
 			precision, err := strconv.ParseInt(string(ct.Length.Val), 10, 8)
@@ -264,14 +281,14 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 			if precision > 53 || precision < 0 {
 				return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Valid range for precision is 0-24 or 25-53")
 			} else if precision > 24 {
-				return Float64, nil
+				return types.Float64, nil
 			} else {
-				return Float32, nil
+				return types.Float32, nil
 			}
 		}
-		return Float32, nil
+		return types.Float32, nil
 	case "double", "real", "double precision":
-		return Float64, nil
+		return types.Float64, nil
 	case "decimal", "fixed", "dec", "numeric":
 		precision := int64(0)
 		scale := int64(0)

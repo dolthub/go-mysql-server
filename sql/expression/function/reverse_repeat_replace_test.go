@@ -57,7 +57,7 @@ func TestReverse(t *testing.T) {
 func TestRepeat(t *testing.T) {
 	f := NewRepeat(
 		expression.NewGetField(0, types.LongText, "", false),
-		expression.NewGetField(1, sql.Int32, "", false),
+		expression.NewGetField(1, types.Int32, "", false),
 	)
 
 	testCases := []struct {

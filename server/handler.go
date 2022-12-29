@@ -197,7 +197,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			if err != nil {
 				return nil, err
 			}
-			t := sql.Int64
+			t := types.Int64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
@@ -208,7 +208,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			if err != nil {
 				return nil, err
 			}
-			t := sql.Uint64
+			t := types.Uint64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
@@ -219,7 +219,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			if err != nil {
 				return nil, err
 			}
-			t := sql.Float64
+			t := types.Float64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err

@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -41,7 +42,7 @@ func NewCountDistinct(exprs ...sql.Expression) *CountDistinct {
 
 // Type implements the Expression interface.
 func (a *CountDistinct) Type() sql.Type {
-	return sql.Int64
+	return types.Int64
 }
 
 // IsNullable implements the Expression interface.

@@ -34,15 +34,15 @@ func TestExchange(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetField(0, types.Text, "partition", false),
 			expression.NewArithmetic(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(1), types.Int64),
 				"+",
 			),
 		},
 		NewFilter(
 			expression.NewLessThan(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(4), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(4), types.Int64),
 			),
 			&partitionable{nil, 3, 6},
 		),
@@ -81,15 +81,15 @@ func TestExchangeCancelled(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetField(0, types.Text, "partition", false),
 			expression.NewArithmetic(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(1), types.Int64),
 				"+",
 			),
 		},
 		NewFilter(
 			expression.NewLessThan(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(4), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(4), types.Int64),
 			),
 			&partitionable{nil, 3, 2048},
 		),
@@ -180,7 +180,7 @@ func (p partitionable) PartitionRows(_ *sql.Context, part sql.Partition) (sql.Ro
 func (partitionable) Schema() sql.Schema {
 	return sql.Schema{
 		{Name: "partition", Type: types.Text, Source: "foo"},
-		{Name: "val", Type: sql.Int64, Source: "foo"},
+		{Name: "val", Type: types.Int64, Source: "foo"},
 	}
 }
 

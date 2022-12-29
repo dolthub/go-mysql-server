@@ -857,11 +857,11 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false)),
 			newMergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(1, types.Text, "mytable", "s", false)),
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
 				expression.NewGetFieldWithTable(1, types.Text, "mytable", "s", false)),
 		},
 		"othertable": {
@@ -883,18 +883,18 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 		},
 		"niltable": {
 			newMergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+				expression.NewGetFieldWithTable(0, types.Int64, "niltable", "i", false)),
 			newMergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(1, sql.Int64, "niltable", "i2", true)),
+				expression.NewGetFieldWithTable(1, types.Int64, "niltable", "i2", true)),
 		},
 		"one_pk": {
 			newMergableIndex(dbs, "one_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+				expression.NewGetFieldWithTable(0, types.Int8, "one_pk", "pk", false)),
 		},
 		"two_pk": {
 			newMergableIndex(dbs, "two_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
-				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+				expression.NewGetFieldWithTable(0, types.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, types.Int8, "two_pk", "pk2", false),
 			),
 		},
 	})

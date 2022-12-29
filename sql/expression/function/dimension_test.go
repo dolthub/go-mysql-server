@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -129,7 +130,7 @@ func TestDimension(t *testing.T) {
 
 	t.Run("null is null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewDimension(expression.NewLiteral(123, sql.Int64))
+		f := NewDimension(expression.NewLiteral(123, types.Int64))
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})

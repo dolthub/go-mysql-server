@@ -605,13 +605,13 @@ func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (uint64, error) {
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
-	cmp, err := sql.Uint64.Compare(insertVal, t.autoIncVal)
+	cmp, err := types.Uint64.Compare(insertVal, t.autoIncVal)
 	if err != nil {
 		return 0, err
 	}
 
 	if cmp > 0 && insertVal != nil {
-		v, err := sql.Uint64.Convert(insertVal)
+		v, err := types.Uint64.Convert(insertVal)
 		if err != nil {
 			return 0, err
 		}
@@ -684,7 +684,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 
 					if cmp > 0 {
 						var val interface{}
-						val, err = sql.Uint64.Convert(row[newColIdx])
+						val, err = types.Uint64.Convert(row[newColIdx])
 						if err != nil {
 							panic(err)
 						}

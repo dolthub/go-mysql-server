@@ -324,15 +324,15 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 
 		switch strings.ToLower(val) {
 		case sqlparser.KeywordString(sqlparser.ON):
-			return expression.NewLiteral(true, sql.Boolean), nil
+			return expression.NewLiteral(true, types.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.TRUE):
-			return expression.NewLiteral(true, sql.Boolean), nil
+			return expression.NewLiteral(true, types.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.OFF):
-			return expression.NewLiteral(false, sql.Boolean), nil
+			return expression.NewLiteral(false, types.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.FALSE):
-			return expression.NewLiteral(false, sql.Boolean), nil
+			return expression.NewLiteral(false, types.Boolean), nil
 		}
-	} else if e.Type() == sql.Boolean {
+	} else if e.Type() == types.Boolean {
 		val, err := e.Eval(ctx, nil)
 		if err != nil {
 			return nil, err
@@ -344,9 +344,9 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		}
 
 		if b {
-			return expression.NewLiteral(1, sql.Boolean), nil
+			return expression.NewLiteral(1, types.Boolean), nil
 		} else {
-			return expression.NewLiteral(0, sql.Boolean), nil
+			return expression.NewLiteral(0, types.Boolean), nil
 		}
 	}
 

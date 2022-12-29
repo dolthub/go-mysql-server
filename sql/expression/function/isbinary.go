@@ -81,7 +81,7 @@ func (ib *IsBinary) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 // Type implements the Expression interface.
 func (ib *IsBinary) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 const sniffLen = 8000

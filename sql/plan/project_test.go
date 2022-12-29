@@ -81,10 +81,10 @@ func BenchmarkProject(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		d := NewProject([]sql.Expression{
 			expression.NewGetField(0, types.Text, "strfield", true),
-			expression.NewGetField(1, sql.Float64, "floatfield", true),
-			expression.NewGetField(2, sql.Boolean, "boolfield", false),
-			expression.NewGetField(3, sql.Int32, "intfield", false),
-			expression.NewGetField(4, sql.Int64, "bigintfield", false),
+			expression.NewGetField(1, types.Float64, "floatfield", true),
+			expression.NewGetField(2, types.Boolean, "boolfield", false),
+			expression.NewGetField(3, types.Int32, "intfield", false),
+			expression.NewGetField(4, types.Int64, "bigintfield", false),
 			expression.NewGetField(5, types.Blob, "blobfield", false),
 		}, NewResolvedTable(benchtable, nil, nil))
 

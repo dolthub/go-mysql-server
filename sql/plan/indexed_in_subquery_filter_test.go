@@ -46,7 +46,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		),
 		plan.EmptyTable,
 		1,
-		expression.NewGetField(0, sql.Int32, "id", false),
+		expression.NewGetField(0, types.Int32, "id", false),
 		false),
 	)
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 			expression.NewGetField(1, types.Text, "t", true),
 		}, plan.NewResolvedTable(table, nil, nil)),
 		1,
-		expression.NewGetField(0, sql.Int32, "id", false),
+		expression.NewGetField(0, types.Int32, "id", false),
 		false),
 	)
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		),
 		plan.EmptyTable,
 		1,
-		expression.NewGetField(0, sql.Int32, "id", false),
+		expression.NewGetField(0, types.Int32, "id", false),
 		true),
 	)
 	require.Error(t, err)

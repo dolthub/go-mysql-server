@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,7 +65,7 @@ func and(left, right sql.Expression) sql.Expression {
 }
 
 func col(idx int, table, col string) sql.Expression {
-	return expression.NewGetFieldWithTable(idx, sql.Int64, table, col, false)
+	return expression.NewGetFieldWithTable(idx, types.Int64, table, col, false)
 }
 
 func eq(left, right sql.Expression) sql.Expression {
@@ -72,7 +73,7 @@ func eq(left, right sql.Expression) sql.Expression {
 }
 
 func lit(n int64) sql.Expression {
-	return expression.NewLiteral(n, sql.Int64)
+	return expression.NewLiteral(n, types.Int64)
 }
 
 func litT(n interface{}, t sql.Type) sql.Expression {
@@ -80,7 +81,7 @@ func litT(n interface{}, t sql.Type) sql.Expression {
 }
 
 func gf(idx int, table, name string) *expression.GetField {
-	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
+	return expression.NewGetFieldWithTable(idx, types.Int64, table, name, false)
 }
 
 func gfCol(idx int, col *sql.Column) *expression.GetField {

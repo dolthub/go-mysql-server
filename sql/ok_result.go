@@ -14,7 +14,11 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 // OkResult is a representation of the OK packet MySQL sends for non-select queries such as UPDATE, INSERT, etc. It
 // can be returned as the only element in the row for a Node that doesn't select anything.
@@ -29,7 +33,7 @@ type OkResult struct {
 const OkResultColumnName = "__ok_result__"
 
 // OkResultColumnType should be used as the schema column type for Nodes that return an OkResult
-var OkResultColumnType = Int64
+var OkResultColumnType = types.Int64
 
 // OkResultSchema should be used as the schema of Nodes that return an OkResult
 var OkResultSchema = Schema{

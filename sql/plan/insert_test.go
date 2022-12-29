@@ -38,7 +38,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 	}{
 		{
 			name:      "inserting a string into a integer defaults to a 0",
-			colType:   sql.Int64,
+			colType:   types.Int64,
 			value:     "dadasd",
 			valueType: types.Text,
 			expected:  int64(0),
@@ -59,9 +59,9 @@ func TestInsertIgnoreConversions(t *testing.T) {
 		},
 		{
 			name:      "inserting a negative into an unsigned int results in 0",
-			colType:   sql.Uint64,
+			colType:   types.Uint64,
 			value:     -1,
-			valueType: sql.Int8,
+			valueType: types.Int8,
 			expected:  uint64(0),
 		},
 	}

@@ -42,8 +42,8 @@ func TestPlus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewPlus(
-				NewLiteral(tt.left, sql.Float64),
-				NewLiteral(tt.right, sql.Float64),
+				NewLiteral(tt.left, types.Float64),
+				NewLiteral(tt.right, types.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			r, ok := result.(decimal.Decimal)
@@ -53,7 +53,7 @@ func TestPlus(t *testing.T) {
 	}
 
 	require := require.New(t)
-	result, err := NewPlus(NewLiteral("2", types.LongText), NewLiteral(3, sql.Float64)).
+	result, err := NewPlus(NewLiteral("2", types.LongText), NewLiteral(3, types.Float64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
 	require.Equal(5.0, result)
@@ -65,7 +65,7 @@ func TestPlusInterval(t *testing.T) {
 	expected := time.Date(2018, time.May, 2, 0, 0, 0, 0, time.UTC)
 	op := NewPlus(
 		NewLiteral("2018-05-01", types.LongText),
-		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
+		NewInterval(NewLiteral(int64(1), types.Int64), "DAY"),
 	)
 
 	result, err := op.Eval(sql.NewEmptyContext(), nil)
@@ -73,7 +73,7 @@ func TestPlusInterval(t *testing.T) {
 	require.Equal(expected, result)
 
 	op = NewPlus(
-		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
+		NewInterval(NewLiteral(int64(1), types.Int64), "DAY"),
 		NewLiteral("2018-05-01", types.LongText),
 	)
 
@@ -98,8 +98,8 @@ func TestMinus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewMinus(
-				NewLiteral(tt.left, sql.Float64),
-				NewLiteral(tt.right, sql.Float64),
+				NewLiteral(tt.left, types.Float64),
+				NewLiteral(tt.right, types.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			r, ok := result.(decimal.Decimal)
@@ -109,7 +109,7 @@ func TestMinus(t *testing.T) {
 	}
 
 	require := require.New(t)
-	result, err := NewMinus(NewLiteral("10", types.LongText), NewLiteral(10, sql.Int64)).
+	result, err := NewMinus(NewLiteral("10", types.LongText), NewLiteral(10, types.Int64)).
 		Eval(sql.NewEmptyContext(), sql.NewRow())
 	require.NoError(err)
 	require.Equal(0.0, result)
@@ -121,7 +121,7 @@ func TestMinusInterval(t *testing.T) {
 	expected := time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)
 	op := NewMinus(
 		NewLiteral("2018-05-02", types.LongText),
-		NewInterval(NewLiteral(int64(1), sql.Int64), "DAY"),
+		NewInterval(NewLiteral(int64(1), types.Int64), "DAY"),
 	)
 
 	result, err := op.Eval(sql.NewEmptyContext(), nil)
@@ -145,8 +145,8 @@ func TestMult(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewMult(
-				NewLiteral(tt.left, sql.Float64),
-				NewLiteral(tt.right, sql.Float64),
+				NewLiteral(tt.left, types.Float64),
+				NewLiteral(tt.right, types.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			r, ok := result.(decimal.Decimal)
@@ -185,8 +185,8 @@ func TestMod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewMod(
-				NewLiteral(tt.left, sql.Int64),
-				NewLiteral(tt.right, sql.Int64),
+				NewLiteral(tt.left, types.Int64),
+				NewLiteral(tt.right, types.Int64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			if tt.null {
@@ -216,7 +216,7 @@ func TestAllFloat64(t *testing.T) {
 	}
 
 	// ((((0 + 1) - (-8)) / 3) * 4) % 11 == 1
-	lval := NewLiteral(float64(0.0), sql.Float64)
+	lval := NewLiteral(float64(0.0), types.Float64)
 	for _, tt := range testCases {
 		t.Run(tt.op, func(t *testing.T) {
 			require := require.New(t)
@@ -224,15 +224,15 @@ func TestAllFloat64(t *testing.T) {
 			var err error
 			if tt.op == "/" {
 				result, err = NewDiv(lval,
-					NewLiteral(tt.value, sql.Float64),
+					NewLiteral(tt.value, types.Float64),
 				).Eval(sql.NewEmptyContext(), sql.NewRow())
 			} else if tt.op == "%" {
 				result, err = NewMod(lval,
-					NewLiteral(tt.value, sql.Float64),
+					NewLiteral(tt.value, types.Float64),
 				).Eval(sql.NewEmptyContext(), sql.NewRow())
 			} else {
 				result, err = NewArithmetic(lval,
-					NewLiteral(tt.value, sql.Float64), tt.op,
+					NewLiteral(tt.value, types.Float64), tt.op,
 				).Eval(sql.NewEmptyContext(), sql.NewRow())
 			}
 			require.NoError(err)
@@ -242,7 +242,7 @@ func TestAllFloat64(t *testing.T) {
 				assert.Equal(t, tt.expected, result)
 			}
 
-			lval = NewLiteral(result, sql.Float64)
+			lval = NewLiteral(result, types.Float64)
 		})
 	}
 }
@@ -254,12 +254,12 @@ func TestUnaryMinus(t *testing.T) {
 		typ      sql.Type
 		expected interface{}
 	}{
-		{"int32", int32(1), sql.Int32, int32(-1)},
-		{"uint32", uint32(1), sql.Uint32, int32(-1)},
-		{"int64", int64(1), sql.Int64, int64(-1)},
-		{"uint64", uint64(1), sql.Uint64, int64(-1)},
-		{"float32", float32(1), sql.Float32, float32(-1)},
-		{"float64", float64(1), sql.Float64, float64(-1)},
+		{"int32", int32(1), types.Int32, int32(-1)},
+		{"uint32", uint32(1), types.Uint32, int32(-1)},
+		{"int64", int64(1), types.Int64, int64(-1)},
+		{"uint64", uint64(1), types.Uint64, int64(-1)},
+		{"float32", float32(1), types.Float32, float32(-1)},
+		{"float64", float64(1), types.Float64, float64(-1)},
 		{"int text", "1", types.LongText, "-1"},
 		{"float text", "1.2", types.LongText, "-1.2"},
 		{"nil", nil, types.LongText, nil},

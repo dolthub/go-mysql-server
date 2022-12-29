@@ -34,8 +34,8 @@ func TestShowCreateTable(t *testing.T) {
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
-		&sql.Column{Name: "z`ab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
-		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "z`ab", Type: types.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "bza", Type: types.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Uint64, true), Nullable: true, Comment: "hello"},
 		&sql.Column{Name: "foo", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
@@ -79,10 +79,10 @@ func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false},
-		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "bza", Type: types.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Uint64, true), Nullable: true, Comment: "hello"},
 		&sql.Column{Name: "foo", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
-		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true},
+		&sql.Column{Name: "zab", Type: types.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema)
 	table := memory.NewTable("test_table", pkSchema, nil)
@@ -117,10 +117,10 @@ func TestShowCreateTableWithPrimaryKey(t *testing.T) {
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
-		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "bza", Type: types.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Uint64, true), Nullable: true, Comment: "hello"},
 		&sql.Column{Name: "foo", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
-		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "zab", Type: types.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true, PrimaryKey: true},
 	}
 	pkSchema := sql.NewPrimaryKeySchema(schema, 4, 0)
 	table := memory.NewTable("test-table", pkSchema, nil)
@@ -156,8 +156,8 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 
 	schema := sql.Schema{
 		&sql.Column{Name: "baz", Source: "test-table", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
-		&sql.Column{Name: "zab", Source: "test-table", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
-		&sql.Column{Name: "bza", Source: "test-table", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "zab", Source: "test-table", Type: types.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "bza", Source: "test-table", Type: types.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Uint64, true), Nullable: true, Comment: "hello"},
 		&sql.Column{Name: "foo", Source: "test-table", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Source: "test-table", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}
@@ -210,7 +210,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			table: "test-table",
 			id:    "`qux`",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(3, sql.Int64, "test-table", "foo", true),
+				expression.NewGetFieldWithTable(3, types.Int64, "test-table", "foo", true),
 			},
 			unique: true,
 		},
@@ -219,8 +219,8 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			table: "test-table",
 			id:    "zug",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(4, sql.Int64, "test-table", "pok", true),
-				expression.NewGetFieldWithTable(3, sql.Int64, "test-table", "foo", true),
+				expression.NewGetFieldWithTable(4, types.Int64, "test-table", "pok", true),
+				expression.NewGetFieldWithTable(3, types.Int64, "test-table", "foo", true),
 			},
 			comment: "test comment",
 		},
@@ -229,7 +229,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	showCreateTable.(*ShowCreateTable).Checks = sql.CheckConstraints{
 		{
 			Name:     "mycheck",
-			Expr:     expression.NewGreaterThan(expression.NewUnresolvedColumn("`zab`"), expression.NewLiteral(int8(0), sql.Int8)),
+			Expr:     expression.NewGreaterThan(expression.NewUnresolvedColumn("`zab`"), expression.NewLiteral(int8(0), types.Int8)),
 			Enforced: true,
 		},
 	}
@@ -266,8 +266,8 @@ func TestShowCreateView(t *testing.T) {
 
 	table := memory.NewTable("test-table", sql.NewPrimaryKeySchema(sql.Schema{
 		&sql.Column{Name: "baz", Type: types.Text, Default: nil, Nullable: false, PrimaryKey: true},
-		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
-		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "zab", Type: types.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "bza", Type: types.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", types.Uint64, true), Nullable: true, Comment: "hello"},
 		&sql.Column{Name: "foo", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 		&sql.Column{Name: "pok", Type: types.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 	}), nil)

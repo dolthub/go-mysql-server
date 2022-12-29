@@ -3080,11 +3080,11 @@ func getInt64Literal(ctx *sql.Context, expr sqlparser.Expr, errStr string) (*exp
 	if !ok || !types.IsInteger(nl.Type()) {
 		return nil, sql.ErrUnsupportedFeature.New(errStr)
 	} else {
-		i64, err := sql.Int64.Convert(nl.Value())
+		i64, err := types.Int64.Convert(nl.Value())
 		if err != nil {
 			return nil, sql.ErrUnsupportedFeature.New(errStr)
 		}
-		return expression.NewLiteral(i64, sql.Int64), nil
+		return expression.NewLiteral(i64, types.Int64), nil
 	}
 
 	return nl, nil
@@ -3167,7 +3167,7 @@ func selectToSelectionNode(
 		for i, ge := range groupingExprs {
 			// if GROUP BY index
 			if l, ok := ge.(*expression.Literal); ok && types.IsNumber(l.Type()) {
-				if i64, err := sql.Int64.Convert(l.Value()); err == nil {
+				if i64, err := types.Int64.Convert(l.Value()); err == nil {
 					if idx, ok := i64.(int64); ok && idx > 0 && idx <= agglen {
 						aggexpr := selectExprs[idx-1]
 						if alias, ok := aggexpr.(*expression.Alias); ok {
@@ -3335,7 +3335,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	case *sqlparser.SQLVal:
 		return convertVal(ctx, v)
 	case sqlparser.BoolVal:
-		return expression.NewLiteral(bool(v), sql.Boolean), nil
+		return expression.NewLiteral(bool(v), types.Boolean), nil
 	case *sqlparser.NullVal:
 		return expression.NewLiteral(nil, sql.Null), nil
 	case *sqlparser.ColName:
@@ -3600,25 +3600,25 @@ func isAggregateFunc(v *sqlparser.FuncExpr) bool {
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
 func convertInt(value string, base int) (sql.Expression, error) {
 	if i8, err := strconv.ParseInt(value, base, 8); err == nil {
-		return expression.NewLiteral(int8(i8), sql.Int8), nil
+		return expression.NewLiteral(int8(i8), types.Int8), nil
 	}
 	if ui8, err := strconv.ParseUint(value, base, 8); err == nil {
-		return expression.NewLiteral(uint8(ui8), sql.Uint8), nil
+		return expression.NewLiteral(uint8(ui8), types.Uint8), nil
 	}
 	if i16, err := strconv.ParseInt(value, base, 16); err == nil {
-		return expression.NewLiteral(int16(i16), sql.Int16), nil
+		return expression.NewLiteral(int16(i16), types.Int16), nil
 	}
 	if ui16, err := strconv.ParseUint(value, base, 16); err == nil {
-		return expression.NewLiteral(uint16(ui16), sql.Uint16), nil
+		return expression.NewLiteral(uint16(ui16), types.Uint16), nil
 	}
 	if i32, err := strconv.ParseInt(value, base, 32); err == nil {
-		return expression.NewLiteral(int32(i32), sql.Int32), nil
+		return expression.NewLiteral(int32(i32), types.Int32), nil
 	}
 	if ui32, err := strconv.ParseUint(value, base, 32); err == nil {
-		return expression.NewLiteral(uint32(ui32), sql.Uint32), nil
+		return expression.NewLiteral(uint32(ui32), types.Uint32), nil
 	}
 	if i64, err := strconv.ParseInt(value, base, 64); err == nil {
-		return expression.NewLiteral(int64(i64), sql.Int64), nil
+		return expression.NewLiteral(int64(i64), types.Int64), nil
 	}
 
 	ui64, err := strconv.ParseUint(value, base, 64)
@@ -3626,7 +3626,7 @@ func convertInt(value string, base int) (sql.Expression, error) {
 		return nil, err
 	}
 
-	return expression.NewLiteral(uint64(ui64), sql.Uint64), nil
+	return expression.NewLiteral(uint64(ui64), types.Uint64), nil
 }
 
 func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
@@ -3659,7 +3659,7 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 			}
 		}
 
-		return expression.NewLiteral(val, sql.Float64), nil
+		return expression.NewLiteral(val, types.Float64), nil
 	case sqlparser.HexNum:
 		//TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
@@ -3687,7 +3687,7 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":")), nil
 	case sqlparser.BitVal:
 		if len(v.Val) == 0 {
-			return expression.NewLiteral(0, sql.Uint64), nil
+			return expression.NewLiteral(0, types.Uint64), nil
 		}
 
 		res, err := strconv.ParseUint(string(v.Val), 2, 64)
@@ -3695,7 +3695,7 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 			return nil, err
 		}
 
-		return expression.NewLiteral(res, sql.Uint64), nil
+		return expression.NewLiteral(res, types.Uint64), nil
 	}
 
 	return nil, sql.ErrInvalidSQLValType.New(v.Type)
@@ -4071,11 +4071,11 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Exp
 				continue
 			case "'read write'":
 				varToSet := expression.NewSystemVar("transaction_read_only", scope)
-				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(false, sql.Boolean))
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(false, types.Boolean))
 				continue
 			case "'read only'":
 				varToSet := expression.NewSystemVar("transaction_read_only", scope)
-				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(true, sql.Boolean))
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(true, types.Boolean))
 				continue
 			}
 		}

@@ -386,7 +386,7 @@ func (ut *UnixTimestamp) IsNullable() bool {
 }
 
 func (ut *UnixTimestamp) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -418,7 +418,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 func toUnixTimestamp(t time.Time) (interface{}, error) {
-	return sql.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
+	return types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
 }
 
 func (ut *UnixTimestamp) String() string {
@@ -455,7 +455,7 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	n, err := sql.Int64.Convert(val)
+	n, err := types.Int64.Convert(val)
 	if err != nil {
 		return nil, err
 	}

@@ -48,8 +48,8 @@ func TestCreateIndexAsync(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex("idx", NewResolvedTable(table, nil, nil), exprs, "mock", map[string]string{
@@ -72,8 +72,8 @@ func TestCreateIndexAsync(t *testing.T) {
 	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
 	require.Equal(&mockIndex{db: "foo", table: "foo", id: "idx", exprs: []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}}, idx)
 
 	found := false
@@ -156,8 +156,8 @@ func TestCreateIndexSync(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex(
@@ -180,8 +180,8 @@ func TestCreateIndexSync(t *testing.T) {
 	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
 	require.Equal(&mockIndex{db: "foo", table: "foo", id: "idx", exprs: []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}}, idx)
 
 	found := false
@@ -215,8 +215,8 @@ func TestCreateIndexChecksum(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex(
@@ -261,8 +261,8 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex(
@@ -285,8 +285,8 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
 	foo := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "one", Source: "foo", Type: sql.Int64},
-		{Name: "two", Source: "foo", Type: sql.Int64},
+		{Name: "one", Source: "foo", Type: types.Int64},
+		{Name: "two", Source: "foo", Type: types.Int64},
 	}), nil, 2)
 
 	rows := [][2]int64{
@@ -301,8 +301,8 @@ func TestCreateIndexWithIter(t *testing.T) {
 	}
 
 	exprs := []sql.Expression{expression.NewPlus(
-		expression.NewGetField(0, sql.Int64, "one", false),
-		expression.NewGetField(0, sql.Int64, "two", false)),
+		expression.NewGetField(0, types.Int64, "one", false),
+		expression.NewGetField(0, types.Int64, "two", false)),
 	}
 
 	driver := new(mockDriver)

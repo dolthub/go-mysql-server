@@ -28,11 +28,11 @@ import (
 var (
 	externalSPSchemaInt = sql.Schema{&sql.Column{
 		Name: "a",
-		Type: sql.Int64,
+		Type: types.Int64,
 	}}
 	externalSPSchemaUint = sql.Schema{&sql.Column{
 		Name: "a",
-		Type: sql.Uint64,
+		Type: types.Uint64,
 	}}
 	externalSPSchemaText = sql.Schema{&sql.Column{
 		Name: "a",

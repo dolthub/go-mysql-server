@@ -37,7 +37,7 @@ func TestSet(t *testing.T) {
 	s := NewSet(
 		[]sql.Expression{
 			expression.NewSetField(expression.NewUserVar("foo"), expression.NewLiteral("bar", types.LongText)),
-			expression.NewSetField(expression.NewUserVar("baz"), expression.NewLiteral(int64(1), sql.Int64)),
+			expression.NewSetField(expression.NewUserVar("baz"), expression.NewLiteral(int64(1), types.Int64)),
 		},
 	)
 
@@ -51,7 +51,7 @@ func TestSet(t *testing.T) {
 
 	typ, v, err = ctx.GetUserVariable(ctx, "baz")
 	require.NoError(err)
-	require.Equal(sql.Int64, typ)
+	require.Equal(types.Int64, typ)
 	require.Equal(int64(1), v)
 }
 
@@ -88,7 +88,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 			sqlCtx, globals := newPersistedSqlContext()
 			s := NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar(test.name, test.scope), expression.NewLiteral(int64(test.value), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar(test.name, test.scope), expression.NewLiteral(int64(test.value), types.Int64)),
 				},
 			)
 

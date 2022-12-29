@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +30,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder := NewIndexBuilder(testIndex{1})
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{AllRangeColumnExpr(Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{AllRangeColumnExpr(types.Int8)}}, ranges)
 	})
 
 	t.Run("IsNull=[NULL,NULL]", func(t *testing.T) {
@@ -37,7 +38,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.IsNull(ctx, "column_0")
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{NullRangeColumnExpr(Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{NullRangeColumnExpr(types.Int8)}}, ranges)
 	})
 
 	t.Run("IsNull,Equals2=EmptyRange", func(t *testing.T) {
@@ -46,7 +47,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.Equals(ctx, "column_0", 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(types.Int8)}}, ranges)
 	})
 
 	t.Run("NotEquals2=(NULL,2),(2,Inf)", func(t *testing.T) {
@@ -54,7 +55,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.NotEquals(ctx, "column_0", 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{GreaterThanRangeColumnExpr(2, Int8)}, Range{LessThanRangeColumnExpr(2, Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{GreaterThanRangeColumnExpr(2, types.Int8)}, Range{LessThanRangeColumnExpr(2, types.Int8)}}, ranges)
 	})
 
 	t.Run("NotEquals2,Equals2=(Inf,Inf)", func(t *testing.T) {
@@ -63,7 +64,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.Equals(ctx, "column_0", 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(types.Int8)}}, ranges)
 	})
 
 	t.Run("Equals2,NotEquals2=(Inf,Inf)", func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.NotEquals(ctx, "column_0", 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(types.Int8)}}, ranges)
 	})
 
 	t.Run("LT4=(NULL,4)", func(t *testing.T) {
@@ -80,7 +81,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.LessThan(ctx, "column_0", 4)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{LessThanRangeColumnExpr(4, Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{LessThanRangeColumnExpr(4, types.Int8)}}, ranges)
 	})
 
 	t.Run("GT2,LT4=(2,4)", func(t *testing.T) {
@@ -89,7 +90,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.LessThan(ctx, "column_0", 4)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{OpenRangeColumnExpr(2, 4, Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{OpenRangeColumnExpr(2, 4, types.Int8)}}, ranges)
 	})
 
 	t.Run("GT2,GT6=(4,Inf)", func(t *testing.T) {
@@ -98,7 +99,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.GreaterThan(ctx, "column_0", 6)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{GreaterThanRangeColumnExpr(6, Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{GreaterThanRangeColumnExpr(6, types.Int8)}}, ranges)
 	})
 
 	t.Run("GT2,LT4,GT6=(Inf,Inf)", func(t *testing.T) {
@@ -108,7 +109,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.GreaterThan(ctx, "column_0", 6)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{EmptyRangeColumnExpr(types.Int8)}}, ranges)
 	})
 
 	t.Run("NotEqual2,NotEquals4=(2,4),(4,Inf),(NULL,2)", func(t *testing.T) {
@@ -117,7 +118,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 		builder = builder.NotEquals(ctx, "column_0", 4)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
-		assert.Equal(t, RangeCollection{Range{OpenRangeColumnExpr(2, 4, Int8)}, Range{GreaterThanRangeColumnExpr(4, Int8)}, Range{LessThanRangeColumnExpr(2, Int8)}}, ranges)
+		assert.Equal(t, RangeCollection{Range{OpenRangeColumnExpr(2, 4, types.Int8)}, Range{GreaterThanRangeColumnExpr(4, types.Int8)}, Range{LessThanRangeColumnExpr(2, types.Int8)}}, ranges)
 	})
 
 	t.Run("ThreeColumnCombine", func(t *testing.T) {
@@ -144,10 +145,10 @@ func TestIndexBuilderRanges(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, combined)
 			assert.Equal(t, RangeCollection{
-				Range{LessThanRangeColumnExpr(1, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-				Range{ClosedRangeColumnExpr(1, 47, Int8), AllRangeColumnExpr(Int8), AllRangeColumnExpr(Int8)},
-				Range{OpenRangeColumnExpr(47, 99, Int8), LessThanRangeColumnExpr(30, Int8), AllRangeColumnExpr(Int8)},
-				Range{GreaterOrEqualRangeColumnExpr(99, Int8), LessThanRangeColumnExpr(66, Int8), AllRangeColumnExpr(Int8)},
+				Range{LessThanRangeColumnExpr(1, types.Int8), LessThanRangeColumnExpr(30, types.Int8), AllRangeColumnExpr(types.Int8)},
+				Range{ClosedRangeColumnExpr(1, 47, types.Int8), AllRangeColumnExpr(types.Int8), AllRangeColumnExpr(types.Int8)},
+				Range{OpenRangeColumnExpr(47, 99, types.Int8), LessThanRangeColumnExpr(30, types.Int8), AllRangeColumnExpr(types.Int8)},
+				Range{GreaterOrEqualRangeColumnExpr(99, types.Int8), LessThanRangeColumnExpr(66, types.Int8), AllRangeColumnExpr(types.Int8)},
 			}, combined)
 		}
 	})
@@ -201,7 +202,7 @@ func (i testIndex) ColumnExpressionTypes() []ColumnExpressionType {
 	es := i.Expressions()
 	res := make([]ColumnExpressionType, len(es))
 	for i := range es {
-		res[i] = ColumnExpressionType{Expression: es[i], Type: Int8}
+		res[i] = ColumnExpressionType{Expression: es[i], Type: types.Int8}
 	}
 	return res
 }

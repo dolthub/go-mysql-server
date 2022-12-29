@@ -35,17 +35,17 @@ func TestGreatest(t *testing.T) {
 			"null",
 			[]sql.Expression{
 				expression.NewLiteral(nil, sql.Null),
-				expression.NewLiteral(5, sql.Int64),
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(5, types.Int64),
+				expression.NewLiteral(1, types.Int64),
 			},
 			nil,
 		},
 		{
 			"negative and all ints",
 			[]sql.Expression{
-				expression.NewLiteral(int64(-1), sql.Int64),
-				expression.NewLiteral(int64(5), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(-1), types.Int64),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			},
 			int64(5),
 		},
@@ -53,8 +53,8 @@ func TestGreatest(t *testing.T) {
 			"string mixed",
 			[]sql.Expression{
 				expression.NewLiteral(string("9"), types.LongText),
-				expression.NewLiteral(int64(5), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			},
 			float64(9),
 		},
@@ -62,18 +62,18 @@ func TestGreatest(t *testing.T) {
 			"unconvertible string mixed ignored",
 			[]sql.Expression{
 				expression.NewLiteral(string("10.5"), types.LongText),
-				expression.NewLiteral(string("foobar"), sql.Int64),
-				expression.NewLiteral(int64(5), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(string("foobar"), types.Int64),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			},
 			float64(10.5),
 		},
 		{
 			"float mixed",
 			[]sql.Expression{
-				expression.NewLiteral(float64(10.0), sql.Float64),
-				expression.NewLiteral(int(5), sql.Int64),
-				expression.NewLiteral(int(1), sql.Int64),
+				expression.NewLiteral(float64(10.0), types.Float64),
+				expression.NewLiteral(int(5), types.Int64),
+				expression.NewLiteral(int(1), types.Int64),
 			},
 			float64(10.0),
 		},
@@ -108,7 +108,7 @@ func TestGreatest(t *testing.T) {
 		{
 			"nulls of a non-null type, signed",
 			[]sql.Expression{
-				expression.NewConvert(expression.NewLiteral(3.14159265359, sql.Float64), expression.ConvertToSigned),
+				expression.NewConvert(expression.NewLiteral(3.14159265359, types.Float64), expression.ConvertToSigned),
 				expression.NewConvert(expression.NewLiteral(nil, sql.Null), expression.ConvertToSigned),
 			},
 			nil,
@@ -140,13 +140,13 @@ func TestGreatestUnsignedOverflow(t *testing.T) {
 
 	switch unsafe.Sizeof(x) {
 	case 4:
-		gr, err = NewGreatest(expression.NewLiteral(int32(1), sql.Int32),
-			expression.NewLiteral(uint32(4294967295), sql.Uint32),
+		gr, err = NewGreatest(expression.NewLiteral(int32(1), types.Int32),
+			expression.NewLiteral(uint32(4294967295), types.Uint32),
 		)
 		require.NoError(err)
 	case 8:
-		gr, err = NewGreatest(expression.NewLiteral(int64(1), sql.Int64),
-			expression.NewLiteral(uint64(18446744073709551615), sql.Uint64),
+		gr, err = NewGreatest(expression.NewLiteral(int64(1), types.Int64),
+			expression.NewLiteral(uint64(18446744073709551615), types.Uint64),
 		)
 		require.NoError(err)
 	default:
@@ -168,17 +168,17 @@ func TestLeast(t *testing.T) {
 			"null",
 			[]sql.Expression{
 				expression.NewLiteral(nil, sql.Null),
-				expression.NewLiteral(5, sql.Int64),
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(5, types.Int64),
+				expression.NewLiteral(1, types.Int64),
 			},
 			nil,
 		},
 		{
 			"negative and all ints",
 			[]sql.Expression{
-				expression.NewLiteral(int64(-1), sql.Int64),
-				expression.NewLiteral(int64(5), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(-1), types.Int64),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			},
 			int64(-1),
 		},
@@ -186,8 +186,8 @@ func TestLeast(t *testing.T) {
 			"string mixed",
 			[]sql.Expression{
 				expression.NewLiteral(string("10"), types.LongText),
-				expression.NewLiteral(int64(5), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			},
 			float64(1),
 		},
@@ -195,18 +195,18 @@ func TestLeast(t *testing.T) {
 			"unconvertible string mixed ignored",
 			[]sql.Expression{
 				expression.NewLiteral(string("10.5"), types.LongText),
-				expression.NewLiteral(string("foobar"), sql.Int64),
-				expression.NewLiteral(int64(5), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(string("foobar"), types.Int64),
+				expression.NewLiteral(int64(5), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			},
 			float64(1),
 		},
 		{
 			"float mixed",
 			[]sql.Expression{
-				expression.NewLiteral(float64(10.0), sql.Float64),
-				expression.NewLiteral(int(5), sql.Int64),
-				expression.NewLiteral(int(1), sql.Int64),
+				expression.NewLiteral(float64(10.0), types.Float64),
+				expression.NewLiteral(int(5), types.Int64),
+				expression.NewLiteral(int(1), types.Int64),
 			},
 			float64(1.0),
 		},
