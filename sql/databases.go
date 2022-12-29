@@ -243,3 +243,34 @@ type StoredProcedureDatabase interface {
 	DropStoredProcedure(ctx *Context, name string) error
 }
 
+// DatabaseProvider is a collection of Database.
+type DatabaseProvider interface {
+	// Database gets a Database from the provider.
+	Database(ctx *Context, name string) (Database, error)
+
+	// HasDatabase checks if the Database exists in the provider.
+	HasDatabase(ctx *Context, name string) bool
+
+	// AllDatabases returns a slice of all Databases in the provider.
+	AllDatabases(ctx *Context) []Database
+}
+
+// MutableDatabaseProvider is a DatabaseProvider that can create and drop databases.
+type MutableDatabaseProvider interface {
+	DatabaseProvider
+
+	// CreateDatabase creates a database and adds it to the provider's collection.
+	CreateDatabase(ctx *Context, name string) error
+
+	// DropDatabase removes a database from the provider's collection.
+	DropDatabase(ctx *Context, name string) error
+}
+
+// CollatedDatabaseProvider is a DatabaseProvider that can create a Database with a specific collation.
+type CollatedDatabaseProvider interface {
+	MutableDatabaseProvider
+
+	// CreateCollatedDatabase creates a collated database and adds it to the provider's collection.
+	CreateCollatedDatabase(ctx *Context, name string, collation CollationID) error
+}
+
