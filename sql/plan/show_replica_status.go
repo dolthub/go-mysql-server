@@ -128,7 +128,7 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		status.SourceHost,            // Source_Host
 		status.SourceUser,            // Source_User
 		status.SourcePort,            // Source_Port
-		-1,                           // Connect_Retry // TODO: default to 60s
+		status.ConnectRetry,          // Connect_Retry
 		"INVALID",                    // Source_Log_File
 		0,                            // Read_Source_Log_Pos
 		nil,                          // Relay_Log_File
@@ -147,7 +147,7 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		nil,                          // Skip_Counter
 		0,                            // Exec_Source_Log_Pos
 		nil,                          // Relay_Log_Space
-		"None",                       //Until_Condition
+		"None",                       // Until_Condition
 		nil,                          // Until_Log_File
 		nil,                          // Until_Log_Pos
 		"Ignored",                    // Source_SSL_Allowed
@@ -171,7 +171,7 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		0,                            // SQL_Delay
 		0,                            // SQL_Remaining_Delay
 		nil,                          // Replica_SQL_Running_State
-		0,                            // Source_Retry_Count
+		status.SourceRetryCount,      // Source_Retry_Count
 		nil,                          // Source_Bind
 		status.LastSqlErrorTimestamp, // Last_IO_Error_Timestamp
 		status.LastIoErrorTimestamp,  // Last_SQL_Error_Timestamp

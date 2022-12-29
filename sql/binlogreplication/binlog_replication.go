@@ -52,6 +52,8 @@ type ReplicaStatus struct {
 	SourceHost            string
 	SourceUser            string
 	SourcePort            uint
+	ConnectRetry          uint
+	SourceRetryCount      uint
 	ReplicaIoRunning      string
 	ReplicaSqlRunning     string
 	LastSqlErrNumber      string // Alias for LastErrNumber
