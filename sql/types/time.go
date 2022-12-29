@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	Time sql.TimeType = TimespanType_{}
+	Time TimeType = TimespanType_{}
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
@@ -43,6 +43,27 @@ var (
 
 	timeValueType = reflect.TypeOf(Timespan(0))
 )
+
+// TimeType represents the TIME type.
+// https://dev.mysql.com/doc/refman/8.0/en/time.html
+// TIME is implemented as TIME(6).
+// The type of the returned value is Timespan.
+// TODO: implement parameters on the TIME type
+type TimeType interface {
+	sql.Type
+	// ConvertToTimespan returns a Timespan from the given interface. Follows the same conversion rules as
+	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
+	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
+	ConvertToTimespan(v interface{}) (Timespan, error)
+	// ConvertToTimeDuration returns a time.Duration from the given interface. Follows the same conversion rules as
+	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
+	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
+	ConvertToTimeDuration(v interface{}) (time.Duration, error)
+	// MicrosecondsToTimespan returns a Timespan from the given number of microseconds. This differs from Convert(), as
+	// that will process the value based on its base-10 visual representation (for example, Convert() will interpret
+	// the value `1234` as 12 minutes and 34 seconds). This clamps the given microseconds to the allowed range.
+	MicrosecondsToTimespan(v int64) Timespan
+}
 
 type TimespanType_ struct{}
 

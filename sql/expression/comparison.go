@@ -114,7 +114,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	if compareType != nil {
 		_, isEnum := compareType.(sql.EnumType)
 		_, isSet := compareType.(sql.SetType)
-		_, isTime := compareType.(sql.TimeType)
+		_, isTime := compareType.(types.TimeType)
 		if !isEnum && !isSet && !isTime {
 			compareType = nil
 		}

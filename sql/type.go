@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -116,27 +115,6 @@ type DatetimeType interface {
 	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	MaximumTime() time.Time
 	MinimumTime() time.Time
-}
-
-// TimeType represents the TIME type.
-// https://dev.mysql.com/doc/refman/8.0/en/time.html
-// TIME is implemented as TIME(6).
-// The type of the returned value is Timespan.
-// TODO: implement parameters on the TIME type
-type TimeType interface {
-	Type
-	// ConvertToTimespan returns a Timespan from the given interface. Follows the same conversion rules as
-	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
-	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
-	ConvertToTimespan(v interface{}) (types.Timespan, error)
-	// ConvertToTimeDuration returns a time.Duration from the given interface. Follows the same conversion rules as
-	// Convert(), in that this will process the value based on its base-10 visual representation (for example, Convert()
-	// will interpret the value `1234` as 12 minutes and 34 seconds). Returns an error for nil values.
-	ConvertToTimeDuration(v interface{}) (time.Duration, error)
-	// MicrosecondsToTimespan returns a Timespan from the given number of microseconds. This differs from Convert(), as
-	// that will process the value based on its base-10 visual representation (for example, Convert() will interpret
-	// the value `1234` as 12 minutes and 34 seconds). This clamps the given microseconds to the allowed range.
-	MicrosecondsToTimespan(v int64) types.Timespan
 }
 
 // YearType represents the YEAR type.
