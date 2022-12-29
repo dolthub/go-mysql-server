@@ -85,13 +85,13 @@ func IsBinaryType(t sql.Type) bool {
 
 // IsDecimal checks if t is a DECIMAL type.
 func IsDecimal(t sql.Type) bool {
-	_, ok := t.(sql.decimalType)
+	_, ok := t.(sql.DecimalType_)
 	return ok
 }
 
 // IsBit checks if t is a BIT type.
 func IsBit(t sql.Type) bool {
-	_, ok := t.(sql.bitType)
+	_, ok := t.(sql.BitType_)
 	return ok
 }
 
@@ -107,7 +107,7 @@ func IsInteger(t sql.Type) bool {
 
 // IsJSON returns true if the specified type is a JSON type.
 func IsJSON(t sql.Type) bool {
-	_, ok := t.(sql.jsonType)
+	_, ok := t.(sql.JsonType_)
 	return ok
 }
 
@@ -129,7 +129,7 @@ func IsNull(ex sql.Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t sql.Type) bool {
 	switch t.(type) {
-	case sql.numberTypeImpl, sql.decimalType, sql.bitType, sql.yearType, sql.systemBoolType:
+	case sql.NumberTypeImpl_, sql.DecimalType_, sql.BitType_, sql.YearType_, sql.SystemBoolType_:
 		return true
 	default:
 		return false
@@ -139,7 +139,7 @@ func IsNumber(t sql.Type) bool {
 // IsSigned checks if t is a signed type.
 func IsSigned(t sql.Type) bool {
 	// systemBoolType is Int8
-	if _, ok := t.(sql.systemBoolType); ok {
+	if _, ok := t.(sql.SystemBoolType_); ok {
 		return true
 	}
 	return t == sql.Int8 || t == sql.Int16 || t == sql.Int24 || t == sql.Int32 || t == sql.Int64
@@ -147,7 +147,7 @@ func IsSigned(t sql.Type) bool {
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
 func IsText(t sql.Type) bool {
-	_, ok := t.(sql.stringType)
+	_, ok := t.(sql.StringType_)
 	return ok
 }
 
@@ -176,7 +176,7 @@ func IsTextOnly(t sql.Type) bool {
 
 // IsTimespan checks if t is a time (timespan)
 func IsTimespan(t sql.Type) bool {
-	_, ok := t.(sql.timespanType)
+	_, ok := t.(sql.TimespanType_)
 	return ok
 }
 
@@ -206,13 +206,13 @@ func IsTimestampType(t sql.Type) bool {
 
 // IsEnum checks if t is a enum
 func IsEnum(t sql.Type) bool {
-	_, ok := t.(sql.enumType)
+	_, ok := t.(sql.EnumType_)
 	return ok
 }
 
 // IsEnum checks if t is a set
 func IsSet(t sql.Type) bool {
-	_, ok := t.(sql.setType)
+	_, ok := t.(sql.SetType_)
 	return ok
 }
 

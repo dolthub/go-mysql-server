@@ -62,15 +62,15 @@ type SetType interface {
 	Values() []string
 }
 
-type setType struct {
+type SetType_ struct {
 	collation             CollationID
 	hashedValToBit        map[uint64]uint64
 	bitToVal              map[uint64]string
 	maxResponseByteLength uint32
 }
 
-var _ SetType = setType{}
-var _ TypeWithCollation = setType{}
+var _ SetType = SetType_{}
+var _ TypeWithCollation = SetType_{}
 
 // CreateSetType creates a SetType.
 func CreateSetType(values []string, collation CollationID) (SetType, error) {
@@ -111,7 +111,7 @@ func CreateSetType(values []string, collation CollationID) (SetType, error) {
 			maxByteLength = maxByteLength + uint32(maxCharLength)
 		}
 	}
-	return setType{
+	return SetType_{
 		collation:             collation,
 		hashedValToBit:        hashedValToBit,
 		bitToVal:              bitToVal,
@@ -129,7 +129,7 @@ func MustCreateSetType(values []string, collation CollationID) SetType {
 }
 
 // Compare implements Type interface.
-func (t setType) Compare(a interface{}, b interface{}) (int, error) {
+func (t SetType_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -155,7 +155,7 @@ func (t setType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 // Returns the string representing the given value if applicable.
-func (t setType) Convert(v interface{}) (interface{}, error) {
+func (t SetType_) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -204,12 +204,12 @@ func (t setType) Convert(v interface{}) (interface{}, error) {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t setType) MaxTextResponseByteLength() uint32 {
+func (t SetType_) MaxTextResponseByteLength() uint32 {
 	return t.maxResponseByteLength
 }
 
 // MustConvert implements the Type interface.
-func (t setType) MustConvert(v interface{}) interface{} {
+func (t SetType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -218,8 +218,8 @@ func (t setType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t setType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(setType); ok && t.collation.Equals(ot.collation) && len(t.bitToVal) == len(ot.bitToVal) {
+func (t SetType_) Equals(otherType Type) bool {
+	if ot, ok := otherType.(SetType_); ok && t.collation.Equals(ot.collation) && len(t.bitToVal) == len(ot.bitToVal) {
 		for bit, val := range t.bitToVal {
 			if ot.bitToVal[bit] != val {
 				return false
@@ -231,12 +231,12 @@ func (t setType) Equals(otherType Type) bool {
 }
 
 // Promote implements the Type interface.
-func (t setType) Promote() Type {
+func (t SetType_) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t setType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t SetType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -263,7 +263,7 @@ func (t setType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, 
 }
 
 // String implements Type interface.
-func (t setType) String() string {
+func (t SetType_) String() string {
 	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
@@ -275,42 +275,42 @@ func (t setType) String() string {
 }
 
 // Type implements Type interface.
-func (t setType) Type() query.Type {
+func (t SetType_) Type() query.Type {
 	return sqltypes.Set
 }
 
 // ValueType implements Type interface.
-func (t setType) ValueType() reflect.Type {
+func (t SetType_) ValueType() reflect.Type {
 	return setValueType
 }
 
 // Zero implements Type interface.
-func (t setType) Zero() interface{} {
+func (t SetType_) Zero() interface{} {
 	return uint64(0)
 }
 
 // CharacterSet implements SetType interface.
-func (t setType) CharacterSet() CharacterSetID {
+func (t SetType_) CharacterSet() CharacterSetID {
 	return t.collation.CharacterSet()
 }
 
 // Collation implements SetType interface.
-func (t setType) Collation() CollationID {
+func (t SetType_) Collation() CollationID {
 	return t.collation
 }
 
 // NumberOfElements implements SetType interface.
-func (t setType) NumberOfElements() uint16 {
+func (t SetType_) NumberOfElements() uint16 {
 	return uint16(len(t.hashedValToBit))
 }
 
 // BitsToString implements SetType interface.
-func (t setType) BitsToString(v uint64) (string, error) {
+func (t SetType_) BitsToString(v uint64) (string, error) {
 	return t.convertBitFieldToString(v)
 }
 
 // Values implements SetType interface.
-func (t setType) Values() []string {
+func (t SetType_) Values() []string {
 	bitEdge := 64 - bits.LeadingZeros64(t.allValuesBitField())
 	valArray := make([]string, bitEdge)
 	for i := 0; i < bitEdge; i++ {
@@ -321,12 +321,12 @@ func (t setType) Values() []string {
 }
 
 // WithNewCollation implements TypeWithCollation interface.
-func (t setType) WithNewCollation(collation CollationID) (Type, error) {
+func (t SetType_) WithNewCollation(collation CollationID) (Type, error) {
 	return CreateSetType(t.Values(), collation)
 }
 
 // allValuesBitField returns a bit field that references every value that the set contains.
-func (t setType) allValuesBitField() uint64 {
+func (t SetType_) allValuesBitField() uint64 {
 	valCount := uint64(len(t.hashedValToBit))
 	if valCount == 64 {
 		return math.MaxUint64
@@ -337,7 +337,7 @@ func (t setType) allValuesBitField() uint64 {
 }
 
 // convertBitFieldToString converts the given bit field into the equivalent comma-delimited string.
-func (t setType) convertBitFieldToString(bitField uint64) (string, error) {
+func (t SetType_) convertBitFieldToString(bitField uint64) (string, error) {
 	strBuilder := strings.Builder{}
 	bitEdge := 64 - bits.LeadingZeros64(bitField)
 	writeCommas := false
@@ -363,7 +363,7 @@ func (t setType) convertBitFieldToString(bitField uint64) (string, error) {
 }
 
 // convertStringToBitField converts the given string into a bit field.
-func (t setType) convertStringToBitField(str string) (uint64, error) {
+func (t SetType_) convertStringToBitField(str string) (uint64, error) {
 	if str == "" {
 		return 0, nil
 	}

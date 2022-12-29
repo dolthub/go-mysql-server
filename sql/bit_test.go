@@ -62,14 +62,14 @@ func TestBitCompare(t *testing.T) {
 func TestBitCreate(t *testing.T) {
 	tests := []struct {
 		numOfBits    uint8
-		expectedType bitType
+		expectedType BitType_
 		expectedErr  bool
 	}{
-		{1, bitType{1}, false},
-		{10, bitType{10}, false},
-		{64, bitType{64}, false},
-		{0, bitType{}, true},
-		{65, bitType{}, true},
+		{1, BitType_{1}, false},
+		{10, BitType_{10}, false},
+		{64, BitType_{64}, false},
+		{0, BitType_{}, true},
+		{65, BitType_{}, true},
 	}
 
 	for _, test := range tests {

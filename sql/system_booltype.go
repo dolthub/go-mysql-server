@@ -27,20 +27,20 @@ import (
 
 var systemBoolValueType = reflect.TypeOf(int8(0))
 
-// systemBoolType is an internal boolean type ONLY for system variables.
-type systemBoolType struct {
+// SystemBoolType_ is an internal boolean type ONLY for system variables.
+type SystemBoolType_ struct {
 	varName string
 }
 
-var _ SystemVariableType = systemBoolType{}
+var _ SystemVariableType = SystemBoolType_{}
 
 // NewSystemBoolType returns a new systemBoolType.
 func NewSystemBoolType(varName string) SystemVariableType {
-	return systemBoolType{varName}
+	return SystemBoolType_{varName}
 }
 
 // Compare implements Type interface.
-func (t systemBoolType) Compare(a interface{}, b interface{}) (int, error) {
+func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
 	as, err := t.Convert(a)
 	if err != nil {
 		return 0, err
@@ -62,7 +62,7 @@ func (t systemBoolType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemBoolType) Convert(v interface{}) (interface{}, error) {
+func (t SystemBoolType_) Convert(v interface{}) (interface{}, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case bool:
@@ -121,7 +121,7 @@ func (t systemBoolType) Convert(v interface{}) (interface{}, error) {
 }
 
 // MustConvert implements the Type interface.
-func (t systemBoolType) MustConvert(v interface{}) interface{} {
+func (t SystemBoolType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -130,26 +130,26 @@ func (t systemBoolType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t systemBoolType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(systemBoolType); ok {
+func (t SystemBoolType_) Equals(otherType Type) bool {
+	if ot, ok := otherType.(SystemBoolType_); ok {
 		return t.varName == ot.varName
 	}
 	return false
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t systemBoolType) MaxTextResponseByteLength() uint32 {
+func (t SystemBoolType_) MaxTextResponseByteLength() uint32 {
 	// system types are not sent directly across the wire
 	return 0
 }
 
 // Promote implements the Type interface.
-func (t systemBoolType) Promote() Type {
+func (t SystemBoolType_) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemBoolType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t SystemBoolType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -167,27 +167,27 @@ func (t systemBoolType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 }
 
 // String implements Type interface.
-func (t systemBoolType) String() string {
+func (t SystemBoolType_) String() string {
 	return "system_bool"
 }
 
 // Type implements Type interface.
-func (t systemBoolType) Type() query.Type {
+func (t SystemBoolType_) Type() query.Type {
 	return sqltypes.Int8
 }
 
 // ValueType implements Type interface.
-func (t systemBoolType) ValueType() reflect.Type {
+func (t SystemBoolType_) ValueType() reflect.Type {
 	return systemBoolValueType
 }
 
 // Zero implements Type interface.
-func (t systemBoolType) Zero() interface{} {
+func (t SystemBoolType_) Zero() interface{} {
 	return int8(0)
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t systemBoolType) EncodeValue(val interface{}) (string, error) {
+func (t SystemBoolType_) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(int8)
 	if !ok {
 		return "", ErrSystemVariableCodeFail.New(val, t.String())
@@ -199,7 +199,7 @@ func (t systemBoolType) EncodeValue(val interface{}) (string, error) {
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t systemBoolType) DecodeValue(val string) (interface{}, error) {
+func (t SystemBoolType_) DecodeValue(val string) (interface{}, error) {
 	if val == "0" {
 		return int8(0), nil
 	} else if val == "1" {

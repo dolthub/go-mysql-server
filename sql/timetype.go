@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	Time TimeType = timespanType{}
+	Time TimeType = TimespanType_{}
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
@@ -65,10 +65,10 @@ type TimeType interface {
 	MicrosecondsToTimespan(v int64) Timespan
 }
 
-type timespanType struct{}
+type TimespanType_ struct{}
 
 // MaxTextResponseByteLength implements the Type interface
-func (t timespanType) MaxTextResponseByteLength() uint32 {
+func (t TimespanType_) MaxTextResponseByteLength() uint32 {
 	// 10 digits are required for a text representation without microseconds, but with microseconds
 	// requires 17, so return 17 as an upper limit (i.e. len(+123:00:00.999999"))
 	return 17
@@ -78,7 +78,7 @@ func (t timespanType) MaxTextResponseByteLength() uint32 {
 type Timespan int64
 
 // Compare implements Type interface.
-func (t timespanType) Compare(a interface{}, b interface{}) (int, error) {
+func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -95,7 +95,7 @@ func (t timespanType) Compare(a interface{}, b interface{}) (int, error) {
 	return as.Compare(bs), nil
 }
 
-func (t timespanType) Convert(v interface{}) (interface{}, error) {
+func (t TimespanType_) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -104,7 +104,7 @@ func (t timespanType) Convert(v interface{}) (interface{}, error) {
 }
 
 // MustConvert implements the Type interface.
-func (t timespanType) MustConvert(v interface{}) interface{} {
+func (t TimespanType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -115,7 +115,7 @@ func (t timespanType) MustConvert(v interface{}) interface{} {
 // ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which
 // are based on the base-10 visual representation of numbers (for example, Time.Convert() will interpret the value
 // `1234` as 12 minutes and 34 seconds). Returns an error on a nil value.
-func (t timespanType) ConvertToTimespan(v interface{}) (Timespan, error) {
+func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 	switch value := v.(type) {
 	case Timespan:
 		// We only create a Timespan if it's valid, so we can skip this check if we receive a Timespan.
@@ -239,7 +239,7 @@ func (t timespanType) ConvertToTimespan(v interface{}) (Timespan, error) {
 }
 
 // ConvertToTimeDuration implements the TimeType interface.
-func (t timespanType) ConvertToTimeDuration(v interface{}) (time.Duration, error) {
+func (t TimespanType_) ConvertToTimeDuration(v interface{}) (time.Duration, error) {
 	val, err := t.ConvertToTimespan(v)
 	if err != nil {
 		return time.Duration(0), err
@@ -248,18 +248,18 @@ func (t timespanType) ConvertToTimeDuration(v interface{}) (time.Duration, error
 }
 
 // Equals implements the Type interface.
-func (t timespanType) Equals(otherType Type) bool {
-	_, ok := otherType.(timespanType)
+func (t TimespanType_) Equals(otherType Type) bool {
+	_, ok := otherType.(TimespanType_)
 	return ok
 }
 
 // Promote implements the Type interface.
-func (t timespanType) Promote() Type {
+func (t TimespanType_) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t timespanType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t TimespanType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -274,22 +274,22 @@ func (t timespanType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 }
 
 // String implements Type interface.
-func (t timespanType) String() string {
+func (t TimespanType_) String() string {
 	return "time(6)"
 }
 
 // Type implements Type interface.
-func (t timespanType) Type() query.Type {
+func (t TimespanType_) Type() query.Type {
 	return sqltypes.Time
 }
 
 // ValueType implements Type interface.
-func (t timespanType) ValueType() reflect.Type {
+func (t TimespanType_) ValueType() reflect.Type {
 	return timeValueType
 }
 
 // Zero implements Type interface.
-func (t timespanType) Zero() interface{} {
+func (t TimespanType_) Zero() interface{} {
 	return Timespan(0)
 }
 
@@ -421,7 +421,7 @@ func safeSubstr(s string, start int, end int) string {
 }
 
 // MicrosecondsToTimespan implements the TimeType interface.
-func (_ timespanType) MicrosecondsToTimespan(v int64) Timespan {
+func (_ TimespanType_) MicrosecondsToTimespan(v int64) Timespan {
 	if v < timespanMinimum {
 		v = timespanMinimum
 	} else if v > timespanMaximum {

@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	Year YearType = yearType{}
+	Year YearType = YearType_{}
 
 	ErrConvertingToYear = errors.NewKind("value %v is not a valid Year")
 
@@ -41,10 +41,10 @@ type YearType interface {
 	Type
 }
 
-type yearType struct{}
+type YearType_ struct{}
 
 // Compare implements Type interface.
-func (t yearType) Compare(a interface{}, b interface{}) (int, error) {
+func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -70,7 +70,7 @@ func (t yearType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t yearType) Convert(v interface{}) (interface{}, error) {
+func (t YearType_) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -141,7 +141,7 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 }
 
 // MustConvert implements the Type interface.
-func (t yearType) MustConvert(v interface{}) interface{} {
+func (t YearType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -150,23 +150,23 @@ func (t yearType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t yearType) Equals(otherType Type) bool {
-	_, ok := otherType.(yearType)
+func (t YearType_) Equals(otherType Type) bool {
+	_, ok := otherType.(YearType_)
 	return ok
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t yearType) MaxTextResponseByteLength() uint32 {
+func (t YearType_) MaxTextResponseByteLength() uint32 {
 	return 4
 }
 
 // Promote implements the Type interface.
-func (t yearType) Promote() Type {
+func (t YearType_) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t yearType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t YearType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -184,21 +184,21 @@ func (t yearType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 }
 
 // String implements Type interface.
-func (t yearType) String() string {
+func (t YearType_) String() string {
 	return "year"
 }
 
 // Type implements Type interface.
-func (t yearType) Type() query.Type {
+func (t YearType_) Type() query.Type {
 	return sqltypes.Year
 }
 
 // ValueType implements Type interface.
-func (t yearType) ValueType() reflect.Type {
+func (t YearType_) ValueType() reflect.Type {
 	return yearValueType
 }
 
 // Zero implements Type interface.
-func (t yearType) Zero() interface{} {
+func (t YearType_) Zero() interface{} {
 	return int16(0)
 }

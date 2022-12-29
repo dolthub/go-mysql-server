@@ -101,19 +101,19 @@ type NumberType interface {
 	IsFloat() bool
 }
 
-type numberTypeImpl struct {
+type NumberTypeImpl_ struct {
 	baseType query.Type
 }
 
-var _ Type = numberTypeImpl{}
-var _ Type2 = numberTypeImpl{}
+var _ Type = NumberTypeImpl_{}
+var _ Type2 = NumberTypeImpl_{}
 
 // CreateNumberType creates a NumberType.
 func CreateNumberType(baseType query.Type) (NumberType, error) {
 	switch baseType {
 	case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16, sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
 		sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64, sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64:
-		return numberTypeImpl{
+		return NumberTypeImpl_{
 			baseType: baseType,
 		}, nil
 	}
@@ -130,7 +130,7 @@ func MustCreateNumberType(baseType query.Type) NumberType {
 }
 
 func NumericUnaryValue(t Type) interface{} {
-	nt := t.(numberTypeImpl)
+	nt := t.(NumberTypeImpl_)
 	switch nt.baseType {
 	case sqltypes.Int8:
 		return int8(1)
@@ -162,7 +162,7 @@ func NumericUnaryValue(t Type) interface{} {
 }
 
 // Compare implements Type interface.
-func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
+func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -223,7 +223,7 @@ func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
+func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -334,7 +334,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t numberTypeImpl) MaxTextResponseByteLength() uint32 {
+func (t NumberTypeImpl_) MaxTextResponseByteLength() uint32 {
 	// MySQL integer type limits: https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
 	// This is for a text response format, NOT a binary encoding
 	switch t.baseType {
@@ -368,7 +368,7 @@ func (t numberTypeImpl) MaxTextResponseByteLength() uint32 {
 }
 
 // MustConvert implements the Type interface.
-func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
+func (t NumberTypeImpl_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -377,12 +377,12 @@ func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t numberTypeImpl) Equals(otherType Type) bool {
+func (t NumberTypeImpl_) Equals(otherType Type) bool {
 	return t.baseType == otherType.Type()
 }
 
 // Promote implements the Type interface.
-func (t numberTypeImpl) Promote() Type {
+func (t NumberTypeImpl_) Promote() Type {
 	switch t.baseType {
 	case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
 		return Int64
@@ -396,7 +396,7 @@ func (t numberTypeImpl) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t numberTypeImpl) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t NumberTypeImpl_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -433,7 +433,7 @@ func (t numberTypeImpl) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
 
-func (t numberTypeImpl) Compare2(a Value, b Value) (int, error) {
+func (t NumberTypeImpl_) Compare2(a Value, b Value) (int, error) {
 	switch t.baseType {
 	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
 		ca, err := convertValueToUint64(t, a)
@@ -489,11 +489,11 @@ func (t numberTypeImpl) Compare2(a Value, b Value) (int, error) {
 	}
 }
 
-func (t numberTypeImpl) Convert2(value Value) (Value, error) {
+func (t NumberTypeImpl_) Convert2(value Value) (Value, error) {
 	panic("implement me")
 }
 
-func (t numberTypeImpl) Zero2() Value {
+func (t NumberTypeImpl_) Zero2() Value {
 	switch t.baseType {
 	case sqltypes.Int8:
 		x := values.WriteInt8(make([]byte, values.Int8Size), 0)
@@ -573,7 +573,7 @@ func (t numberTypeImpl) Zero2() Value {
 }
 
 // SQL2 implements Type2 interface.
-func (t numberTypeImpl) SQL2(v Value) (sqltypes.Value, error) {
+func (t NumberTypeImpl_) SQL2(v Value) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
@@ -624,7 +624,7 @@ func (t numberTypeImpl) SQL2(v Value) (sqltypes.Value, error) {
 }
 
 // String implements Type interface.
-func (t numberTypeImpl) String() string {
+func (t NumberTypeImpl_) String() string {
 	switch t.baseType {
 	case sqltypes.Int8:
 		return "tinyint"
@@ -656,12 +656,12 @@ func (t numberTypeImpl) String() string {
 }
 
 // Type implements Type interface.
-func (t numberTypeImpl) Type() query.Type {
+func (t NumberTypeImpl_) Type() query.Type {
 	return t.baseType
 }
 
 // ValueType implements Type interface.
-func (t numberTypeImpl) ValueType() reflect.Type {
+func (t NumberTypeImpl_) ValueType() reflect.Type {
 	switch t.baseType {
 	case sqltypes.Int8:
 		return numberInt8ValueType
@@ -693,7 +693,7 @@ func (t numberTypeImpl) ValueType() reflect.Type {
 }
 
 // Zero implements Type interface.
-func (t numberTypeImpl) Zero() interface{} {
+func (t NumberTypeImpl_) Zero() interface{} {
 	switch t.baseType {
 	case sqltypes.Int8:
 		return int8(0)
@@ -725,7 +725,7 @@ func (t numberTypeImpl) Zero() interface{} {
 }
 
 // IsFloat implements NumberType interface.
-func (t numberTypeImpl) IsFloat() bool {
+func (t NumberTypeImpl_) IsFloat() bool {
 	switch t.baseType {
 	case sqltypes.Float32, sqltypes.Float64:
 		return true
@@ -734,7 +734,7 @@ func (t numberTypeImpl) IsFloat() bool {
 }
 
 // IsSigned implements NumberType interface.
-func (t numberTypeImpl) IsSigned() bool {
+func (t NumberTypeImpl_) IsSigned() bool {
 	switch t.baseType {
 	case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64, sqltypes.Float32, sqltypes.Float64:
 		return true
@@ -742,7 +742,7 @@ func (t numberTypeImpl) IsSigned() bool {
 	return false
 }
 
-func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
+func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, error) {
 	switch v := v.(type) {
 	case int:
 		return int64(v), nil
@@ -812,7 +812,7 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 	}
 }
 
-func convertValueToInt64(t numberTypeImpl, v Value) (int64, error) {
+func convertValueToInt64(t NumberTypeImpl_, v Value) (int64, error) {
 	switch v.Typ {
 	case query.Type_INT8:
 		return int64(values.ReadInt8(v.Val)), nil
@@ -856,7 +856,7 @@ func convertValueToInt64(t numberTypeImpl, v Value) (int64, error) {
 	}
 }
 
-func convertValueToUint64(t numberTypeImpl, v Value) (uint64, error) {
+func convertValueToUint64(t NumberTypeImpl_, v Value) (uint64, error) {
 	switch v.Typ {
 	case query.Type_INT8:
 		return uint64(values.ReadInt8(v.Val)), nil
@@ -896,7 +896,7 @@ func convertValueToUint64(t numberTypeImpl, v Value) (uint64, error) {
 	}
 }
 
-func convertToUint64(t numberTypeImpl, v interface{}) (uint64, error) {
+func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, error) {
 	switch v := v.(type) {
 	case int:
 		if v < 0 {
@@ -974,7 +974,7 @@ func convertToUint64(t numberTypeImpl, v interface{}) (uint64, error) {
 	}
 }
 
-func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
+func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	switch v := v.(type) {
 	case int:
 		return float64(v), nil
@@ -1030,7 +1030,7 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 	}
 }
 
-func convertValueToFloat64(t numberTypeImpl, v Value) (float64, error) {
+func convertValueToFloat64(t NumberTypeImpl_, v Value) (float64, error) {
 	switch v.Typ {
 	case query.Type_INT8:
 		return float64(values.ReadInt8(v.Val)), nil

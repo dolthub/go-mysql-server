@@ -79,7 +79,7 @@ type StringType interface {
 	Length() int64
 }
 
-type stringType struct {
+type StringType_ struct {
 	baseType              query.Type
 	maxCharLength         int64
 	maxByteLength         int64
@@ -87,8 +87,8 @@ type stringType struct {
 	collation             CollationID
 }
 
-var _ StringType = stringType{}
-var _ TypeWithCollation = stringType{}
+var _ StringType = StringType_{}
+var _ TypeWithCollation = StringType_{}
 
 // CreateString creates a new StringType based on the specified type, length, and collation. Length is interpreted as
 // the length of bytes in the new StringType for SQL types that are based on bytes (i.e. TEXT, BLOB, BINARY, and
@@ -197,7 +197,7 @@ func CreateString(baseType query.Type, length int64, collation CollationID) (Str
 		}
 	}
 
-	return stringType{baseType, maxCharLength, maxByteLength, uint32(maxResponseByteLength), collation}, nil
+	return StringType_{baseType, maxCharLength, maxByteLength, uint32(maxResponseByteLength), collation}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
@@ -250,16 +250,16 @@ func CreateLongText(collation CollationID) StringType {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t stringType) MaxTextResponseByteLength() uint32 {
+func (t StringType_) MaxTextResponseByteLength() uint32 {
 	return t.maxResponseByteLength
 }
 
-func (t stringType) Length() int64 {
+func (t StringType_) Length() int64 {
 	return t.maxCharLength
 }
 
 // Compare implements Type interface.
-func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
+func (t StringType_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -321,7 +321,7 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t stringType) Convert(v interface{}) (interface{}, error) {
+func (t StringType_) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -395,7 +395,7 @@ func ConvertToString(v interface{}, t StringType) (string, error) {
 		return "", ErrConvertToSQL.New(t)
 	}
 
-	s := t.(stringType)
+	s := t.(StringType_)
 	if s.baseType == sqltypes.Text {
 		// for TEXT types, we use the byte length instead of the character length
 		if int64(len(val)) > s.maxByteLength {
@@ -458,7 +458,7 @@ func ConvertToCollatedString(val interface{}, typ Type) (string, CollationID, er
 }
 
 // MustConvert implements the Type interface.
-func (t stringType) MustConvert(v interface{}) interface{} {
+func (t StringType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -467,15 +467,15 @@ func (t stringType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t stringType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(stringType); ok {
+func (t StringType_) Equals(otherType Type) bool {
+	if ot, ok := otherType.(StringType_); ok {
 		return t.baseType == ot.baseType && t.collation == ot.collation && t.maxCharLength == ot.maxCharLength
 	}
 	return false
 }
 
 // Promote implements the Type interface.
-func (t stringType) Promote() Type {
+func (t StringType_) Promote() Type {
 	switch t.baseType {
 	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
 		return MustCreateString(sqltypes.Text, longTextBlobMax, t.collation)
@@ -487,7 +487,7 @@ func (t stringType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t stringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t StringType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -519,7 +519,7 @@ func (t stringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Valu
 }
 
 // String implements Type interface.
-func (t stringType) String() string {
+func (t StringType_) String() string {
 	var s string
 
 	switch t.baseType {
@@ -566,12 +566,12 @@ func (t stringType) String() string {
 }
 
 // Type implements Type interface.
-func (t stringType) Type() query.Type {
+func (t StringType_) Type() query.Type {
 	return t.baseType
 }
 
 // ValueType implements Type interface.
-func (t stringType) ValueType() reflect.Type {
+func (t StringType_) ValueType() reflect.Type {
 	if types.IsBinaryType(t) {
 		return byteValueType
 	}
@@ -579,20 +579,20 @@ func (t stringType) ValueType() reflect.Type {
 }
 
 // Zero implements Type interface.
-func (t stringType) Zero() interface{} {
+func (t StringType_) Zero() interface{} {
 	return ""
 }
 
-func (t stringType) CharacterSet() CharacterSetID {
+func (t StringType_) CharacterSet() CharacterSetID {
 	return t.collation.CharacterSet()
 }
 
-func (t stringType) Collation() CollationID {
+func (t StringType_) Collation() CollationID {
 	return t.collation
 }
 
 // WithNewCollation implements TypeWithCollation interface.
-func (t stringType) WithNewCollation(collation CollationID) (Type, error) {
+func (t StringType_) WithNewCollation(collation CollationID) (Type, error) {
 	// Blobs are special as, although they use collations, they don't change like a standard collated type
 	if t.baseType == sqltypes.Blob || t.baseType == sqltypes.Binary || t.baseType == sqltypes.VarBinary {
 		return t, nil
@@ -601,12 +601,12 @@ func (t stringType) WithNewCollation(collation CollationID) (Type, error) {
 }
 
 // MaxCharacterLength is the maximum character length for this type.
-func (t stringType) MaxCharacterLength() int64 {
+func (t StringType_) MaxCharacterLength() int64 {
 	return t.maxCharLength
 }
 
 // MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
-func (t stringType) MaxByteLength() int64 {
+func (t StringType_) MaxByteLength() int64 {
 	return t.maxByteLength
 }
 

@@ -28,7 +28,7 @@ var (
 	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
 )
 
-var JSON JsonType = jsonType{}
+var JSON JsonType = JsonType_{}
 
 // JsonType represents the JSON type.
 // https://dev.mysql.com/doc/refman/8.0/en/json.html
@@ -37,10 +37,10 @@ type JsonType interface {
 	Type
 }
 
-type jsonType struct{}
+type JsonType_ struct{}
 
 // Compare implements Type interface.
-func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
+func (t JsonType_) Compare(a interface{}, b interface{}) (int, error) {
 	var err error
 	if a, err = t.Convert(a); err != nil {
 		return 0, err
@@ -53,7 +53,7 @@ func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
+func (t JsonType_) Convert(v interface{}) (doc interface{}, err error) {
 	switch v := v.(type) {
 	case JSONValue:
 		return v, nil
@@ -95,23 +95,23 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 }
 
 // Equals implements the Type interface.
-func (t jsonType) Equals(otherType Type) bool {
-	_, ok := otherType.(jsonType)
+func (t JsonType_) Equals(otherType Type) bool {
+	_, ok := otherType.(JsonType_)
 	return ok
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t jsonType) MaxTextResponseByteLength() uint32 {
+func (t JsonType_) MaxTextResponseByteLength() uint32 {
 	return uint32(MaxJsonFieldByteLength*Collation_Default.CharacterSet().MaxLength()) - 1
 }
 
 // Promote implements the Type interface.
-func (t jsonType) Promote() Type {
+func (t JsonType_) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t jsonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t JsonType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -134,22 +134,22 @@ func (t jsonType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 }
 
 // String implements Type interface.
-func (t jsonType) String() string {
+func (t JsonType_) String() string {
 	return "json"
 }
 
 // Type implements Type interface.
-func (t jsonType) Type() query.Type {
+func (t JsonType_) Type() query.Type {
 	return sqltypes.TypeJSON
 }
 
 // ValueType implements Type interface.
-func (t jsonType) ValueType() reflect.Type {
+func (t JsonType_) ValueType() reflect.Type {
 	return jsonValueType
 }
 
 // Zero implements Type interface.
-func (t jsonType) Zero() interface{} {
+func (t JsonType_) Zero() interface{} {
 	// MySQL throws an error for INSERT IGNORE, UPDATE IGNORE, etc. when bad json is encountered:
 	// ERROR 3140 (22032): Invalid JSON text: "Invalid value." at position 0 in value for column 'table.column'.
 	return nil

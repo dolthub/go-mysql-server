@@ -90,21 +90,21 @@ func TestStringCreateBlob(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
 		length       int64
-		expectedType stringType
+		expectedType StringType_
 		expectedErr  bool
 	}{
 		{sqltypes.Binary, 10,
-			stringType{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
 		{sqltypes.Blob, 10,
-			stringType{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
+			StringType_{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.Char, 10,
-			stringType{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
 		{sqltypes.Text, 10,
-			stringType{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
+			StringType_{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.VarBinary, 10,
-			stringType{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
 		{sqltypes.VarChar, 10,
-			stringType{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
 	}
 
 	for _, test := range tests {
@@ -124,34 +124,34 @@ func TestStringCreateBlobInvalidBaseTypes(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
 		length       int64
-		expectedType stringType
+		expectedType StringType_
 		expectedErr  bool
 	}{
-		{sqltypes.Bit, 10, stringType{}, true},
-		{sqltypes.Date, 10, stringType{}, true},
-		{sqltypes.Datetime, 10, stringType{}, true},
-		{sqltypes.Decimal, 10, stringType{}, true},
-		{sqltypes.Enum, 10, stringType{}, true},
-		{sqltypes.Expression, 10, stringType{}, true},
-		{sqltypes.Float32, 10, stringType{}, true},
-		{sqltypes.Float64, 10, stringType{}, true},
-		{sqltypes.Geometry, 10, stringType{}, true},
-		{sqltypes.Int16, 10, stringType{}, true},
-		{sqltypes.Int24, 10, stringType{}, true},
-		{sqltypes.Int32, 10, stringType{}, true},
-		{sqltypes.Int64, 10, stringType{}, true},
-		{sqltypes.Int8, 10, stringType{}, true},
-		{sqltypes.Null, 10, stringType{}, true},
-		{sqltypes.Set, 10, stringType{}, true},
-		{sqltypes.Time, 10, stringType{}, true},
-		{sqltypes.Timestamp, 10, stringType{}, true},
-		{sqltypes.TypeJSON, 10, stringType{}, true},
-		{sqltypes.Uint16, 10, stringType{}, true},
-		{sqltypes.Uint24, 10, stringType{}, true},
-		{sqltypes.Uint32, 10, stringType{}, true},
-		{sqltypes.Uint64, 10, stringType{}, true},
-		{sqltypes.Uint8, 10, stringType{}, true},
-		{sqltypes.Year, 10, stringType{}, true},
+		{sqltypes.Bit, 10, StringType_{}, true},
+		{sqltypes.Date, 10, StringType_{}, true},
+		{sqltypes.Datetime, 10, StringType_{}, true},
+		{sqltypes.Decimal, 10, StringType_{}, true},
+		{sqltypes.Enum, 10, StringType_{}, true},
+		{sqltypes.Expression, 10, StringType_{}, true},
+		{sqltypes.Float32, 10, StringType_{}, true},
+		{sqltypes.Float64, 10, StringType_{}, true},
+		{sqltypes.Geometry, 10, StringType_{}, true},
+		{sqltypes.Int16, 10, StringType_{}, true},
+		{sqltypes.Int24, 10, StringType_{}, true},
+		{sqltypes.Int32, 10, StringType_{}, true},
+		{sqltypes.Int64, 10, StringType_{}, true},
+		{sqltypes.Int8, 10, StringType_{}, true},
+		{sqltypes.Null, 10, StringType_{}, true},
+		{sqltypes.Set, 10, StringType_{}, true},
+		{sqltypes.Time, 10, StringType_{}, true},
+		{sqltypes.Timestamp, 10, StringType_{}, true},
+		{sqltypes.TypeJSON, 10, StringType_{}, true},
+		{sqltypes.Uint16, 10, StringType_{}, true},
+		{sqltypes.Uint24, 10, StringType_{}, true},
+		{sqltypes.Uint32, 10, StringType_{}, true},
+		{sqltypes.Uint64, 10, StringType_{}, true},
+		{sqltypes.Uint8, 10, StringType_{}, true},
+		{sqltypes.Year, 10, StringType_{}, true},
 	}
 
 	for _, test := range tests {
@@ -172,47 +172,47 @@ func TestStringCreateString(t *testing.T) {
 		baseType     query.Type
 		length       int64
 		collation    CollationID
-		expectedType stringType
+		expectedType StringType_
 		expectedErr  bool
 	}{
 		{sqltypes.Binary, 10, Collation_binary,
-			stringType{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
 		{sqltypes.Blob, 10, Collation_binary,
-			stringType{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
+			StringType_{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.Char, 10, Collation_Default,
-			stringType{sqltypes.Char, 10, 40, 40, Collation_Default}, false},
+			StringType_{sqltypes.Char, 10, 40, 40, Collation_Default}, false},
 		{sqltypes.Text, 10, Collation_Default,
-			stringType{sqltypes.Text, tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength(), tinyTextBlobMax, uint32(tinyTextBlobMax * Collation_Default.CharacterSet().MaxLength()), Collation_Default}, false},
+			StringType_{sqltypes.Text, tinyTextBlobMax / Collation_Default.CharacterSet().MaxLength(), tinyTextBlobMax, uint32(tinyTextBlobMax * Collation_Default.CharacterSet().MaxLength()), Collation_Default}, false},
 		{sqltypes.Text, 1000, Collation_Default,
-			stringType{sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength(), textBlobMax, uint32(textBlobMax * Collation_Default.CharacterSet().MaxLength()), Collation_Default}, false},
+			StringType_{sqltypes.Text, textBlobMax / Collation_Default.CharacterSet().MaxLength(), textBlobMax, uint32(textBlobMax * Collation_Default.CharacterSet().MaxLength()), Collation_Default}, false},
 		{sqltypes.Text, 1000000, Collation_Default,
-			stringType{sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength(), mediumTextBlobMax, uint32(mediumTextBlobMax * Collation_Default.CharacterSet().MaxLength()), Collation_Default}, false},
+			StringType_{sqltypes.Text, mediumTextBlobMax / Collation_Default.CharacterSet().MaxLength(), mediumTextBlobMax, uint32(mediumTextBlobMax * Collation_Default.CharacterSet().MaxLength()), Collation_Default}, false},
 		{sqltypes.Text, longTextBlobMax, Collation_Default,
-			stringType{sqltypes.Text, longTextBlobMax / Collation_Default.CharacterSet().MaxLength(), longTextBlobMax, uint32(longTextBlobMax), Collation_Default}, false},
+			StringType_{sqltypes.Text, longTextBlobMax / Collation_Default.CharacterSet().MaxLength(), longTextBlobMax, uint32(longTextBlobMax), Collation_Default}, false},
 		{sqltypes.VarBinary, 10, Collation_binary,
-			stringType{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
 		{sqltypes.VarChar, 10, Collation_Default,
-			stringType{sqltypes.VarChar, 10, 40, 40, Collation_Default}, false},
+			StringType_{sqltypes.VarChar, 10, 40, 40, Collation_Default}, false},
 		{sqltypes.Char, 10, Collation_binary,
-			stringType{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.Binary, 10, 10, 10, Collation_binary}, false},
 		{sqltypes.Text, 10, Collation_binary,
-			stringType{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
+			StringType_{sqltypes.Blob, tinyTextBlobMax, tinyTextBlobMax, tinyTextBlobMax, Collation_binary}, false},
 		{sqltypes.VarChar, 10, Collation_binary,
-			stringType{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
+			StringType_{sqltypes.VarBinary, 10, 10, 10, Collation_binary}, false},
 
-		{sqltypes.Binary, charBinaryMax + 1, Collation_binary, stringType{}, true},
-		{sqltypes.Blob, longTextBlobMax + 1, Collation_binary, stringType{}, true},
-		{sqltypes.Char, charBinaryMax + 1, Collation_Default, stringType{}, true},
-		{sqltypes.Text, longTextBlobMax + 1, Collation_Default, stringType{}, true},
+		{sqltypes.Binary, charBinaryMax + 1, Collation_binary, StringType_{}, true},
+		{sqltypes.Blob, longTextBlobMax + 1, Collation_binary, StringType_{}, true},
+		{sqltypes.Char, charBinaryMax + 1, Collation_Default, StringType_{}, true},
+		{sqltypes.Text, longTextBlobMax + 1, Collation_Default, StringType_{}, true},
 
 		// JSON strings can also come in over the wire as VARBINARY types, and JSON allows a much larger length limit (1GB).
-		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, Collation_binary, stringType{}, true},
-		{sqltypes.VarChar, varcharVarbinaryMax + 1, Collation_Default, stringType{}, true},
+		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, Collation_binary, StringType_{}, true},
+		{sqltypes.VarChar, varcharVarbinaryMax + 1, Collation_Default, StringType_{}, true},
 
 		// Default collation is not valid for these types
-		{sqltypes.Binary, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Blob, 10, Collation_Default, stringType{}, true},
-		{sqltypes.VarBinary, 10, Collation_Default, stringType{}, true},
+		{sqltypes.Binary, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Blob, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.VarBinary, 10, Collation_Default, StringType_{}, true},
 	}
 
 	for _, test := range tests {
@@ -233,34 +233,34 @@ func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
 		baseType     query.Type
 		length       int64
 		collation    CollationID
-		expectedType stringType
+		expectedType StringType_
 		expectedErr  bool
 	}{
-		{sqltypes.Bit, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Date, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Datetime, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Decimal, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Enum, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Expression, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Float32, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Float64, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Geometry, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Int16, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Int24, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Int32, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Int64, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Int8, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Null, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Set, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Time, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Timestamp, 10, Collation_Default, stringType{}, true},
-		{sqltypes.TypeJSON, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Uint16, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Uint24, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Uint32, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Uint64, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Uint8, 10, Collation_Default, stringType{}, true},
-		{sqltypes.Year, 10, Collation_Default, stringType{}, true},
+		{sqltypes.Bit, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Date, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Datetime, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Decimal, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Enum, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Expression, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Float32, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Float64, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Geometry, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Int16, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Int24, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Int32, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Int64, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Int8, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Null, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Set, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Time, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Timestamp, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.TypeJSON, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Uint16, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Uint24, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Uint32, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Uint64, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Uint8, 10, Collation_Default, StringType_{}, true},
+		{sqltypes.Year, 10, Collation_Default, StringType_{}, true},
 	}
 
 	for _, test := range tests {

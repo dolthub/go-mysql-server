@@ -69,7 +69,7 @@ type DecimalType interface {
 	Scale() uint8
 }
 
-type decimalType struct {
+type DecimalType_ struct {
 	exclusiveUpperBound decimal.Decimal
 	definesColumn       bool
 	precision           uint8
@@ -78,7 +78,7 @@ type decimalType struct {
 
 // InternalDecimalType is a special DecimalType that is used internally for Decimal comparisons. Not intended for usage
 // from integrators.
-var InternalDecimalType DecimalType = decimalType{
+var InternalDecimalType DecimalType = DecimalType_{
 	exclusiveUpperBound: decimal.New(1, int32(65)),
 	definesColumn:       false,
 	precision:           95,
@@ -112,7 +112,7 @@ func createDecimalType(precision uint8, scale uint8, definesColumn bool) (Decima
 	if precision == 0 {
 		precision = 10
 	}
-	return decimalType{
+	return DecimalType_{
 		exclusiveUpperBound: decimal.New(1, int32(precision-scale)),
 		definesColumn:       definesColumn,
 		precision:           precision,
@@ -139,12 +139,12 @@ func MustCreateColumnDecimalType(precision uint8, scale uint8) DecimalType {
 }
 
 // Type implements Type interface.
-func (t decimalType) Type() query.Type {
+func (t DecimalType_) Type() query.Type {
 	return sqltypes.Decimal
 }
 
 // Compare implements Type interface.
-func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
+func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -162,7 +162,7 @@ func (t decimalType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t decimalType) Convert(v interface{}) (interface{}, error) {
+func (t DecimalType_) Convert(v interface{}) (interface{}, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func (t decimalType) Convert(v interface{}) (interface{}, error) {
 	return t.BoundsCheck(dec.Decimal)
 }
 
-func (t decimalType) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error) {
+func (t DecimalType_) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
 		return decimal.Decimal{}, err
@@ -185,7 +185,7 @@ func (t decimalType) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error
 }
 
 // ConvertToNullDecimal implements DecimalType interface.
-func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error) {
+func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error) {
 	if v == nil {
 		return decimal.NullDecimal{}, nil
 	}
@@ -260,7 +260,7 @@ func (t decimalType) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, e
 	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
 }
 
-func (t decimalType) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
+func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
 	if -v.Exponent() > int32(t.scale) {
 		// TODO : add 'Data truncated' warning
 		v = v.Round(int32(t.scale))
@@ -274,7 +274,7 @@ func (t decimalType) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
 }
 
 // MustConvert implements the Type interface.
-func (t decimalType) MustConvert(v interface{}) interface{} {
+func (t DecimalType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -283,15 +283,15 @@ func (t decimalType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t decimalType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(decimalType); ok {
+func (t DecimalType_) Equals(otherType Type) bool {
+	if ot, ok := otherType.(DecimalType_); ok {
 		return t.precision == ot.precision && t.scale == ot.scale
 	}
 	return false
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t decimalType) MaxTextResponseByteLength() uint32 {
+func (t DecimalType_) MaxTextResponseByteLength() uint32 {
 	if t.scale == 0 {
 		// if no digits are reserved for the right-hand side of the decimal point,
 		// just return precision plus one byte for sign
@@ -303,7 +303,7 @@ func (t decimalType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t decimalType) Promote() Type {
+func (t DecimalType_) Promote() Type {
 	if t.definesColumn {
 		return MustCreateColumnDecimalType(DecimalTypeMaxPrecision, t.scale)
 	}
@@ -311,7 +311,7 @@ func (t decimalType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t DecimalType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -335,27 +335,27 @@ func (t decimalType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Val
 }
 
 // String implements Type interface.
-func (t decimalType) String() string {
+func (t DecimalType_) String() string {
 	return fmt.Sprintf("decimal(%v,%v)", t.precision, t.scale)
 }
 
 // ValueType implements Type interface.
-func (t decimalType) ValueType() reflect.Type {
+func (t DecimalType_) ValueType() reflect.Type {
 	return decimalValueType
 }
 
 // Zero implements Type interface.
-func (t decimalType) Zero() interface{} {
+func (t DecimalType_) Zero() interface{} {
 	return decimal.NewFromInt(0)
 }
 
 // ExclusiveUpperBound implements DecimalType interface.
-func (t decimalType) ExclusiveUpperBound() decimal.Decimal {
+func (t DecimalType_) ExclusiveUpperBound() decimal.Decimal {
 	return t.exclusiveUpperBound
 }
 
 // MaximumScale implements DecimalType interface.
-func (t decimalType) MaximumScale() uint8 {
+func (t DecimalType_) MaximumScale() uint8 {
 	if t.precision >= DecimalTypeMaxScale {
 		return DecimalTypeMaxScale
 	}
@@ -363,11 +363,11 @@ func (t decimalType) MaximumScale() uint8 {
 }
 
 // Precision implements DecimalType interface.
-func (t decimalType) Precision() uint8 {
+func (t DecimalType_) Precision() uint8 {
 	return t.precision
 }
 
 // Scale implements DecimalType interface.
-func (t decimalType) Scale() uint8 {
+func (t DecimalType_) Scale() uint8 {
 	return t.scale
 }

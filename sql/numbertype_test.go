@@ -93,21 +93,21 @@ func TestNumberCompare(t *testing.T) {
 func TestNumberCreate(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
-		expectedType numberTypeImpl
+		expectedType NumberTypeImpl_
 		expectedErr  bool
 	}{
-		{sqltypes.Int8, numberTypeImpl{sqltypes.Int8}, false},
-		{sqltypes.Int16, numberTypeImpl{sqltypes.Int16}, false},
-		{sqltypes.Int24, numberTypeImpl{sqltypes.Int24}, false},
-		{sqltypes.Int32, numberTypeImpl{sqltypes.Int32}, false},
-		{sqltypes.Int64, numberTypeImpl{sqltypes.Int64}, false},
-		{sqltypes.Uint8, numberTypeImpl{sqltypes.Uint8}, false},
-		{sqltypes.Uint16, numberTypeImpl{sqltypes.Uint16}, false},
-		{sqltypes.Uint24, numberTypeImpl{sqltypes.Uint24}, false},
-		{sqltypes.Uint32, numberTypeImpl{sqltypes.Uint32}, false},
-		{sqltypes.Uint64, numberTypeImpl{sqltypes.Uint64}, false},
-		{sqltypes.Float32, numberTypeImpl{sqltypes.Float32}, false},
-		{sqltypes.Float64, numberTypeImpl{sqltypes.Float64}, false},
+		{sqltypes.Int8, NumberTypeImpl_{sqltypes.Int8}, false},
+		{sqltypes.Int16, NumberTypeImpl_{sqltypes.Int16}, false},
+		{sqltypes.Int24, NumberTypeImpl_{sqltypes.Int24}, false},
+		{sqltypes.Int32, NumberTypeImpl_{sqltypes.Int32}, false},
+		{sqltypes.Int64, NumberTypeImpl_{sqltypes.Int64}, false},
+		{sqltypes.Uint8, NumberTypeImpl_{sqltypes.Uint8}, false},
+		{sqltypes.Uint16, NumberTypeImpl_{sqltypes.Uint16}, false},
+		{sqltypes.Uint24, NumberTypeImpl_{sqltypes.Uint24}, false},
+		{sqltypes.Uint32, NumberTypeImpl_{sqltypes.Uint32}, false},
+		{sqltypes.Uint64, NumberTypeImpl_{sqltypes.Uint64}, false},
+		{sqltypes.Float32, NumberTypeImpl_{sqltypes.Float32}, false},
+		{sqltypes.Float64, NumberTypeImpl_{sqltypes.Float64}, false},
 	}
 
 	for _, test := range tests {
@@ -126,28 +126,28 @@ func TestNumberCreate(t *testing.T) {
 func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 	tests := []struct {
 		baseType     query.Type
-		expectedType numberTypeImpl
+		expectedType NumberTypeImpl_
 		expectedErr  bool
 	}{
-		{sqltypes.Binary, numberTypeImpl{}, true},
-		{sqltypes.Bit, numberTypeImpl{}, true},
-		{sqltypes.Blob, numberTypeImpl{}, true},
-		{sqltypes.Char, numberTypeImpl{}, true},
-		{sqltypes.Date, numberTypeImpl{}, true},
-		{sqltypes.Datetime, numberTypeImpl{}, true},
-		{sqltypes.Decimal, numberTypeImpl{}, true},
-		{sqltypes.Enum, numberTypeImpl{}, true},
-		{sqltypes.Expression, numberTypeImpl{}, true},
-		{sqltypes.Geometry, numberTypeImpl{}, true},
-		{sqltypes.Null, numberTypeImpl{}, true},
-		{sqltypes.Set, numberTypeImpl{}, true},
-		{sqltypes.Text, numberTypeImpl{}, true},
-		{sqltypes.Time, numberTypeImpl{}, true},
-		{sqltypes.Timestamp, numberTypeImpl{}, true},
-		{sqltypes.TypeJSON, numberTypeImpl{}, true},
-		{sqltypes.VarBinary, numberTypeImpl{}, true},
-		{sqltypes.VarChar, numberTypeImpl{}, true},
-		{sqltypes.Year, numberTypeImpl{}, true},
+		{sqltypes.Binary, NumberTypeImpl_{}, true},
+		{sqltypes.Bit, NumberTypeImpl_{}, true},
+		{sqltypes.Blob, NumberTypeImpl_{}, true},
+		{sqltypes.Char, NumberTypeImpl_{}, true},
+		{sqltypes.Date, NumberTypeImpl_{}, true},
+		{sqltypes.Datetime, NumberTypeImpl_{}, true},
+		{sqltypes.Decimal, NumberTypeImpl_{}, true},
+		{sqltypes.Enum, NumberTypeImpl_{}, true},
+		{sqltypes.Expression, NumberTypeImpl_{}, true},
+		{sqltypes.Geometry, NumberTypeImpl_{}, true},
+		{sqltypes.Null, NumberTypeImpl_{}, true},
+		{sqltypes.Set, NumberTypeImpl_{}, true},
+		{sqltypes.Text, NumberTypeImpl_{}, true},
+		{sqltypes.Time, NumberTypeImpl_{}, true},
+		{sqltypes.Timestamp, NumberTypeImpl_{}, true},
+		{sqltypes.TypeJSON, NumberTypeImpl_{}, true},
+		{sqltypes.VarBinary, NumberTypeImpl_{}, true},
+		{sqltypes.VarChar, NumberTypeImpl_{}, true},
+		{sqltypes.Year, NumberTypeImpl_{}, true},
 	}
 
 	for _, test := range tests {

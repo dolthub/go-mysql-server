@@ -46,7 +46,7 @@ type BitType interface {
 	NumberOfBits() uint8
 }
 
-type bitType struct {
+type BitType_ struct {
 	numOfBits uint8
 }
 
@@ -55,7 +55,7 @@ func CreateBitType(numOfBits uint8) (BitType, error) {
 	if numOfBits < BitTypeMinBits || numOfBits > BitTypeMaxBits {
 		return nil, fmt.Errorf("%v is an invalid number of bits", numOfBits)
 	}
-	return bitType{
+	return BitType_{
 		numOfBits: numOfBits,
 	}, nil
 }
@@ -70,13 +70,13 @@ func MustCreateBitType(numOfBits uint8) BitType {
 }
 
 // MaxTextResponseByteLength implements Type interface
-func (t bitType) MaxTextResponseByteLength() uint32 {
+func (t BitType_) MaxTextResponseByteLength() uint32 {
 	// Because this is a text serialization format, each bit requires one byte in the text response format
 	return uint32(t.numOfBits)
 }
 
 // Compare implements Type interface.
-func (t bitType) Compare(a interface{}, b interface{}) (int, error) {
+func (t BitType_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -101,7 +101,7 @@ func (t bitType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t bitType) Convert(v interface{}) (interface{}, error) {
+func (t BitType_) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -173,7 +173,7 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 }
 
 // MustConvert implements the Type interface.
-func (t bitType) MustConvert(v interface{}) interface{} {
+func (t BitType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -182,20 +182,20 @@ func (t bitType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t bitType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(bitType); ok {
+func (t BitType_) Equals(otherType Type) bool {
+	if ot, ok := otherType.(BitType_); ok {
 		return t.numOfBits == ot.numOfBits
 	}
 	return false
 }
 
 // Promote implements the Type interface.
-func (t bitType) Promote() Type {
+func (t BitType_) Promote() Type {
 	return promotedBitType
 }
 
 // SQL implements Type interface.
-func (t bitType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t BitType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -218,26 +218,26 @@ func (t bitType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, 
 }
 
 // String implements Type interface.
-func (t bitType) String() string {
+func (t BitType_) String() string {
 	return fmt.Sprintf("bit(%v)", t.numOfBits)
 }
 
 // Type implements Type interface.
-func (t bitType) Type() query.Type {
+func (t BitType_) Type() query.Type {
 	return sqltypes.Bit
 }
 
 // ValueType implements Type interface.
-func (t bitType) ValueType() reflect.Type {
+func (t BitType_) ValueType() reflect.Type {
 	return bitValueType
 }
 
 // Zero implements Type interface. Returns a uint64 value.
-func (t bitType) Zero() interface{} {
+func (t BitType_) Zero() interface{} {
 	return uint64(0)
 }
 
 // NumberOfBits returns the number of bits that this type may contain.
-func (t bitType) NumberOfBits() uint8 {
+func (t BitType_) NumberOfBits() uint8 {
 	return t.numOfBits
 }

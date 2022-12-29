@@ -64,15 +64,15 @@ type EnumType interface {
 	Values() []string
 }
 
-type enumType struct {
+type EnumType_ struct {
 	collation             CollationID
 	hashedValToIndex      map[uint64]int
 	indexToVal            []string
 	maxResponseByteLength uint32
 }
 
-var _ EnumType = enumType{}
-var _ TypeWithCollation = enumType{}
+var _ EnumType = EnumType_{}
+var _ TypeWithCollation = EnumType_{}
 
 // CreateEnumType creates a EnumType.
 func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
@@ -110,7 +110,7 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 			maxResponseByteLength = byteLength
 		}
 	}
-	return enumType{
+	return EnumType_{
 		collation:             collation,
 		hashedValToIndex:      valToIndex,
 		indexToVal:            values,
@@ -128,12 +128,12 @@ func MustCreateEnumType(values []string, collation CollationID) EnumType {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t enumType) MaxTextResponseByteLength() uint32 {
+func (t EnumType_) MaxTextResponseByteLength() uint32 {
 	return t.maxResponseByteLength
 }
 
 // Compare implements Type interface.
-func (t enumType) Compare(a interface{}, b interface{}) (int, error) {
+func (t EnumType_) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -169,7 +169,7 @@ func (t enumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t enumType) Convert(v interface{}) (interface{}, error) {
+func (t EnumType_) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -220,7 +220,7 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 }
 
 // MustConvert implements the Type interface.
-func (t enumType) MustConvert(v interface{}) interface{} {
+func (t EnumType_) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -229,8 +229,8 @@ func (t enumType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t enumType) Equals(otherType Type) bool {
-	if ot, ok := otherType.(enumType); ok && t.collation.Equals(ot.collation) && len(t.indexToVal) == len(ot.indexToVal) {
+func (t EnumType_) Equals(otherType Type) bool {
+	if ot, ok := otherType.(EnumType_); ok && t.collation.Equals(ot.collation) && len(t.indexToVal) == len(ot.indexToVal) {
 		for i, val := range t.indexToVal {
 			if ot.indexToVal[i] != val {
 				return false
@@ -242,12 +242,12 @@ func (t enumType) Equals(otherType Type) bool {
 }
 
 // Promote implements the Type interface.
-func (t enumType) Promote() Type {
+func (t EnumType_) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t enumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t EnumType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -271,7 +271,7 @@ func (t enumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 }
 
 // String implements Type interface.
-func (t enumType) String() string {
+func (t EnumType_) String() string {
 	s := fmt.Sprintf("enum('%v')", strings.Join(t.indexToVal, `','`))
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
@@ -283,23 +283,23 @@ func (t enumType) String() string {
 }
 
 // Type implements Type interface.
-func (t enumType) Type() query.Type {
+func (t EnumType_) Type() query.Type {
 	return sqltypes.Enum
 }
 
 // ValueType implements Type interface.
-func (t enumType) ValueType() reflect.Type {
+func (t EnumType_) ValueType() reflect.Type {
 	return enumValueType
 }
 
 // Zero implements Type interface.
-func (t enumType) Zero() interface{} {
+func (t EnumType_) Zero() interface{} {
 	/// If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
 	return uint16(1)
 }
 
 // At implements EnumType interface.
-func (t enumType) At(index int) (string, bool) {
+func (t EnumType_) At(index int) (string, bool) {
 	/// The elements listed in the column specification are assigned index numbers, beginning with 1.
 	index -= 1
 	if index < 0 || index >= len(t.indexToVal) {
@@ -309,17 +309,17 @@ func (t enumType) At(index int) (string, bool) {
 }
 
 // CharacterSet implements EnumType interface.
-func (t enumType) CharacterSet() CharacterSetID {
+func (t EnumType_) CharacterSet() CharacterSetID {
 	return t.collation.CharacterSet()
 }
 
 // Collation implements EnumType interface.
-func (t enumType) Collation() CollationID {
+func (t EnumType_) Collation() CollationID {
 	return t.collation
 }
 
 // IndexOf implements EnumType interface.
-func (t enumType) IndexOf(v string) int {
+func (t EnumType_) IndexOf(v string) int {
 	hashedVal, err := t.collation.HashToUint(v)
 	if err == nil {
 		if index, ok := t.hashedValToIndex[hashedVal]; ok {
@@ -337,18 +337,18 @@ func (t enumType) IndexOf(v string) int {
 }
 
 // NumberOfElements implements EnumType interface.
-func (t enumType) NumberOfElements() uint16 {
+func (t EnumType_) NumberOfElements() uint16 {
 	return uint16(len(t.indexToVal))
 }
 
 // Values implements EnumType interface.
-func (t enumType) Values() []string {
+func (t EnumType_) Values() []string {
 	vals := make([]string, len(t.indexToVal))
 	copy(vals, t.indexToVal)
 	return vals
 }
 
 // WithNewCollation implements TypeWithCollation interface.
-func (t enumType) WithNewCollation(collation CollationID) (Type, error) {
+func (t EnumType_) WithNewCollation(collation CollationID) (Type, error) {
 	return CreateEnumType(t.indexToVal, collation)
 }
