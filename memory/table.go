@@ -266,7 +266,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 			numBytesPerRow += 20
 		case sql.NullType:
 			numBytesPerRow += 1
-		case sql.TimeType:
+		case types.TimeType:
 			numBytesPerRow += 16
 		case sql.YearType:
 			numBytesPerRow += 8
@@ -358,7 +358,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		result, _ = sql.ConvertToBool(result)
+		result, _ = types.ConvertToBool(result)
 		if result != true {
 			return i.Next(ctx)
 		}

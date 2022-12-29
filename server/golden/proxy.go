@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -296,7 +297,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return sql.ConvertToBool(autoCommitSessionVar)
+	return types.ConvertToBool(autoCommitSessionVar)
 }
 
 func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqltypes.Result, more bool, err error) {

@@ -598,7 +598,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return sql.ConvertToBool(autoCommitSessionVar)
+	return types.ConvertToBool(autoCommitSessionVar)
 }
 
 // Call doQuery and cast known errors to SQLError
