@@ -10473,8 +10473,8 @@ var ViewTests = []QueryTest{
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb' order by table_name",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{

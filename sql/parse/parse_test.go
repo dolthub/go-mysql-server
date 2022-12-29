@@ -4652,7 +4652,7 @@ CREATE TABLE t2
 					),
 				),
 				false,
-				"CREATE VIEW v AS SELECT * FROM foo", "", "", "",
+				"CREATE VIEW v AS SELECT * FROM foo", "", "``@``", "",
 			),
 		},
 		{
@@ -4672,7 +4672,7 @@ CREATE TABLE t2
 					),
 				),
 				false,
-				"CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b", "", "", "",
+				"CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b", "", "``@``", "",
 			),
 		},
 		{
@@ -4689,7 +4689,7 @@ CREATE TABLE t2
 					),
 				),
 				true,
-				"CREATE OR REPLACE VIEW v AS SELECT * FROM foo", "", "", "",
+				"CREATE OR REPLACE VIEW v AS SELECT * FROM foo", "", "``@``", "",
 			),
 		},
 		{
@@ -4983,7 +4983,7 @@ func TestParseCreateTrigger(t *testing.T) {
 		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
    END`,
 			time.Unix(0, 0),
-			"",
+			"``@``",
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
 			"myTrigger", "before", "update", nil,
@@ -4996,7 +4996,7 @@ func TestParseCreateTrigger(t *testing.T) {
 			`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 			`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 			time.Unix(0, 0),
-			"",
+			"``@``",
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
 			"myTrigger", "before", "update",
@@ -5010,7 +5010,7 @@ func TestParseCreateTrigger(t *testing.T) {
 			`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 			`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 			time.Unix(0, 0),
-			"",
+			"``@``",
 		),
 	}
 
