@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/shopspring/decimal"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 )
 
 var systemEnumValueType = reflect.TypeOf(string(""))
@@ -34,10 +33,10 @@ type systemEnumType struct {
 	indexToVal []string
 }
 
-var _ SystemVariableType = systemEnumType{}
+var _ sql.SystemVariableType = systemEnumType{}
 
 // NewSystemEnumType returns a new systemEnumType.
-func NewSystemEnumType(varName string, values ...string) SystemVariableType {
+func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType {
 	if len(values) > 65535 { // system variables should NEVER hit this
 		panic(varName + " somehow has more than 65535 values")
 	}
@@ -118,7 +117,7 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 		}
 	}
 
-	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
@@ -131,7 +130,7 @@ func (t systemEnumType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t systemEnumType) Equals(otherType Type) bool {
+func (t systemEnumType) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(systemEnumType); ok && t.varName == ot.varName && len(t.indexToVal) == len(ot.indexToVal) {
 		for i, val := range t.indexToVal {
 			if ot.indexToVal[i] != val {
@@ -150,12 +149,12 @@ func (t systemEnumType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t systemEnumType) Promote() Type {
+func (t systemEnumType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemEnumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemEnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -165,7 +164,7 @@ func (t systemEnumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, err
 	}
 
-	val := types.AppendAndSliceString(dest, v.(string))
+	val := AppendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
@@ -194,7 +193,7 @@ func (t systemEnumType) Zero() interface{} {
 func (t systemEnumType) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(string)
 	if !ok {
-		return "", ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
 	return expectedVal, nil
 }
@@ -203,7 +202,7 @@ func (t systemEnumType) EncodeValue(val interface{}) (string, error) {
 func (t systemEnumType) DecodeValue(val string) (interface{}, error) {
 	outVal, err := t.Convert(val)
 	if err != nil {
-		return nil, ErrSystemVariableCodeFail.New(val, t.String())
+		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
 	return outVal, nil
 }

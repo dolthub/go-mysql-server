@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 	"strconv"
-	"strings"
 
-	"github.com/shopspring/decimal"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 )
 
-var systemBoolValueType = reflect.TypeOf(int8(0))
+var systemIntValueType = reflect.TypeOf(int64(0))
 
-// SystemBoolType_ is an internal boolean type ONLY for system variables.
-type SystemBoolType_ struct {
-	varName string
+// systemIntType is an internal integer type ONLY for system variables.
+type systemIntType struct {
+	varName     string
+	lowerbound  int64
+	upperbound  int64
+	negativeOne bool
 }
 
-var _ SystemVariableType = SystemBoolType_{}
+var _ sql.SystemVariableType = systemIntType{}
 
-// NewSystemBoolType returns a new systemBoolType.
-func NewSystemBoolType(varName string) SystemVariableType {
-	return SystemBoolType_{varName}
+// NewSystemIntType returns a new systemIntType.
+func NewSystemIntType(varName string, lowerbound, upperbound int64, negativeOne bool) sql.SystemVariableType {
+	return systemIntType{varName, lowerbound, upperbound, negativeOne}
 }
 
 // Compare implements Type interface.
-func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemIntType) Compare(a interface{}, b interface{}) (int, error) {
 	as, err := t.Convert(a)
 	if err != nil {
 		return 0, err
@@ -49,8 +51,8 @@ func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	ai := as.(int8)
-	bi := bs.(int8)
+	ai := as.(int64)
+	bi := bs.(int64)
 
 	if ai == bi {
 		return 0, nil
@@ -62,14 +64,9 @@ func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t SystemBoolType_) Convert(v interface{}) (interface{}, error) {
-	// Nil values are not accepted
+func (t systemIntType) Convert(v interface{}) (interface{}, error) {
+	// String nor nil values are accepted
 	switch value := v.(type) {
-	case bool:
-		if value {
-			return int8(1), nil
-		}
-		return int8(0), nil
 	case int:
 		return t.Convert(int64(value))
 	case uint:
@@ -87,8 +84,11 @@ func (t SystemBoolType_) Convert(v interface{}) (interface{}, error) {
 	case uint32:
 		return t.Convert(int64(value))
 	case int64:
-		if value == 0 || value == 1 {
-			return int8(value), nil
+		if value >= t.lowerbound && value <= t.upperbound {
+			return value, nil
+		}
+		if t.negativeOne && value == -1 {
+			return value, nil
 		}
 	case uint64:
 		return t.Convert(int64(value))
@@ -108,20 +108,13 @@ func (t SystemBoolType_) Convert(v interface{}) (interface{}, error) {
 			f, _ := value.Decimal.Float64()
 			return t.Convert(f)
 		}
-	case string:
-		switch strings.ToLower(value) {
-		case "on", "true":
-			return int8(1), nil
-		case "off", "false":
-			return int8(0), nil
-		}
 	}
 
-	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
-func (t SystemBoolType_) MustConvert(v interface{}) interface{} {
+func (t systemIntType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -130,26 +123,26 @@ func (t SystemBoolType_) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t SystemBoolType_) Equals(otherType Type) bool {
-	if ot, ok := otherType.(SystemBoolType_); ok {
-		return t.varName == ot.varName
+func (t systemIntType) Equals(otherType sql.Type) bool {
+	if ot, ok := otherType.(systemIntType); ok {
+		return t.varName == ot.varName && t.lowerbound == ot.lowerbound && t.upperbound == ot.upperbound && t.negativeOne == ot.negativeOne
 	}
 	return false
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t SystemBoolType_) MaxTextResponseByteLength() uint32 {
+func (t systemIntType) MaxTextResponseByteLength() uint32 {
 	// system types are not sent directly across the wire
 	return 0
 }
 
 // Promote implements the Type interface.
-func (t SystemBoolType_) Promote() Type {
+func (t systemIntType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t SystemBoolType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemIntType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -160,50 +153,49 @@ func (t SystemBoolType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes
 	}
 
 	stop := len(dest)
-	dest = strconv.AppendInt(dest, int64(v.(int8)), 10)
+	dest = strconv.AppendInt(dest, v.(int64), 10)
 	val := dest[stop:]
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.
-func (t SystemBoolType_) String() string {
-	return "system_bool"
+func (t systemIntType) String() string {
+	return "system_int"
 }
 
 // Type implements Type interface.
-func (t SystemBoolType_) Type() query.Type {
-	return sqltypes.Int8
+func (t systemIntType) Type() query.Type {
+	return sqltypes.Int64
 }
 
 // ValueType implements Type interface.
-func (t SystemBoolType_) ValueType() reflect.Type {
-	return systemBoolValueType
+func (t systemIntType) ValueType() reflect.Type {
+	return systemIntValueType
 }
 
 // Zero implements Type interface.
-func (t SystemBoolType_) Zero() interface{} {
-	return int8(0)
+func (t systemIntType) Zero() interface{} {
+	return int64(0)
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t SystemBoolType_) EncodeValue(val interface{}) (string, error) {
-	expectedVal, ok := val.(int8)
+func (t systemIntType) EncodeValue(val interface{}) (string, error) {
+	expectedVal, ok := val.(int64)
 	if !ok {
-		return "", ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
-	if expectedVal == 0 {
-		return "0", nil
-	}
-	return "1", nil
+	return strconv.FormatInt(expectedVal, 10), nil
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t SystemBoolType_) DecodeValue(val string) (interface{}, error) {
-	if val == "0" {
-		return int8(0), nil
-	} else if val == "1" {
-		return int8(1), nil
+func (t systemIntType) DecodeValue(val string) (interface{}, error) {
+	parsedVal, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		return nil, err
 	}
-	return nil, ErrSystemVariableCodeFail.New(val, t.String())
+	if parsedVal >= t.lowerbound && parsedVal <= t.upperbound {
+		return parsedVal, nil
+	}
+	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 }

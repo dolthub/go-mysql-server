@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -29,10 +29,10 @@ type systemStringType struct {
 	varName string
 }
 
-var _ SystemVariableType = systemStringType{}
+var _ sql.SystemVariableType = systemStringType{}
 
 // NewSystemStringType returns a new systemStringType.
-func NewSystemStringType(varName string) SystemVariableType {
+func NewSystemStringType(varName string) sql.SystemVariableType {
 	return systemStringType{varName}
 }
 
@@ -67,7 +67,7 @@ func (t systemStringType) Convert(v interface{}) (interface{}, error) {
 		return value, nil
 	}
 
-	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
@@ -80,7 +80,7 @@ func (t systemStringType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t systemStringType) Equals(otherType Type) bool {
+func (t systemStringType) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(systemStringType); ok {
 		return t.varName == ot.varName
 	}
@@ -94,12 +94,12 @@ func (t systemStringType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t systemStringType) Promote() Type {
+func (t systemStringType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -109,7 +109,7 @@ func (t systemStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 
-	val := types.AppendAndSliceString(dest, v.(string))
+	val := AppendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
@@ -138,7 +138,7 @@ func (t systemStringType) Zero() interface{} {
 func (t systemStringType) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(string)
 	if !ok {
-		return "", ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
 	return expectedVal, nil
 }

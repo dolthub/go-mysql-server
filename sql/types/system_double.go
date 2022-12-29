@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 	"strconv"
 
-	"github.com/shopspring/decimal"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 )
 
 var systemDoubleValueType = reflect.TypeOf(float64(0))
@@ -33,10 +33,10 @@ type systemDoubleType struct {
 	upperbound float64
 }
 
-var _ SystemVariableType = systemDoubleType{}
+var _ sql.SystemVariableType = systemDoubleType{}
 
 // NewSystemDoubleType returns a new systemDoubleType.
-func NewSystemDoubleType(varName string, lowerbound, upperbound float64) SystemVariableType {
+func NewSystemDoubleType(varName string, lowerbound, upperbound float64) sql.SystemVariableType {
 	return systemDoubleType{varName, lowerbound, upperbound}
 }
 
@@ -102,7 +102,7 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, error) {
 		}
 	}
 
-	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
@@ -115,7 +115,7 @@ func (t systemDoubleType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t systemDoubleType) Equals(otherType Type) bool {
+func (t systemDoubleType) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(systemDoubleType); ok {
 		return t.varName == ot.varName && t.lowerbound == ot.lowerbound && t.upperbound == ot.upperbound
 	}
@@ -129,12 +129,12 @@ func (t systemDoubleType) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t systemDoubleType) Promote() Type {
+func (t systemDoubleType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemDoubleType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemDoubleType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -175,7 +175,7 @@ func (t systemDoubleType) Zero() interface{} {
 func (t systemDoubleType) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(float64)
 	if !ok {
-		return "", ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
 	return strconv.FormatFloat(expectedVal, 'f', -1, 64), nil
 }
@@ -189,5 +189,5 @@ func (t systemDoubleType) DecodeValue(val string) (interface{}, error) {
 	if parsedVal >= t.lowerbound && parsedVal <= t.upperbound {
 		return parsedVal, nil
 	}
-	return nil, ErrSystemVariableCodeFail.New(val, t.String())
+	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 }

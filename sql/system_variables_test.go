@@ -17,6 +17,7 @@ package sql
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -25,7 +26,7 @@ var newConn = SystemVariable{
 	Name:    "max_connections",
 	Scope:   SystemVariableScope_Global,
 	Dynamic: true,
-	Type:    NewSystemIntType("max_connections", 1, 100000, false),
+	Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 	Default: int64(1000),
 }
 
@@ -33,7 +34,7 @@ var newTimeout = SystemVariable{
 	Name:    "net_write_timeout",
 	Scope:   SystemVariableScope_Both,
 	Dynamic: true,
-	Type:    NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
+	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
 }
 
@@ -41,7 +42,7 @@ var newUnknown = SystemVariable{
 	Name:    "net_write_timeout",
 	Scope:   SystemVariableScope_Both,
 	Dynamic: true,
-	Type:    NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
+	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
 }
 
@@ -70,14 +71,14 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 				Name:    "max_connections",
 				Scope:   SystemVariableScope_Global,
 				Dynamic: true,
-				Type:    NewSystemIntType("max_connections", 1, 100000, false),
+				Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 				Default: "1000",
 			}},
 			expectedCmp: []SystemVariable{{
 				Name:    "max_connections",
 				Scope:   SystemVariableScope_Global,
 				Dynamic: true,
-				Type:    NewSystemIntType("max_connections", 1, 100000, false),
+				Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 				Default: "1000",
 			}},
 			err: nil,

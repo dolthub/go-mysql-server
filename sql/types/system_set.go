@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -25,21 +25,21 @@ import (
 
 // systemSetType is an internal set type ONLY for system variables.
 type systemSetType struct {
-	SetType
+	sql.SetType
 	varName string
 }
 
-var _ SystemVariableType = systemSetType{}
+var _ sql.SystemVariableType = systemSetType{}
 
 // NewSystemSetType returns a new systemSetType.
-func NewSystemSetType(varName string, values ...string) SystemVariableType {
-	return systemSetType{types.MustCreateSetType(values, Collation_Default), varName}
+func NewSystemSetType(varName string, values ...string) sql.SystemVariableType {
+	return systemSetType{MustCreateSetType(values, sql.Collation_Default), varName}
 }
 
 // Compare implements Type interface.
 func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
 	if a == nil || b == nil {
-		return 0, ErrInvalidSystemVariableValue.New(t.varName, nil)
+		return 0, sql.ErrInvalidSystemVariableValue.New(t.varName, nil)
 	}
 	ai, err := t.Convert(a)
 	if err != nil {
@@ -105,7 +105,7 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 		return t.SetType.Convert(value)
 	}
 
-	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
@@ -118,7 +118,7 @@ func (t systemSetType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t systemSetType) Equals(otherType Type) bool {
+func (t systemSetType) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(systemSetType); ok {
 		return t.varName == ot.varName && t.SetType.Equals(ot.SetType)
 	}
@@ -126,12 +126,12 @@ func (t systemSetType) Equals(otherType Type) bool {
 }
 
 // Promote implements the Type interface.
-func (t systemSetType) Promote() Type {
+func (t systemSetType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t systemSetType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t systemSetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -144,7 +144,7 @@ func (t systemSetType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.Value{}, err
 	}
 
-	val := types.AppendAndSliceString(dest, value)
+	val := AppendAndSliceString(dest, value)
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
@@ -173,7 +173,7 @@ func (t systemSetType) Zero() interface{} {
 func (t systemSetType) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(uint64)
 	if !ok {
-		return "", ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
 	return t.BitsToString(expectedVal)
 }
@@ -182,7 +182,7 @@ func (t systemSetType) EncodeValue(val interface{}) (string, error) {
 func (t systemSetType) DecodeValue(val string) (interface{}, error) {
 	outVal, err := t.Convert(val)
 	if err != nil {
-		return nil, ErrSystemVariableCodeFail.New(val, t.String())
+		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
 	return outVal, nil
 }
