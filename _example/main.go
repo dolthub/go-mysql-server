@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // This is an example of how to implement a MySQL server.
@@ -83,7 +84,7 @@ func createTestDatabase(ctx *sql.Context) *memory.Database {
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
-		{Name: "created_at", Type: sql.Datetime, Nullable: false, Source: tableName},
+		{Name: "created_at", Type: types.Datetime, Nullable: false, Source: tableName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tableName, table)
 

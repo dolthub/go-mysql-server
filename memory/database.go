@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -192,7 +193,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 	for _, idxCol := range idxDef.Columns {
 		col := sch.Schema[sch.Schema.IndexOfColName(idxCol.Name)]
-		if col.PrimaryKey && sql.IsText(col.Type) && idxCol.Length > 0 {
+		if col.PrimaryKey && types.IsText(col.Type) && idxCol.Length > 0 {
 			return sql.ErrUnsupportedIndexPrefix.New(col.Name)
 		}
 	}

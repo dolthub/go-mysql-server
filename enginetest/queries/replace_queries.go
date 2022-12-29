@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TODO: none of these tests insert into tables without primary key columns, which have different semantics for
@@ -85,7 +86,7 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
+			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
 			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
 		}},
 	},
@@ -103,7 +104,7 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
+			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
 			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
 		}},
 	},
@@ -121,7 +122,7 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			sql.Timestamp.Zero(), sql.Date.Zero(),
+			types.Timestamp.Zero(), types.Date.Zero(),
 			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(1), uint(0),
 		}},
 	},
@@ -139,7 +140,7 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			sql.Timestamp.Zero(), sql.Date.Zero(),
+			types.Timestamp.Zero(), types.Date.Zero(),
 			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(1), uint(0),
 		}},
 	},

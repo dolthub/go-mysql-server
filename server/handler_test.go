@@ -25,6 +25,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -611,9 +612,9 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "bit12", Type: sql.MustCreateBitType(12)},
 
 		// Dates
-		{Name: "datetime", Type: sql.MustCreateDatetimeType(sqltypes.Datetime)},
-		{Name: "timestamp", Type: sql.MustCreateDatetimeType(sqltypes.Timestamp)},
-		{Name: "date", Type: sql.MustCreateDatetimeType(sqltypes.Date)},
+		{Name: "datetime", Type: types.MustCreateDatetimeType(sqltypes.Datetime)},
+		{Name: "timestamp", Type: types.MustCreateDatetimeType(sqltypes.Timestamp)},
+		{Name: "date", Type: types.MustCreateDatetimeType(sqltypes.Date)},
 		{Name: "time", Type: sql.Time},
 		{Name: "year", Type: sql.Year},
 
@@ -881,10 +882,10 @@ func TestBindingsToExprs(t *testing.T) {
 				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, sql.MustCreateBinary(query.Type_VARBINARY, int64(3))),
 				"text":      expression.NewLiteral("four score and seven years ago...", sql.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
 				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
-				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), sql.Date),
+				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), types.Date),
 				"year":      expression.NewLiteral(int16(2020), sql.Year),
-				"datetime":  expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), sql.Datetime),
-				"timestamp": expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), sql.Timestamp),
+				"datetime":  expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), types.Datetime),
+				"timestamp": expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), types.Timestamp),
 			},
 			false,
 		},

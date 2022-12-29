@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -122,8 +123,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.MustConvert(sql.Timestamp.Convert("2020-03-06 00:00:00")),
-			sql.MustConvert(sql.Date.Convert("2019-12-31")),
+			sql.MustConvert(types.Timestamp.Convert("2020-03-06 00:00:00")),
+			sql.MustConvert(types.Date.Convert("2019-12-31")),
 			"fourteen",
 			0,
 			nil,
@@ -147,8 +148,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.MustConvert(sql.Timestamp.Convert("2020-03-06 00:00:00")),
-			sql.MustConvert(sql.Date.Convert("2020-03-06")),
+			sql.MustConvert(types.Timestamp.Convert("2020-03-06 00:00:00")),
+			sql.MustConvert(types.Date.Convert("2020-03-06")),
 			"fourteen",
 			0,
 			nil,
@@ -172,8 +173,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.Timestamp.Zero(),
-			sql.Date.Zero(),
+			types.Timestamp.Zero(),
+			types.Date.Zero(),
 			"fourteen",
 			0,
 			nil,

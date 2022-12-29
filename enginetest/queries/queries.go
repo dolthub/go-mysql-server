@@ -17,6 +17,7 @@ package queries
 import (
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -10132,11 +10133,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
-		ExpectedErr: sql.ErrConvertingToTime,
+		ExpectedErr: types.ErrConvertingToTime,
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
-		ExpectedErr: sql.ErrConvertingToTime,
+		ExpectedErr: types.ErrConvertingToTime,
 	},
 	// this query was panicing, but should be allowed and should return error when this query is called
 	{

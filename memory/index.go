@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
@@ -248,7 +249,7 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	case nil:
 		return nil, sql.Null
 	case time.Time:
-		return val, sql.Datetime
+		return val, types.Datetime
 	default:
 		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
 	}

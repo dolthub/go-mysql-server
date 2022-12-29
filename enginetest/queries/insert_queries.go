@@ -17,6 +17,7 @@ package queries
 import (
 	"math"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -103,7 +104,7 @@ var InsertQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
+			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
 			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
 		}},
 	},
@@ -121,7 +122,7 @@ var InsertQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
+			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
 			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
 		}},
 	},
@@ -139,7 +140,7 @@ var InsertQueries = []WriteQueryTest{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			sql.Timestamp.Zero(), sql.Date.Zero(),
+			types.Timestamp.Zero(), types.Date.Zero(),
 			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(1), uint(0),
 		}},
 	},
@@ -157,7 +158,7 @@ var InsertQueries = []WriteQueryTest{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			sql.Timestamp.Zero(), sql.Date.Zero(),
+			types.Timestamp.Zero(), types.Date.Zero(),
 			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(2), uint(4),
 		}},
 	},
@@ -175,7 +176,7 @@ var InsertQueries = []WriteQueryTest{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
-			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.Date.Zero(),
+			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), types.Date.Zero(),
 			"", sql.False, sql.MustJSON(`""`), []byte(""), uint(2), uint(4),
 		}},
 	},
@@ -196,7 +197,7 @@ var InsertQueries = []WriteQueryTest{
 		WriteQuery:          `INSERT INTO typestable (id, ti, da) VALUES (999, '2021-09-1', '2021-9-01');`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT id, ti, da FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), sql.MustConvert(sql.Timestamp.Convert("2021-09-01")), sql.MustConvert(sql.Date.Convert("2021-09-01"))}},
+		ExpectedSelect:      []sql.Row{{int64(999), sql.MustConvert(types.Timestamp.Convert("2021-09-01")), sql.MustConvert(types.Date.Convert("2021-09-01"))}},
 	},
 	{
 		WriteQuery: `INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,

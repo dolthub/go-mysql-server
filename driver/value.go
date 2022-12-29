@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -49,7 +50,7 @@ func valueToExpr(v driver.Value) (sql.Expression, error) {
 	case string:
 		typ, err = sql.CreateStringWithDefaults(sqltypes.Text, int64(len(v)))
 	case time.Time:
-		typ = sql.Datetime
+		typ = types.Datetime
 	default:
 		return nil, fmt.Errorf("%w: %T", ErrUnsupportedType, v)
 	}

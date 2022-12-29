@@ -39,12 +39,19 @@ var (
 
 	ErrInvalidBaseType = errors.NewKind("%v is not a valid %v base type")
 
-	// ErrNotArray is returned when the value is not an array.
-	ErrNotArray = errors.NewKind("value of type %T is not an array")
-
 	// ErrConvertToSQL is returned when Convert failed.
 	// It makes an error less verbose comparing to what spf13/cast returns.
 	ErrConvertToSQL = errors.NewKind("incompatible conversion to SQL type: %s")
+)
+
+const (
+	// DateLayout is the layout of the MySQL date format in the representation
+	// Go understands.
+	DateLayout = "2006-01-02"
+
+	// TimestampDatetimeLayout is the formatting string with the layout of the timestamp
+	// using the format of Go "time" package.
+	TimestampDatetimeLayout = "2006-01-02 15:04:05.999999"
 )
 
 // Type represents a SQL type.

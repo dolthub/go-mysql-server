@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -260,7 +261,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
-			t, err := sql.CreateDatetimeType(v.Type())
+			t, err := types.CreateDatetimeType(v.Type())
 			if err != nil {
 				return nil, err
 			}
@@ -755,7 +756,7 @@ func schemaToFields(s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
 		var charset uint32 = mysql.CharacterSetUtf8
-		if sql.IsBinaryType(c.Type) {
+		if types.IsBinaryType(c.Type) {
 			charset = mysql.CharacterSetBinary
 		}
 

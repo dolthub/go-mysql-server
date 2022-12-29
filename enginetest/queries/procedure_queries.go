@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ProcedureLogicTests = []ScriptTest{
@@ -1552,7 +1553,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CALL p1('hi')",
-				ExpectedErr: sql.ErrConvertingToTime,
+				ExpectedErr: types.ErrConvertingToTime,
 			},
 		},
 	},

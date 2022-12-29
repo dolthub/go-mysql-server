@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -5562,7 +5563,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "insert into t10zero(pk) values (1)")
 
 		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
-		TestQueryWithContext(t, ctx, e, harness, "select * from t10zero order by 1", []sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), sql.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), sql.Timestamp.Zero()}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select * from t10zero order by 1", []sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Timestamp.Zero()}}, nil, nil)
 	})
 
 	t.Run("Non-DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP expression", func(t *testing.T) {
@@ -6108,7 +6109,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query:    "SELECT DATE_ADD(:var, INTERVAL 1 DAY);",
 			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
 			Bindings: map[string]sql.Expression{
-				"var": expression.NewLiteral("2022-10-26 13:14:15", sql.Datetime),
+				"var": expression.NewLiteral("2022-10-26 13:14:15", types.Datetime),
 			},
 		},
 	}

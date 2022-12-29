@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -255,7 +256,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 			numBytesPerRow += uint64(n.MaxByteLength())
 		case sql.BitType:
 			numBytesPerRow += 1
-		case sql.DatetimeType:
+		case types.DatetimeType:
 			numBytesPerRow += 8
 		case sql.DecimalType:
 			numBytesPerRow += uint64(n.MaximumScale())
@@ -1414,7 +1415,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		found := false
 		for j, currCol := range potentialSchema {
 			if strings.ToLower(currCol.Name) == strings.ToLower(newCol.Name) {
-				if sql.IsText(currCol.Type) && newCol.Length > 0 {
+				if types.IsText(currCol.Type) && newCol.Length > 0 {
 					return sql.ErrUnsupportedIndexPrefix.New(currCol.Name)
 				}
 				currCol.PrimaryKey = true
