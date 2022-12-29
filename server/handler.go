@@ -187,11 +187,11 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 		}
 		switch {
 		case v.Type() == sqltypes.Year:
-			v, err := sql.Year.Convert(string(v.ToBytes()))
+			v, err := types.Year.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
-			res[k] = expression.NewLiteral(v, sql.Year)
+			res[k] = expression.NewLiteral(v, types.Year)
 		case sqltypes.IsSigned(v.Type()):
 			v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
 			if err != nil {

@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,40 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 	"strconv"
 	"time"
 
-	"github.com/shopspring/decimal"
-
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
-	Year YearType = YearType_{}
+	Year sql.YearType = YearType_{}
 
 	ErrConvertingToYear = errors.NewKind("value %v is not a valid Year")
 
 	yearValueType = reflect.TypeOf(int16(0))
 )
 
-// YearType represents the YEAR type.
-// https://dev.mysql.com/doc/refman/8.0/en/year.html
-// The type of the returned value is int16.
-type YearType interface {
-	Type
-}
-
 type YearType_ struct{}
 
 // Compare implements Type interface.
 func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := CompareNulls(a, b); hasNulls {
+	if hasNulls, res := sql.CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -150,7 +143,7 @@ func (t YearType_) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t YearType_) Equals(otherType Type) bool {
+func (t YearType_) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(YearType_)
 	return ok
 }
@@ -161,12 +154,12 @@ func (t YearType_) MaxTextResponseByteLength() uint32 {
 }
 
 // Promote implements the Type interface.
-func (t YearType_) Promote() Type {
+func (t YearType_) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t YearType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t YearType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}

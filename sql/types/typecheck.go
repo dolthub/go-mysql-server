@@ -85,7 +85,7 @@ func IsNull(ex sql.Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t sql.Type) bool {
 	switch t.(type) {
-	case NumberTypeImpl_, DecimalType_, sql.BitType_, sql.YearType_, sql.SystemBoolType_:
+	case NumberTypeImpl_, DecimalType_, sql.BitType_, YearType_, sql.SystemBoolType_:
 		return true
 	default:
 		return false

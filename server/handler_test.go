@@ -616,7 +616,7 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "timestamp", Type: types.MustCreateDatetimeType(sqltypes.Timestamp)},
 		{Name: "date", Type: types.MustCreateDatetimeType(sqltypes.Date)},
 		{Name: "time", Type: types.Time},
-		{Name: "year", Type: sql.Year},
+		{Name: "year", Type: types.Year},
 
 		// Set and Enum Types
 		{Name: "set", Type: types.MustCreateSetType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
@@ -883,7 +883,7 @@ func TestBindingsToExprs(t *testing.T) {
 				"text":      expression.NewLiteral("four score and seven years ago...", types.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
 				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
 				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), types.Date),
-				"year":      expression.NewLiteral(int16(2020), sql.Year),
+				"year":      expression.NewLiteral(int16(2020), types.Year),
 				"datetime":  expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), types.Datetime),
 				"timestamp": expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), types.Timestamp),
 			},

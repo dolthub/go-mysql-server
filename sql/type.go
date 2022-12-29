@@ -98,6 +98,16 @@ type NumberType interface {
 	IsFloat() bool
 }
 
+// DatetimeType represents DATE, DATETIME, and TIMESTAMP.
+// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+// The type of the returned value is time.Time.
+type DatetimeType interface {
+	Type
+	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
+	MaximumTime() time.Time
+	MinimumTime() time.Time
+}
+
 // TimeType represents the TIME type.
 // https://dev.mysql.com/doc/refman/8.0/en/time.html
 // TIME is implemented as TIME(6).
@@ -117,6 +127,13 @@ type TimeType interface {
 	// that will process the value based on its base-10 visual representation (for example, Convert() will interpret
 	// the value `1234` as 12 minutes and 34 seconds). This clamps the given microseconds to the allowed range.
 	MicrosecondsToTimespan(v int64) types.Timespan
+}
+
+// YearType represents the YEAR type.
+// https://dev.mysql.com/doc/refman/8.0/en/year.html
+// The type of the returned value is int16.
+type YearType interface {
+	Type
 }
 
 // SetType represents the SET type.
@@ -494,7 +511,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return types.CreateString(sqltypes.VarBinary, length, Collation_binary)
 	case "year":
-		return Year, nil
+		return types.Year, nil
 	case "date":
 		return types.Date, nil
 	case "time":

@@ -256,7 +256,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 			numBytesPerRow += uint64(n.MaxByteLength())
 		case sql.BitType:
 			numBytesPerRow += 1
-		case types.DatetimeType:
+		case sql.DatetimeType:
 			numBytesPerRow += 8
 		case sql.DecimalType:
 			numBytesPerRow += uint64(n.MaximumScale())

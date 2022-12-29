@@ -85,22 +85,12 @@ var (
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
 
-// DatetimeType represents DATE, DATETIME, and TIMESTAMP.
-// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
-// The type of the returned value is time.Time.
-type DatetimeType interface {
-	sql.Type
-	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
-	MaximumTime() time.Time
-	MinimumTime() time.Time
-}
-
 type datetimeType struct {
 	baseType query.Type
 }
 
 // CreateDatetimeType creates a Type dealing with all temporal types that are not TIME nor YEAR.
-func CreateDatetimeType(baseType query.Type) (DatetimeType, error) {
+func CreateDatetimeType(baseType query.Type) (sql.DatetimeType, error) {
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
 		return datetimeType{
@@ -111,7 +101,7 @@ func CreateDatetimeType(baseType query.Type) (DatetimeType, error) {
 }
 
 // MustCreateDatetimeType is the same as CreateDatetimeType except it panics on errors.
-func MustCreateDatetimeType(baseType query.Type) DatetimeType {
+func MustCreateDatetimeType(baseType query.Type) sql.DatetimeType {
 	dt, err := CreateDatetimeType(baseType)
 	if err != nil {
 		panic(err)

@@ -5335,7 +5335,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"YEAR",
-			sql.Year,
+			types.Year,
 		},
 		{
 			"DATE",
