@@ -17,6 +17,7 @@ package aggregation
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -65,7 +66,7 @@ func TestBitAnd_Eval_Text(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewBitAnd(expression.NewGetField(0, sql.Text, "field", true))
+	m := NewBitAnd(expression.NewGetField(0, types.Text, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("a"))
@@ -147,7 +148,7 @@ func TestBitOr_Eval_Text(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewBitOr(expression.NewGetField(0, sql.Text, "field", true))
+	m := NewBitOr(expression.NewGetField(0, types.Text, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("a"))
@@ -229,7 +230,7 @@ func TestBitXor_Eval_Text(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewBitXor(expression.NewGetField(0, sql.Text, "field", true))
+	m := NewBitXor(expression.NewGetField(0, types.Text, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("a"))

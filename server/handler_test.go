@@ -570,14 +570,14 @@ func TestSchemaToFields(t *testing.T) {
 
 	schema := sql.Schema{
 		// Blob, Text, and JSON Types
-		{Name: "tinyblob", Type: sql.TinyBlob},
-		{Name: "blob", Type: sql.Blob},
-		{Name: "mediumblob", Type: sql.MediumBlob},
-		{Name: "longblob", Type: sql.LongBlob},
-		{Name: "tinytext", Type: sql.TinyText},
-		{Name: "text", Type: sql.Text},
-		{Name: "mediumtext", Type: sql.MediumText},
-		{Name: "longtext", Type: sql.LongText},
+		{Name: "tinyblob", Type: types.TinyBlob},
+		{Name: "blob", Type: types.Blob},
+		{Name: "mediumblob", Type: types.MediumBlob},
+		{Name: "longblob", Type: types.LongBlob},
+		{Name: "tinytext", Type: types.TinyText},
+		{Name: "text", Type: types.Text},
+		{Name: "mediumtext", Type: types.MediumText},
+		{Name: "longtext", Type: types.LongText},
 		{Name: "json", Type: sql.JSON},
 
 		// Geometry Types
@@ -605,10 +605,10 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "decimal60_30", Type: sql.MustCreateDecimalType(60, 30)},
 
 		// Char, Binary, and Bit Types
-		{Name: "varchar50", Type: sql.MustCreateString(sqltypes.VarChar, 50, sql.Collation_Default)},
-		{Name: "varbinary12345", Type: sql.MustCreateBinary(sqltypes.VarBinary, 12345)},
-		{Name: "binary123", Type: sql.MustCreateBinary(sqltypes.Binary, 123)},
-		{Name: "char123", Type: sql.MustCreateString(sqltypes.Char, 123, sql.Collation_Default)},
+		{Name: "varchar50", Type: types.MustCreateString(sqltypes.VarChar, 50, sql.Collation_Default)},
+		{Name: "varbinary12345", Type: types.MustCreateBinary(sqltypes.VarBinary, 12345)},
+		{Name: "binary123", Type: types.MustCreateBinary(sqltypes.Binary, 123)},
+		{Name: "char123", Type: types.MustCreateString(sqltypes.Char, 123, sql.Collation_Default)},
 		{Name: "bit12", Type: sql.MustCreateBitType(12)},
 
 		// Dates
@@ -879,8 +879,8 @@ func TestBindingsToExprs(t *testing.T) {
 			map[string]sql.Expression{
 				"i8":        expression.NewLiteral(int64(12), sql.Int64),
 				"u64":       expression.NewLiteral(uint64(4096), sql.Uint64),
-				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, sql.MustCreateBinary(query.Type_VARBINARY, int64(3))),
-				"text":      expression.NewLiteral("four score and seven years ago...", sql.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
+				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, types.MustCreateBinary(query.Type_VARBINARY, int64(3))),
+				"text":      expression.NewLiteral("four score and seven years ago...", types.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
 				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
 				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), types.Date),
 				"year":      expression.NewLiteral(int16(2020), sql.Year),

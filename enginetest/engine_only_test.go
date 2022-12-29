@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -396,7 +397,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 		{
@@ -405,7 +406,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 		{
@@ -415,8 +416,8 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				greatest, err := function.NewGreatest(
-					expression.NewLiteral("abc123", sql.LongText),
-					expression.NewLiteral("cde456", sql.LongText),
+					expression.NewLiteral("abc123", types.LongText),
+					expression.NewLiteral("cde456", types.LongText),
 				)
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, greatest)
@@ -429,7 +430,7 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				timestamp, err := function.NewTimestamp(
-					expression.NewLiteral("20200101:120000Z", sql.LongText),
+					expression.NewLiteral("20200101:120000Z", types.LongText),
 				)
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, timestamp)
@@ -441,7 +442,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 	}
@@ -698,7 +699,7 @@ func (s SimpleTableFunction) Schema() sql.Schema {
 	schema := []*sql.Column{
 		&sql.Column{
 			Name: "one",
-			Type: sql.TinyText,
+			Type: types.TinyText,
 		},
 		&sql.Column{
 			Name: "two",

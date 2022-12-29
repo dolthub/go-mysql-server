@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -40,8 +41,8 @@ func TestIf(t *testing.T) {
 	for _, tc := range testCases {
 		f := NewIf(
 			tc.expr,
-			expression.NewGetField(0, sql.LongText, "true", true),
-			expression.NewGetField(1, sql.LongText, "false", true),
+			expression.NewGetField(0, types.LongText, "true", true),
+			expression.NewGetField(1, types.LongText, "false", true),
 		)
 
 		v, err := f.Eval(sql.NewEmptyContext(), tc.row)

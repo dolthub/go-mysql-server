@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AsWKB is a function that converts a spatial type into WKB format (alias for AsBinary)
@@ -51,7 +52,7 @@ func (a *AsWKB) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (a *AsWKB) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
 }
 
 func (a *AsWKB) String() string {

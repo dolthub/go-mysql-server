@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,7 +27,7 @@ import (
 func TestNot(t *testing.T) {
 	require := require.New(t)
 
-	e := NewNot(NewGetField(0, sql.Text, "foo", true))
+	e := NewNot(NewGetField(0, types.Text, "foo", true))
 	require.False(eval(t, e, sql.NewRow(true)).(bool))
 	require.True(eval(t, e, sql.NewRow(false)).(bool))
 	require.Nil(eval(t, e, sql.NewRow(nil)))

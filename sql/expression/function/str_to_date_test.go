@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,8 +25,8 @@ func TestStrToDate(t *testing.T) {
 
 	for _, tt := range testCases {
 		f, err := NewStrToDate(
-			expression.NewGetField(0, sql.Text, "", true),
-			expression.NewGetField(1, sql.Text, "", true),
+			expression.NewGetField(0, types.Text, "", true),
+			expression.NewGetField(1, types.Text, "", true),
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -52,8 +53,8 @@ func TestStrToDateFailure(t *testing.T) {
 
 	for _, tt := range testCases {
 		f, err := NewStrToDate(
-			expression.NewGetField(0, sql.Text, "", true),
-			expression.NewGetField(1, sql.Text, "", true),
+			expression.NewGetField(0, types.Text, "", true),
+			expression.NewGetField(1, types.Text, "", true),
 		)
 		if err != nil {
 			t.Fatal(err)

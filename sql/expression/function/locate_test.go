@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -113,8 +114,8 @@ func TestLocate(t *testing.T) {
 			require := require.New(t)
 
 			exprs := []sql.Expression{
-				expression.NewGetField(0, sql.Text, "substr", false),
-				expression.NewGetField(1, sql.LongText, "str", false),
+				expression.NewGetField(0, types.Text, "substr", false),
+				expression.NewGetField(1, types.LongText, "str", false),
 			}
 			row := sql.Row{tt.Substr, tt.Str}
 

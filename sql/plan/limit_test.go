@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -106,7 +107,7 @@ func getTestingTable(t *testing.T) (*memory.Table, int) {
 	}
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: sql.Text},
+		{Name: "col1", Type: types.Text},
 	})
 	testingTable = memory.NewTable("test", childSchema, nil)
 

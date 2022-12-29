@@ -143,7 +143,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 				if uc, ok := setVal.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
 					_, setScope, _ := sqlparser.VarScope(uc.Name())
 					if setScope == sqlparser.SetScope_None {
-						setVal = expression.NewLiteral(uc.Name(), sql.LongText)
+						setVal = expression.NewLiteral(uc.Name(), types.LongText)
 					}
 				}
 			}
@@ -195,7 +195,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			if uc, ok := setVal.(column); ok && uc.Table() == "" {
 				_, setScope, _ := sqlparser.VarScope(uc.Name())
 				if setScope == sqlparser.SetScope_None {
-					setVal = expression.NewLiteral(uc.Name(), sql.LongText)
+					setVal = expression.NewLiteral(uc.Name(), types.LongText)
 				}
 			}
 
@@ -256,16 +256,16 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				charsetStr := plan.GetDatabaseCollation(ctx, db).CharacterSet().String()
-				return expression.NewNamedLiteral(name, charsetStr, sql.Text), transform.NewTree, nil
+				return expression.NewNamedLiteral(name, charsetStr, types.Text), transform.NewTree, nil
 			}
-			return expression.NewNamedLiteral(name, sql.Collation_Default.CharacterSet().String(), sql.Text), transform.NewTree, nil
+			return expression.NewNamedLiteral(name, sql.Collation_Default.CharacterSet().String(), types.Text), transform.NewTree, nil
 		case "collation_database":
 			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				collationStr := plan.GetDatabaseCollation(ctx, db).String()
-				return expression.NewNamedLiteral(name, collationStr, sql.Text), transform.NewTree, nil
+				return expression.NewNamedLiteral(name, collationStr, types.Text), transform.NewTree, nil
 			}
-			return expression.NewNamedLiteral(name, sql.Collation_Default.String(), sql.Text), transform.NewTree, nil
+			return expression.NewNamedLiteral(name, sql.Collation_Default.String(), types.Text), transform.NewTree, nil
 		default:
 			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), transform.NewTree, nil
 		}

@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -25,15 +26,15 @@ import (
 )
 
 var lSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "lcol1", Type: sql.Text},
-	{Name: "lcol2", Type: sql.Text},
+	{Name: "lcol1", Type: types.Text},
+	{Name: "lcol2", Type: types.Text},
 	{Name: "lcol3", Type: sql.Int32},
 	{Name: "lcol4", Type: sql.Int64},
 })
 
 var rSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "rcol1", Type: sql.Text},
-	{Name: "rcol2", Type: sql.Text},
+	{Name: "rcol1", Type: types.Text},
+	{Name: "rcol2", Type: types.Text},
 	{Name: "rcol3", Type: sql.Int32},
 	{Name: "rcol4", Type: sql.Int64},
 })
@@ -43,12 +44,12 @@ func TestCrossJoin(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	resultSchema := sql.Schema{
-		{Name: "lcol1", Type: sql.Text},
-		{Name: "lcol2", Type: sql.Text},
+		{Name: "lcol1", Type: types.Text},
+		{Name: "lcol2", Type: types.Text},
 		{Name: "lcol3", Type: sql.Int32},
 		{Name: "lcol4", Type: sql.Int64},
-		{Name: "rcol1", Type: sql.Text},
-		{Name: "rcol2", Type: sql.Text},
+		{Name: "rcol1", Type: types.Text},
+		{Name: "rcol2", Type: types.Text},
 		{Name: "rcol3", Type: sql.Int32},
 		{Name: "rcol4", Type: sql.Int64},
 	}

@@ -110,17 +110,17 @@ func (u UserSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_tabl
 // init creates the schema for the "user" Grant Table.
 func init() {
 	// Types
-	char32_utf8_bin := sql.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
-	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
-	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
+	char32_utf8_bin := types.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
+	char64_utf8_bin := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
+	char255_ascii_general_ci := types.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
 	enum_ANY_X509_SPECIFIED_utf8_general_ci := sql.MustCreateEnumType([]string{"", "ANY", "X509", "SPECIFIED"}, sql.Collation_utf8_general_ci)
 	enum_N_Y_utf8_general_ci := sql.MustCreateEnumType([]string{"N", "Y"}, sql.Collation_utf8_general_ci)
-	text_utf8_bin := sql.CreateText(sql.Collation_utf8_bin)
+	text_utf8_bin := types.CreateText(sql.Collation_utf8_bin)
 
 	// Column Templates
 	blob_not_null_default_empty := &sql.Column{
-		Type:     sql.Blob,
-		Default:  mustDefault(expression.NewLiteral("", sql.Blob), sql.Blob, true, false),
+		Type:     types.Blob,
+		Default:  mustDefault(expression.NewLiteral("", types.Blob), types.Blob, true, false),
 		Nullable: false,
 	}
 	char32_utf8_bin_not_null_default_empty := &sql.Column{

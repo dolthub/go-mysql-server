@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +29,7 @@ import (
 func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int32},
-		{Name: "s", Source: "mytable", Type: sql.Text},
+		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
 
 	db.AddTable("db", table)

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -69,7 +70,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 	var td TimeDelta
 
 	if r, ok := unitTextFormats[i.Unit]; ok {
-		val, err = sql.LongText.Convert(val)
+		val, err = types.LongText.Convert(val)
 		if err != nil {
 			return nil, err
 		}

@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -858,27 +859,27 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 			newMergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+				expression.NewGetFieldWithTable(1, types.Text, "mytable", "s", false)),
 			newMergableIndex(dbs, "mytable",
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+				expression.NewGetFieldWithTable(1, types.Text, "mytable", "s", false)),
 		},
 		"othertable": {
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+				expression.NewGetFieldWithTable(0, types.Text, "othertable", "s2", false)),
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+				expression.NewGetFieldWithTable(1, types.Text, "othertable", "i2", false)),
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+				expression.NewGetFieldWithTable(0, types.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, types.Text, "othertable", "i2", false)),
 		},
 		"bigtable": {
 			newMergableIndex(dbs, "bigtable",
-				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+				expression.NewGetFieldWithTable(0, types.Text, "bigtable", "t", false)),
 		},
 		"floattable": {
 			newMergableIndex(dbs, "floattable",
-				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+				expression.NewGetFieldWithTable(2, types.Text, "floattable", "f64", false)),
 		},
 		"niltable": {
 			newMergableIndex(dbs, "niltable",

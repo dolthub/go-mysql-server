@@ -17,6 +17,7 @@ package plan
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ import (
 func TestAddColumnToSchema(t *testing.T) {
 	myTable := sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}
 
 	type testCase struct {
@@ -40,7 +41,7 @@ func TestAddColumnToSchema(t *testing.T) {
 		projections []sql.Expression
 	}
 
-	varchar20 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
+	varchar20 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
 	testCases := []testCase{
 		{
 			name:      "add at end",
@@ -173,7 +174,7 @@ func TestAddColumnToSchema(t *testing.T) {
 }
 
 func TestModifyColumnInSchema(t *testing.T) {
-	varchar20 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
+	varchar20 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
 
 	myTable := sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},

@@ -32,7 +32,7 @@ type ShowColumns struct {
 	targetSchema sql.Schema
 }
 
-var VarChar25000 = sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
+var VarChar25000 = types.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
 var (
 	showColumnsSchema = sql.Schema{
 		{Name: "Field", Type: VarChar25000},

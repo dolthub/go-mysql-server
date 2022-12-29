@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,7 +25,7 @@ import (
 )
 
 func TestInetAton(t *testing.T) {
-	f := NewInetAton(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewInetAton(expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -59,7 +60,7 @@ func TestInetAton(t *testing.T) {
 }
 
 func TestInetNtoa(t *testing.T) {
-	f := NewInetNtoa(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewInetNtoa(expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -90,7 +91,7 @@ func TestInetNtoa(t *testing.T) {
 }
 
 func TestInet6Aton(t *testing.T) {
-	f := NewInet6Aton(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewInet6Aton(expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -123,7 +124,7 @@ func TestInet6Aton(t *testing.T) {
 }
 
 func TestInet6Ntoa(t *testing.T) {
-	f := NewInet6Ntoa(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewInet6Ntoa(expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row

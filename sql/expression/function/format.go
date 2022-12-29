@@ -19,6 +19,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -65,7 +66,7 @@ func (f *Format) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f *Format) Type() sql.Type { return sql.LongText }
+func (f *Format) Type() sql.Type { return types.LongText }
 
 // IsNullable implements the Expression interface.
 func (f *Format) IsNullable() bool {

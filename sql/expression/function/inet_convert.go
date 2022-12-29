@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -74,7 +75,7 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect to receive an IP address, so convert val into string
-	ipstr, err := sql.ConvertToString(val, sql.LongText)
+	ipstr, err := types.ConvertToString(val, types.LongText)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 	}
@@ -125,7 +126,7 @@ func (i *Inet6Aton) String() string {
 }
 
 func (i *Inet6Aton) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
 }
 
 func (i *Inet6Aton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -199,7 +200,7 @@ func (i *InetNtoa) String() string {
 }
 
 func (i *InetNtoa) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 func (i *InetNtoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -266,7 +267,7 @@ func (i *Inet6Ntoa) String() string {
 }
 
 func (i *Inet6Ntoa) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 func (i *Inet6Ntoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {

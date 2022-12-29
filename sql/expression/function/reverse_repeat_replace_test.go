@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,7 +25,7 @@ import (
 )
 
 func TestReverse(t *testing.T) {
-	f := NewReverse(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewReverse(expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -55,7 +56,7 @@ func TestReverse(t *testing.T) {
 
 func TestRepeat(t *testing.T) {
 	f := NewRepeat(
-		expression.NewGetField(0, sql.LongText, "", false),
+		expression.NewGetField(0, types.LongText, "", false),
 		expression.NewGetField(1, sql.Int32, "", false),
 	)
 
@@ -90,9 +91,9 @@ func TestRepeat(t *testing.T) {
 
 func TestReplace(t *testing.T) {
 	f := NewReplace(
-		expression.NewGetField(0, sql.LongText, "", false),
-		expression.NewGetField(1, sql.LongText, "", false),
-		expression.NewGetField(2, sql.LongText, "", false),
+		expression.NewGetField(0, types.LongText, "", false),
+		expression.NewGetField(1, types.LongText, "", false),
+		expression.NewGetField(2, types.LongText, "", false),
 	)
 
 	testCases := []struct {

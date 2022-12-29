@@ -17,6 +17,7 @@ package aggregation
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -59,7 +60,7 @@ func TestCountEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCount(expression.NewGetField(0, sql.Text, "", true))
+	c := NewCount(expression.NewGetField(0, types.Text, "", true))
 	b, _ := c.NewBuffer()
 	require.Equal(int64(0), evalBuffer(t, b))
 
@@ -106,7 +107,7 @@ func TestCountDistinctEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCountDistinct(expression.NewGetField(0, sql.Text, "", true))
+	c := NewCountDistinct(expression.NewGetField(0, types.Text, "", true))
 	b, _ := c.NewBuffer()
 	require.Equal(int64(0), evalBuffer(t, b))
 

@@ -17,6 +17,7 @@ package expression_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
@@ -34,7 +35,7 @@ const (
 )
 
 var comparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.LongText: {
+	types.LongText: {
 		testEqual: {
 			{"foo", "foo"},
 			{"", ""},
@@ -75,7 +76,7 @@ var comparisonCases = map[sql.Type]map[int][][]interface{}{
 }
 
 var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.LongText: {
+	types.LongText: {
 		testRegexp: {
 			{"foobar", ".*bar"},
 			{"foobarfoo", ".*bar.*"},
@@ -259,8 +260,8 @@ func TestInvalidRegexp(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 
-	col1 := expression.NewGetField(0, sql.LongText, "col1", true)
-	invalid := expression.NewLiteral("*col1", sql.LongText)
+	col1 := expression.NewGetField(0, types.LongText, "col1", true)
+	invalid := expression.NewLiteral("*col1", types.LongText)
 	r := expression.NewRegexp(col1, invalid)
 	row := sql.NewRow("col1")
 

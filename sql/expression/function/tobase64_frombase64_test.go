@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,8 +25,8 @@ import (
 )
 
 func TestBase64(t *testing.T) {
-	fTo := NewToBase64(expression.NewGetField(0, sql.LongText, "", false))
-	fFrom := NewFromBase64(expression.NewGetField(0, sql.LongText, "", false))
+	fTo := NewToBase64(expression.NewGetField(0, types.LongText, "", false))
+	fFrom := NewFromBase64(expression.NewGetField(0, types.LongText, "", false))
 
 	testCases := []struct {
 		name     string

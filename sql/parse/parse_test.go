@@ -69,7 +69,7 @@ func TestParse(t *testing.T) {
 						Nullable: true,
 					}, {
 						Name:     "b",
-						Type:     sql.Text,
+						Type:     types.Text,
 						Nullable: true,
 					}, {
 						Name:     "c",
@@ -81,11 +81,11 @@ func TestParse(t *testing.T) {
 						Nullable: true,
 					}, {
 						Name:     "e",
-						Type:     sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+						Type:     types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 						Nullable: true,
 					}, {
 						Name:     "f",
-						Type:     sql.Blob,
+						Type:     types.Blob,
 						Nullable: false,
 					}, {
 						Name:     "g",
@@ -93,7 +93,7 @@ func TestParse(t *testing.T) {
 						Nullable: true,
 					}, {
 						Name:     "h",
-						Type:     sql.MustCreateStringWithDefaults(sqltypes.Char, 40),
+						Type:     types.MustCreateStringWithDefaults(sqltypes.Char, 40),
 						Nullable: true,
 					}}),
 				},
@@ -114,7 +114,7 @@ func TestParse(t *testing.T) {
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Text,
+						Type:       types.Text,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -137,7 +137,7 @@ func TestParse(t *testing.T) {
 						Comment:    "hello",
 					}, {
 						Name:       "b",
-						Type:       sql.Text,
+						Type:       types.Text,
 						Nullable:   true,
 						PrimaryKey: false,
 						Comment:    "goodbye",
@@ -160,7 +160,7 @@ func TestParse(t *testing.T) {
 						PrimaryKey: true,
 					}, {
 						Name:       "b",
-						Type:       sql.Text,
+						Type:       types.Text,
 						Nullable:   true,
 						PrimaryKey: false,
 					}}),
@@ -192,7 +192,7 @@ func TestParse(t *testing.T) {
 							PrimaryKey: true,
 						}, {
 							Name:       "b",
-							Type:       sql.Text,
+							Type:       types.Text,
 							Nullable:   false,
 							PrimaryKey: true,
 						}}),
@@ -225,7 +225,7 @@ func TestParse(t *testing.T) {
 							PrimaryKey: true,
 						}, {
 							Name:       "b",
-							Type:       sql.Text,
+							Type:       types.Text,
 							Nullable:   false,
 							PrimaryKey: true,
 						}}, 1, 0),
@@ -296,7 +296,7 @@ func TestParse(t *testing.T) {
 							PrimaryKey: true,
 						}, {
 							Name:       "b",
-							Type:       sql.Text,
+							Type:       types.Text,
 							Nullable:   false,
 							PrimaryKey: true,
 						}}),
@@ -1061,7 +1061,7 @@ CREATE TABLE t2
 						Nullable: true,
 					}, {
 						Name:     "b",
-						Type:     sql.Text,
+						Type:     types.Text,
 						Nullable: true,
 					}}),
 				},
@@ -1204,7 +1204,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 					Name:     "bar",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
+					Type:     types.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1281,7 +1281,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 					Name:     "bar",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
+					Type:     types.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1294,7 +1294,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase(""),
 				plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 					Name:     "baz",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
+					Type:     types.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "hello",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1307,7 +1307,7 @@ CREATE TABLE t2
 				sql.UnresolvedDatabase("mydb"),
 				plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
 					Name:     "col1",
-					Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Unspecified),
+					Type:     types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Unspecified),
 					Nullable: true,
 					Comment:  "changed",
 					Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
@@ -1606,7 +1606,7 @@ CREATE TABLE t2
 				},
 				plan.NewTableAlias("baz",
 					plan.NewUnresolvedTableAsOf("foo", "",
-						expression.NewLiteral("2019-01-01", sql.LongText))),
+						expression.NewLiteral("2019-01-01", types.LongText))),
 			),
 		},
 		{
@@ -1635,7 +1635,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral("bar", sql.LongText),
+						expression.NewLiteral("bar", types.LongText),
 					),
 					plan.NewUnresolvedTable("foo", ""),
 				),
@@ -1723,7 +1723,7 @@ CREATE TABLE t2
 						},
 						{
 							expression.NewUnresolvedFunction("rand", false, nil),
-							expression.NewUnresolvedFunction("concat", false, nil, expression.NewLiteral("a", sql.LongText), expression.NewLiteral("b", sql.LongText)),
+							expression.NewUnresolvedFunction("concat", false, nil, expression.NewLiteral("a", types.LongText), expression.NewLiteral("b", types.LongText)),
 						},
 					}),
 					"a"),
@@ -1792,7 +1792,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewNot(expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral("bar", sql.LongText),
+						expression.NewLiteral("bar", types.LongText),
 					)),
 					plan.NewUnresolvedTable("foo", ""),
 				),
@@ -1974,7 +1974,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewRegexp(
 						expression.NewUnresolvedColumn("a"),
-						expression.NewLiteral(".*test.*", sql.LongText),
+						expression.NewLiteral(".*test.*", types.LongText),
 					),
 					plan.NewUnresolvedTable("t1", ""),
 				),
@@ -1989,7 +1989,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewRegexp(
 						expression.NewUnresolvedColumn("a"),
-						expression.NewLiteral("*main.go", sql.LongText),
+						expression.NewLiteral("*main.go", types.LongText),
 					),
 					plan.NewUnresolvedTable("t1", ""),
 				),
@@ -2005,7 +2005,7 @@ CREATE TABLE t2
 					expression.NewNot(
 						expression.NewRegexp(
 							expression.NewUnresolvedColumn("a"),
-							expression.NewLiteral(".*test.*", sql.LongText),
+							expression.NewLiteral(".*test.*", types.LongText),
 						),
 					),
 					plan.NewUnresolvedTable("t1", ""),
@@ -2015,14 +2015,14 @@ CREATE TABLE t2
 		{
 			input: `INSERT INTO t1 (col1, col2) VALUES ('a', 1)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
-				expression.NewLiteral("a", sql.LongText),
+				expression.NewLiteral("a", types.LongText),
 				expression.NewLiteral(int8(1), sql.Int8),
 			}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 		},
 		{
 			input: `INSERT INTO mydb.t1 (col1, col2) VALUES ('a', 1)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase("mydb"), plan.NewUnresolvedTable("t1", "mydb"), plan.NewValues([][]sql.Expression{{
-				expression.NewLiteral("a", sql.LongText),
+				expression.NewLiteral("a", types.LongText),
 				expression.NewLiteral(int8(1), sql.Int8),
 			}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 		},
@@ -2042,7 +2042,7 @@ CREATE TABLE t2
 		{
 			input: `INSERT INTO t1 (col1, col2) VALUES ('a', DEFAULT)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
-				expression.NewLiteral("a", sql.LongText),
+				expression.NewLiteral("a", types.LongText),
 				&expression.DefaultColumn{},
 			}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 		},
@@ -2055,7 +2055,7 @@ CREATE TABLE t2
 		{
 			input: `INSERT INTO test (decimal_col) VALUES (119815923291839784651.11981592329183978465111981592329183978465144)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("test", ""), plan.NewValues([][]sql.Expression{{
-				expression.NewLiteral("119815923291839784651.11981592329183978465111981592329183978465144", sql.LongText),
+				expression.NewLiteral("119815923291839784651.11981592329183978465111981592329183978465144", types.LongText),
 			}}), false, []string{"decimal_col"}, []sql.Expression{}, false),
 		},
 		{
@@ -2071,7 +2071,7 @@ CREATE TABLE t2
 		{
 			input: `REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`,
 			plan: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
-				expression.NewLiteral("a", sql.LongText),
+				expression.NewLiteral("a", types.LongText),
 				expression.NewLiteral(int8(1), sql.Int8),
 			}}), true, []string{"col1", "col2"}, []sql.Expression{}, false),
 		},
@@ -2101,30 +2101,30 @@ CREATE TABLE t2
 		},
 		{
 			input: `SHOW TABLES AS OF 'abc'`,
-			plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
+			plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", types.LongText)),
 		},
 		{
 			input: `SHOW FULL TABLES AS OF 'abc'`,
-			plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), true, expression.NewLiteral("abc", sql.LongText)),
+			plan:  plan.NewShowTables(sql.UnresolvedDatabase(""), true, expression.NewLiteral("abc", types.LongText)),
 		},
 		{
 			input: `SHOW TABLES FROM foo AS OF 'abc'`,
-			plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", sql.LongText)),
+			plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", types.LongText)),
 		},
 		{
 			input: `SHOW FULL TABLES FROM foo AS OF 'abc'`,
-			plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
+			plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", types.LongText)),
 		},
 		{
 			input: `SHOW FULL TABLES IN foo AS OF 'abc'`,
-			plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
+			plan:  plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", types.LongText)),
 		},
 		{
 			input: `SHOW TABLES FROM mydb LIKE 'foo'`,
 			plan: plan.NewFilter(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("Tables_in_mydb"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 					nil,
 				),
 				plan.NewShowTables(sql.UnresolvedDatabase("mydb"), false, nil),
@@ -2135,10 +2135,10 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("Tables_in_mydb"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 					nil,
 				),
-				plan.NewShowTables(sql.UnresolvedDatabase("mydb"), false, expression.NewLiteral("abc", sql.LongText)),
+				plan.NewShowTables(sql.UnresolvedDatabase("mydb"), false, expression.NewLiteral("abc", types.LongText)),
 			),
 		},
 		{
@@ -2146,7 +2146,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewEquals(
 					expression.NewUnresolvedColumn("Tables_in_bar"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 				),
 				plan.NewShowTables(sql.UnresolvedDatabase("bar"), false, nil),
 			),
@@ -2156,7 +2156,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("Tables_in_mydb"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 					nil,
 				),
 				plan.NewShowTables(sql.UnresolvedDatabase("mydb"), true, nil),
@@ -2167,7 +2167,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewEquals(
 					expression.NewUnresolvedColumn("Tables_in_bar"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 				),
 				plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 			),
@@ -2177,7 +2177,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("Tables_in_bar"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 					nil,
 				),
 				plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
@@ -2188,10 +2188,10 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("Tables_in_bar"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 					nil,
 				),
-				plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, expression.NewLiteral("abc", sql.LongText)),
+				plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, expression.NewLiteral("abc", types.LongText)),
 			),
 		},
 		{
@@ -2199,7 +2199,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewEquals(
 					expression.NewUnresolvedColumn("Tables_in_bar"),
-					expression.NewLiteral("test", sql.LongText),
+					expression.NewLiteral("test", types.LongText),
 				),
 				plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 			),
@@ -2392,7 +2392,7 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("0x01AF",
-						expression.NewLiteral([]byte{1, 175}, sql.LongBlob),
+						expression.NewLiteral([]byte{1, 175}, types.LongBlob),
 					),
 				},
 				plan.NewResolvedDualTable(),
@@ -2403,7 +2403,7 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("X'41'",
-						expression.NewLiteral([]byte{'A'}, sql.LongBlob),
+						expression.NewLiteral([]byte{'A'}, types.LongBlob),
 					),
 				},
 				plan.NewResolvedDualTable(),
@@ -2572,7 +2572,7 @@ CREATE TABLE t2
 					expression.NewInTuple(
 						expression.NewLiteral(int8(1), sql.Int8),
 						expression.NewTuple(
-							expression.NewLiteral("1", sql.LongText),
+							expression.NewLiteral("1", types.LongText),
 							expression.NewLiteral(int8(2), sql.Int8),
 						),
 					),
@@ -2588,7 +2588,7 @@ CREATE TABLE t2
 					expression.NewNotInTuple(
 						expression.NewLiteral(int8(1), sql.Int8),
 						expression.NewTuple(
-							expression.NewLiteral("1", sql.LongText),
+							expression.NewLiteral("1", types.LongText),
 							expression.NewLiteral(int8(2), sql.Int8),
 						),
 					),
@@ -2784,7 +2784,7 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("'1.0' + 2",
 						expression.NewPlus(
-							expression.NewLiteral("1.0", sql.LongText), expression.NewLiteral(int8(2), sql.Int8),
+							expression.NewLiteral("1.0", types.LongText), expression.NewLiteral(int8(2), sql.Int8),
 						),
 					),
 				},
@@ -2797,7 +2797,7 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("'1' + '2'",
 						expression.NewPlus(
-							expression.NewLiteral("1", sql.LongText), expression.NewLiteral("2", sql.LongText),
+							expression.NewLiteral("1", types.LongText), expression.NewLiteral("2", types.LongText),
 						),
 					),
 				},
@@ -2965,8 +2965,8 @@ CREATE TABLE t2
 			plan: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(expression.NewUnresolvedColumn("autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
-					expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("bar", sql.LongText)),
-					expression.NewSetField(expression.NewUnresolvedColumn("baz"), expression.NewLiteral("ON", sql.LongText)),
+					expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("bar", types.LongText)),
+					expression.NewSetField(expression.NewUnresolvedColumn("baz"), expression.NewLiteral("ON", types.LongText)),
 					expression.NewSetField(expression.NewUnresolvedColumn("qux"), expression.NewUnresolvedColumn("bareword")),
 				},
 			),
@@ -2976,7 +2976,7 @@ CREATE TABLE t2
 			plan: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session), expression.NewLiteral(int8(1), sql.Int8)),
-					expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("true", sql.LongText)),
+					expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("true", types.LongText)),
 				},
 			),
 		},
@@ -3017,9 +3017,9 @@ CREATE TABLE t2
 			input: `/*!40101 SET NAMES utf8 */`,
 			plan: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewUnresolvedColumn("character_set_client"), expression.NewLiteral("utf8", sql.LongText)),
-					expression.NewSetField(expression.NewUnresolvedColumn("character_set_connection"), expression.NewLiteral("utf8", sql.LongText)),
-					expression.NewSetField(expression.NewUnresolvedColumn("character_set_results"), expression.NewLiteral("utf8", sql.LongText)),
+					expression.NewSetField(expression.NewUnresolvedColumn("character_set_client"), expression.NewLiteral("utf8", types.LongText)),
+					expression.NewSetField(expression.NewUnresolvedColumn("character_set_connection"), expression.NewLiteral("utf8", types.LongText)),
+					expression.NewSetField(expression.NewUnresolvedColumn("character_set_results"), expression.NewLiteral("utf8", types.LongText)),
 				},
 			),
 		},
@@ -3080,7 +3080,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewLike(
 						expression.NewUnresolvedColumn("i"),
-						expression.NewLiteral("foo", sql.LongText),
+						expression.NewLiteral("foo", types.LongText),
 						nil,
 					),
 					plan.NewUnresolvedTable("foo", ""),
@@ -3094,7 +3094,7 @@ CREATE TABLE t2
 				plan.NewFilter(
 					expression.NewNot(expression.NewLike(
 						expression.NewUnresolvedColumn("i"),
-						expression.NewLiteral("foo", sql.LongText),
+						expression.NewLiteral("foo", types.LongText),
 						nil,
 					)),
 					plan.NewUnresolvedTable("foo", ""),
@@ -3114,7 +3114,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewEquals(
 					expression.NewUnresolvedColumn("Field"),
-					expression.NewLiteral("bar", sql.LongText),
+					expression.NewLiteral("bar", types.LongText),
 				),
 				plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
 			),
@@ -3124,7 +3124,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("Field"),
-					expression.NewLiteral("bar", sql.LongText),
+					expression.NewLiteral("bar", types.LongText),
 					nil,
 				),
 				plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
@@ -3135,7 +3135,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("Name"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 					nil,
 				),
 				plan.NewShowTableStatus(sql.UnresolvedDatabase("")),
@@ -3158,7 +3158,7 @@ CREATE TABLE t2
 			plan: plan.NewFilter(
 				expression.NewEquals(
 					expression.NewUnresolvedColumn("Name"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 				),
 				plan.NewShowTableStatus(sql.UnresolvedDatabase("")),
 			),
@@ -3203,16 +3203,16 @@ CREATE TABLE t2
 		{
 			input: `SHOW VARIABLES LIKE 'gtid_mode'`,
 			plan: plan.NewShowVariables(expression.NewLike(
-				expression.NewGetField(0, sql.LongText, "variable_name", false),
-				expression.NewLiteral("gtid_mode", sql.LongText),
+				expression.NewGetField(0, types.LongText, "variable_name", false),
+				expression.NewLiteral("gtid_mode", types.LongText),
 				nil,
 			)),
 		},
 		{
 			input: `SHOW SESSION VARIABLES LIKE 'autocommit'`,
 			plan: plan.NewShowVariables(expression.NewLike(
-				expression.NewGetField(0, sql.LongText, "variable_name", false),
-				expression.NewLiteral("autocommit", sql.LongText),
+				expression.NewGetField(0, types.LongText, "variable_name", false),
+				expression.NewLiteral("autocommit", types.LongText),
 				nil,
 			)),
 		},
@@ -3332,14 +3332,14 @@ CREATE TABLE t2
 							[]expression.CaseBranch{
 								{
 									Cond:  expression.NewLiteral(int8(1), sql.Int8),
-									Value: expression.NewLiteral("foo", sql.LongText),
+									Value: expression.NewLiteral("foo", types.LongText),
 								},
 								{
 									Cond:  expression.NewLiteral(int8(2), sql.Int8),
-									Value: expression.NewLiteral("bar", sql.LongText),
+									Value: expression.NewLiteral("bar", types.LongText),
 								},
 							},
-							expression.NewLiteral("baz", sql.LongText),
+							expression.NewLiteral("baz", types.LongText),
 						),
 					),
 				},
@@ -3356,11 +3356,11 @@ CREATE TABLE t2
 							[]expression.CaseBranch{
 								{
 									Cond:  expression.NewLiteral(int8(1), sql.Int8),
-									Value: expression.NewLiteral("foo", sql.LongText),
+									Value: expression.NewLiteral("foo", types.LongText),
 								},
 								{
 									Cond:  expression.NewLiteral(int8(2), sql.Int8),
-									Value: expression.NewLiteral("bar", sql.LongText),
+									Value: expression.NewLiteral("bar", types.LongText),
 								},
 							},
 							nil,
@@ -3383,17 +3383,17 @@ CREATE TABLE t2
 										expression.NewUnresolvedColumn("foo"),
 										expression.NewLiteral(int8(1), sql.Int8),
 									),
-									Value: expression.NewLiteral("foo", sql.LongText),
+									Value: expression.NewLiteral("foo", types.LongText),
 								},
 								{
 									Cond: expression.NewEquals(
 										expression.NewUnresolvedColumn("foo"),
 										expression.NewLiteral(int8(2), sql.Int8),
 									),
-									Value: expression.NewLiteral("bar", sql.LongText),
+									Value: expression.NewLiteral("bar", types.LongText),
 								},
 							},
-							expression.NewLiteral("baz", sql.LongText),
+							expression.NewLiteral("baz", types.LongText),
 						),
 					),
 				},
@@ -3409,7 +3409,7 @@ CREATE TABLE t2
 			plan: plan.NewHaving(
 				expression.NewLike(
 					expression.NewUnresolvedColumn("collation"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 					nil,
 				),
 				showCollationProjection,
@@ -3420,7 +3420,7 @@ CREATE TABLE t2
 			plan: plan.NewHaving(
 				expression.NewEquals(
 					expression.NewUnresolvedColumn("Charset"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 				),
 				showCollationProjection,
 			),
@@ -3500,8 +3500,8 @@ CREATE TABLE t2
 		{
 			input: "SHOW CREATE TABLE mytable as of 'version'",
 			plan: plan.NewShowCreateTableWithAsOf(
-				plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("version", sql.LongText)),
-				false, expression.NewLiteral("version", sql.LongText)),
+				plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("version", types.LongText)),
+				false, expression.NewLiteral("version", types.LongText)),
 		},
 		{
 			input: "SHOW CREATE VIEW `mytable`",
@@ -3553,7 +3553,7 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("'2018-05-01' + INTERVAL 1 DAY",
 						expression.NewArithmetic(
-							expression.NewLiteral("2018-05-01", sql.LongText),
+							expression.NewLiteral("2018-05-01", types.LongText),
 							expression.NewInterval(
 								expression.NewLiteral(int8(1), sql.Int8),
 								"DAY",
@@ -3571,7 +3571,7 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewAlias("'2018-05-01' - INTERVAL 1 DAY",
 						expression.NewArithmetic(
-							expression.NewLiteral("2018-05-01", sql.LongText),
+							expression.NewLiteral("2018-05-01", types.LongText),
 							expression.NewInterval(
 								expression.NewLiteral(int8(1), sql.Int8),
 								"DAY",
@@ -3593,7 +3593,7 @@ CREATE TABLE t2
 								expression.NewLiteral(int8(1), sql.Int8),
 								"DAY",
 							),
-							expression.NewLiteral("2018-05-01", sql.LongText),
+							expression.NewLiteral("2018-05-01", types.LongText),
 							"+",
 						),
 					),
@@ -3608,7 +3608,7 @@ CREATE TABLE t2
 					expression.NewAlias("'2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY",
 						expression.NewArithmetic(
 							expression.NewArithmetic(
-								expression.NewLiteral("2018-05-01", sql.LongText),
+								expression.NewLiteral("2018-05-01", types.LongText),
 								expression.NewInterval(
 									expression.NewLiteral(int8(1), sql.Int8),
 									"DAY",
@@ -4167,7 +4167,7 @@ CREATE TABLE t2
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
 							expression.NewInterval(
-								expression.NewLiteral("2:30", sql.LongText),
+								expression.NewLiteral("2:30", types.LongText),
 								"MINUTE_SECOND",
 							),
 						), "", "")),
@@ -4247,7 +4247,7 @@ CREATE TABLE t2
 							expression.NewUnresolvedColumn("x"),
 						}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
 							expression.NewInterval(
-								expression.NewLiteral("2:30", sql.LongText),
+								expression.NewLiteral("2:30", types.LongText),
 								"MINUTE_SECOND",
 							),
 						), "", "")),
@@ -4264,7 +4264,7 @@ CREATE TABLE t2
 						expression.NewUnresolvedColumn("x"),
 					}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
 						expression.NewInterval(
-							expression.NewLiteral("2:30", sql.LongText),
+							expression.NewLiteral("2:30", types.LongText),
 							"MINUTE_SECOND",
 						),
 					), "", "w"),
@@ -5283,55 +5283,55 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"TINYBLOB",
-			sql.TinyBlob,
+			types.TinyBlob,
 		},
 		{
 			"BLOB",
-			sql.Blob,
+			types.Blob,
 		},
 		{
 			"MEDIUMBLOB",
-			sql.MediumBlob,
+			types.MediumBlob,
 		},
 		{
 			"LONGBLOB",
-			sql.LongBlob,
+			types.LongBlob,
 		},
 		{
 			"TINYTEXT",
-			sql.TinyText,
+			types.TinyText,
 		},
 		{
 			"TEXT",
-			sql.Text,
+			types.Text,
 		},
 		{
 			"MEDIUMTEXT",
-			sql.MediumText,
+			types.MediumText,
 		},
 		{
 			"LONGTEXT",
-			sql.LongText,
+			types.LongText,
 		},
 		{
 			"CHAR(5)",
-			sql.MustCreateStringWithDefaults(sqltypes.Char, 5),
+			types.MustCreateStringWithDefaults(sqltypes.Char, 5),
 		},
 		{
 			"VARCHAR(255)",
-			sql.MustCreateStringWithDefaults(sqltypes.VarChar, 255),
+			types.MustCreateStringWithDefaults(sqltypes.VarChar, 255),
 		},
 		{
 			"VARCHAR(300) COLLATE latin1_german2_ci",
-			sql.MustCreateString(sqltypes.VarChar, 300, sql.Collation_latin1_german2_ci),
+			types.MustCreateString(sqltypes.VarChar, 300, sql.Collation_latin1_german2_ci),
 		},
 		{
 			"BINARY(6)",
-			sql.MustCreateBinary(sqltypes.Binary, 6),
+			types.MustCreateBinary(sqltypes.Binary, 6),
 		},
 		{
 			"VARBINARY(256)",
-			sql.MustCreateBinary(sqltypes.VarBinary, 256),
+			types.MustCreateBinary(sqltypes.VarBinary, 256),
 		},
 		{
 			"YEAR",

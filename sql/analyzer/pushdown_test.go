@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -30,13 +31,13 @@ func TestPushdownProjectionToTables(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -51,7 +52,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 			name: "pushdown projections to tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewOr(
@@ -71,7 +72,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewOr(
@@ -99,13 +100,13 @@ func TestPushdownFilterToTables(t *testing.T) {
 	table := memory.NewFilteredTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table2 := memory.NewFilteredTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -119,7 +120,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 			name: "pushdown filter to tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewAnd(
@@ -139,7 +140,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(5, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(
@@ -209,7 +210,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 			name: "push filters down onto projected table",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(1, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewAnd(
@@ -233,7 +234,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(5, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(
@@ -258,13 +259,13 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -293,7 +294,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 							),
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 					),
@@ -323,7 +324,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 							),
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 						plan.NewResolvedTable(table2, nil, nil),
@@ -350,7 +351,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 							),
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(5, sql.Int32, "t2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 					),
@@ -386,7 +387,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 							),
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(2, sql.Int32, "t2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 						plan.NewTableAlias("t2",
@@ -400,7 +401,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			name: "pushdown filter to left join",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewAnd(
@@ -421,7 +422,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(5, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewIsNull(
@@ -539,7 +540,7 @@ func TestPushdownIndex(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		myTableI,
 		myTableF,
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table.EnablePrimaryKeyIndexes()
@@ -561,7 +562,7 @@ func TestPushdownIndex(t *testing.T) {
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		mytable2I,
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	table2.EnablePrimaryKeyIndexes()
@@ -613,8 +614,8 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 					),
 					plan.NewResolvedTable(table, nil, nil),
@@ -626,8 +627,8 @@ func TestPushdownIndex(t *testing.T) {
 				},
 				plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-						expression.NewLiteral("hello", sql.Text),
+						expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+						expression.NewLiteral("hello", types.Text),
 					),
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
@@ -650,12 +651,12 @@ func TestPushdownIndex(t *testing.T) {
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -669,12 +670,12 @@ func TestPushdownIndex(t *testing.T) {
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					mustStaticIta(
@@ -800,7 +801,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 					),
@@ -822,7 +823,7 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewFilter(
 						expression.NewEquals(
 							expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewLiteral("hello", types.Text),
 						),
 						mustStaticIta(
 							plan.NewResolvedTable(table2, nil, nil),
@@ -879,8 +880,8 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 					),
 					plan.NewTableAlias("t1",
@@ -899,8 +900,8 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(3.14, sql.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 					),
 					plan.NewTableAlias("t1",
@@ -991,12 +992,12 @@ func TestPushdownIndex(t *testing.T) {
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1022,8 +1023,8 @@ func TestPushdownIndex(t *testing.T) {
 								expression.NewLiteral(3.14, sql.Float64),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 						plan.NewTableAlias("t1",
@@ -1040,8 +1041,8 @@ func TestPushdownIndex(t *testing.T) {
 								expression.NewLiteral(21, sql.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 						plan.NewTableAlias("t2",
@@ -1072,8 +1073,8 @@ func TestPushdownIndex(t *testing.T) {
 								expression.NewLiteral(100, sql.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1106,8 +1107,8 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(21, sql.Int32),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					plan.NewTableAlias("t2",
@@ -1134,8 +1135,8 @@ func TestPushdownIndex(t *testing.T) {
 								expression.NewLiteral(100, sql.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1171,8 +1172,8 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(21, sql.Int32),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					plan.NewTableAlias("t2",
@@ -1202,8 +1203,8 @@ func TestPushdownIndex(t *testing.T) {
 								expression.NewLiteral(100, sql.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1225,8 +1226,8 @@ func TestPushdownIndex(t *testing.T) {
 							expression.NewLiteral(21, sql.Int32),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					plan.NewLeftOuterLookupJoin(plan.NewFilter(

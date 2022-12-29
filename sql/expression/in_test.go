@@ -100,8 +100,8 @@ func TestInTuple(t *testing.T) {
 			name: "right values contain a different, coercible type",
 			left: expression.NewLiteral(1, sql.Uint64),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: false,
@@ -110,8 +110,8 @@ func TestInTuple(t *testing.T) {
 			name: "right values contain a different, coercible type, and left value is zero value",
 			left: expression.NewLiteral(0, sql.Uint64),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: true,
@@ -120,8 +120,8 @@ func TestInTuple(t *testing.T) {
 			name: "enum on left side; invalid values on right",
 			left: expression.NewLiteral("one", testEnumType),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: false,
@@ -130,8 +130,8 @@ func TestInTuple(t *testing.T) {
 			name: "enum on left side; valid enum values on right",
 			left: expression.NewLiteral("one", testEnumType),
 			right: expression.NewTuple(
-				expression.NewLiteral("", sql.TinyText),
-				expression.NewLiteral("one", sql.TinyText),
+				expression.NewLiteral("", types.TinyText),
+				expression.NewLiteral("one", types.TinyText),
 			),
 			row:    nil,
 			result: true,
@@ -140,8 +140,8 @@ func TestInTuple(t *testing.T) {
 			name: "set on left side; invalid set values on right",
 			left: expression.NewLiteral("one", testSetType),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: false,
@@ -150,8 +150,8 @@ func TestInTuple(t *testing.T) {
 			name: "set on left side; valid set values on right",
 			left: expression.NewLiteral("one", testSetType),
 			right: expression.NewTuple(
-				expression.NewLiteral("", sql.TinyText),
-				expression.NewLiteral("one", sql.TinyText),
+				expression.NewLiteral("", types.TinyText),
+				expression.NewLiteral("one", types.TinyText),
 			),
 			row:    nil,
 			result: true,
@@ -160,8 +160,8 @@ func TestInTuple(t *testing.T) {
 			name: "date on right side; non-dates on left",
 			left: expression.NewLiteral(time.Now(), types.Datetime),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			err:    types.ErrConvertingToTime,
 			row:    nil,
@@ -382,16 +382,16 @@ func TestHashInTuple(t *testing.T) {
 			"heterogeneous left tuple is in right",
 			expression.NewTuple(
 				expression.NewLiteral(int64(2), sql.Int64),
-				expression.NewLiteral("a", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+				expression.NewLiteral("a", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 			),
 			expression.NewTuple(
 				expression.NewTuple(
 					expression.NewLiteral(int64(1), sql.Int64),
-					expression.NewLiteral("b", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+					expression.NewLiteral("b", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 				),
 				expression.NewTuple(
 					expression.NewLiteral(int64(2), sql.Int64),
-					expression.NewLiteral("a", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+					expression.NewLiteral("a", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 				),
 			),
 			nil,
@@ -454,11 +454,11 @@ func TestHashInTuple(t *testing.T) {
 			name: "left has a function",
 			left: expression.NewTuple(
 				function.NewLower(
-					expression.NewLiteral("hi", sql.TinyText),
+					expression.NewLiteral("hi", types.TinyText),
 				),
 			),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
 			),
 			result: true,
 		},
@@ -466,8 +466,8 @@ func TestHashInTuple(t *testing.T) {
 			name: "right values contain a different, coercible type",
 			left: expression.NewLiteral(1, sql.Uint64),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: false,
@@ -476,8 +476,8 @@ func TestHashInTuple(t *testing.T) {
 			name: "right values contain a different, coercible type, and left value is zero value",
 			left: expression.NewLiteral(0, sql.Uint64),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: true,
@@ -486,8 +486,8 @@ func TestHashInTuple(t *testing.T) {
 			name: "enum on left side; invalid values on right",
 			left: expression.NewLiteral("one", testEnumType),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: false,
@@ -496,8 +496,8 @@ func TestHashInTuple(t *testing.T) {
 			name: "enum on left side; valid enum values on right",
 			left: expression.NewLiteral("one", testEnumType),
 			right: expression.NewTuple(
-				expression.NewLiteral("", sql.TinyText),
-				expression.NewLiteral("one", sql.TinyText),
+				expression.NewLiteral("", types.TinyText),
+				expression.NewLiteral("one", types.TinyText),
 			),
 			row:    nil,
 			result: true,
@@ -506,8 +506,8 @@ func TestHashInTuple(t *testing.T) {
 			name: "set on left side; invalid set values on right",
 			left: expression.NewLiteral("one", testSetType),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			row:    nil,
 			result: false,
@@ -516,8 +516,8 @@ func TestHashInTuple(t *testing.T) {
 			name: "set on left side; valid set values on right",
 			left: expression.NewLiteral("one", testSetType),
 			right: expression.NewTuple(
-				expression.NewLiteral("", sql.TinyText),
-				expression.NewLiteral("one", sql.TinyText),
+				expression.NewLiteral("", types.TinyText),
+				expression.NewLiteral("one", types.TinyText),
 			),
 			row:    nil,
 			result: true,
@@ -526,8 +526,8 @@ func TestHashInTuple(t *testing.T) {
 			name: "date on right side; non-dates on left",
 			left: expression.NewLiteral(time.Now(), types.Datetime),
 			right: expression.NewTuple(
-				expression.NewLiteral("hi", sql.TinyText),
-				expression.NewLiteral("bye", sql.TinyText),
+				expression.NewLiteral("hi", types.TinyText),
+				expression.NewLiteral("bye", types.TinyText),
 			),
 			staticErr: types.ErrConvertingToTime,
 			row:       nil,
@@ -540,7 +540,7 @@ func TestHashInTuple(t *testing.T) {
 				"char",
 			),
 			right: expression.NewTuple(
-				expression.NewLiteral("1", sql.TinyText),
+				expression.NewLiteral("1", types.TinyText),
 			),
 			row: sql.NewRow(int64(1), int64(0)),
 

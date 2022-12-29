@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -441,7 +442,7 @@ func TestAssociativeTransforms(t *testing.T) {
 
 var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
 	{Name: "i", Type: sql.Int64, Nullable: true},
-	{Name: "s", Type: sql.Text, Nullable: true},
+	{Name: "s", Type: types.Text, Nullable: true},
 })
 
 func tableNode(name string) sql.Node {

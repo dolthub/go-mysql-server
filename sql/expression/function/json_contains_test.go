@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
@@ -34,15 +35,15 @@ func TestJSONContains(t *testing.T) {
 	_, err = NewJSONContains(
 		expression.NewGetField(0, sql.JSON, "arg1", false),
 		expression.NewGetField(1, sql.JSON, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
-		expression.NewGetField(3, sql.LongText, "arg4", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
+		expression.NewGetField(3, types.LongText, "arg4", false),
 	)
 	require.Error(t, err)
 
 	f, err := NewJSONContains(
 		expression.NewGetField(0, sql.JSON, "arg1", false),
 		expression.NewGetField(1, sql.JSON, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 

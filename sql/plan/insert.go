@@ -19,6 +19,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -373,8 +374,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					continue
 				} else {
 					// Fill in error with information
-					if sql.ErrLengthBeyondLimit.Is(cErr) {
-						cErr = sql.ErrLengthBeyondLimit.New(row[idx], col.Name)
+					if types.ErrLengthBeyondLimit.Is(cErr) {
+						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					}
@@ -574,8 +575,8 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 // Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
-	if sql.ErrLengthBeyondLimit.Is(err) {
-		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
+	if types.ErrLengthBeyondLimit.Is(err) {
+		maxLength := tableSchema[columnIdx].Type.(types.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
 	} else {
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()

@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -217,67 +218,67 @@ func TestIntervalEvalDelta(t *testing.T) {
 			TimeDelta{Microseconds: 2},
 		},
 		{
-			NewLiteral("2 3", sql.LongText),
+			NewLiteral("2 3", types.LongText),
 			"DAY_HOUR",
 			nil,
 			TimeDelta{Days: 2, Hours: 3},
 		},
 		{
-			NewLiteral("2 3:04:05.06", sql.LongText),
+			NewLiteral("2 3:04:05.06", types.LongText),
 			"DAY_MICROSECOND",
 			nil,
 			TimeDelta{Days: 2, Hours: 3, Minutes: 4, Seconds: 5, Microseconds: 6},
 		},
 		{
-			NewLiteral("2 3:04:05", sql.LongText),
+			NewLiteral("2 3:04:05", types.LongText),
 			"DAY_SECOND",
 			nil,
 			TimeDelta{Days: 2, Hours: 3, Minutes: 4, Seconds: 5},
 		},
 		{
-			NewLiteral("2 3:04", sql.LongText),
+			NewLiteral("2 3:04", types.LongText),
 			"DAY_MINUTE",
 			nil,
 			TimeDelta{Days: 2, Hours: 3, Minutes: 4},
 		},
 		{
-			NewLiteral("3:04:05.06", sql.LongText),
+			NewLiteral("3:04:05.06", types.LongText),
 			"HOUR_MICROSECOND",
 			nil,
 			TimeDelta{Hours: 3, Minutes: 4, Seconds: 5, Microseconds: 6},
 		},
 		{
-			NewLiteral("3:04:05", sql.LongText),
+			NewLiteral("3:04:05", types.LongText),
 			"HOUR_SECOND",
 			nil,
 			TimeDelta{Hours: 3, Minutes: 4, Seconds: 5},
 		},
 		{
-			NewLiteral("3:04", sql.LongText),
+			NewLiteral("3:04", types.LongText),
 			"HOUR_MINUTE",
 			nil,
 			TimeDelta{Hours: 3, Minutes: 4},
 		},
 		{
-			NewLiteral("04:05.06", sql.LongText),
+			NewLiteral("04:05.06", types.LongText),
 			"MINUTE_MICROSECOND",
 			nil,
 			TimeDelta{Minutes: 4, Seconds: 5, Microseconds: 6},
 		},
 		{
-			NewLiteral("04:05", sql.LongText),
+			NewLiteral("04:05", types.LongText),
 			"MINUTE_SECOND",
 			nil,
 			TimeDelta{Minutes: 4, Seconds: 5},
 		},
 		{
-			NewLiteral("04.05", sql.LongText),
+			NewLiteral("04.05", types.LongText),
 			"SECOND_MICROSECOND",
 			nil,
 			TimeDelta{Seconds: 4, Microseconds: 5},
 		},
 		{
-			NewLiteral("1-5", sql.LongText),
+			NewLiteral("1-5", types.LongText),
 			"YEAR_MONTH",
 			nil,
 			TimeDelta{Years: 1, Months: 5},

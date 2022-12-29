@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/oliveagle/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -155,7 +156,7 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	if err != nil {
 		return nil, err
 	}
-	strData, err := sql.LongBlob.Convert(data)
+	strData, err := types.LongBlob.Convert(data)
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}

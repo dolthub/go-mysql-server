@@ -1905,7 +1905,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 		s := sql.Schema{
 			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t11"},
-			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t11"},
+			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t11"},
 		}
 
 		require.Equal(t, s, testTable.Schema())
@@ -2221,7 +2221,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2")
@@ -2230,7 +2230,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s2", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "s2", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	TestQueryWithContext(t, ctx, e, harness, "select * from mytable order by i2 limit 1", []sql.Row{
@@ -2270,7 +2270,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
 		assert.Equal(t, sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
-			{Name: "i1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "tabletest"},
+			{Name: "i1", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "tabletest"},
 		}, tbl.Schema())
 	})
 }
@@ -2294,7 +2294,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 		}, tbl.Schema())
 
@@ -2313,8 +2313,8 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 		}, tbl.Schema())
 
@@ -2347,10 +2347,10 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 		}, tbl.Schema())
 
@@ -2369,11 +2369,11 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 		}, tbl.Schema())
 
@@ -2392,14 +2392,14 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
-			{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
-			{Name: "s6", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
+			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 		}, tbl.Schema())
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -2428,15 +2428,15 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assertSchemasEqualWithDefaults(t, sql.Schema{
-			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
-			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
+			{Name: "s3", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "s4", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Source: "mytable"},
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "s2", Type: types.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
-			{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
-			{Name: "s6", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
-			{Name: "s10", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+			{Name: "s5", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+			{Name: "s6", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
+			{Name: "s10", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 		}, tbl.Schema())
 	})
 }
@@ -2457,7 +2457,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(t, ok)
 	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "modified", PrimaryKey: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
@@ -2466,7 +2466,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, sql.Schema{
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", PrimaryKey: true},
 	}, tbl.Schema())
 
@@ -2477,7 +2477,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(t, ok)
 	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok", PrimaryKey: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
 	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'", []sql.Row{{sql.NewOkResult(0)}}, nil, nil)
@@ -2487,7 +2487,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(t, ok)
 	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok", PrimaryKey: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
 	}, tbl.Schema())
 
 	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST", sql.ErrTableColumnNotFound)
@@ -2502,7 +2502,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		require.True(t, ok)
 		assert.Equal(t, sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
 		}, tbl.Schema())
 
 		RunQuery(t, e, harness, "insert into mytable (s) values ('new row')")
@@ -2518,7 +2518,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		require.True(t, ok)
 		assert.Equal(t, sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
 			{Name: "i2", Type: sql.Int64, Source: "mytable", Nullable: true},
 		}, tbl.Schema())
 	})
@@ -2534,7 +2534,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		require.True(t, ok)
 		assert.Equal(t, sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
-			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 21), Nullable: true, Source: "mytable", Comment: "changed again"},
+			{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 21), Nullable: true, Source: "mytable", Comment: "changed again"},
 			{Name: "i2", Type: sql.Int64, Source: "mytable", Nullable: true},
 		}, tbl.Schema())
 	})
@@ -2574,7 +2574,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assert.Equal(t, sql.Schema{
-			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t1", Nullable: true},
+			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t1", Nullable: true},
 			{Name: "c", Type: sql.Int64, Source: "t1", Nullable: true},
 			{Name: "k", Type: sql.Int64, Source: "t1", PrimaryKey: true},
 		}, tbl.Schema())
@@ -2616,7 +2616,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assert.Equal(t, sql.Schema{
-			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t3", Nullable: true},
+			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t3", Nullable: true},
 			{Name: "c", Type: sql.Int64, Source: "t3", Nullable: true},
 		}, tbl.Schema())
 
@@ -2685,7 +2685,7 @@ func TestDropColumnKeylessTables(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 		assert.Equal(t, sql.Schema{
-			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t1", Nullable: true},
+			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Source: "t1", Nullable: true},
 			{Name: "c", Type: sql.Int64, Source: "t1", Nullable: true},
 		}, tbl.Schema())
 
@@ -4430,7 +4430,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 					Query: "INSERT INTO test(decimal_test, decimal_test_2, decimal_test_3) VALUES (?, ?, ?)",
 					Bindings: map[string]sql.Expression{
 						"v1": expression.NewLiteral(10, sql.Int64),
-						"v2": expression.NewLiteral([]byte("10.5"), sql.MustCreateString(sqltypes.VarBinary, 4, sql.Collation_binary)),
+						"v2": expression.NewLiteral([]byte("10.5"), types.MustCreateString(sqltypes.VarBinary, 4, sql.Collation_binary)),
 						"v3": expression.NewLiteral(20.40, sql.Float64),
 					},
 					Expected: []sql.Row{
@@ -4459,12 +4459,12 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
 					Bindings: map[string]sql.Expression{
-						"v1": expression.NewLiteral("id1", sql.Text),
-						"v2": expression.NewLiteral("dabe", sql.Text),
-						"v3": expression.NewLiteral("off", sql.Text),
+						"v1": expression.NewLiteral("id1", types.Text),
+						"v2": expression.NewLiteral("dabe", types.Text),
+						"v3": expression.NewLiteral("off", types.Text),
 						"v4": expression.NewLiteral(2, sql.Int64),
-						"v5": expression.NewLiteral("milo", sql.Text),
-						"v6": expression.NewLiteral("on", sql.Text),
+						"v5": expression.NewLiteral("milo", types.Text),
+						"v6": expression.NewLiteral("on", types.Text),
 					},
 					Expected: []sql.Row{
 						{sql.OkResult{RowsAffected: 2}},
@@ -4473,12 +4473,12 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
 					Bindings: map[string]sql.Expression{
-						"v1": expression.NewLiteral("id2", sql.Text),
-						"v2": expression.NewLiteral("dabe", sql.Text),
-						"v3": expression.NewLiteral("off", sql.Text),
+						"v1": expression.NewLiteral("id2", types.Text),
+						"v2": expression.NewLiteral("dabe", types.Text),
+						"v3": expression.NewLiteral("off", types.Text),
 						"v4": expression.NewLiteral(3, sql.Int64),
-						"v5": expression.NewLiteral("milo", sql.Text),
-						"v6": expression.NewLiteral("on", sql.Text),
+						"v5": expression.NewLiteral("milo", types.Text),
+						"v6": expression.NewLiteral("on", types.Text),
 					},
 					Expected: []sql.Row{
 						{sql.OkResult{RowsAffected: 1}},
@@ -5268,7 +5268,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		assertSchemasEqualWithDefaults(t, sql.Schema{
 			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32", PrimaryKey: true},
 			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t32"},
-			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
+			{Name: "v1", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
 			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, false, true)},
 			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
 		}, t32.Schema())
@@ -6062,35 +6062,35 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query: "SELECT CAST(? as CHAR) UNION SELECT CAST(? as CHAR)",
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, sql.Int8),
-				"v2": expression.NewLiteral("1", sql.TinyText),
+				"v2": expression.NewLiteral("1", types.TinyText),
 			},
 			Expected: []sql.Row{{"1"}},
 		},
 		{
 			Query: "SELECT GET_LOCK(?, 10)",
 			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
 			},
 			Expected: []sql.Row{{1}},
 		},
 		{
 			Query: "Select IS_FREE_LOCK(?)",
 			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
 			},
 			Expected: []sql.Row{{0}},
 		},
 		{
 			Query: "Select IS_USED_LOCK(?)",
 			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
 			},
 			Expected: []sql.Row{{uint64(1)}},
 		},
 		{
 			Query: "Select RELEASE_LOCK(?)",
 			Bindings: map[string]sql.Expression{
-				"v1": expression.NewLiteral(10, sql.MustCreateBinary(query.Type_VARBINARY, int64(16))),
+				"v1": expression.NewLiteral(10, types.MustCreateBinary(query.Type_VARBINARY, int64(16))),
 			},
 			Expected: []sql.Row{{1}},
 		},
@@ -6102,7 +6102,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query:    "SELECT DATE_ADD(TIMESTAMP(:var), INTERVAL 1 DAY);",
 			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
 			Bindings: map[string]sql.Expression{
-				"var": expression.NewLiteral("2022-10-26 13:14:15", sql.Text),
+				"var": expression.NewLiteral("2022-10-26 13:14:15", types.Text),
 			},
 		},
 		{

@@ -140,7 +140,7 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the Expression interface.
 func (f *TimeFormat) Type() sql.Type {
-	return sql.Text
+	return types.Text
 }
 
 // IsNullable implements the Expression interface.

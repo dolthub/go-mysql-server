@@ -17,6 +17,7 @@ package plan
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/require"
 
@@ -31,12 +32,12 @@ func TestGroupBySchema(t *testing.T) {
 
 	child := memory.NewTable("test", sql.PrimaryKeySchema{}, nil)
 	agg := []sql.Expression{
-		expression.NewAlias("c1", expression.NewLiteral("s", sql.LongText)),
+		expression.NewAlias("c1", expression.NewLiteral("s", types.LongText)),
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
 	gb := NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
 	require.Equal(sql.Schema{
-		{Name: "c1", Type: sql.LongText},
+		{Name: "c1", Type: types.LongText},
 		{Name: "c2", Type: sql.Int64},
 	}, gb.Schema())
 }
@@ -63,7 +64,7 @@ func TestGroupByRowIter(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.Schema{
-		{Name: "col1", Type: sql.LongText},
+		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: sql.Int64},
 	}
 	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema), nil)
@@ -83,7 +84,7 @@ func TestGroupByRowIter(t *testing.T) {
 	p := NewSort(
 		[]sql.SortField{
 			{
-				Column: expression.NewGetField(0, sql.LongText, "col1", true),
+				Column: expression.NewGetField(0, types.LongText, "col1", true),
 				Order:  sql.Ascending,
 			}, {
 				Column: expression.NewGetField(1, sql.Int64, "col2", true),
@@ -92,11 +93,11 @@ func TestGroupByRowIter(t *testing.T) {
 		},
 		NewGroupBy(
 			[]sql.Expression{
-				expression.NewGetField(0, sql.LongText, "col1", true),
+				expression.NewGetField(0, types.LongText, "col1", true),
 				expression.NewGetField(1, sql.Int64, "col2", true),
 			},
 			[]sql.Expression{
-				expression.NewGetField(0, sql.LongText, "col1", true),
+				expression.NewGetField(0, types.LongText, "col1", true),
 				expression.NewGetField(1, sql.Int64, "col2", true),
 			},
 			NewResolvedTable(child, nil, nil),
@@ -117,7 +118,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.Schema{
-		{Name: "col1", Type: sql.LongText},
+		{Name: "col1", Type: types.LongText},
 		{Name: "col2", Type: sql.Int64},
 	}
 
@@ -137,11 +138,11 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 
 	p := NewGroupBy(
 		[]sql.Expression{
-			aggregation.NewCount(expression.NewGetField(0, sql.LongText, "col1", true)),
+			aggregation.NewCount(expression.NewGetField(0, types.LongText, "col1", true)),
 			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		[]sql.Expression{
-			expression.NewGetField(0, sql.LongText, "col1", true),
+			expression.NewGetField(0, types.LongText, "col1", true),
 			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		NewResolvedTable(child, nil, nil),
@@ -159,7 +160,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 }
 
 func TestGroupByCollations(t *testing.T) {
-	tString := sql.MustCreateString(query.Type_VARCHAR, 255, sql.Collation_utf8mb4_0900_ai_ci)
+	tString := types.MustCreateString(query.Type_VARCHAR, 255, sql.Collation_utf8mb4_0900_ai_ci)
 	tEnum := sql.MustCreateEnumType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
 	tSet := sql.MustCreateSetType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
 

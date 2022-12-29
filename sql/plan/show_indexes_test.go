@@ -17,6 +17,7 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,7 +57,7 @@ func TestShowIndexes(t *testing.T) {
 		{
 			name: "test3",
 			table: memory.NewTable("test3", sql.NewPrimaryKeySchema(sql.Schema{
-				&sql.Column{Name: "baz", Type: sql.Text, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, sql.Text, false), Nullable: false},
+				&sql.Column{Name: "baz", Type: types.Text, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
 				&sql.Column{Name: "zab", Type: sql.Int32, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true},
 				&sql.Column{Name: "bza", Type: sql.Int64, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int64, true), Nullable: true},
 			}), db.GetForeignKeyCollection()),
@@ -64,7 +65,7 @@ func TestShowIndexes(t *testing.T) {
 		{
 			name: "test4",
 			table: memory.NewTable("test4", sql.NewPrimaryKeySchema(sql.Schema{
-				&sql.Column{Name: "oof", Type: sql.Text, Source: "test4", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, sql.Text, false), Nullable: false},
+				&sql.Column{Name: "oof", Type: types.Text, Source: "test4", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
 			}), db.GetForeignKeyCollection()),
 		},
 	}
@@ -80,7 +81,7 @@ func TestShowIndexes(t *testing.T) {
 				)
 
 				if test.isExpression {
-					ex = expression.NewEquals(ex, expression.NewLiteral("a", sql.LongText))
+					ex = expression.NewEquals(ex, expression.NewLiteral("a", types.LongText))
 				}
 
 				expressions[i] = ex

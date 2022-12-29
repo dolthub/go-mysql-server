@@ -10,6 +10,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AsGeoJSON is a function that returns a point type from a WKT string
@@ -618,7 +619,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if val == nil {
 		return nil, nil
 	}
-	val, err = sql.LongBlob.Convert(val)
+	val, err = types.LongBlob.Convert(val)
 	if err != nil {
 		return nil, err
 	}

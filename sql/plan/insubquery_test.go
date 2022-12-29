@@ -17,6 +17,7 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -29,7 +30,7 @@ import (
 func TestInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
@@ -52,9 +53,9 @@ func TestInSubquery(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow(nil),
 			nil,
@@ -67,7 +68,7 @@ func TestInSubquery(t *testing.T) {
 				expression.NewLiteral(int64(1), sql.Int64),
 			),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			nil,
 			nil,
@@ -75,9 +76,9 @@ func TestInSubquery(t *testing.T) {
 		},
 		{
 			"left is in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("two"),
 			true,
@@ -85,9 +86,9 @@ func TestInSubquery(t *testing.T) {
 		},
 		{
 			"left is not in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("four"),
 			false,
@@ -117,7 +118,7 @@ func TestInSubquery(t *testing.T) {
 func TestNotInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
@@ -140,9 +141,9 @@ func TestNotInSubquery(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow(nil),
 			nil,
@@ -163,9 +164,9 @@ func TestNotInSubquery(t *testing.T) {
 		},
 		{
 			"left is in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("two"),
 			false,
@@ -173,9 +174,9 @@ func TestNotInSubquery(t *testing.T) {
 		},
 		{
 			"left is not in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("four"),
 			true,

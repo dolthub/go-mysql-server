@@ -17,6 +17,7 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -28,7 +29,7 @@ import (
 func TestExistsSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
@@ -54,7 +55,7 @@ func TestExistsSubquery(t *testing.T) {
 		{
 			"Null returns as true",
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false), table,
+				expression.NewGetField(1, types.Text, "foo", false), table,
 			),
 			sql.NewRow(nil),
 			true,
@@ -62,7 +63,7 @@ func TestExistsSubquery(t *testing.T) {
 		{
 			"Non NULL evaluates as true",
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false), table,
+				expression.NewGetField(1, types.Text, "foo", false), table,
 			),
 			sql.NewRow("four"),
 			true,
@@ -70,7 +71,7 @@ func TestExistsSubquery(t *testing.T) {
 		{
 			"Empty Set Passes",
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false), emptyTable,
+				expression.NewGetField(1, types.Text, "foo", false), emptyTable,
 			),
 			sql.NewRow(),
 			false,

@@ -43,10 +43,10 @@ func (s *ShowTableStatus) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 var showTableStatusSchema = sql.Schema{
-	{Name: "Name", Type: sql.LongText},
-	{Name: "Engine", Type: sql.LongText},
-	{Name: "Version", Type: sql.LongText},
-	{Name: "Row_format", Type: sql.LongText},
+	{Name: "Name", Type: types.LongText},
+	{Name: "Engine", Type: types.LongText},
+	{Name: "Version", Type: types.LongText},
+	{Name: "Row_format", Type: types.LongText},
 	{Name: "Rows", Type: sql.Uint64},
 	{Name: "Avg_row_length", Type: sql.Uint64},
 	{Name: "Data_length", Type: sql.Uint64},
@@ -57,10 +57,10 @@ var showTableStatusSchema = sql.Schema{
 	{Name: "Create_time", Type: types.Datetime, Nullable: true},
 	{Name: "Update_time", Type: types.Datetime, Nullable: true},
 	{Name: "Check_time", Type: types.Datetime, Nullable: true},
-	{Name: "Collation", Type: sql.LongText},
-	{Name: "Checksum", Type: sql.LongText, Nullable: true},
-	{Name: "Create_options", Type: sql.LongText, Nullable: true},
-	{Name: "Comments", Type: sql.LongText, Nullable: true},
+	{Name: "Collation", Type: types.LongText},
+	{Name: "Checksum", Type: types.LongText, Nullable: true},
+	{Name: "Create_options", Type: types.LongText, Nullable: true},
+	{Name: "Comments", Type: types.LongText, Nullable: true},
 }
 
 // Children implements the sql.Node interface.

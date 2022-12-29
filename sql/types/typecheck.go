@@ -19,50 +19,6 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 )
 
-// AreComparable returns whether the given types are either the same or similar enough that values can meaningfully be
-// compared across all permutations. Int8 and Int64 are comparable types, where as VarChar and Int64 are not. In the case
-// of the latter example, not all possible values of a VarChar are comparable to an Int64, while this is true for the
-// former example.
-func AreComparable(types ...sql.Type) bool {
-	if len(types) <= 1 {
-		return true
-	}
-	typeNums := make([]int, len(types))
-	for i, typ := range types {
-		switch typ.Type() {
-		case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16,
-			sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
-			sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64,
-			sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64,
-			sqltypes.Decimal, sqltypes.Bit, sqltypes.Year:
-			typeNums[i] = 1
-		case sqltypes.Timestamp, sqltypes.Date, sqltypes.Datetime:
-			typeNums[i] = 2
-		case sqltypes.Time:
-			typeNums[i] = 3
-		case sqltypes.Text, sqltypes.Blob, sqltypes.VarChar,
-			sqltypes.VarBinary, sqltypes.Char, sqltypes.Binary:
-			typeNums[i] = 4
-		case sqltypes.Enum:
-			typeNums[i] = 5
-		case sqltypes.Set:
-			typeNums[i] = 6
-		case sqltypes.Geometry:
-			typeNums[i] = 7
-		case sqltypes.TypeJSON:
-			typeNums[i] = 8
-		default:
-			return false
-		}
-	}
-	for i := 1; i < len(typeNums); i++ {
-		if typeNums[i-1] != typeNums[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // IsBlobType checks if t is BLOB
 func IsBlobType(t sql.Type) bool {
 	switch t.Type() {
@@ -147,7 +103,7 @@ func IsSigned(t sql.Type) bool {
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
 func IsText(t sql.Type) bool {
-	_, ok := t.(sql.StringType_)
+	_, ok := t.(StringType_)
 	return ok
 }
 

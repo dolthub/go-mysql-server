@@ -17,6 +17,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -55,12 +56,12 @@ func TestResolveTables(t *testing.T) {
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table, db, nil), analyzed)
 
-	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", sql.LongText))
+	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-01", types.LongText))
 	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.NoError(err)
 	require.Equal(plan.NewResolvedTable(table, db, "2019-01-01"), analyzed)
 
-	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-02", sql.LongText))
+	notAnalyzed = plan.NewUnresolvedTableAsOf("myTable", "", expression.NewLiteral("2019-01-02", types.LongText))
 	analyzed, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.Error(err)
 }

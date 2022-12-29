@@ -17,6 +17,7 @@ package mysql_db
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -169,8 +170,8 @@ func (k RoleEdgesToKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.
 // init creates the schema for the "role_edges" Grant Table.
 func init() {
 	// Types
-	char32_utf8_bin := sql.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
-	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
+	char32_utf8_bin := types.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
+	char255_ascii_general_ci := types.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
 	enum_N_Y_utf8_general_ci := sql.MustCreateEnumType([]string{"N", "Y"}, sql.Collation_utf8_general_ci)
 
 	// Column Templates

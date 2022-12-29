@@ -684,7 +684,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -702,7 +702,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -720,7 +720,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -738,7 +738,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -850,7 +850,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -945,7 +945,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "b",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -970,7 +970,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "column_1",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
+				Type: types.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -987,7 +987,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				Name: "d",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
+				Type: types.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -1962,11 +1962,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "Hello!",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 			{
 				Name: "CONcat(s, \"!\")",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 		},
 	},
@@ -4699,7 +4699,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "CURRENT_USER",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 		},
 	},
@@ -4711,7 +4711,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "CURRENT_user",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 		},
 	},
@@ -8221,11 +8221,11 @@ var BrokenQueries = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 			{
 				Name: "S",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -8247,11 +8247,11 @@ var BrokenQueries = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 			{
 				Name: "S",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -8273,11 +8273,11 @@ var BrokenQueries = []QueryTest{
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 			{
 				Name: "S",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},

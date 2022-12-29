@@ -209,7 +209,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 			collName = sql.Collation_Default.String()
 		}
 
-		if st, ok := col.Type.(sql.StringType); ok {
+		if st, ok := col.Type.(types.StringType); ok {
 			charMaxLen = st.MaxCharacterLength()
 			charOctetLen = st.MaxByteLength()
 		}

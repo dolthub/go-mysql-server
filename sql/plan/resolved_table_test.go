@@ -19,6 +19,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -70,7 +71,7 @@ func newTableTest(source string) sql.Table {
 	schema := []*sql.Column{
 		{Name: "col1", Type: sql.Int32, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int32, false), Nullable: false},
 		{Name: "col2", Type: sql.Int64, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false), Nullable: false},
-		{Name: "col3", Type: sql.Text, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false), Nullable: false},
+		{Name: "col3", Type: types.Text, Source: source, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false), Nullable: false},
 	}
 
 	keys := [][]byte{

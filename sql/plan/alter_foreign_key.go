@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -595,8 +596,8 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 		if type1.Type() == type2.Type() {
 			switch type1.Type() {
 			case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
-				type1String := type1.(sql.StringType)
-				type2String := type2.(sql.StringType)
+				type1String := type1.(types.StringType)
+				type2String := type2.(types.StringType)
 				if type1String.Collation().CharacterSet() != type2String.Collation().CharacterSet() {
 					return false
 				}

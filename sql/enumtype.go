@@ -21,6 +21,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -265,7 +266,7 @@ func (t EnumType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value
 	if !ok {
 		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
 	}
-	val := appendAndSliceBytes(dest, encodedBytes)
+	val := types.AppendAndSliceBytes(dest, encodedBytes)
 
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }

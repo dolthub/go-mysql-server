@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -212,7 +213,7 @@ func (t BitType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
 		data[i], data[j] = data[j], data[i]
 	}
-	val := appendAndSliceBytes(dest, data)
+	val := types.AppendAndSliceBytes(dest, data)
 
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
 }

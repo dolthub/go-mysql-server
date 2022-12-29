@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -268,7 +269,7 @@ func (t TimespanType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, ti.String())
+	val := types.AppendAndSliceString(dest, ti.String())
 
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }

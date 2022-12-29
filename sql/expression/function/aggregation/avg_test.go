@@ -17,6 +17,7 @@ package aggregation
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -77,7 +78,7 @@ func TestAvg_Eval_String(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	avgNode := NewAvg(expression.NewGetField(0, sql.Text, "col1", true))
+	avgNode := NewAvg(expression.NewGetField(0, types.Text, "col1", true))
 	buffer, _ := avgNode.NewBuffer()
 	require.Equal(nil, evalBuffer(t, buffer))
 

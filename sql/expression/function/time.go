@@ -1058,7 +1058,7 @@ type DayName struct {
 var _ sql.FunctionExpression = (*DayName)(nil)
 
 func NewDayName(arg sql.Expression) sql.Expression {
-	return &DayName{NewUnaryDatetimeFunc(arg, "DAYNAME", sql.Text)}
+	return &DayName{NewUnaryDatetimeFunc(arg, "DAYNAME", types.Text)}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -1129,7 +1129,7 @@ type MonthName struct {
 var _ sql.FunctionExpression = (*MonthName)(nil)
 
 func NewMonthName(arg sql.Expression) sql.Expression {
-	return &MonthName{NewUnaryDatetimeFunc(arg, "MONTHNAME", sql.Text)}
+	return &MonthName{NewUnaryDatetimeFunc(arg, "MONTHNAME", types.Text)}
 }
 
 // Description implements sql.FunctionExpression
@@ -1238,13 +1238,13 @@ func (c CurrTime) Description() string {
 
 func NewCurrTime() sql.Expression {
 	return CurrTime{
-		NoArgFunc: NoArgFunc{"curtime", sql.LongText},
+		NoArgFunc: NoArgFunc{"curtime", types.LongText},
 	}
 }
 
 func NewCurrentTime() sql.Expression {
 	return CurrTime{
-		NoArgFunc: NoArgFunc{"current_time", sql.LongText},
+		NoArgFunc: NoArgFunc{"current_time", types.LongText},
 	}
 }
 

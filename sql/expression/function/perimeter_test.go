@@ -18,6 +18,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -85,7 +86,7 @@ func TestPerimeter(t *testing.T) {
 
 	t.Run("select length of wrong type", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewPerimeter(expression.NewLiteral("abc", sql.Text))
+		f, err := NewPerimeter(expression.NewLiteral("abc", types.Text))
 		require.NoError(err)
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)

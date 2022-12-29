@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,23 +27,23 @@ import (
 
 func TestJSONExtract(t *testing.T) {
 	f2, err := NewJSONExtract(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
 	f3, err := NewJSONExtract(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 
 	f4, err := NewJSONExtract(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
-		expression.NewGetField(3, sql.LongText, "arg4", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
+		expression.NewGetField(3, types.LongText, "arg4", false),
 	)
 	require.NoError(t, err)
 

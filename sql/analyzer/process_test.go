@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -36,9 +37,9 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 		[]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("commits", ""))
 
 	commits := memory.NewTable("commits", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "commits", Type: sql.Text},
-		{Name: "commit_hash", Source: "commits", Type: sql.Text},
-		{Name: "commit_author_when", Source: "commits", Type: sql.Text},
+		{Name: "repository_id", Source: "commits", Type: types.Text},
+		{Name: "commit_hash", Source: "commits", Type: types.Text},
+		{Name: "commit_author_when", Source: "commits", Type: types.Text},
 	}), nil)
 
 	db := memory.NewDatabase("")

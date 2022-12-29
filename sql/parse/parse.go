@@ -538,7 +538,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
 						expression.NewUnresolvedColumn("Table"),
-						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
+						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
 						nil,
 					)
 				}
@@ -584,7 +584,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Name"),
-					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
 			}
@@ -607,7 +607,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Name"),
-					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
 			}
@@ -643,7 +643,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 						if strings.ToLower(e.String()) != "variable_name" {
 							return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
 						}
-						return expression.NewGetField(0, sql.Text, "variable_name", true), transform.NewTree, nil
+						return expression.NewGetField(0, types.Text, "variable_name", true), transform.NewTree, nil
 					default:
 						return e, transform.SameTree, nil
 					}
@@ -654,8 +654,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 			if s.Filter.Like != "" {
 				like = expression.NewLike(
-					expression.NewGetField(0, sql.LongText, "variable_name", false),
-					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					expression.NewGetField(0, types.LongText, "variable_name", false),
+					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
 				if filter != nil {
@@ -690,7 +690,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
 						expression.NewUnresolvedColumn(fmt.Sprintf("Tables_in_%s", dbName)),
-						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
+						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
 						nil,
 					)
 				}
@@ -724,7 +724,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Database"),
-					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
 			}
@@ -750,7 +750,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.Filter != nil {
 			if s.ShowTablesOpt.Filter.Like != "" {
-				pattern := expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText)
+				pattern := expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText)
 
 				node = plan.NewFilter(
 					expression.NewLike(
@@ -842,7 +842,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Charset"),
-					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
 			}
@@ -873,7 +873,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			if s.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Variable_name"),
-					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
 			} else if s.Filter.Filter != nil {
@@ -3519,7 +3519,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			err   error
 		)
 
-		unit = expression.NewLiteral(v.Unit, sql.LongText)
+		unit = expression.NewLiteral(v.Unit, types.LongText)
 		expr1, err = ExprToExpression(ctx, v.Expr1)
 		expr2, err = ExprToExpression(ctx, v.Expr2)
 
@@ -3632,7 +3632,7 @@ func convertInt(value string, base int) (sql.Expression, error) {
 func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 	switch v.Type {
 	case sqlparser.StrVal:
-		return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+		return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 	case sqlparser.IntVal:
 		return convertInt(string(v.Val), 10)
 	case sqlparser.FloatVal:
@@ -3649,11 +3649,11 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := sql.CreateDecimalType(p, s)
 				if err != nil {
-					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}
 				dVal, err := dt.Convert(ogVal)
 				if err != nil {
-					return expression.NewLiteral(string(v.Val), sql.CreateLongText(ctx.GetCollation())), nil
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}
 				return expression.NewLiteral(dVal, dt), nil
 			}
@@ -3675,14 +3675,14 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewLiteral(dst, sql.LongBlob), nil
+		return expression.NewLiteral(dst, types.LongBlob), nil
 	case sqlparser.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewLiteral(val, sql.LongBlob), nil
+		return expression.NewLiteral(val, types.LongBlob), nil
 	case sqlparser.ValArg:
 		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":")), nil
 	case sqlparser.BitVal:
@@ -3918,13 +3918,13 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 				if !ok {
 					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
-				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), sql.CreateLongText(collation)), nil
+				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), types.CreateLongText(collation)), nil
 			} else if byteLiteral, ok := literal.([]byte); ok {
 				decodedLiteral, ok := charSet.Encoder().Decode(byteLiteral)
 				if !ok {
 					return nil, sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
 				}
-				return expression.NewLiteral(decodedLiteral, sql.CreateLongText(collation)), nil
+				return expression.NewLiteral(decodedLiteral, types.CreateLongText(collation)), nil
 			} else {
 				// Should not be possible
 				return nil, fmt.Errorf("expression literal returned type `%s` but literal value had type `%T`",
@@ -4055,19 +4055,19 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Exp
 			switch strings.ToLower(expr.String()) {
 			case "'isolation level repeatable read'":
 				varToSet := expression.NewSystemVar("transaction_isolation", scope)
-				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("REPEATABLE-READ", sql.LongText))
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("REPEATABLE-READ", types.LongText))
 				continue
 			case "'isolation level read committed'":
 				varToSet := expression.NewSystemVar("transaction_isolation", scope)
-				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-COMMITTED", sql.LongText))
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-COMMITTED", types.LongText))
 				continue
 			case "'isolation level read uncommitted'":
 				varToSet := expression.NewSystemVar("transaction_isolation", scope)
-				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-UNCOMMITTED", sql.LongText))
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-UNCOMMITTED", types.LongText))
 				continue
 			case "'isolation level serializable'":
 				varToSet := expression.NewSystemVar("transaction_isolation", scope)
-				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("SERIALIZABLE", sql.LongText))
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("SERIALIZABLE", types.LongText))
 				continue
 			case "'read write'":
 				varToSet := expression.NewSystemVar("transaction_read_only", scope)
@@ -4145,7 +4145,7 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewUnresolvedColumn("Name"),
-				expression.NewLiteral(s.Filter.Like, sql.LongText),
+				expression.NewLiteral(s.Filter.Like, types.LongText),
 				nil,
 			)
 		}

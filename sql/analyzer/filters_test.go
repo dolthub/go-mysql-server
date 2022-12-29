@@ -17,6 +17,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -28,19 +29,19 @@ import (
 func TestFiltersMerge(t *testing.T) {
 	f1 := filtersByTable{
 		"1": []sql.Expression{
-			expression.NewLiteral("1", sql.LongText),
+			expression.NewLiteral("1", types.LongText),
 		},
 		"2": []sql.Expression{
-			expression.NewLiteral("2", sql.LongText),
+			expression.NewLiteral("2", types.LongText),
 		},
 	}
 
 	f2 := filtersByTable{
 		"2": []sql.Expression{
-			expression.NewLiteral("2.2", sql.LongText),
+			expression.NewLiteral("2.2", types.LongText),
 		},
 		"3": []sql.Expression{
-			expression.NewLiteral("3", sql.LongText),
+			expression.NewLiteral("3", types.LongText),
 		},
 	}
 
@@ -49,14 +50,14 @@ func TestFiltersMerge(t *testing.T) {
 	require.Equal(t,
 		filtersByTable{
 			"1": []sql.Expression{
-				expression.NewLiteral("1", sql.LongText),
+				expression.NewLiteral("1", types.LongText),
 			},
 			"2": []sql.Expression{
-				expression.NewLiteral("2", sql.LongText),
-				expression.NewLiteral("2.2", sql.LongText),
+				expression.NewLiteral("2", types.LongText),
+				expression.NewLiteral("2.2", types.LongText),
 			},
 			"3": []sql.Expression{
-				expression.NewLiteral("3", sql.LongText),
+				expression.NewLiteral("3", types.LongText),
 			},
 		},
 		f1,
@@ -76,7 +77,7 @@ func TestSplitExpression(t *testing.T) {
 			),
 			expression.NewEquals(
 				expression.NewUnresolvedColumn("foo"),
-				expression.NewLiteral("foo", sql.LongText),
+				expression.NewLiteral("foo", types.LongText),
 			),
 		),
 	)
@@ -90,7 +91,7 @@ func TestSplitExpression(t *testing.T) {
 		),
 		expression.NewEquals(
 			expression.NewUnresolvedColumn("foo"),
-			expression.NewLiteral("foo", sql.LongText),
+			expression.NewLiteral("foo", types.LongText),
 		),
 	}
 

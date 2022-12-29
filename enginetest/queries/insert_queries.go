@@ -1865,7 +1865,7 @@ var InsertErrorScripts = []ScriptTest{
 			"create table bad (s varchar(9))",
 		},
 		Query:       "insert into bad values ('1234567890')",
-		ExpectedErr: sql.ErrLengthBeyondLimit,
+		ExpectedErr: types.ErrLengthBeyondLimit,
 	},
 	{
 		Name: "try inserting varbinary larger than max limit",
@@ -1873,7 +1873,7 @@ var InsertErrorScripts = []ScriptTest{
 			"create table bad (vb varbinary(65535))",
 		},
 		Query:       "insert into bad values (repeat('0', 65536))",
-		ExpectedErr: sql.ErrLengthBeyondLimit,
+		ExpectedErr: types.ErrLengthBeyondLimit,
 	},
 }
 

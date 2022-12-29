@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -103,7 +104,7 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of wrong type", func(t *testing.T) {
 		require := require.New(t)
-		f := NewArea(expression.NewLiteral("abc", sql.Text))
+		f := NewArea(expression.NewLiteral("abc", types.Text))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 		require.Equal(nil, v)

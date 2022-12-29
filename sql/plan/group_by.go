@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -434,7 +435,7 @@ func groupingKey(
 		}
 
 		switch t := expr.Type().(type) {
-		case sql.StringType:
+		case types.StringType:
 			err = t.Collation().WriteWeightString(hash, v.(string))
 		default:
 			_, err = fmt.Fprintf(hash, "%v", v)

@@ -51,7 +51,7 @@ func TestMax_Eval_Text(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Text, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Text, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("a"))

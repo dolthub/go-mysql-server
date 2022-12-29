@@ -17,6 +17,7 @@ package aggregation
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/require"
 
@@ -86,10 +87,10 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 		returnType sql.Type
 		row        sql.Row
 	}{
-		{[]sql.Expression{expression.NewGetField(0, sql.LongText, "test", true)}, 200, sql.MustCreateString(query.Type_VARCHAR, 512, sql.Collation_Default), sql.Row{int64(1)}},
-		{[]sql.Expression{expression.NewGetField(0, sql.Text, "text", true)}, 1020, sql.Text, sql.Row{int64(1)}},
-		{[]sql.Expression{expression.NewGetField(0, sql.Blob, "myblob", true)}, 200, sql.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary), sql.Row{"hi"}},
-		{[]sql.Expression{expression.NewGetField(0, sql.Blob, "myblob", true)}, 1020, sql.Blob, sql.Row{"hi"}},
+		{[]sql.Expression{expression.NewGetField(0, types.LongText, "test", true)}, 200, types.MustCreateString(query.Type_VARCHAR, 512, sql.Collation_Default), sql.Row{int64(1)}},
+		{[]sql.Expression{expression.NewGetField(0, types.Text, "text", true)}, 1020, types.Text, sql.Row{int64(1)}},
+		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 200, types.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary), sql.Row{"hi"}},
+		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 1020, types.Blob, sql.Row{"hi"}},
 	}
 
 	for _, tt := range testCases {

@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -40,29 +41,29 @@ func TestFormat(t *testing.T) {
 		{"float64 with negative d", sql.Float64, sql.Int32, sql.NewRow(5552.855, -1, nil), "5,553", nil},
 		{"float64 with float d", sql.Float64, sql.Float64, sql.NewRow(5555.855, float64(2.123), nil), "5,555.86", nil},
 		{"float64 with float negative d", sql.Float64, sql.Float64, sql.NewRow(5552.855, float64(-1), nil), "5,553", nil},
-		{"float64 with blob d", sql.Float64, sql.Blob, sql.NewRow(5555.855, []byte{1, 2, 3}, nil), "5,555.855000000000500000000000000000", nil},
-		{"float64 with text d", sql.Float64, sql.Text, sql.NewRow(5555.855, "2", nil), "5,555.86", nil},
+		{"float64 with blob d", sql.Float64, types.Blob, sql.NewRow(5555.855, []byte{1, 2, 3}, nil), "5,555.855000000000500000000000000000", nil},
+		{"float64 with text d", sql.Float64, types.Text, sql.NewRow(5555.855, "2", nil), "5,555.86", nil},
 		{"negative float64 with d", sql.Float64, sql.Int32, sql.NewRow(-5555.855, 2, nil), "-5,555.86", nil},
-		{"blob is nil", sql.Blob, sql.Int32, sql.NewRow(nil, nil, nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil, nil), nil, nil},
-		{"text int without d", sql.Text, sql.Int32, sql.NewRow("98765432", nil, nil), nil, nil},
-		{"text int with d", sql.Text, sql.Int32, sql.NewRow("98765432", 2, nil), "98,765,432.00", nil},
-		{"text int with negative d", sql.Text, sql.Int32, sql.NewRow("98765432", -1, nil), "98,765,432", nil},
-		{"text int with float d", sql.Text, sql.Float64, sql.NewRow("98765432", 2.123, nil), "98,765,432.00", nil},
-		{"text int with float negative d", sql.Text, sql.Float64, sql.NewRow("98765432", float32(-1), nil), "98,765,432", nil},
-		{"text float without d", sql.Text, sql.Int32, sql.NewRow("98765432.1234", nil, nil), nil, nil},
-		{"text float with d", sql.Text, sql.Int32, sql.NewRow("98765432.1234", 2, nil), "98,765,432.12", nil},
-		{"text float with negative d", sql.Text, sql.Int32, sql.NewRow("98765432.8234", -1, nil), "98,765,433", nil},
-		{"text float with float d", sql.Text, sql.Float64, sql.NewRow("98765432.1234", float64(2.823), nil), "98,765,432.123", nil},
-		{"text float with float negative d", sql.Text, sql.Float64, sql.NewRow("98765432.1234", float64(-1), nil), "98,765,432", nil},
-		{"text float with blob d", sql.Text, sql.Blob, sql.NewRow("98765432.1234", []byte{1, 2, 3}, nil), "98,765,432.123400020000000000000000000000", nil},
-		{"negative num text int with d", sql.Text, sql.Int32, sql.NewRow("-98765432", 2, nil), "-98,765,432.00", nil},
+		{"blob is nil", types.Blob, sql.Int32, sql.NewRow(nil, nil, nil), nil, nil},
+		{"blob is ok", types.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil, nil), nil, nil},
+		{"text int without d", types.Text, sql.Int32, sql.NewRow("98765432", nil, nil), nil, nil},
+		{"text int with d", types.Text, sql.Int32, sql.NewRow("98765432", 2, nil), "98,765,432.00", nil},
+		{"text int with negative d", types.Text, sql.Int32, sql.NewRow("98765432", -1, nil), "98,765,432", nil},
+		{"text int with float d", types.Text, sql.Float64, sql.NewRow("98765432", 2.123, nil), "98,765,432.00", nil},
+		{"text int with float negative d", types.Text, sql.Float64, sql.NewRow("98765432", float32(-1), nil), "98,765,432", nil},
+		{"text float without d", types.Text, sql.Int32, sql.NewRow("98765432.1234", nil, nil), nil, nil},
+		{"text float with d", types.Text, sql.Int32, sql.NewRow("98765432.1234", 2, nil), "98,765,432.12", nil},
+		{"text float with negative d", types.Text, sql.Int32, sql.NewRow("98765432.8234", -1, nil), "98,765,433", nil},
+		{"text float with float d", types.Text, sql.Float64, sql.NewRow("98765432.1234", float64(2.823), nil), "98,765,432.123", nil},
+		{"text float with float negative d", types.Text, sql.Float64, sql.NewRow("98765432.1234", float64(-1), nil), "98,765,432", nil},
+		{"text float with blob d", types.Text, types.Blob, sql.NewRow("98765432.1234", []byte{1, 2, 3}, nil), "98,765,432.123400020000000000000000000000", nil},
+		{"negative num text int with d", types.Text, sql.Int32, sql.NewRow("-98765432", 2, nil), "-98,765,432.00", nil},
 		{"sci-notn big num", sql.Float64, sql.Int32, sql.NewRow(5932886+.000000000001, 1, nil), "5,932,886.0", nil},
 		{"sci-notn big num with big dp", sql.Float64, sql.Int32, sql.NewRow(5932886+.000000000001, 8, nil), "5,932,886.00000000", nil},
 		{"sci-notn big exp num", sql.Float64, sql.Int32, sql.NewRow(5.932887e+08, 2, nil), "593,288,700.00", nil},
 		{"sci-notn neg big exp num", sql.Float64, sql.Int32, sql.NewRow(-5.932887e+08, 2, nil), "-593,288,700.00", nil},
-		{"sci-notn text big exp num", sql.Text, sql.Int32, sql.NewRow("5.932887e+07", 3, nil), "59,328,870.000", nil},
-		{"sci-notn text neg big exp num", sql.Text, sql.Int32, sql.NewRow("-5.932887e+08", 2, nil), "-593,288,700.00", nil},
+		{"sci-notn text big exp num", types.Text, sql.Int32, sql.NewRow("5.932887e+07", 3, nil), "59,328,870.000", nil},
+		{"sci-notn text neg big exp num", types.Text, sql.Int32, sql.NewRow("-5.932887e+08", 2, nil), "-593,288,700.00", nil},
 		{"sci-notn exp small num", sql.Float64, sql.Int32, sql.NewRow(5.932887e-08, 2, nil), "0.00", nil},
 		{"sci-notn exp small num with big dp", sql.Float64, sql.Int32, sql.NewRow(5.932887e-08, 9, nil), "0.000000059", nil},
 		{"sci-notn neg exp small num", sql.Float64, sql.Int32, sql.NewRow(-5.932887e-08, 2, nil), "0.00", nil},
@@ -116,7 +117,7 @@ func TestFormat(t *testing.T) {
 		var args = make([]sql.Expression, 3)
 		args[0] = expression.NewGetField(0, tt.xType, "Val", false)
 		args[1] = expression.NewGetField(1, tt.dType, "Df", false)
-		args[2] = expression.NewGetField(2, sql.LongText, "Locale", true)
+		args[2] = expression.NewGetField(2, types.LongText, "Locale", true)
 		f, err := NewFormat(args...)
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -159,7 +160,7 @@ func TestSkippedFormat(t *testing.T) {
 		err      *errors.Kind
 	}{
 		{"sci-notn big num with big dp", sql.Float64, sql.Int32, sql.NewRow(5932886+.000000000001, 15, nil), "5,932,886.000000000001000", nil},
-		{"sci-notn text big num", sql.Text, sql.Int32, sql.NewRow("5932886+.000000000001", 1, nil), "5,932,886.0", nil},
+		{"sci-notn text big num", types.Text, sql.Int32, sql.NewRow("5932886+.000000000001", 1, nil), "5,932,886.0", nil},
 		{"float64 with loc=ar_DZ", sql.Float64, sql.Int32, sql.NewRow(2409384.855, 4, "ar_DZ"), "2,409,384.8550", nil},
 		{"float64 with loc=ar_IN", sql.Float64, sql.Int32, sql.NewRow(2409384.855, 4, "ar_IN"), "2,409,384.8550", nil},
 		{"float64 with loc=ar_LB", sql.Float64, sql.Int32, sql.NewRow(2409384.855, 4, "ar_LB"), "2,409,384.8550", nil},
@@ -236,7 +237,7 @@ func TestSkippedFormat(t *testing.T) {
 		var args = make([]sql.Expression, 3)
 		args[0] = expression.NewGetField(0, tt.xType, "Val", false)
 		args[1] = expression.NewGetField(1, tt.dType, "Df", false)
-		args[2] = expression.NewGetField(2, sql.LongText, "Locale", true)
+		args[2] = expression.NewGetField(2, types.LongText, "Locale", true)
 		f, err := NewFormat(args...)
 
 		t.Run(tt.name, func(t *testing.T) {

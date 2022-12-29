@@ -17,6 +17,7 @@ package plan
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -29,8 +30,8 @@ func TestHaving(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: sql.Text, Nullable: true},
-		{Name: "col2", Type: sql.Text, Nullable: true},
+		{Name: "col1", Type: types.Text, Nullable: true},
+		{Name: "col2", Type: types.Text, Nullable: true},
 		{Name: "col3", Type: sql.Int32, Nullable: true},
 		{Name: "col4", Type: sql.Int64, Nullable: true},
 	})
@@ -48,8 +49,8 @@ func TestHaving(t *testing.T) {
 
 	f := NewHaving(
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Text, "col1", true),
-			expression.NewLiteral("col1_1", sql.LongText)),
+			expression.NewGetField(0, types.Text, "col1", true),
+			expression.NewLiteral("col1_1", types.LongText)),
 		NewResolvedTable(child, nil, nil),
 	)
 

@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -29,8 +30,8 @@ func TestUnion(t *testing.T) {
 	require := require.New(t)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "name", Type: sql.Text, Nullable: true},
-		{Name: "email", Type: sql.Text, Nullable: true},
+		{Name: "name", Type: types.Text, Nullable: true},
+		{Name: "email", Type: types.Text, Nullable: true},
 	})
 	child := memory.NewTable("test", childSchema, nil)
 	empty := memory.NewTable("empty", childSchema, nil)
@@ -48,7 +49,7 @@ func TestUnion(t *testing.T) {
 	}
 
 	name := []sql.Expression{
-		expression.NewGetField(0, sql.Text, "name", true),
+		expression.NewGetField(0, types.Text, "name", true),
 	}
 
 	cases := []struct {

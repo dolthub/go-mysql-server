@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/test"
 
 	"github.com/stretchr/testify/require"
@@ -90,9 +91,9 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Blob},
+		{Name: "a", Source: "foo", Type: types.Blob},
 		{Name: "b", Source: "foo", Type: sql.JSON},
-		{Name: "c", Source: "foo", Type: sql.Text},
+		{Name: "c", Source: "foo", Type: types.Text},
 	}), nil)
 
 	driver := new(mockDriver)
@@ -106,7 +107,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 		"idx",
 		NewResolvedTable(table, nil, nil),
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Blob, "foo", "a", true),
+			expression.NewGetFieldWithTable(0, types.Blob, "foo", "a", true),
 		},
 		"mock",
 		make(map[string]string),

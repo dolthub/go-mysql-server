@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,7 +25,7 @@ import (
 )
 
 func TestIsBinary(t *testing.T) {
-	f := NewIsBinary(expression.NewGetField(0, sql.Blob, "blob", true))
+	f := NewIsBinary(expression.NewGetField(0, types.Blob, "blob", true))
 
 	testCases := []struct {
 		name     string

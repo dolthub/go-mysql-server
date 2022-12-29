@@ -21,6 +21,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -145,7 +146,7 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if text == nil {
 		return nil, nil
 	}
-	text, err = sql.LongText.Convert(text)
+	text, err = types.LongText.Convert(text)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +172,7 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 	if patternVal == nil {
 		return nil, nil
 	}
-	patternVal, err = sql.LongText.Convert(patternVal)
+	patternVal, err = types.LongText.Convert(patternVal)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 		if f == nil {
 			return nil, nil
 		}
-		f, err = sql.LongText.Convert(f)
+		f, err = types.LongText.Convert(f)
 		if err != nil {
 			return nil, err
 		}

@@ -31,12 +31,12 @@ var _ sql.Databaser = (*ShowCreateTrigger)(nil)
 var _ sql.Node = (*ShowCreateTrigger)(nil)
 
 var showCreateTriggerSchema = sql.Schema{
-	&sql.Column{Name: "Trigger", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "SQL Original Statement", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Trigger", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "sql_mode", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "SQL Original Statement", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "character_set_client", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "collation_connection", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Database Collation", Type: types.LongText, Nullable: false},
 	&sql.Column{Name: "Created", Type: types.Datetime, Nullable: false},
 }
 

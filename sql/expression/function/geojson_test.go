@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -381,7 +382,7 @@ func TestAsGeoJSON(t *testing.T) {
 func TestGeomFromGeoJSON(t *testing.T) {
 	t.Run("convert point from geojson", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Point", "coordinates":[1,2]}`, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Point", "coordinates":[1,2]}`, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -390,7 +391,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	})
 	t.Run("convert linestring from geojson", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"LineString", "coordinates":[[1,2],[3,4]]}`, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"LineString", "coordinates":[[1,2],[3,4]]}`, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -399,7 +400,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	})
 	t.Run("convert polygon from geojson", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -408,7 +409,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	})
 	t.Run("convert multipoint from geojson", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiPoint", "coordinates":[[1,2],[3,4]]}`, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiPoint", "coordinates":[[1,2],[3,4]]}`, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -417,7 +418,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	})
 	t.Run("convert multilinestring from geojson", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiLineString", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiLineString", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -426,7 +427,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	})
 	t.Run("convert mutlipolygon from geojson", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiPolygon", "coordinates":[[[[0,0],[1,1],[0,1],[0,0]]]]}`, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"MultiPolygon", "coordinates":[[[[0,0],[1,1],[0,1],[0,0]]]]}`, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -435,7 +436,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	})
 	t.Run("convert empty geometrycollection from geojson", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"GeometryCollection", "geometries":[]}`, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"GeometryCollection", "geometries":[]}`, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -454,7 +455,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 			`{"type":"MultiPolygon", "coordinates":[[[[0,0],[1,1],[1,0],[0,0]]],[[[0,0],[1,1],[1,0],[0,0]]]]},` +
 			`{"type":"GeometryCollection", "geometries":[]}` +
 			`]}`
-		f, err := NewGeomFromGeoJSON(expression.NewLiteral(s, sql.Blob))
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(s, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -473,7 +474,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	t.Run("reject dimensions greater than 2 with flag 1", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
-			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, sql.Blob),
+			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, types.Blob),
 			expression.NewLiteral(1, sql.Int32),
 		)
 		require.NoError(err)
@@ -484,7 +485,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	t.Run("accept dimensions greater than 2 with flag 2", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
-			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, sql.Blob),
+			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, types.Blob),
 			expression.NewLiteral(2, sql.Int32),
 		)
 		require.NoError(err)
@@ -495,7 +496,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	t.Run("srid 0 swaps x and y", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
-			expression.NewLiteral(`{"type":"Point", "coordinates":[1,2]}`, sql.Blob),
+			expression.NewLiteral(`{"type":"Point", "coordinates":[1,2]}`, types.Blob),
 			expression.NewLiteral(1, sql.Int32),
 			expression.NewLiteral(0, sql.Int32),
 		)
@@ -507,7 +508,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	t.Run("srid 0 swaps x and y", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
-			expression.NewLiteral(`{"type":"LineString", "coordinates":[[1,2],[3,4]]}`, sql.Blob),
+			expression.NewLiteral(`{"type":"LineString", "coordinates":[[1,2],[3,4]]}`, types.Blob),
 			expression.NewLiteral(1, sql.Int32),
 			expression.NewLiteral(0, sql.Int32),
 		)
@@ -519,7 +520,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 	t.Run("srid 0 swaps x and y", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
-			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, sql.Blob),
+			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, types.Blob),
 			expression.NewLiteral(1, sql.Int32),
 			expression.NewLiteral(0, sql.Int32),
 		)

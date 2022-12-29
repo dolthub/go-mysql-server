@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var _ sql.WindowFunction = (*SumAgg)(nil)
@@ -956,10 +957,10 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 		}
 
 		var v interface{}
-		if retType == sql.Blob {
-			v, err = sql.Blob.Convert(evalRow[0])
+		if retType == types.Blob {
+			v, err = types.Blob.Convert(evalRow[0])
 		} else {
-			v, err = sql.LongText.Convert(evalRow[0])
+			v, err = types.LongText.Convert(evalRow[0])
 		}
 
 		if err != nil {
@@ -1145,7 +1146,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 		}
 
 		// Update the map.
-		keyAsString, err := sql.LongText.Convert(key)
+		keyAsString, err := types.LongText.Convert(key)
 		if err != nil {
 			continue
 		}

@@ -19,6 +19,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -112,7 +113,7 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	content, collation, err := sql.ConvertToCollatedString(val, l.Child.Type())
+	content, collation, err := types.ConvertToCollatedString(val, l.Child.Type())
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -36,7 +37,7 @@ func TestMaxIterations(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	table := memory.NewTable(tName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: tName},
-		{Name: "t", Type: sql.Text, Source: tName},
+		{Name: "t", Type: types.Text, Source: tName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tName, table)
 
@@ -51,7 +52,7 @@ func TestMaxIterations(t *testing.T) {
 				name := fmt.Sprintf("mytable-%v", count)
 				table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
 					{Name: "i", Type: sql.Int32, Source: name},
-					{Name: "t", Type: sql.Text, Source: name},
+					{Name: "t", Type: types.Text, Source: name},
 				}), db.GetForeignKeyCollection())
 				n = plan.NewResolvedTable(table, nil, nil)
 			}
@@ -67,7 +68,7 @@ func TestMaxIterations(t *testing.T) {
 	require.Equal(
 		plan.NewResolvedTable(memory.NewTable("mytable-8", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "mytable-8"},
-			{Name: "t", Type: sql.Text, Source: "mytable-8"},
+			{Name: "t", Type: types.Text, Source: "mytable-8"},
 		}), db.GetForeignKeyCollection()), nil, nil),
 		analyzed,
 	)
@@ -174,11 +175,11 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 			expression.JoinAnd(
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "repository_id"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 				),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "ref_name"),
-					expression.NewLiteral("HEAD", sql.LongText),
+					expression.NewLiteral("HEAD", types.LongText),
 				),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "history_index"),
@@ -210,20 +211,20 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	)
 
 	commits := memory.NewTable("commits", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "commits", Type: sql.Text},
-		{Name: "commit_hash", Source: "commits", Type: sql.Text},
-		{Name: "commit_author_when", Source: "commits", Type: sql.Text},
+		{Name: "repository_id", Source: "commits", Type: types.Text},
+		{Name: "commit_hash", Source: "commits", Type: types.Text},
+		{Name: "commit_author_when", Source: "commits", Type: types.Text},
 	}), nil)
 
 	refs := memory.NewTable("refs", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "refs", Type: sql.Text},
-		{Name: "ref_name", Source: "refs", Type: sql.Text},
+		{Name: "repository_id", Source: "refs", Type: types.Text},
+		{Name: "ref_name", Source: "refs", Type: types.Text},
 	}), nil)
 
 	refCommits := memory.NewTable("ref_commits", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "ref_commits", Type: sql.Text},
-		{Name: "ref_name", Source: "ref_commits", Type: sql.Text},
-		{Name: "commit_hash", Source: "ref_commits", Type: sql.Text},
+		{Name: "repository_id", Source: "ref_commits", Type: types.Text},
+		{Name: "ref_name", Source: "ref_commits", Type: types.Text},
+		{Name: "commit_hash", Source: "ref_commits", Type: types.Text},
 		{Name: "history_index", Source: "ref_commits", Type: sql.Int64},
 	}), nil)
 
@@ -337,7 +338,7 @@ func TestDeepCopyNode(t *testing.T) {
 			require.NoError(t, err)
 			cop, _, err = plan.ApplyBindings(cop, map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, sql.Int64),
-				"v2": expression.NewLiteral("x", sql.Text),
+				"v2": expression.NewLiteral("x", types.Text),
 			})
 			require.NoError(t, err)
 			require.NotEqual(t, cop, tt.node)

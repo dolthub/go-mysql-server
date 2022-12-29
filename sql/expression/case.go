@@ -50,10 +50,10 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 		return left
 	}
 	if types.IsTextOnly(left) && types.IsTextOnly(right) {
-		return sql.LongText
+		return types.LongText
 	}
 	if types.IsTextBlob(left) && types.IsTextBlob(right) {
-		return sql.LongBlob
+		return types.LongBlob
 	}
 	if types.IsTime(left) && types.IsTime(right) {
 		if left == right {
@@ -84,7 +84,7 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 	if types.IsJSON(left) && types.IsJSON(right) {
 		return sql.JSON
 	}
-	return sql.LongText
+	return types.LongText
 }
 
 // Type implements the sql.Expression interface.

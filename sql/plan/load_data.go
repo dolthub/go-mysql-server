@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -355,7 +356,7 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 		destCol := destSch[l.fieldToColumnMap[i]]
 		// Replace the empty string with defaults
 		if field == "" {
-			_, ok := destCol.Type.(sql.StringType)
+			_, ok := destCol.Type.(types.StringType)
 			if !ok {
 				if destCol.Default != nil {
 					exprs[i] = destCol.Default
@@ -363,12 +364,12 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 					exprs[i] = expression.NewLiteral(nil, sql.Null)
 				}
 			} else {
-				exprs[i] = expression.NewLiteral(field, sql.LongText)
+				exprs[i] = expression.NewLiteral(field, types.LongText)
 			}
 		} else if field == "NULL" {
 			exprs[i] = expression.NewLiteral(nil, sql.Null)
 		} else {
-			exprs[i] = expression.NewLiteral(field, sql.LongText)
+			exprs[i] = expression.NewLiteral(field, types.LongText)
 		}
 	}
 

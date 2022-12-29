@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -35,7 +36,7 @@ var (
 	}}
 	externalSPSchemaText = sql.Schema{&sql.Column{
 		Name: "a",
-		Type: sql.LongText,
+		Type: types.LongText,
 	}}
 	ExternalStoredProcedures = []sql.ExternalStoredProcedureDetails{
 		{

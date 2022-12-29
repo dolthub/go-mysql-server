@@ -19,6 +19,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -133,7 +134,7 @@ func TestResolveBarewordSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), expression.NewLiteral("hello", sql.LongText)),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), expression.NewLiteral("hello", types.LongText)),
 				},
 			),
 		},

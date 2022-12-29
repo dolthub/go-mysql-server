@@ -17,6 +17,7 @@ package function
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,8 +27,8 @@ import (
 func TestConcat(t *testing.T) {
 	t.Run("concat multiple arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(expression.NewLiteral("foo", sql.LongText),
-			expression.NewLiteral(5, sql.LongText),
+		f, err := NewConcat(expression.NewLiteral("foo", types.LongText),
+			expression.NewLiteral(5, types.LongText),
 			expression.NewLiteral(true, sql.Boolean),
 		)
 		require.NoError(err)
@@ -39,8 +40,8 @@ func TestConcat(t *testing.T) {
 
 	t.Run("some argument is nil", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(expression.NewLiteral("foo", sql.LongText),
-			expression.NewLiteral(nil, sql.LongText),
+		f, err := NewConcat(expression.NewLiteral("foo", types.LongText),
+			expression.NewLiteral(nil, types.LongText),
 			expression.NewLiteral(true, sql.Boolean),
 		)
 		require.NoError(err)
@@ -54,17 +55,17 @@ func TestConcat(t *testing.T) {
 func TestNewConcat(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcat(expression.NewLiteral(nil, sql.LongText))
+	_, err := NewConcat(expression.NewLiteral(nil, types.LongText))
 	require.NoError(err)
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.LongText), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcat(expression.NewLiteral(nil, types.LongText), expression.NewLiteral(nil, sql.Int64))
 	require.NoError(err)
 
 	_, err = NewConcat(
-		expression.NewLiteral(nil, sql.LongText),
+		expression.NewLiteral(nil, types.LongText),
 		expression.NewLiteral(nil, sql.Boolean),
 		expression.NewLiteral(nil, sql.Int64),
-		expression.NewLiteral(nil, sql.LongText),
+		expression.NewLiteral(nil, types.LongText),
 	)
 	require.NoError(err)
 }

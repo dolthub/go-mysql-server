@@ -3,6 +3,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -18,7 +19,7 @@ func TestApplyHashIn(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
-		{Name: "d", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
+		{Name: "d", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
 	}), nil)
 
 	hitLiteral, _ := expression.NewHashInTuple(
@@ -48,20 +49,20 @@ func TestApplyHashIn(t *testing.T) {
 		ctx,
 		expression.NewTuple(
 			expression.NewGetField(0, sql.Int64, "a", false),
-			expression.NewGetField(3, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "d", false),
+			expression.NewGetField(3, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "d", false),
 		),
 		expression.NewTuple(
 			expression.NewTuple(
 				expression.NewLiteral(int64(2), sql.Int64),
-				expression.NewLiteral("a", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+				expression.NewLiteral("a", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 			),
 			expression.NewTuple(
 				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral("b", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+				expression.NewLiteral("b", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 			),
 			expression.NewTuple(
 				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral("c", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+				expression.NewLiteral("c", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 			),
 		),
 	)
@@ -151,20 +152,20 @@ func TestApplyHashIn(t *testing.T) {
 				expression.NewInTuple(
 					expression.NewTuple(
 						expression.NewGetField(0, sql.Int64, "a", false),
-						expression.NewGetField(3, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "d", false),
+						expression.NewGetField(3, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "d", false),
 					),
 					expression.NewTuple(
 						expression.NewTuple(
 							expression.NewLiteral(int64(2), sql.Int64),
-							expression.NewLiteral("a", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+							expression.NewLiteral("a", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 						),
 						expression.NewTuple(
 							expression.NewLiteral(int64(1), sql.Int64),
-							expression.NewLiteral("b", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+							expression.NewLiteral("b", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 						),
 						expression.NewTuple(
 							expression.NewLiteral(int64(1), sql.Int64),
-							expression.NewLiteral("c", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+							expression.NewLiteral("c", types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
 						),
 					),
 				),
@@ -320,10 +321,10 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					function.NewLower(
-						expression.NewLiteral("hi", sql.TinyText),
+						expression.NewLiteral("hi", types.TinyText),
 					),
 					expression.NewTuple(
-						expression.NewLiteral("hi", sql.TinyText),
+						expression.NewLiteral("hi", types.TinyText),
 					),
 				),
 				child,
@@ -332,10 +333,10 @@ func TestApplyHashIn(t *testing.T) {
 				mustNewHashInTuple(
 					ctx,
 					function.NewLower(
-						expression.NewLiteral("hi", sql.TinyText),
+						expression.NewLiteral("hi", types.TinyText),
 					),
 					expression.NewTuple(
-						expression.NewLiteral("hi", sql.TinyText),
+						expression.NewLiteral("hi", types.TinyText),
 					),
 				),
 				child,
@@ -345,10 +346,10 @@ func TestApplyHashIn(t *testing.T) {
 			name: "skip filter with function on right",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral("hi", sql.TinyText),
+					expression.NewLiteral("hi", types.TinyText),
 					expression.NewTuple(
 						function.NewLower(
-							expression.NewLiteral("hi", sql.TinyText),
+							expression.NewLiteral("hi", types.TinyText),
 						),
 					),
 				),
@@ -356,10 +357,10 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewLiteral("hi", sql.TinyText),
+					expression.NewLiteral("hi", types.TinyText),
 					expression.NewTuple(
 						function.NewLower(
-							expression.NewLiteral("hi", sql.TinyText),
+							expression.NewLiteral("hi", types.TinyText),
 						),
 					),
 				),

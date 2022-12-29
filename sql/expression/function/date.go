@@ -487,13 +487,13 @@ func (c CurrDate) Description() string {
 
 func NewCurrDate() sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{"curdate", sql.LongText},
+		NoArgFunc: NoArgFunc{"curdate", types.LongText},
 	}
 }
 
 func NewCurrentDate() sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{"current_date", sql.LongText},
+		NoArgFunc: NoArgFunc{"current_date", types.LongText},
 	}
 }
 
@@ -581,5 +581,5 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	}
 
 	// default type is VARCHAR
-	return sql.Text
+	return types.Text
 }

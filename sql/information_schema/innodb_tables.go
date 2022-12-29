@@ -89,23 +89,23 @@ var innoDBBufferPageSchema = Schema{
 	{Name: "block_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
 	{Name: "space", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
 	{Name: "page_number", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
-	{Name: "page_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "page_type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
 	{Name: "flush_type", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
 	{Name: "fix_count", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
-	{Name: "is_hashed", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "is_hashed", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
 	{Name: "newest_modification", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
 	{Name: "oldest_modification", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
 	{Name: "access_time", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
-	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
-	{Name: "index_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "table_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "index_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
 	{Name: "number_records", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
 	{Name: "data_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
 	{Name: "compressed_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
-	{Name: "page_state", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
-	{Name: "io_fix", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
-	{Name: "is_old", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "page_state", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "io_fix", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "is_old", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
 	{Name: "free_page_clock", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageName},
-	{Name: "is_stale", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
+	{Name: "is_stale", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageName},
 }
 
 var innoDBBufferPageLRUSchema = Schema{
@@ -113,21 +113,21 @@ var innoDBBufferPageLRUSchema = Schema{
 	{Name: "lru_position", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 	{Name: "space", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 	{Name: "page_number", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
-	{Name: "page_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
+	{Name: "page_type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
 	{Name: "flush_type", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 	{Name: "fix_count", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
-	{Name: "is_hashed", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
+	{Name: "is_hashed", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
 	{Name: "newest_modification", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 	{Name: "oldest_modification", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 	{Name: "access_time", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
-	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
-	{Name: "index_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
+	{Name: "table_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
+	{Name: "index_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
 	{Name: "number_records", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 	{Name: "data_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 	{Name: "compressed_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
-	{Name: "compressed", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
-	{Name: "io_fix", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
-	{Name: "is_old", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
+	{Name: "compressed", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
+	{Name: "io_fix", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
+	{Name: "is_old", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: InnoDBBufferPageLRUName},
 	{Name: "free_page_clock", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBBufferPageLRUName},
 }
 
@@ -209,9 +209,9 @@ var innoDBCmpmemResetSchema = Schema{
 }
 
 var innoDBCmpPerIndexSchema = Schema{
-	{Name: "database_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexName},
-	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexName},
-	{Name: "index_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexName},
+	{Name: "database_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexName},
+	{Name: "table_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexName},
+	{Name: "index_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexName},
 	{Name: "compress_ops", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBCmpPerIndexName},
 	{Name: "compress_ops_ok", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBCmpPerIndexName},
 	{Name: "compress_time", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBCmpPerIndexName},
@@ -220,9 +220,9 @@ var innoDBCmpPerIndexSchema = Schema{
 }
 
 var innoDBCmpPerIndexResetSchema = Schema{
-	{Name: "database_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
-	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
-	{Name: "index_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
+	{Name: "database_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
+	{Name: "table_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
+	{Name: "index_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
 	{Name: "compress_ops", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
 	{Name: "compress_ops_ok", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
 	{Name: "compress_time", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBCmpPerIndexResetName},
@@ -232,38 +232,38 @@ var innoDBCmpPerIndexResetSchema = Schema{
 
 var innoDBColumnsSchema = Schema{
 	{Name: "table_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBColumnsName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBColumnsName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBColumnsName},
 	{Name: "pos", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBColumnsName},
 	{Name: "mtype", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBColumnsName},
 	{Name: "prtype", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBColumnsName},
 	{Name: "len", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBColumnsName},
 	{Name: "has_default", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBColumnsName},
-	{Name: "default_value", Type: Text, Default: nil, Nullable: true, Source: InnoDBColumnsName},
+	{Name: "default_value", Type: types.Text, Default: nil, Nullable: true, Source: InnoDBColumnsName},
 }
 
 var innoDBDatafilesSchema = Schema{
-	{Name: "space_id", Type: MustCreateBinary(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBDatafilesName},
-	{Name: "path", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: InnoDBDatafilesName},
+	{Name: "space_id", Type: types.MustCreateBinary(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBDatafilesName},
+	{Name: "path", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: InnoDBDatafilesName},
 }
 
 var innoDBFieldsSchema = Schema{
-	{Name: "index_id", Type: MustCreateBinary(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBFieldsName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBFieldsName},
+	{Name: "index_id", Type: types.MustCreateBinary(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBFieldsName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBFieldsName},
 	{Name: "pos", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFieldsName},
 }
 
 var innoDBForeignSchema = Schema{
-	{Name: "id", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignName},
-	{Name: "for_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignName},
-	{Name: "ref_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignName},
+	{Name: "id", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignName},
+	{Name: "for_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignName},
+	{Name: "ref_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignName},
 	{Name: "n_cols", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: false, Source: InnoDBForeignName},
 	{Name: "type", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBForeignName},
 }
 
 var innoDBForeignColsSchema = Schema{
-	{Name: "id", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignColsName},
-	{Name: "for_col_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBForeignColsName},
-	{Name: "ref_col_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBForeignColsName},
+	{Name: "id", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignColsName},
+	{Name: "for_col_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBForeignColsName},
+	{Name: "ref_col_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBForeignColsName},
 	{Name: "pos", Type: Uint32, Default: nil, Nullable: false, Source: InnoDBForeignColsName},
 }
 
@@ -272,12 +272,12 @@ var innoDBFtBeingDeletedSchema = Schema{
 }
 
 var innoDBFtConfigSchema = Schema{
-	{Name: "key", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBFtConfigName},
-	{Name: "value", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBFtConfigName},
+	{Name: "key", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBFtConfigName},
+	{Name: "value", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBFtConfigName},
 }
 
 var innoDBFtDefaultStopwordSchema = Schema{
-	{Name: "value", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 18), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 18), false), Nullable: false, Source: InnoDBFtDefaultStopwordName},
+	{Name: "value", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 18), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 18), false), Nullable: false, Source: InnoDBFtDefaultStopwordName},
 }
 
 var innoDBFtDeletedSchema = Schema{
@@ -285,7 +285,7 @@ var innoDBFtDeletedSchema = Schema{
 }
 
 var innoDBFtIndexCacheSchema = Schema{
-	{Name: "word", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 337), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 337), false), Nullable: false, Source: InnoDBFtIndexCacheName},
+	{Name: "word", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 337), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 337), false), Nullable: false, Source: InnoDBFtIndexCacheName},
 	{Name: "first_doc_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFtIndexCacheName},
 	{Name: "last_doc_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFtIndexCacheName},
 	{Name: "doc_count", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFtIndexCacheName},
@@ -294,7 +294,7 @@ var innoDBFtIndexCacheSchema = Schema{
 }
 
 var innoDBFtIndexTableSchema = Schema{
-	{Name: "word", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 337), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 337), false), Nullable: false, Source: InnoDBFtIndexTableName},
+	{Name: "word", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 337), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 337), false), Nullable: false, Source: InnoDBFtIndexTableName},
 	{Name: "first_doc_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFtIndexTableName},
 	{Name: "last_doc_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFtIndexTableName},
 	{Name: "doc_count", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFtIndexTableName},
@@ -304,7 +304,7 @@ var innoDBFtIndexTableSchema = Schema{
 
 var innoDBIndexesSchema = Schema{
 	{Name: "index_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBIndexesName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBIndexesName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBIndexesName},
 	{Name: "table_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBIndexesName},
 	{Name: "type", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBIndexesName},
 	{Name: "n_fields", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBIndexesName},
@@ -314,8 +314,8 @@ var innoDBIndexesSchema = Schema{
 }
 
 var innoDBMetricsSchema = Schema{
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
-	{Name: "subsystem", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
+	{Name: "subsystem", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
 	{Name: "count", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: false, Source: InnoDBMetricsName},
 	{Name: "max_count", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: true, Source: InnoDBMetricsName},
 	{Name: "min_count", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: true, Source: InnoDBMetricsName},
@@ -328,62 +328,62 @@ var innoDBMetricsSchema = Schema{
 	{Name: "time_disabled", Type: types.Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Datetime, false), Nullable: true, Source: InnoDBMetricsName},
 	{Name: "time_elapsed", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: true, Source: InnoDBMetricsName},
 	{Name: "time_reset", Type: types.Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Datetime, false), Nullable: true, Source: InnoDBMetricsName},
-	{Name: "status", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
-	{Name: "type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
-	{Name: "comment", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
+	{Name: "status", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
+	{Name: "type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
+	{Name: "comment", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), false), Nullable: false, Source: InnoDBMetricsName},
 }
 
 var innoDBSessionTempTablespacesSchema = Schema{
 	{Name: "id", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
 	{Name: "space", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
-	{Name: "path", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 4001), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 4001), false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
+	{Name: "path", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 4001), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 4001), false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
 	{Name: "size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
-	{Name: "state", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
-	{Name: "purpose", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
+	{Name: "state", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
+	{Name: "purpose", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBSessionTempTablespacesName},
 }
 
 var innoDBTablesSchema = Schema{
 	{Name: "table_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablesName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 655), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 655), false), Nullable: false, Source: InnoDBTablesName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 655), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 655), false), Nullable: false, Source: InnoDBTablesName},
 	{Name: "flag", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTablesName},
 	{Name: "n_cols", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTablesName},
 	{Name: "space", Type: Int64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int64, false), Nullable: false, Source: InnoDBTablesName},
-	{Name: "row_format", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 12), Default: nil, Nullable: true, Source: InnoDBTablesName},
+	{Name: "row_format", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 12), Default: nil, Nullable: true, Source: InnoDBTablesName},
 	{Name: "zip_page_size", Type: Uint32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint32, false), Nullable: false, Source: InnoDBTablesName},
-	{Name: "space_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 12), Default: nil, Nullable: true, Source: InnoDBTablesName},
+	{Name: "space_type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 12), Default: nil, Nullable: true, Source: InnoDBTablesName},
 	{Name: "instant_cols", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTablesName},
 }
 
 var innoDBTablespacesSchema = Schema{
 	{Name: "space", Type: Uint32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint32, false), Nullable: false, Source: InnoDBTablespacesName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 655), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 655), false), Nullable: false, Source: InnoDBTablespacesName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 655), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 655), false), Nullable: false, Source: InnoDBTablespacesName},
 	{Name: "flag", Type: Uint32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint32, false), Nullable: false, Source: InnoDBTablespacesName},
-	{Name: "row_format", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 22), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
+	{Name: "row_format", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 22), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
 	{Name: "page_size", Type: Uint32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint32, false), Nullable: false, Source: InnoDBTablespacesName},
 	{Name: "zip_page_size", Type: Uint32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint32, false), Nullable: false, Source: InnoDBTablespacesName},
-	{Name: "space_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 10), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
+	{Name: "space_type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
 	{Name: "fs_block_size", Type: Uint32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint32, false), Nullable: false, Source: InnoDBTablespacesName},
 	{Name: "file_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablespacesName},
 	{Name: "allocated_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablespacesName},
 	{Name: "autoextend_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablespacesName},
-	{Name: "server_version", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 10), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
+	{Name: "server_version", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
 	{Name: "space_version", Type: Uint32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint32, false), Nullable: false, Source: InnoDBTablespacesName},
-	{Name: "encryption", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 1), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
-	{Name: "state", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 10), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
+	{Name: "encryption", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
+	{Name: "state", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Default: nil, Nullable: true, Source: InnoDBTablespacesName},
 }
 
 var innoDBTablespacesBriefSchema = Schema{
-	{Name: "space", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: InnoDBTablespacesBriefName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 268), Default: nil, Nullable: false, Source: InnoDBTablespacesBriefName},
-	{Name: "path", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: InnoDBTablespacesBriefName},
-	{Name: "flag", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: InnoDBTablespacesBriefName},
-	{Name: "space_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 7), Default: nil, Nullable: false, Source: InnoDBTablespacesBriefName},
+	{Name: "space", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: InnoDBTablespacesBriefName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 268), Default: nil, Nullable: false, Source: InnoDBTablespacesBriefName},
+	{Name: "path", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: InnoDBTablespacesBriefName},
+	{Name: "flag", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: InnoDBTablespacesBriefName},
+	{Name: "space_type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 7), Default: nil, Nullable: false, Source: InnoDBTablespacesBriefName},
 }
 
 var innoDBTablestatsSchema = Schema{
 	{Name: "table_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablestatsName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBTablestatsName},
-	{Name: "stats_initialized", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBTablestatsName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBTablestatsName},
+	{Name: "stats_initialized", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 193), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 192), false), Nullable: false, Source: InnoDBTablestatsName},
 	{Name: "num_rows", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablestatsName},
 	{Name: "clust_index_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablestatsName},
 	{Name: "other_index_size", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablestatsName},
@@ -394,21 +394,21 @@ var innoDBTablestatsSchema = Schema{
 
 var innoDBTempTableSchema = Schema{
 	{Name: "table_id", Type: Int64, Default: nil, Nullable: false, Source: InnoDBTempTableInfoName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBTempTableInfoName},
+	{Name: "name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBTempTableInfoName},
 	{Name: "n_cols", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableInfoName},
 	{Name: "space", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableInfoName},
 }
 
 var innoDBTrxSchema = Schema{
 	{Name: "trx_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
-	{Name: "trx_state", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 13), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 13), false), Nullable: false, Source: InnoDBTrxName},
+	{Name: "trx_state", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 13), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 13), false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_started", Type: types.Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `"0000-00-00 00:00:00"`, types.Datetime, false), Nullable: false, Source: InnoDBTrxName},
-	{Name: "trx_requested_lock_id", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 105), Default: nil, Nullable: true, Source: InnoDBTrxName},
+	{Name: "trx_requested_lock_id", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 105), Default: nil, Nullable: true, Source: InnoDBTrxName},
 	{Name: "trx_wait_started", Type: types.Datetime, Default: nil, Nullable: true, Source: InnoDBTrxName},
 	{Name: "trx_weight", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_mysql_thread_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
-	{Name: "trx_query", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBTrxName},
-	{Name: "trx_operation_state", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBTrxName},
+	{Name: "trx_query", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 1024), Default: nil, Nullable: true, Source: InnoDBTrxName},
+	{Name: "trx_operation_state", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBTrxName},
 	{Name: "trx_tables_in_use", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_tables_locked", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_lock_structs", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
@@ -416,10 +416,10 @@ var innoDBTrxSchema = Schema{
 	{Name: "trx_rows_locked", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_rows_modified", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_concurrency_tickets", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
-	{Name: "trx_isolation_level", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 16), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 16), false), Nullable: false, Source: InnoDBTrxName},
+	{Name: "trx_isolation_level", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 16), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateStringWithDefaults(sqltypes.VarChar, 16), false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_unique_checks", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_foreign_key_checks", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTrxName},
-	{Name: "trx_last_foreign_key_error", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: InnoDBTrxName},
+	{Name: "trx_last_foreign_key_error", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: InnoDBTrxName},
 	{Name: "trx_adaptive_hash_latched", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_adaptive_hash_timeout", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_is_read_only", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTrxName},

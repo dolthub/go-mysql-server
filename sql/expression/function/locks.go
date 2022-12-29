@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -72,11 +73,11 @@ func (nl *NamedLockFunction) GetLockName(ctx *sql.Context, row sql.Row) (*string
 		return nil, nil
 	}
 
-	s, ok := nl.Child.Type().(sql.StringType)
+	s, ok := nl.Child.Type().(types.StringType)
 	if !ok {
 		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName)
 	}
-	lockName, err := sql.ConvertToString(val, s)
+	lockName, err := types.ConvertToString(val, s)
 	if err != nil {
 		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName), err)
 	}
@@ -303,12 +304,12 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	s, ok := gl.Left.Type().(sql.StringType)
+	s, ok := gl.Left.Type().(types.StringType)
 	if !ok {
 		return nil, ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName())
 	}
 
-	lockName, err := sql.ConvertToString(leftVal, s)
+	lockName, err := types.ConvertToString(leftVal, s)
 	if err != nil {
 		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName()), err)
 	}

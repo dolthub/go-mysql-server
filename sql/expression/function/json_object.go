@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_OBJECT([key, val[, key, val] ...])
@@ -95,7 +96,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			val, err := sql.LongText.Convert(val)
+			val, err := types.LongText.Convert(val)
 			if err != nil {
 				return nil, err
 			}

@@ -46,9 +46,9 @@ func valueToExpr(v driver.Value) (sql.Expression, error) {
 	case bool:
 		typ = sql.Boolean
 	case []byte:
-		typ, err = sql.CreateStringWithDefaults(sqltypes.Blob, int64(len(v)))
+		typ, err = types.CreateStringWithDefaults(sqltypes.Blob, int64(len(v)))
 	case string:
-		typ, err = sql.CreateStringWithDefaults(sqltypes.Text, int64(len(v)))
+		typ, err = types.CreateStringWithDefaults(sqltypes.Text, int64(len(v)))
 	case time.Time:
 		typ = types.Datetime
 	default:

@@ -86,9 +86,9 @@ func (c *Convert) IsNullable() bool {
 func (c *Convert) Type() sql.Type {
 	switch c.castToType {
 	case ConvertToBinary:
-		return sql.LongBlob
+		return types.LongBlob
 	case ConvertToChar, ConvertToNChar:
-		return sql.LongText
+		return types.LongText
 	case ConvertToDate:
 		return types.Date
 	case ConvertToDatetime:
@@ -166,13 +166,13 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func convertValue(val interface{}, castTo string, originType sql.Type) (interface{}, error) {
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		b, err := sql.LongBlob.Convert(val)
+		b, err := types.LongBlob.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
 		if types.IsTextOnly(originType) {
 			// For string types we need to re-encode the string as we want the binary representation of the character set
-			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
+			encoder := originType.(types.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(b.([]byte))
 			if !ok {
 				return nil, fmt.Errorf("unable to re-encode string to convert to binary")
@@ -181,7 +181,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
-		s, err := sql.LongText.Convert(val)
+		s, err := types.LongText.Convert(val)
 		if err != nil {
 			return nil, nil
 		}

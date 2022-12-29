@@ -17,6 +17,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -406,16 +407,16 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 	}{
 		{
 			"unnecessary cast",
-			expression.NewLiteral([]byte{}, sql.LongBlob),
+			expression.NewLiteral([]byte{}, types.LongBlob),
 			"binary",
-			expression.NewLiteral([]byte{}, sql.LongBlob),
+			expression.NewLiteral([]byte{}, types.LongBlob),
 		},
 		{
 			"necessary cast",
-			expression.NewLiteral("foo", sql.LongText),
+			expression.NewLiteral("foo", types.LongText),
 			"signed",
 			expression.NewConvert(
-				expression.NewLiteral("foo", sql.LongText),
+				expression.NewLiteral("foo", types.LongText),
 				"signed",
 			),
 		},

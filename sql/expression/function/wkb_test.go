@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -143,7 +144,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("wrong type", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral("notageometry", sql.Blob))
+		f := NewAsWKB(expression.NewLiteral("notageometry", types.Blob))
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
@@ -166,7 +167,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -178,7 +179,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("00000000013FF00000000000004000000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -190,7 +191,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("00000000013FF0000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -201,7 +202,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000CDCCCCCCCCDC5EC03333333333378540")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -213,7 +214,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -225,7 +226,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -237,7 +238,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -249,7 +250,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("010500000002000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040010200000002000000000000000000144000000000000018400000000000001C400000000000002040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -261,7 +262,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0106000000010000000103000000010000000400000000000000000000000000000000000000000000000000F03F0000000000000000000000000000F03F000000000000F03F00000000000000000000000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -275,7 +276,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("010700000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -287,7 +288,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0107000000070000000101000000000000000000F03F0000000000000040010200000002000000000000000000F03F0000000000000040000000000000084000000000000010400103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000000000000000000000104000000020000000101000000000000000000F03F00000000000000400101000000000000000000F03F0000000000000040010500000002000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040010200000002000000000000000000F03F0000000000000040000000000000084000000000000010400106000000020000000103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000000000000000000000103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000010700000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -315,7 +316,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(0, sql.Uint32))
 		require.NoError(err)
 
@@ -328,7 +329,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
 		require.NoError(err)
 
@@ -341,7 +342,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(1234, sql.Uint32))
 		require.NoError(err)
 
@@ -353,9 +354,9 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
-			expression.NewLiteral("axis-order=srid-defined", sql.Blob))
+			expression.NewLiteral("axis-order=srid-defined", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -367,9 +368,9 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
-			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -381,9 +382,9 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
-			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -395,7 +396,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
 		require.NoError(err)
 
@@ -408,7 +409,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(2222, sql.Uint32))
 		require.NoError(err)
 
@@ -420,9 +421,9 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
-			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -434,7 +435,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
 		require.NoError(err)
 
@@ -447,7 +448,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(2, sql.Uint32))
 		require.NoError(err)
 
@@ -459,9 +460,9 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
-			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -473,7 +474,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32))
 		require.NoError(err)
 
@@ -486,7 +487,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(2222, sql.Uint32))
 		require.NoError(err)
 
@@ -498,9 +499,9 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0104000000020000000101000000000000000000F03F0000000000000040010100000000000000000008400000000000001040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(sql.GeoSpatialSRID, sql.Uint32),
-			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+			expression.NewLiteral("axis-order=long-lat", types.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -521,7 +522,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(nil, sql.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -532,7 +533,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(0, sql.Uint32),
 			expression.NewLiteral(nil, sql.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

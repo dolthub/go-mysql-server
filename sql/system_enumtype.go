@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -164,7 +165,7 @@ func (t systemEnumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, v.(string))
+	val := types.AppendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }

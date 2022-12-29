@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_EXTRACT(json_doc, path[, path] ...)
@@ -103,7 +104,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		path, err = sql.LongText.Convert(path)
+		path, err = types.LongText.Convert(path)
 		if err != nil {
 			return nil, err
 		}

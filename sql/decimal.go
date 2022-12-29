@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -325,10 +326,10 @@ func (t DecimalType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Va
 	// own precision and scale.
 	var val []byte
 	if t.definesColumn {
-		val = AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
+		val = types.AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
 	} else {
 		decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
-		val = AppendAndSliceString(dest, decStr)
+		val = types.AppendAndSliceString(dest, decStr)
 	}
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil

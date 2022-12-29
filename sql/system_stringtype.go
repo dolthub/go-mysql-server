@@ -17,6 +17,7 @@ package sql
 import (
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -108,7 +109,7 @@ func (t systemStringType) SQL(ctx *Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, v.(string))
+	val := types.AppendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }

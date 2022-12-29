@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Conv function converts numbers between different number bases. Returns a string representation of the number N, converted from base from_base to base to_base.
@@ -48,7 +49,7 @@ func (c *Conv) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Conv) Type() sql.Type { return sql.LongText }
+func (c *Conv) Type() sql.Type { return types.LongText }
 
 // IsNullable implements the Expression interface.
 func (c *Conv) IsNullable() bool {
@@ -85,7 +86,7 @@ func (c *Conv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err = sql.LongText.Convert(n)
+	n, err = types.LongText.Convert(n)
 	if err != nil {
 		return nil, nil
 	}

@@ -17,6 +17,7 @@ package aggregation
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -34,7 +35,7 @@ func TestLast(t *testing.T) {
 		{"three rows", []sql.Row{{"first"}, {"second"}, {"last"}}, "last"},
 	}
 
-	agg := NewLast(expression.NewGetField(0, sql.Text, "", false))
+	agg := NewLast(expression.NewGetField(0, types.Text, "", false))
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			result := aggregate(t, agg, tt.rows...)

@@ -17,6 +17,7 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -29,7 +30,7 @@ import (
 func TestIndexedInSubqueryFilter(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
@@ -39,7 +40,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 	rows, err := sql.NodeToRows(ctx, plan.NewIndexedInSubqueryFilter(
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
-				expression.NewGetField(1, sql.Text, "t", true),
+				expression.NewGetField(1, types.Text, "t", true),
 			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
@@ -54,7 +55,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 	rows, err = sql.NodeToRows(ctx, plan.NewIndexedInSubqueryFilter(
 		plan.NewSubquery(plan.EmptyTable, "select from dual"),
 		plan.NewProject([]sql.Expression{
-			expression.NewGetField(1, sql.Text, "t", true),
+			expression.NewGetField(1, types.Text, "t", true),
 		}, plan.NewResolvedTable(table, nil, nil)),
 		1,
 		expression.NewGetField(0, sql.Int32, "id", false),
@@ -66,7 +67,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 	rows, err = sql.NodeToRows(ctx, plan.NewIndexedInSubqueryFilter(
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
-				expression.NewGetField(1, sql.Text, "t", true),
+				expression.NewGetField(1, types.Text, "t", true),
 			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
@@ -80,15 +81,15 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 	rows, err = sql.NodeToRows(ctx, plan.NewIndexedInSubqueryFilter(
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
-				expression.NewGetField(1, sql.Text, "t", true),
+				expression.NewGetField(1, types.Text, "t", true),
 			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
 		plan.NewProject([]sql.Expression{
-			expression.NewGetField(0, sql.Text, "t", true),
+			expression.NewGetField(0, types.Text, "t", true),
 		}, plan.NewResolvedTable(table, nil, nil)),
 		1,
-		expression.NewGetField(0, sql.Text, "t", false),
+		expression.NewGetField(0, types.Text, "t", false),
 		false),
 	)
 	require.NoError(t, err)
@@ -104,12 +105,12 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		sql.Row{"three"},
 	})
 
-	c, err := function.NewConcat(expression.NewGetField(0, sql.Text, "t", true), expression.NewLiteral("_some_stuff", sql.Text))
+	c, err := function.NewConcat(expression.NewGetField(0, types.Text, "t", true), expression.NewLiteral("_some_stuff", types.Text))
 	require.NoError(t, err)
 	rows, err = sql.NodeToRows(ctx, plan.NewIndexedInSubqueryFilter(
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
-				expression.NewGetField(1, sql.Text, "t", true),
+				expression.NewGetField(1, types.Text, "t", true),
 			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
@@ -117,7 +118,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 			c,
 		}, plan.NewResolvedTable(table, nil, nil)),
 		1,
-		expression.NewGetField(0, sql.Text, "t", false),
+		expression.NewGetField(0, types.Text, "t", false),
 		false),
 	)
 	require.NoError(t, err)

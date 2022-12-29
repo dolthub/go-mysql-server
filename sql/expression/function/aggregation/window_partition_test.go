@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -89,8 +90,8 @@ func TestWindowPartitionIter(t *testing.T) {
 func mustNewRowIter(t *testing.T, ctx *sql.Context) sql.RowIter {
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "w", Type: sql.Int64, Nullable: true},
-		{Name: "x", Type: sql.Text, Nullable: true},
-		{Name: "y", Type: sql.Text, Nullable: true},
+		{Name: "x", Type: types.Text, Nullable: true},
+		{Name: "y", Type: types.Text, Nullable: true},
 		{Name: "z", Type: sql.Int32, Nullable: true},
 	})
 	table := memory.NewTable("test", childSchema, nil)

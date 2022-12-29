@@ -195,13 +195,13 @@ func TestCaseType(t *testing.T) {
 		},
 		{
 			"int and text to text",
-			caseExpr(NewLiteral(int64(0), sql.Int64), NewLiteral("Hello, world!", sql.Text)),
-			sql.LongText,
+			caseExpr(NewLiteral(int64(0), sql.Int64), NewLiteral("Hello, world!", types.Text)),
+			types.LongText,
 		},
 		{
 			"text and blob to blob",
-			caseExpr(NewLiteral("Hello, world!", sql.Text), NewLiteral([]byte("0x480x650x6c0x6c0x6f"), sql.Blob)),
-			sql.LongBlob,
+			caseExpr(NewLiteral("Hello, world!", types.Text), NewLiteral([]byte("0x480x650x6c0x6c0x6f"), types.Blob)),
+			types.LongBlob,
 		},
 		{
 			"int and null to int",
@@ -220,13 +220,13 @@ func TestCaseType(t *testing.T) {
 		},
 		{
 			"int and text to text",
-			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", sql.LongText)),
-			sql.LongText,
+			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", types.LongText)),
+			types.LongText,
 		},
 		{
 			"uint and decimal to decimal",
-			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", sql.LongText)),
-			sql.LongText,
+			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", types.LongText)),
+			types.LongText,
 		},
 		{
 			"int and decimal to decimal",

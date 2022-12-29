@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -32,8 +33,8 @@ func TestQualifyColumnsProject(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "foo"},
-		{Name: "b", Type: sql.Text, Source: "foo"},
+		{Name: "a", Type: types.Text, Source: "foo"},
+		{Name: "b", Type: types.Text, Source: "foo"},
 	}), nil)
 
 	node := plan.NewProject(

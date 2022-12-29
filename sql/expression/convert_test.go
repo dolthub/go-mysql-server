@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -51,7 +52,7 @@ func TestConvert(t *testing.T) {
 		{
 			name:        "convert string to signed",
 			row:         nil,
-			expression:  NewLiteral("-3", sql.LongText),
+			expression:  NewLiteral("-3", types.LongText),
 			castTo:      ConvertToSigned,
 			expected:    int64(-3),
 			expectedErr: false,
@@ -75,7 +76,7 @@ func TestConvert(t *testing.T) {
 		{
 			name:        "impossible conversion string to unsigned",
 			row:         nil,
-			expression:  NewLiteral("hello", sql.LongText),
+			expression:  NewLiteral("hello", types.LongText),
 			castTo:      ConvertToUnsigned,
 			expected:    uint64(0),
 			expectedErr: false,
@@ -84,14 +85,14 @@ func TestConvert(t *testing.T) {
 			name:        "impossible conversion string to signed",
 			row:         nil,
 			castTo:      ConvertToSigned,
-			expression:  NewLiteral("A", sql.LongText),
+			expression:  NewLiteral("A", types.LongText),
 			expected:    int64(0),
 			expectedErr: false,
 		},
 		{
 			name:        "string to datetime",
 			row:         nil,
-			expression:  NewLiteral("2017-12-12", sql.LongText),
+			expression:  NewLiteral("2017-12-12", types.LongText),
 			castTo:      ConvertToDatetime,
 			expected:    time.Date(2017, time.December, 12, 0, 0, 0, 0, time.UTC),
 			expectedErr: false,
@@ -132,7 +133,7 @@ func TestConvert(t *testing.T) {
 			name:        "string to json",
 			row:         nil,
 			castTo:      ConvertToJSON,
-			expression:  NewLiteral(`{"a":2}`, sql.LongText),
+			expression:  NewLiteral(`{"a":2}`, types.LongText),
 			expected:    sql.MustJSON(`{"a":2}`),
 			expectedErr: false,
 		},
@@ -148,7 +149,7 @@ func TestConvert(t *testing.T) {
 			name:        "impossible conversion string to json",
 			row:         nil,
 			castTo:      ConvertToJSON,
-			expression:  NewLiteral("3>2", sql.LongText),
+			expression:  NewLiteral("3>2", types.LongText),
 			expected:    nil,
 			expectedErr: true,
 		},

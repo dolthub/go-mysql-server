@@ -69,7 +69,7 @@ func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		val = x.Year()
 	}
 
-	x, err := sql.Text.Convert(val)
+	x, err := types.Text.Convert(val)
 
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func NewHex(arg sql.Expression) sql.Expression {
 	// Although this may seem convoluted, the Collation_Default is NOT guaranteed to be the character set's default
 	// collation. This ensures that you're getting the character set's default collation, and also works in the event
 	// that the Collation_Default is ever changed.
-	retType := sql.CreateLongText(sql.Collation_Default.CharacterSet().DefaultCollation())
+	retType := types.CreateLongText(sql.Collation_Default.CharacterSet().DefaultCollation())
 	return &Hex{NewUnaryFunc(arg, "HEX", retType)}
 }
 
@@ -123,7 +123,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		childType := h.Child.Type()
 		if types.IsTextOnly(childType) {
 			// For string types we need to re-encode the internal string so that we get the correct hex output
-			encoder := childType.(sql.StringType).Collation().CharacterSet().Encoder()
+			encoder := childType.(types.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(encodings.StringToBytes(val))
 			if !ok {
 				return nil, fmt.Errorf("unable to re-encode string for HEX function")
@@ -254,7 +254,7 @@ type Unhex struct {
 var _ sql.FunctionExpression = (*Unhex)(nil)
 
 func NewUnhex(arg sql.Expression) sql.Expression {
-	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.LongBlob)}
+	return &Unhex{NewUnaryFunc(arg, "UNHEX", types.LongBlob)}
 }
 
 // Description implements sql.FunctionExpression
@@ -273,7 +273,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongText.Convert(arg)
+	val, err := types.LongText.Convert(arg)
 
 	if err != nil {
 		return nil, err
@@ -332,7 +332,7 @@ type Bin struct {
 var _ sql.FunctionExpression = (*Bin)(nil)
 
 func NewBin(arg sql.Expression) sql.Expression {
-	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
+	return &Bin{NewUnaryFunc(arg, "BIN", types.Text)}
 }
 
 // FunctionName implements sql.FunctionExpression

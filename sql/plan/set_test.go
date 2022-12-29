@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ func TestSet(t *testing.T) {
 
 	s := NewSet(
 		[]sql.Expression{
-			expression.NewSetField(expression.NewUserVar("foo"), expression.NewLiteral("bar", sql.LongText)),
+			expression.NewSetField(expression.NewUserVar("foo"), expression.NewLiteral("bar", types.LongText)),
 			expression.NewSetField(expression.NewUserVar("baz"), expression.NewLiteral(int64(1), sql.Int64)),
 		},
 	)
@@ -45,7 +46,7 @@ func TestSet(t *testing.T) {
 
 	typ, v, err := ctx.GetUserVariable(ctx, "foo")
 	require.NoError(err)
-	require.Equal(sql.MustCreateStringWithDefaults(sqltypes.VarChar, 3), typ)
+	require.Equal(types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), typ)
 	require.Equal("bar", v)
 
 	typ, v, err = ctx.GetUserVariable(ctx, "baz")

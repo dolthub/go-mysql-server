@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -66,8 +67,8 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		convertedVal, err := getField.fieldType.Convert(val)
 		if err != nil {
 			// Fill in error with information
-			if sql.ErrLengthBeyondLimit.Is(err) {
-				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, sql.ErrLengthBeyondLimit.New(val, getField.Name()))
+			if types.ErrLengthBeyondLimit.Is(err) {
+				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, types.ErrLengthBeyondLimit.New(val, getField.Name()))
 			}
 			return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, err)
 		}

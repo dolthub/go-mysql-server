@@ -17,6 +17,7 @@ package sql
 import (
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -143,7 +144,7 @@ func (t systemSetType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, value)
+	val := types.AppendAndSliceString(dest, value)
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }

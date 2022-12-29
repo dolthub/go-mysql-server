@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -128,7 +129,7 @@ func TestConvertTz(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fn := NewConvertTz(expression.NewLiteral(test.datetime, sql.Text), expression.NewLiteral(test.fromTimeZone, sql.Text), expression.NewLiteral(test.toTimeZone, sql.Text))
+			fn := NewConvertTz(expression.NewLiteral(test.datetime, types.Text), expression.NewLiteral(test.fromTimeZone, types.Text), expression.NewLiteral(test.toTimeZone, types.Text))
 
 			res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 			require.NoError(t, err)

@@ -133,8 +133,8 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 			return 0, err
 		}
 
-		stringCompareType := compareType.(sql.StringType)
-		compareType = sql.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
+		stringCompareType := compareType.(types.StringType)
+		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 
 	return compareType.Compare(left, right)
@@ -175,7 +175,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		return l, r, sql.LongBlob, nil
+		return l, r, types.LongBlob, nil
 	}
 
 	if types.IsNumber(leftType) || types.IsNumber(rightType) {
@@ -224,7 +224,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return nil, nil, nil, err
 	}
 
-	return left, right, sql.LongText, nil
+	return left, right, types.LongText, nil
 }
 
 func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
@@ -426,7 +426,7 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	if err != nil || left == nil {
 		return nil, err
 	}
-	left, err = sql.LongText.Convert(left)
+	left, err = types.LongText.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +480,7 @@ func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
 	if right == nil {
 		return nil, nil
 	}
-	right, err = sql.LongText.Convert(right)
+	right, err = types.LongText.Convert(right)
 	if err != nil {
 		return nil, err
 	}

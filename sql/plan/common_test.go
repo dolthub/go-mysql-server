@@ -20,6 +20,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -28,12 +29,12 @@ import (
 
 var benchtable = func() *memory.Table {
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "strfield", Type: sql.Text, Nullable: true},
+		{Name: "strfield", Type: types.Text, Nullable: true},
 		{Name: "floatfield", Type: sql.Float64, Nullable: true},
 		{Name: "boolfield", Type: sql.Boolean, Nullable: false},
 		{Name: "intfield", Type: sql.Int32, Nullable: false},
 		{Name: "bigintfield", Type: sql.Int64, Nullable: false},
-		{Name: "blobfield", Type: sql.Blob, Nullable: false},
+		{Name: "blobfield", Type: types.Blob, Nullable: false},
 	})
 	t := memory.NewTable("test", schema, nil)
 

@@ -17,6 +17,7 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -32,7 +33,7 @@ func TestSubquery(t *testing.T) {
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral("one", sql.LongText),
+			expression.NewLiteral("one", types.LongText),
 		},
 		plan.NewResolvedTable(table, nil, nil),
 	), "select 'one'")
@@ -50,7 +51,7 @@ func TestSubqueryTooManyRows(t *testing.T) {
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral("one", sql.LongText),
+			expression.NewLiteral("one", types.LongText),
 		},
 		plan.NewResolvedTable(table, nil, nil),
 	), "select 'one'")
@@ -64,7 +65,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
 	require.NoError(table.Insert(ctx, sql.Row{"one"}))
@@ -73,7 +74,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Text, "t", false),
+			expression.NewGetField(0, types.Text, "t", false),
 		},
 		plan.NewResolvedTable(table, nil, nil),
 	), "select t from foo")

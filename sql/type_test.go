@@ -28,16 +28,16 @@ func TestIsGeometry(t *testing.T) {
 	assert.True(t, types.IsGeometry(PointType{}))
 	assert.True(t, types.IsGeometry(LineStringType{}))
 	assert.True(t, types.IsGeometry(PolygonType{}))
-	assert.False(t, types.IsGeometry(StringType_{}))
+	assert.False(t, types.IsGeometry(types.StringType_{}))
 	assert.False(t, types.IsGeometry(JSON))
-	assert.False(t, types.IsGeometry(Blob))
+	assert.False(t, types.IsGeometry(types.Blob))
 }
 
 func TestIsJSON(t *testing.T) {
 	assert.True(t, types.IsJSON(JSON))
-	assert.False(t, types.IsJSON(Blob))
+	assert.False(t, types.IsJSON(types.Blob))
 	assert.False(t, types.IsJSON(NumberTypeImpl_{}))
-	assert.False(t, types.IsJSON(StringType_{}))
+	assert.False(t, types.IsJSON(types.StringType_{}))
 }
 
 func TestFloatCovert(t *testing.T) {

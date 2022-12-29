@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,7 +69,7 @@ func TestRandWithSeed(t *testing.T) {
 
 	assert.Equal(t, f64, f642)
 
-	r, _ = NewRand(expression.NewLiteral("not a number", sql.LongText))
+	r, _ = NewRand(expression.NewLiteral("not a number", types.LongText))
 	assert.Equal(t, `rand('not a number')`, r.String())
 
 	f, err = r.Eval(nil, nil)

@@ -17,6 +17,7 @@ package expression
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -51,7 +52,7 @@ func TestIsTrue(t *testing.T) {
 	require.Equal(true, eval(t, e, sql.NewRow(-1.5)))
 	require.Equal(false, eval(t, e, sql.NewRow(0)))
 
-	stringF := NewGetField(0, sql.Text, "col1", true)
+	stringF := NewGetField(0, types.Text, "col1", true)
 	e = NewIsTrue(stringF)
 	require.Equal(sql.Boolean, e.Type())
 	require.False(e.IsNullable())
@@ -90,7 +91,7 @@ func TestIsFalse(t *testing.T) {
 	require.Equal(false, eval(t, e, sql.NewRow(-1.5)))
 	require.Equal(true, eval(t, e, sql.NewRow(0)))
 
-	stringF := NewGetField(0, sql.Text, "col1", true)
+	stringF := NewGetField(0, types.Text, "col1", true)
 	e = NewIsFalse(stringF)
 	require.Equal(sql.Boolean, e.Type())
 	require.False(e.IsNullable())

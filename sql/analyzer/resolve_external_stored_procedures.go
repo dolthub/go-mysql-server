@@ -49,8 +49,8 @@ var (
 		reflect.TypeOf(float32(0)):        sql.Float32,
 		reflect.TypeOf(float64(0)):        sql.Float64,
 		reflect.TypeOf(bool(false)):       sql.Int8,
-		reflect.TypeOf(string("")):        sql.LongText,
-		reflect.TypeOf([]byte{}):          sql.LongBlob,
+		reflect.TypeOf(string("")):        types.LongText,
+		reflect.TypeOf([]byte{}):          types.LongBlob,
 		reflect.TypeOf(time.Time{}):       types.Datetime,
 		reflect.TypeOf(decimal.Decimal{}): sql.InternalDecimalType,
 	}
@@ -69,8 +69,8 @@ var (
 		reflect.TypeOf((*float32)(nil)):         sql.Float32,
 		reflect.TypeOf((*float64)(nil)):         sql.Float64,
 		reflect.TypeOf((*bool)(nil)):            sql.Int8,
-		reflect.TypeOf((*string)(nil)):          sql.LongText,
-		reflect.TypeOf((*[]byte)(nil)):          sql.LongBlob,
+		reflect.TypeOf((*string)(nil)):          types.LongText,
+		reflect.TypeOf((*[]byte)(nil)):          types.LongBlob,
 		reflect.TypeOf((*time.Time)(nil)):       types.Datetime,
 		reflect.TypeOf((*decimal.Decimal)(nil)): sql.InternalDecimalType,
 	}

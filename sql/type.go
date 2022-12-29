@@ -155,20 +155,20 @@ func ApproximateTypeFromValue(val interface{}) Type {
 	case float64:
 		return Float64
 	case string:
-		typ, err := CreateString(sqltypes.VarChar, int64(len(v)), Collation_Default)
+		typ, err := types.CreateString(sqltypes.VarChar, int64(len(v)), Collation_Default)
 		if err != nil {
-			typ, err = CreateString(sqltypes.Text, int64(len(v)), Collation_Default)
+			typ, err = types.CreateString(sqltypes.Text, int64(len(v)), Collation_Default)
 			if err != nil {
-				typ = LongText
+				typ = types.LongText
 			}
 		}
 		return typ
 	case []byte:
-		typ, err := CreateBinary(sqltypes.VarBinary, int64(len(v)))
+		typ, err := types.CreateBinary(sqltypes.VarBinary, int64(len(v)))
 		if err != nil {
-			typ, err = CreateBinary(sqltypes.Blob, int64(len(v)))
+			typ, err = types.CreateBinary(sqltypes.Blob, int64(len(v)))
 			if err != nil {
-				typ = LongBlob
+				typ = types.LongBlob
 			}
 		}
 		return typ
@@ -200,7 +200,7 @@ func ApproximateTypeFromValue(val interface{}) Type {
 	case nil:
 		return Null
 	default:
-		return LongText
+		return types.LongText
 	}
 }
 
@@ -280,51 +280,51 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		}
 		return CreateBitType(uint8(length))
 	case "tinyblob":
-		return TinyBlob, nil
+		return types.TinyBlob, nil
 	case "blob":
 		if ct.Length == nil {
-			return Blob, nil
+			return types.Blob, nil
 		}
 		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		return CreateBinary(sqltypes.Blob, length)
+		return types.CreateBinary(sqltypes.Blob, length)
 	case "mediumblob":
-		return MediumBlob, nil
+		return types.MediumBlob, nil
 	case "longblob":
-		return LongBlob, nil
+		return types.LongBlob, nil
 	case "tinytext":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, tinyTextBlobMax/collation.CharacterSet().MaxLength(), collation)
+		return types.CreateString(sqltypes.Text, types.TinyTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 	case "text":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
 		if ct.Length == nil {
-			return CreateString(sqltypes.Text, textBlobMax/collation.CharacterSet().MaxLength(), collation)
+			return types.CreateString(sqltypes.Text, types.TextBlobMax/collation.CharacterSet().MaxLength(), collation)
 		}
 		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, length, collation)
+		return types.CreateString(sqltypes.Text, length, collation)
 	case "mediumtext", "long", "long varchar":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, mediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
+		return types.CreateString(sqltypes.Text, types.MediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 	case "longtext":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
+		return types.CreateString(sqltypes.Text, types.LongTextBlobMax/collation.CharacterSet().MaxLength(), collation)
 	case "char", "character":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
@@ -338,7 +338,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 				return nil, err
 			}
 		}
-		return CreateString(sqltypes.Char, length, collation)
+		return types.CreateString(sqltypes.Char, length, collation)
 	case "nchar", "national char", "national character":
 		length := int64(1)
 		if ct.Length != nil {
@@ -348,7 +348,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 				return nil, err
 			}
 		}
-		return CreateString(sqltypes.Char, length, Collation_utf8mb3_general_ci)
+		return types.CreateString(sqltypes.Char, length, Collation_utf8mb3_general_ci)
 	case "varchar", "character varying":
 		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
@@ -368,7 +368,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 				return nil, err
 			}
 		}
-		return CreateString(sqltypes.VarChar, length, collation)
+		return types.CreateString(sqltypes.VarChar, length, collation)
 	case "nvarchar", "national varchar", "national character varying":
 		if ct.Length == nil {
 			return nil, fmt.Errorf("VARCHAR requires a length")
@@ -377,7 +377,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.VarChar, length, Collation_utf8mb3_general_ci)
+		return types.CreateString(sqltypes.VarChar, length, Collation_utf8mb3_general_ci)
 	case "binary":
 		length := int64(1)
 		if ct.Length != nil {
@@ -387,7 +387,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 				return nil, err
 			}
 		}
-		return CreateString(sqltypes.Binary, length, Collation_binary)
+		return types.CreateString(sqltypes.Binary, length, Collation_binary)
 	case "varbinary":
 		if ct.Length == nil {
 			return nil, fmt.Errorf("VARBINARY requires a length")
@@ -396,7 +396,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.VarBinary, length, Collation_binary)
+		return types.CreateString(sqltypes.VarBinary, length, Collation_binary)
 	case "year":
 		return Year, nil
 	case "date":

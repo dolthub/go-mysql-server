@@ -17,6 +17,7 @@ package aggregation
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -152,7 +153,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// Update the map.
-	keyAsString, err := sql.LongText.Convert(key)
+	keyAsString, err := types.LongText.Convert(key)
 	if err != nil {
 		return nil
 	}

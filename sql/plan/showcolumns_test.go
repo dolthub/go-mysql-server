@@ -17,6 +17,7 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -31,7 +32,7 @@ func TestShowColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	schema := sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
+		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
 	}
@@ -60,7 +61,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	schema := sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
+		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
 		{Name: "d", Source: "foo", Type: sql.Int64, Nullable: true},
@@ -149,7 +150,7 @@ func TestShowColumnsFull(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	schema := sql.Schema{
-		{Name: "a", Type: sql.Text, PrimaryKey: true},
+		{Name: "a", Type: types.Text, PrimaryKey: true},
 		{Name: "b", Type: sql.Int64, Nullable: true},
 		{Name: "c", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false), Comment: "a comment"},
 	}

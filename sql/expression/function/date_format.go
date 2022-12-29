@@ -319,7 +319,7 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the Expression interface.
 func (f *DateFormat) Type() sql.Type {
-	return sql.Text
+	return types.Text
 }
 
 // IsNullable implements the Expression interface.

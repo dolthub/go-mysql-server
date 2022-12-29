@@ -17,6 +17,7 @@ package aggregation
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,7 +26,7 @@ import (
 
 var (
 	partitionByX = []sql.Expression{
-		expression.NewGetFieldWithTable(1, sql.Text, "a", "x", false),
+		expression.NewGetFieldWithTable(1, types.Text, "a", "x", false),
 	}
 	sortByW = sql.SortFields{{
 		Column: expression.NewGetFieldWithTable(0, sql.Int64, "a", "w", false),
@@ -36,8 +37,8 @@ var (
 			Order:  sql.Descending,
 		},
 	}
-	lastX  = NewLastAgg(expression.NewGetField(1, sql.Text, "x", true))
-	firstY = NewFirstAgg(expression.NewGetField(2, sql.Text, "y", true))
+	lastX  = NewLastAgg(expression.NewGetField(1, types.Text, "x", true))
+	firstY = NewFirstAgg(expression.NewGetField(2, types.Text, "y", true))
 	sumZ   = NewSumAgg(expression.NewGetField(3, sql.Int64, "z", true))
 )
 

@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AsWKT is a function that converts a spatial type into WKT format (alias for AsText)
@@ -52,7 +53,7 @@ func (p *AsWKT) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *AsWKT) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 func (p *AsWKT) String() string {

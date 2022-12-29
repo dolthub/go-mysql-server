@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -89,10 +90,10 @@ func TestHexRoundTrip(t *testing.T) {
 		typ sql.Type
 		out string
 	}{
-		{"1B", sql.Text, "1B"},
-		{"C", sql.Text, "0C"},
-		{"8F", sql.Text, "8F"},
-		{"ABCD", sql.Text, "ABCD"},
+		{"1B", types.Text, "1B"},
+		{"C", types.Text, "0C"},
+		{"8F", types.Text, "8F"},
+		{"ABCD", types.Text, "ABCD"},
 		{int64(1), sql.Int64, "01"},
 		{int8(11), sql.Int64, "11"},
 		{uint16(375), sql.Int64, "0375"},

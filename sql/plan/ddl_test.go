@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -33,7 +34,7 @@ func TestCreateTable(t *testing.T) {
 	require.False(ok)
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c1", Type: sql.Text},
+		{Name: "c1", Type: types.Text},
 		{Name: "c2", Type: sql.Int32},
 	})
 
@@ -61,7 +62,7 @@ func TestDropTable(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c1", Type: sql.Text},
+		{Name: "c1", Type: types.Text},
 		{Name: "c2", Type: sql.Int32},
 	})
 

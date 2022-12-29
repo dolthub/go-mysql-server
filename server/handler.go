@@ -241,7 +241,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 		case v.Type() == sqltypes.Null:
 			res[k] = expression.NewLiteral(nil, sql.Null)
 		case v.Type() == sqltypes.Blob || v.Type() == sqltypes.VarBinary || v.Type() == sqltypes.Binary:
-			t, err := sql.CreateBinary(v.Type(), int64(len(v.ToBytes())))
+			t, err := types.CreateBinary(v.Type(), int64(len(v.ToBytes())))
 			if err != nil {
 				return nil, err
 			}
@@ -251,7 +251,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Text || v.Type() == sqltypes.VarChar || v.Type() == sqltypes.Char:
-			t, err := sql.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
+			t, err := types.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
 			if err != nil {
 				return nil, err
 			}

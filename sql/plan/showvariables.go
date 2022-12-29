@@ -19,6 +19,7 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowVariables is a node that shows the global and session variables
@@ -67,8 +68,8 @@ func (sv *ShowVariables) String() string {
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (*ShowVariables) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Variable_name", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Value", Type: sql.LongText, Nullable: true},
+		&sql.Column{Name: "Variable_name", Type: types.LongText, Nullable: false},
+		&sql.Column{Name: "Value", Type: types.LongText, Nullable: true},
 	}
 }
 

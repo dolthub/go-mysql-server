@@ -126,15 +126,15 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 	switch sc.Child.(type) {
 	case *SubqueryAlias:
 		return sql.Schema{
-			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "Create View", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "View", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "Create View", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "character_set_client", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "collation_connection", Type: types.LongText, Nullable: false},
 		}
 	case *ResolvedTable, sql.UnresolvedTable:
 		return sql.Schema{
-			&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "Table", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "Create Table", Type: types.LongText, Nullable: false},
 		}
 	default:
 		panic(fmt.Sprintf("unexpected type %T", sc.Child))

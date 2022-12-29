@@ -17,6 +17,7 @@ package plan
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -46,7 +47,7 @@ func TestApplyBindings(t *testing.T) {
 				),
 			),
 			map[string]sql.Expression{
-				"v1": expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+				"v1": expression.NewLiteral("Four score and seven years ago...", types.LongText),
 			},
 			NewProject(
 				[]sql.Expression{
@@ -55,7 +56,7 @@ func TestApplyBindings(t *testing.T) {
 				NewFilter(
 					expression.NewEquals(
 						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+						expression.NewLiteral("Four score and seven years ago...", types.LongText),
 					),
 					NewUnresolvedTable("t1", ""),
 				),
@@ -116,7 +117,7 @@ func TestApplyBindings(t *testing.T) {
 				),
 			),
 			map[string]sql.Expression{
-				"strvar": expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+				"strvar": expression.NewLiteral("Four score and seven years ago...", types.LongText),
 				"intvar": expression.NewLiteral(int8(10), sql.Int8),
 			},
 			NewProject(
@@ -128,11 +129,11 @@ func TestApplyBindings(t *testing.T) {
 						expression.NewAnd(
 							expression.NewEquals(
 								expression.NewUnresolvedColumn("foo"),
-								expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+								expression.NewLiteral("Four score and seven years ago...", types.LongText),
 							),
 							expression.NewEquals(
 								expression.NewUnresolvedColumn("bar"),
-								expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+								expression.NewLiteral("Four score and seven years ago...", types.LongText),
 							),
 						),
 						expression.NewLessThan(
@@ -168,7 +169,7 @@ func TestApplyBindings(t *testing.T) {
 				),
 			),
 			map[string]sql.Expression{
-				"v1": expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+				"v1": expression.NewLiteral("Four score and seven years ago...", types.LongText),
 			},
 			NewProject(
 				[]sql.Expression{
@@ -184,7 +185,7 @@ func TestApplyBindings(t *testing.T) {
 						NewFilter(
 							expression.NewEquals(
 								expression.NewUnresolvedColumn("bar"),
-								expression.NewLiteral("Four score and seven years ago...", sql.LongText),
+								expression.NewLiteral("Four score and seven years ago...", types.LongText),
 							),
 							NewUnresolvedTable("foo", ""),
 						),
