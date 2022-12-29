@@ -38,7 +38,7 @@ func compEval(
 	cmp compareFn,
 ) (interface{}, error) {
 
-	if returnType == sql.Null {
+	if returnType == types.Null {
 		return nil, nil
 	}
 
@@ -171,9 +171,9 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 			allInt = false
 		} else if sql.IsDeferredType(argType) {
 			return argType, nil
-		} else if argType == sql.Null {
+		} else if argType == types.Null {
 			// When a Null is present the return will always be Null
-			return sql.Null, nil
+			return types.Null, nil
 		} else {
 			return nil, ErrUnsupportedType.New(argType)
 		}

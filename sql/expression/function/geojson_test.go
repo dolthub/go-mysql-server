@@ -341,7 +341,7 @@ func TestAsGeoJSON(t *testing.T) {
 	t.Run("convert null is null", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 			expression.NewLiteral(2, types.Int64),
 			expression.NewLiteral(1, types.Int64),
 		)
@@ -355,7 +355,7 @@ func TestAsGeoJSON(t *testing.T) {
 		require := require.New(t)
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}),
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 			expression.NewLiteral(1, types.Int64),
 		)
 		require.NoError(err)
@@ -369,7 +369,7 @@ func TestAsGeoJSON(t *testing.T) {
 		f, err := NewAsGeoJSON(
 			expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}),
 			expression.NewLiteral(2, types.Int64),
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 		)
 		require.NoError(err)
 

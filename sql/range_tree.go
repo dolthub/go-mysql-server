@@ -20,6 +20,8 @@ package sql
 import (
 	"fmt"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // rangeTreeColor is a node's color for balancing a RangeColumnExprTree.
@@ -87,7 +89,7 @@ func GetColExprTypes(ranges []Range) []Type {
 	}
 	for i, t := range colExprTypes {
 		if t == nil {
-			colExprTypes[i] = Null
+			colExprTypes[i] = types.Null
 		}
 	}
 	return colExprTypes
@@ -163,7 +165,7 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (Ra
 		if cmp1 <= 0 && cmp2 <= 0 {
 			// We have a connection here, so we need to see if any inner column expressions also have a connection
 			typ := tree.typ
-			if typ == Null {
+			if typ == types.Null {
 				typ = colExpr.Typ
 			}
 			connectedColExpr := RangeColumnExpr{

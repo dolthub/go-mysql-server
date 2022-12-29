@@ -76,7 +76,7 @@ func TestPerimeter(t *testing.T) {
 
 	t.Run("select perimeter of NULL", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewPerimeter(expression.NewLiteral(nil, sql.Null))
+		f, err := NewPerimeter(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

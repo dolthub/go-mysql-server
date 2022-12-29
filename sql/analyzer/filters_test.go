@@ -195,7 +195,7 @@ func TestExprToTableFilters(t *testing.T) {
 	assert.Equal(t, expected, filters)
 
 	filters = exprToTableFilters(expression.NewAnd(
-		expression.NewLiteral(nil, sql.Null),
+		expression.NewLiteral(nil, types.Null),
 		expression.NewGetFieldWithTable(0, types.Int64, "mytable", "f", false),
 	))
 	expected = filtersByTable{
@@ -217,13 +217,13 @@ func TestExprToTableFilters(t *testing.T) {
 	assert.Equal(t, expected, filters)
 
 	filters = exprToTableFilters(expression.NewOr(
-		expression.NewLiteral(nil, sql.Null),
+		expression.NewLiteral(nil, types.Null),
 		expression.NewGetFieldWithTable(0, types.Int64, "mytable", "f", false),
 	))
 	expected = filtersByTable{
 		"mytable": []sql.Expression{
 			expression.NewOr(
-				expression.NewLiteral(nil, sql.Null),
+				expression.NewLiteral(nil, types.Null),
 				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "f", false),
 			),
 		},

@@ -136,7 +136,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(nil, sql.Null))
+		f := NewAsWKB(expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -511,7 +511,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromWKB(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKB(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -523,7 +523,7 @@ func TestGeomFromWKB(t *testing.T) {
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
-			expression.NewLiteral(nil, sql.Null))
+			expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -535,7 +535,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require.NoError(err)
 		f, err := NewGeomFromWKB(expression.NewLiteral(res, types.Blob),
 			expression.NewLiteral(0, types.Uint32),
-			expression.NewLiteral(nil, sql.Null))
+			expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)

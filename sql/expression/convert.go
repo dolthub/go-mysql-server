@@ -107,7 +107,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToUnsigned:
 		return types.Uint64
 	default:
-		return sql.Null
+		return types.Null
 	}
 }
 

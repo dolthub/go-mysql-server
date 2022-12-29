@@ -43,7 +43,7 @@ func TestInTuple(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 			expression.NewTuple(
 				expression.NewLiteral(int64(1), types.Int64),
 				expression.NewLiteral(int64(2), types.Int64),
@@ -196,7 +196,7 @@ func TestNotInTuple(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 			expression.NewTuple(
 				expression.NewLiteral(int64(1), types.Int64),
 				expression.NewLiteral(int64(2), types.Int64),
@@ -280,7 +280,7 @@ func TestHashInTuple(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 			expression.NewTuple(
 				expression.NewLiteral(int64(1), types.Int64),
 				expression.NewLiteral(int64(2), types.Int64),
@@ -561,7 +561,7 @@ func TestHashInTuple(t *testing.T) {
 		{
 			name: "left has an is null",
 			left: expression.NewIsNull(
-				expression.NewLiteral(nil, sql.Null),
+				expression.NewLiteral(nil, types.Null),
 			),
 			right: expression.NewTuple(
 				expression.NewLiteral(true, types.Boolean),

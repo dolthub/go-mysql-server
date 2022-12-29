@@ -249,7 +249,7 @@ func TestLongitude(t *testing.T) {
 
 	t.Run("null point", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLongitude(expression.NewLiteral(nil, sql.Null))
+		f, err := NewLongitude(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -260,7 +260,7 @@ func TestLongitude(t *testing.T) {
 	t.Run("replace with null value", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
-			expression.NewLiteral(nil, sql.Null))
+			expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -361,7 +361,7 @@ func TestLatitude(t *testing.T) {
 
 	t.Run("null point", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLatitude(expression.NewLiteral(nil, sql.Null))
+		f, err := NewLatitude(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -372,7 +372,7 @@ func TestLatitude(t *testing.T) {
 	t.Run("replace with null value", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 0, Y: 0}, types.PointType{}),
-			expression.NewLiteral(nil, sql.Null))
+			expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

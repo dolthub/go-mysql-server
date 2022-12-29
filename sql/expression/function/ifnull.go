@@ -70,7 +70,7 @@ func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func (f *IfNull) Type() sql.Type {
 	if types.IsNull(f.Left) {
 		if types.IsNull(f.Right) {
-			return sql.Null
+			return types.Null
 		}
 		return f.Right.Type()
 	}

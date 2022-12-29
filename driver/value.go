@@ -33,7 +33,7 @@ var ErrUnsupportedType = errors.New("unsupported type")
 
 func valueToExpr(v driver.Value) (sql.Expression, error) {
 	if v == nil {
-		return expression.NewLiteral(nil, sql.Null), nil
+		return expression.NewLiteral(nil, types.Null), nil
 	}
 
 	var typ sql.Type

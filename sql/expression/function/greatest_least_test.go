@@ -34,7 +34,7 @@ func TestGreatest(t *testing.T) {
 		{
 			"null",
 			[]sql.Expression{
-				expression.NewLiteral(nil, sql.Null),
+				expression.NewLiteral(nil, types.Null),
 				expression.NewLiteral(5, types.Int64),
 				expression.NewLiteral(1, types.Int64),
 			},
@@ -101,7 +101,7 @@ func TestGreatest(t *testing.T) {
 			"nulls of a non-null type, char",
 			[]sql.Expression{
 				expression.NewConvert(expression.NewLiteral("aaa", types.LongText), expression.ConvertToChar),
-				expression.NewConvert(expression.NewLiteral(nil, sql.Null), expression.ConvertToChar),
+				expression.NewConvert(expression.NewLiteral(nil, types.Null), expression.ConvertToChar),
 			},
 			nil,
 		},
@@ -109,7 +109,7 @@ func TestGreatest(t *testing.T) {
 			"nulls of a non-null type, signed",
 			[]sql.Expression{
 				expression.NewConvert(expression.NewLiteral(3.14159265359, types.Float64), expression.ConvertToSigned),
-				expression.NewConvert(expression.NewLiteral(nil, sql.Null), expression.ConvertToSigned),
+				expression.NewConvert(expression.NewLiteral(nil, types.Null), expression.ConvertToSigned),
 			},
 			nil,
 		},
@@ -167,7 +167,7 @@ func TestLeast(t *testing.T) {
 		{
 			"null",
 			[]sql.Expression{
-				expression.NewLiteral(nil, sql.Null),
+				expression.NewLiteral(nil, types.Null),
 				expression.NewLiteral(5, types.Int64),
 				expression.NewLiteral(1, types.Int64),
 			},

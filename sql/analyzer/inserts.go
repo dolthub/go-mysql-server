@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -272,7 +273,7 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 		case *expression.GetField:
 			otherCol := schema[e.Index()]
 			// special case: null field type, will get checked at execution time
-			if otherCol.Type == sql.Null {
+			if otherCol.Type == types.Null {
 				continue
 			}
 			_, err := expr.Type().Convert(otherCol.Type.Zero())

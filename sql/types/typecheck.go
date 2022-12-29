@@ -79,7 +79,7 @@ func IsGeometry(t sql.Type) bool {
 
 // IsNull returns true if expression is nil or is Null Type, otherwise false.
 func IsNull(ex sql.Expression) bool {
-	return ex == nil || ex.Type() == sql.Null
+	return ex == nil || ex.Type() == Null
 }
 
 // IsNumber checks if t is a number type

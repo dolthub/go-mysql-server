@@ -58,7 +58,7 @@ func TestIsUUID(t *testing.T) {
 		{"uuid form 1", types.LongText, "{12345678-1234-5678-1234-567812345678}", int8(1)},
 		{"uuid form 2", types.LongText, "12345678123456781234567812345678", int8(1)},
 		{"uuid form 3", types.LongText, "12345678-1234-5678-1234-567812345678", int8(1)},
-		{"NULL", sql.Null, nil, nil},
+		{"NULL", types.Null, nil, nil},
 		{"random int", types.Int8, 1, int8(0)},
 		{"random bool", types.Boolean, false, int8(0)},
 		{"random string", types.LongText, "12345678-dasd-fasdf8", int8(0)},
@@ -88,10 +88,10 @@ func TestUUIDToBinValid(t *testing.T) {
 		expected  interface{}
 	}{
 		{"valid uuid; swap=0", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, types.Int8, int8(0), "6CCD780CBABA102695645B8C656024DB"},
-		{"valid uuid; swap=nil", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, sql.Null, nil, "6CCD780CBABA102695645B8C656024DB"},
+		{"valid uuid; swap=nil", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, types.Null, nil, "6CCD780CBABA102695645B8C656024DB"},
 		{"valid uuid; swap=1", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", true, types.Int8, int8(1), "1026BABA6CCD780C95645B8C656024DB"},
 		{"valid uuid; no swap", types.LongText, "6ccd780c-baba-1026-9564-5b8c656024db", false, nil, nil, "6CCD780CBABA102695645B8C656024DB"},
-		{"null uuid; no swap", sql.Null, nil, false, nil, nil, nil},
+		{"null uuid; no swap", types.Null, nil, false, nil, nil, nil},
 	}
 
 	for _, tt := range validTestCases {
@@ -168,7 +168,7 @@ func TestBinToUUID(t *testing.T) {
 		{"valid uuid; swap=0", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("lxºº & d[e`$Û"), true, types.Int8, int8(0), "6c78c2ba-c2ba-2026-2064-5b656024c39b"},
 		{"valid uuid; swap=1", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("&ººlÍxd[e`$Û"), true, types.Int8, int8(1), "ba6cc38d-bac2-26c2-7864-5b656024c39b"},
 		{"valid uuid; no swap", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("lxºº & d[e`$Û"), false, nil, nil, "6c78c2ba-c2ba-2026-2064-5b656024c39b"},
-		{"null input", sql.Null, nil, false, nil, nil, nil},
+		{"null input", types.Null, nil, false, nil, nil, nil},
 	}
 
 	for _, tt := range validTestCases {

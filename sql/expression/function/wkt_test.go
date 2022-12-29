@@ -127,7 +127,7 @@ func TestAsWKT(t *testing.T) {
 
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKT(expression.NewLiteral(nil, sql.Null))
+		f := NewAsWKT(expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -185,7 +185,7 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromText(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromText(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -234,7 +234,7 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromText(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromText(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -283,7 +283,7 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomFromText(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromText(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -294,7 +294,7 @@ func TestGeomFromText(t *testing.T) {
 	t.Run("null srid returns null", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(expression.NewLiteral("POINT(1 2)", types.Blob),
-			expression.NewLiteral(nil, sql.Null))
+			expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -306,7 +306,7 @@ func TestGeomFromText(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(expression.NewLiteral("POINT(1 2)", types.Blob),
 			expression.NewLiteral(types.GeoSpatialSRID, types.Uint32),
-			expression.NewLiteral(nil, sql.Null))
+			expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

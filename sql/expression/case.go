@@ -43,10 +43,10 @@ func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression
 // From the description of operator typing here:
 // https://dev.mysql.com/doc/refman/8.0/en/flow-control-functions.html#operator_case
 func combinedCaseBranchType(left, right sql.Type) sql.Type {
-	if left == sql.Null {
+	if left == types.Null {
 		return right
 	}
-	if right == sql.Null {
+	if right == types.Null {
 		return left
 	}
 	if types.IsTextOnly(left) && types.IsTextOnly(right) {
@@ -89,7 +89,7 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 
 // Type implements the sql.Expression interface.
 func (c *Case) Type() sql.Type {
-	curr := sql.Null
+	curr := types.Null
 	for _, b := range c.Branches {
 		curr = combinedCaseBranchType(curr, b.Value.Type())
 	}

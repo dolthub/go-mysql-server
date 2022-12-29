@@ -69,7 +69,7 @@ func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // Type implements the Expression interface.
 func (f *NullIf) Type() sql.Type {
 	if types.IsNull(f.Left) {
-		return sql.Null
+		return types.Null
 	}
 
 	return f.Left.Type()

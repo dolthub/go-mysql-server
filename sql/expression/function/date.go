@@ -516,13 +516,13 @@ func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, erro
 // Logic is based on https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-add
 func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Type {
 	if input == nil {
-		return sql.Null
+		return types.Null
 	}
 	inputType := input.Type()
 
 	// result is null if expression is null
-	if inputType == sql.Null {
-		return sql.Null
+	if inputType == types.Null {
+		return types.Null
 	}
 
 	// set type flags

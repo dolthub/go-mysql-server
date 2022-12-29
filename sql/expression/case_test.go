@@ -205,12 +205,12 @@ func TestCaseType(t *testing.T) {
 		},
 		{
 			"int and null to int",
-			caseExpr(NewLiteral(int64(10), types.Int64), NewLiteral(nil, sql.Null)),
+			caseExpr(NewLiteral(int64(10), types.Int64), NewLiteral(nil, types.Null)),
 			types.Int64,
 		},
 		{
 			"null and int to int",
-			caseExpr(NewLiteral(nil, sql.Null), NewLiteral(int64(10), types.Int64)),
+			caseExpr(NewLiteral(nil, types.Null), NewLiteral(int64(10), types.Int64)),
 			types.Int64,
 		},
 		{
@@ -259,7 +259,7 @@ func TestCaseNullBranch(t *testing.T) {
 		[]CaseBranch{
 			{
 				Cond:  NewLiteral(int64(1), types.Int64),
-				Value: NewLiteral(nil, sql.Null),
+				Value: NewLiteral(nil, types.Null),
 			},
 		},
 		nil,

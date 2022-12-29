@@ -180,7 +180,7 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 
 // newInMap hashes static expressions in the right child Tuple of a InTuple node
 func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Expression, bool, error) {
-	if lType == sql.Null {
+	if lType == types.Null {
 		return nil, true, nil
 	}
 
@@ -194,7 +194,7 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 			return nil, false, sql.ErrInvalidOperandColumns.New(lColumnCount, rColumnCount)
 		}
 
-		if el.Type() == sql.Null {
+		if el.Type() == types.Null {
 			hasNull = true
 		}
 		i, err := el.Eval(ctx, sql.Row{})

@@ -68,7 +68,7 @@ func TestSTLength(t *testing.T) {
 
 	t.Run("select length of NULL", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSTLength(expression.NewLiteral(nil, sql.Null))
+		f, err := NewSTLength(expression.NewLiteral(nil, types.Null))
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)

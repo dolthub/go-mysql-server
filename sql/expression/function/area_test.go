@@ -96,7 +96,7 @@ func TestArea(t *testing.T) {
 
 	t.Run("select area of NULL", func(t *testing.T) {
 		require := require.New(t)
-		f := NewArea(expression.NewLiteral(nil, sql.Null))
+		f := NewArea(expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)

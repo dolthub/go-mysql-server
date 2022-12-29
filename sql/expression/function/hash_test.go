@@ -49,7 +49,7 @@ func TestMD5(t *testing.T) {
 	}
 
 	// Test nil
-	f := NewMD5(expression.NewLiteral(nil, sql.Null))
+	f := NewMD5(expression.NewLiteral(nil, types.Null))
 	t.Run(f.String(), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestSHA1(t *testing.T) {
 	}
 
 	// Test nil
-	f := NewSHA1(expression.NewLiteral(nil, sql.Null))
+	f := NewSHA1(expression.NewLiteral(nil, types.Null))
 	t.Run(f.String(), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
@@ -249,12 +249,12 @@ func TestSHA2Null(t *testing.T) {
 		count sql.Expression
 	}{
 		{
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 			expression.NewLiteral(int64(224), types.Int64),
 		},
 		{
 			expression.NewLiteral("1", types.Text),
-			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, types.Null),
 		},
 		{
 			expression.NewLiteral(float32(2.5), types.Float32),

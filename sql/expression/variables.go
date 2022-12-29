@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // SystemVar is an expression that returns the value of a system variable. It's also used as the expression on the left
@@ -60,7 +61,7 @@ func (v *SystemVar) Type() sql.Type {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
 		return sysVar.Type
 	}
-	return sql.Null
+	return types.Null
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -100,7 +101,7 @@ type UserVar struct {
 // in a SetField assignment Expression. This method should not be used when the user variable is
 // being used as a value, since the correct type information will not be available.
 func NewUserVar(name string) *UserVar {
-	return &UserVar{name, sql.Null}
+	return &UserVar{name, types.Null}
 }
 
 // NewUserVarWithType creates a UserVar with its type resolved, so that it can be used as a value

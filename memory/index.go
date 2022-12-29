@@ -247,7 +247,7 @@ func getType(val interface{}) (interface{}, sql.Type) {
 	case string:
 		return val, types.LongText
 	case nil:
-		return nil, sql.Null
+		return nil, types.Null
 	case time.Time:
 		return val, types.Datetime
 	default:

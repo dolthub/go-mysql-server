@@ -105,7 +105,7 @@ func null(col sql.Expression) sql.Expression {
 }
 
 func litNull() sql.Expression {
-	return expression.NewLiteral(nil, sql.Null)
+	return expression.NewLiteral(nil, types.Null)
 }
 
 // Creates a new top-level scope from the node given

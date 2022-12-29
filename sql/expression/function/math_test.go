@@ -163,7 +163,7 @@ func TestCRC32(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
 
-	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	nullLiteral := expression.NewLiteral(nil, types.Null)
 	crc32 = f.Fn(nullLiteral)
 	res, err = crc32.Eval(nil, nil)
 	assert.NoError(t, err)

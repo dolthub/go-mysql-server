@@ -30,7 +30,7 @@ func TestSessionConfig(t *testing.T) {
 	sess := NewBaseSessionWithClientServer("foo", Client{Address: "baz", User: "bar"}, 1)
 	typ, v, err := sess.GetUserVariable(ctx, "foo")
 	require.NoError(err)
-	require.Equal(Null, typ)
+	require.Equal(types.Null, typ)
 	require.Equal(nil, v)
 
 	err = sess.SetUserVariable(ctx, "foo", int64(1))

@@ -154,7 +154,7 @@ func TestUnixTimestamp(t *testing.T) {
 	require.Equal(expected, result)
 	require.Equal(uint16(0), ctx.WarningCount())
 
-	ut, err = NewUnixTimestamp(expression.NewLiteral(nil, sql.Null))
+	ut, err = NewUnixTimestamp(expression.NewLiteral(nil, types.Null))
 	require.NoError(err)
 	expected = nil
 	result, err = ut.Eval(ctx, nil)

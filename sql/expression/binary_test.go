@@ -49,6 +49,6 @@ func TestBinary(t *testing.T) {
 	}
 
 	// Try with nil case
-	e = NewBinary(NewLiteral(nil, sql.Null))
+	e = NewBinary(NewLiteral(nil, types.Null))
 	require.Equal(nil, eval(t, e, sql.Row{nil}))
 }

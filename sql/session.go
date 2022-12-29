@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -373,7 +374,7 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 	defer s.mu.Unlock()
 	val, ok := s.userVars[strings.ToLower(varName)]
 	if !ok {
-		return Null, nil, nil
+		return types.Null, nil, nil
 	}
 	return ApproximateTypeFromValue(val), val, nil
 }

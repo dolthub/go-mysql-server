@@ -137,7 +137,7 @@ func TestDimension(t *testing.T) {
 
 	t.Run("null is null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewDimension(expression.NewLiteral(nil, sql.Null))
+		f := NewDimension(expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)

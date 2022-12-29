@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ProcedureReference contains the state for a single CALL statement of a stored procedure.
@@ -98,7 +99,7 @@ func (ppr *ProcedureReference) GetVariableValue(id int, name string) (interface{
 // GetVariableType returns the type of the given parameter. Returns the NULL type if the type cannot be found.
 func (ppr *ProcedureReference) GetVariableType(id int) sql.Type {
 	if ppr == nil || id >= len(ppr.idToParam) {
-		return sql.Null
+		return types.Null
 	}
 	return ppr.idToParam[id].SqlType
 }
@@ -296,7 +297,7 @@ func (*UnresolvedProcedureParam) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (*UnresolvedProcedureParam) Type() sql.Type {
-	return sql.Null
+	return types.Null
 }
 
 // Name implements the Nameable interface.

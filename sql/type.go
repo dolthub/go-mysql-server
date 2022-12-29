@@ -88,6 +88,10 @@ type Type interface {
 	fmt.Stringer
 }
 
+type NullType interface {
+	Type
+}
+
 // NumberType represents all integer and floating point types.
 // https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
 // https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
@@ -311,7 +315,7 @@ func ApproximateTypeFromValue(val interface{}) Type {
 		}
 		return ApproximateTypeFromValue(v.Decimal)
 	case nil:
-		return Null
+		return types.Null
 	default:
 		return types.LongText
 	}

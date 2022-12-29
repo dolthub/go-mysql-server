@@ -282,7 +282,7 @@ func toLiteralExpressions(inputs []interface{}) []sql.Expression {
 
 func toLiteralExpression(input interface{}) *expression.Literal {
 	if input == nil {
-		return expression.NewLiteral(nil, sql.Null)
+		return expression.NewLiteral(nil, types.Null)
 	}
 
 	switch val := input.(type) {

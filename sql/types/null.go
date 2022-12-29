@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
-	Null NullType = nullType{}
+	Null sql.NullType = nullType{}
 
 	// ErrValueNotNil is thrown when a value that was expected to be nil, is not
 	ErrValueNotNil = errors.NewKind("value not nil: %#v")
 )
-
-type NullType interface {
-	Type
-}
 
 type nullType struct{}
 
@@ -65,18 +62,18 @@ func (t nullType) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t nullType) Equals(otherType Type) bool {
+func (t nullType) Equals(otherType sql.Type) bool {
 	_, ok := otherType.(nullType)
 	return ok
 }
 
 // Promote implements the Type interface.
-func (t nullType) Promote() Type {
+func (t nullType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t nullType) SQL(*Context, []byte, interface{}) (sqltypes.Value, error) {
+func (t nullType) SQL(*sql.Context, []byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil
 }
 

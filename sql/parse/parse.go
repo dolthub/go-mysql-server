@@ -3337,7 +3337,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	case sqlparser.BoolVal:
 		return expression.NewLiteral(bool(v), types.Boolean), nil
 	case *sqlparser.NullVal:
-		return expression.NewLiteral(nil, sql.Null), nil
+		return expression.NewLiteral(nil, types.Null), nil
 	case *sqlparser.ColName:
 		if !v.Qualifier.IsEmpty() {
 			return expression.NewUnresolvedQualifiedColumn(

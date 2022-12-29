@@ -239,7 +239,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Null:
-			res[k] = expression.NewLiteral(nil, sql.Null)
+			res[k] = expression.NewLiteral(nil, types.Null)
 		case v.Type() == sqltypes.Blob || v.Type() == sqltypes.VarBinary || v.Type() == sqltypes.Binary:
 			t, err := types.CreateBinary(v.Type(), int64(len(v.ToBytes())))
 			if err != nil {

@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
@@ -163,7 +162,7 @@ func TestDateFormatEval(t *testing.T) {
 	dt := time.Date(2020, 2, 3, 4, 5, 6, 7000, time.UTC)
 	dateLit := expression.NewLiteral(dt, types.Datetime)
 	format := expression.NewLiteral("%Y-%m-%d %H:%i:%s.%f", types.Text)
-	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	nullLiteral := expression.NewLiteral(nil, types.Null)
 
 	dateFormat := NewDateFormat(dateLit, format)
 	res, err := dateFormat.Eval(nil, nil)

@@ -372,7 +372,7 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewIsNull(
-						expression.NewLiteral(int64(0), sql.Null),
+						expression.NewLiteral(int64(0), types.Null),
 					),
 					expression.NewTuple(
 						expression.NewLiteral(int64(0), types.Int64),
@@ -384,7 +384,7 @@ func TestApplyHashIn(t *testing.T) {
 				mustNewHashInTuple(
 					ctx,
 					expression.NewIsNull(
-						expression.NewLiteral(int64(0), sql.Null),
+						expression.NewLiteral(int64(0), types.Null),
 					),
 					expression.NewTuple(
 						expression.NewLiteral(int64(0), types.Int64),
@@ -400,7 +400,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsNull(
-							expression.NewLiteral(int64(0), sql.Null),
+							expression.NewLiteral(int64(0), types.Null),
 						),
 					),
 				),
@@ -411,7 +411,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsNull(
-							expression.NewLiteral(int64(0), sql.Null),
+							expression.NewLiteral(int64(0), types.Null),
 						),
 					),
 				),
@@ -423,7 +423,7 @@ func TestApplyHashIn(t *testing.T) {
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewIsTrue(
-						expression.NewLiteral(int64(0), sql.Null),
+						expression.NewLiteral(int64(0), types.Null),
 					),
 					expression.NewTuple(
 						expression.NewLiteral(int64(0), types.Int64),
@@ -435,7 +435,7 @@ func TestApplyHashIn(t *testing.T) {
 				mustNewHashInTuple(
 					ctx,
 					expression.NewIsTrue(
-						expression.NewLiteral(int64(0), sql.Null),
+						expression.NewLiteral(int64(0), types.Null),
 					),
 					expression.NewTuple(
 						expression.NewLiteral(int64(0), types.Int64),
@@ -451,7 +451,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsTrue(
-							expression.NewLiteral(int64(0), sql.Null),
+							expression.NewLiteral(int64(0), types.Null),
 						),
 					),
 				),
@@ -462,7 +462,7 @@ func TestApplyHashIn(t *testing.T) {
 					expression.NewLiteral(int64(0), types.Int64),
 					expression.NewTuple(
 						expression.NewIsTrue(
-							expression.NewLiteral(int64(0), sql.Null),
+							expression.NewLiteral(int64(0), types.Null),
 						),
 					),
 				),

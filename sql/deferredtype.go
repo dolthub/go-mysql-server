@@ -17,6 +17,7 @@ package sql
 import (
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -52,7 +53,7 @@ func (t deferredType) Compare(a interface{}, b interface{}) (int, error) {
 // Convert implements Type interface.
 func (t deferredType) Convert(v interface{}) (interface{}, error) {
 	if v != nil {
-		return nil, ErrValueNotNil.New(v)
+		return nil, types.ErrValueNotNil.New(v)
 	}
 
 	return nil, nil
