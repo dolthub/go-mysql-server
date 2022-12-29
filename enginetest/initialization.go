@@ -20,6 +20,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -37,6 +39,7 @@ func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context
 	return newContextSetup(harness.NewContextWithClient(client))
 }
 
+// TODO: remove
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
 	return NewContext(harness)
 }
@@ -96,40 +99,21 @@ func NewBaseSession() *sql.BaseSession {
 	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
 }
 
-// NewEngine creates test data and returns an engine using the harness provided.
-func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
-	dbs := CreateTestData(t, harness)
-	engine := NewEngineWithDbs(t, harness, dbs)
-	return engine
-}
-
-// NewSpatialEngine creates test data and returns an engine using the harness provided.
-func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
-	dbs := CreateSpatialTestData(t, harness)
-	engine := NewEngineWithDbs(t, harness, dbs)
-	return engine
-}
-
-// NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
-// full harness but want to run your own tests on DBs you create.
-func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database) *sqle.Engine {
-	databases = append(databases, information_schema.NewInformationSchemaDatabase())
-	provider := harness.NewDatabaseProvider(databases...)
-
-	return NewEngineWithProvider(t, harness, provider)
-}
-
-// NewEngineWithProvider returns a new engine with the specified provider. This is useful when you don't want to
-// implement a full harness, but you need more control over the database provider than the default test MemoryProvider.
-func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDatabaseProvider) *sqle.Engine {
+// NewEngineWithProvider returns a new engine with the specified provider
+func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
+
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
 	} else {
 		a = analyzer.NewDefault(provider)
 	}
+
 	// All tests will run with all privileges on the built-in root account
 	a.Catalog.MySQLDb.AddRootAccount()
+	// Almost no tests require an information schema that can be updated, but test setup makes it difficult to not
+	// provide everywhere
+	a.Catalog.InfoSchema = information_schema.NewUpdatableInformationSchemaDatabase()
 
 	engine := sqle.New(a, new(sqle.Config))
 
@@ -141,21 +125,24 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDa
 }
 
 // NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
-func NewEngineWithProviderSetup(t *testing.T, harness Harness, pro sql.MutableDatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness, pro)
+// TODO: rename
+func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup.SetupScript) (*sqle.Engine, error) {
+	e := NewEngineWithProvider(t, harness, harness.NewDatabaseProvider())
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
 		supportsIndexes = true
-
 	}
+
+	// TODO: remove ths, make it explicit everywhere
 	if len(setupData) == 0 {
 		setupData = setup.MydbData
 	}
 	return RunEngineScripts(ctx, e, setupData, supportsIndexes)
 }
 
+// TODO: rename to RunSetupScripts
 func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, supportsIndexes bool) (*sqle.Engine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
@@ -164,13 +151,14 @@ func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScr
 					continue
 				}
 			}
+			// ctx.GetLogger().Warnf("running query %s\n", s)
 			sch, iter, err := e.Query(ctx, s)
 			if err != nil {
-				return nil, fmt.Errorf("failed query '%s': %w", s, err)
+				return nil, err
 			}
 			_, err = sql.RowIterToRows(ctx, sch, iter)
 			if err != nil {
-				return nil, fmt.Errorf("failed query '%s': %w", s, err)
+				return nil, err
 			}
 		}
 	}
@@ -227,7 +215,7 @@ func MustQueryWithPreBindings(ctx *sql.Context, e *sqle.Engine, q string, bindin
 func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
 	e, err := h.NewEngine(t)
 	if err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	return e
 }

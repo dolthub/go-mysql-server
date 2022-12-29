@@ -34,7 +34,11 @@ func TestAllDatabases(t *testing.T) {
 	}
 
 	c := NewCatalog(sql.NewDatabaseProvider(dbs...))
-	require.Equal(dbs, c.AllDatabases(sql.NewEmptyContext()))
+
+	databases := c.AllDatabases(sql.NewEmptyContext())
+	require.Equal(4, len(databases))
+	require.Equal("information_schema", databases[0].Name())
+	require.Equal(dbs, databases[1:])
 }
 
 func TestCatalogDatabase(t *testing.T) {

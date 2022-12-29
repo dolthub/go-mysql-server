@@ -191,17 +191,17 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			transChar = sql.ReadOnly
 		}
 
-		return plan.NewStartTransaction("", transChar), nil
+		return plan.NewStartTransaction(transChar), nil
 	case *sqlparser.Commit:
-		return plan.NewCommit(""), nil
+		return plan.NewCommit(), nil
 	case *sqlparser.Rollback:
-		return plan.NewRollback(""), nil
+		return plan.NewRollback(), nil
 	case *sqlparser.Savepoint:
-		return plan.NewCreateSavepoint("", n.Identifier), nil
+		return plan.NewCreateSavepoint(n.Identifier), nil
 	case *sqlparser.RollbackSavepoint:
-		return plan.NewRollbackSavepoint("", n.Identifier), nil
+		return plan.NewRollbackSavepoint(n.Identifier), nil
 	case *sqlparser.ReleaseSavepoint:
-		return plan.NewReleaseSavepoint("", n.Identifier), nil
+		return plan.NewReleaseSavepoint(n.Identifier), nil
 	case *sqlparser.BeginEndBlock:
 		return convertBeginEndBlock(ctx, n, query)
 	case *sqlparser.IfStatement:
@@ -3890,7 +3890,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			if collateExpr, ok := e.Expr.(*sqlparser.CollateExpr); ok {
 				// We extract the expression out of CollateExpr as we're only concerned about the collation string
 				e.Expr = collateExpr.Expr
-				//TODO: rename this from Charset to Collation
+				// TODO: rename this from Charset to Collation
 				collation, err = sql.ParseCollation(nil, &collateExpr.Charset, false)
 				if err != nil {
 					return nil, err

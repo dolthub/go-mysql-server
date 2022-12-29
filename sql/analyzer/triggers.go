@@ -21,7 +21,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -406,45 +405,12 @@ func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		return n, transform.SameTree, nil
 	}
 
-	// No database set, find it through tree
-	dbName := ctx.GetCurrentDatabase()
-	if dbName == "" {
-		transform.Inspect(n, func(n sql.Node) bool {
-			switch n := n.(type) {
-			case *plan.InsertInto:
-				if n.Database() != nil && n.Database().Name() != "" {
-					dbName = n.Database().Name()
-				}
-			case *plan.Update:
-				if n.Database() != "" {
-					dbName = n.Database()
-				}
-			case *plan.DeleteFrom:
-				if n.Database() != "" {
-					dbName = n.Database()
-				}
-			}
-			return true
-		})
-	}
-
-	// Get current database
-	currDb, err := a.Catalog.Database(ctx, dbName)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	// Extract from privilegedDatabase
-	if privilegedDatabase, ok := currDb.(mysql_db.PrivilegedDatabase); ok {
-		currDb = privilegedDatabase.Unwrap()
-	}
-
-	// Not a TransactionDatabase, do nothing
-	tdb, ok := currDb.(sql.TransactionDatabase)
+	// If we don't have a transaction session we can't do rollbacks
+	_, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
-		return n, transform.SameTree, err
+		return n, transform.SameTree, nil
 	}
 
 	// Wrap tree with new node
-	return plan.NewTriggerRollback(n, tdb), transform.NewTree, nil
+	return plan.NewTriggerRollback(n), transform.NewTree, nil
 }
