@@ -493,3 +493,55 @@ func ErrIfMismatchedColumnsInTuple(t1, t2 sql.Type) error {
 	return nil
 }
 
+// TypesEqual compares two Types and returns whether they are equivalent.
+func TypesEqual(a, b sql.Type) bool {
+	// TODO: replace all of the Type() == Type() calls with TypesEqual
+
+	// We can assume they have the same implementing type if this passes, so we have to check the parameters
+	if a.Type() != b.Type() {
+		return false
+	}
+	// Some types cannot be compared structurally as they contain non-comparable types (such as slices), so we handle
+	// those separately.
+	switch at := a.(type) {
+	case EnumType_:
+		aEnumType := at
+		bEnumType := b.(EnumType_)
+		if len(aEnumType.indexToVal) != len(bEnumType.indexToVal) {
+			return false
+		}
+		for i := 0; i < len(aEnumType.indexToVal); i++ {
+			if aEnumType.indexToVal[i] != bEnumType.indexToVal[i] {
+				return false
+			}
+		}
+		return aEnumType.collation == bEnumType.collation
+	case SetType_:
+		aSetType := at
+		bSetType := b.(SetType_)
+		if len(aSetType.bitToVal) != len(bSetType.bitToVal) {
+			return false
+		}
+		for bit, aVal := range aSetType.bitToVal {
+			if bVal, ok := bSetType.bitToVal[bit]; ok && aVal != bVal {
+				return false
+			}
+		}
+		return aSetType.collation == bSetType.collation
+	case TupleType:
+		if tupA, ok := a.(TupleType); ok {
+			if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
+				for i := range tupA {
+					if !TypesEqual(tupA[i], tupB[i]) {
+						return false
+					}
+				}
+				return true
+			}
+		}
+		return false
+	default:
+		return a == b
+	}
+}
+

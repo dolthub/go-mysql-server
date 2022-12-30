@@ -84,7 +84,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, ErrNilOperand.New()
 	}
 
-	if sql.TypesEqual(c.Left().Type(), c.Right().Type()) {
+	if types.TypesEqual(c.Left().Type(), c.Right().Type()) {
 		return c.Left().Type().Compare(left, right)
 	}
 
@@ -333,7 +333,7 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return -1, nil
 	}
 
-	if sql.TypesEqual(e.Left().Type(), e.Right().Type()) {
+	if types.TypesEqual(e.Left().Type(), e.Right().Type()) {
 		return e.Left().Type().Compare(left, right)
 	}
 
