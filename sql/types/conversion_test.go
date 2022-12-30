@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,17 +27,17 @@ func TestFloatCovert(t *testing.T) {
 	tests := []struct {
 		length   string
 		scale    string
-		expected Type
+		expected sql.Type
 		err      bool
 	}{
-		{"20", "2", types.Float32, false},
+		{"20", "2", Float32, false},
 		{"-1", "", nil, true},
 		{"54", "", nil, true},
-		{"", "", types.Float32, false},
-		{"0", "", types.Float32, false},
-		{"24", "", types.Float32, false},
-		{"25", "", types.Float64, false},
-		{"53", "", types.Float64, false},
+		{"", "", Float32, false},
+		{"0", "", Float32, false},
+		{"24", "", Float32, false},
+		{"25", "", Float64, false},
+		{"53", "", Float64, false},
 	}
 
 	for _, test := range tests {
@@ -64,7 +64,7 @@ func TestFloatCovert(t *testing.T) {
 				Scale:  scale,
 				Length: precision,
 			}
-			res, err := types.ColumnTypeToType(ct)
+			res, err := ColumnTypeToType(ct)
 			if test.err {
 				assert.Error(t, err)
 			} else {
@@ -77,17 +77,17 @@ func TestFloatCovert(t *testing.T) {
 func TestColumnTypeToType_Time(t *testing.T) {
 	tests := []struct {
 		length   string
-		expected Type
+		expected sql.Type
 		err      bool
 	}{
-		{"", types.Time, false},
+		{"", Time, false},
 		{"0", nil, true},
 		{"1", nil, true},
 		{"2", nil, true},
 		{"3", nil, true},
 		{"4", nil, true},
 		{"5", nil, true},
-		{"6", types.Time, false},
+		{"6", Time, false},
 		{"7", nil, true},
 	}
 
@@ -106,7 +106,7 @@ func TestColumnTypeToType_Time(t *testing.T) {
 				Type:   "TIME",
 				Length: precision,
 			}
-			res, err := types.ColumnTypeToType(ct)
+			res, err := ColumnTypeToType(ct)
 			if test.err {
 				assert.Error(t, err)
 			} else {
