@@ -66,7 +66,9 @@ exec
 insert into rs values
   (0,0),
   (1,0),
-  (2,0);
+  (2,0),
+  (4,4),
+  (5,4);
 ----
 
 exec

@@ -121,6 +121,16 @@ func TestJoinQueriesPrepared(t *testing.T) {
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestMergeJoins runs join-specific tests for merge
+func TestMergeJoins(t *testing.T) {
+	enginetest.TestMergeJoins(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestMergeJoinsPrepared runs prepared join-specific tests for merge
+func TestMergeJoinsPrepared(t *testing.T) {
+	enginetest.TestMergeJoinsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))

@@ -25,11 +25,71 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y = s order by 1, 3`,
+		ExpectedPlan: "Sort(rs.r:0!null ASC nullsFirst, xy.x:2 ASC nullsFirst)\n" +
+			" └─ LeftOuterMergeJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ rs.s:1\n" +
+			"     │   └─ xy.y:3\n" +
+			"     ├─ IndexedTableAccess\n" +
+			"     │   ├─ index: [rs.s]\n" +
+			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ columns: [r s]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: rs\n" +
+			"     │       └─ projections: [0 1]\n" +
+			"     └─ IndexedTableAccess\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ columns: [x y]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ projections: [0 1]\n" +
+			"",
+	},
+	{
+		Query: `select * from uv join (select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a) r on u = r.a`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [uv.u:4!null, uv.v:5, r.a:0!null, r.b:1, r.x:2!null, r.y:3]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ uv.u:4!null\n" +
+			"     │   └─ r.a:0!null\n" +
+			"     ├─ SubqueryAlias\n" +
+			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ MergeJoin\n" +
+			"     │       ├─ Eq\n" +
+			"     │       │   ├─ ab.a:0!null\n" +
+			"     │       │   └─ xy.y:3\n" +
+			"     │       ├─ IndexedTableAccess\n" +
+			"     │       │   ├─ index: [ab.a]\n" +
+			"     │       │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       │   ├─ columns: [a b]\n" +
+			"     │       │   └─ Table\n" +
+			"     │       │       ├─ name: ab\n" +
+			"     │       │       └─ projections: [0 1]\n" +
+			"     │       └─ IndexedTableAccess\n" +
+			"     │           ├─ index: [xy.y]\n" +
+			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ columns: [x y]\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: xy\n" +
+			"     │               └─ projections: [0 1]\n" +
+			"     └─ IndexedTableAccess\n" +
+			"         ├─ index: [uv.u]\n" +
+			"         ├─ columns: [u v]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: uv\n" +
+			"             └─ projections: [0 1]\n" +
+			"",
+	},
+	{
 		Query: `select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a`,
 		ExpectedPlan: "MergeJoin\n" +
 			" ├─ Eq\n" +
-			" │   ├─ xy.y:3\n" +
-			" │   └─ ab.a:0!null\n" +
+			" │   ├─ ab.a:0!null\n" +
+			" │   └─ xy.y:3\n" +
 			" ├─ IndexedTableAccess\n" +
 			" │   ├─ index: [ab.a]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
@@ -47,11 +107,34 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1, 3`,
+		ExpectedPlan: "Sort(rs.r:0!null ASC nullsFirst, xy.x:2!null ASC nullsFirst)\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ rs.s:1\n" +
+			"     │   └─ xy.y:3\n" +
+			"     ├─ IndexedTableAccess\n" +
+			"     │   ├─ index: [rs.s]\n" +
+			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ columns: [r s]\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: rs\n" +
+			"     │       └─ projections: [0 1]\n" +
+			"     └─ IndexedTableAccess\n" +
+			"         ├─ index: [xy.y]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ columns: [x y]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ projections: [0 1]\n" +
+			"",
+	},
+	{
 		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s`,
 		ExpectedPlan: "MergeJoin\n" +
 			" ├─ Eq\n" +
-			" │   ├─ xy.y:3\n" +
-			" │   └─ rs.s:1\n" +
+			" │   ├─ rs.s:1\n" +
+			" │   └─ xy.y:3\n" +
 			" ├─ IndexedTableAccess\n" +
 			" │   ├─ index: [rs.s]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
@@ -7672,6 +7755,105 @@ var IntegrationPlanTests = []QueryPlanTest{
 	   WRZVO TIZHK
 	WHERE id IN
 	   (
+	       SELECT /*+ JOIN_ORDER( J4JYP, TIZHK, RHUZN, mf, aac ) */DISTINCT
+	           TIZHK.id
+	       FROM
+	           WRZVO TIZHK
+	       INNER JOIN
+	           E2I7U J4JYP
+	       ON
+	           J4JYP.ZH72S = TIZHK.TVNW2
+	       INNER JOIN
+	           E2I7U RHUZN
+	       ON
+	           RHUZN.ZH72S = TIZHK.ZHITY
+	       INNER JOIN
+	           HGMQ6 mf ON mf.LUEVY = J4JYP.id
+	       INNER JOIN
+	           TPXBU aac ON aac.id = mf.M22QN
+	       WHERE
+	           aac.BTXC5 = TIZHK.SYPKF
+	   )
+	   AND
+	       TIZHK.id NOT IN (SELECT ETPQV FROM HDDVB)
+	`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ InSubquery\n" +
+			" │   │   ├─ left: TIZHK.id:0!null\n" +
+			" │   │   └─ right: Subquery\n" +
+			" │   │       ├─ cacheable: false\n" +
+			" │   │       └─ Distinct\n" +
+			" │   │           └─ Project\n" +
+			" │   │               ├─ columns: [TIZHK.id:27!null]\n" +
+			" │   │               └─ Filter\n" +
+			" │   │                   ├─ Eq\n" +
+			" │   │                   │   ├─ aac.BTXC5:72\n" +
+			" │   │                   │   └─ TIZHK.SYPKF:30\n" +
+			" │   │                   └─ LookupJoin\n" +
+			" │   │                       ├─ Eq\n" +
+			" │   │                       │   ├─ aac.id:71!null\n" +
+			" │   │                       │   └─ mf.M22QN:57!null\n" +
+			" │   │                       ├─ LookupJoin\n" +
+			" │   │                       │   ├─ Eq\n" +
+			" │   │                       │   │   ├─ mf.LUEVY:56!null\n" +
+			" │   │                       │   │   └─ J4JYP.id:10!null\n" +
+			" │   │                       │   ├─ HashJoin\n" +
+			" │   │                       │   │   ├─ Eq\n" +
+			" │   │                       │   │   │   ├─ RHUZN.ZH72S:44\n" +
+			" │   │                       │   │   │   └─ TIZHK.ZHITY:29\n" +
+			" │   │                       │   │   ├─ HashJoin\n" +
+			" │   │                       │   │   │   ├─ Eq\n" +
+			" │   │                       │   │   │   │   ├─ J4JYP.ZH72S:17\n" +
+			" │   │                       │   │   │   │   └─ TIZHK.TVNW2:28\n" +
+			" │   │                       │   │   │   ├─ TableAlias(J4JYP)\n" +
+			" │   │                       │   │   │   │   └─ Table\n" +
+			" │   │                       │   │   │   │       └─ name: E2I7U\n" +
+			" │   │                       │   │   │   └─ HashLookup\n" +
+			" │   │                       │   │   │       ├─ source: TUPLE(J4JYP.ZH72S:17)\n" +
+			" │   │                       │   │   │       ├─ target: TUPLE(TIZHK.TVNW2:11)\n" +
+			" │   │                       │   │   │       └─ CachedResults\n" +
+			" │   │                       │   │   │           └─ TableAlias(TIZHK)\n" +
+			" │   │                       │   │   │               └─ Table\n" +
+			" │   │                       │   │   │                   └─ name: WRZVO\n" +
+			" │   │                       │   │   └─ HashLookup\n" +
+			" │   │                       │   │       ├─ source: TUPLE(TIZHK.ZHITY:2)\n" +
+			" │   │                       │   │       ├─ target: TUPLE(RHUZN.ZH72S:17)\n" +
+			" │   │                       │   │       └─ CachedResults\n" +
+			" │   │                       │   │           └─ TableAlias(RHUZN)\n" +
+			" │   │                       │   │               └─ Table\n" +
+			" │   │                       │   │                   └─ name: E2I7U\n" +
+			" │   │                       │   └─ TableAlias(mf)\n" +
+			" │   │                       │       └─ IndexedTableAccess\n" +
+			" │   │                       │           ├─ index: [HGMQ6.LUEVY]\n" +
+			" │   │                       │           └─ Table\n" +
+			" │   │                       │               └─ name: HGMQ6\n" +
+			" │   │                       └─ TableAlias(aac)\n" +
+			" │   │                           └─ IndexedTableAccess\n" +
+			" │   │                               ├─ index: [TPXBU.id]\n" +
+			" │   │                               └─ Table\n" +
+			" │   │                                   └─ name: TPXBU\n" +
+			" │   └─ (NOT(InSubquery\n" +
+			" │       ├─ left: TIZHK.id:0!null\n" +
+			" │       └─ right: Subquery\n" +
+			" │           ├─ cacheable: true\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: HDDVB\n" +
+			" │               └─ columns: [etpqv]\n" +
+			" │      ))\n" +
+			" └─ TableAlias(TIZHK)\n" +
+			"     └─ Table\n" +
+			"         └─ name: WRZVO\n" +
+			"",
+	},
+	{
+		Query: `
+	SELECT
+	   TIZHK.*
+	FROM
+	   WRZVO TIZHK
+	WHERE id IN
+	   (
 	       SELECT DISTINCT
 	           TIZHK.id
 	       FROM
@@ -8735,8 +8917,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             │   └─ ufc.T4IBQ:1\n" +
 			"             ├─ MergeJoin\n" +
 			"             │   ├─ Eq\n" +
-			"             │   │   ├─ nd.ZH72S:18\n" +
-			"             │   │   └─ ufc.ZH72S:2\n" +
+			"             │   │   ├─ ufc.ZH72S:2\n" +
+			"             │   │   └─ nd.ZH72S:18\n" +
 			"             │   ├─ TableAlias(ufc)\n" +
 			"             │   │   └─ IndexedTableAccess\n" +
 			"             │   │       ├─ index: [SISUT.ZH72S]\n" +

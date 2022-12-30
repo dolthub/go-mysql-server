@@ -1005,21 +1005,10 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	filters := t.filters
-	if r, ok := partition.(*rangePartition); ok {
-		// index lookup is currently a single filter applied to a full table scan
-		filters = append(t.filters, r.rang)
+	iter, err := t.Table.PartitionRows(ctx, partition)
+	if err != nil {
+		return nil, err
 	}
-
-	rows, ok := t.partitions[string(partition.Key())]
-	if !ok {
-		return nil, sql.ErrPartitionNotFound.New(partition.Key())
-	}
-	// The slice could be altered by other operations taking place during iteration (such as deletion or insertion), so
-	// make a copy of the values as they exist when execution begins.
-	rowsCopy := make([]sql.Row, len(rows))
-	copy(rowsCopy, rows)
-
 	if t.Idx != nil {
 		sf := make(sql.SortFields, len(t.Idx.Exprs))
 		for i, e := range t.Idx.Exprs {
@@ -1027,18 +1016,13 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		}
 		sorter := &expression.Sorter{
 			SortFields: sf,
-			Rows:       rowsCopy,
+			Rows:       iter.(*tableIter).rows,
 			LastError:  nil,
 			Ctx:        ctx,
 		}
 		sort.Stable(sorter)
 	}
-
-	return &tableIter{
-		rows:    rowsCopy,
-		columns: t.columns,
-		filters: filters,
-	}, nil
+	return iter, nil
 }
 
 func (t *Table) IndexedAccess(i sql.Index) sql.IndexedTable {

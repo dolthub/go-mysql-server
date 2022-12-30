@@ -270,7 +270,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		checkResults(t, require, expected, expectedCols, sch, rows, q)
+		checkResults(t, expected, expectedCols, sch, rows, q)
 	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
@@ -317,21 +317,21 @@ func TestPreparedQueryWithContext(
 	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q)
 	require.NoError(err, "Unexpected error for query %s", q)
 
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
+	checkResults(t, expected, expectedCols, sch, rows, q)
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, h, e)
 }
 
-func runQueryPreparedWithCtx(
+func injectBindVarsAndPrepare(
 	t *testing.T,
 	ctx *sql.Context,
 	e *sqle.Engine,
 	q string,
-) ([]sql.Row, sql.Schema, error) {
+) (map[string]sql.Expression, error) {
 	parsed, err := parse.Parse(ctx, q)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	_, isInsert := parsed.(*plan.InsertInto)
@@ -349,14 +349,7 @@ func runQueryPreparedWithCtx(
 		}
 	}
 	if isDatabaser && !isInsert {
-		// DDL statements don't support prepared statements
-		sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, nil)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		return rows, sch, err
+		return nil, nil
 	}
 
 	bindVars := make(map[string]sql.Expression)
@@ -399,11 +392,26 @@ func runQueryPreparedWithCtx(
 
 	prepared, err := e.Analyzer.PrepareQuery(ctx, bound, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), q, prepared)
+	return bindVars, nil
+}
 
-	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
+func runQueryPreparedWithCtx(
+	t *testing.T,
+	ctx *sql.Context,
+	e *sqle.Engine,
+	q string,
+) ([]sql.Row, sql.Schema, error) {
+	bindVars, err := injectBindVarsAndPrepare(t, ctx, e, q)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	p, _ := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
+
+	sch, iter, err := e.QueryNodeWithBindings(ctx, q, p, bindVars)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -414,7 +422,6 @@ func runQueryPreparedWithCtx(
 
 func checkResults(
 	t *testing.T,
-	require *require.Assertions,
 	expected []sql.Row,
 	expectedCols []*sql.Column,
 	sch sql.Schema,
@@ -453,9 +460,9 @@ func checkResults(
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
 	if orderBy || len(expected) <= 1 {
-		require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+		require.Equal(t, widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	} else {
-		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+		require.ElementsMatch(t, widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	}
 
 	// If the expected schema was given, test it as well
@@ -700,7 +707,7 @@ func AssertWarningAndTestQuery(
 	}
 
 	if !skipResultsCheck {
-		checkResults(t, require, expected, expectedCols, sch, rows, query)
+		checkResults(t, expected, expectedCols, sch, rows, query)
 	}
 	validateEngine(t, ctx, harness, e)
 }

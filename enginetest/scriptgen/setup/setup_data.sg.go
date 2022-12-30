@@ -385,7 +385,7 @@ var XyData = []SetupScript{{
 	`insert into ab values  (0,2),  (1,2),  (2,2),  (3,1);`,
 	`insert into pq values  (0,0),  (1,1),  (2,2),  (3,3);`,
 	`insert into mn values  (2,0),  (3,1),  (4,2),  (5,3);`,
-	`insert into rs values  (0,0),  (1,0),  (2,0);`,
+	`insert into rs values  (0,0),  (1,0),  (2,0),  (4,4),  (5,4);`,
 	`update information_schema.statistics set cardinality = 1000000000 where table_name = 'ab';`,
 	`update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs'`,
 }}

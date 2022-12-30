@@ -19,8 +19,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cespare/xxhash"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -480,6 +478,9 @@ func exprMapsToSource(e sql.Expression, grp *exprGroup, tProps *tableProps) bool
 	return outerOnly
 }
 
+// addMergeJoins will add merge join operators to join relations
+// with native indexes providing sort enforcement.
+// TODO: sort-merge joins
 func addMergeJoins(m *Memo) error {
 	var aliases = make(TableAliases)
 	seen := make(map[GroupId]struct{})
@@ -498,128 +499,51 @@ func addMergeJoins(m *Memo) error {
 		if len(join.filter) == 0 {
 			return nil
 		}
+
+		lIScan, err := findSortedIndexScanForRel(m.ctx, join.left.first, join.filter, aliases)
+		if err != nil {
+			return err
+		} else if lIScan == nil {
+			return nil
+		}
+
+		rIScan, err := findSortedIndexScanForRel(m.ctx, join.right.first, join.filter, aliases)
+		if err != nil {
+			return err
+		} else if rIScan == nil {
+			return nil
+		}
+
+		var newFilters []sql.Expression
 		for _, f := range join.filter {
 			if e, ok := f.(*expression.Equals); ok {
-				// filters must bisect the rel attributes
-				if !attrsRefSingleRel(e.Left()) || !attrsRefSingleRel(e.Right()) {
-					// relations must be separate to give monotonic merge comparison
+				// filter must bisect the rel attributes the merge comparison
+				// result to be monotonic
+				lTab, ok := attrsRefSingleRel(e.Left())
+				if !ok {
 					return nil
+				}
+				rTab, ok := attrsRefSingleRel(e.Right())
+				if !ok {
+					return nil
+				}
+				if lTab == rIScan.source && rTab == lIScan.source {
+					// comparison direction determines next iterator increment
+					newFilters = append(newFilters, expression.NewEquals(e.Right(), e.Left()))
+				} else {
+					newFilters = append(newFilters, f)
 				}
 			} else {
 				return nil
 			}
 		}
 
-		var attributeSource string
-		var indexableTable sql.IndexAddressableTable
-		var ok bool
-		switch n := join.left.first.(type) {
-		case *tableAlias:
-			attributeSource = strings.ToLower(n.table.Name())
-			rt, ok := n.table.Child.(*plan.ResolvedTable)
-			if !ok {
-				return nil
-			}
-			table := rt.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
-			indexableTable, ok = table.(sql.IndexAddressableTable)
-			if !ok {
-				return nil
-			}
-			aliases.add(n.table, indexableTable)
-		case *tableScan:
-			attributeSource = strings.ToLower(n.table.Name())
-			table := n.table.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
-			indexableTable, ok = table.(sql.IndexAddressableTable)
-			if !ok {
-				return nil
-			}
-		default:
-			return nil
-		}
-
-		indexes, err := indexableTable.GetIndexes(m.ctx)
-		if err != nil {
-			return err
-		}
-
-		var lLookup *indexScan
-		conds := collectJoinConds(attributeSource, join.filter...)
-		for _, idx := range indexes {
-			keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
-			if len(keyExprs) == 0 {
-				continue
-			}
-			lLookup = &indexScan{
-				source: attributeSource,
-				idx:    idx,
-			}
-			break
-		}
-		if lLookup == nil {
-			return nil
-		}
-
-		switch n := join.right.first.(type) {
-		case *tableAlias:
-			attributeSource = strings.ToLower(n.table.Name())
-			rt, ok := n.table.Child.(*plan.ResolvedTable)
-			if !ok {
-				return nil
-			}
-			table := rt.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
-			indexableTable, ok = table.(sql.IndexAddressableTable)
-			if !ok {
-				return nil
-			}
-			aliases.add(n.table, indexableTable)
-		case *tableScan:
-			attributeSource = strings.ToLower(n.table.Name())
-			table := n.table.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
-			indexableTable, ok = table.(sql.IndexAddressableTable)
-			if !ok {
-				return nil
-			}
-		default:
-			return nil
-		}
-
-		indexes, err = indexableTable.GetIndexes(m.ctx)
-		if err != nil {
-			return err
-		}
-
-		var rLookup *indexScan
-		conds = collectJoinConds(attributeSource, join.filter...)
-		for _, idx := range indexes {
-			keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
-			if len(keyExprs) == 0 {
-				continue
-			}
-			rLookup = &indexScan{
-				source: attributeSource,
-				idx:    idx,
-			}
-		}
-		if rLookup == nil {
-			return nil
-		}
-
+		jb := join.copy()
+		jb.filter = newFilters
 		rel := &mergeJoin{
-			joinBase:  join.copy(),
-			innerScan: lLookup,
-			outerScan: rLookup,
+			joinBase:  jb,
+			innerScan: lIScan,
+			outerScan: rIScan,
 		}
 		rel.innerScan.parent = rel.joinBase
 		rel.outerScan.parent = rel.joinBase
@@ -628,27 +552,87 @@ func addMergeJoins(m *Memo) error {
 	})
 }
 
+// findSortedIndexScanForRel returns the first indexScan found for a relation
+// that provide a prefix for the joinFilters rel free attributes. I.e. the
+// indexScan will return the same rows as the rel, but sorted for every expression
+// for the table referenced in the join condition.
+func findSortedIndexScanForRel(
+	ctx *sql.Context,
+	rel relExpr,
+	joinFilters []sql.Expression,
+	aliases TableAliases,
+) (*indexScan, error) {
+	var attributeSource string
+	var indexableTable sql.IndexAddressableTable
+	var ok bool
+	switch n := rel.(type) {
+	case *tableAlias:
+		attributeSource = strings.ToLower(n.table.Name())
+		rt, ok := n.table.Child.(*plan.ResolvedTable)
+		if !ok {
+			return nil, nil
+		}
+		table := rt.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		indexableTable, ok = table.(sql.IndexAddressableTable)
+		if !ok {
+			return nil, nil
+		}
+		aliases.add(n.table, indexableTable)
+	case *tableScan:
+		attributeSource = strings.ToLower(n.table.Name())
+		table := n.table.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		indexableTable, ok = table.(sql.IndexAddressableTable)
+		if !ok {
+			return nil, nil
+		}
+	default:
+		return nil, nil
+	}
+
+	indexes, err := indexableTable.GetIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	conds := collectJoinConds(attributeSource, joinFilters...)
+	for _, idx := range indexes {
+		keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
+		if len(keyExprs) == 0 {
+			continue
+		}
+		return &indexScan{
+			source: attributeSource,
+			idx:    idx,
+		}, nil
+	}
+	return nil, nil
+}
+
 // attrsRefSingleRel returns false if there are
-// getFields sourced from different tables.
-func attrsRefSingleRel(e sql.Expression) bool {
-	var prevKey uint64
+// getFields sourced from more than one table.
+func attrsRefSingleRel(e sql.Expression) (string, bool) {
+	var name string
 	var invalid bool
 	transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			hash := xxhash.New()
-			hash.Write([]byte(e.Table()))
-			key := hash.Sum64()
-			if prevKey == 0 {
-				prevKey = key
-			} else if key != prevKey {
+			newName := strings.ToLower(e.Table())
+			if name == "" && !invalid {
+				name = newName
+			} else if name != newName {
 				invalid = true
 			}
 		default:
 		}
 		return invalid
 	})
-	return !invalid
+	return name, !invalid
 }
 
 func extractJoinHint(n *plan.JoinNode) JoinOrderHint {

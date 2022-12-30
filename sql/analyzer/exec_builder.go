@@ -204,9 +204,6 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 }
 
 func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	var ret sql.Node
-	var err error
-
 	// need keyExprs for whole range for every dimension
 	cets := i.idx.ColumnExpressionTypes()
 	ranges := make(sql.Range, len(cets))
@@ -216,9 +213,8 @@ func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ..
 
 	l := sql.IndexLookup{Index: i.idx, Ranges: sql.RangeCollection{ranges}}
 
-	if err != nil {
-		return nil, err
-	}
+	var ret sql.Node
+	var err error
 	switch n := children[0].(type) {
 	case *plan.ResolvedTable:
 		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
@@ -226,7 +222,7 @@ func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ..
 		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	default:
-		panic("unexpected indexScan child")
+		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
 	}
 	if err != nil {
 		return nil, err
@@ -259,7 +255,7 @@ func (b *ExecBuilder) buildMergeJoin(j *mergeJoin, input sql.Schema, children ..
 	case plan.JoinTypeAnti:
 		newOp = plan.JoinTypeAntiMerge
 	default:
-		return nil, fmt.Errorf("can only apply hash join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
+		return nil, fmt.Errorf("can only apply merge join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
 	}
 	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
 }

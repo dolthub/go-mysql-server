@@ -57,9 +57,12 @@ const (
 )
 
 func (i JoinType) IsLeftOuter() bool {
-	return i == JoinTypeLeftOuter ||
-		i == JoinTypeLeftOuterLookup ||
-		i == JoinTypeLeftOuterHash
+	switch i {
+	case JoinTypeLeftOuter, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterMerge:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsRightOuter() bool {
