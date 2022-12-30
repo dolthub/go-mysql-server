@@ -61,10 +61,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 				// is not ideal but not the end of the world.
 				reorder = false
 			}
-		case *plan.HashLookup:
-			// TODO: hash lookup rule is unnecessary, fold into join ordering
-			reorder = false
-
+		default:
 		}
 		return n, transform.SameTree, nil
 	})
@@ -167,6 +164,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 
 	addLookupJoins(m)
 	addHashJoins(m)
+	addMergeJoins(m)
 
 	if a.Verbose && a.Debug {
 		a.Log(m.String())
@@ -253,7 +251,7 @@ func addLookupJoins(m *Memo) error {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
 			// TODO: memoize equality expressions, index lookup, concat so that we
-			// can consider mutiple index options. Otherwise the search space blows
+			// can consider multiple index options. Otherwise the search space blows
 			// up.
 			conds := splitDisjunction(or)
 			concat := splitIndexableOr(conds, indexes, attributeSource, aliases)
@@ -294,7 +292,7 @@ func addLookupJoins(m *Memo) error {
 }
 
 // dfsExprGroup runs a callback |cb| on all execution plans in the memo expression
-// group. And expression group itself is defined by 1) a set of child expression
+// group. An expression group is defined by 1) a set of child expression
 // groups that serve as logical inputs to this operator, and 2) a set of logically
 // equivalent plans for executing this expression group's operator. We recursively
 // walk to expression group leaves, and then traverse every execution plan in leaf
@@ -479,6 +477,164 @@ func exprMapsToSource(e sql.Expression, grp *exprGroup, tProps *tableProps) bool
 	})
 	return outerOnly
 }
+
+// addMergeJoins will add merge join operators to join relations
+// with native indexes providing sort enforcement.
+// TODO: sort-merge joins
+func addMergeJoins(m *Memo) error {
+	var aliases = make(TableAliases)
+	seen := make(map[GroupId]struct{})
+	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+		var join *joinBase
+		switch e := e.(type) {
+		case *innerJoin:
+			join = e.joinBase
+		case *leftJoin:
+			join = e.joinBase
+			//TODO semijoin, antijoin, fullouterjoin
+		default:
+			return nil
+		}
+
+		if len(join.filter) == 0 {
+			return nil
+		}
+
+		lIScan, err := findSortedIndexScanForRel(m.ctx, join.left.first, join.filter, aliases)
+		if err != nil {
+			return err
+		} else if lIScan == nil {
+			return nil
+		}
+
+		rIScan, err := findSortedIndexScanForRel(m.ctx, join.right.first, join.filter, aliases)
+		if err != nil {
+			return err
+		} else if rIScan == nil {
+			return nil
+		}
+
+		var newFilters []sql.Expression
+		for _, f := range join.filter {
+			if e, ok := f.(*expression.Equals); ok {
+				// filter must bisect the rel attributes the merge comparison
+				// result to be monotonic
+				lTab, ok := attrsRefSingleRel(e.Left())
+				if !ok {
+					return nil
+				}
+				rTab, ok := attrsRefSingleRel(e.Right())
+				if !ok {
+					return nil
+				}
+				if lTab == rIScan.source && rTab == lIScan.source {
+					// comparison direction determines next iterator increment
+					newFilters = append(newFilters, expression.NewEquals(e.Right(), e.Left()))
+				} else {
+					newFilters = append(newFilters, f)
+				}
+			} else {
+				return nil
+			}
+		}
+
+		jb := join.copy()
+		jb.filter = newFilters
+		rel := &mergeJoin{
+			joinBase:  jb,
+			innerScan: lIScan,
+			outerScan: rIScan,
+		}
+		rel.innerScan.parent = rel.joinBase
+		rel.outerScan.parent = rel.joinBase
+		e.group().prepend(rel)
+		return nil
+	})
+}
+
+// findSortedIndexScanForRel returns the first indexScan found for a relation
+// that provide a prefix for the joinFilters rel free attributes. I.e. the
+// indexScan will return the same rows as the rel, but sorted for every expression
+// for the table referenced in the join condition.
+func findSortedIndexScanForRel(
+	ctx *sql.Context,
+	rel relExpr,
+	joinFilters []sql.Expression,
+	aliases TableAliases,
+) (*indexScan, error) {
+	var attributeSource string
+	var indexableTable sql.IndexAddressableTable
+	var ok bool
+	switch n := rel.(type) {
+	case *tableAlias:
+		attributeSource = strings.ToLower(n.table.Name())
+		rt, ok := n.table.Child.(*plan.ResolvedTable)
+		if !ok {
+			return nil, nil
+		}
+		table := rt.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		indexableTable, ok = table.(sql.IndexAddressableTable)
+		if !ok {
+			return nil, nil
+		}
+		aliases.add(n.table, indexableTable)
+	case *tableScan:
+		attributeSource = strings.ToLower(n.table.Name())
+		table := n.table.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		indexableTable, ok = table.(sql.IndexAddressableTable)
+		if !ok {
+			return nil, nil
+		}
+	default:
+		return nil, nil
+	}
+
+	indexes, err := indexableTable.GetIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	conds := collectJoinConds(attributeSource, joinFilters...)
+	for _, idx := range indexes {
+		keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
+		if len(keyExprs) == 0 {
+			continue
+		}
+		return &indexScan{
+			source: attributeSource,
+			idx:    idx,
+		}, nil
+	}
+	return nil, nil
+}
+
+// attrsRefSingleRel returns false if there are
+// getFields sourced from more than one table.
+func attrsRefSingleRel(e sql.Expression) (string, bool) {
+	var name string
+	var invalid bool
+	transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			newName := strings.ToLower(e.Table())
+			if name == "" && !invalid {
+				name = newName
+			} else if name != newName {
+				invalid = true
+			}
+		default:
+		}
+		return invalid
+	})
+	return name, !invalid
+}
+
 func extractJoinHint(n *plan.JoinNode) JoinOrderHint {
 	if n.Comment() != "" {
 		return parseJoinHint(n.Comment())
@@ -591,6 +747,7 @@ func (o joinOrderDeps) isValid() bool {
 	}
 	return true
 }
+
 func (o joinOrderDeps) obeysOrder(n relExpr) bool {
 	key := relKey(n)
 	if v, ok := o.cache[key]; ok {
@@ -599,7 +756,7 @@ func (o joinOrderDeps) obeysOrder(n relExpr) bool {
 	switch n := n.(type) {
 	case joinRel:
 		base := n.joinPrivate()
-		if !base.left.hintSatisfied || !base.right.hintSatisfied {
+		if !base.left.orderSatisfied || !base.right.orderSatisfied {
 			return false
 		}
 		l := o.groups[base.left.id]

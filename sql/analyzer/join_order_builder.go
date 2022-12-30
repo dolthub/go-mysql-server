@@ -182,6 +182,11 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
 	leftV, leftE := j.populateSubgraph(n.Left())
 	rightV, rightE := j.populateSubgraph(n.Right())
 	typ := n.JoinType()
+	var hint plan.JoinType
+	if typ.IsPhysical() {
+		hint = typ
+		typ = plan.JoinTypeInner
+	}
 	isInner := typ.IsInner()
 	op := &operator{
 		joinType:      typ,
@@ -202,6 +207,9 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
 		group = j.memoize(op.joinType, left, right, filters, nil)
 		j.plans[union] = group
 		j.m.root = group
+		if hint != plan.JoinTypeUnknown {
+			group.opHint = hint
+		}
 	}
 
 	if !isInner {

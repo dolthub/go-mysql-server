@@ -44,6 +44,8 @@ func (c *coster) costRel(n relExpr) (float64, error) {
 		return c.costLeftJoin(n)
 	case *hashJoin:
 		return c.costHashJoin(n)
+	case *mergeJoin:
+		return c.costMergeJoin(n)
 	case *lookupJoin:
 		return c.costLookupJoin(n)
 	case *semiJoin:
@@ -129,6 +131,10 @@ func (c *coster) costHashJoin(n *hashJoin) (float64, error) {
 	r := n.right.cost
 	buildProbe := r / 2
 	return l + r + buildProbe, nil
+}
+
+func (c *coster) costMergeJoin(n *mergeJoin) (float64, error) {
+	return n.left.cost + n.right.cost, nil
 }
 
 func (c *coster) costLookupJoin(n *lookupJoin) (float64, error) {
