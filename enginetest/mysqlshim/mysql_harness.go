@@ -52,7 +52,7 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	return enginetest.NewEngineWithProviderSetup(t, m, m.shim, m.setupData)
+	return enginetest.NewEngineWithProviderSetup(t, m, m.setupData)
 }
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
@@ -118,7 +118,11 @@ func (m *MySQLHarness) NewDatabases(names ...string) []sql.Database {
 }
 
 // NewDatabaseProvider implements the interface Harness.
-func (m *MySQLHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
+func (m *MySQLHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
+	return m.shim
+}
+
+func (m *MySQLHarness) Provider() sql.MutableDatabaseProvider {
 	return m.shim
 }
 

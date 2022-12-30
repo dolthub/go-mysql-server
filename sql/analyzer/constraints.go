@@ -51,7 +51,7 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 		for _, fk := range append(decFks, refFks...) {
 			if strings.ToLower(fk.Name) == strings.ToLower(dropConstraint.Name) {
 				n, err = plan.NewAlterDropForeignKey(rt.Database.Name(), rt.Table.Name(), dropConstraint.Name).
-					WithDatabaseProvider(a.Catalog.provider)
+					WithDatabaseProvider(a.Catalog.Provider)
 				return n, transform.NewTree, err
 			}
 		}

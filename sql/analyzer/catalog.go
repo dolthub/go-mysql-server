@@ -19,18 +19,18 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
-
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 type Catalog struct {
-	MySQLDb *mysql_db.MySQLDb
+	MySQLDb    *mysql_db.MySQLDb
+	InfoSchema sql.Database
 
-	provider         sql.DatabaseProvider
+	Provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
 	mu               sync.RWMutex
 	locks            sessionLocks
@@ -51,22 +51,29 @@ type sessionLocks map[uint32]dbLocks
 func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
 		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
-		provider:         provider,
+		InfoSchema:       information_schema.NewInformationSchemaDatabase(),
+		Provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
 	}
 }
 
+// TODO: kill this
 func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
 }
 
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
+	var dbs []sql.Database
+	dbs = append(dbs, c.InfoSchema)
+
 	if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).AllDatabases(ctx)
+		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).AllDatabases(ctx)...)
 	} else {
-		return c.provider.AllDatabases(ctx)
+		dbs = append(dbs, c.Provider.AllDatabases(ctx)...)
 	}
+
+	return dbs
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
@@ -74,10 +81,10 @@ func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string, collation sql.
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if collatedDbProvider, ok := c.provider.(sql.CollatedDatabaseProvider); ok {
+	if collatedDbProvider, ok := c.Provider.(sql.CollatedDatabaseProvider); ok {
 		// If the database provider supports creation with a collation, then we call that function directly
 		return collatedDbProvider.CreateCollatedDatabase(ctx, dbName, collation)
-	} else if mut, ok := c.provider.(sql.MutableDatabaseProvider); ok {
+	} else if mut, ok := c.Provider.(sql.MutableDatabaseProvider); ok {
 		err := mut.CreateDatabase(ctx, dbName)
 		if err != nil {
 			return err
@@ -101,7 +108,7 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mut, ok := c.provider.(sql.MutableDatabaseProvider)
+	mut, ok := c.Provider.(sql.MutableDatabaseProvider)
 	if ok {
 		return mut.DropDatabase(ctx, dbName)
 	} else {
@@ -110,19 +117,24 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 }
 
 func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
-	if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).HasDatabase(ctx, db)
+	db = strings.ToLower(db)
+	if db == "information_schema" {
+		return true
+	} else if c.MySQLDb.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).HasDatabase(ctx, db)
 	} else {
-		return c.provider.HasDatabase(ctx, db)
+		return c.Provider.HasDatabase(ctx, db)
 	}
 }
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
-	if c.MySQLDb.Enabled {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.provider).Database(ctx, db)
+	if strings.ToLower(db) == "information_schema" {
+		return c.InfoSchema, nil
+	} else if c.MySQLDb.Enabled {
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).Database(ctx, db)
 	} else {
-		return c.provider.Database(ctx, db)
+		return c.Provider.Database(ctx, db)
 	}
 }
 
@@ -155,7 +167,7 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			database, err := c.provider.Database(ctx, db)
+			database, err := c.Provider.Database(ctx, db)
 			if err != nil {
 				return err
 			}
@@ -241,7 +253,7 @@ func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 
 // Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
 func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
-	if fp, ok := c.provider.(sql.FunctionProvider); ok {
+	if fp, ok := c.Provider.(sql.FunctionProvider); ok {
 		f, err := fp.Function(ctx, name)
 		if err != nil && !sql.ErrFunctionNotFound.Is(err) {
 			return nil, err
@@ -255,7 +267,7 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 
 // ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider
 func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	if espp, ok := c.provider.(sql.ExternalStoredProcedureProvider); ok {
+	if espp, ok := c.Provider.(sql.ExternalStoredProcedureProvider); ok {
 		esp, err := espp.ExternalStoredProcedure(ctx, name, numOfParams)
 		if err != nil {
 			return nil, err
@@ -269,7 +281,7 @@ func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfPa
 
 // ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
 func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	if espp, ok := c.provider.(sql.ExternalStoredProcedureProvider); ok {
+	if espp, ok := c.Provider.(sql.ExternalStoredProcedureProvider); ok {
 		esps, err := espp.ExternalStoredProcedures(ctx, name)
 		if err != nil {
 			return nil, err
@@ -283,7 +295,7 @@ func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql
 
 // TableFunction implements the TableFunctionProvider interface
 func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
-	if fp, ok := c.provider.(sql.TableFunctionProvider); ok {
+	if fp, ok := c.Provider.(sql.TableFunctionProvider); ok {
 		tf, err := fp.TableFunction(ctx, name)
 		if err != nil {
 			return nil, err

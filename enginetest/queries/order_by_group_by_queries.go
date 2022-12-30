@@ -249,4 +249,28 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Group by null handling",
+		// https://github.com/dolthub/go-mysql-server/issues/1503
+		SetUpScript: []string{
+			"create table t (pk int primary key, c1 varchar(10));",
+			"insert into t values (1, 'foo'), (2, 'foo'), (3, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select c1, count(pk) from t group by c1;",
+				Expected: []sql.Row{
+					{"foo", 2},
+					{nil, 1},
+				},
+			},
+			{
+				Query: "select c1, count(c1) from t group by c1;",
+				Expected: []sql.Row{
+					{"foo", 2},
+					{nil, 0},
+				},
+			},
+		},
+	},
 }

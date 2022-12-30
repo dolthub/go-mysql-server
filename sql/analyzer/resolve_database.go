@@ -59,7 +59,7 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 		md, ok := n.(sql.MultiDatabaser)
 		if ok && md.DatabaseProvider() == nil {
 			var err error
-			n, err = md.WithDatabaseProvider(a.Catalog.provider)
+			n, err = md.WithDatabaseProvider(a.Catalog.Provider)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
