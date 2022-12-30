@@ -14,12 +14,6 @@
 
 package sql
 
-import (
-	"encoding/json"
-
-	"github.com/dolthub/go-mysql-server/sql/types"
-)
-
 func MustConvert(val interface{}, err error) interface{} {
 	if err != nil {
 		panic(err)
@@ -27,10 +21,3 @@ func MustConvert(val interface{}, err error) interface{} {
 	return val
 }
 
-func MustJSON(s string) types.JSONDocument {
-	var doc interface{}
-	if err := json.Unmarshal([]byte(s), &doc); err != nil {
-		panic(err)
-	}
-	return types.JSONDocument{Val: doc}
-}

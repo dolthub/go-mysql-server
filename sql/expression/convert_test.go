@@ -134,7 +134,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(`{"a":2}`, types.LongText),
-			expected:    sql.MustJSON(`{"a":2}`),
+			expected:    types.MustJSON(`{"a":2}`),
 			expectedErr: false,
 		},
 		{

@@ -87,8 +87,8 @@ func TestJsonCompare(t *testing.T) {
 		name := fmt.Sprintf("%v_%v__%d", test.left, test.right, test.cmp)
 		t.Run(name, func(t *testing.T) {
 			cmp, err := JSON.Compare(
-				sql.MustJSON(test.left),
-				sql.MustJSON(test.right),
+				MustJSON(test.left),
+				MustJSON(test.right),
 			)
 			require.NoError(t, err)
 			assert.Equal(t, test.cmp, cmp)
@@ -105,14 +105,14 @@ func TestJsonConvert(t *testing.T) {
 		expectedVal interface{}
 		expectedErr bool
 	}{
-		{`""`, sql.MustJSON(`""`), false},
-		{[]int{1, 2}, sql.MustJSON(`[1, 2]`), false},
-		{`{"a": true, "b": 3}`, sql.MustJSON(`{"a":true,"b":3}`), false},
-		{[]byte(`{"a": true, "b": 3}`), sql.MustJSON(`{"a":true,"b":3}`), false},
-		{testStruct{Field: "test"}, sql.MustJSON(`{"field":"test"}`), false},
-		{sql.MustJSON(`{"field":"test"}`), sql.MustJSON(`{"field":"test"}`), false},
-		{[]string{}, sql.MustJSON(`[]`), false},
-		{[]string{`555-555-5555`}, sql.MustJSON(`["555-555-5555"]`), false},
+		{`""`, MustJSON(`""`), false},
+		{[]int{1, 2}, MustJSON(`[1, 2]`), false},
+		{`{"a": true, "b": 3}`, MustJSON(`{"a":true,"b":3}`), false},
+		{[]byte(`{"a": true, "b": 3}`), MustJSON(`{"a":true,"b":3}`), false},
+		{testStruct{Field: "test"}, MustJSON(`{"field":"test"}`), false},
+		{MustJSON(`{"field":"test"}`), MustJSON(`{"field":"test"}`), false},
+		{[]string{}, MustJSON(`[]`), false},
+		{[]string{`555-555-5555`}, MustJSON(`["555-555-5555"]`), false},
 	}
 
 	for _, test := range tests {
@@ -144,7 +144,7 @@ func TestJsonSQL(t *testing.T) {
 		{`"555-555-555"`, false},
 		{`{}`, false},
 		{`{"field":"test"}`, false},
-		{sql.MustJSON(`{"field":"test"}`), false},
+		{MustJSON(`{"field":"test"}`), false},
 		{"1", false},
 		{`[1,2,3]`, false},
 		{[]int{1, 2, 3}, false},

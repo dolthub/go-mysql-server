@@ -178,3 +178,11 @@ func DeepCopyJson(v interface{}) interface{} {
 		return nil
 	}
 }
+
+func MustJSON(s string) JSONDocument {
+	var doc interface{}
+	if err := json.Unmarshal([]byte(s), &doc); err != nil {
+		panic(err)
+	}
+	return JSONDocument{Val: doc}
+}

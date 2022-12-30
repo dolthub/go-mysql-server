@@ -1120,7 +1120,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
+			{types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
 		},
 	},
 	{
@@ -1133,53 +1133,53 @@ var QueryTests = []QueryTest{
 	                    row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
 	               test (val1, val2)`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
-			{sql.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
-			{sql.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
-			{sql.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
-			{sql.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
+			{types.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
+			{types.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
+			{types.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
+			{types.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
+			{types.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY()`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[]`)},
+			{types.MustJSON(`[]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', "do")`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
+			{types.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(1, 'say, "hi"', JSON_OBJECT("abc", 22))`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
+			{types.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(JSON_OBJECT("a", JSON_ARRAY(1,2)), JSON_OBJECT("b", 22))`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
+			{types.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(pk, c1, c2, c3) FROM jsontable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
-			{sql.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
-			{sql.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
-			{sql.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
+			{types.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
+			{types.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
+			{types.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
+			{types.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(JSON_OBJECT("id", pk, "name", c1), c2, c3) FROM jsontable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
-			{sql.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
-			{sql.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
-			{sql.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
+			{types.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
+			{types.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
+			{types.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
+			{types.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
 		},
 	},
 	{
@@ -4758,7 +4758,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
-		Expected: []sql.Row{{sql.MustJSON(`"foo"`)}},
+		Expected: []sql.Row{{types.MustJSON(`"foo"`)}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
@@ -5111,25 +5111,25 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) WHEN 2 THEN JSON_OBJECT("b", 2) END FROM mytable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": 1}`)},
-			{sql.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"a": 1}`)},
+			{types.MustJSON(`{"b": 2}`)},
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": 1}`)},
-			{sql.MustJSON(`{"b": 2}`)},
-			{sql.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"a": 1}`)},
+			{types.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": 1}`)},
-			{sql.MustJSON(`{"b": 2}`)},
-			{sql.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"a": 1}`)},
+			{types.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
@@ -5428,7 +5428,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
-		Expected: []sql.Row{{sql.MustJSON(`1`)}},
+		Expected: []sql.Row{{types.MustJSON(`1`)}},
 	},
 	// TODO(andy)
 	//{
@@ -7369,40 +7369,40 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT JSON_OBJECT(1000000, 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"1000000": 10}`)},
+			{types.MustJSON(`{"1000000": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(DATE('1981-02-16'), 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"1981-02-16": 10}`)},
+			{types.MustJSON(`{"1981-02-16": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"{\"foo\":\"bar\"}": 10}`)},
+			{types.MustJSON(`{"{\"foo\":\"bar\"}": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(true, 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"true": 10}`)},
+			{types.MustJSON(`{"true": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(10.1, 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"10.1": 10}`)},
+			{types.MustJSON(`{"10.1": 10}`)},
 		},
 	},
 
 	{
 		Query: `SELECT JSON_OBJECT("i",i,"s",s) as js FROM mytable;`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"i": 1, "s": "first row"}`)},
-			{sql.MustJSON(`{"i": 2, "s": "second row"}`)},
-			{sql.MustJSON(`{"i": 3, "s": "third row"}`)},
+			{types.MustJSON(`{"i": 1, "s": "first row"}`)},
+			{types.MustJSON(`{"i": 2, "s": "second row"}`)},
+			{types.MustJSON(`{"i": 3, "s": "third row"}`)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
