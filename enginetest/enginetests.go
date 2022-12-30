@@ -24,6 +24,7 @@ import (
 	"time"
 	
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -5912,7 +5913,7 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
 
 			if tt.ExpectedGlobal != nil {
-				_, res, _ := variables.SystemVariables.GetGlobal("max_connections")
+				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
 				require.Equal(t, tt.ExpectedGlobal, res)
 			}
 
@@ -5932,7 +5933,8 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	variables.InitSystemVariables()
+	// TODO: is this necessary?
+	// sql.InitSystemVariables()
 	ctx := NewContext(harness)
 	ctx.Session = newSessFunc(ctx)
 
