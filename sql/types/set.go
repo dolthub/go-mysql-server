@@ -221,7 +221,7 @@ func (t SetType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	value, err := t.bitsToString(convertedValue.(uint64))
+	value, err := t.BitsToString(convertedValue.(uint64))
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -282,7 +282,7 @@ func (t SetType_) NumberOfElements() uint16 {
 }
 
 // BitsToString implements SetType interface.
-func (t SetType_) bitsToString(v uint64) (string, error) {
+func (t SetType_) BitsToString(v uint64) (string, error) {
 	return t.convertBitFieldToString(v)
 }
 
