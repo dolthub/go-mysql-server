@@ -542,12 +542,12 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	return widened
 }
 
-func widenJSONValues(val interface{}) sql.JSONValue {
+func widenJSONValues(val interface{}) types.JSONValue {
 	if val == nil {
 		return nil
 	}
 
-	js, ok := val.(sql.JSONValue)
+	js, ok := val.(types.JSONValue)
 	if !ok {
 		panic(fmt.Sprintf("%v is not json", val))
 	}

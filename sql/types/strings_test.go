@@ -320,7 +320,7 @@ func TestStringConvert(t *testing.T) {
 			nil, true},
 		{MustCreateBinary(sqltypes.VarBinary, 3), []byte{01, 02, 03, 04}, nil, true},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 3), []byte("abcd"), nil, true},
-		{MustCreateStringWithDefaults(sqltypes.Char, 20), sql.JSONDocument{Val: nil}, "null", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: nil}, "null", false},
 	}
 
 	for _, test := range tests {

@@ -628,7 +628,7 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := v.(sql.JSONValue); ok {
+	if js, ok := v.(types.JSONValue); ok {
 		doc, err := js.Unmarshall(ctx)
 		if err != nil {
 			return err
@@ -643,7 +643,7 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 // Eval implements the AggregationBuffer interface.
 func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
-	return sql.JSONDocument{Val: j.vals}, nil
+	return types.JSONDocument{Val: j.vals}, nil
 }
 
 // Dispose implements the Disposable interface.

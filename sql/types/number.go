@@ -212,7 +212,7 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, error) {
 		v = ti.UTC().Unix()
 	}
 
-	if jv, ok := v.(sql.JSONValue); ok {
+	if jv, ok := v.(JSONValue); ok {
 		jd, err := jv.Unmarshall(nil)
 		if err != nil {
 			return nil, err

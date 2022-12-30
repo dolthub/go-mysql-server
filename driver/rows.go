@@ -18,6 +18,7 @@ import (
 	"database/sql/driver"
 	"reflect"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -115,7 +116,7 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 		if err != nil {
 			break
 		}
-		doc, ok := sqlValue.(sql.JSONDocument)
+		doc, ok := sqlValue.(types.JSONDocument)
 		if !ok {
 			break
 		}

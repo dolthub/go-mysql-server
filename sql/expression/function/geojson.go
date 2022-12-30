@@ -284,7 +284,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if len(g.ChildExpressions) == 1 {
-		return sql.JSONDocument{Val: obj}, nil
+		return types.JSONDocument{Val: obj}, nil
 	}
 
 	// Evaluate precision
@@ -310,7 +310,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if len(g.ChildExpressions) == 2 {
-		return sql.JSONDocument{Val: obj}, nil
+		return types.JSONDocument{Val: obj}, nil
 	}
 
 	// Evaluate flag argument
@@ -371,7 +371,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	return sql.JSONDocument{Val: obj}, nil
+	return types.JSONDocument{Val: obj}, nil
 }
 
 // GeomFromGeoJSON is a function returns a geometry based on a string

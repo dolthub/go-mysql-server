@@ -142,7 +142,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(2, types.Int32),
-			expected:    sql.JSONDocument{Val: float64(2)},
+			expected:    types.JSONDocument{Val: float64(2)},
 			expectedErr: false,
 		},
 		{

@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	jsonValueType = reflect.TypeOf((*sql.JSONValue)(nil)).Elem()
+	jsonValueType = reflect.TypeOf((*JSONValue)(nil)).Elem()
 
 	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
 )
@@ -43,13 +43,13 @@ func (t JsonType_) Compare(a interface{}, b interface{}) (int, error) {
 		return 0, err
 	}
 	// todo: making a context here is expensive
-	return a.(sql.JSONValue).Compare(sql.NewEmptyContext(), b.(sql.JSONValue))
+	return a.(JSONValue).Compare(sql.NewEmptyContext(), b.(JSONValue))
 }
 
 // Convert implements Type interface.
 func (t JsonType_) Convert(v interface{}) (doc interface{}, err error) {
 	switch v := v.(type) {
-	case sql.JSONValue:
+	case JSONValue:
 		return v, nil
 	case []byte:
 		if int64(len(v)) > MaxJsonFieldByteLength {
@@ -85,7 +85,7 @@ func (t JsonType_) Convert(v interface{}) (doc interface{}, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return sql.JSONDocument{Val: doc}, nil
+	return JSONDocument{Val: doc}, nil
 }
 
 // Equals implements the Type interface.
@@ -115,7 +115,7 @@ func (t JsonType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 	if err != nil {
 		return sqltypes.NULL, err
 	}
-	js := jsVal.(sql.JSONValue)
+	js := jsVal.(JSONValue)
 
 	s, err := js.ToString(ctx)
 	if err != nil {

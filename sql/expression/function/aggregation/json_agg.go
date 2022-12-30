@@ -144,7 +144,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := val.(sql.JSONValue); ok {
+	if js, ok := val.(types.JSONValue); ok {
 		doc, err := js.Unmarshall(ctx)
 		if err != nil {
 			return err
@@ -169,7 +169,7 @@ func (j *jsonObjectBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.JSONDocument{Val: j.vals}, nil
+	return types.JSONDocument{Val: j.vals}, nil
 }
 
 // Dispose implements the Disposable interface.

@@ -226,7 +226,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 			return decimal.NullDecimal{}, nil
 		}
 		res = value.Decimal
-	case sql.JSONDocument:
+	case JSONDocument:
 		return t.ConvertToNullDecimal(value.Val)
 	default:
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)

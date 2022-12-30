@@ -914,7 +914,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					//hist.DistinctCount, // distinct_count
 					//bucketStrings, // buckets
 					// TODO: missing other key/value pairs in the JSON
-					JSONDocument{Val: map[string]interface{}{"buckets": buckets}}, // histogram
+					types.JSONDocument{Val: map[string]interface{}{"buckets": buckets}}, // histogram
 				})
 			}
 			return true, nil

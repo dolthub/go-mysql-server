@@ -102,7 +102,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			key = val.(string)
 		} else {
-			if json, ok := val.(sql.JSONValue); ok {
+			if json, ok := val.(types.JSONValue); ok {
 				doc, err := json.Unmarshall(ctx)
 				if err != nil {
 					return nil, err
@@ -113,7 +113,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	return sql.JSONDocument{Val: obj}, nil
+	return types.JSONDocument{Val: obj}, nil
 }
 
 func (j JSONObject) Children() []sql.Expression {

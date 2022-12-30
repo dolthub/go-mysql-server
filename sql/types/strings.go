@@ -378,7 +378,7 @@ func ConvertToString(v interface{}, t StringType) (string, error) {
 			return "", nil
 		}
 		val = s.Decimal.String()
-	case sql.JSONValue:
+	case JSONValue:
 		str, err := s.ToString(nil)
 		if err != nil {
 			return "", err

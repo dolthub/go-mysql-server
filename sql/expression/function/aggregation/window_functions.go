@@ -1037,7 +1037,7 @@ func (a *WindowedJSONArrayAgg) Compute(ctx *sql.Context, interval sql.WindowInte
 	if err != nil {
 		return nil
 	}
-	return sql.JSONDocument{Val: res}
+	return types.JSONDocument{Val: res}
 }
 
 func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) ([]interface{}, error) {
@@ -1049,7 +1049,7 @@ func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.Wind
 		}
 
 		// unwrap JSON values
-		if js, ok := v.(sql.JSONValue); ok {
+		if js, ok := v.(types.JSONValue); ok {
 			doc, err := js.Unmarshall(ctx)
 			if err != nil {
 				return nil, err
@@ -1115,7 +1115,7 @@ func (a *WindowedJSONObjectAgg) Compute(ctx *sql.Context, interval sql.WindowInt
 	if len(a.vals) == 0 {
 		return nil
 	}
-	return sql.JSONDocument{Val: a.vals}
+	return types.JSONDocument{Val: a.vals}
 }
 
 func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (map[string]interface{}, error) {
@@ -1137,7 +1137,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 		}
 
 		// unwrap JSON values
-		if js, ok := val.(sql.JSONValue); ok {
+		if js, ok := val.(types.JSONValue); ok {
 			doc, err := js.Unmarshall(ctx)
 			if err != nil {
 				return nil, err

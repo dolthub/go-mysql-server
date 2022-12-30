@@ -94,7 +94,7 @@ func (j *JSONArray) IsNullable() bool {
 // Eval implements the Expression interface.
 func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if len(j.vals) == 0 {
-		return sql.JSONDocument{Val: make([]interface{}, 0)}, nil
+		return types.JSONDocument{Val: make([]interface{}, 0)}, nil
 	}
 
 	var resultArray = make([]interface{}, len(j.vals))
@@ -105,8 +105,8 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if json, ok := val.(sql.JSONValue); ok {
-			doc, err := json.(sql.JSONValue).Unmarshall(ctx)
+		if json, ok := val.(types.JSONValue); ok {
+			doc, err := json.(types.JSONValue).Unmarshall(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +115,7 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		resultArray[i] = val
 	}
 
-	return sql.JSONDocument{Val: resultArray}, nil
+	return types.JSONDocument{Val: resultArray}, nil
 }
 
 // Children implements the Expression interface.

@@ -160,7 +160,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return target.Contains(ctx, candidate)
 }
 
-func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.SearchableJSONValue, error) {
+func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.SearchableJSONValue, error) {
 	js, err := json.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 
 	var converted interface{}
 	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, sql.JSONValue:
+	case string, []interface{}, map[string]interface{}, types.JSONValue:
 		converted, err = types.JSON.Convert(js)
 		if err != nil {
 			return nil, sql.ErrInvalidJSONText.New(js)
@@ -180,9 +180,9 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
 
-	searchable, ok := converted.(sql.SearchableJSONValue)
+	searchable, ok := converted.(types.SearchableJSONValue)
 	if !ok {
-		searchable, err = js.(sql.JSONValue).Unmarshall(ctx)
+		searchable, err = js.(types.JSONValue).Unmarshall(ctx)
 		if err != nil {
 			return nil, err
 		}

@@ -30,8 +30,8 @@ func TestIssue361(t *testing.T) {
 			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 
-		old := sql.NewRow(sql.JSONDocument{Val: []string{"foo", "bar"}})
-		new := sql.NewRow(sql.JSONDocument{Val: []string{"foo"}})
+		old := sql.NewRow(types.JSONDocument{Val: []string{"foo", "bar"}})
+		new := sql.NewRow(types.JSONDocument{Val: []string{"foo"}})
 
 		ctx := sql.NewEmptyContext()
 		table.Insert(ctx, old)
@@ -45,7 +45,7 @@ func TestIssue361(t *testing.T) {
 			{Name: "json", Type: types.JSON, Nullable: false, Source: name},
 		}), nil)
 
-		row := sql.NewRow(sql.JSONDocument{Val: []string{"foo", "bar"}})
+		row := sql.NewRow(types.JSONDocument{Val: []string{"foo", "bar"}})
 
 		ctx := sql.NewEmptyContext()
 		table.Insert(ctx, row)

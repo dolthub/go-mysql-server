@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"bytes"
@@ -22,19 +22,19 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/oliveagle/jsonpath"
 )
 
 // JSONValue is an integrator specific implementation of a JSON field value.
 type JSONValue interface {
 	// Unmarshall converts a JSONValue to a JSONDocument
-	Unmarshall(ctx *Context) (val JSONDocument, err error)
+	Unmarshall(ctx *sql.Context) (val JSONDocument, err error)
 	// Compare compares two JSONValues. It maintains the same return value
 	// semantics as Type.Compare()
-	Compare(ctx *Context, v JSONValue) (cmp int, err error)
+	Compare(ctx *sql.Context, v JSONValue) (cmp int, err error)
 	// ToString marshalls a JSONValue to a valid JSON-encoded string.
-	ToString(ctx *Context) (string, error)
+	ToString(ctx *sql.Context) (string, error)
 }
 
 // SearchableJSONValue is JSONValue supporting in-place access operations.
@@ -44,15 +44,15 @@ type SearchableJSONValue interface {
 	JSONValue
 
 	// Contains is value-specific implementation of JSON_Contains()
-	Contains(ctx *Context, candidate JSONValue) (val interface{}, err error)
+	Contains(ctx *sql.Context, candidate JSONValue) (val interface{}, err error)
 	// Extract is value-specific implementation of JSON_Extract()
-	Extract(ctx *Context, path string) (val JSONValue, err error)
+	Extract(ctx *sql.Context, path string) (val JSONValue, err error)
 	// Keys is value-specific implementation of JSON_Keys()
-	Keys(ctx *Context, path string) (val JSONValue, err error)
+	Keys(ctx *sql.Context, path string) (val JSONValue, err error)
 	// Overlaps is value-specific implementation of JSON_Overlaps()
-	Overlaps(ctx *Context, val SearchableJSONValue) (ok bool, err error)
+	Overlaps(ctx *sql.Context, val SearchableJSONValue) (ok bool, err error)
 	// Search is value-specific implementation of JSON_Search()
-	Search(ctx *Context) (path string, err error)
+	Search(ctx *sql.Context) (path string, err error)
 }
 
 type JSONDocument struct {
@@ -61,11 +61,11 @@ type JSONDocument struct {
 
 var _ JSONValue = JSONDocument{}
 
-func (doc JSONDocument) Unmarshall(_ *Context) (JSONDocument, error) {
+func (doc JSONDocument) Unmarshall(_ *sql.Context) (JSONDocument, error) {
 	return doc, nil
 }
 
-func (doc JSONDocument) Compare(ctx *Context, v JSONValue) (int, error) {
+func (doc JSONDocument) Compare(ctx *sql.Context, v JSONValue) (int, error) {
 	other, err := v.Unmarshall(ctx)
 	if err != nil {
 		return 0, err
@@ -73,7 +73,7 @@ func (doc JSONDocument) Compare(ctx *Context, v JSONValue) (int, error) {
 	return compareJSON(doc.Val, other.Val)
 }
 
-func (doc JSONDocument) ToString(_ *Context) (string, error) {
+func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	// Prevents special characters like <, >, or & from being escaped.
@@ -92,7 +92,7 @@ var _ SearchableJSONValue = JSONDocument{}
 
 // Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
 // it returns a bool
-func (doc JSONDocument) Contains(ctx *Context, candidate JSONValue) (val interface{}, err error) {
+func (doc JSONDocument) Contains(ctx *sql.Context, candidate JSONValue) (val interface{}, err error) {
 	other, err := candidate.Unmarshall(ctx)
 	if err != nil {
 		return false, err
@@ -100,7 +100,7 @@ func (doc JSONDocument) Contains(ctx *Context, candidate JSONValue) (val interfa
 	return containsJSON(doc.Val, other.Val)
 }
 
-func (doc JSONDocument) Extract(ctx *Context, path string) (JSONValue, error) {
+func (doc JSONDocument) Extract(ctx *sql.Context, path string) (JSONValue, error) {
 	if path == "$" {
 		// Special case the identity operation to handle a nil value for doc.Val
 		return doc, nil
@@ -131,15 +131,15 @@ func (doc JSONDocument) Extract(ctx *Context, path string) (JSONValue, error) {
 	return JSONDocument{Val: val}, nil
 }
 
-func (doc JSONDocument) Keys(ctx *Context, path string) (val JSONValue, err error) {
+func (doc JSONDocument) Keys(ctx *sql.Context, path string) (val JSONValue, err error) {
 	panic("not implemented")
 }
 
-func (doc JSONDocument) Overlaps(ctx *Context, val SearchableJSONValue) (ok bool, err error) {
+func (doc JSONDocument) Overlaps(ctx *sql.Context, val SearchableJSONValue) (ok bool, err error) {
 	panic("not implemented")
 }
 
-func (doc JSONDocument) Search(ctx *Context) (path string, err error) {
+func (doc JSONDocument) Search(ctx *sql.Context) (path string, err error) {
 	panic("not implemented")
 }
 
@@ -159,7 +159,7 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 	return string(byteSl), nil
 }
 
-func ConcatenateJSONValues(ctx *Context, vals ...JSONValue) (JSONValue, error) {
+func ConcatenateJSONValues(ctx *sql.Context, vals ...JSONValue) (JSONValue, error) {
 	arr := make([]interface{}, len(vals))
 	for i, v := range vals {
 		d, err := v.Unmarshall(ctx)
@@ -188,7 +188,7 @@ func containsJSON(a, b interface{}) (interface{}, error) {
 	case float64:
 		return containsJSONNumber(a, b)
 	default:
-		return false, ErrInvalidType.New(a)
+		return false, sql.ErrInvalidType.New(a)
 	}
 }
 
@@ -363,7 +363,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func compareJSON(a, b interface{}) (int, error) {
-	if hasNulls, res := types.CompareNulls(b, a); hasNulls {
+	if hasNulls, res := CompareNulls(b, a); hasNulls {
 		return res, nil
 	}
 
@@ -379,7 +379,7 @@ func compareJSON(a, b interface{}) (int, error) {
 	case float64:
 		return compareJSONNumber(a, b)
 	default:
-		return 0, ErrInvalidType.New(a)
+		return 0, sql.ErrInvalidType.New(a)
 	}
 }
 

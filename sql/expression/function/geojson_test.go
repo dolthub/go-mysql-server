@@ -32,7 +32,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{1, 2}, "type": "Point"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{1, 2}, "type": "Point"}}, v)
 	})
 	t.Run("convert linestring to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -41,7 +41,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "LineString"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "LineString"}}, v)
 	})
 	t.Run("convert polygon to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -50,7 +50,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {1, 0}, {1, 1}, {0, 0}}}, "type": "Polygon"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {1, 0}, {1, 1}, {0, 0}}}, "type": "Polygon"}}, v)
 	})
 	t.Run("convert multipoint to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -59,7 +59,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "MultiPoint"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{1, 2}, {3, 4}}, "type": "MultiPoint"}}, v)
 	})
 	t.Run("convert multilinestring to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -68,7 +68,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString"}}, v)
 	})
 	t.Run("convert multipolygon to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -79,7 +79,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon"}}, v)
 	})
 	t.Run("convert empty geometrycollection to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -90,7 +90,7 @@ func TestAsGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}}, v)
 	})
 	t.Run("convert geometrycollection to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -116,7 +116,7 @@ func TestAsGeoJSON(t *testing.T) {
 		mpolyjson := map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, {{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}, "type": "MultiPolygon"}
 		mgeomjson := map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}
 
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{pointjson, linejson, polyjson, mpointjson, mlinejson, mpolyjson, mgeomjson}, "type": "GeometryCollection"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{pointjson, linejson, polyjson, mpointjson, mlinejson, mpolyjson, mgeomjson}, "type": "GeometryCollection"}}, v)
 	})
 	t.Run("convert point with floats to geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -125,7 +125,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{123.45, 5.6789}, "type": "Point"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{123.45, 5.6789}, "type": "Point"}}, v)
 	})
 	t.Run("convert point with low precision", func(t *testing.T) {
 		require := require.New(t)
@@ -137,7 +137,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{0.123, 0.988}, "type": "Point"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{0.123, 0.988}, "type": "Point"}}, v)
 	})
 	t.Run("convert point with high precision", func(t *testing.T) {
 		require := require.New(t)
@@ -149,7 +149,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{0.123456789, 0.987654321}, "type": "Point"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{0.123456789, 0.987654321}, "type": "Point"}}, v)
 	})
 	t.Run("convert point with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -162,7 +162,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{123.46, 456.79}, "type": "Point", "bbox": [4]float64{123.46, 456.79, 123.46, 456.79}}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [2]float64{123.46, 456.79}, "type": "Point", "bbox": [4]float64{123.46, 456.79, 123.46, 456.79}}}, v)
 	})
 	t.Run("convert linestring with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -175,7 +175,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{100, 2}, {1, 200}}, "type": "LineString", "bbox": [4]float64{1, 2, 100, 200}}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{100, 2}, {1, 200}}, "type": "LineString", "bbox": [4]float64{1, 2, 100, 200}}}, v)
 	})
 	t.Run("convert polygon with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -188,7 +188,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}, "type": "Polygon", "bbox": [4]float64{0, 0, 1, 1}}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}, "type": "Polygon", "bbox": [4]float64{0, 0, 1, 1}}}, v)
 	})
 	t.Run("convert multipoint with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -201,7 +201,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{100, 2}, {1, 200}}, "type": "MultiPoint", "bbox": [4]float64{1, 2, 100, 200}}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][2]float64{{100, 2}, {1, 200}}, "type": "MultiPoint", "bbox": [4]float64{1, 2, 100, 200}}}, v)
 	})
 	t.Run("convert multilinestring with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -214,7 +214,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString", "bbox": [4]float64{1, 2, 3, 4}}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][][2]float64{{{1, 2}, {3, 4}}}, "type": "MultiLineString", "bbox": [4]float64{1, 2, 3, 4}}}, v)
 	})
 	t.Run("convert multipolygon with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -229,7 +229,7 @@ func TestAsGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon", "bbox": [4]float64{0, 0, 3, 4}}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 2}, {3, 4}, {0, 0}}}}, "type": "MultiPolygon", "bbox": [4]float64{0, 0, 3, 4}}}, v)
 	})
 	t.Run("convert empty geometrycollection to geojson with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -244,7 +244,7 @@ func TestAsGeoJSON(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}}, v)
 	})
 	t.Run("convert geometrycollection to geojson with bounding box", func(t *testing.T) {
 		require := require.New(t)
@@ -273,7 +273,7 @@ func TestAsGeoJSON(t *testing.T) {
 		mpolyjson := map[string]interface{}{"coordinates": [][][][2]float64{{{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, {{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}, "type": "MultiPolygon"}
 		mgeomjson := map[string]interface{}{"geometries": []interface{}{}, "type": "GeometryCollection"}
 
-		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"bbox": [4]float64{0, 0, 3, 4}, "geometries": []interface{}{pointjson, linejson, polyjson, mpointjson, mlinejson, mpolyjson, mgeomjson}, "type": "GeometryCollection"}}, v)
+		require.Equal(types.JSONDocument{Val: map[string]interface{}{"bbox": [4]float64{0, 0, 3, 4}, "geometries": []interface{}{pointjson, linejson, polyjson, mpointjson, mlinejson, mpolyjson, mgeomjson}, "type": "GeometryCollection"}}, v)
 	})
 	t.Run("convert point with srid 0 and flag 2", func(t *testing.T) {
 		require := require.New(t)
@@ -290,7 +290,7 @@ func TestAsGeoJSON(t *testing.T) {
 			"coordinates": [2]float64{1, 2},
 			"type":        "Point",
 		}
-		require.Equal(sql.JSONDocument{Val: obj}, v)
+		require.Equal(types.JSONDocument{Val: obj}, v)
 	})
 	t.Run("convert point with srid 4326 and flag 2", func(t *testing.T) {
 		require := require.New(t)
@@ -313,7 +313,7 @@ func TestAsGeoJSON(t *testing.T) {
 			"coordinates": [2]float64{1, 2},
 			"type":        "Point",
 		}
-		require.Equal(sql.JSONDocument{Val: obj}, v)
+		require.Equal(types.JSONDocument{Val: obj}, v)
 	})
 	t.Run("convert point with srid 4326 and flag 4", func(t *testing.T) {
 		require := require.New(t)
@@ -336,7 +336,7 @@ func TestAsGeoJSON(t *testing.T) {
 			"coordinates": [2]float64{1, 2},
 			"type":        "Point",
 		}
-		require.Equal(sql.JSONDocument{Val: obj}, v)
+		require.Equal(types.JSONDocument{Val: obj}, v)
 	})
 	t.Run("convert null is null", func(t *testing.T) {
 		require := require.New(t)

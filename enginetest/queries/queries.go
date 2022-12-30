@@ -271,51 +271,51 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from point_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(l) from line_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from mpoint_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(l) from mline_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}, {5, 6}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}, {5, 6}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(ST_GEOMFROMGEOJSON(s)) from stringtogeojson_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{123.45, 56.789}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}, {5.5, 6.6}, {1.1, 2.2}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {1, 1}, {2, 2}, {0, 0}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}}, {{5.5, 6.6}, {7.7, 8.8}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPolygon", "coordinates": [][][][2]float64{{{{0, 0}, {1.1, 2.2}, {3.3, 4.4}, {0, 0}}}, {{{1.1, 1.1}, {1.1, 2.2}, {3.3, 4.4}, {1.1, 1.1}}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{123.45, 56.789}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}, {5.5, 6.6}, {1.1, 2.2}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {1, 1}, {2, 2}, {0, 0}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}}, {{5.5, 6.6}, {7.7, 8.8}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPolygon", "coordinates": [][][][2]float64{{{{0, 0}, {1.1, 2.2}, {3.3, 4.4}, {0, 0}}}, {{{1.1, 1.1}, {1.1, 2.2}, {3.3, 4.4}, {1.1, 1.1}}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{}}}}}},
 		},
 	},
 	{
@@ -10581,7 +10581,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
 				},
 			},
 		},
@@ -10597,8 +10597,8 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
-					{"mydb", "t", "j", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
+					{"mydb", "t", "j", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}},
 				},
 			},
 		},
@@ -10614,7 +10614,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
 				},
 			},
 		},
@@ -10629,7 +10629,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{}}}},
 				},
 			},
 		},

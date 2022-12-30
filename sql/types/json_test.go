@@ -173,12 +173,12 @@ func TestJsonSQL(t *testing.T) {
 }
 
 func TestValuer(t *testing.T) {
-	var empty sql.JSONDocument
+	var empty JSONDocument
 	res, err := empty.Value()
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
 
-	withVal := sql.JSONDocument{
+	withVal := JSONDocument{
 		Val: map[string]string{
 			"a": "one",
 		},
