@@ -528,7 +528,7 @@ func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Sc
 func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
 	var numericScale interface{}
 	switch t := col.Type.(type) {
-	case sql.BitType:
+	case types.BitType:
 		return int(t.NumberOfBits()), numericScale
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())

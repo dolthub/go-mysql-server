@@ -609,7 +609,7 @@ func TestSchemaToFields(t *testing.T) {
 		{Name: "varbinary12345", Type: types.MustCreateBinary(sqltypes.VarBinary, 12345)},
 		{Name: "binary123", Type: types.MustCreateBinary(sqltypes.Binary, 123)},
 		{Name: "char123", Type: types.MustCreateString(sqltypes.Char, 123, sql.Collation_Default)},
-		{Name: "bit12", Type: sql.MustCreateBitType(12)},
+		{Name: "bit12", Type: types.MustCreateBitType(12)},
 
 		// Dates
 		{Name: "datetime", Type: types.MustCreateDatetimeType(sqltypes.Datetime)},
@@ -881,7 +881,7 @@ func TestBindingsToExprs(t *testing.T) {
 				"u64":       expression.NewLiteral(uint64(4096), types.Uint64),
 				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, types.MustCreateBinary(query.Type_VARBINARY, int64(3))),
 				"text":      expression.NewLiteral("four score and seven years ago...", types.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
-				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
+				"bit":       expression.NewLiteral(uint64(0x0f), types.MustCreateBitType(types.BitTypeMaxBits)),
 				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), types.Date),
 				"year":      expression.NewLiteral(int16(2020), types.Year),
 				"datetime":  expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), types.Datetime),

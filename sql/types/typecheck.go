@@ -47,7 +47,7 @@ func IsDecimal(t sql.Type) bool {
 
 // IsBit checks if t is a BIT type.
 func IsBit(t sql.Type) bool {
-	_, ok := t.(sql.BitType_)
+	_, ok := t.(BitType_)
 	return ok
 }
 
@@ -85,7 +85,7 @@ func IsNull(ex sql.Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t sql.Type) bool {
 	switch t.(type) {
-	case NumberTypeImpl_, DecimalType_, sql.BitType_, YearType_, SystemBoolType_:
+	case NumberTypeImpl_, DecimalType_, BitType_, YearType_, SystemBoolType_:
 		return true
 	default:
 		return false

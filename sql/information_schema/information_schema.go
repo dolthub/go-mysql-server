@@ -384,7 +384,7 @@ var optimizerTraceSchema = Schema{
 	{Name: "QUERY", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 65535), Default: nil, Nullable: false, Source: OptimizerTraceTableName},
 	{Name: "TRACE", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 65535), Default: nil, Nullable: false, Source: OptimizerTraceTableName},
 	{Name: "MISSING_BYTES_BEYOND_MAX_MEM_SIZE", Type: types.Int32, Default: nil, Nullable: false, Source: OptimizerTraceTableName},
-	{Name: "INSUFFICIENT_PRIVILEGES", Type: MustCreateBitType(1), Default: nil, Nullable: false, Source: OptimizerTraceTableName},
+	{Name: "INSUFFICIENT_PRIVILEGES", Type: types.MustCreateBitType(1), Default: nil, Nullable: false, Source: OptimizerTraceTableName},
 }
 
 var parametersSchema = Schema{
@@ -496,7 +496,7 @@ var referentialConstraintsSchema = Schema{
 var resourceGroupsSchema = Schema{
 	{Name: "RESOURCE_GROUP_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ResourceGroupsTableName},
 	{Name: "RESOURCE_GROUP_TYPE", Type: types.MustCreateEnumType([]string{"SYSTEM", "USER"}, Collation_Default), Default: nil, Nullable: false, Source: ResourceGroupsTableName},
-	{Name: "RESOURCE_GROUP_ENABLE", Type: MustCreateBitType(1), Default: nil, Nullable: false, Source: ResourceGroupsTableName},
+	{Name: "RESOURCE_GROUP_ENABLE", Type: types.MustCreateBitType(1), Default: nil, Nullable: false, Source: ResourceGroupsTableName},
 	{Name: "VPCUS_IDS", Type: types.Blob, Default: nil, Nullable: true, Source: ResourceGroupsTableName},
 	{Name: "THREAD_PRIORITY", Type: types.Int32, Default: nil, Nullable: false, Source: ResourceGroupsTableName},
 }

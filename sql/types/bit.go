@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
@@ -43,7 +43,7 @@ var (
 // https://dev.mysql.com/doc/refman/8.0/en/bit-type.html
 // The type of the returned value is uint64.
 type BitType interface {
-	Type
+	sql.Type
 	NumberOfBits() uint8
 }
 
@@ -78,7 +78,7 @@ func (t BitType_) MaxTextResponseByteLength() uint32 {
 
 // Compare implements Type interface.
 func (t BitType_) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := types.CompareNulls(a, b); hasNulls {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
@@ -149,10 +149,10 @@ func (t BitType_) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(val.Decimal)
 	case decimal.Decimal:
 		val = val.Round(0)
-		if val.GreaterThan(types.dec_uint64_max) {
+		if val.GreaterThan(dec_uint64_max) {
 			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
-		if val.LessThan(types.dec_int64_min) {
+		if val.LessThan(dec_int64_min) {
 			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
 		value = uint64(val.IntPart())
@@ -164,7 +164,7 @@ func (t BitType_) Convert(v interface{}) (interface{}, error) {
 		}
 		value = binary.BigEndian.Uint64(append(make([]byte, 8-len(val)), val...))
 	default:
-		return nil, ErrInvalidType.New(t)
+		return nil, sql.ErrInvalidType.New(t)
 	}
 
 	if value > uint64(1<<t.numOfBits-1) {
@@ -183,7 +183,7 @@ func (t BitType_) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t BitType_) Equals(otherType Type) bool {
+func (t BitType_) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(BitType_); ok {
 		return t.numOfBits == ot.numOfBits
 	}
@@ -191,12 +191,12 @@ func (t BitType_) Equals(otherType Type) bool {
 }
 
 // Promote implements the Type interface.
-func (t BitType_) Promote() Type {
+func (t BitType_) Promote() sql.Type {
 	return promotedBitType
 }
 
 // SQL implements Type interface.
-func (t BitType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -213,7 +213,7 @@ func (t BitType_) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
 		data[i], data[j] = data[j], data[i]
 	}
-	val := types.AppendAndSliceBytes(dest, data)
+	val := AppendAndSliceBytes(dest, data)
 
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
 }

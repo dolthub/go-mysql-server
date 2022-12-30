@@ -232,7 +232,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, types.InternalDecimalType)
 		case v.Type() == sqltypes.Bit:
-			t := sql.MustCreateBitType(sql.BitTypeMaxBits)
+			t := types.MustCreateBitType(types.BitTypeMaxBits)
 			v, err := t.Convert(v.ToBytes())
 			if err != nil {
 				return nil, err

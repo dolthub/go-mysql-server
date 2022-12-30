@@ -189,7 +189,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 				return nil, err
 			}
 		}
-		return sql.CreateBitType(uint8(length))
+		return CreateBitType(uint8(length))
 	case "tinyblob":
 		return TinyBlob, nil
 	case "blob":

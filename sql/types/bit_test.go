@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
@@ -20,13 +20,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBitCompare(t *testing.T) {
 	tests := []struct {
-		typ         Type
+		typ         sql.Type
 		val1        interface{}
 		val2        interface{}
 		expectedCmp int
@@ -38,11 +39,11 @@ func TestBitCompare(t *testing.T) {
 		{MustCreateBitType(10), 0, true, -1},
 		{MustCreateBitType(64), false, 1, -1},
 		{MustCreateBitType(1), 1, 0, 1},
-		{MustCreateBitType(10), true, False, 1},
+		{MustCreateBitType(10), true, sql.False, 1},
 		{MustCreateBitType(64), 1, false, 1},
 		{MustCreateBitType(1), 1, 1, 0},
 		{MustCreateBitType(10), true, 1, 0},
-		{MustCreateBitType(64), True, true, 0},
+		{MustCreateBitType(64), sql.True, true, 0},
 		{MustCreateBitType(1), true, true, 0},
 		{MustCreateBitType(1), false, false, 0},
 		{MustCreateBitType(64), 0x12345de, 0xed54321, -1},
@@ -87,7 +88,7 @@ func TestBitCreate(t *testing.T) {
 
 func TestBitConvert(t *testing.T) {
 	tests := []struct {
-		typ         Type
+		typ         sql.Type
 		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
@@ -139,7 +140,7 @@ func TestBitConvert(t *testing.T) {
 
 func TestBitString(t *testing.T) {
 	tests := []struct {
-		typ         Type
+		typ         sql.Type
 		expectedStr string
 	}{
 		{MustCreateBitType(1), "bit(1)"},

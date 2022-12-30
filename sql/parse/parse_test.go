@@ -5280,7 +5280,7 @@ func TestParseColumnTypeString(t *testing.T) {
 		},
 		{
 			"BIT(31)",
-			sql.MustCreateBitType(31),
+			types.MustCreateBitType(31),
 		},
 		{
 			"TINYBLOB",
