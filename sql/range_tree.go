@@ -89,7 +89,7 @@ func GetColExprTypes(ranges []Range) []Type {
 	}
 	for i, t := range colExprTypes {
 		if t == nil {
-			colExprTypes[i] = types.Null
+			colExprTypes[i] = nil
 		}
 	}
 	return colExprTypes
