@@ -38,7 +38,7 @@ func NewInMemoryPersistedSessionWithValidationCallback(sess sql.Session, validat
 
 // PersistGlobal implements sql.PersistableSession
 func (s *InMemoryPersistedSession) PersistGlobal(sysVarName string, value interface{}) error {
-	sysVar, _, ok := sysvars.SystemVariables.GetGlobal(sysVarName)
+	sysVar, _, ok := variables.SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -52,7 +52,7 @@ func (s *InMemoryPersistedSession) PersistGlobal(sysVarName string, value interf
 
 // RemovePersistedGlobal implements sql.PersistableSession
 func (s *InMemoryPersistedSession) RemovePersistedGlobal(sysVarName string) error {
-	if _, _, ok := sysvars.SystemVariables.GetGlobal(sysVarName); !ok {
+	if _, _, ok := variables.SystemVariables.GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
 	delete(s.persistedGlobals, sysVarName)

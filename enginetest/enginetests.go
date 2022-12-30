@@ -5906,14 +5906,14 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
-			sysvars.InitSystemVariables()
+			variables.InitSystemVariables()
 			ctx := NewContext(harness)
 			ctx.Session = newPersistableSess(ctx)
 
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, nil, nil)
 
 			if tt.ExpectedGlobal != nil {
-				_, res, _ := sysvars.SystemVariables.GetGlobal("max_connections")
+				_, res, _ := variables.SystemVariables.GetGlobal("max_connections")
 				require.Equal(t, tt.ExpectedGlobal, res)
 			}
 
@@ -5933,7 +5933,7 @@ func TestValidateSession(t *testing.T, harness Harness, newSessFunc func(ctx *sq
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	sysvars.InitSystemVariables()
+	variables.InitSystemVariables()
 	ctx := NewContext(harness)
 	ctx.Session = newSessFunc(ctx)
 

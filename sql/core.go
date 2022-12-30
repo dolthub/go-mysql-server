@@ -370,3 +370,11 @@ func (s SystemVariableScope) String() string {
 	}
 }
 
+type SessionUserVariables interface {
+	SetUserVariable(ctx *Context, varName string, value interface{}) error
+	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
+}
+
+type UserVariableFactory func() SessionUserVariables
+
+var NewUserVariables UserVariableFactory

@@ -85,7 +85,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 
 	for _, test := range setTests {
 		t.Run(test.title, func(t *testing.T) {
-			sysvars.InitSystemVariables()
+			variables.InitSystemVariables()
 			sqlCtx, globals := newPersistedSqlContext()
 			s := NewSet(
 				[]sql.Expression{
@@ -104,7 +104,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 			res := globals[test.name]
 			assert.Equal(t, test.persistedCmp, res)
 
-			_, val, _ := sysvars.SystemVariables.GetGlobal(test.name)
+			_, val, _ := variables.SystemVariables.GetGlobal(test.name)
 			assert.Equal(t, test.globalCmp, val)
 		})
 	}

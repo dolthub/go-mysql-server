@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -210,7 +209,7 @@ type BaseSession struct {
 	currentDB        string
 	transactionDb    string
 	systemVars       map[string]interface{}
-	userVars         map[string]interface{}
+	userVars         SessionUserVariables
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
 	warnings         []*Warning
@@ -337,10 +336,7 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName
 
 // SetUserVariable implements the Session interface.
 func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interface{}) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.userVars[strings.ToLower(varName)] = value
-	return nil
+	return s.userVars.SetUserVariable(ctx, varName, value)
 }
 
 // GetSessionVariable implements the Session interface.
@@ -370,13 +366,7 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 
 // GetUserVariable implements the Session interface.
 func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, interface{}, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	val, ok := s.userVars[strings.ToLower(varName)]
-	if !ok {
-		return types.Null, nil, nil
-	}
-	return types.ApproximateTypeFromValue(val), val, nil
+	return s.userVars.GetUserVariable(ctx, varName)
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
@@ -672,7 +662,7 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		client:         client,
 		id:             id,
 		systemVars:     SystemVariables.NewSessionMap(),
-		userVars:       make(map[string]interface{}),
+		userVars:       NewUserVariables(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
 		mu:             sync.RWMutex{},
@@ -691,7 +681,7 @@ func NewBaseSession() *BaseSession {
 	return &BaseSession{
 		id:             atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:     SystemVariables.NewSessionMap(),
-		userVars:       make(map[string]interface{}),
+		userVars:       NewUserVariables(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
 		mu:             sync.RWMutex{},

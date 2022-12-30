@@ -56,7 +56,7 @@ func TestLoadFileBadDir(t *testing.T) {
 	// Set the secure_file_priv var but make it different than the file directory
 	vars := make(map[string]interface{})
 	vars["secure_file_priv"] = "/not/a/real/directory"
-	err = sysvars.SystemVariables.AssignValues(vars)
+	err = variables.SystemVariables.AssignValues(vars)
 	assert.NoError(t, err)
 
 	_, err = file.Write([]byte("my data"))
@@ -97,7 +97,7 @@ func TestLoadFile(t *testing.T) {
 	// Set the secure_file_priv var
 	vars := make(map[string]interface{})
 	vars["secure_file_priv"] = dir
-	err := sysvars.SystemVariables.AssignValues(vars)
+	err := variables.SystemVariables.AssignValues(vars)
 	assert.NoError(t, err)
 
 	for _, tt := range testCases {

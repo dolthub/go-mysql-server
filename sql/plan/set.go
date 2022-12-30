@@ -147,7 +147,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	}
 	switch sysVar.Scope {
 	case sql.SystemVariableScope_Global:
-		err = sysvars.SystemVariables.SetGlobal(sysVar.Name, val)
+		err = variables.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
@@ -165,7 +165,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-		err = sysvars.SystemVariables.SetGlobal(sysVar.Name, val)
+		err = variables.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}

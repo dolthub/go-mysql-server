@@ -116,7 +116,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 				case sqlparser.SetScope_None:
 					return sf, transform.SameTree, nil
 				case sqlparser.SetScope_Global:
-					_, _, ok = sysvars.SystemVariables.GetGlobal(varName)
+					_, _, ok = variables.SystemVariables.GetGlobal(varName)
 					if !ok {
 						return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New(varName)
 					}
@@ -186,7 +186,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		// So treat it as a naked system variable and see if it exists
 		if uc, ok := sf.Left.(*deferredColumn); ok {
 			varName := uc.String()
-			_, _, ok = sysvars.SystemVariables.GetGlobal(varName)
+			_, _, ok = variables.SystemVariables.GetGlobal(varName)
 			if !ok {
 				return sf, transform.SameTree, nil
 			}
@@ -230,7 +230,7 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 	case sqlparser.SetScope_None:
 		return nil, transform.SameTree, nil
 	case sqlparser.SetScope_Global:
-		_, _, ok := sysvars.SystemVariables.GetGlobal(varName)
+		_, _, ok := variables.SystemVariables.GetGlobal(varName)
 		if !ok {
 			return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New(varName)
 		}
@@ -291,7 +291,7 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		}
 		switch scope {
 		case sqlparser.SetScope_None, sqlparser.SetScope_Session, sqlparser.SetScope_Global:
-			_, value, ok := sysvars.SystemVariables.GetGlobal(varName)
+			_, value, ok := variables.SystemVariables.GetGlobal(varName)
 			if !ok {
 				return nil, sql.ErrUnknownSystemVariable.New(varName)
 			}

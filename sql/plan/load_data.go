@@ -152,7 +152,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var reader io.ReadCloser
 
 	if l.Local {
-		_, localInfile, ok := sysvars.SystemVariables.GetGlobal("local_infile")
+		_, localInfile, ok := variables.SystemVariables.GetGlobal("local_infile")
 		if !ok {
 			return nil, fmt.Errorf("error: local_infile variable was not found")
 		}
@@ -166,7 +166,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, err
 		}
 	} else {
-		_, dir, ok := sysvars.SystemVariables.GetGlobal("secure_file_priv")
+		_, dir, ok := variables.SystemVariables.GetGlobal("secure_file_priv")
 		if !ok {
 			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
 		}
