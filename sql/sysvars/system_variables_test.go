@@ -25,7 +25,7 @@ import (
 
 var newConn = sql.SystemVariable{
 	Name:    "max_connections",
-	Scope:   SystemVariableScope_Global,
+	Scope:   sql.SystemVariableScope_Global,
 	Dynamic: true,
 	Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 	Default: int64(1000),
@@ -33,7 +33,7 @@ var newConn = sql.SystemVariable{
 
 var newTimeout = sql.SystemVariable{
 	Name:    "net_write_timeout",
-	Scope:   SystemVariableScope_Both,
+	Scope:   sql.SystemVariableScope_Both,
 	Dynamic: true,
 	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
@@ -41,7 +41,7 @@ var newTimeout = sql.SystemVariable{
 
 var newUnknown = sql.SystemVariable{
 	Name:    "net_write_timeout",
-	Scope:   SystemVariableScope_Both,
+	Scope:   sql.SystemVariableScope_Both,
 	Dynamic: true,
 	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
@@ -70,14 +70,14 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			name: "bad type", // TODO: no checks to prevent incorrect types currently
 			persistedGlobals: []sql.SystemVariable{{
 				Name:    "max_connections",
-				Scope:   SystemVariableScope_Global,
+				Scope:   sql.SystemVariableScope_Global,
 				Dynamic: true,
 				Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 				Default: "1000",
 			}},
 			expectedCmp: []sql.SystemVariable{{
 				Name:    "max_connections",
-				Scope:   SystemVariableScope_Global,
+				Scope:   sql.SystemVariableScope_Global,
 				Dynamic: true,
 				Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 				Default: "1000",

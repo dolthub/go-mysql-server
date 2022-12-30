@@ -29,7 +29,7 @@ import (
 func TestConfigWithDefaults(t *testing.T) {
 	tests := []struct {
 		Name  string
-		Scope sysvars.SystemVariableScope
+		Scope sql.SystemVariableScope
 		Type  sql.SystemVariableType
 		ConfigField string
 		Default     interface{}
@@ -37,7 +37,7 @@ func TestConfigWithDefaults(t *testing.T) {
 	}{
 		{
 			Name:        "max_connections",
-			Scope:       sysvars.SystemVariableScope_Global,
+			Scope:       sql.SystemVariableScope_Global,
 			Type:        types.NewSystemIntType("max_connections", 1, 100000, false),
 			ConfigField: "MaxConnections",
 			Default:     int64(1000),
@@ -45,14 +45,14 @@ func TestConfigWithDefaults(t *testing.T) {
 		},
 		{
 			Name:        "net_write_timeout",
-			Scope:       sysvars.SystemVariableScope_Both,
+			Scope:       sql.SystemVariableScope_Both,
 			Type:        types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 			ConfigField: "ConnWriteTimeout",
 			Default:     int64(76),
 			ExpectedCmp: int64(76000000),
 		}, {
 			Name:        "net_read_timeout",
-			Scope:       sysvars.SystemVariableScope_Both,
+			Scope:       sql.SystemVariableScope_Both,
 			Type:        types.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
 			ConfigField: "ConnReadTimeout",
 			Default:     int64(67),

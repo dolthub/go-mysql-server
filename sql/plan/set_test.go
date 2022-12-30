@@ -71,16 +71,16 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 		title        string
 		name         string
 		value int
-		scope sysvars.SystemVariableScope
+		scope sql.SystemVariableScope
 		err   *errors.Kind
 		globalCmp    interface{}
 		persistedCmp interface{}
 	}{
-		{"persist var", "max_connections", 10, sysvars.SystemVariableScope_Persist, nil, int64(10), int64(10)},
-		{"persist only", "max_connections", 10, sysvars.SystemVariableScope_PersistOnly, nil, int64(151), int64(10)},
-		{"no persist", "auto_increment_increment", 3300, sysvars.SystemVariableScope_Global, nil, int64(3300), nil},
-		{"persist unknown variable", "nonexistant", 10, sysvars.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, nil, nil},
-		{"persist only unknown variable", "nonexistant", 10, sysvars.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, nil, nil},
+		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil, int64(10), int64(10)},
+		{"persist only", "max_connections", 10, sql.SystemVariableScope_PersistOnly, nil, int64(151), int64(10)},
+		{"no persist", "auto_increment_increment", 3300, sql.SystemVariableScope_Global, nil, int64(3300), nil},
+		{"persist unknown variable", "nonexistant", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, nil, nil},
+		{"persist only unknown variable", "nonexistant", 10, sql.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, nil, nil},
 	}
 
 	for _, test := range setTests {

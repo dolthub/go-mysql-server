@@ -146,17 +146,17 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		return err
 	}
 	switch sysVar.Scope {
-	case sysvars.SystemVariableScope_Global:
+	case sql.SystemVariableScope_Global:
 		err = sysvars.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
-	case sysvars.SystemVariableScope_Session:
+	case sql.SystemVariableScope_Session:
 		err = ctx.SetSessionVariable(ctx, sysVar.Name, val)
 		if err != nil {
 			return err
 		}
-	case sysvars.SystemVariableScope_Persist:
+	case sql.SystemVariableScope_Persist:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
 			return sql.ErrSessionDoesNotSupportPersistence.New()
@@ -169,7 +169,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-	case sysvars.SystemVariableScope_PersistOnly:
+	case sql.SystemVariableScope_PersistOnly:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
 			return sql.ErrSessionDoesNotSupportPersistence.New()
@@ -178,7 +178,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-	case sysvars.SystemVariableScope_ResetPersist:
+	case sql.SystemVariableScope_ResetPersist:
 		// TODO: add parser support for RESET PERSIST
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {

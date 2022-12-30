@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
@@ -323,7 +322,7 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 }
 
 func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName string, value interface{}) error {
-	if sysVar.Scope == sysvars.SystemVariableScope_Global {
+	if sysVar.Scope == SystemVariableScope_Global {
 		return ErrSystemVariableGlobalOnly.New(sysVarName)
 	}
 	convertedVal, err := sysVar.Type.Convert(value)

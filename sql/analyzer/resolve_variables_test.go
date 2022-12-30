@@ -19,7 +19,6 @@ import (
 	"math"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
@@ -43,8 +42,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sysvars.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sysvars.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -58,8 +57,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sysvars.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sysvars.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -73,8 +72,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_INCREMENT", sysvars.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_LIMIT", sysvars.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_INCREMENT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_LIMIT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -88,8 +87,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sysvars.SystemVariableScope_Session), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sysvars.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewArithmetic(lit(2), lit(3), "+")),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},
@@ -104,7 +103,7 @@ func TestResolveSetVariables(t *testing.T) {
 			expected: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sysvars.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},
@@ -135,7 +134,7 @@ func TestResolveBarewordSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sysvars.SystemVariableScope_Session), expression.NewLiteral("hello", types.LongText)),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), expression.NewLiteral("hello", types.LongText)),
 				},
 			),
 		},
@@ -173,7 +172,7 @@ func TestResolveColumnsSession(t *testing.T) {
 		[]sql.Expression{
 			expression.NewUserVarWithType("foo_bar", fooBarType),
 			expression.NewUserVar("bar_baz"),
-			expression.NewSystemVar("autocommit", sysvars.SystemVariableScope_Session),
+			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
 			expression.NewUserVar("myvar"),
 		},
 		plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),

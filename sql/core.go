@@ -19,8 +19,6 @@ import (
 	"math"
 	"strconv"
 	"time"
-
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
 )
 
 // Expression is a combination of one or more SQL expressions.
@@ -321,7 +319,7 @@ type SystemVariable struct {
 	// Name is the name of the system variable.
 	Name string
 	// Scope defines the scope of the system variable, which is either Global, Session, or Both.
-	Scope sysvars.SystemVariableScope
+	Scope SystemVariableScope
 	// Dynamic defines whether the variable may be written to during runtime. Variables with this set to `false` will
 	// return an error if a user attempts to set a value.
 	Dynamic bool
@@ -332,5 +330,43 @@ type SystemVariable struct {
 	Type Type
 	// Default defines the default value of the system variable.
 	Default interface{}
+}
+
+// SystemVariableScope represents the scope of a system variable.
+type SystemVariableScope byte
+
+const (
+	// SystemVariableScope_Global is set when the system variable exists only in the global context.
+	SystemVariableScope_Global SystemVariableScope = iota
+	// SystemVariableScope_Session is set when the system variable exists only in the session context.
+	SystemVariableScope_Session
+	// SystemVariableScope_Both is set when the system variable exists in both the global and session contexts.
+	SystemVariableScope_Both
+	// SystemVariableScope_Persist is set when the system variable is global and persisted.
+	SystemVariableScope_Persist
+	// SystemVariableScope_PersistOnly is set when the system variable is persisted outside of server context.
+	SystemVariableScope_PersistOnly
+	// SystemVariableScope_ResetPersist is used to remove a persisted variable
+	SystemVariableScope_ResetPersist
+)
+
+// String returns the scope as an uppercase string.
+func (s SystemVariableScope) String() string {
+	switch s {
+	case SystemVariableScope_Global:
+		return "GLOBAL"
+	case SystemVariableScope_Session:
+		return "SESSION"
+	case SystemVariableScope_Persist:
+		return "GLOBAL, PERSIST"
+	case SystemVariableScope_PersistOnly:
+		return "PERSIST"
+	case SystemVariableScope_ResetPersist:
+		return "RESET PERSIST"
+	case SystemVariableScope_Both:
+		return "GLOBAL, SESSION"
+	default:
+		return "UNKNOWN_SYSTEM_SCOPE"
+	}
 }
 

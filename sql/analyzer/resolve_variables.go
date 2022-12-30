@@ -120,7 +120,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 					if !ok {
 						return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New(varName)
 					}
-					setExpr = expression.NewSystemVar(varName, sysvars.SystemVariableScope_Global)
+					setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Global)
 				case sqlparser.SetScope_Persist:
 					return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("PERSIST")
 				case sqlparser.SetScope_PersistOnly:
@@ -130,7 +130,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
-					setExpr = expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session)
+					setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Session)
 				case sqlparser.SetScope_User:
 					setExpr = expression.NewUserVar(varName)
 				default: // shouldn't happen
@@ -200,7 +200,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				}
 			}
 
-			e, err = sf.WithChildren(expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session), setVal)
+			e, err = sf.WithChildren(expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -235,7 +235,7 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 			return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New(varName)
 		}
 		a.Log("resolved column %s to global system variable", col)
-		return expression.NewSystemVar(varName, sysvars.SystemVariableScope_Global), transform.NewTree, nil
+		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global), transform.NewTree, nil
 	case sqlparser.SetScope_Persist:
 		return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("PERSIST")
 	case sqlparser.SetScope_PersistOnly:
@@ -254,21 +254,21 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 		// implement.
 		switch strings.ToLower(varName) {
 		case "character_set_database":
-			name := expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session).String()
+			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				charsetStr := plan.GetDatabaseCollation(ctx, db).CharacterSet().String()
 				return expression.NewNamedLiteral(name, charsetStr, types.Text), transform.NewTree, nil
 			}
 			return expression.NewNamedLiteral(name, sql.Collation_Default.CharacterSet().String(), types.Text), transform.NewTree, nil
 		case "collation_database":
-			name := expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session).String()
+			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				collationStr := plan.GetDatabaseCollation(ctx, db).String()
 				return expression.NewNamedLiteral(name, collationStr, types.Text), transform.NewTree, nil
 			}
 			return expression.NewNamedLiteral(name, sql.Collation_Default.String(), types.Text), transform.NewTree, nil
 		default:
-			return expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session), transform.NewTree, nil
+			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), transform.NewTree, nil
 		}
 	case sqlparser.SetScope_User:
 		t, _, err := ctx.GetUserVariable(ctx, varName)

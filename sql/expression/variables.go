@@ -26,11 +26,11 @@ import (
 // hand side of a SET statement for a system variable.
 type SystemVar struct {
 	Name  string
-	Scope sysvars.SystemVariableScope
+	Scope sql.SystemVariableScope
 }
 
 // NewSystemVar creates a new SystemVar expression.
-func NewSystemVar(name string, scope sysvars.SystemVariableScope) *SystemVar {
+func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
 	return &SystemVar{name, scope}
 }
 
@@ -40,13 +40,13 @@ func (v *SystemVar) Children() []sql.Expression { return nil }
 // Eval implements the sql.Expression interface.
 func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	switch v.Scope {
-	case sysvars.SystemVariableScope_Session:
+	case sql.SystemVariableScope_Session:
 		val, err := ctx.GetSessionVariable(ctx, v.Name)
 		if err != nil {
 			return nil, err
 		}
 		return val, nil
-	case sysvars.SystemVariableScope_Global:
+	case sql.SystemVariableScope_Global:
 		_, val, ok := sysvars.SystemVariables.GetGlobal(v.Name)
 		if !ok {
 			return nil, sql.ErrUnknownSystemVariable.New(v.Name)
@@ -74,9 +74,9 @@ func (v *SystemVar) Resolved() bool { return true }
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
 	switch v.Scope {
-	case sysvars.SystemVariableScope_Session:
+	case sql.SystemVariableScope_Session:
 		return fmt.Sprintf("@@SESSION.%s", v.Name)
-	case sysvars.SystemVariableScope_Global:
+	case sql.SystemVariableScope_Global:
 		return fmt.Sprintf("@@GLOBAL.%s", v.Name)
 	default: // should never happen
 		return fmt.Sprintf("@@UNKNOWN(%v).%s", v.Scope, v.Name)

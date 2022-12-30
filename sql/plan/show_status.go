@@ -84,8 +84,8 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
 
-		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sysvars.SystemVariableScope_Global ||
-			s.modifier == ShowStatusModifier_Global && sysVar.Scope == sysvars.SystemVariableScope_Session {
+		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
+			s.modifier == ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
 			continue
 		}
 
