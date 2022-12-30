@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/vitess/go/mysql"
 	"go.opentelemetry.io/otel/trace"
 
@@ -68,21 +69,21 @@ type Config struct {
 }
 
 func (c Config) NewConfig() (Config, error) {
-	if _, val, ok := sql.SystemVariables.GetGlobal("max_connections"); ok {
+	if _, val, ok := sysvars.SystemVariables.GetGlobal("max_connections"); ok {
 		mc, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("max_connections")
 		}
 		c.MaxConnections = uint64(mc)
 	}
-	if _, val, ok := sql.SystemVariables.GetGlobal("net_write_timeout"); ok {
+	if _, val, ok := sysvars.SystemVariables.GetGlobal("net_write_timeout"); ok {
 		timeout, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_write_timeout")
 		}
 		c.ConnWriteTimeout = time.Duration(timeout) * time.Millisecond
 	}
-	if _, val, ok := sql.SystemVariables.GetGlobal("net_read_timeout"); ok {
+	if _, val, ok := sysvars.SystemVariables.GetGlobal("net_read_timeout"); ok {
 		timeout, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_read_timeout")

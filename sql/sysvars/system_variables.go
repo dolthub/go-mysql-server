@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package sysvars
 
 import (
 	"math"
@@ -20,8 +20,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+//TODO: Add from the following sources because MySQL likes to not have every variable on a single page:
+// https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-options-variables.html
+// There's also this page, which shows that a TON of variables are still missing ):
+// https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
 
 // SystemVariableScope represents the scope of a system variable.
 type SystemVariableScope byte
@@ -77,7 +83,7 @@ type SystemVariable struct {
 	// https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html#optimizer-hints-set-var
 	SetVarHintApplies bool
 	// Type defines the type of the system variable. This may be a special type not accessible to standard MySQL operations.
-	Type Type
+	Type sql.Type
 	// Default defines the default value of the system variable.
 	Default interface{}
 }
@@ -115,7 +121,7 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		varName = strings.ToLower(varName)
 		sysVar, ok := systemVars[varName]
 		if !ok {
-			return ErrUnknownSystemVariable.New(varName)
+			return sql.ErrUnknownSystemVariable.New(varName)
 		}
 		convertedVal, err := sysVar.Type.Convert(val)
 		if err != nil {
@@ -152,7 +158,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (SystemVariable, interfa
 	}
 	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
-	if sysType, ok := v.Type.(SetType); ok {
+	if sysType, ok := v.Type.(sql.SetType); ok {
 		if sv, ok := sysVal.(uint64); ok {
 			var err error
 			sysVal, err = sysType.BitsToString(sv)
@@ -175,13 +181,13 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	name = strings.ToLower(name)
 	sysVar, ok := systemVars[name]
 	if !ok {
-		return ErrUnknownSystemVariable.New(name)
+		return sql.ErrUnknownSystemVariable.New(name)
 	}
 	if sysVar.Scope == SystemVariableScope_Session {
-		return ErrSystemVariableSessionOnly.New(name)
+		return sql.ErrSystemVariableSessionOnly.New(name)
 	}
 	if !sysVar.Dynamic {
-		return ErrSystemVariableReadOnly.New(name)
+		return sql.ErrSystemVariableReadOnly.New(name)
 	}
 	convertedVal, err := sysVar.Type.Convert(val)
 	if err != nil {
@@ -202,11 +208,6 @@ func InitSystemVariables() {
 func init() {
 	InitSystemVariables()
 }
-
-//TODO: Add from the following sources because MySQL likes to not have every variable on a single page:
-// https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-options-variables.html
-// There's also this page, which shows that a TON of variables are still missing ):
-// https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
@@ -381,7 +382,7 @@ var systemVars = map[string]SystemVariable{
 		Type:              types.NewSystemIntType("back_log", 1, 65535, true),
 		Default:           int64(-1),
 	},
-	//TODO: add to dolt
+	// TODO: add to dolt
 	"basedir": {
 		Name:              "basedir",
 		Scope:             SystemVariableScope_Global,
@@ -468,7 +469,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_client"),
-		Default:           Collation_Default.CharacterSet().String(),
+		Default:           sql.Collation_Default.CharacterSet().String(),
 	},
 	"character_set_connection": {
 		Name:              "character_set_connection",
@@ -476,7 +477,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_connection"),
-		Default:           Collation_Default.CharacterSet().String(),
+		Default:           sql.Collation_Default.CharacterSet().String(),
 	},
 	"character_set_database": {
 		Name:              "character_set_database",
@@ -484,7 +485,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_database"),
-		Default:           Collation_Default.CharacterSet().String(),
+		Default:           sql.Collation_Default.CharacterSet().String(),
 	},
 	"character_set_filesystem": {
 		Name:              "character_set_filesystem",
@@ -500,7 +501,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_results"),
-		Default:           Collation_Default.CharacterSet().String(),
+		Default:           sql.Collation_Default.CharacterSet().String(),
 	},
 	"character_set_server": {
 		Name:              "character_set_server",
@@ -508,7 +509,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_server"),
-		Default:           Collation_Default.CharacterSet().String(),
+		Default:           sql.Collation_Default.CharacterSet().String(),
 	},
 	"character_set_system": {
 		Name:              "character_set_system",
@@ -516,7 +517,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_system"),
-		Default:           Collation_Default.CharacterSet().String(),
+		Default:           sql.Collation_Default.CharacterSet().String(),
 	},
 	"character_sets_dir": {
 		Name:              "character_sets_dir",
@@ -540,7 +541,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_connection"),
-		Default:           Collation_Default.String(),
+		Default:           sql.Collation_Default.String(),
 	},
 	"collation_database": {
 		Name:              "collation_database",
@@ -548,7 +549,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_database"),
-		Default:           Collation_Default.String(),
+		Default:           sql.Collation_Default.String(),
 	},
 	"collation_server": {
 		Name:              "collation_server",
@@ -556,7 +557,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_server"),
-		Default:           Collation_Default.String(),
+		Default:           sql.Collation_Default.String(),
 	},
 	"completion_type": {
 		Name:              "completion_type",
@@ -1702,15 +1703,15 @@ var systemVars = map[string]SystemVariable{
 		Type:              types.NewSystemIntType("optimizer_search_depth", 0, 62, false),
 		Default:           int64(62),
 	},
-	//TODO: add proper support for this
-	//"optimizer_switch": {
+	// TODO: add proper support for this
+	// "optimizer_switch": {
 	//	Name: "optimizer_switch",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
 	//	SetVarHintApplies: true,
 	//	Type: NewSystemSetType("optimizer_switch"),
 	//	Default: "",
-	//},
+	// },
 	"optimizer_trace": {
 		Name:              "optimizer_trace",
 		Scope:             SystemVariableScope_Both,
@@ -1903,15 +1904,15 @@ var systemVars = map[string]SystemVariable{
 		Type:              types.NewSystemIntType("pseudo_thread_id", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	//TODO: implement block sizes
-	//"query_alloc_block_size": {
+	// TODO: implement block sizes
+	// "query_alloc_block_size": {
 	//	Name: "query_alloc_block_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemIntType("query_alloc_block_size", 1024, 4294967295, false),
 	//	Default: int64(8192),
-	//},
+	// },
 	"query_cache_size": {
 		Name:              "query_cache_size",
 		Scope:             SystemVariableScope_Global,
@@ -1928,14 +1929,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              types.NewSystemEnumType("query_cache_type", "OFF", "ON", "DEMAND"),
 		Default:           "OFF",
 	},
-	//"query_prealloc_size": {
+	// "query_prealloc_size": {
 	//	Name: "query_prealloc_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemUintType("query_prealloc_size", 8192, 18446744073709551615),
 	//	Default: uint64(8192),
-	//},
+	// },
 	"rand_seed1": {
 		Name:              "rand_seed1",
 		Scope:             SystemVariableScope_Session,
@@ -1944,15 +1945,15 @@ var systemVars = map[string]SystemVariable{
 		Type:              types.NewSystemIntType("rand_seed1", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	//TODO: implement block sizes
-	//"range_alloc_block_size": {
+	// TODO: implement block sizes
+	// "range_alloc_block_size": {
 	//	Name: "range_alloc_block_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
 	//	SetVarHintApplies: true,
 	//	Type: NewSystemUintType("range_alloc_block_size", 4096, 18446744073709547520),
 	//	Default: uint64(4096),
-	//},
+	// },
 	"range_optimizer_max_mem_size": {
 		Name:              "range_optimizer_max_mem_size",
 		Scope:             SystemVariableScope_Both,
@@ -2617,15 +2618,15 @@ var systemVars = map[string]SystemVariable{
 		Type:              types.NewSystemIntType("thread_pool_stall_limit", 4, 600, false),
 		Default:           int64(6),
 	},
-	//TODO: implement block sizes
-	//"thread_stack": {
+	// TODO: implement block sizes
+	// "thread_stack": {
 	//	Name: "thread_stack",
 	//	Scope: SystemVariableScope_Global,
 	//	Dynamic: false,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemUintType("thread_stack", 131072, 18446744073709551615),
 	//	Default: uint64(286720),
-	//},
+	// },
 	"time_zone": {
 		Name:              "time_zone",
 		Scope:             SystemVariableScope_Both,
@@ -2634,7 +2635,7 @@ var systemVars = map[string]SystemVariable{
 		Type:              types.NewSystemStringType("time_zone"),
 		Default:           "SYSTEM",
 	},
-	//TODO: this needs to utilize a function as the value is not static
+	// TODO: this needs to utilize a function as the value is not static
 	"timestamp": {
 		Name:              "timestamp",
 		Scope:             SystemVariableScope_Session,
@@ -2673,17 +2674,17 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("tmpdir"),
-		Default:           GetTmpdirSessionVar(),
+		Default:           sql.GetTmpdirSessionVar(),
 	},
-	//TODO: implement block sizes
-	//"transaction_alloc_block_size": {
+	// TODO: implement block sizes
+	// "transaction_alloc_block_size": {
 	//	Name: "transaction_alloc_block_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemIntType("transaction_alloc_block_size", 1024, 131072, false),
 	//	Default: int64(8192),
-	//},
+	// },
 	"transaction_isolation": {
 		Name:              "transaction_isolation",
 		Scope:             SystemVariableScope_Both,

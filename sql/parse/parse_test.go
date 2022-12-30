@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -2975,7 +2976,7 @@ CREATE TABLE t2
 			input: `SET @@session.autocommit=1, foo="true"`,
 			plan: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session), expression.NewLiteral(int8(1), types.Int8)),
+					expression.NewSetField(expression.NewSystemVar("autocommit", sysvars.SystemVariableScope_Session), expression.NewLiteral(int8(1), types.Int8)),
 					expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("true", types.LongText)),
 				},
 			),
@@ -2984,8 +2985,8 @@ CREATE TABLE t2
 			input: `SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`,
 			plan: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("NET_READ_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), types.Int16)),
-					expression.NewSetField(expression.NewSystemVar("NET_WRITE_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), types.Int16)),
+					expression.NewSetField(expression.NewSystemVar("NET_READ_TIMEOUT", sysvars.SystemVariableScope_Session), expression.NewLiteral(int16(700), types.Int16)),
+					expression.NewSetField(expression.NewSystemVar("NET_WRITE_TIMEOUT", sysvars.SystemVariableScope_Session), expression.NewLiteral(int16(700), types.Int16)),
 				},
 			),
 		},
@@ -3001,7 +3002,7 @@ CREATE TABLE t2
 			input: `SET @@sql_select_limit=default`,
 			plan: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewDefaultColumn("")),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sysvars.SystemVariableScope_Session), expression.NewDefaultColumn("")),
 				},
 			),
 		},

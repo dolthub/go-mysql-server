@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -145,17 +146,17 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		return err
 	}
 	switch sysVar.Scope {
-	case sql.SystemVariableScope_Global:
-		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
+	case sysvars.SystemVariableScope_Global:
+		err = sysvars.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
-	case sql.SystemVariableScope_Session:
+	case sysvars.SystemVariableScope_Session:
 		err = ctx.SetSessionVariable(ctx, sysVar.Name, val)
 		if err != nil {
 			return err
 		}
-	case sql.SystemVariableScope_Persist:
+	case sysvars.SystemVariableScope_Persist:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
 			return sql.ErrSessionDoesNotSupportPersistence.New()
@@ -164,11 +165,11 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
+		err = sysvars.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
-	case sql.SystemVariableScope_PersistOnly:
+	case sysvars.SystemVariableScope_PersistOnly:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
 			return sql.ErrSessionDoesNotSupportPersistence.New()
@@ -177,7 +178,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-	case sql.SystemVariableScope_ResetPersist:
+	case sysvars.SystemVariableScope_ResetPersist:
 		// TODO: add parser support for RESET PERSIST
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {

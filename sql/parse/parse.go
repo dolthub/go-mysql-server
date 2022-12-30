@@ -24,6 +24,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -4048,9 +4049,9 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Exp
 	for i, setExpr := range e {
 		if expr, ok := setExpr.Expr.(*sqlparser.SQLVal); ok && strings.ToLower(setExpr.Name.String()) == "transaction" &&
 			(setExpr.Scope == sqlparser.SetScope_Global || setExpr.Scope == sqlparser.SetScope_Session || string(setExpr.Scope) == "") {
-			scope := sql.SystemVariableScope_Session
+			scope := sysvars.SystemVariableScope_Session
 			if setExpr.Scope == sqlparser.SetScope_Global {
-				scope = sql.SystemVariableScope_Global
+				scope = sysvars.SystemVariableScope_Global
 			}
 			switch strings.ToLower(expr.String()) {
 			case "'isolation level repeatable read'":
@@ -4092,20 +4093,20 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Exp
 			}
 			res[i] = expression.NewSetField(colName, innerExpr)
 		case sqlparser.SetScope_Global:
-			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Global)
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sysvars.SystemVariableScope_Global)
 			res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_Persist:
-			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Persist)
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sysvars.SystemVariableScope_Persist)
 			res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_PersistOnly:
-			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_PersistOnly)
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sysvars.SystemVariableScope_PersistOnly)
 			res[i] = expression.NewSetField(varToSet, innerExpr)
 			// TODO reset persist
 		//case sqlparser.SetScope_ResetPersist:
 		//	varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_ResetPersist)
 		//	res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_Session:
-			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Session)
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sysvars.SystemVariableScope_Session)
 			res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_User:
 			varToSet := expression.NewUserVar(setExpr.Name.String())

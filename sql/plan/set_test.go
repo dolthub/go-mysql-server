@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
@@ -69,22 +70,22 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 	setTests := []struct {
 		title        string
 		name         string
-		value        int
-		scope        sql.SystemVariableScope
-		err          *errors.Kind
+		value int
+		scope sysvars.SystemVariableScope
+		err   *errors.Kind
 		globalCmp    interface{}
 		persistedCmp interface{}
 	}{
-		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil, int64(10), int64(10)},
-		{"persist only", "max_connections", 10, sql.SystemVariableScope_PersistOnly, nil, int64(151), int64(10)},
-		{"no persist", "auto_increment_increment", 3300, sql.SystemVariableScope_Global, nil, int64(3300), nil},
-		{"persist unknown variable", "nonexistant", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, nil, nil},
-		{"persist only unknown variable", "nonexistant", 10, sql.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, nil, nil},
+		{"persist var", "max_connections", 10, sysvars.SystemVariableScope_Persist, nil, int64(10), int64(10)},
+		{"persist only", "max_connections", 10, sysvars.SystemVariableScope_PersistOnly, nil, int64(151), int64(10)},
+		{"no persist", "auto_increment_increment", 3300, sysvars.SystemVariableScope_Global, nil, int64(3300), nil},
+		{"persist unknown variable", "nonexistant", 10, sysvars.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, nil, nil},
+		{"persist only unknown variable", "nonexistant", 10, sysvars.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, nil, nil},
 	}
 
 	for _, test := range setTests {
 		t.Run(test.title, func(t *testing.T) {
-			sql.InitSystemVariables()
+			sysvars.InitSystemVariables()
 			sqlCtx, globals := newPersistedSqlContext()
 			s := NewSet(
 				[]sql.Expression{
@@ -103,7 +104,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 			res := globals[test.name]
 			assert.Equal(t, test.persistedCmp, res)
 
-			_, val, _ := sql.SystemVariables.GetGlobal(test.name)
+			_, val, _ := sysvars.SystemVariables.GetGlobal(test.name)
 			assert.Equal(t, test.globalCmp, val)
 		})
 	}

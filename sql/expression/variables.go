@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -25,11 +26,11 @@ import (
 // hand side of a SET statement for a system variable.
 type SystemVar struct {
 	Name  string
-	Scope sql.SystemVariableScope
+	Scope sysvars.SystemVariableScope
 }
 
 // NewSystemVar creates a new SystemVar expression.
-func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
+func NewSystemVar(name string, scope sysvars.SystemVariableScope) *SystemVar {
 	return &SystemVar{name, scope}
 }
 
@@ -39,14 +40,14 @@ func (v *SystemVar) Children() []sql.Expression { return nil }
 // Eval implements the sql.Expression interface.
 func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	switch v.Scope {
-	case sql.SystemVariableScope_Session:
+	case sysvars.SystemVariableScope_Session:
 		val, err := ctx.GetSessionVariable(ctx, v.Name)
 		if err != nil {
 			return nil, err
 		}
 		return val, nil
-	case sql.SystemVariableScope_Global:
-		_, val, ok := sql.SystemVariables.GetGlobal(v.Name)
+	case sysvars.SystemVariableScope_Global:
+		_, val, ok := sysvars.SystemVariables.GetGlobal(v.Name)
 		if !ok {
 			return nil, sql.ErrUnknownSystemVariable.New(v.Name)
 		}
@@ -58,7 +59,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type() sql.Type {
-	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
+	if sysVar, _, ok := sysvars.SystemVariables.GetGlobal(v.Name); ok {
 		return sysVar.Type
 	}
 	return types.Null
@@ -73,9 +74,9 @@ func (v *SystemVar) Resolved() bool { return true }
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
 	switch v.Scope {
-	case sql.SystemVariableScope_Session:
+	case sysvars.SystemVariableScope_Session:
 		return fmt.Sprintf("@@SESSION.%s", v.Name)
-	case sql.SystemVariableScope_Global:
+	case sysvars.SystemVariableScope_Global:
 		return fmt.Sprintf("@@GLOBAL.%s", v.Name)
 	default: // should never happen
 		return fmt.Sprintf("@@UNKNOWN(%v).%s", v.Scope, v.Name)

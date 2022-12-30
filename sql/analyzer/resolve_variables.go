@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -115,11 +116,11 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 				case sqlparser.SetScope_None:
 					return sf, transform.SameTree, nil
 				case sqlparser.SetScope_Global:
-					_, _, ok = sql.SystemVariables.GetGlobal(varName)
+					_, _, ok = sysvars.SystemVariables.GetGlobal(varName)
 					if !ok {
 						return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New(varName)
 					}
-					setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Global)
+					setExpr = expression.NewSystemVar(varName, sysvars.SystemVariableScope_Global)
 				case sqlparser.SetScope_Persist:
 					return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("PERSIST")
 				case sqlparser.SetScope_PersistOnly:
@@ -129,7 +130,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
-					setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Session)
+					setExpr = expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session)
 				case sqlparser.SetScope_User:
 					setExpr = expression.NewUserVar(varName)
 				default: // shouldn't happen
@@ -185,7 +186,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		// So treat it as a naked system variable and see if it exists
 		if uc, ok := sf.Left.(*deferredColumn); ok {
 			varName := uc.String()
-			_, _, ok = sql.SystemVariables.GetGlobal(varName)
+			_, _, ok = sysvars.SystemVariables.GetGlobal(varName)
 			if !ok {
 				return sf, transform.SameTree, nil
 			}
@@ -199,7 +200,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				}
 			}
 
-			e, err = sf.WithChildren(expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
+			e, err = sf.WithChildren(expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session), setVal)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -229,12 +230,12 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 	case sqlparser.SetScope_None:
 		return nil, transform.SameTree, nil
 	case sqlparser.SetScope_Global:
-		_, _, ok := sql.SystemVariables.GetGlobal(varName)
+		_, _, ok := sysvars.SystemVariables.GetGlobal(varName)
 		if !ok {
 			return nil, transform.SameTree, sql.ErrUnknownSystemVariable.New(varName)
 		}
 		a.Log("resolved column %s to global system variable", col)
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global), transform.NewTree, nil
+		return expression.NewSystemVar(varName, sysvars.SystemVariableScope_Global), transform.NewTree, nil
 	case sqlparser.SetScope_Persist:
 		return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("PERSIST")
 	case sqlparser.SetScope_PersistOnly:
@@ -253,21 +254,21 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 		// implement.
 		switch strings.ToLower(varName) {
 		case "character_set_database":
-			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
+			name := expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				charsetStr := plan.GetDatabaseCollation(ctx, db).CharacterSet().String()
 				return expression.NewNamedLiteral(name, charsetStr, types.Text), transform.NewTree, nil
 			}
 			return expression.NewNamedLiteral(name, sql.Collation_Default.CharacterSet().String(), types.Text), transform.NewTree, nil
 		case "collation_database":
-			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
+			name := expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				collationStr := plan.GetDatabaseCollation(ctx, db).String()
 				return expression.NewNamedLiteral(name, collationStr, types.Text), transform.NewTree, nil
 			}
 			return expression.NewNamedLiteral(name, sql.Collation_Default.String(), types.Text), transform.NewTree, nil
 		default:
-			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), transform.NewTree, nil
+			return expression.NewSystemVar(varName, sysvars.SystemVariableScope_Session), transform.NewTree, nil
 		}
 	case sqlparser.SetScope_User:
 		t, _, err := ctx.GetUserVariable(ctx, varName)
@@ -290,7 +291,7 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		}
 		switch scope {
 		case sqlparser.SetScope_None, sqlparser.SetScope_Session, sqlparser.SetScope_Global:
-			_, value, ok := sql.SystemVariables.GetGlobal(varName)
+			_, value, ok := sysvars.SystemVariables.GetGlobal(varName)
 			if !ok {
 				return nil, sql.ErrUnknownSystemVariable.New(varName)
 			}
