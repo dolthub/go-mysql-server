@@ -58,7 +58,7 @@ func (ib *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (ib *IsNull) String() string {
-	return fmt.Sprintf("ISNULL(%s)", ib.Child)
+	return fmt.Sprintf("isnull(%s)", ib.Child)
 }
 
 // WithChildren implements the Expression interface.

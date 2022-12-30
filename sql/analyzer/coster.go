@@ -23,6 +23,7 @@ import (
 
 type coster struct {
 	ctx *sql.Context
+	s   sql.StatsReadWriter
 }
 
 func (c *coster) costRel(n relExpr) (float64, error) {
@@ -79,15 +80,14 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 	if w, ok := t.(sql.TableWrapper); ok {
 		t = w.Underlying()
 	}
-	tab, ok := t.(sql.StatisticsTable)
-	if !ok {
-		return 1000, nil
-	}
-	stats, err := tab.Statistics(c.ctx)
+
+	db := c.ctx.GetCurrentDatabase()
+	card, err := c.s.RowCount(c.ctx, db, t.Name())
 	if err != nil {
-		return float64(0), err
+		// TODO: better estimates for derived tables
+		return float64(1000), nil
 	}
-	return float64(stats.RowCount()), nil
+	return float64(card), nil
 }
 
 func (c *coster) costValues(v *values) (float64, error) {
@@ -121,6 +121,10 @@ func (c *coster) costFullOuterJoin(n *fullOuterJoin) (float64, error) {
 }
 
 func (c *coster) costHashJoin(n *hashJoin) (float64, error) {
+	if n.op.IsPartial() {
+		l, err := c.costPartial(n.left, n.right)
+		return l * 0.9, err
+	}
 	l := n.left.cost
 	r := n.right.cost
 	buildProbe := r / 2
@@ -162,26 +166,19 @@ func lookupMultiplier(l *lookup, filterCnt int) float64 {
 }
 
 func (c *coster) costAntiJoin(n *antiJoin) (float64, error) {
-	l, err := c.costRel(n.left.best)
-	if err != nil {
-		return float64(0), nil
-	}
-	r, err := c.costRel(n.right.best)
-	if err != nil {
-		return float64(0), nil
-	}
-	if r > l {
-		return r, nil
-	}
-	return l, nil
+	return c.costPartial(n.left, n.right)
 }
 
 func (c *coster) costSemiJoin(n *semiJoin) (float64, error) {
-	l, err := c.costRel(n.left.best)
+	return c.costPartial(n.left, n.right)
+}
+
+func (c *coster) costPartial(left, right *exprGroup) (float64, error) {
+	l, err := c.costRel(left.best)
 	if err != nil {
 		return float64(0), nil
 	}
-	r, err := c.costRel(n.right.best)
+	r, err := c.costRel(right.best)
 	if err != nil {
 		return float64(0), nil
 	}

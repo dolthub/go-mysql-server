@@ -27,7 +27,7 @@ type ForeignKeyHandler struct {
 	Sch          sql.Schema
 	OriginalNode sql.Node
 	Editor       *ForeignKeyEditor
-	AllUpdaters  []sql.ForeignKeyUpdater
+	AllUpdaters  []sql.ForeignKeyEditor
 }
 
 var _ sql.Node = (*ForeignKeyHandler)(nil)

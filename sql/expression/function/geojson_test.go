@@ -470,6 +470,43 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		g := sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{point, line, poly, mpoint, mline, mpoly, gColl}}
 		require.Equal(g, v)
 	})
+	t.Run("convert feature point from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Feature","geometry":{"type":"Point", "coordinates":[1,2]},"properties":{}}`, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4326, X: 1, Y: 2}, v)
+	})
+	t.Run("convert feature no props from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Feature","geometry":{"type":"Point", "coordinates":[1,2]}}`, sql.Blob))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+	t.Run("convert feature no geometry from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Feature","properties":{}}`, sql.Blob))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+	t.Run("convert feature collection of points from geojson", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point", "coordinates":[1,2]},"properties":{}}],"properties":{}}`, sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+
+		point := sql.Point{SRID: 4326, X: 1, Y: 2}
+		g := sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{point}}
+		require.Equal(g, v)
+	})
 	t.Run("reject dimensions greater than 2 with flag 1", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(

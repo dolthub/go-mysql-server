@@ -132,8 +132,7 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 				t.Skip()
 			}
 		}
-		_, _, err := runQueryPreparedWithCtx(t, ctx, e, statement)
-		require.NoError(t, err)
+		RunQueryWithContext(t, e, harness, ctx, statement)
 		validateEngine(t, ctx, harness, e)
 	}
 
@@ -160,11 +159,11 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 
 		if assertion.ExpectedErr != nil {
 			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+				AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
 			})
 		} else if assertion.ExpectedErrStr != "" {
 			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+				AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 			})
 		} else if assertion.ExpectedWarning != 0 {
 			t.Run(assertion.Query, func(t *testing.T) {
@@ -229,6 +228,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
+// TODO: this should take en engine
 func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -244,6 +244,21 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 	})
 }
 
+// TestQuery runs a query on the engine given and asserts that results are as expected.
+func TestQuery2(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
+	t.Run(q, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(q) {
+				t.Skipf("Skipping query %s", q)
+			}
+		}
+
+		ctx := NewContext(harness)
+		TestQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings)
+	})
+}
+
+// TODO: collapse into TestQuery
 func TestQueryWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -387,7 +402,7 @@ func runQueryPreparedWithCtx(
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return n.WithSource(newSource), transform.SameTree, nil
+			return n.WithSource(newSource), transform.NewTree, nil
 		default:
 			return transform.NodeExprs(n, insertBindings)
 		}
@@ -402,7 +417,7 @@ func runQueryPreparedWithCtx(
 	if err != nil {
 		return nil, nil, err
 	}
-	e.CachePreparedStmt(ctx, prepared, q)
+	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), q, prepared)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, nil, bindVars)
 	if err != nil {
@@ -623,6 +638,27 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Co
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, sch, iter)
 	}
+	require.Error(t, err)
+	if expectedErrKind != nil {
+		err = sql.UnwrapError(err)
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+	}
+	// If there are multiple error strings then we only match against the first
+	if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
+	}
+	validateEngine(t, ctx, harness, e)
+}
+
+// AssertErrPrepared asserts that the given query returns an error during its execution, optionally specifying a type of error.
+func AssertErrPrepared(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	AssertErrPreparedWithCtx(t, e, harness, NewContext(harness), query, expectedErrKind, errStrs...)
+}
+
+// AssertErrPreparedWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
+func AssertErrPreparedWithCtx(t *testing.T, e *sqle.Engine, harness Harness, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	ctx = ctx.WithQuery(query)
+	_, _, err := runQueryPreparedWithCtx(t, ctx, e, query)
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		err = sql.UnwrapError(err)

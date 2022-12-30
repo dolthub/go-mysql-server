@@ -65,9 +65,10 @@ func TestQueries(t *testing.T, harness Harness) {
 		})
 	}
 
+	// TODO: move this into its own test method
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
-			TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+			TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		}
 	}
 }
@@ -119,8 +120,11 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
 	for _, tt := range queries.JoinQueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 	for _, ts := range queries.JoinScriptTests {
 		TestScript(t, harness, ts)
@@ -128,14 +132,17 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 }
 
 func TestJSONTableQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Pk_tablesData)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
 	for _, tt := range queries.JSONTableQueryTests {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 	}
 }
 
@@ -157,7 +164,7 @@ func TestInfoSchemaPrepared(t *testing.T, harness Harness) {
 	for _, tt := range queries.InfoSchemaQueries {
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)
 	}
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Fk_tblData, setup.FooData)
+
 	for _, script := range queries.InfoSchemaScripts {
 		TestScriptPrepared(t, harness, script)
 	}
@@ -256,34 +263,17 @@ func TestInfoSchema(t *testing.T, h Harness) {
 	}
 }
 
-func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
-	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
-		err := createNativeIndexes(t, harness, engine)
-		require.NoError(t, err)
-	}
-}
-
-func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) (dbs []sql.Database) {
-	for _, r := range h.NewReadOnlyDatabases("mydb", "foo") {
-		dbs = append(dbs, sql.Database(r)) // FURP
-	}
-	return dbs
-}
-
-func TestReadOnlyDatabases(t *testing.T, harness Harness) {
-	ro, ok := harness.(ReadOnlyDatabaseHarness)
-	if !ok {
-		t.Fatal("harness is not ReadOnlyDatabaseHarness")
-	}
-	dbs := createReadOnlyDatabases(ro)
-	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
-	engine := NewEngineWithDbs(t, harness, dbs)
-	defer engine.Close()
+func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
+	// Data setup for a read only database looks like normal setup, then creating a new read-only version of the engine
+	// and provider with the data inserted
+	harness.Setup(setup.SimpleSetup...)
+	engine := mustNewEngine(t, harness)
+	engine, err := harness.NewReadOnlyEngine(engine.Analyzer.Catalog.Provider)
+	require.NoError(t, err)
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,
 		queries.KeylessQueries,
-		queries.VersionedQueries,
 	} {
 		for _, tt := range querySet {
 			TestQueryWithEngine(t, harness, engine, tt)
@@ -304,14 +294,39 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	}
 }
 
-// Tests generating the correct query plans for various queries using databases and tables provided by the given
-// harness.
+func TestReadOnlyVersionedQueries(t *testing.T, harness Harness) {
+	_, ok := harness.(ReadOnlyDatabaseHarness)
+	if !ok {
+		t.Fatal("harness is not ReadOnlyDatabaseHarness")
+	}
+
+	vh, ok := harness.(VersionedDBHarness)
+	if !ok {
+		t.Fatal("harness is not ReadOnlyDatabaseHarness")
+	}
+
+	CreateVersionedTestData(t, vh)
+	engine, err := vh.NewEngine(t)
+	require.NoError(t, err)
+	defer engine.Close()
+
+	for _, tt := range queries.VersionedQueries {
+		TestQueryWithEngine(t, harness, engine, tt)
+	}
+
+	for _, tt := range queries.VersionedScripts {
+		TestScriptWithEngine(t, engine, harness, tt)
+	}
+}
+
+// TestQueryPlans tests generating the correct query plans for various queries using databases and tables provided by
+// the given harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
 	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range planTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
@@ -320,7 +335,7 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IntegrationPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan)
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, true)
 	}
 }
 
@@ -329,7 +344,7 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IndexPlanTests {
-		TestQueryPlanWithEngine(t, harness, e, tt)
+		TestQueryPlanWithEngine(t, harness, e, tt, true)
 	}
 
 	t.Run("no database selected", func(t *testing.T) {
@@ -347,14 +362,11 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	})
 }
 
-// Tests a variety of queries against databases and tables provided by the given harness.
-func TestVersionedQueries(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
-	harness.Setup(setup.SimpleSetup...)
-	engine := NewEngine(t, harness)
+// TestVersionedQueries tests a variety of versioned queries
+func TestVersionedQueries(t *testing.T, harness VersionedDBHarness) {
+	CreateVersionedTestData(t, harness)
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer engine.Close()
 
 	for _, tt := range queries.VersionedQueries {
@@ -387,12 +399,10 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 }
 
 // Tests a variety of queries against databases and tables provided by the given harness.
-func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
-	e := NewEngine(t, harness)
+func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
+	CreateVersionedTestData(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer e.Close()
 
 	for _, tt := range queries.VersionedQueries {
@@ -406,7 +416,7 @@ func TestVersionedQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, expectedPlan string) {
+func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expectedPlan string, verbose bool) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, query)
@@ -421,12 +431,18 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query string, 
 			}
 		}
 
-		assert.Equal(t, expectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+query)
+		var cmp string
+		if verbose {
+			cmp = sql.DebugString(ExtractQueryNode(node))
+		} else {
+			cmp = ExtractQueryNode(node).String()
+		}
+		assert.Equal(t, expectedPlan, cmp, "Unexpected result for query: "+query)
 	})
 
 }
 
-func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest) {
+func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.QueryPlanTest, verbose bool) {
 	t.Run(tt.Query, func(t *testing.T) {
 		ctx := NewContext(harness)
 		parsed, err := parse.Parse(ctx, tt.Query)
@@ -441,7 +457,13 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt q
 			}
 		}
 
-		assert.Equal(t, tt.ExpectedPlan, ExtractQueryNode(node).String(), "Unexpected result for query: "+tt.Query)
+		var cmp string
+		if verbose {
+			cmp = sql.DebugString(ExtractQueryNode(node))
+		} else {
+			cmp = ExtractQueryNode(node).String()
+		}
+		assert.Equal(t, tt.ExpectedPlan, cmp, "Unexpected result for query: "+tt.Query)
 	})
 }
 
@@ -1121,12 +1143,7 @@ func TestInsertErrorScriptsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-func TestUserPrivileges(t *testing.T, h Harness) {
-	harness, ok := h.(ClientHarness)
-	if !ok {
-		t.Skip("Cannot run TestUserPrivileges as the harness must implement ClientHarness")
-	}
-
+func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
 	for _, script := range queries.UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {
@@ -1800,41 +1817,44 @@ func TestViewsPrepared(t *testing.T, harness Harness) {
 
 // initializeViewsForVersionedViewsTests creates the test views used by the TestVersionedViews and
 // TestVersionedViewsPrepared functions.
-func initializeViewsForVersionedViewsTests(t *testing.T, harness Harness, e *sqle.Engine) {
+func initializeViewsForVersionedViewsTests(t *testing.T, harness VersionedDBHarness, e *sqle.Engine) {
 	require := require.New(t)
 
 	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	sch, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// nested views
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// views with unions
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// views with subqueries
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 
 	// views with a subquery alias
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
+	sch, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
 	require.NoError(err)
-	iter.Close(ctx)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
+	require.NoError(err)
 }
 
-func TestVersionedViews(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
-	e := NewEngine(t, harness)
+func TestVersionedViews(t *testing.T, harness VersionedDBHarness) {
+	CreateVersionedTestData(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer e.Close()
 
 	initializeViewsForVersionedViewsTests(t, harness, e)
@@ -1846,12 +1866,10 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 	}
 }
 
-func TestVersionedViewsPrepared(t *testing.T, harness Harness) {
-	if _, ok := harness.(VersionedDBHarness); !ok {
-		t.Skipf("Skipping versioned test, harness doesn't implement VersionedDBHarness")
-	}
-
-	e := NewEngine(t, harness)
+func TestVersionedViewsPrepared(t *testing.T, harness VersionedDBHarness) {
+	CreateVersionedTestData(t, harness)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
 	defer e.Close()
 
 	initializeViewsForVersionedViewsTests(t, harness, e)
@@ -3314,7 +3332,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		},
 		{
 			Name:            "chk4",
-			CheckExpression: "(UPPER(c) = c)",
+			CheckExpression: "(upper(c) = c)",
 			Enforced:        true,
 		},
 	}
@@ -4402,6 +4420,25 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			},
 		},
 		{
+			Name: "simple decimal type insert",
+			SetUpScript: []string{
+				"CREATE TABLE test(id int primary key auto_increment, decimal_test DECIMAL(9,2), decimal_test_2 DECIMAL(9,2), decimal_test_3 DECIMAL(9,2))",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "INSERT INTO test(decimal_test, decimal_test_2, decimal_test_3) VALUES (?, ?, ?)",
+					Bindings: map[string]sql.Expression{
+						"v1": expression.NewLiteral(10, sql.Int64),
+						"v2": expression.NewLiteral([]byte("10.5"), sql.MustCreateString(sqltypes.VarBinary, 4, sql.Collation_binary)),
+						"v3": expression.NewLiteral(20.40, sql.Float64),
+					},
+					Expected: []sql.Row{
+						{sql.OkResult{RowsAffected: 1, InsertID: 1}},
+					},
+				},
+			},
+		},
+		{
 			Name: "Insert on duplicate key",
 			SetUpScript: []string{
 				`CREATE TABLE users (
@@ -4461,6 +4498,15 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedStatements(t *testing.T, harness Harness) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
+	for _, query := range queries.PreparedScriptTests {
+		TestScript(t, harness, query)
+	}
+}
+
 // Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
@@ -4476,7 +4522,6 @@ func TestDateParse(t *testing.T, harness Harness) {
 	}
 }
 
-// Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatusPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	for _, tt := range queries.ShowTableStatusQueries {
@@ -4981,7 +5026,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		// Assert that the schema of t1 is unchanged
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "MUL", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "MUL", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		// Assert that adding a primary key with an unknown column causes an error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
@@ -4996,7 +5041,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "PRI", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "PRI", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
@@ -5012,7 +5057,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
 		TestQueryWithContext(t, ctx, e, harness, `DESCRIBE t1`, []sql.Row{
 			{"pk", "varchar(20)", "NO", "", "NULL", ""},
-			{"v", "varchar(20)", "NO", "", "(concat(pk, '-foo'))", ""},
+			{"v", "varchar(20)", "NO", "", "(concat(pk,'-foo'))", "DEFAULT_GENERATED"},
 		}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 			{"a1", "a2"},
@@ -5721,10 +5766,10 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "alter table t33 add column v3 datetime default CURRENT_TIMESTAMP()")
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
-			{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), '-', ''))", ""},
-			{"v1_new", "timestamp", "YES", "", "(NOW())", ""},
+			{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
+			{"v1_new", "timestamp", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
-			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", ""},
+			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
 		}, nil, nil)
 
 		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
@@ -5983,7 +6028,6 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
 			Bindings: map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, sql.Int8),
-				"v2": expression.NewLiteral(1, sql.Int8),
 			},
 			Expected: []sql.Row{{int64(3)}},
 		},
@@ -6068,6 +6112,16 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 	}
+	qErrTests := []queries.QueryErrorTest{
+		{
+			Query:          "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
+			ExpectedErrStr: "unused binding v2",
+			Bindings: map[string]sql.Expression{
+				"v1": expression.NewLiteral(int64(2), sql.Int64),
+				"v2": expression.NewLiteral(int64(2), sql.Int64),
+			},
+		},
+	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
@@ -6081,6 +6135,17 @@ func TestPrepared(t *testing.T, harness Harness) {
 			_, err := e.PrepareQuery(ctx, tt.Query)
 			require.NoError(t, err)
 			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+		})
+	}
+
+	for _, tt := range qErrTests {
+		t.Run(fmt.Sprintf("%s", tt.Query), func(t *testing.T) {
+			ctx := NewContext(harness)
+			_, err := e.PrepareQuery(ctx, tt.Query)
+			require.NoError(t, err)
+			ctx = ctx.WithQuery(tt.Query)
+			_, _, err = e.QueryWithBindings(ctx, tt.Query, tt.Bindings)
+			require.Error(t, err)
 		})
 	}
 
@@ -6147,10 +6212,11 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.CharsetCollationEngineTests {
 		t.Run(script.Name, func(t *testing.T) {
-			ctx := harness.NewContext()
-			ctx.SetCurrentDatabase("mydb")
 			engine := mustNewEngine(t, harness)
 			defer engine.Close()
+			ctx := harness.NewContext()
+			ctx.SetCurrentDatabase("mydb")
+
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
 					if sh.SkipQueryTest(statement) {
@@ -6275,28 +6341,20 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 	}
 }
 
-func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBuilder) {
-	harness, ok := h.(ClientHarness)
-	if !ok {
-		t.Skip("Cannot run TestTypesOverWire as the harness must implement ClientHarness")
-	}
+func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder server.SessionBuilder) {
 	harness.Setup(setup.MydbData)
 
 	port := getEmptyPort(t)
 	for _, script := range queries.TypeWireTests {
 		t.Run(script.Name, func(t *testing.T) {
+			engine := mustNewEngine(t, harness)
+			defer engine.Close()
+
 			ctx := NewContextWithClient(harness, sql.Client{
 				User:    "root",
 				Address: "localhost",
 			})
-			serverConfig := server.Config{
-				Protocol:       "tcp",
-				Address:        fmt.Sprintf("localhost:%d", port),
-				MaxConnections: 1000,
-			}
 
-			engine := mustNewEngine(t, harness)
-			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
@@ -6307,6 +6365,11 @@ func TestTypesOverWire(t *testing.T, h Harness, sessionBuilder server.SessionBui
 				RunQueryWithContext(t, engine, harness, ctx, statement)
 			}
 
+			serverConfig := server.Config{
+				Protocol:       "tcp",
+				Address:        fmt.Sprintf("localhost:%d", port),
+				MaxConnections: 1000,
+			}
 			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
 			require.NoError(t, err)
 			go func() {
@@ -6528,13 +6591,13 @@ func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 
 func TestBlobs(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.BlobData, setup.MytableData)
-	e := mustNewEngine(t, h)
-	defer e.Close()
 
 	for _, tt := range queries.BlobErrors {
 		runQueryErrorTest(t, h, tt)
 	}
 
+	e := mustNewEngine(t, h)
+	defer e.Close()
 	for _, tt := range queries.BlobQueries {
 		TestQueryWithEngine(t, h, e, tt)
 	}
@@ -6545,9 +6608,6 @@ func TestBlobs(t *testing.T, h Harness) {
 }
 
 func TestIndexes(t *testing.T, h Harness) {
-	e := mustNewEngine(t, h)
-	defer e.Close()
-
 	for _, tt := range queries.IndexQueries {
 		TestScript(t, h, tt)
 	}

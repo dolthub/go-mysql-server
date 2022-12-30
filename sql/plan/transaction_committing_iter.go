@@ -38,20 +38,24 @@ func init() {
 // the transaction.
 type TransactionCommittingNode struct {
 	UnaryNode
-	transactionDatabase string
 }
 
 var _ sql.Node = (*TransactionCommittingNode)(nil)
 var _ sql.Node2 = (*TransactionCommittingNode)(nil)
 
 // NewTransactionCommittingNode returns a TransactionCommittingNode.
-func NewTransactionCommittingNode(child sql.Node, transactionDatabase string) *TransactionCommittingNode {
-	return &TransactionCommittingNode{UnaryNode: UnaryNode{Child: child}, transactionDatabase: transactionDatabase}
+func NewTransactionCommittingNode(child sql.Node) *TransactionCommittingNode {
+	return &TransactionCommittingNode{UnaryNode: UnaryNode{Child: child}}
 }
 
 // String implements the sql.Node interface.
 func (t *TransactionCommittingNode) String() string {
 	return t.Child().String()
+}
+
+// String implements the sql.Node interface.
+func (t *TransactionCommittingNode) DebugString() string {
+	return sql.DebugString(t.Child())
 }
 
 // RowIter implements the sql.Node interface.
@@ -61,7 +65,7 @@ func (t *TransactionCommittingNode) RowIter(ctx *sql.Context, row sql.Row) (sql.
 		return nil, err
 	}
 
-	return transactionCommittingIter{childIter: iter, childIter2: nil, transactionDatabase: t.transactionDatabase}, nil
+	return transactionCommittingIter{childIter: iter, childIter2: nil}, nil
 }
 
 // RowIter2 implements the sql.Node interface.
@@ -71,7 +75,7 @@ func (t *TransactionCommittingNode) RowIter2(ctx *sql.Context, f *sql.RowFrame) 
 		return nil, err
 	}
 
-	return transactionCommittingIter{childIter: nil, childIter2: iter2, transactionDatabase: t.transactionDatabase}, nil
+	return transactionCommittingIter{childIter: nil, childIter2: iter2}, nil
 }
 
 // WithChildren implements the sql.Node interface.
@@ -133,8 +137,13 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 
 	commitTransaction := ((tx != nil) && !ctx.GetIgnoreAutoCommit()) && autocommit
 	if commitTransaction {
+		ts, ok := ctx.Session.(sql.TransactionSession)
+		if !ok {
+			return nil
+		}
+
 		ctx.GetLogger().Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
+		if err := ts.CommitTransaction(ctx, tx); err != nil {
 			return err
 		}
 

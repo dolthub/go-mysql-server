@@ -25,18 +25,19 @@ import (
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries
 // used to develop and test the engine itself. See memory_engine_test.go for an example.
+// The typical harness lifecycle during test setup looks like this:
+// 1) Harness is instantiated, which should create a sql.MutableDatabaseProvider to use for the rest of setup
+// 2) Harness.NewDatabase or Harness.NewTable is called to create the database and tables that will be used for the test
+// 3) For some tests, harness.Setup() is called instead of Harness.NewDatabase and Harness.NewTable
+// 4) Harness.NewEngine() is called to create an engine with the setup data provided prior. It can be called multiple
+// times during a single test run, and must return a "fresh" engine instance each time, i.e. an instance that contains
+// exactly the test data provided via other setup methods.
 type Harness interface {
 	// Parallelism returns how many parallel go routines to use when constructing an engine for test.
 	Parallelism() int
-	// NewDatabase returns a sql.Database to use for a test. This method will always be called before asking for a
-	// context or other information.
-	NewDatabase(name string) sql.Database
-	// NewDatabases returns a set of new databases, for test setup that requires more than one database.
-	NewDatabases(names ...string) []sql.Database
 	// NewDatabaseProvider returns a sql.MutableDatabaseProvider to use for a test.
-	NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider
-	// NewTable takes a database previously created by NewDatabase and returns a table created with the given schema.
-	NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error)
+	// TODO: remove this, only use NewEngine
+	NewDatabaseProvider() sql.MutableDatabaseProvider
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
 	// their engine implementation. Every harnessed engine test uses the context created by this method, with some
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
@@ -101,6 +102,9 @@ type ForeignKeyHarness interface {
 type VersionedDBHarness interface {
 	Harness
 
+	// NewDatabases returns a set of new databases used for the duration of a versioned test
+	NewDatabases(names ...string) []sql.Database
+
 	// NewTableAsOf creates a new table with the given name and schema, optionally handling snapshotting with the asOf
 	// identifier. NewTableAsOf must ignore tables that already exist in the database. Tables returned by this method do
 	// not need to have any previously created data in them, but they can. This behavior is implementation specific, and
@@ -130,8 +134,9 @@ type TransactionHarness interface {
 type ReadOnlyDatabaseHarness interface {
 	Harness
 
-	// NewReadOnlyDatabases returns a sql.ReadOnlyDatabase to use for a test.
-	NewReadOnlyDatabases(...string) []sql.ReadOnlyDatabase
+	// NewReadOnlyEngine returns a new engine with read-only versions of the databases supplied by the provider.
+	// TODO: should this and NewEngine actually just be NewProvider?
+	NewReadOnlyEngine(provider sql.DatabaseProvider) (*sqle.Engine, error)
 }
 
 type ValidatingHarness interface {

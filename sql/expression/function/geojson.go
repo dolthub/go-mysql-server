@@ -47,7 +47,7 @@ func (g *AsGeoJSON) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_ASGEOJSON(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -540,73 +540,109 @@ func SliceToGeomColl(geometries interface{}) (interface{}, error) {
 	// geomObjs should be a slice of geojsons
 	geomObjs, ok := geometries.([]interface{})
 	if !ok {
-		return nil, errors.New("member 'geometries' must be of type '[]interface{}'")
+		return nil, errors.New("member 'geometries' must be of type 'array'")
 	}
 
 	geoms := make([]sql.GeometryValue, len(geomObjs))
 	for i, o := range geomObjs {
 		obj, ok := o.(map[string]interface{})
 		if !ok {
-			return nil, errors.New("member 'geometries' must be of type 'map[string]interface{}'")
+			return nil, errors.New("member 'geometries' must be of type 'object'")
 		}
-		geomType, ok := obj["type"]
-		if !ok {
-			return nil, errors.New("missing required member 'type'")
-		}
-		var res interface{}
-		var err error
-		switch geomType {
-		case "Point":
-			coords, ok := obj["coordinates"]
-			if !ok {
-				return nil, errors.New("missing required member 'coordinates'")
-			}
-			res, err = SliceToPoint(coords)
-		case "LineString":
-			coords, ok := obj["coordinates"]
-			if !ok {
-				return nil, errors.New("missing required member 'coordinates'")
-			}
-			res, err = SliceToLine(coords)
-		case "Polygon":
-			coords, ok := obj["coordinates"]
-			if !ok {
-				return nil, errors.New("missing required member 'coordinates'")
-			}
-			res, err = SliceToPoly(coords)
-		case "MultiPoint":
-			coords, ok := obj["coordinates"]
-			if !ok {
-				return nil, errors.New("missing required member 'coordinates'")
-			}
-			res, err = SliceToMPoint(coords)
-		case "MultiLineString":
-			coords, ok := obj["coordinates"]
-			if !ok {
-				return nil, errors.New("missing required member 'coordinates'")
-			}
-			res, err = SliceToMLine(coords)
-		case "MultiPolygon":
-			coords, ok := obj["coordinates"]
-			if !ok {
-				return nil, errors.New("missing required member 'coordinates'")
-			}
-			res, err = SliceToMPoly(coords)
-		case "GeometryCollection":
-			gs, ok := obj["geometries"]
-			if !ok {
-				return nil, errors.New("missing required member 'geometries'")
-			}
-			res, err = SliceToGeomColl(gs)
-		default:
-			return nil, errors.New("member 'type' is wrong")
-		}
+		res, _, err := ParseGeoJsonData(obj)
 		if err != nil {
 			return nil, err
 		}
 		geoms[i] = res.(sql.GeometryValue)
 	}
 	return sql.GeomColl{SRID: sql.GeoSpatialSRID, Geoms: geoms}, nil
+}
+
+func ParseGeoJsonData(obj map[string]interface{}) (interface{}, string, error) {
+	geomType, ok := obj["type"]
+	if !ok {
+		return nil, "", errors.New("missing required member 'type'")
+	}
+
+	gt, ok := geomType.(string)
+	if !ok {
+		return nil, "", errors.New("member 'type' must be of type 'string'")
+	}
+
+	var res interface{}
+	var err error
+	switch gt {
+	case "Point":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'coordinates'")
+		}
+		res, err = SliceToPoint(coords)
+	case "LineString":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'coordinates'")
+		}
+		res, err = SliceToLine(coords)
+	case "Polygon":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'coordinates'")
+		}
+		res, err = SliceToPoly(coords)
+	case "MultiPoint":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'coordinates'")
+		}
+		res, err = SliceToMPoint(coords)
+	case "MultiLineString":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'coordinates'")
+		}
+		res, err = SliceToMLine(coords)
+	case "MultiPolygon":
+		coords, ok := obj["coordinates"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'coordinates'")
+		}
+		res, err = SliceToMPoly(coords)
+	case "GeometryCollection":
+		geoms, ok := obj["geometries"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'geometries'")
+		}
+		res, err = SliceToGeomColl(geoms)
+	case "Feature":
+		geom, ok := obj["geometry"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'geometry'")
+		}
+		geomObj, ok := geom.(map[string]interface{})
+		if !ok {
+			return nil, "", errors.New("member 'geometry' must be of type 'object'")
+		}
+		// TODO: figure out what properties is used for
+		props, ok := obj["properties"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'properties'")
+		}
+		_, ok = props.(map[string]interface{})
+		if !ok {
+			return nil, "", errors.New("member 'properties' must be of type 'object'")
+		}
+		res, gt, err = ParseGeoJsonData(geomObj)
+	case "FeatureCollection":
+		feats, ok := obj["features"]
+		if !ok {
+			return nil, "", errors.New("missing required member 'features'")
+		}
+		res, err = SliceToGeomColl(feats)
+	default:
+		return nil, "", errors.New("member 'type' is wrong")
+	}
+	return res, gt, err
 }
 
 // Eval implements the sql.Expression interface.
@@ -636,59 +672,8 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		return nil, err
 	}
 
-	geomType, ok := obj["type"]
-	if !ok {
-		return nil, errors.New("missing required member 'type'")
-	}
-
 	// Create type accordingly
-	var res interface{}
-	switch geomType {
-	case "Point":
-		coords, ok := obj["coordinates"]
-		if !ok {
-			return nil, errors.New("missing required member 'coordinates'")
-		}
-		res, err = SliceToPoint(coords)
-	case "LineString":
-		coords, ok := obj["coordinates"]
-		if !ok {
-			return nil, errors.New("missing required member 'coordinates'")
-		}
-		res, err = SliceToLine(coords)
-	case "Polygon":
-		coords, ok := obj["coordinates"]
-		if !ok {
-			return nil, errors.New("missing required member 'coordinates'")
-		}
-		res, err = SliceToPoly(coords)
-	case "MultiPoint":
-		coords, ok := obj["coordinates"]
-		if !ok {
-			return nil, errors.New("missing required member 'coordinates'")
-		}
-		res, err = SliceToMPoint(coords)
-	case "MultiLineString":
-		coords, ok := obj["coordinates"]
-		if !ok {
-			return nil, errors.New("missing required member 'coordinates'")
-		}
-		res, err = SliceToMLine(coords)
-	case "MultiPolygon":
-		coords, ok := obj["coordinates"]
-		if !ok {
-			return nil, errors.New("missing required member 'coordinates'")
-		}
-		res, err = SliceToMPoly(coords)
-	case "GeometryCollection":
-		geoms, ok := obj["geometries"]
-		if !ok {
-			return nil, errors.New("missing required member 'geometries'")
-		}
-		res, err = SliceToGeomColl(geoms)
-	default:
-		return nil, errors.New("member 'type' is wrong")
-	}
+	res, geomType, err := ParseGeoJsonData(obj)
 	if err != nil {
 		return nil, err
 	}

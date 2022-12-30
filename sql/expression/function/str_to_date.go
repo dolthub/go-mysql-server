@@ -39,7 +39,7 @@ func (s StrToDate) Resolved() bool {
 }
 
 func (s StrToDate) String() string {
-	return fmt.Sprintf("STR_TO_DATE(%s, %s)", s.Date, s.Format)
+	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.Date, s.Format)
 }
 
 // Type returns the expression type.

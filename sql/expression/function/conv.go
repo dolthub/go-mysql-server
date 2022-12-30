@@ -39,7 +39,7 @@ func NewConv(n, from, to sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (c *Conv) FunctionName() string {
-	return "Conv"
+	return "conv"
 }
 
 // Description implements sql.FunctionExpression
@@ -56,7 +56,7 @@ func (c *Conv) IsNullable() bool {
 }
 
 func (c *Conv) String() string {
-	return fmt.Sprintf("Conv(%s, %s, %s)", c.n, c.fromBase, c.toBase)
+	return fmt.Sprintf("%s(%s,%s,%s)", c.FunctionName(), c.n, c.fromBase, c.toBase)
 }
 
 // Eval implements the Expression interface.

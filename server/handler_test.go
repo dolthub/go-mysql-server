@@ -489,13 +489,14 @@ func TestServerEventListener(t *testing.T) {
 	require.Equal(listener.Disconnects, 2)
 
 	conn3 := newConn(3)
-	_, err = handler.ComPrepare(conn3, "SELECT ?")
+	query := "SELECT ?"
+	_, err = handler.ComPrepare(conn3, query)
 	require.NoError(err)
-	require.Equal(1, len(e.PreparedData))
-	require.NotNil(e.PreparedData[conn3.ConnectionID])
+	require.Equal(1, len(e.PreparedDataCache.GetSessionData(conn3.ConnectionID)))
+	require.NotNil(e.PreparedDataCache.GetCachedStmt(conn3.ConnectionID, query))
 
 	handler.ConnectionClosed(conn3)
-	require.Equal(0, len(e.PreparedData))
+	require.Equal(0, len(e.PreparedDataCache.GetSessionData(conn3.ConnectionID)))
 }
 
 func TestHandlerKill(t *testing.T) {
@@ -980,7 +981,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 
 func setupMemDB(require *require.Assertions) *sqle.Engine {
 	db := memory.NewDatabase("test")
-	pro := memory.NewMemoryDBProvider(db)
+	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
 
 	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}}), nil)

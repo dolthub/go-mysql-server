@@ -256,14 +256,11 @@ func formatIndexDecoratorString(idx sql.Index) string {
 
 func (i *IndexedTableAccess) DebugString() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("IndexedTableAccess(%s)", sql.DebugString(i.Table))
+	pr.WriteNode("IndexedTableAccess")
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
-		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
-		children = append(children, fmt.Sprintf("lookup: STATIC LOOKUP(%s)", sql.DebugString(i.lookup)))
-	} else {
-		children = append(children, fmt.Sprintf("lookup: %s", sql.DebugString(i.lb)))
+		children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
 	}
 	if pt, ok := i.Table.(sql.ProjectedTable); ok {
 		if len(pt.Projections()) > 0 {
@@ -283,6 +280,7 @@ func (i *IndexedTableAccess) DebugString() string {
 			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
+	children = append(children, sql.DebugString(i.Table))
 	pr.WriteChildren(children...)
 	return pr.String()
 }

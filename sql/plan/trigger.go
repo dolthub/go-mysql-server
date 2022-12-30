@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -242,13 +243,11 @@ const SavePointName = "__go_mysql_server_starting_savepoint__"
 // rollback if something went wrong during execution
 type TriggerRollback struct {
 	UnaryNode
-	Db sql.TransactionDatabase
 }
 
-func NewTriggerRollback(child sql.Node, db sql.TransactionDatabase) *TriggerRollback {
+func NewTriggerRollback(child sql.Node) *TriggerRollback {
 	return &TriggerRollback{
 		UnaryNode: UnaryNode{Child: child},
-		Db:        db,
 	}
 }
 
@@ -257,7 +256,7 @@ func (t *TriggerRollback) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
 
-	return NewTriggerRollback(children[0], t.Db), nil
+	return NewTriggerRollback(children[0]), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -272,13 +271,18 @@ func (t *TriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	}
 
 	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", SavePointName)
-	if err := t.Db.CreateSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if !ok {
+		return nil, fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
+	}
+
+	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
 		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
 	}
 
 	return &triggerRollbackIter{
 		child:        childIter,
-		db:           t.Db,
 		hasSavepoint: true,
 	}, nil
 }
@@ -292,19 +296,23 @@ func (t *TriggerRollback) String() string {
 
 type triggerRollbackIter struct {
 	child        sql.RowIter
-	db           sql.TransactionDatabase
 	hasSavepoint bool
 }
 
 func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	childRow, err := t.child.Next(ctx)
 
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if !ok {
+		return nil, fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
+	}
+
 	// Rollback if error occurred
 	if err != nil && err != io.EOF {
-		if err := t.db.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		if err := ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
 			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling RollbackToSavePoint during triggerRollbackIter.Next()")
 		}
-		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
 			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Next()")
 		} else {
 			t.hasSavepoint = false
@@ -315,8 +323,13 @@ func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr err
 }
 
 func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if !ok {
+		return fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
+	}
+
 	if t.hasSavepoint {
-		if err := t.db.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
 			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Close()")
 		}
 		t.hasSavepoint = false

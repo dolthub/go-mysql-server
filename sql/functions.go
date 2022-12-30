@@ -24,6 +24,13 @@ type Function interface {
 	isFunction()
 }
 
+// FunctionProvider is an interface that allows custom functions to be provided. It's usually (but not always)
+// implemented by a DatabaseProvider.
+type FunctionProvider interface {
+	// Function returns the function with the name provided, case-insensitive
+	Function(ctx *Context, name string) (Function, error)
+}
+
 type CreateFunc0Args func() Expression
 type CreateFunc1Args func(e1 Expression) Expression
 type CreateFunc2Args func(e1, e2 Expression) Expression
@@ -188,3 +195,15 @@ func (Function5) isFunction() {}
 func (Function6) isFunction() {}
 func (Function7) isFunction() {}
 func (FunctionN) isFunction() {}
+
+// UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
+type UnsupportedFunctionStub interface {
+	IsUnsupported() bool
+}
+
+// FunctionExpression is an Expression that represents a function.
+type FunctionExpression interface {
+	Expression
+	FunctionName() string
+	Description() string
+}

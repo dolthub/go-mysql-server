@@ -60,7 +60,7 @@ func (p *Polygon) String() string {
 	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("POLYGON(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.

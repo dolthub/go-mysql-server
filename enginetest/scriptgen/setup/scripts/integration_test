@@ -903,3 +903,231 @@ create table FBPKL (
 	constraint ZFEIKGRF foreign key (V34C7) references moa (id) on delete cascade on update cascade
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 ----
+
+exec
+update information_schema.statistics set cardinality = 123867 where table_name = 'TPXBU' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 2498 where table_name = 'THNTS' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 3 where table_name = 'JMRQL' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 2498 where table_name = 'YK2GW' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 5661 where table_name = 'IJLXP' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 34 where table_name = 'HU5A5' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 213 where table_name = 'EPZU6' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 68 where table_name = 'WGSDC' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 0 where table_name = 'SZW6V' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 380 where table_name = 'SFEGG' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 399 where table_name = 'JDLNA' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 239 where table_name = 'I66GN' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 5148 where table_name = 'BACOW' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 14781 where table_name = 'FLQLP' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 1 where table_name = 'S3FQX' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 6 where table_name = 'JJGQT' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 4786678 where table_name = 'AMYXQ' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 5 where table_name = 'XGSJM' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 3181 where table_name = 'WE72E' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 0 where table_name = 'FCBVZ' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 226 where table_name = 'RLOHD' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 10 where table_name = 'T52LX' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 1112 where table_name = 'HDDVB' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 12 where table_name = 'YYBCX' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 56 where table_name = 'FEVH4' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 71 where table_name = 'SR2I6' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 415 where table_name = 'NMYH3' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 6140 where table_name = 'IMJ6V' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 47285 where table_name = 'TDRVG' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 13 where table_name = 'IIISV' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 36 where table_name = 'moa' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 60 where table_name = 'FBPKL' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 70 where table_name = 'TA5EB' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 511969 where table_name = 'HGMQ6' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 535843 where table_name = 'SEQS3' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 3936 where table_name = 'SZQWJ' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 3842 where table_name = 'E2I7U' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 291 where table_name = 'ARLV5' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 6367 where table_name = 'FEIOE' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 5 where table_name = 'TNMXI' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 5 where table_name = 'F35MI' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 74 where table_name = 'XOAOP' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 11 where table_name = 'PG27A' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 89 where table_name = 'NPCYY' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 3 where table_name = 'TTGWX' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 70692 where table_name = 'QYWQD' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 0 where table_name = 'run_metadata' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 11813 where table_name = 'NOXN3' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 81 where table_name = 'ZYGMF' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 16 where table_name = 'TPXHZ' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 18395 where table_name = 'OUBDL' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 103907130 where table_name = 'SISUT' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 39091 where table_name = 'WRZVO' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 18779716 where table_name = 'NZKPM' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 1001 where table_name = 'FG26Y' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 36 where table_name = 'D34QP' and table_schema = 'mydb';
+----
+
+exec
+update information_schema.statistics set cardinality = 64 where table_name = 'ZTFET' and table_schema = 'mydb';
+----

@@ -84,7 +84,7 @@ func (r *RegexpReplace) String() string {
 	for _, e := range r.args {
 		args = append(args, e.String())
 	}
-	return fmt.Sprintf("regexp_replace(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
 }
 
 // Eval implements the sql.Expression interface.

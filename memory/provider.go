@@ -9,20 +9,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var _ sql.DatabaseProvider = memoryDBProvider{}
-var _ sql.MutableDatabaseProvider = memoryDBProvider{}
-var _ sql.TableFunctionProvider = memoryDBProvider{}
-var _ sql.ExternalStoredProcedureProvider = memoryDBProvider{}
+var _ sql.DatabaseProvider = (*DbProvider)(nil)
+var _ sql.MutableDatabaseProvider = (*DbProvider)(nil)
+var _ sql.TableFunctionProvider = (*DbProvider)(nil)
+var _ sql.ExternalStoredProcedureProvider = (*DbProvider)(nil)
 
-// memoryDBProvider is a collection of Database.
-type memoryDBProvider struct {
+// DbProvider is a provider for in-memory databases
+type DbProvider struct {
 	dbs                       map[string]sql.Database
+	history                   bool
+	readOnly                  bool
+	nativeIndexes             bool
 	mu                        *sync.RWMutex
 	tableFunctions            map[string]sql.TableFunction
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 }
 
-func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
+type ProviderOption func(*DbProvider)
+
+// NewDBProvider creates a new DbProvider with the default options and the databases specified
+func NewDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db
@@ -33,7 +39,7 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 		externalProcedureRegistry.Register(esp)
 	}
 
-	return memoryDBProvider{
+	return &DbProvider{
 		dbs:                       dbMap,
 		mu:                        &sync.RWMutex{},
 		tableFunctions:            make(map[string]sql.TableFunction),
@@ -41,18 +47,63 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	}
 }
 
-// Database returns the Database with the given name if it exists.
-func (d memoryDBProvider) Database(_ *sql.Context, name string) (sql.Database, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+// NewDBProviderWithOpts creates a new DbProvider with the given options and no databases
+func NewDBProviderWithOpts(opts ...ProviderOption) sql.MutableDatabaseProvider {
+	pro := NewDBProvider()
+	for _, opt := range opts {
+		opt(pro.(*DbProvider))
+	}
 
-	db, ok := d.dbs[strings.ToLower(name)]
+	return pro
+}
+
+// WithOption modifies the provider with the given option
+func (pro *DbProvider) WithOption(opt ProviderOption) {
+	opt(pro)
+}
+
+// ReadOnlyProvider returns a ProviderOption to construct a memoryDBProvider that is read-only
+func ReadOnlyProvider(enableReadOnly bool) ProviderOption {
+	return func(pro *DbProvider) {
+		pro.readOnly = enableReadOnly
+	}
+}
+
+func NativeIndexProvider(useNativeIndexes bool) ProviderOption {
+	return func(pro *DbProvider) {
+		pro.nativeIndexes = useNativeIndexes
+	}
+}
+
+// HistoryProvider returns a ProviderOption to construct a memoryDBProvider that uses history databases
+func HistoryProvider(enableHistory bool) ProviderOption {
+	return func(pro *DbProvider) {
+		pro.history = enableHistory
+	}
+}
+
+// WithDbsOption returns a ProviderOption to construct a DbProvider with the given databases
+func WithDbsOption(dbs []sql.Database) ProviderOption {
+	return func(pro *DbProvider) {
+		pro.dbs = make(map[string]sql.Database, len(dbs))
+		for _, db := range dbs {
+			pro.dbs[strings.ToLower(db.Name())] = db
+		}
+	}
+}
+
+// Database returns the Database with the given name if it exists.
+func (pro *DbProvider) Database(_ *sql.Context, name string) (sql.Database, error) {
+	pro.mu.RLock()
+	defer pro.mu.RUnlock()
+
+	db, ok := pro.dbs[strings.ToLower(name)]
 	if ok {
 		return db, nil
 	}
 
-	names := make([]string, 0, len(d.dbs))
-	for n := range d.dbs {
+	names := make([]string, 0, len(pro.dbs))
+	for n := range pro.dbs {
 		names = append(names, n)
 	}
 
@@ -61,21 +112,21 @@ func (d memoryDBProvider) Database(_ *sql.Context, name string) (sql.Database, e
 }
 
 // HasDatabase returns the Database with the given name if it exists.
-func (d memoryDBProvider) HasDatabase(_ *sql.Context, name string) bool {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+func (pro *DbProvider) HasDatabase(_ *sql.Context, name string) bool {
+	pro.mu.RLock()
+	defer pro.mu.RUnlock()
 
-	_, ok := d.dbs[strings.ToLower(name)]
+	_, ok := pro.dbs[strings.ToLower(name)]
 	return ok
 }
 
 // AllDatabases returns the Database with the given name if it exists.
-func (d memoryDBProvider) AllDatabases(*sql.Context) []sql.Database {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+func (pro *DbProvider) AllDatabases(*sql.Context) []sql.Database {
+	pro.mu.RLock()
+	defer pro.mu.RUnlock()
 
-	all := make([]sql.Database, 0, len(d.dbs))
-	for _, db := range d.dbs {
+	all := make([]sql.Database, 0, len(pro.dbs))
+	for _, db := range pro.dbs {
 		all = append(all, db)
 	}
 
@@ -87,38 +138,54 @@ func (d memoryDBProvider) AllDatabases(*sql.Context) []sql.Database {
 }
 
 // CreateDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (pro *DbProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
+	pro.mu.Lock()
+	defer pro.mu.Unlock()
 
-	db := NewDatabase(name)
-	db.EnablePrimaryKeyIndexes()
-	d.dbs[strings.ToLower(db.Name())] = db
+	var db sql.Database
+	if pro.readOnly {
+		db = NewReadOnlyDatabase(name)
+		if pro.nativeIndexes {
+			db.(ReadOnlyDatabase).EnablePrimaryKeyIndexes()
+		}
+	} else if pro.history {
+		db = NewHistoryDatabase(name)
+		if pro.nativeIndexes {
+			db.(*HistoryDatabase).EnablePrimaryKeyIndexes()
+		}
+	} else {
+		db = NewDatabase(name)
+		if pro.nativeIndexes {
+			db.(*Database).EnablePrimaryKeyIndexes()
+		}
+	}
+
+	pro.dbs[strings.ToLower(db.Name())] = db
 	return
 }
 
 // DropDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) DropDatabase(_ *sql.Context, name string) (err error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (pro *DbProvider) DropDatabase(_ *sql.Context, name string) (err error) {
+	pro.mu.Lock()
+	defer pro.mu.Unlock()
 
-	delete(d.dbs, strings.ToLower(name))
+	delete(pro.dbs, strings.ToLower(name))
 	return
 }
 
 // ExternalStoredProcedure implements sql.ExternalStoredProcedureProvider
-func (mdb memoryDBProvider) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
-	return mdb.externalProcedureRegistry.LookupByNameAndParamCount(name, numOfParams)
+func (pro *DbProvider) ExternalStoredProcedure(_ *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	return pro.externalProcedureRegistry.LookupByNameAndParamCount(name, numOfParams)
 }
 
 // ExternalStoredProcedures implements sql.ExternalStoredProcedureProvider
-func (mdb memoryDBProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
-	return mdb.externalProcedureRegistry.LookupByName(name)
+func (pro *DbProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	return pro.externalProcedureRegistry.LookupByName(name)
 }
 
 // TableFunction implements sql.TableFunctionProvider
-func (mdb memoryDBProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
-	if tableFunction, ok := mdb.tableFunctions[name]; ok {
+func (pro *DbProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+	if tableFunction, ok := pro.tableFunctions[name]; ok {
 		return tableFunction, nil
 	}
 

@@ -20,6 +20,40 @@ import (
 
 var JoinQueryTests = []QueryTest{
 	{
+		Query: "select ab.* from ab join pq on a = p where b = (select y from xy where y in (select v from uv where v = b)) order by a;",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 2},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
+		Query: "select * from ab where b in (select y from xy where y in (select v from uv where v = b));",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 2},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
+		Query: "select * from ab where a in (select y from xy where y in (select v from uv where v = a));",
+		Expected: []sql.Row{
+			{1, 2},
+			{2, 2},
+		},
+	},
+	{
+		Query: "select * from ab where a in (select x from xy where x in (select u from uv where u = a));",
+		Expected: []sql.Row{
+			{1, 2},
+			{2, 2},
+			{0, 2},
+			{3, 1},
+		},
+	},
+	{
 		// sqe index lookup must reference schema of outer scope after
 		// join planning reorders (lookup uv xy)
 		Query: `select y, (select 1 from uv where y = 1 and u = x) is_one from xy join uv on x = v order by y;`,

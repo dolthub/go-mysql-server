@@ -247,6 +247,9 @@ var (
 	// ErrUnboundPreparedStatementVariable is returned when a query is executed without a binding for one its variables.
 	ErrUnboundPreparedStatementVariable = errors.NewKind(`unbound variable "%s" in query`)
 
+	// ErrUnknownPreparedStatement is returned when an unknown query is executed.
+	ErrUnknownPreparedStatement = errors.NewKind(`Unknown prepared statement handler (%s) given to EXECUTE`)
+
 	// ErrTruncateReferencedFromForeignKey is returned when a table is referenced in a foreign key and TRUNCATE is called on it.
 	ErrTruncateReferencedFromForeignKey = errors.NewKind("cannot truncate table %s as it is referenced in foreign key %s on table %s")
 
@@ -697,7 +700,11 @@ var (
 	// ErrNoTablesUsed is returned when there is no table provided or dual table is defined with column access.
 	ErrNoTablesUsed = errors.NewKind("No tables used")
 
+	// ErrInvalidJson is returned when a JSON string doesn't represent valid JSON.
 	ErrInvalidJson = errors.NewKind("Invalid JSON text: %s")
+
+	// ErrNoAutoIncrementCol is returned when there is no auto increment column defined on a table.
+	ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

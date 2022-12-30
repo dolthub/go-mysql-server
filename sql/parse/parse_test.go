@@ -3426,31 +3426,31 @@ CREATE TABLE t2
 		},
 		{
 			input: "BEGIN",
-			plan:  plan.NewStartTransaction("", sql.ReadWrite),
+			plan:  plan.NewStartTransaction(sql.ReadWrite),
 		},
 		{
 			input: "START TRANSACTION",
-			plan:  plan.NewStartTransaction("", sql.ReadWrite),
+			plan:  plan.NewStartTransaction(sql.ReadWrite),
 		},
 		{
 			input: "COMMIT",
-			plan:  plan.NewCommit(""),
+			plan:  plan.NewCommit(),
 		},
 		{
 			input: `ROLLBACK`,
-			plan:  plan.NewRollback(""),
+			plan:  plan.NewRollback(),
 		},
 		{
 			input: "SAVEPOINT abc",
-			plan:  plan.NewCreateSavepoint("", "abc"),
+			plan:  plan.NewCreateSavepoint("abc"),
 		},
 		{
 			input: "ROLLBACK TO SAVEPOINT abc",
-			plan:  plan.NewRollbackSavepoint("", "abc"),
+			plan:  plan.NewRollbackSavepoint("abc"),
 		},
 		{
 			input: "RELEASE SAVEPOINT abc",
-			plan:  plan.NewReleaseSavepoint("", "abc"),
+			plan:  plan.NewReleaseSavepoint("abc"),
 		},
 		{
 			input: "SHOW CREATE TABLE `mytable`",
@@ -5179,13 +5179,16 @@ func TestPrintTree(t *testing.T) {
 		WHERE foo > qux
 		LIMIT 5
 		OFFSET 2`)
+	fmt.Println(node.String())
 	require.NoError(err)
 	require.Equal(`Limit(5)
  └─ Offset(2)
      └─ Project
          ├─ columns: [t.foo, bar.baz]
-         └─ Filter(foo > qux)
-             └─ InnerJoin(foo = baz)
+         └─ Filter
+             ├─ (foo > qux)
+             └─ InnerJoin
+                 ├─ (foo = baz)
                  ├─ TableAlias(t)
                  │   └─ UnresolvedTable(tbl)
                  └─ UnresolvedTable(bar)

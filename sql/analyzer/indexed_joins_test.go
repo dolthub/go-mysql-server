@@ -47,7 +47,7 @@ func TestHashJoins(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewMemo(nil, nil)
+			m := NewMemo(nil, nil, nil)
 			j := newJoinOrderBuilder(m)
 			j.reorderJoin(tt.plan)
 			addHashJoins(m)

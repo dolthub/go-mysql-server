@@ -296,8 +296,8 @@ func (t Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 	return nil
 }
 
-// GetForeignKeyUpdater implements the interface sql.ForeignKeyTable.
-func (t Table) GetForeignKeyUpdater(ctx *sql.Context) sql.ForeignKeyUpdater {
+// GetForeignKeyEditor implements the interface sql.ForeignKeyTable.
+func (t Table) GetForeignKeyEditor(ctx *sql.Context) sql.ForeignKeyEditor {
 	return &tableEditor{t, t.Schema()}
 }
 
@@ -344,14 +344,9 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	return rowCount.(uint64), nil
 }
 
-// CalculateStatistics implements the interface sql.StatisticsTable.
-func (t Table) AnalyzeTable(ctx *sql.Context) error {
-	return nil
-}
-
-// GetStatistics implements the interface sql.StatisticsTable.
-func (t Table) Statistics(ctx *sql.Context) (sql.TableStatistics, error) {
-	return nil, nil
+// Cardinality implements the interface sql.StatisticsTable.
+func (t Table) RowCount(ctx *sql.Context) (uint64, error) {
+	return 0, nil
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.

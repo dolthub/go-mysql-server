@@ -93,7 +93,7 @@ func (f *If) IsNullable() bool {
 }
 
 func (f *If) String() string {
-	return fmt.Sprintf("if(%s, %s, %s)", f.expr, f.ifTrue, f.ifFalse)
+	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.expr, f.ifTrue, f.ifFalse)
 }
 
 // WithChildren implements the Expression interface.

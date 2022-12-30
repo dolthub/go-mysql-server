@@ -31,7 +31,7 @@ func TestRand(t *testing.T) {
 	r, _ := NewRand()
 
 	assert.Equal(t, sql.Float64, r.Type())
-	assert.Equal(t, "RAND()", r.String())
+	assert.Equal(t, "rand()", r.String())
 
 	f, err := r.Eval(nil, nil)
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestRandWithSeed(t *testing.T) {
 	r, _ := NewRand(expression.NewLiteral(10, sql.Int8))
 
 	assert.Equal(t, sql.Float64, r.Type())
-	assert.Equal(t, "RAND(10)", r.String())
+	assert.Equal(t, "rand(10)", r.String())
 
 	f, err := r.Eval(nil, nil)
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestRandWithSeed(t *testing.T) {
 	assert.Equal(t, f64, f642)
 
 	r, _ = NewRand(expression.NewLiteral("not a number", sql.LongText))
-	assert.Equal(t, `RAND('not a number')`, r.String())
+	assert.Equal(t, `rand('not a number')`, r.String())
 
 	f, err = r.Eval(nil, nil)
 	require.NoError(t, err)

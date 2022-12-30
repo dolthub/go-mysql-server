@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -231,7 +232,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)
 
-	provider := sql.NewDatabaseProvider(db)
+	provider := sql.NewDatabaseProvider(db, information_schema.NewInformationSchemaDatabase())
 	a := withoutProcessTracking(NewDefault(provider))
 
 	ctx := sql.NewContext(context.Background())
@@ -334,7 +335,7 @@ func TestDeepCopyNode(t *testing.T) {
 		t.Run(fmt.Sprintf("DeepCopyTest_%d", i), func(t *testing.T) {
 			cop, err := DeepCopyNode(tt.node)
 			require.NoError(t, err)
-			cop, err = plan.ApplyBindings(cop, map[string]sql.Expression{
+			cop, _, err = plan.ApplyBindings(cop, map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, sql.Int64),
 				"v2": expression.NewLiteral("x", sql.Text),
 			})

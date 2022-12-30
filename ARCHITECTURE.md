@@ -33,8 +33,9 @@ several main roles:
   `Expression`, ...
 - Provides implementations of components used in the rest of the
   packages `Row`, `Context`, `ProcessList`, `Catalog`, ...
-- Defines the `information_schema` table, which is a special database
-  and contains some information about the schemas of other tables.
+- Defines the `information_schema` database, which is a special
+  database and contains some information about the schemas of other
+  tables.
 
 ### `sql/analyzer`
 
@@ -62,9 +63,6 @@ logic operators, conversions, etc are implemented here.
 
 Inside `registry.go` there is a registry of all the default functions,
 even if they're not defined here.
-
-`Inspect` and `Walk` utility functions are provided to inspect
-expressions.
 
 ### `sql/expression/function`
 
@@ -126,23 +124,6 @@ There are two authentication methods:
 Contains a function to `Find` the most similar name from an array to a
 given one using the Levenshtein distance algorithm. Used for
 suggestions on errors.
-
-## `internal/regex`
-
-go-mysql-server has multiple regular expression engines, such as
-oniguruma and the standard Go regexp engine. In this package, a common
-interface for regular expression engines is defined.  This means, Go
-standard library `regexp` package should not be used in any
-user-facing feature, instead this package should be used.
-
-The default engine is oniguruma, but the Go standard library engine
-can be used using the `mysql_go_regex` build tag.
-
-## `test`
-
-Test contains pieces that are only used for tests, such as an
-opentracing tracer that stores spans in memory to be inspected later
-in the tests.
 
 ## `_integration`
 

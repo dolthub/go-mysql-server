@@ -20,6 +20,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -31,8 +32,6 @@ import (
 )
 
 const (
-	// InformationSchemaDatabaseName is the name of the information schema database.
-	InformationSchemaDatabaseName = "information_schema"
 	// AdministrableRoleAuthorizationsTableName is the name of the ADMINISTRABLE_ROLE_AUTHORIZATIONS table.
 	AdministrableRoleAuthorizationsTableName = "administrable_role_authorizations"
 	// ApplicableRolesTableName is the name of the APPLICABLE_ROLES table.
@@ -53,8 +52,6 @@ const (
 	ColumnsTableName = "columns"
 	// ColumnsExtensionsTableName is the name of the COLUMN_EXTENSIONS table.
 	ColumnsExtensionsTableName = "columns_extensions"
-	// ConnectionControlFailedLoginAttemptsTableName is the name of the CONNECTION_CONTROL_FAILED_LOGIN_ATTEMPTS.
-	ConnectionControlFailedLoginAttemptsTableName = "connection_control_failed_login_attempts"
 	// EnabledRolesTablesName is the name of the ENABLED_ROLES table.
 	EnabledRolesTablesName = "enabled_roles"
 	// EnginesTableName is the name of the ENGINES table
@@ -152,7 +149,7 @@ type informationSchemaTable struct {
 	name    string
 	schema  Schema
 	catalog Catalog
-	rowIter func(*Context, Catalog) (RowIter, error)
+	reader  func(*Context, Catalog) (RowIter, error)
 }
 
 type informationSchemaPartition struct {
@@ -273,12 +270,6 @@ var columnsExtensionsSchema = Schema{
 	{Name: "COLUMN_NAME", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 	{Name: "ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 	{Name: "SECONDARY_ENGINE_ATTRIBUTE", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
-}
-
-// TODO: is this table deprecated?? not available on mysql.
-var connectionControlFailedLoginAttemptsSchema = Schema{
-	{Name: "USERHOST", Type: LongText, Default: nil, Nullable: false, Source: ConnectionControlFailedLoginAttemptsTableName},
-	{Name: "FAILED_ATTEMPTS", Type: Uint64, Default: nil, Nullable: false, Source: ConnectionControlFailedLoginAttemptsTableName},
 }
 
 var enabledRolesSchema = Schema{
@@ -879,19 +870,19 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // columnStatisticsRowIter implements the sql.RowIter for the information_schema.COLUMN_STATISTICS table.
 func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
+	statsTbl, err := c.Statistics(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for _, db := range c.AllDatabases(ctx) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-			statsTbl, ok := t.(StatisticsTable)
-			if !ok {
+
+			tableHist, err := statsTbl.Hist(ctx, db.Name(), t.Name())
+			if err != nil {
 				return true, nil
 			}
 
-			stats, err := statsTbl.Statistics(ctx)
-			if err != nil {
-				return false, err
-			}
-
-			if stats.HistogramMap() == nil {
+			if tableHist == nil {
 				return true, nil
 			}
 
@@ -900,9 +891,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					continue
 				}
 
-				hist, err := stats.Histogram(col.Name)
-				if err != nil {
-					return false, err
+				hist, ok := tableHist[col.Name]
+				if !ok {
+					return false, fmt.Errorf("column histogram not found: %s", col.Name)
 				}
 
 				buckets := make([]interface{}, len(hist.Buckets))
@@ -911,9 +902,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				rows = append(rows, Row{
-					db.Name(),       // table_schema
-					statsTbl.Name(), // table_name
-					col.Name,        // column_name
+					db.Name(), // table_schema
+					t.Name(),  // table_name
+					col.Name,  // column_name
 					//hist.Mean,          // mean
 					//hist.Min,           // min
 					//hist.Max,           // max
@@ -921,6 +912,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					//hist.NullCount,     // null_count
 					//hist.DistinctCount, // distinct_count
 					//bucketStrings, // buckets
+					// TODO: missing other key/value pairs in the JSON
 					JSONDocument{Val: map[string]interface{}{"buckets": buckets}}, // histogram
 				})
 			}
@@ -1115,7 +1107,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 					// Create a Row for each column this index refers too.
 					i := 0
-					for _, expr := range index.Expressions() {
+					for j, expr := range index.Expressions() {
 						col := plan.GetColumnFromIndexExpr(expr, tbl)
 						if col != nil {
 							i += 1
@@ -1123,6 +1115,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								collation   string
 								nullable    string
 								cardinality int64
+								subPart     interface{}
 							)
 
 							seqInIndex := i
@@ -1131,13 +1124,10 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// collation is "A" for ASC ; "D" for DESC ; "NULL" for not sorted
 							collation = "A"
 
-							// TODO : cardinality should be an estimate of the number of unique values in the index.
-							// it is currently set to total number of rows in the table
-							if st, ok := tbl.(StatisticsTable); ok {
-								cardinality, err = getTotalNumRows(ctx, st)
-								if err != nil {
-									return nil, err
-								}
+							// TODO : cardinality is an estimate of the number of unique values in the index.
+
+							if j < len(index.PrefixLengths()) {
+								subPart = int64(index.PrefixLengths()[j])
 							}
 
 							// if nullable, 'YES'; if not, ''
@@ -1146,6 +1136,8 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							} else {
 								nullable = ""
 							}
+
+							// TODO: we currently don't support expression index such as ((i * 20))
 
 							rows = append(rows, Row{
 								"def",        // table_catalog
@@ -1158,7 +1150,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								colName,      // column_name
 								collation,    // collation
 								cardinality,  // cardinality
-								nil,          // sub_part
+								subPart,      // sub_part
 								nil,          // packed
 								nullable,     // is_nullable	NOT NULL
 								indexType,    // index_type		NOT NULL
@@ -1255,40 +1247,57 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // tablesRowIter implements the sql.RowIter for the information_schema.TABLES table.
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
+	var (
+		tableType      string
+		tableRows      uint64
+		engine         interface{}
+		rowFormat      interface{}
+		tableCollation interface{}
+	)
+
 	for _, db := range cat.AllDatabases(ctx) {
-		tableType := "BASE TABLE"
-		engine := "INNODB"
-		rowFormat := "Dynamic"
 		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
-			engine = "MEMORY"
-			rowFormat = "Fixed"
+		} else {
+			tableType = "BASE TABLE"
+			engine = "InnoDB"
+			rowFormat = "Dynamic"
+			tableCollation = Collation_Default.String()
 		}
 
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			if db.Name() != InformationSchemaDatabaseName {
+				if st, ok := t.(StatisticsTable); ok {
+					tableRows, err = st.RowCount(ctx)
+					if err != nil {
+						return false, err
+					}
+				}
+			}
+
 			rows = append(rows, Row{
-				"def",                      // table_catalog
-				db.Name(),                  // table_schema
-				t.Name(),                   // table_name
-				tableType,                  // table_type
-				engine,                     // engine
-				10,                         // version (protocol, always 10)
-				rowFormat,                  // row_format
-				nil,                        // table_rows
-				nil,                        // avg_row_length
-				nil,                        // data_length
-				nil,                        // max_data_length
-				nil,                        // max_data_length
-				nil,                        // data_free
-				nil,                        // auto_increment (always nil)
-				y2k,                        // create_time
-				y2k,                        // update_time
-				nil,                        // check_time
-				Collation_Default.String(), // table_collation
-				nil,                        // checksum
-				nil,                        // create_options
-				"",                         // table_comment
+				"def",          // table_catalog
+				db.Name(),      // table_schema
+				t.Name(),       // table_name
+				tableType,      // table_type
+				engine,         // engine
+				10,             // version (protocol, always 10)
+				rowFormat,      // row_format
+				tableRows,      // table_rows
+				0,              // avg_row_length
+				0,              // data_length
+				0,              // max_data_length
+				0,              // max_data_length
+				0,              // data_free
+				nil,            // auto_increment (the next value)
+				y2k,            // create_time
+				y2k,            // update_time
+				nil,            // check_time
+				tableCollation, // table_collation
+				nil,            // checksum
+				"",             // create_options
+				"",             // table_comment
 			})
 
 			return true, nil
@@ -1325,7 +1334,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				Collation_Default.String(), // table_collation
 				nil,                        // checksum
 				nil,                        // create_options
-				"",                         // table_comment
+				"VIEW",                     // table_comment
 			})
 		}
 	}
@@ -1470,146 +1479,151 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
+func NewUpdatableInformationSchemaDatabase() Database {
+	db := NewInformationSchemaDatabase().(*informationSchemaDatabase)
+	db.tables[StatisticsTableName] = newUpdatableStatsTable()
+	return db
+}
+
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
 func NewInformationSchemaDatabase() Database {
 	isDb := &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
 			AdministrableRoleAuthorizationsTableName: &informationSchemaTable{
-				name:    AdministrableRoleAuthorizationsTableName,
-				schema:  administrableRoleAuthorizationsSchema,
-				rowIter: emptyRowIter,
+				name:   AdministrableRoleAuthorizationsTableName,
+				schema: administrableRoleAuthorizationsSchema,
+				reader: emptyRowIter,
 			},
 			ApplicableRolesTableName: &informationSchemaTable{
-				name:    ApplicableRolesTableName,
-				schema:  applicableRolesSchema,
-				rowIter: emptyRowIter,
+				name:   ApplicableRolesTableName,
+				schema: applicableRolesSchema,
+				reader: emptyRowIter,
 			},
 			CharacterSetsTableName: &informationSchemaTable{
-				name:    CharacterSetsTableName,
-				schema:  characterSetsSchema,
-				rowIter: characterSetsRowIter,
+				name:   CharacterSetsTableName,
+				schema: characterSetsSchema,
+				reader: characterSetsRowIter,
 			},
 			CheckConstraintsTableName: &informationSchemaTable{
-				name:    CheckConstraintsTableName,
-				schema:  checkConstraintsSchema,
-				rowIter: checkConstraintsRowIter,
+				name:   CheckConstraintsTableName,
+				schema: checkConstraintsSchema,
+				reader: checkConstraintsRowIter,
 			},
 			CollationCharSetApplicabilityTableName: &informationSchemaTable{
-				name:    CollationCharSetApplicabilityTableName,
-				schema:  collationCharacterSetApplicabilitySchema,
-				rowIter: collationCharacterSetApplicabilityRowIter,
+				name:   CollationCharSetApplicabilityTableName,
+				schema: collationCharacterSetApplicabilitySchema,
+				reader: collationCharacterSetApplicabilityRowIter,
 			},
 			CollationsTableName: &informationSchemaTable{
-				name:    CollationsTableName,
-				schema:  collationsSchema,
-				rowIter: collationsRowIter,
+				name:   CollationsTableName,
+				schema: collationsSchema,
+				reader: collationsRowIter,
 			},
 			ColumnPrivilegesTableName: &informationSchemaTable{
-				name:    ColumnPrivilegesTableName,
-				schema:  columnPrivilegesSchema,
-				rowIter: emptyRowIter,
+				name:   ColumnPrivilegesTableName,
+				schema: columnPrivilegesSchema,
+				reader: emptyRowIter,
 			},
 			ColumnStatisticsTableName: &informationSchemaTable{
-				name:    ColumnStatisticsTableName,
-				schema:  columnStatisticsSchema,
-				rowIter: columnStatisticsRowIter,
+				name:   ColumnStatisticsTableName,
+				schema: columnStatisticsSchema,
+				reader: columnStatisticsRowIter,
 			},
-
+			ColumnsTableName: &ColumnsTable{
+				name:    ColumnsTableName,
+				schema:  columnsSchema,
+				rowIter: columnsRowIter,
+			},
 			ColumnsExtensionsTableName: &informationSchemaTable{
-				name:    ColumnsExtensionsTableName,
-				schema:  columnsExtensionsSchema,
-				rowIter: emptyRowIter,
-			},
-			ConnectionControlFailedLoginAttemptsTableName: &informationSchemaTable{
-				name:    ConnectionControlFailedLoginAttemptsTableName,
-				schema:  connectionControlFailedLoginAttemptsSchema,
-				rowIter: emptyRowIter,
+				name:   ColumnsExtensionsTableName,
+				schema: columnsExtensionsSchema,
+				reader: emptyRowIter,
 			},
 			EnabledRolesTablesName: &informationSchemaTable{
-				name:    EnabledRolesTablesName,
-				schema:  enabledRolesSchema,
-				rowIter: emptyRowIter,
+				name:   EnabledRolesTablesName,
+				schema: enabledRolesSchema,
+				reader: emptyRowIter,
 			},
 			EnginesTableName: &informationSchemaTable{
-				name:    EnginesTableName,
-				schema:  enginesSchema,
-				rowIter: enginesRowIter,
+				name:   EnginesTableName,
+				schema: enginesSchema,
+				reader: enginesRowIter,
 			},
 			EventsTableName: &informationSchemaTable{
-				name:    EventsTableName,
-				schema:  eventsSchema,
-				rowIter: emptyRowIter,
+				name:   EventsTableName,
+				schema: eventsSchema,
+				reader: emptyRowIter,
 			},
 			FilesTableName: &informationSchemaTable{
-				name:    FilesTableName,
-				schema:  filesSchema,
-				rowIter: emptyRowIter,
+				name:   FilesTableName,
+				schema: filesSchema,
+				reader: emptyRowIter,
 			},
 			KeyColumnUsageTableName: &informationSchemaTable{
-				name:    KeyColumnUsageTableName,
-				schema:  keyColumnUsageSchema,
-				rowIter: keyColumnUsageRowIter,
+				name:   KeyColumnUsageTableName,
+				schema: keyColumnUsageSchema,
+				reader: keyColumnUsageRowIter,
 			},
 			KeywordsTableName: &informationSchemaTable{
-				name:    KeywordsTableName,
-				schema:  keywordsSchema,
-				rowIter: emptyRowIter,
+				name:   KeywordsTableName,
+				schema: keywordsSchema,
+				reader: emptyRowIter,
 			},
 			OptimizerTraceTableName: &informationSchemaTable{
-				name:    OptimizerTraceTableName,
-				schema:  optimizerTraceSchema,
-				rowIter: emptyRowIter,
+				name:   OptimizerTraceTableName,
+				schema: optimizerTraceSchema,
+				reader: emptyRowIter,
 			},
 			ParametersTableName: &informationSchemaTable{
-				name:    ParametersTableName,
-				schema:  parametersSchema,
-				rowIter: emptyRowIter,
+				name:   ParametersTableName,
+				schema: parametersSchema,
+				reader: emptyRowIter,
 			},
 			PartitionsTableName: &informationSchemaTable{
-				name:    PartitionsTableName,
-				schema:  partitionsSchema,
-				rowIter: emptyRowIter,
+				name:   PartitionsTableName,
+				schema: partitionsSchema,
+				reader: emptyRowIter,
 			},
 			PluginsTableName: &informationSchemaTable{
-				name:    PluginsTableName,
-				schema:  pluginsSchema,
-				rowIter: emptyRowIter,
+				name:   PluginsTableName,
+				schema: pluginsSchema,
+				reader: emptyRowIter,
 			},
 			ProcessListTableName: &informationSchemaTable{
-				name:    ProcessListTableName,
-				schema:  processListSchema,
-				rowIter: processListRowIter,
+				name:   ProcessListTableName,
+				schema: processListSchema,
+				reader: processListRowIter,
 			},
 			ProfilingTableName: &informationSchemaTable{
-				name:    ProfilingTableName,
-				schema:  profilingSchema,
-				rowIter: emptyRowIter,
+				name:   ProfilingTableName,
+				schema: profilingSchema,
+				reader: emptyRowIter,
 			},
 			ReferentialConstraintsTableName: &informationSchemaTable{
-				name:    ReferentialConstraintsTableName,
-				schema:  referentialConstraintsSchema,
-				rowIter: emptyRowIter,
+				name:   ReferentialConstraintsTableName,
+				schema: referentialConstraintsSchema,
+				reader: emptyRowIter,
 			},
 			ResourceGroupsTableName: &informationSchemaTable{
-				name:    ResourceGroupsTableName,
-				schema:  resourceGroupsSchema,
-				rowIter: emptyRowIter,
+				name:   ResourceGroupsTableName,
+				schema: resourceGroupsSchema,
+				reader: emptyRowIter,
 			},
 			RoleColumnGrantsTableName: &informationSchemaTable{
-				name:    RoleColumnGrantsTableName,
-				schema:  roleColumnGrantsSchema,
-				rowIter: emptyRowIter,
+				name:   RoleColumnGrantsTableName,
+				schema: roleColumnGrantsSchema,
+				reader: emptyRowIter,
 			},
 			RoleRoutineGrantsTableName: &informationSchemaTable{
-				name:    RoleRoutineGrantsTableName,
-				schema:  roleRoutineGrantsSchema,
-				rowIter: emptyRowIter,
+				name:   RoleRoutineGrantsTableName,
+				schema: roleRoutineGrantsSchema,
+				reader: emptyRowIter,
 			},
 			RoleTableGrantsTableName: &informationSchemaTable{
-				name:    RoleTableGrantsTableName,
-				schema:  roleTableGrantsSchema,
-				rowIter: emptyRowIter,
+				name:   RoleTableGrantsTableName,
+				schema: roleTableGrantsSchema,
+				reader: emptyRowIter,
 			},
 			RoutinesTableName: &routineTable{
 				name:    RoutinesTableName,
@@ -1617,262 +1631,260 @@ func NewInformationSchemaDatabase() Database {
 				rowIter: routinesRowIter,
 			},
 			SchemaPrivilegesTableName: &informationSchemaTable{
-				name:    SchemaPrivilegesTableName,
-				schema:  schemaPrivilegesTableName,
-				rowIter: emptyRowIter,
+				name:   SchemaPrivilegesTableName,
+				schema: schemaPrivilegesTableName,
+				reader: emptyRowIter,
 			},
 			SchemataTableName: &informationSchemaTable{
-				name:    SchemataTableName,
-				schema:  schemataSchema,
-				rowIter: schemataRowIter,
+				name:   SchemataTableName,
+				schema: schemataSchema,
+				reader: schemataRowIter,
 			},
 			SchemataExtensionsTableName: &informationSchemaTable{
-				name:    SchemataExtensionsTableName,
-				schema:  schemataExtensionsTableName,
-				rowIter: emptyRowIter,
-			},
-			StatisticsTableName: &informationSchemaTable{
-				name:    StatisticsTableName,
-				schema:  statisticsSchema,
-				rowIter: statisticsRowIter,
+				name:   SchemataExtensionsTableName,
+				schema: schemataExtensionsTableName,
+				reader: emptyRowIter,
 			},
 			StGeometryColumnsTableName: &informationSchemaTable{
-				name:    StGeometryColumnsTableName,
-				schema:  stGeometryColumnsSchema,
-				rowIter: emptyRowIter,
+				name:   StGeometryColumnsTableName,
+				schema: stGeometryColumnsSchema,
+				reader: emptyRowIter,
 			},
 			StSpatialReferenceSystemsTableName: &informationSchemaTable{
-				name:    StSpatialReferenceSystemsTableName,
-				schema:  stSpatialReferenceSystemsSchema,
-				rowIter: emptyRowIter,
+				name:   StSpatialReferenceSystemsTableName,
+				schema: stSpatialReferenceSystemsSchema,
+				reader: emptyRowIter,
 			},
 			StUnitsOfMeasureTableName: &informationSchemaTable{
-				name:    StUnitsOfMeasureTableName,
-				schema:  stUnitsOfMeasureSchema,
-				rowIter: emptyRowIter,
+				name:   StUnitsOfMeasureTableName,
+				schema: stUnitsOfMeasureSchema,
+				reader: emptyRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
-				name:    TableConstraintsTableName,
-				schema:  tableConstraintsSchema,
-				rowIter: tableConstraintsRowIter,
+				name:   TableConstraintsTableName,
+				schema: tableConstraintsSchema,
+				reader: tableConstraintsRowIter,
 			},
 			TableConstraintsExtensionsTableName: &informationSchemaTable{
-				name:    TableConstraintsExtensionsTableName,
-				schema:  tableConstraintsExtensionsSchema,
-				rowIter: emptyRowIter,
+				name:   TableConstraintsExtensionsTableName,
+				schema: tableConstraintsExtensionsSchema,
+				reader: emptyRowIter,
 			},
 			TablePrivilegesTableName: &informationSchemaTable{
-				name:    TablePrivilegesTableName,
-				schema:  tablePrivilegesSchema,
-				rowIter: emptyRowIter,
+				name:   TablePrivilegesTableName,
+				schema: tablePrivilegesSchema,
+				reader: emptyRowIter,
 			},
 			TablesTableName: &informationSchemaTable{
-				name:    TablesTableName,
-				schema:  tablesSchema,
-				rowIter: tablesRowIter,
+				name:   TablesTableName,
+				schema: tablesSchema,
+				reader: tablesRowIter,
 			},
 			TablesExtensionsTableName: &informationSchemaTable{
-				name:    TablesExtensionsTableName,
-				schema:  tablesExtensionsSchema,
-				rowIter: emptyRowIter,
+				name:   TablesExtensionsTableName,
+				schema: tablesExtensionsSchema,
+				reader: emptyRowIter,
 			},
 			TablespacesTableName: &informationSchemaTable{
-				name:    TablespacesTableName,
-				schema:  tablespacesSchema,
-				rowIter: emptyRowIter,
+				name:   TablespacesTableName,
+				schema: tablespacesSchema,
+				reader: emptyRowIter,
 			},
 			TablespacesExtensionsTableName: &informationSchemaTable{
-				name:    TablespacesExtensionsTableName,
-				schema:  tablespacesExtensionsSchema,
-				rowIter: emptyRowIter,
+				name:   TablespacesExtensionsTableName,
+				schema: tablespacesExtensionsSchema,
+				reader: emptyRowIter,
 			},
 			TriggersTableName: &informationSchemaTable{
-				name:    TriggersTableName,
-				schema:  triggersSchema,
-				rowIter: triggersRowIter,
+				name:   TriggersTableName,
+				schema: triggersSchema,
+				reader: triggersRowIter,
 			},
 			UserAttributesTableName: &informationSchemaTable{
-				name:    UserAttributesTableName,
-				schema:  userAttributesSchema,
-				rowIter: emptyRowIter,
+				name:   UserAttributesTableName,
+				schema: userAttributesSchema,
+				reader: emptyRowIter,
 			},
 			UserPrivilegesTableName: &informationSchemaTable{
-				name:    UserPrivilegesTableName,
-				schema:  userPrivilegesSchema,
-				rowIter: emptyRowIter,
+				name:   UserPrivilegesTableName,
+				schema: userPrivilegesSchema,
+				reader: emptyRowIter,
 			},
 			ViewRoutineUsageTableName: &informationSchemaTable{
-				name:    ViewRoutineUsageTableName,
-				schema:  viewRoutineUsageSchema,
-				rowIter: emptyRowIter,
+				name:   ViewRoutineUsageTableName,
+				schema: viewRoutineUsageSchema,
+				reader: emptyRowIter,
 			},
 			ViewTableUsageTableName: &informationSchemaTable{
-				name:    ViewTableUsageTableName,
-				schema:  viewTableUsageSchema,
-				rowIter: emptyRowIter,
+				name:   ViewTableUsageTableName,
+				schema: viewTableUsageSchema,
+				reader: emptyRowIter,
 			},
 			ViewsTableName: &informationSchemaTable{
-				name:    ViewsTableName,
-				schema:  viewsSchema,
-				rowIter: viewsRowIter,
+				name:   ViewsTableName,
+				schema: viewsSchema,
+				reader: viewsRowIter,
 			},
 			InnoDBBufferPageName: &informationSchemaTable{
-				name:    InnoDBBufferPageName,
-				schema:  innoDBBufferPageSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBBufferPageName,
+				schema: innoDBBufferPageSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBBufferPageLRUName: &informationSchemaTable{
-				name:    InnoDBBufferPageLRUName,
-				schema:  innoDBBufferPageLRUSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBBufferPageLRUName,
+				schema: innoDBBufferPageLRUSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBBufferPoolStatsName: &informationSchemaTable{
-				name:    InnoDBBufferPoolStatsName,
-				schema:  innoDBBufferPoolStatsSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBBufferPoolStatsName,
+				schema: innoDBBufferPoolStatsSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBCachedIndexesName: &informationSchemaTable{
-				name:    InnoDBCachedIndexesName,
-				schema:  innoDBCachedIndexesSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBCachedIndexesName,
+				schema: innoDBCachedIndexesSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBCmpName: &informationSchemaTable{
-				name:    InnoDBCmpName,
-				schema:  innoDBCmpSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBCmpName,
+				schema: innoDBCmpSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBCmpResetName: &informationSchemaTable{
-				name:    InnoDBCmpResetName,
-				schema:  innoDBCmpResetSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBCmpResetName,
+				schema: innoDBCmpResetSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBCmpmemName: &informationSchemaTable{
-				name:    InnoDBCmpmemName,
-				schema:  innoDBCmpmemSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBCmpmemName,
+				schema: innoDBCmpmemSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBCmpmemResetName: &informationSchemaTable{
-				name:    InnoDBCmpmemResetName,
-				schema:  innoDBCmpmemResetSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBCmpmemResetName,
+				schema: innoDBCmpmemResetSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBCmpPerIndexName: &informationSchemaTable{
-				name:    InnoDBCmpPerIndexName,
-				schema:  innoDBCmpPerIndexSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBCmpPerIndexName,
+				schema: innoDBCmpPerIndexSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBCmpPerIndexResetName: &informationSchemaTable{
-				name:    InnoDBCmpPerIndexResetName,
-				schema:  innoDBCmpPerIndexResetSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBCmpPerIndexResetName,
+				schema: innoDBCmpPerIndexResetSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBColumnsName: &informationSchemaTable{
-				name:    InnoDBColumnsName,
-				schema:  innoDBColumnsSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBColumnsName,
+				schema: innoDBColumnsSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBDatafilesName: &informationSchemaTable{
-				name:    InnoDBDatafilesName,
-				schema:  innoDBDatafilesSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBDatafilesName,
+				schema: innoDBDatafilesSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBFieldsName: &informationSchemaTable{
-				name:    InnoDBFieldsName,
-				schema:  innoDBFieldsSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBFieldsName,
+				schema: innoDBFieldsSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBForeignName: &informationSchemaTable{
-				name:    InnoDBForeignName,
-				schema:  innoDBForeignSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBForeignName,
+				schema: innoDBForeignSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBForeignColsName: &informationSchemaTable{
-				name:    InnoDBForeignColsName,
-				schema:  innoDBForeignColsSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBForeignColsName,
+				schema: innoDBForeignColsSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBFtBeingDeletedName: &informationSchemaTable{
-				name:    InnoDBFtBeingDeletedName,
-				schema:  innoDBFtBeingDeletedSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBFtBeingDeletedName,
+				schema: innoDBFtBeingDeletedSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBFtConfigName: &informationSchemaTable{
-				name:    InnoDBFtConfigName,
-				schema:  innoDBFtConfigSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBFtConfigName,
+				schema: innoDBFtConfigSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBFtDefaultStopwordName: &informationSchemaTable{
-				name:    InnoDBFtDefaultStopwordName,
-				schema:  innoDBFtDefaultStopwordSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBFtDefaultStopwordName,
+				schema: innoDBFtDefaultStopwordSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBFtDeletedName: &informationSchemaTable{
-				name:    InnoDBFtDeletedName,
-				schema:  innoDBFtDeletedSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBFtDeletedName,
+				schema: innoDBFtDeletedSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBFtIndexCacheName: &informationSchemaTable{
-				name:    InnoDBFtIndexCacheName,
-				schema:  innoDBFtIndexCacheSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBFtIndexCacheName,
+				schema: innoDBFtIndexCacheSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBFtIndexTableName: &informationSchemaTable{
-				name:    InnoDBFtIndexTableName,
-				schema:  innoDBFtIndexTableSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBFtIndexTableName,
+				schema: innoDBFtIndexTableSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBIndexesName: &informationSchemaTable{
-				name:    InnoDBIndexesName,
-				schema:  innoDBIndexesSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBIndexesName,
+				schema: innoDBIndexesSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBMetricsName: &informationSchemaTable{
-				name:    InnoDBMetricsName,
-				schema:  innoDBMetricsSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBMetricsName,
+				schema: innoDBMetricsSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBSessionTempTablespacesName: &informationSchemaTable{
-				name:    InnoDBSessionTempTablespacesName,
-				schema:  innoDBSessionTempTablespacesSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBSessionTempTablespacesName,
+				schema: innoDBSessionTempTablespacesSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBTablesName: &informationSchemaTable{
-				name:    InnoDBTablesName,
-				schema:  innoDBTablesSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBTablesName,
+				schema: innoDBTablesSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBTablespacesName: &informationSchemaTable{
-				name:    InnoDBTablespacesName,
-				schema:  innoDBTablespacesSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBTablespacesName,
+				schema: innoDBTablespacesSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBTablespacesBriefName: &informationSchemaTable{
-				name:    InnoDBTablespacesBriefName,
-				schema:  innoDBTablespacesBriefSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBTablespacesBriefName,
+				schema: innoDBTablespacesBriefSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBTablestatsName: &informationSchemaTable{
-				name:    InnoDBTablestatsName,
-				schema:  innoDBTablestatsSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBTablestatsName,
+				schema: innoDBTablestatsSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBTempTableInfoName: &informationSchemaTable{
-				name:    InnoDBTempTableInfoName,
-				schema:  innoDBTempTableSchema,
-				rowIter: innoDBTempTableRowIter,
+				name:   InnoDBTempTableInfoName,
+				schema: innoDBTempTableSchema,
+				reader: innoDBTempTableRowIter,
 			},
 			InnoDBTrxName: &informationSchemaTable{
-				name:    InnoDBTrxName,
-				schema:  innoDBTrxSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBTrxName,
+				schema: innoDBTrxSchema,
+				reader: emptyRowIter,
 			},
 			InnoDBVirtualName: &informationSchemaTable{
-				name:    InnoDBVirtualName,
-				schema:  innoDBVirtualSchema,
-				rowIter: emptyRowIter,
+				name:   InnoDBVirtualName,
+				schema: innoDBVirtualSchema,
+				reader: emptyRowIter,
 			},
 		},
 	}
+
+	isDb.tables[StatisticsTableName] = NewDefaultStats()
+
 	return isDb
 }
 
@@ -1928,13 +1940,13 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 	if !bytes.Equal(partition.Key(), partitionKey(t.Name())) {
 		return nil, ErrPartitionNotFound.New(partition.Key())
 	}
-	if t.rowIter == nil {
+	if t.reader == nil {
 		return RowsToRowIter(), nil
 	}
 	if t.catalog == nil {
 		return nil, fmt.Errorf("nil catalog for info schema table %s", t.name)
 	}
-	return t.rowIter(ctx, t.catalog)
+	return t.reader(ctx, t.catalog)
 }
 
 // PartitionCount implements the sql.PartitionCounter interface.
@@ -1960,6 +1972,168 @@ func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	return nil
 }
 
+func NewDefaultStats() *defaultStatsTable {
+	return &defaultStatsTable{
+		informationSchemaTable: &informationSchemaTable{
+			name:   StatisticsTableName,
+			schema: statisticsSchema,
+			reader: statisticsRowIter,
+		},
+		stats: make(catalogStatistics),
+	}
+}
+
+// catalogStatistics holds TableStatistics keyed by table and database
+type catalogStatistics map[DbTable]*TableStatistics
+
+// defaultStatsTable is a statistics table implementation
+// with a cache to save ANALYZE results. RowCount defers to
+// the underlying table in the absence of a cached statistic.
+type defaultStatsTable struct {
+	*informationSchemaTable
+	stats catalogStatistics
+}
+
+var _ StatsReadWriter = (*defaultStatsTable)(nil)
+
+func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
+	n.catalog = cat
+	return n
+}
+
+func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, error) {
+	if s, ok := n.stats[NewDbTable(db, table)]; ok {
+		return s.Histograms, nil
+	} else {
+		err := fmt.Errorf("histogram not found for table '%s.%s'", db, table)
+		return nil, err
+	}
+}
+
+func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, error) {
+	s, ok := n.stats[NewDbTable(db, table)]
+	if ok {
+		return s.RowCount, nil
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return 0, err
+	}
+	st, ok := t.(StatisticsTable)
+	if !ok {
+		return 0, nil
+	}
+	return st.RowCount(ctx)
+}
+
+func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
+	tableStats := &TableStatistics{
+		CreatedAt: time.Now(),
+	}
+
+	t, _, err := n.catalog.Table(ctx, db, table)
+	if err != nil {
+		return err
+	}
+	histMap, err := NewHistogramMapFromTable(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	tableStats.Histograms = histMap
+	for _, v := range histMap {
+		tableStats.RowCount = v.Count + v.NullCount
+		break
+	}
+
+	n.stats[NewDbTable(db, table)] = tableStats
+	return nil
+}
+
+func newUpdatableStatsTable() *updatableStatsTable {
+	return &updatableStatsTable{
+		defaultStatsTable: NewDefaultStats(),
+	}
+}
+
+// updatableStatsTable provides a statistics table that can
+// be edited with UPDATE statements.
+type updatableStatsTable struct {
+	*defaultStatsTable
+}
+
+var _ UpdatableTable = (*updatableStatsTable)(nil)
+var _ StatsReadWriter = (*updatableStatsTable)(nil)
+
+// AssignCatalog implements sql.CatalogTable
+func (t *updatableStatsTable) AssignCatalog(cat Catalog) Table {
+	t.catalog = cat
+	return t
+}
+
+// Updater implements sql.UpdatableTable
+func (t *updatableStatsTable) Updater(_ *Context) RowUpdater {
+	return newStatsEditor(t.catalog, t.stats)
+}
+
+func newStatsEditor(c Catalog, stats map[DbTable]*TableStatistics) RowUpdater {
+	return &statsEditor{c: c, s: stats}
+}
+
+// statsEditor is an internal-only object used to mock table
+// statistics for testing.
+type statsEditor struct {
+	c Catalog
+	s map[DbTable]*TableStatistics
+}
+
+var _ RowUpdater = (*statsEditor)(nil)
+
+// StatementBegin implements sql.RowUpdater
+func (s *statsEditor) StatementBegin(_ *Context) {}
+
+// DiscardChanges implements sql.RowUpdater
+func (s *statsEditor) DiscardChanges(_ *Context, _ error) error {
+	return fmt.Errorf("discarding statsEditor changes not supported")
+}
+
+// StatementComplete implements sql.RowUpdater
+func (s *statsEditor) StatementComplete(_ *Context) error { return nil }
+
+// Update implements sql.RowUpdater
+func (s *statsEditor) Update(ctx *Context, old, new Row) error {
+	db, ok := old[1].(string)
+	if !ok {
+		return fmt.Errorf("expected string type databaseName; found type: '%T', value: '%v'", old[1], old[1])
+	}
+	table, ok := old[2].(string)
+	if !ok {
+		return fmt.Errorf("expected string type tableName; found type: '%T', value: '%v'", old[2], old[2])
+	}
+
+	_, _, err := s.c.Table(ctx, db, table)
+	if err != nil {
+		return err
+	}
+
+	card, ok := new[9].(int64)
+	if !ok {
+		return fmt.Errorf("expeceted integer cardinality; found type: '%T', value: '%s'", new[9], new[9])
+	}
+	stats := &TableStatistics{
+		RowCount:   uint64(card),
+		CreatedAt:  time.Now(),
+		Histograms: make(HistogramMap),
+	}
+	s.s[NewDbTable(db, table)] = stats
+	return nil
+}
+
+func (s *statsEditor) Close(context *Context) error {
+	return nil
+}
+
 func printTable(name string, tableSchema Schema) string {
 	p := NewTreePrinter()
 	_ = p.WriteNode("Table(%s)", name)
@@ -1978,26 +2152,6 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
-}
-
-func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
-	stats, err := st.Statistics(ctx)
-	if err != nil {
-		return 0, err
-	}
-	var c uint64
-	if stats != nil {
-		c = stats.RowCount()
-	}
-
-	// cardinality is int64 type, but NumRows return uint64
-	// so casting it to int64 with a check for negative number
-	cardinality := int64(c)
-	if cardinality < 0 {
-		cardinality = int64(0)
-	}
-
-	return cardinality, nil
 }
 
 func getColumnNamesFromIndex(idx Index, table Table) []string {

@@ -47,7 +47,7 @@ func (i *InetAton) Description() string {
 }
 
 func (i *InetAton) String() string {
-	return fmt.Sprintf("INET_ATON(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *InetAton) Type() sql.Type {
@@ -121,7 +121,7 @@ func (i *Inet6Aton) Description() string {
 }
 
 func (i *Inet6Aton) String() string {
-	return fmt.Sprintf("INET6_ATON(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *Inet6Aton) Type() sql.Type {
@@ -195,7 +195,7 @@ func (i *InetNtoa) Description() string {
 }
 
 func (i *InetNtoa) String() string {
-	return fmt.Sprintf("INET_NTOA(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *InetNtoa) Type() sql.Type {
@@ -262,7 +262,7 @@ func (i *Inet6Ntoa) Description() string {
 }
 
 func (i *Inet6Ntoa) String() string {
-	return fmt.Sprintf("INET6_NTOA(%s)", i.Child.String())
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
 func (i *Inet6Ntoa) Type() sql.Type {

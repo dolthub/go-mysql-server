@@ -28,6 +28,7 @@ const (
 	validateDropConstraintId                    // validateDropConstraint
 	loadCheckConstraintsId                      // loadCheckConstraints
 	assignCatalogId                             // assignCatalog
+	resolveAnalyzeTablesId                      //resolveAnalyzeTables
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
 	setViewTargetSchemaId                       // setViewTargetSchema
@@ -68,7 +69,6 @@ const (
 	flattenAggregationExprsId      // flattenAggregationExprs
 	reorderProjectionId            // reorderProjection
 	resolveSubqueryExprsId         // resolveSubqueryExprs
-	finalizeSubqueryExprsId        // finalizeSubqueryExprs
 	replaceCrossJoinsId            // replaceCrossJoins
 	moveJoinCondsToFilterId        // moveJoinCondsToFilter
 	evalFilterId                   // evalFilter
@@ -96,7 +96,6 @@ const (
 	insertTopNId                  // insertTopN
 	cacheSubqueryResultsId        // cacheSubqueryResults
 	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
-	applyHashLookupsId            // applyHashLookups
 	applyHashInId                 // applyHashIn
 	resolveInsertRowsId           // resolveInsertRows
 	resolvePreparedInsertId       // resolvePreparedInsert

@@ -20,14 +20,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// CatalogTable is a Table that depends on a Catalog.
-type CatalogTable interface {
-	sql.Table
-
-	// AssignCatalog assigns a Catalog to the table.
-	AssignCatalog(cat sql.Catalog) sql.Table
-}
-
 // assignCatalog sets the catalog in the required nodes.
 func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("assign_catalog")
@@ -87,7 +79,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			nc.Catalog = a.Catalog
 			return &nc, transform.NewTree, nil
 		case *plan.ResolvedTable:
-			ct, ok := node.Table.(CatalogTable)
+			ct, ok := node.Table.(sql.CatalogTable)
 			if ok {
 				nc := *node
 				nc.Table = ct.AssignCatalog(a.Catalog)
@@ -97,5 +89,50 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		default:
 			return n, transform.SameTree, nil
 		}
+	})
+}
+
+// resolveAnalyzeTables verifies analyze node target tables exist, and provides
+// access to the statistics table.
+func resolveAnalyzeTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("resolve_analyze_tables")
+	defer span.End()
+
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if n.Resolved() {
+			return n, transform.SameTree, nil
+		}
+
+		at, ok := n.(*plan.AnalyzeTable)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+
+		if at.Stats != nil {
+			return n, transform.SameTree, nil
+		}
+
+		db := ctx.GetCurrentDatabase()
+		newTables := make([]sql.DbTable, len(at.Tables))
+		for i, t := range at.Tables {
+			if t.Db == "" {
+				if db == "" {
+					return n, transform.SameTree, sql.ErrNoDatabaseSelected.New()
+				}
+				t.Db = db
+			}
+			_, _, err := a.Catalog.Table(ctx, t.Db, t.Table)
+			if err != nil {
+				return n, transform.SameTree, sql.ErrTableNotFound.New(t.Table)
+			}
+			newTables[i] = t
+		}
+
+		stats, err := a.Catalog.Statistics(ctx)
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+
+		return at.WithDb(db).WithTables(newTables).WithStats(stats), transform.NewTree, nil
 	})
 }

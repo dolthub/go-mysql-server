@@ -58,7 +58,7 @@ func (f Version) IsNullable() bool {
 }
 
 func (f Version) String() string {
-	return "VERSION()"
+	return fmt.Sprintf("%s()", f.FunctionName())
 }
 
 // WithChildren implements the Expression interface.

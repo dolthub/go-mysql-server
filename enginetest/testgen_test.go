@@ -13,6 +13,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
@@ -21,20 +22,20 @@ import (
 // how query plans have changed without a lot of manual copying and pasting.
 func TestWriteQueryPlans(t *testing.T) {
 	t.Skip()
-	writePlans(t, setup.PlanSetup, queries.PlanTests, "PlanTests", 1)
+	writePlans(t, setup.PlanSetup, queries.PlanTests, "PlanTests", 1, true)
 }
 
 func TestWriteIndexQueryPlans(t *testing.T) {
 	t.Skip()
-	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests", 1)
+	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests", 1, true)
 }
 
 func TestWriteIntegrationQueryPlans(t *testing.T) {
 	t.Skip()
-	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests", 1)
+	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests", 1, true)
 }
 
-func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryPlanTest, name string, parallelism int) {
+func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryPlanTest, name string, parallelism int, verbose bool) {
 	harness := NewMemoryHarness("default", parallelism, testNumPartitions, true, nil)
 	harness.Setup(s...)
 	engine := mustNewEngine(t, harness)
@@ -58,7 +59,13 @@ func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryP
 
 		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
-		planString := ExtractQueryNode(node).String()
+
+		var planString string
+		if verbose {
+			planString = sql.DebugString(ExtractQueryNode(node))
+		} else {
+			planString = ExtractQueryNode(node).String()
+		}
 
 		if strings.Contains(tt.Query, "`") {
 			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))

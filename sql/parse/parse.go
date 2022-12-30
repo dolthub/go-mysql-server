@@ -192,17 +192,17 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			transChar = sql.ReadOnly
 		}
 
-		return plan.NewStartTransaction("", transChar), nil
+		return plan.NewStartTransaction(transChar), nil
 	case *sqlparser.Commit:
-		return plan.NewCommit(""), nil
+		return plan.NewCommit(), nil
 	case *sqlparser.Rollback:
-		return plan.NewRollback(""), nil
+		return plan.NewRollback(), nil
 	case *sqlparser.Savepoint:
-		return plan.NewCreateSavepoint("", n.Identifier), nil
+		return plan.NewCreateSavepoint(n.Identifier), nil
 	case *sqlparser.RollbackSavepoint:
-		return plan.NewRollbackSavepoint("", n.Identifier), nil
+		return plan.NewRollbackSavepoint(n.Identifier), nil
 	case *sqlparser.ReleaseSavepoint:
-		return plan.NewReleaseSavepoint("", n.Identifier), nil
+		return plan.NewReleaseSavepoint(n.Identifier), nil
 	case *sqlparser.ChangeReplicationSource:
 		return convertChangeReplicationSource(n)
 	case *sqlparser.StartReplica:
@@ -267,7 +267,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			convertObjectType(n.ObjectType),
 			convertPrivilegeLevel(n.PrivilegeLevel),
 			convertAccountName(n.From...),
-		), nil
+			ctx.Session.Client().User,
+		)
 	case *sqlparser.RevokeAllPrivileges:
 		return plan.NewRevokeAll(convertAccountName(n.From...)), nil
 	case *sqlparser.RevokeRole:
@@ -280,15 +281,21 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewShowPrivileges(), nil
 	case *sqlparser.Flush:
 		return convertFlush(ctx, n)
+	case *sqlparser.Prepare:
+		return convertPrepare(ctx, n)
+	case *sqlparser.Execute:
+		return convertExecute(ctx, n)
+	case *sqlparser.Deallocate:
+		return convertDeallocate(ctx, n)
 	}
 }
 
 func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.Node, error) {
-	tables := make([]sql.Node, len(n.Tables))
+	names := make([]sql.DbTable, len(n.Tables))
 	for i, table := range n.Tables {
-		tables[i] = tableNameToUnresolvedTable(table)
+		names[i] = sql.DbTable{Db: table.Qualifier.String(), Table: table.Name.String()}
 	}
-	return plan.NewAnalyze(tables), nil
+	return plan.NewAnalyze(names), nil
 }
 
 func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {
@@ -389,6 +396,36 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 	return plan.NewDescribeQuery(explainFmt, child), nil
 }
 
+func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
+	childStmt, err := sqlparser.Parse(n.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	child, err := convert(ctx, childStmt, n.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewPrepareQuery(n.Name, child), nil
+}
+
+func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {
+	exprs := make([]sql.Expression, len(n.VarList))
+	for i, e := range n.VarList {
+		if strings.HasPrefix(e, "@") {
+			exprs[i] = expression.NewUserVar(strings.TrimPrefix(e, "@"))
+		} else {
+			exprs[i] = expression.NewUnresolvedProcedureParam(e)
+		}
+	}
+	return plan.NewExecuteQuery(n.Name, exprs...), nil
+}
+
+func convertDeallocate(ctx *sql.Context, n *sqlparser.Deallocate) (sql.Node, error) {
+	return plan.NewDeallocateQuery(n.Name), nil
+}
+
 func convertUse(n *sqlparser.Use) (sql.Node, error) {
 	name := n.DBName.String()
 	return plan.NewUse(sql.UnresolvedDatabase(name)), nil
@@ -481,11 +518,11 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "create table", "create view":
 		var asOfExpression sql.Expression
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			expr, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
 			if err != nil {
 				return nil, err
 			}
-			asOfExpression = expression
+			asOfExpression = expr
 		}
 		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
 		return plan.NewShowCreateTableWithAsOf(table, showType == "create view", asOfExpression), nil
@@ -2320,6 +2357,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	extra := ""
+
 	if cd.Type.Autoincrement {
 		extra = "auto_increment"
 	}
@@ -2678,7 +2716,8 @@ func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan
 		convertAccountName(n.To...),
 		n.WithGrantOption,
 		gau,
-	), nil
+		ctx.Session.Client().User,
+	)
 }
 
 func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGrants, error) {
@@ -3867,7 +3906,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			if collateExpr, ok := e.Expr.(*sqlparser.CollateExpr); ok {
 				// We extract the expression out of CollateExpr as we're only concerned about the collation string
 				e.Expr = collateExpr.Expr
-				//TODO: rename this from Charset to Collation
+				// TODO: rename this from Charset to Collation
 				collation, err = sql.ParseCollation(nil, &collateExpr.Charset, false)
 				if err != nil {
 					return nil, err

@@ -249,3 +249,9 @@ func (i *sliceRowIter) Close(*Context) error {
 	i.rows = nil
 	return nil
 }
+
+// RowIterTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
+type RowIterTypeSelector interface {
+	RowIter
+	IsNode2() bool
+}

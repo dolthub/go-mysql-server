@@ -36,14 +36,17 @@ var _ sql.Node = (*Revoke)(nil)
 var _ sql.Databaser = (*Revoke)(nil)
 
 // NewRevoke returns a new Revoke node.
-func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName) *Revoke {
+func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, revoker string) (*Revoke, error) {
+	if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
+		return nil, sql.ErrDatabaseAccessDeniedForUser.New(revoker, level.Database)
+	}
 	return &Revoke{
 		Privileges:     privileges,
 		ObjectType:     objType,
 		PrivilegeLevel: level,
 		Users:          users,
 		MySQLDb:        sql.UnresolvedDatabase("mysql"),
-	}
+	}, nil
 }
 
 // Schema implements the interface sql.Node.
