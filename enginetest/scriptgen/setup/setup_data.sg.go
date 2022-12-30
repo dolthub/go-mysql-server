@@ -374,14 +374,18 @@ var ViewsData = []SetupScript{{
 }}
 
 var XyData = []SetupScript{{
-	`CREATE table xy (x int primary key, y int);`,
+	`CREATE table xy (x int primary key, y int, index y_idx(y));`,
 	`CREATE table uv (u int primary key, v int);`,
 	`CREATE table ab (a int primary key, b int);`,
 	`CREATE table pq (p int primary key, q int);`,
 	`CREATE table mn (m int primary key, n int);`,
+	`create table rs (r int primary key, s int, index s_idx(s));`,
 	`insert into xy values  (1,0),  (2,1),  (0,2),  (3,3);`,
 	`insert into uv values  (0,1),  (1,1),  (2,2),  (3,2);`,
 	`insert into ab values  (0,2),  (1,2),  (2,2),  (3,1);`,
 	`insert into pq values  (0,0),  (1,1),  (2,2),  (3,3);`,
 	`insert into mn values  (2,0),  (3,1),  (4,2),  (5,3);`,
+	`insert into rs values  (0,0),  (1,0),  (2,0),  (4,4),  (5,4);`,
+	`update information_schema.statistics set cardinality = 1000000000 where table_name = 'ab';`,
+	`update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs'`,
 }}

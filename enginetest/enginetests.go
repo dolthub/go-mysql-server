@@ -1286,7 +1286,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
 					// nil in script.Expected as matching "any" non-error result.
 					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
-						checkResults(t, require.New(t), script.Expected, nil, sch, rows, lastQuery)
+						checkResults(t, script.Expected, nil, sch, rows, lastQuery)
 					}
 				})
 			}

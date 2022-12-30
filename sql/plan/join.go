@@ -47,15 +47,22 @@ const (
 	JoinTypeLeftOuterLookup                 // LeftOuterLookupJoin
 	JoinTypeHash                            // HashJoin
 	JoinTypeLeftOuterHash                   // LeftOuterHashJoin
+	JoinTypeMerge                           // MergeJoin
+	JoinTypeLeftOuterMerge                  // LeftOuterMergeJoin
 	JoinTypeSemiHash                        // SemiHashJoin
 	JoinTypeAntiHash                        // AntiHashJoin
+	JoinTypeSemiMerge                       // SemiMergeJoin
+	JoinTypeAntiMerge                       // AntiMergeJoin
 	JoinTypeNatural                         // NaturalJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {
-	return i == JoinTypeLeftOuter ||
-		i == JoinTypeLeftOuterLookup ||
-		i == JoinTypeLeftOuterHash
+	switch i {
+	case JoinTypeLeftOuter, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterMerge:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsRightOuter() bool {
@@ -67,10 +74,12 @@ func (i JoinType) IsFullOuter() bool {
 }
 
 func (i JoinType) IsPhysical() bool {
-	return i == JoinTypeLookup ||
-		i == JoinTypeLeftOuterLookup ||
-		i == JoinTypeHash ||
-		i == JoinTypeLeftOuterHash
+	switch i {
+	case JoinTypeLookup, JoinTypeLeftOuterLookup, JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeMerge, JoinTypeLeftOuterMerge:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsInner() bool {
@@ -102,6 +111,11 @@ func (i JoinType) IsPlaceholder() bool {
 func (i JoinType) IsLookup() bool {
 	return i == JoinTypeLookup ||
 		i == JoinTypeLeftOuterLookup
+}
+
+func (i JoinType) IsMerge() bool {
+	return i == JoinTypeMerge ||
+		i == JoinTypeLeftOuterMerge
 }
 
 func (i JoinType) IsCross() bool {
@@ -224,6 +238,8 @@ func (j *JoinNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return newCrossJoinIter(ctx, j, row)
 	case j.Op.IsPlaceholder():
 		panic(fmt.Sprintf("%s is a placeholder, RowIter called", j.Op))
+	case j.Op.IsMerge():
+		return newMergeJoinIter(ctx, j, row)
 	default:
 		return newJoinIter(ctx, j, row)
 	}
