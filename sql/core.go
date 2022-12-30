@@ -19,6 +19,8 @@ import (
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/sysvars"
 )
 
 // Expression is a combination of one or more SQL expressions.
@@ -303,3 +305,32 @@ type Node2 interface {
 	// evaluated is provided, as well the context of the query.
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
+
+var SystemVariables GlobalSystemVariables
+
+type GlobalSystemVariables interface {
+	AddSystemVariables(sysVars []SystemVariable)
+	AssignValues(vals map[string]interface{}) error
+	NewSessionMap() map[string]interface{}
+	GetGlobal(name string) (SystemVariable, interface{}, bool)
+	SetGlobal(name string, val interface{}) error
+}
+
+// SystemVariable represents a system variable.
+type SystemVariable struct {
+	// Name is the name of the system variable.
+	Name string
+	// Scope defines the scope of the system variable, which is either Global, Session, or Both.
+	Scope sysvars.SystemVariableScope
+	// Dynamic defines whether the variable may be written to during runtime. Variables with this set to `false` will
+	// return an error if a user attempts to set a value.
+	Dynamic bool
+	// SetVarHintApplies defines if the variable may be set for a single query using SET_VAR().
+	// https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html#optimizer-hints-set-var
+	SetVarHintApplies bool
+	// Type defines the type of the system variable. This may be a special type not accessible to standard MySQL operations.
+	Type Type
+	// Default defines the default value of the system variable.
+	Default interface{}
+}
+

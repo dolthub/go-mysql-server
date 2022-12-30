@@ -70,36 +70,17 @@ func (s SystemVariableScope) String() string {
 	}
 }
 
-// SystemVariable represents a system variable.
-type SystemVariable struct {
-	// Name is the name of the system variable.
-	Name string
-	// Scope defines the scope of the system variable, which is either Global, Session, or Both.
-	Scope SystemVariableScope
-	// Dynamic defines whether the variable may be written to during runtime. Variables with this set to `false` will
-	// return an error if a user attempts to set a value.
-	Dynamic bool
-	// SetVarHintApplies defines if the variable may be set for a single query using SET_VAR().
-	// https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html#optimizer-hints-set-var
-	SetVarHintApplies bool
-	// Type defines the type of the system variable. This may be a special type not accessible to standard MySQL operations.
-	Type sql.Type
-	// Default defines the default value of the system variable.
-	Default interface{}
-}
-
 // globalSystemVariables is the underlying type of SystemVariables.
 type globalSystemVariables struct {
 	mutex      *sync.RWMutex
 	sysVarVals map[string]interface{}
 }
 
-// SystemVariables is the collection of system variables for this process.
-var SystemVariables = &globalSystemVariables{&sync.RWMutex{}, make(map[string]interface{})}
+var _ sql.GlobalSystemVariables = (*globalSystemVariables)(nil)
 
 // AddSystemVariables adds the given system variables to the collection. If a name is already used by an existing
 // variable, then it is overwritten with the new one.
-func (sv *globalSystemVariables) AddSystemVariables(sysVars []SystemVariable) {
+func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable) {
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	for _, originalSysVar := range sysVars {
@@ -145,13 +126,13 @@ func (sv *globalSystemVariables) NewSessionMap() map[string]interface{} {
 
 // GetGlobal returns the system variable definition and value for the given name. If the variable does not exist, returns
 // false. Case-insensitive.
-func (sv *globalSystemVariables) GetGlobal(name string) (SystemVariable, interface{}, bool) {
+func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, interface{}, bool) {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	name = strings.ToLower(name)
 	v, ok := systemVars[name]
 	if !ok {
-		return SystemVariable{}, nil, false
+		return sql.SystemVariable{}, nil, false
 	}
 	if name == "uptime" {
 		sv.sysVarVals[name] = int(time.Now().Sub(serverStartUpTime).Seconds())
@@ -163,7 +144,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (SystemVariable, interfa
 			var err error
 			sysVal, err = sysType.BitsToString(sv)
 			if err != nil {
-				return SystemVariable{}, nil, false
+				return sql.SystemVariable{}, nil, false
 			}
 		}
 	}
@@ -197,14 +178,17 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	return nil
 }
 
-// InitSystemVariables resets the systemVars singleton
+// InitSystemVariables resets the systemVars singleton in the sql package
 func InitSystemVariables() {
+	vars := &globalSystemVariables{&sync.RWMutex{}, make(map[string]interface{})}
 	for _, sysVar := range systemVars {
-		SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
+		vars.sysVarVals[sysVar.Name] = sysVar.Default
 	}
+	sql.SystemVariables = vars
 }
 
 // init initializes SystemVariables as it functions as a global variable.
+// TODO: get rid of me
 func init() {
 	InitSystemVariables()
 }
@@ -213,7 +197,7 @@ func init() {
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html
-var systemVars = map[string]SystemVariable{
+var systemVars = map[string]sql.SystemVariable{
 	"activate_all_roles_on_login": {
 		Name:              "activate_all_roles_on_login",
 		Scope:             SystemVariableScope_Global,

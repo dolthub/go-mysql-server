@@ -297,7 +297,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 
 // SetSessionVariable implements the Session interface.
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := sysvars.SystemVariables.GetGlobal(sysVarName)
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -309,7 +309,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
 func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := sysvars.SystemVariables.GetGlobal(sysVarName)
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -322,7 +322,7 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	return s.setSessVar(ctx, sysVar, sysVarName, value)
 }
 
-func (s *BaseSession) setSessVar(ctx *Context, sysVar sysvars.SystemVariable, sysVarName string, value interface{}) error {
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName string, value interface{}) error {
 	if sysVar.Scope == sysvars.SystemVariableScope_Global {
 		return ErrSystemVariableGlobalOnly.New(sysVarName)
 	}
@@ -346,7 +346,7 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 
 // GetSessionVariable implements the Session interface.
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
-	sysVar, _, ok := sysvars.SystemVariables.GetGlobal(sysVarName)
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -636,7 +636,7 @@ func GetTmpdirSessionVar() string {
 func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 	val, err := s.GetSessionVariable(ctx, key)
 	if err == nil {
-		sysVar, _, ok := sysvars.SystemVariables.GetGlobal(key)
+		sysVar, _, ok := SystemVariables.GetGlobal(key)
 		if ok {
 			return sysVar.Default == val, val
 		}
@@ -672,7 +672,7 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		addr:           server,
 		client:         client,
 		id:             id,
-		systemVars:     sysvars.SystemVariables.NewSessionMap(),
+		systemVars:     SystemVariables.NewSessionMap(),
 		userVars:       make(map[string]interface{}),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
@@ -691,7 +691,7 @@ func NewBaseSession() *BaseSession {
 	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
 	return &BaseSession{
 		id:             atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:     sysvars.SystemVariables.NewSessionMap(),
+		systemVars:     SystemVariables.NewSessionMap(),
 		userVars:       make(map[string]interface{}),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
