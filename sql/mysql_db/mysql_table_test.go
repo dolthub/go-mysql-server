@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/stretchr/testify/require"
 )
 

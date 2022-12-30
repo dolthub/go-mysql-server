@@ -12,42 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package sql_test
 
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTryIntersect(t *testing.T) {
-	res, ok, err := LessThanRangeColumnExpr(6, types.Int8).TryIntersect(GreaterThanRangeColumnExpr(-1, types.Int8))
+	res, ok, err := sql.LessThanRangeColumnExpr(6, types.Int8).TryIntersect(sql.GreaterThanRangeColumnExpr(-1, types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType_OpenOpen, res.Type())
+	assert.Equal(t, sql.RangeType_OpenOpen, res.Type())
 
-	res, ok, err = NotNullRangeColumnExpr(types.Int8).TryIntersect(AllRangeColumnExpr(types.Int8))
+	res, ok, err = sql.NotNullRangeColumnExpr(types.Int8).TryIntersect(sql.AllRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType_GreaterThan, res.Type())
-	assert.False(t, RangeCutIsBinding(res.LowerBound))
+	assert.Equal(t, sql.RangeType_GreaterThan, res.Type())
+	assert.False(t, sql.RangeCutIsBinding(res.LowerBound))
 
-	_, ok, err = NotNullRangeColumnExpr(types.Int8).TryIntersect(NullRangeColumnExpr(types.Int8))
+	_, ok, err = sql.NotNullRangeColumnExpr(types.Int8).TryIntersect(sql.NullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.False(t, ok)
-	_, ok, err = NullRangeColumnExpr(types.Int8).TryIntersect(NotNullRangeColumnExpr(types.Int8))
+	_, ok, err = sql.NullRangeColumnExpr(types.Int8).TryIntersect(sql.NotNullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 }
 
 func TestTryUnion(t *testing.T) {
-	res, ok, err := NotNullRangeColumnExpr(types.Int8).TryUnion(NullRangeColumnExpr(types.Int8))
+	res, ok, err := sql.NotNullRangeColumnExpr(types.Int8).TryUnion(sql.NullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType_All, res.Type())
-	res, ok, err = NullRangeColumnExpr(types.Int8).TryUnion(NotNullRangeColumnExpr(types.Int8))
+	assert.Equal(t, sql.RangeType_All, res.Type())
+	res, ok, err = sql.NullRangeColumnExpr(types.Int8).TryUnion(sql.NotNullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, RangeType_All, res.Type())
+	assert.Equal(t, sql.RangeType_All, res.Type())
 }

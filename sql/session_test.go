@@ -19,40 +19,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 )
-
-func TestSessionConfig(t *testing.T) {
-	require := require.New(t)
-	ctx := NewEmptyContext()
-
-	sess := NewBaseSessionWithClientServer("foo", Client{Address: "baz", User: "bar"}, 1)
-	typ, v, err := sess.GetUserVariable(ctx, "foo")
-	require.NoError(err)
-	require.Equal(types.Null, typ)
-	require.Equal(nil, v)
-
-	err = sess.SetUserVariable(ctx, "foo", int64(1))
-	require.NoError(err)
-
-	typ, v, err = sess.GetUserVariable(ctx, "foo")
-	require.NoError(err)
-	require.Equal(types.Int64, typ)
-	require.Equal(int64(1), v)
-
-	require.Equal(uint16(0), sess.WarningCount())
-
-	sess.Warn(&Warning{Code: 1})
-	sess.Warn(&Warning{Code: 2})
-	sess.Warn(&Warning{Code: 3})
-
-	require.Equal(uint16(3), sess.WarningCount())
-
-	require.Equal(3, sess.Warnings()[0].Code)
-	require.Equal(2, sess.Warnings()[1].Code)
-	require.Equal(1, sess.Warnings()[2].Code)
-}
 
 func TestHasDefaultValue(t *testing.T) {
 	require := require.New(t)

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	// _ "github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

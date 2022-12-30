@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestPlus(t *testing.T) {
