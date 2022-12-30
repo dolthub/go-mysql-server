@@ -16,8 +16,6 @@ package sql
 
 import (
 	"fmt"
-
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -165,7 +163,7 @@ func (e *ColumnDefaultValue) DebugString() string {
 // Type implements sql.Expression
 func (e *ColumnDefaultValue) Type() Type {
 	if e == nil {
-		return types.Null
+		return nil
 	}
 	if e.outType == nil {
 		return e.Expression.Type()
