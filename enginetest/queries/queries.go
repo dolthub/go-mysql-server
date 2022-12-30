@@ -9233,23 +9233,46 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "information_schema.key_column_usage works with foreign key across different databases",
+		Name: "information_schema.referential_constraints works with primary, non-unique and unique keys",
 		SetUpScript: []string{
-			"CREATE TABLE mydb_table (i int primary key, height int)",
-			"CREATE DATABASE otherdb",
-			"USE otherdb",
-			"CREATE TABLE otherdb_table (a int primary key, weight int)",
-			"alter table otherdb_table add constraint fk_across_dbs foreign key (a) references mydb.mydb_table(i)",
+			"CREATE TABLE my_table (i int primary key, height int, weight int)",
+			"CREATE INDEX h on my_TABLE(height)",
+			"CREATE UNIQUE INDEX w on my_TABLE(weight)",
+			"CREATE TABLE ref_table (a int primary key, height int, weight int)",
+			"alter table ref_table add constraint fk_across_dbs_ref_pk foreign key (a) references my_table(i)",
+			"alter table ref_table add constraint fk_across_dbs_key foreign key (a) references my_table(height)",
+			"alter table ref_table add constraint fk_across_dbs_unique foreign key (a) references my_table(weight)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM information_schema.key_column_usage where constraint_name = 'fk_across_dbs'",
+				Query: "SELECT * FROM information_schema.referential_constraints where constraint_schema = 'mydb' and table_name = 'ref_table'",
 				Expected: []sql.Row{
-					{"def", "otherdb", "fk_across_dbs", "def", "otherdb", "otherdb_table", "a", 1, 1, "mydb", "mydb_table", "i"},
+					{"def", "mydb", "fk_across_dbs_ref_pk", "def", "mydb", "PRIMARY", "NONE", "NO ACTION", "NO ACTION", "ref_table", "my_table"},
+					{"def", "mydb", "fk_across_dbs_key", "def", "mydb", nil, "NONE", "NO ACTION", "NO ACTION", "ref_table", "my_table"},
+					{"def", "mydb", "fk_across_dbs_unique", "def", "mydb", "w", "NONE", "NO ACTION", "NO ACTION", "ref_table", "my_table"},
 				},
 			},
 		},
 	},
+	// TODO: Skipping because creating FK references on a table in different db is not supported in Dolt
+	//{
+	//	Name: "information_schema.key_column_usage works with foreign key across different databases",
+	//	SetUpScript: []string{
+	//		"CREATE TABLE my_table (i int primary key, height int)",
+	//		"CREATE DATABASE keydb",
+	//		"USE keydb",
+	//		"CREATE TABLE key_table (a int primary key, weight int)",
+	//		"alter table key_table add constraint fk_across_dbs foreign key (a) references mydb.my_table(i)",
+	//	},
+	//	Assertions: []ScriptTestAssertion{
+	//		{
+	//			Query: "SELECT * FROM information_schema.key_column_usage where constraint_name = 'fk_across_dbs'",
+	//			Expected: []sql.Row{
+	//				{"def", "keydb", "fk_across_dbs", "def", "keydb", "key_table", "a", 1, 1, "mydb", "my_table", "i"},
+	//			},
+	//		},
+	//	},
+	//},
 	{
 		Name: "information_schema.triggers create trigger definer defined",
 		SetUpScript: []string{
@@ -9846,19 +9869,6 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: index_length and data_free columns are not supported yet
-				Query: `SELECT table_name,table_rows,avg_row_length,data_length,max_data_length,index_length,data_free
-				FROM information_schema.tables where table_schema = 'mydb' order by table_name`,
-				Expected: []sql.Row{
-					{"bigtable", uint64(5), uint64(108), uint64(540), 0, 0, 0},
-					{"fk_tbl", uint64(0), uint64(88), uint64(0), 0, 0, 0},
-					{"mytable", uint64(3), uint64(88), uint64(264), 0, 0, 0},
-					{"myview", nil, nil, nil, nil, nil, nil},
-					{"myview1", nil, nil, nil, nil, nil, nil},
-					{"names", uint64(3), uint64(188), uint64(564), 0, 0, 0},
-				},
-			},
-			{
 				Query: `SELECT table_catalog, table_schema, table_name, table_type, engine, version, row_format, table_rows,
 				auto_increment, table_collation, checksum, create_options, table_comment
 				FROM information_schema.tables where table_schema = 'mydb' order by table_name`,
@@ -9880,30 +9890,6 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		},
 	},
 	{
-		Name: "information_schema.referential_constraints works with primary, non-unique and unique keys",
-		SetUpScript: []string{
-			"CREATE TABLE mydb_table (i int primary key, height int, weight int)",
-			"CREATE INDEX h on mydb_TABLE(height)",
-			"CREATE UNIQUE INDEX w on mydb_TABLE(weight)",
-			"CREATE DATABASE otherdb",
-			"USE otherdb",
-			"CREATE TABLE otherdb_table (a int primary key, height int, weight int)",
-			"alter table otherdb_table add constraint fk_across_dbs_ref_pk foreign key (a) references mydb.mydb_table(i)",
-			"alter table otherdb_table add constraint fk_across_dbs_key foreign key (a) references mydb.mydb_table(height)",
-			"alter table otherdb_table add constraint fk_across_dbs_unique foreign key (a) references mydb.mydb_table(weight)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.referential_constraints where constraint_schema = 'otherdb'",
-				Expected: []sql.Row{
-					{"def", "otherdb", "fk_across_dbs_ref_pk", "def", "mydb", "PRIMARY", "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
-					{"def", "otherdb", "fk_across_dbs_key", "def", "mydb", nil, "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
-					{"def", "otherdb", "fk_across_dbs_unique", "def", "mydb", "w", "NONE", "NO ACTION", "NO ACTION", "otherdb_table", "mydb_table"},
-				},
-			},
-		},
-	},
-	{
 		Name: "information_schema.views has definer and security information",
 		SetUpScript: []string{
 			"create view myview1 as select count(*) from mytable;",
@@ -9916,6 +9902,23 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 					{"def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
 					{"def", "mydb", "myview1", "select count(*) from mytable", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
 					{"def", "mydb", "myview2", "SELECT * FROM myview WHERE i > 1", "NONE", "NO", "`UserName`@`localhost`", "INVOKER", "utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.schemata shows all column values",
+		SetUpScript: []string{
+			"CREATE DATABASE mydb1 COLLATE latin1_general_ci;",
+			"CREATE DATABASE mydb2 COLLATE utf8mb3_general_ci;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.schemata where schema_name like 'mydb%' order by schema_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "utf8mb4", "utf8mb4_0900_bin", nil, "NO"},
+					{"def", "mydb1", "latin1", "latin1_general_ci", nil, "NO"},
+					{"def", "mydb2", "utf8mb3", "utf8mb3_general_ci", nil, "NO"},
 				},
 			},
 		},
@@ -10487,117 +10490,117 @@ var ViewTests = []QueryTest{
 }
 
 var VersionedViewTests = []QueryTest{
-	//{
-	//	Query: "SELECT * FROM myview1 ORDER BY i",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1), "first row, 3", "1"),
-	//		sql.NewRow(int64(2), "second row, 3", "2"),
-	//		sql.NewRow(int64(3), "third row, 3", "3"),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1), "first row, 3", "1"),
-	//		sql.NewRow(int64(2), "second row, 3", "2"),
-	//		sql.NewRow(int64(3), "third row, 3", "3"),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT t.i FROM myview1 AS t ORDER BY i",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1)),
-	//		sql.NewRow(int64(2)),
-	//		sql.NewRow(int64(3)),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1), "first row, 1"),
-	//		sql.NewRow(int64(2), "second row, 1"),
-	//		sql.NewRow(int64(3), "third row, 1"),
-	//	},
-	//},
-	//
-	//// Nested views
-	//{
-	//	Query: "SELECT * FROM myview2",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1), "first row, 3", "1"),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT i FROM myview2",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1)),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT myview2.i FROM myview2",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1)),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT myview2.* FROM myview2",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1), "first row, 3", "1"),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT t.* FROM myview2 as t",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1), "first row, 3", "1"),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT t.i FROM myview2 as t",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1)),
-	//	},
-	//},
-	//{
-	//	Query: "SELECT * FROM myview2 AS OF '2019-01-01'",
-	//	Expected: []sql.Row{
-	//		sql.NewRow(int64(1), "first row, 1"),
-	//	},
-	//},
-	//
-	//// Views with unions
-	//{
-	//	Query: "SELECT * FROM myview3 AS OF '2019-01-01'",
-	//	Expected: []sql.Row{
-	//		{"1"},
-	//		{"2"},
-	//		{"3"},
-	//		{"first row, 1"},
-	//		{"second row, 1"},
-	//		{"third row, 1"},
-	//	},
-	//},
-	//{
-	//	Query: "SELECT * FROM myview3 AS OF '2019-01-02'",
-	//	Expected: []sql.Row{
-	//		{"1"},
-	//		{"2"},
-	//		{"3"},
-	//		{"first row, 2"},
-	//		{"second row, 2"},
-	//		{"third row, 2"},
-	//	},
-	//},
-	//{
-	//	Query: "SELECT * FROM myview3 AS OF '2019-01-03'",
-	//	Expected: []sql.Row{
-	//		{"1"},
-	//		{"2"},
-	//		{"3"},
-	//		{"first row, 3"},
-	//		{"second row, 3"},
-	//		{"third row, 3"},
-	//	},
-	//},
+	{
+		Query: "SELECT * FROM myview1 ORDER BY i",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1), "first row, 3", "1"),
+			sql.NewRow(int64(2), "second row, 3", "2"),
+			sql.NewRow(int64(3), "third row, 3", "3"),
+		},
+	},
+	{
+		Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1), "first row, 3", "1"),
+			sql.NewRow(int64(2), "second row, 3", "2"),
+			sql.NewRow(int64(3), "third row, 3", "3"),
+		},
+	},
+	{
+		Query: "SELECT t.i FROM myview1 AS t ORDER BY i",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1)),
+			sql.NewRow(int64(2)),
+			sql.NewRow(int64(3)),
+		},
+	},
+	{
+		Query: "SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1), "first row, 1"),
+			sql.NewRow(int64(2), "second row, 1"),
+			sql.NewRow(int64(3), "third row, 1"),
+		},
+	},
+
+	// Nested views
+	{
+		Query: "SELECT * FROM myview2",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1), "first row, 3", "1"),
+		},
+	},
+	{
+		Query: "SELECT i FROM myview2",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1)),
+		},
+	},
+	{
+		Query: "SELECT myview2.i FROM myview2",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1)),
+		},
+	},
+	{
+		Query: "SELECT myview2.* FROM myview2",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1), "first row, 3", "1"),
+		},
+	},
+	{
+		Query: "SELECT t.* FROM myview2 as t",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1), "first row, 3", "1"),
+		},
+	},
+	{
+		Query: "SELECT t.i FROM myview2 as t",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1)),
+		},
+	},
+	{
+		Query: "SELECT * FROM myview2 AS OF '2019-01-01'",
+		Expected: []sql.Row{
+			sql.NewRow(int64(1), "first row, 1"),
+		},
+	},
+
+	// Views with unions
+	{
+		Query: "SELECT * FROM myview3 AS OF '2019-01-01'",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row, 1"},
+			{"second row, 1"},
+			{"third row, 1"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview3 AS OF '2019-01-02'",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row, 2"},
+			{"second row, 2"},
+			{"third row, 2"},
+		},
+	},
+	{
+		Query: "SELECT * FROM myview3 AS OF '2019-01-03'",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+			{"first row, 3"},
+			{"second row, 3"},
+			{"third row, 3"},
+		},
+	},
 
 	// Views with subqueries
 	{

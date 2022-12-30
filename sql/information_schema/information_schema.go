@@ -16,6 +16,7 @@ package information_schema
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -1141,11 +1142,12 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	for _, db := range dbs {
 		collation := plan.GetDatabaseCollation(ctx, db)
 		rows = append(rows, Row{
-			"def",
-			db.Name(),
-			collation.CharacterSet().String(),
-			collation.String(),
-			nil,
+			"def", // catalog_name
+			db.Name(), // schema_name
+			collation.CharacterSet().String(), // default_character_set_name
+			collation.String(), // default_collation_name
+			nil, // sql_path
+			"NO", // default_encryption
 		})
 	}
 
@@ -1367,7 +1369,9 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 						return false, err
 					}
 
-					// TODO: the data length value differs from MySQL
+					// TODO: correct values for avg_row_length, data_length, max_data_length are missing (current values varies on gms vs Dolt)
+					//  index_length and data_free columns are not supported yet
+					//  the data length values differ from MySQL
 					// MySQL uses default page size (16384B) as data length, and it adds another page size, if table data fills the current page block.
 					// https://stackoverflow.com/questions/34211377/average-row-length-higher-than-possible has good explanation.
 					dataLength, err = st.DataLength(ctx)
@@ -1381,14 +1385,15 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				}
 
 				if ai, ok := t.(AutoIncrementTable); ok {
-					autoInc, err = ai.GetNextAutoIncrementValue(ctx, nil)
+					autoInc, err = ai.PeekNextAutoIncrementValue(ctx)
+					if !errors.Is(err, ErrNoAutoIncrementCol) && err != nil {
+						return false, err
+					}
+
 					// table with no auto incremented column is qualified as AutoIncrementTable, and the nextAutoInc value is 0
 					// table with auto incremented column and no rows, the nextAutoInc value is 1
 					if autoInc == uint64(0) || autoInc == uint64(1) {
 						autoInc = nil
-					}
-					if err != nil {
-						return false, err
 					}
 				}
 			}
@@ -1617,7 +1622,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 				return nil, ErrTriggerCreateStatementInvalid.New(view.CreateViewStatement)
 			}
 
-			viewDef := viewPlan.Definition.TextDefinition
+			viewDef := view.TextDefinition
 			definer := viewPlan.Definer
 
 			// TODO: WITH CHECK OPTION is not supported yet.
@@ -2371,6 +2376,7 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
 		views = append(views, ViewDefinition{
 			Name:                view.Name(),
+			TextDefinition:      view.TextDefinition(),
 			CreateViewStatement: view.CreateStatement(),
 		})
 	}

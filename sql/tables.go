@@ -244,6 +244,7 @@ type TruncateableTable interface {
 // AUTO_INCREMENT sequence. These methods should only be used for tables with and AUTO_INCREMENT column in their schema.
 type AutoIncrementTable interface {
 	Table
+	PeekNextAutoIncrementValue(ctx *Context) (uint64, error)
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.
