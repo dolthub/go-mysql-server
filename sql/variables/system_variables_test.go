@@ -89,10 +89,10 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			InitSystemVariables()
-			SystemVariables.AddSystemVariables(test.persistedGlobals)
+			sql.SystemVariables.AddSystemVariables(test.persistedGlobals)
 
 			for i, sysVar := range test.persistedGlobals {
-				cmp, _, _ := SystemVariables.GetGlobal(sysVar.Name)
+				cmp, _, _ := sql.SystemVariables.GetGlobal(sysVar.Name)
 				assert.Equal(t, test.expectedCmp[i], cmp)
 			}
 		})

@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
+	
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -63,7 +63,7 @@ func TestConfigWithDefaults(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("server config var: %s", test.Name), func(t *testing.T) {
 			variables.InitSystemVariables()
-			variables.SystemVariables.AddSystemVariables([]sql.SystemVariable{{
+			sql.SystemVariables.AddSystemVariables([]sql.SystemVariable{{
 				Name:    test.Name,
 				Scope:   test.Scope,
 				Dynamic: true,

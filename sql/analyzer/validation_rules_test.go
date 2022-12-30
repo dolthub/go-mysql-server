@@ -23,7 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/require"

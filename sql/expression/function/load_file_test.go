@@ -4,8 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
+	
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 

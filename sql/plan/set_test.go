@@ -17,9 +17,9 @@ package plan
 import (
 	"context"
 	"testing"
-
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
+	
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
