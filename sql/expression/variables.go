@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -47,7 +46,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 		}
 		return val, nil
 	case sql.SystemVariableScope_Global:
-		_, val, ok := variables.SystemVariables.GetGlobal(v.Name)
+		_, val, ok := sql.SystemVariables.GetGlobal(v.Name)
 		if !ok {
 			return nil, sql.ErrUnknownSystemVariable.New(v.Name)
 		}
@@ -59,7 +58,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type() sql.Type {
-	if sysVar, _, ok := variables.SystemVariables.GetGlobal(v.Name); ok {
+	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
 		return sysVar.Type
 	}
 	return types.Null

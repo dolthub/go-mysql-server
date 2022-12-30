@@ -21,8 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
+	
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -152,7 +151,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var reader io.ReadCloser
 
 	if l.Local {
-		_, localInfile, ok := variables.SystemVariables.GetGlobal("local_infile")
+		_, localInfile, ok := sql.SystemVariables.GetGlobal("local_infile")
 		if !ok {
 			return nil, fmt.Errorf("error: local_infile variable was not found")
 		}
@@ -166,7 +165,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, err
 		}
 	} else {
-		_, dir, ok := variables.SystemVariables.GetGlobal("secure_file_priv")
+		_, dir, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
 		if !ok {
 			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
 		}

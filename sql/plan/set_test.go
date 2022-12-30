@@ -104,7 +104,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 			res := globals[test.name]
 			assert.Equal(t, test.persistedCmp, res)
 
-			_, val, _ := variables.SystemVariables.GetGlobal(test.name)
+			_, val, _ := sql.SystemVariables.GetGlobal(test.name)
 			assert.Equal(t, test.globalCmp, val)
 		})
 	}

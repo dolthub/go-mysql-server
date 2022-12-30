@@ -20,7 +20,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -147,7 +146,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	}
 	switch sysVar.Scope {
 	case sql.SystemVariableScope_Global:
-		err = variables.SystemVariables.SetGlobal(sysVar.Name, val)
+		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
@@ -165,7 +164,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-		err = variables.SystemVariables.SetGlobal(sysVar.Name, val)
+		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}

@@ -22,8 +22,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
+	
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"

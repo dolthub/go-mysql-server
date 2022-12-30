@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dolthub/go-mysql-server/sql/sysvars"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -72,14 +71,14 @@ func (s *ShowStatus) Children() []sql.Node {
 // RowIter implements sql.Node interface.
 func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var names []string
-	for name := range variables.SystemVariables.NewSessionMap() {
+	for name := range sql.SystemVariables.NewSessionMap() {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
 	var rows []sql.Row
 	for _, name := range names {
-		sysVar, val, ok := variables.SystemVariables.GetGlobal(name)
+		sysVar, val, ok := sql.SystemVariables.GetGlobal(name)
 		if !ok {
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
