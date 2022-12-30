@@ -1142,12 +1142,12 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	for _, db := range dbs {
 		collation := plan.GetDatabaseCollation(ctx, db)
 		rows = append(rows, Row{
-			"def", // catalog_name
-			db.Name(), // schema_name
+			"def",                             // catalog_name
+			db.Name(),                         // schema_name
 			collation.CharacterSet().String(), // default_character_set_name
-			collation.String(), // default_collation_name
-			nil, // sql_path
-			"NO", // default_encryption
+			collation.String(),                // default_collation_name
+			nil,                               // sql_path
+			"NO",                              // default_encryption
 		})
 	}
 
