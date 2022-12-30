@@ -206,7 +206,7 @@ func TestSingleScript(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query:    "create table t2 as select distinct b, a from t1;",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
 				},
 				{
 					Query: "select * from t2 order by a;",

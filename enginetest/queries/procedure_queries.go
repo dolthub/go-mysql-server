@@ -240,7 +240,7 @@ END;`,
 				Query: "CALL p1(2)",
 				Expected: []sql.Row{
 					{
-						sql.NewOkResult(2),
+						types.NewOkResult(2),
 					},
 				},
 			},
@@ -422,7 +422,7 @@ INSERT INTO items (item) VALUES (txt)`,
 			{
 				Query: "CALL add_item('A test item');",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1, InsertID: 1}},
+					{types.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
 			},
 			{
@@ -478,7 +478,7 @@ END`,
 			{
 				Query: "CALL add_item(6);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
@@ -1085,7 +1085,7 @@ END`,
 			{
 				Query: "call create_cal_entries_for_event('cb8ba301-6c27-4bf8-b99b-617082d72621');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -1237,7 +1237,7 @@ END;`,
 			},
 			{
 				Query:    "alter table t drop other;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1257,7 +1257,7 @@ END;`,
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN other INT",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1269,7 +1269,7 @@ END;`,
 			},
 			{
 				Query:    "INSERT INTO t VALUES (4, 4), (5, 5), (6, 6);",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1963,7 +1963,7 @@ var NoDbProcedureTests = []ScriptTestAssertion{
 	},
 	{
 		Query:    "CREATE PROCEDURE mydb.p5() SELECT 42;",
-		Expected: []sql.Row{{sql.NewOkResult(0)}},
+		Expected: []sql.Row{{types.NewOkResult(0)}},
 	},
 	{
 		Query:            "SHOW CREATE PROCEDURE mydb.p5;",

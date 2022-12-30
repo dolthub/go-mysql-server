@@ -491,8 +491,8 @@ var SkippedUpdateTests = []WriteQueryTest{
 	},
 }
 
-func newUpdateResult(matched, updated int) sql.OkResult {
-	return sql.OkResult{
+func newUpdateResult(matched, updated int) types.OkResult {
+	return types.OkResult{
 		RowsAffected: uint64(updated),
 		Info:         plan.UpdateInfo{matched, updated, 0},
 	}

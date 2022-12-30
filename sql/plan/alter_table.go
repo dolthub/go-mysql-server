@@ -121,7 +121,7 @@ func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -192,7 +192,7 @@ func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 
 // Schema implements the sql.Node interface.
 func (a *AddColumn) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (a *AddColumn) String() string {
@@ -441,7 +441,7 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			return sql.NewRow(sql.NewOkResult(0)), nil
+			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
 
@@ -452,7 +452,7 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// We only need to update all table rows if the new column is non-nil
 	if i.a.column.Nullable && i.a.column.Default == nil {
-		return sql.NewRow(sql.NewOkResult(0)), nil
+		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
 	err = i.a.updateRowsWithDefaults(ctx, i.alterable)
@@ -460,7 +460,7 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.NewRow(sql.NewOkResult(0)), nil
+	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
 func (i addColumnIter) Close(context *sql.Context) error {
@@ -713,7 +713,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			return sql.NewRow(sql.NewOkResult(0)), nil
+			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
 
@@ -722,7 +722,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.NewRow(sql.NewOkResult(0)), nil
+	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
 // rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
@@ -890,7 +890,7 @@ func (d *DropColumn) validate(ctx *sql.Context, tbl sql.Table) error {
 }
 
 func (d *DropColumn) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (d *DropColumn) Resolved() bool {
@@ -1016,7 +1016,7 @@ func (r *RenameColumn) Resolved() bool {
 }
 
 func (r *RenameColumn) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (r *RenameColumn) Expressions() []sql.Expression {
@@ -1074,7 +1074,7 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
 }
 
 func (r *RenameColumn) Children() []sql.Node {
@@ -1140,7 +1140,7 @@ func (m *ModifyColumn) Order() *sql.ColumnOrder {
 
 // Schema implements the sql.Node interface.
 func (m *ModifyColumn) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (m *ModifyColumn) String() string {
@@ -1301,7 +1301,7 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
-			return sql.NewRow(sql.NewOkResult(0)), nil
+			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
 
@@ -1315,7 +1315,7 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.NewRow(sql.NewOkResult(0)), nil
+	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
 func (i *modifyColumnIter) Close(context *sql.Context) error {

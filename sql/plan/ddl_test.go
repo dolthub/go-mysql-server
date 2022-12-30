@@ -76,7 +76,7 @@ func TestDropTable(t *testing.T) {
 
 	r, err := rows.Next(ctx)
 	require.Nil(err)
-	require.Equal(sql.NewRow(sql.NewOkResult(0)), r)
+	require.Equal(sql.NewRow(types.NewOkResult(0)), r)
 
 	r, err = rows.Next(ctx)
 	require.Equal(io.EOF, err)
@@ -111,7 +111,7 @@ func createTable(t *testing.T, db sql.Database, name string, schema sql.PrimaryK
 	ctx := sql.NewEmptyContext()
 	r, err := rows.Next(ctx)
 	require.Nil(t, err)
-	require.Equal(t, sql.NewRow(sql.NewOkResult(0)), r)
+	require.Equal(t, sql.NewRow(types.NewOkResult(0)), r)
 
 	r, err = rows.Next(ctx)
 	require.Equal(t, io.EOF, err)

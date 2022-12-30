@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -51,7 +52,7 @@ func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel,
 
 // Schema implements the interface sql.Node.
 func (n *Revoke) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -258,7 +259,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // handleGlobalPrivileges handles removing global privileges from a user.
@@ -471,7 +472,7 @@ func NewRevokeAll(users []UserName) *RevokeAll {
 
 // Schema implements the interface sql.Node.
 func (n *RevokeAll) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -537,7 +538,7 @@ func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
 
 // Schema implements the interface sql.Node.
 func (n *RevokeRole) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -656,7 +657,7 @@ func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // RevokeProxy represents the statement REVOKE PROXY.
@@ -677,7 +678,7 @@ func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
 
 // Schema implements the interface sql.Node.
 func (n *RevokeProxy) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.

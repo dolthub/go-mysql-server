@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // OkResult is a representation of the OK packet MySQL sends for non-select queries such as UPDATE, INSERT, etc. It
@@ -33,17 +33,17 @@ type OkResult struct {
 const OkResultColumnName = "__ok_result__"
 
 // OkResultColumnType should be used as the schema column type for Nodes that return an OkResult
-var OkResultColumnType = types.Int64
+var OkResultColumnType = Int64
 
 // OkResultSchema should be used as the schema of Nodes that return an OkResult
-var OkResultSchema = Schema{
+var OkResultSchema = sql.Schema{
 	{
 		Name: OkResultColumnName,
 		Type: OkResultColumnType,
 	},
 }
 
-func IsOkResultSchema(schema Schema) bool {
+func IsOkResultSchema(schema sql.Schema) bool {
 	return len(schema) == 1 && schema[0] == OkResultSchema[0]
 }
 
@@ -53,7 +53,7 @@ func NewOkResult(rowsAffected int) OkResult {
 }
 
 // IsOkResult returns whether the given row represents an OkResult.
-func IsOkResult(row Row) bool {
+func IsOkResult(row sql.Row) bool {
 	if len(row) == 1 {
 		if _, ok := row[0].(OkResult); ok {
 			return true
@@ -63,6 +63,6 @@ func IsOkResult(row Row) bool {
 }
 
 // GetOkResult extracts the OkResult from the row given
-func GetOkResult(row Row) OkResult {
+func GetOkResult(row sql.Row) OkResult {
 	return row[0].(OkResult)
 }

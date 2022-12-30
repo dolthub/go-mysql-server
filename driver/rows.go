@@ -68,7 +68,7 @@ again:
 		return nil
 	}
 
-	if _, ok := row[0].(sql.OkResult); ok {
+	if _, ok := row[0].(types.OkResult); ok {
 		// skip OK results
 		goto again
 	}

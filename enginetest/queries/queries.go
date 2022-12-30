@@ -10671,7 +10671,7 @@ var IndexQueries = []ScriptTest{
 			{
 				Query: "create unique index namespace__name on users (namespace, name)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 0}},
+					{types.OkResult{RowsAffected: 0}},
 				},
 			},
 			{
@@ -10683,7 +10683,7 @@ var IndexQueries = []ScriptTest{
 			{
 				Query: "insert into users values ('user1', 'namespace1', 'name1')",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
@@ -10918,7 +10918,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -10930,7 +10930,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'aa'), (1, 'bb'), (2, 'cc')",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "select * from t where v = 'a'",
@@ -10944,7 +10944,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (i int primary key, v varchar(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -10960,7 +10960,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -10972,7 +10972,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (v varchar(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -11004,7 +11004,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (c(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11016,7 +11016,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table c_tbl (i int primary key, c varchar(100), index (c(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table c_tbl",
@@ -11032,7 +11032,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (c(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11044,7 +11044,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table c_tbl (c char(100), index (c(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table c_tbl",
@@ -11076,7 +11076,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11088,7 +11088,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (i int primary key, v varbinary(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -11104,7 +11104,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11116,7 +11116,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (v varbinary(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -11148,7 +11148,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11160,7 +11160,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (i int primary key, b binary(100), index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -11176,7 +11176,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11188,7 +11188,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (b binary(100), index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -11220,7 +11220,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11232,7 +11232,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (i int primary key, b blob, index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -11248,7 +11248,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11260,7 +11260,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (b blob, index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -11292,7 +11292,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (t(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11304,7 +11304,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table t_tbl (i int primary key, t text, index (t(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t_tbl",
@@ -11320,7 +11320,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (t(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -11332,7 +11332,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table t_tbl (t text, index (t(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t_tbl",
@@ -11352,7 +11352,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query:       "insert into t values (99, 'abc', 'abcde')",
@@ -11395,7 +11395,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -11410,7 +11410,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -11431,7 +11431,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values ('a', 'a'), ('ab','ab'), ('abc', 'abc'), ('abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query:       "insert into t values ('abc', 'abcde')",
@@ -11474,7 +11474,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -11489,7 +11489,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -11511,7 +11511,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Skip:        true,
@@ -11559,7 +11559,7 @@ var IndexPrefixQueries = []ScriptTest{
 				Skip:  true,
 				Query: "update t set v1 = concat(v1, 'Z') where v1 >= 'A'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -11576,7 +11576,7 @@ var IndexPrefixQueries = []ScriptTest{
 				Skip:  true,
 				Query: "delete from t where v1 >= 'A'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -11598,7 +11598,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query:       "insert into t values (99, 'abc', 'abcde')",
@@ -11641,7 +11641,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -11656,7 +11656,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -11671,19 +11671,19 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "create table varchar_limit(c varchar(10000), index (c(768)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "create table text_limit(c text, index (c(768)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "create table varbinary_limit(c varbinary(10000), index (c(3072)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "create table blob_limit(c blob, index (c(3072)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "create table bad(c varchar(10000), index (c(769)))",

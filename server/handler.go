@@ -117,7 +117,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 		return nil, err
 	}
 
-	if sql.IsOkResultSchema(analyzed.Schema()) {
+	if types.IsOkResultSchema(analyzed.Schema()) {
 		return nil, nil
 	}
 	return schemaToFields(analyzed.Schema()), nil
@@ -499,11 +499,11 @@ func (h *Handler) doQuery(
 					if !ok {
 						return nil
 					}
-					if sql.IsOkResult(row) {
+					if types.IsOkResult(row) {
 						if len(r.Rows) > 0 {
 							panic("Got OkResult mixed with RowResult")
 						}
-						r = resultFromOkResult(row[0].(sql.OkResult))
+						r = resultFromOkResult(row[0].(types.OkResult))
 						continue
 					}
 
@@ -690,7 +690,7 @@ func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
 	return nil, false
 }
 
-func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
+func resultFromOkResult(result types.OkResult) *sqltypes.Result {
 	infoStr := ""
 	if result.Info != nil {
 		infoStr = result.Info.String()

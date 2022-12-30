@@ -84,7 +84,7 @@ func (p *CreateForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.Privi
 
 // Schema implements the interface sql.Node.
 func (p *CreateForeignKey) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // DatabaseProvider implements the interface sql.MultiDatabaser.
@@ -153,7 +153,7 @@ func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // String implements the interface sql.Node.
@@ -401,7 +401,7 @@ func (p *DropForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // WithChildren implements the interface sql.Node.
@@ -417,7 +417,7 @@ func (p *DropForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 
 // Schema implements the interface sql.Node.
 func (p *DropForeignKey) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // DatabaseProvider implements the interface sql.MultiDatabaser.
