@@ -283,29 +283,57 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !scope.IsEmpty() {
+		// triggers cannot be cached
 		return node, transform.SameTree, nil
 	}
+	return cacheSubqueryResultsHelper(ctx, a, node, scope, sel)
+}
 
-	return transform.NodeWithOpaque(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func cacheSubqueryResultsHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		ret := n
+		sameN := transform.SameTree
+		var err error
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			subScope := scope.newScopeFromSubqueryAlias(n)
-			if nodeIsCacheable(n.Child, len(subScope.Schema())) {
-				return n.WithCachedResults(), transform.NewTree, nil
+			ret, sameN, err = transform.NodeChildren(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+				return cacheSubqueryResultsHelper(ctx, a, n, subScope, sel)
+			})
+			if nodeIsCacheable(ret.Children()[0], len(subScope.Schema())) {
+				sameN = transform.NewTree
+				ret = ret.(*plan.SubqueryAlias).WithCachedResults()
 			}
-			return n, transform.SameTree, nil
 		default:
+			if n, ok := n.(sql.OpaqueNode); ok {
+				ret, sameN, err = transform.NodeChildren(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+					return cacheSubqueryResultsHelper(ctx, a, n, scope, sel)
+				})
+			}
 		}
 
-		return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		ret, sameE, err := transform.OneNodeExpressions(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if sq, ok := e.(*plan.Subquery); ok {
 				subScope := scope.newScopeFromSubqueryExpression(n)
+				newQ, same, err := cacheSubqueryResultsHelper(ctx, a, sq.Query, subScope, sel)
+				if err != nil {
+					return e, transform.SameTree, err
+				}
+				if !same {
+					sq = sq.WithQuery(newQ)
+				}
 				if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
 					return sq.WithCachedResults(), transform.NewTree, nil
+				} else if !same {
+					return sq, transform.NewTree, nil
 				}
 			}
 			return e, transform.SameTree, nil
 		})
+		if err != nil {
+			return n, transform.SameTree, nil
+		}
+		return ret, sameN && sameE, err
 	})
 }
 
