@@ -361,7 +361,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	// Some nodes do not expose all of their children, so we need to handle them here.
 	transformedProcedure, _, err = transform.NodeWithOpaque(transformedProcedure, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
-		case sql.DisjointedChildrenNode:
+		case plan.DisjointedChildrenNode:
 			same := transform.SameTree
 			disjointedChildGroups := n.DisjointedChildren()
 			newDisjointedChildGroups := make([][]sql.Node, len(disjointedChildGroups))

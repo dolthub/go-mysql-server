@@ -380,7 +380,7 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				if newChild, same, err = resolveProcedureVariables(ctx, scope, c); err != nil {
 					return nil, transform.SameTree, err
 				}
-			case sql.DisjointedChildrenNode:
+			case plan.DisjointedChildrenNode:
 				disjointedChildGroups := c.DisjointedChildren()
 				newDisjointedChildGroups := make([][]sql.Node, len(disjointedChildGroups))
 				for groupIdx, disjointedChildGroup := range disjointedChildGroups {

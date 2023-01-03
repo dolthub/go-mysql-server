@@ -79,7 +79,7 @@ type InsertInto struct {
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
 var _ sql.Expressioner = (*InsertInto)(nil)
-var _ sql.DisjointedChildrenNode = (*InsertInto)(nil)
+var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
@@ -698,7 +698,7 @@ func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 	}
 }
 
-// DisjointedChildren implements the interface sql.DisjointedChildrenNode.
+// DisjointedChildren implements the interface DisjointedChildrenNode.
 func (ii *InsertInto) DisjointedChildren() [][]sql.Node {
 	return [][]sql.Node{
 		{ii.Destination},
@@ -706,7 +706,7 @@ func (ii *InsertInto) DisjointedChildren() [][]sql.Node {
 	}
 }
 
-// WithDisjointedChildren implements the interface sql.DisjointedChildrenNode.
+// WithDisjointedChildren implements the interface DisjointedChildrenNode.
 func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
 	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 2)

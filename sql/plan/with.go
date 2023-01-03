@@ -30,7 +30,7 @@ type With struct {
 }
 
 var _ sql.Node = (*With)(nil)
-var _ sql.DisjointedChildrenNode = (*With)(nil)
+var _ DisjointedChildrenNode = (*With)(nil)
 
 func NewWith(child sql.Node, ctes []*CommonTableExpression, recursive bool) *With {
 	return &With{
@@ -85,7 +85,7 @@ func (w *With) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 	return w.Child.CheckPrivileges(ctx, opChecker)
 }
 
-// DisjointedChildren implements the interface sql.DisjointedChildrenNode.
+// DisjointedChildren implements the interface DisjointedChildrenNode.
 func (w *With) DisjointedChildren() [][]sql.Node {
 	cteAliases := make([]sql.Node, len(w.CTEs))
 	for i := range cteAliases {
@@ -97,7 +97,7 @@ func (w *With) DisjointedChildren() [][]sql.Node {
 	}
 }
 
-// WithDisjointedChildren implements the interface sql.DisjointedChildrenNode.
+// WithDisjointedChildren implements the interface DisjointedChildrenNode.
 func (w *With) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
 	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != len(w.CTEs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 2)

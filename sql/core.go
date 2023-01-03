@@ -111,19 +111,6 @@ type UnaryNode interface {
 	Child() Node
 }
 
-// DisjointedChildrenNode is a Node that contains multiple, disjointed groupings of child nodes. This is a highly
-// specialized node that will not be applicable to the majority, as most nodes will return all children in the Children
-// function.
-type DisjointedChildrenNode interface {
-	Node
-	// DisjointedChildren returns multiple groupings of child nodes, with each group being unrelated to the other groups.
-	DisjointedChildren() [][]Node
-	// WithDisjointedChildren returns a copy of the node with all child groups replaced.
-	// Returns an error if the number of children in each group is different than the current number of children in each
-	// group. They must be given in the same order as they are returned by DisjointedChildren.
-	WithDisjointedChildren(children [][]Node) (Node, error)
-}
-
 // CommentedNode allows comments to be set and retrieved on it. Used primarily for join hint comments.
 type CommentedNode interface {
 	Node
