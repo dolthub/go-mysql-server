@@ -400,3 +400,38 @@ func NodeWithOpaque(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 	}
 	return node, sameC && sameN, nil
 }
+
+// NodeChildren applies a transformation function to the given node's children.
+func NodeChildren(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
+	children := node.Children()
+	if len(children) == 0 {
+		return node, SameTree, nil
+	}
+
+	var (
+		newChildren []sql.Node
+		child       sql.Node
+	)
+
+	for i := range children {
+		child = children[i]
+		child, same, err := f(child)
+		if err != nil {
+			return nil, SameTree, err
+		}
+		if !same {
+			if newChildren == nil {
+				newChildren = make([]sql.Node, len(children))
+				copy(newChildren, children)
+			}
+			newChildren[i] = child
+		}
+	}
+
+	var err error
+	if len(newChildren) > 0 {
+		node, err = node.WithChildren(newChildren...)
+		return node, NewTree, err
+	}
+	return node, SameTree, nil
+}

@@ -465,7 +465,7 @@ var PlanTests = []QueryPlanTest{
 			"     │           ├─ columns: [cte1.u:2!null]\n" +
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ cacheable: false\n" +
+			"     │               ├─ cacheable: true\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [cte2.u:3!null, cte2.v:4]\n" +
 			"     │                   └─ HashJoin\n" +
@@ -481,7 +481,7 @@ var PlanTests = []QueryPlanTest{
 			"     │                           └─ CachedResults\n" +
 			"     │                               └─ SubqueryAlias\n" +
 			"     │                                   ├─ outerVisibility: false\n" +
-			"     │                                   ├─ cacheable: false\n" +
+			"     │                                   ├─ cacheable: true\n" +
 			"     │                                   └─ Project\n" +
 			"     │                                       ├─ columns: [uv.u:1!null, uv.v:2]\n" +
 			"     │                                       └─ LookupJoin\n" +
@@ -6657,7 +6657,7 @@ inner join pq on true
 			"         │       ├─ cacheable: true\n" +
 			"         │       └─ SubqueryAlias\n" +
 			"         │           ├─ outerVisibility: true\n" +
-			"         │           ├─ cacheable: false\n" +
+			"         │           ├─ cacheable: true\n" +
 			"         │           └─ Union distinct\n" +
 			"         │               ├─ Project\n" +
 			"         │               │   ├─ columns: [1 (tinyint)]\n" +
@@ -6999,7 +6999,7 @@ inner join pq on true
 			"         │       ├─ cacheable: true\n" +
 			"         │       └─ SubqueryAlias\n" +
 			"         │           ├─ outerVisibility: true\n" +
-			"         │           ├─ cacheable: false\n" +
+			"         │           ├─ cacheable: true\n" +
 			"         │           └─ Union distinct\n" +
 			"         │               ├─ Project\n" +
 			"         │               │   ├─ columns: [1 (tinyint)]\n" +
@@ -7701,7 +7701,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │                       ├─ (NOT(InSubquery\n" +
 			" │                       │   ├─ left: NHMXW.id:19!null\n" +
 			" │                       │   └─ right: Subquery\n" +
-			" │                       │       ├─ cacheable: false\n" +
+			" │                       │       ├─ cacheable: true\n" +
 			" │                       │       └─ Filter\n" +
 			" │                       │           ├─ (NOT(HDDVB.PRUV2:29 IS NULL))\n" +
 			" │                       │           └─ IndexedTableAccess\n" +
@@ -8170,7 +8170,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │                       ├─ (NOT(InSubquery\n" +
 			"     │                       │   ├─ left: I7HCR.id:37!null\n" +
 			"     │                       │   └─ right: Subquery\n" +
-			"     │                       │       ├─ cacheable: false\n" +
+			"     │                       │       ├─ cacheable: true\n" +
 			"     │                       │       └─ Filter\n" +
 			"     │                       │           ├─ (NOT(FLQLP.OCA7E:58 IS NULL))\n" +
 			"     │                       │           └─ IndexedTableAccess\n" +
@@ -8746,14 +8746,14 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │           ├─ (NOT(InSubquery\n" +
 			"     │           │   ├─ left: S7BYT.SSHPJ:5!null\n" +
 			"     │           │   └─ right: Subquery\n" +
-			"     │           │       ├─ cacheable: false\n" +
+			"     │           │       ├─ cacheable: true\n" +
 			"     │           │       └─ Table\n" +
 			"     │           │           ├─ name: WE72E\n" +
 			"     │           │           └─ columns: [sshpj]\n" +
 			"     │           │  ))\n" +
 			"     │           └─ SubqueryAlias\n" +
 			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ cacheable: false\n" +
+			"     │               ├─ cacheable: true\n" +
 			"     │               └─ Distinct\n" +
 			"     │                   └─ Project\n" +
 			"     │                       ├─ columns: [S5KBM.SSHPJ:7!null as SSHPJ, S5KBM.SFJ6L:8!null as SFJ6L]\n" +
@@ -9157,7 +9157,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │                       ├─ (NOT(InSubquery\n" +
 			"     │                       │   ├─ left: TJ5D2.id:71!null\n" +
 			"     │                       │   └─ right: Subquery\n" +
-			"     │                       │       ├─ cacheable: false\n" +
+			"     │                       │       ├─ cacheable: true\n" +
 			"     │                       │       └─ Filter\n" +
 			"     │                       │           ├─ (NOT(HGMQ6.QQV4M:104 IS NULL))\n" +
 			"     │                       │           └─ IndexedTableAccess\n" +
@@ -11404,7 +11404,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │               ├─ (NOT(InSubquery\n" +
 			" │               │   ├─ left: E2I7U.id:17!null\n" +
 			" │               │   └─ right: Subquery\n" +
-			" │               │       ├─ cacheable: false\n" +
+			" │               │       ├─ cacheable: true\n" +
 			" │               │       └─ Table\n" +
 			" │               │           ├─ name: AMYXQ\n" +
 			" │               │           └─ columns: [luevy]\n" +
@@ -12031,7 +12031,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │           │   └─ MJR3D.QNI57:9\n" +
 			" │           └─ SubqueryAlias\n" +
 			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ cacheable: false\n" +
+			" │               ├─ cacheable: true\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [NOXN3.id:27!null, (row_number() over ( order by NOXN3.id ASC):28!null - 1 (tinyint)) as M6T2N]\n" +
 			" │                   └─ Window\n" +
@@ -12050,7 +12050,7 @@ var IntegrationPlanTests = []QueryPlanTest{
 			" │           │   └─ MJR3D.TDEIU:10\n" +
 			" │           └─ SubqueryAlias\n" +
 			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ cacheable: false\n" +
+			" │               ├─ cacheable: true\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [NOXN3.id:27!null, (row_number() over ( order by NOXN3.id ASC):28!null - 1 (tinyint)) as M6T2N]\n" +
 			" │                   └─ Window\n" +
@@ -12609,7 +12609,7 @@ WHERE
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ outerVisibility: true\n" +
-			"     │           ├─ cacheable: false\n" +
+			"     │           ├─ cacheable: true\n" +
 			"     │           └─ Distinct\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [cld.T4IBQ:4!null as T4IBQ, P4PJZ.M6T2N:7 as M6T2N, P4PJZ.BTXC5:8 as BTXC5, P4PJZ.TUV25:11 as TUV25]\n" +
@@ -12625,7 +12625,7 @@ WHERE
 			"     │                           │       └─ cld.M22QN:6!null\n" +
 			"     │                           ├─ SubqueryAlias\n" +
 			"     │                           │   ├─ outerVisibility: false\n" +
-			"     │                           │   ├─ cacheable: false\n" +
+			"     │                           │   ├─ cacheable: true\n" +
 			"     │                           │   └─ Project\n" +
 			"     │                           │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:51!null as BDNYB, mf.M22QN:37!null as M22QN]\n" +
 			"     │                           │       └─ HashJoin\n" +
@@ -12673,7 +12673,7 @@ WHERE
 			"     │                               └─ CachedResults\n" +
 			"     │                                   └─ SubqueryAlias\n" +
 			"     │                                       ├─ outerVisibility: false\n" +
-			"     │                                       ├─ cacheable: false\n" +
+			"     │                                       ├─ cacheable: true\n" +
 			"     │                                       └─ Project\n" +
 			"     │                                           ├─ columns: [CASE  WHEN (NOT(MJR3D.QNI57:5 IS NULL)) THEN Subquery\n" +
 			"     │                                           │   ├─ cacheable: false\n" +
@@ -12685,7 +12685,7 @@ WHERE
 			"     │                                           │           │   └─ MJR3D.QNI57:5\n" +
 			"     │                                           │           └─ SubqueryAlias\n" +
 			"     │                                           │               ├─ outerVisibility: true\n" +
-			"     │                                           │               ├─ cacheable: false\n" +
+			"     │                                           │               ├─ cacheable: true\n" +
 			"     │                                           │               └─ Project\n" +
 			"     │                                           │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"     │                                           │                   └─ Window\n" +
@@ -12704,7 +12704,7 @@ WHERE
 			"     │                                           │           │   └─ MJR3D.TDEIU:6\n" +
 			"     │                                           │           └─ SubqueryAlias\n" +
 			"     │                                           │               ├─ outerVisibility: true\n" +
-			"     │                                           │               ├─ cacheable: false\n" +
+			"     │                                           │               ├─ cacheable: true\n" +
 			"     │                                           │               └─ Project\n" +
 			"     │                                           │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"     │                                           │                   └─ Window\n" +
@@ -12782,7 +12782,7 @@ WHERE
 			"     │                                               │   │   └─ MJR3D.M22QN:2!null\n" +
 			"     │                                               │   ├─ SubqueryAlias\n" +
 			"     │                                               │   │   ├─ outerVisibility: false\n" +
-			"     │                                               │   │   ├─ cacheable: false\n" +
+			"     │                                               │   │   ├─ cacheable: true\n" +
 			"     │                                               │   │   └─ Distinct\n" +
 			"     │                                               │   │       └─ Project\n" +
 			"     │                                               │   │           ├─ columns: [ism.FV24E:9!null as FJDP5, CPMFE.id:27 as BJUF2, ism.M22QN:11!null as M22QN, G3YXS.TUV25:5 as TUV25, G3YXS.ESFVY:1!null as ESFVY, YQIF4.id:44 as QNI57, YVHJZ.id:54 as TDEIU]\n" +
@@ -12892,7 +12892,7 @@ WHERE
 			"                 │                   │           │   └─ MJR3D.QNI57:5\n" +
 			"                 │                   │           └─ SubqueryAlias\n" +
 			"                 │                   │               ├─ outerVisibility: true\n" +
-			"                 │                   │               ├─ cacheable: false\n" +
+			"                 │                   │               ├─ cacheable: true\n" +
 			"                 │                   │               └─ Project\n" +
 			"                 │                   │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"                 │                   │                   └─ Window\n" +
@@ -12911,7 +12911,7 @@ WHERE
 			"                 │                   │           │   └─ MJR3D.TDEIU:6\n" +
 			"                 │                   │           └─ SubqueryAlias\n" +
 			"                 │                   │               ├─ outerVisibility: true\n" +
-			"                 │                   │               ├─ cacheable: false\n" +
+			"                 │                   │               ├─ cacheable: true\n" +
 			"                 │                   │               └─ Project\n" +
 			"                 │                   │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"                 │                   │                   └─ Window\n" +
@@ -13287,7 +13287,7 @@ WHERE
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ outerVisibility: true\n" +
-			"     │           ├─ cacheable: false\n" +
+			"     │           ├─ cacheable: true\n" +
 			"     │           └─ Distinct\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [cld.T4IBQ:4!null as T4IBQ, P4PJZ.M6T2N:7 as M6T2N, P4PJZ.BTXC5:8 as BTXC5, P4PJZ.TUV25:11 as TUV25]\n" +
@@ -13303,7 +13303,7 @@ WHERE
 			"     │                           │       └─ cld.M22QN:6!null\n" +
 			"     │                           ├─ SubqueryAlias\n" +
 			"     │                           │   ├─ outerVisibility: false\n" +
-			"     │                           │   ├─ cacheable: false\n" +
+			"     │                           │   ├─ cacheable: true\n" +
 			"     │                           │   └─ Project\n" +
 			"     │                           │       ├─ columns: [cla.FTQLQ:5!null as T4IBQ, sn.id:51!null as BDNYB, mf.M22QN:37!null as M22QN]\n" +
 			"     │                           │       └─ HashJoin\n" +
@@ -13348,7 +13348,7 @@ WHERE
 			"     │                               └─ CachedResults\n" +
 			"     │                                   └─ SubqueryAlias\n" +
 			"     │                                       ├─ outerVisibility: false\n" +
-			"     │                                       ├─ cacheable: false\n" +
+			"     │                                       ├─ cacheable: true\n" +
 			"     │                                       └─ Project\n" +
 			"     │                                           ├─ columns: [CASE  WHEN (NOT(MJR3D.QNI57:5 IS NULL)) THEN Subquery\n" +
 			"     │                                           │   ├─ cacheable: false\n" +
@@ -13360,7 +13360,7 @@ WHERE
 			"     │                                           │           │   └─ MJR3D.QNI57:5\n" +
 			"     │                                           │           └─ SubqueryAlias\n" +
 			"     │                                           │               ├─ outerVisibility: true\n" +
-			"     │                                           │               ├─ cacheable: false\n" +
+			"     │                                           │               ├─ cacheable: true\n" +
 			"     │                                           │               └─ Project\n" +
 			"     │                                           │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"     │                                           │                   └─ Window\n" +
@@ -13379,7 +13379,7 @@ WHERE
 			"     │                                           │           │   └─ MJR3D.TDEIU:6\n" +
 			"     │                                           │           └─ SubqueryAlias\n" +
 			"     │                                           │               ├─ outerVisibility: true\n" +
-			"     │                                           │               ├─ cacheable: false\n" +
+			"     │                                           │               ├─ cacheable: true\n" +
 			"     │                                           │               └─ Project\n" +
 			"     │                                           │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"     │                                           │                   └─ Window\n" +
@@ -13457,7 +13457,7 @@ WHERE
 			"     │                                               │   │   └─ MJR3D.M22QN:2!null\n" +
 			"     │                                               │   ├─ SubqueryAlias\n" +
 			"     │                                               │   │   ├─ outerVisibility: false\n" +
-			"     │                                               │   │   ├─ cacheable: false\n" +
+			"     │                                               │   │   ├─ cacheable: true\n" +
 			"     │                                               │   │   └─ Distinct\n" +
 			"     │                                               │   │       └─ Project\n" +
 			"     │                                               │   │           ├─ columns: [ism.FV24E:9!null as FJDP5, CPMFE.id:27 as BJUF2, ism.M22QN:11!null as M22QN, G3YXS.TUV25:5 as TUV25, G3YXS.ESFVY:1!null as ESFVY, YQIF4.id:44 as QNI57, YVHJZ.id:54 as TDEIU]\n" +
@@ -13567,7 +13567,7 @@ WHERE
 			"                 │                   │           │   └─ MJR3D.QNI57:5\n" +
 			"                 │                   │           └─ SubqueryAlias\n" +
 			"                 │                   │               ├─ outerVisibility: true\n" +
-			"                 │                   │               ├─ cacheable: false\n" +
+			"                 │                   │               ├─ cacheable: true\n" +
 			"                 │                   │               └─ Project\n" +
 			"                 │                   │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"                 │                   │                   └─ Window\n" +
@@ -13586,7 +13586,7 @@ WHERE
 			"                 │                   │           │   └─ MJR3D.TDEIU:6\n" +
 			"                 │                   │           └─ SubqueryAlias\n" +
 			"                 │                   │               ├─ outerVisibility: true\n" +
-			"                 │                   │               ├─ cacheable: false\n" +
+			"                 │                   │               ├─ cacheable: true\n" +
 			"                 │                   │               └─ Project\n" +
 			"                 │                   │                   ├─ columns: [NOXN3.id:20!null, (row_number() over ( order by NOXN3.id ASC):21!null - 1 (tinyint)) as M6T2N]\n" +
 			"                 │                   │                   └─ Window\n" +
@@ -14083,14 +14083,14 @@ ORDER BY cla.FTQLQ ASC`,
 			"             │               │   ├─ InSubquery\n" +
 			"             │               │   │   ├─ left: bs.id:30!null\n" +
 			"             │               │   │   └─ right: Subquery\n" +
-			"             │               │   │       ├─ cacheable: false\n" +
+			"             │               │   │       ├─ cacheable: true\n" +
 			"             │               │   │       └─ Table\n" +
 			"             │               │   │           ├─ name: HGMQ6\n" +
 			"             │               │   │           └─ columns: [gxlub]\n" +
 			"             │               │   └─ InSubquery\n" +
 			"             │               │       ├─ left: bs.id:30!null\n" +
 			"             │               │       └─ right: Subquery\n" +
-			"             │               │           ├─ cacheable: false\n" +
+			"             │               │           ├─ cacheable: true\n" +
 			"             │               │           └─ Table\n" +
 			"             │               │               ├─ name: AMYXQ\n" +
 			"             │               │               └─ columns: [gxlub]\n" +
@@ -14163,7 +14163,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"             │               ├─ InSubquery\n" +
 			"             │               │   ├─ left: bs.id:30!null\n" +
 			"             │               │   └─ right: Subquery\n" +
-			"             │               │       ├─ cacheable: false\n" +
+			"             │               │       ├─ cacheable: true\n" +
 			"             │               │       └─ Table\n" +
 			"             │               │           ├─ name: AMYXQ\n" +
 			"             │               │           └─ columns: [gxlub]\n" +
