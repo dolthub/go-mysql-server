@@ -152,8 +152,8 @@ const (
 	Collation_ucs2_lithuanian_ci          CollationID = 140
 	Collation_ucs2_persian_ci             CollationID = 144
 	Collation_ucs2_polish_ci              CollationID = 133
-	Collation_ucs2_roman_ci               CollationID = 143
 	Collation_ucs2_romanian_ci            CollationID = 131
+	Collation_ucs2_roman_ci               CollationID = 143
 	Collation_ucs2_sinhala_ci             CollationID = 147
 	Collation_ucs2_slovak_ci              CollationID = 141
 	Collation_ucs2_slovenian_ci           CollationID = 132
@@ -166,6 +166,8 @@ const (
 	Collation_ucs2_vietnamese_ci          CollationID = 151
 	Collation_ujis_bin                    CollationID = 91
 	Collation_ujis_japanese_ci            CollationID = 12
+	Collation_utf16le_bin                 CollationID = 62
+	Collation_utf16le_general_ci          CollationID = 56
 	Collation_utf16_bin                   CollationID = 55
 	Collation_utf16_croatian_ci           CollationID = 122
 	Collation_utf16_czech_ci              CollationID = 111
@@ -180,8 +182,8 @@ const (
 	Collation_utf16_lithuanian_ci         CollationID = 113
 	Collation_utf16_persian_ci            CollationID = 117
 	Collation_utf16_polish_ci             CollationID = 106
-	Collation_utf16_roman_ci              CollationID = 116
 	Collation_utf16_romanian_ci           CollationID = 104
+	Collation_utf16_roman_ci              CollationID = 116
 	Collation_utf16_sinhala_ci            CollationID = 120
 	Collation_utf16_slovak_ci             CollationID = 114
 	Collation_utf16_slovenian_ci          CollationID = 105
@@ -192,8 +194,6 @@ const (
 	Collation_utf16_unicode_520_ci        CollationID = 123
 	Collation_utf16_unicode_ci            CollationID = 101
 	Collation_utf16_vietnamese_ci         CollationID = 124
-	Collation_utf16le_bin                 CollationID = 62
-	Collation_utf16le_general_ci          CollationID = 56
 	Collation_utf32_bin                   CollationID = 61
 	Collation_utf32_croatian_ci           CollationID = 181
 	Collation_utf32_czech_ci              CollationID = 170
@@ -208,8 +208,8 @@ const (
 	Collation_utf32_lithuanian_ci         CollationID = 172
 	Collation_utf32_persian_ci            CollationID = 176
 	Collation_utf32_polish_ci             CollationID = 165
-	Collation_utf32_roman_ci              CollationID = 175
 	Collation_utf32_romanian_ci           CollationID = 163
+	Collation_utf32_roman_ci              CollationID = 175
 	Collation_utf32_sinhala_ci            CollationID = 179
 	Collation_utf32_slovak_ci             CollationID = 173
 	Collation_utf32_slovenian_ci          CollationID = 164
@@ -235,8 +235,8 @@ const (
 	Collation_utf8mb3_lithuanian_ci       CollationID = 204
 	Collation_utf8mb3_persian_ci          CollationID = 208
 	Collation_utf8mb3_polish_ci           CollationID = 197
-	Collation_utf8mb3_roman_ci            CollationID = 207
 	Collation_utf8mb3_romanian_ci         CollationID = 195
+	Collation_utf8mb3_roman_ci            CollationID = 207
 	Collation_utf8mb3_sinhala_ci          CollationID = 211
 	Collation_utf8mb3_slovak_ci           CollationID = 205
 	Collation_utf8mb3_slovenian_ci        CollationID = 196
@@ -252,65 +252,79 @@ const (
 	Collation_utf8mb4_0900_as_ci          CollationID = 305
 	Collation_utf8mb4_0900_as_cs          CollationID = 278
 	Collation_utf8mb4_0900_bin            CollationID = 309
+	Collation_utf8mb4_bg_0900_ai_ci       CollationID = 318
+	Collation_utf8mb4_bg_0900_as_cs       CollationID = 319
 	Collation_utf8mb4_bin                 CollationID = 46
+	Collation_utf8mb4_bs_0900_ai_ci       CollationID = 316
+	Collation_utf8mb4_bs_0900_as_cs       CollationID = 317
 	Collation_utf8mb4_croatian_ci         CollationID = 245
 	Collation_utf8mb4_cs_0900_ai_ci       CollationID = 266
 	Collation_utf8mb4_cs_0900_as_cs       CollationID = 289
 	Collation_utf8mb4_czech_ci            CollationID = 234
+	Collation_utf8mb4_danish_ci           CollationID = 235
 	Collation_utf8mb4_da_0900_ai_ci       CollationID = 267
 	Collation_utf8mb4_da_0900_as_cs       CollationID = 290
-	Collation_utf8mb4_danish_ci           CollationID = 235
 	Collation_utf8mb4_de_pb_0900_ai_ci    CollationID = 256
 	Collation_utf8mb4_de_pb_0900_as_cs    CollationID = 279
 	Collation_utf8mb4_eo_0900_ai_ci       CollationID = 273
 	Collation_utf8mb4_eo_0900_as_cs       CollationID = 296
+	Collation_utf8mb4_esperanto_ci        CollationID = 241
+	Collation_utf8mb4_estonian_ci         CollationID = 230
 	Collation_utf8mb4_es_0900_ai_ci       CollationID = 263
 	Collation_utf8mb4_es_0900_as_cs       CollationID = 286
 	Collation_utf8mb4_es_trad_0900_ai_ci  CollationID = 270
 	Collation_utf8mb4_es_trad_0900_as_cs  CollationID = 293
-	Collation_utf8mb4_esperanto_ci        CollationID = 241
-	Collation_utf8mb4_estonian_ci         CollationID = 230
 	Collation_utf8mb4_et_0900_ai_ci       CollationID = 262
 	Collation_utf8mb4_et_0900_as_cs       CollationID = 285
 	Collation_utf8mb4_general_ci          CollationID = 45
 	Collation_utf8mb4_german2_ci          CollationID = 244
+	Collation_utf8mb4_gl_0900_ai_ci       CollationID = 320
+	Collation_utf8mb4_gl_0900_as_cs       CollationID = 321
 	Collation_utf8mb4_hr_0900_ai_ci       CollationID = 275
 	Collation_utf8mb4_hr_0900_as_cs       CollationID = 298
+	Collation_utf8mb4_hungarian_ci        CollationID = 242
 	Collation_utf8mb4_hu_0900_ai_ci       CollationID = 274
 	Collation_utf8mb4_hu_0900_as_cs       CollationID = 297
-	Collation_utf8mb4_hungarian_ci        CollationID = 242
 	Collation_utf8mb4_icelandic_ci        CollationID = 225
 	Collation_utf8mb4_is_0900_ai_ci       CollationID = 257
 	Collation_utf8mb4_is_0900_as_cs       CollationID = 280
 	Collation_utf8mb4_ja_0900_as_cs       CollationID = 303
 	Collation_utf8mb4_ja_0900_as_cs_ks    CollationID = 304
+	Collation_utf8mb4_latvian_ci          CollationID = 226
 	Collation_utf8mb4_la_0900_ai_ci       CollationID = 271
 	Collation_utf8mb4_la_0900_as_cs       CollationID = 294
-	Collation_utf8mb4_latvian_ci          CollationID = 226
 	Collation_utf8mb4_lithuanian_ci       CollationID = 236
 	Collation_utf8mb4_lt_0900_ai_ci       CollationID = 268
 	Collation_utf8mb4_lt_0900_as_cs       CollationID = 291
 	Collation_utf8mb4_lv_0900_ai_ci       CollationID = 258
 	Collation_utf8mb4_lv_0900_as_cs       CollationID = 281
+	Collation_utf8mb4_mn_cyrl_0900_ai_ci  CollationID = 322
+	Collation_utf8mb4_mn_cyrl_0900_as_cs  CollationID = 323
+	Collation_utf8mb4_nb_0900_ai_ci       CollationID = 310
+	Collation_utf8mb4_nb_0900_as_cs       CollationID = 311
+	Collation_utf8mb4_nn_0900_ai_ci       CollationID = 312
+	Collation_utf8mb4_nn_0900_as_cs       CollationID = 313
 	Collation_utf8mb4_persian_ci          CollationID = 240
 	Collation_utf8mb4_pl_0900_ai_ci       CollationID = 261
 	Collation_utf8mb4_pl_0900_as_cs       CollationID = 284
 	Collation_utf8mb4_polish_ci           CollationID = 229
+	Collation_utf8mb4_romanian_ci         CollationID = 227
+	Collation_utf8mb4_roman_ci            CollationID = 239
 	Collation_utf8mb4_ro_0900_ai_ci       CollationID = 259
 	Collation_utf8mb4_ro_0900_as_cs       CollationID = 282
-	Collation_utf8mb4_roman_ci            CollationID = 239
-	Collation_utf8mb4_romanian_ci         CollationID = 227
 	Collation_utf8mb4_ru_0900_ai_ci       CollationID = 306
 	Collation_utf8mb4_ru_0900_as_cs       CollationID = 307
 	Collation_utf8mb4_sinhala_ci          CollationID = 243
 	Collation_utf8mb4_sk_0900_ai_ci       CollationID = 269
 	Collation_utf8mb4_sk_0900_as_cs       CollationID = 292
-	Collation_utf8mb4_sl_0900_ai_ci       CollationID = 260
-	Collation_utf8mb4_sl_0900_as_cs       CollationID = 283
 	Collation_utf8mb4_slovak_ci           CollationID = 237
 	Collation_utf8mb4_slovenian_ci        CollationID = 228
+	Collation_utf8mb4_sl_0900_ai_ci       CollationID = 260
+	Collation_utf8mb4_sl_0900_as_cs       CollationID = 283
 	Collation_utf8mb4_spanish2_ci         CollationID = 238
 	Collation_utf8mb4_spanish_ci          CollationID = 231
+	Collation_utf8mb4_sr_latn_0900_ai_ci  CollationID = 314
+	Collation_utf8mb4_sr_latn_0900_as_cs  CollationID = 315
 	Collation_utf8mb4_sv_0900_ai_ci       CollationID = 264
 	Collation_utf8mb4_sv_0900_as_cs       CollationID = 287
 	Collation_utf8mb4_swedish_ci          CollationID = 232
@@ -319,9 +333,9 @@ const (
 	Collation_utf8mb4_turkish_ci          CollationID = 233
 	Collation_utf8mb4_unicode_520_ci      CollationID = 246
 	Collation_utf8mb4_unicode_ci          CollationID = 224
+	Collation_utf8mb4_vietnamese_ci       CollationID = 247
 	Collation_utf8mb4_vi_0900_ai_ci       CollationID = 277
 	Collation_utf8mb4_vi_0900_as_cs       CollationID = 300
-	Collation_utf8mb4_vietnamese_ci       CollationID = 247
 	Collation_utf8mb4_zh_0900_as_cs       CollationID = 308
 
 	Collation_utf8_general_ci          = Collation_utf8mb3_general_ci
@@ -365,7 +379,7 @@ const (
 // efficiently passed around (since only an uint16 is needed), while still being able to quickly access all of their
 // properties (index lookups are significantly faster than map lookups). Not all IDs are used, which is why there are
 // gaps in the array.
-var collationArray = [310]Collation{
+var collationArray = [324]Collation{
 	/*000*/ {Collation_Unspecified, "", CharacterSet_Unspecified, true, true, 0, "", nil},
 	/*001*/ {Collation_big5_chinese_ci, "big5_chinese_ci", CharacterSet_big5, true, true, 1, "PAD SPACE", nil},
 	/*002*/ {Collation_latin2_czech_cs, "latin2_czech_cs", CharacterSet_latin2, false, true, 4, "PAD SPACE", nil},
@@ -676,6 +690,20 @@ var collationArray = [310]Collation{
 	/*307*/ {Collation_utf8mb4_ru_0900_as_cs, "utf8mb4_ru_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*308*/ {Collation_utf8mb4_zh_0900_as_cs, "utf8mb4_zh_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*309*/ {Collation_utf8mb4_0900_bin, "utf8mb4_0900_bin", CharacterSet_utf8mb4, false, true, 1, "NO PAD", encodings.Utf8mb4_0900_bin_RuneWeight},
+	/*310*/ {Collation_utf8mb4_nb_0900_ai_ci, "utf8mb4_nb_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*311*/ {Collation_utf8mb4_nb_0900_as_cs, "utf8mb4_nb_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*312*/ {Collation_utf8mb4_nn_0900_ai_ci, "utf8mb4_nn_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*313*/ {Collation_utf8mb4_nn_0900_as_cs, "utf8mb4_nn_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*314*/ {Collation_utf8mb4_sr_latn_0900_ai_ci, "utf8mb4_sr_latn_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*315*/ {Collation_utf8mb4_sr_latn_0900_as_cs, "utf8mb4_sr_latn_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*316*/ {Collation_utf8mb4_bs_0900_ai_ci, "utf8mb4_bs_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*317*/ {Collation_utf8mb4_bs_0900_as_cs, "utf8mb4_bs_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*318*/ {Collation_utf8mb4_bg_0900_ai_ci, "utf8mb4_bg_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*319*/ {Collation_utf8mb4_bg_0900_as_cs, "utf8mb4_bg_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*320*/ {Collation_utf8mb4_gl_0900_ai_ci, "utf8mb4_gl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*321*/ {Collation_utf8mb4_gl_0900_as_cs, "utf8mb4_gl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*322*/ {Collation_utf8mb4_mn_cyrl_0900_ai_ci, "utf8mb4_mn_cyrl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*323*/ {Collation_utf8mb4_mn_cyrl_0900_as_cs, "utf8mb4_mn_cyrl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 }
 
 func init() {
@@ -795,8 +823,8 @@ func (c CollationID) IsCompiled() string {
 }
 
 // SortLength returns the sort length of the collation.
-func (c CollationID) SortLength() int64 {
-	return int64(collationArray[c].SortLength)
+func (c CollationID) SortLength() uint32 {
+	return uint32(collationArray[c].SortLength)
 }
 
 // PadAttribute returns a string representing the pad attribute of the collation.

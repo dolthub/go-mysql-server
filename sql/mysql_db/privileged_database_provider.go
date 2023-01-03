@@ -157,7 +157,8 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 		privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 		dbSet := privSet.Database(pdb.db.Name())
 		// If there are no usable privileges for this database then no table is accessible.
-		if privSet.Count() == 0 && !dbSet.HasPrivileges() {
+		privSetCount := privSet.Count()
+		if privSetCount == 0 && !dbSet.HasPrivileges() {
 			return nil, nil
 		}
 
@@ -165,7 +166,6 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 		if err != nil {
 			return nil, err
 		}
-		privSetCount := privSet.Count()
 		dbSetCount := dbSet.Count()
 		for _, tblName := range tblNames {
 			// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
