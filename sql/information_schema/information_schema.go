@@ -1033,7 +1033,7 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 		sort.Strings(status)
 		rows[i] = Row{
-			uint64(proc.Connection),       // id
+			uint64(proc.Connection),      // id
 			proc.User,                    // user
 			ctx.Session.Client().Address, // host
 			db,                           // db

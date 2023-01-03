@@ -8911,7 +8911,7 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT count(*) FROM information_schema.COLLATIONS`,
+		Query:    `SELECT count(*) FROM information_schema.COLLATIONS`,
 		Expected: []sql.Row{{286}},
 	},
 	{
