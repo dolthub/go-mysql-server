@@ -84,13 +84,11 @@ type Procedure struct {
 	CreatedAt             time.Time
 	ModifiedAt            time.Time
 	ValidationError       error
-	VariableCount         int
-	CursorCount           int
-	HandlerCount          int
 }
 
 var _ sql.Node = (*Procedure)(nil)
 var _ sql.DebugStringer = (*Procedure)(nil)
+var _ RepresentsBlock = (*Procedure)(nil)
 
 // NewProcedure returns a *Procedure. All names contained within are lowercase, and all methods are case-insensitive.
 func NewProcedure(
@@ -125,7 +123,6 @@ func NewProcedure(
 		Body:                  body,
 		CreatedAt:             createdAt,
 		ModifiedAt:            modifiedAt,
-		VariableCount:         len(lowercasedParams),
 	}
 }
 
@@ -175,6 +172,9 @@ func (p *Procedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	return p.Body.RowIter(ctx, row)
 }
 
+// implementsRepresentsBlock implements the RepresentsBlock interface.
+func (p *Procedure) implementsRepresentsBlock() {}
+
 // ExtendVariadic returns a new procedure that has the variadic parameter extended to match the CALL's parameter count.
 func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
 	if !p.HasVariadicParameter() {
@@ -205,7 +205,7 @@ func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
 					Type:      variadicParam.Type,
 					Variadic:  variadicParam.Variadic,
 				}
-				newParams[i] = expression.NewProcedureParam(i, paramName)
+				newParams[i] = expression.NewProcedureParam(paramName)
 			}
 		}
 	}
@@ -213,7 +213,6 @@ func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
 	newBody.ParamDefinitions = newParamDefinitions
 	newBody.Params = newParams
 	np.Params = newParamDefinitions
-	np.VariableCount = length
 	return &np
 }
 
