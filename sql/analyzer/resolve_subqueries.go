@@ -300,6 +300,9 @@ func cacheSubqueryResultsHelper(ctx *sql.Context, a *Analyzer, node sql.Node, sc
 			ret, sameN, err = transform.NodeChildren(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 				return cacheSubqueryResultsHelper(ctx, a, n, subScope, sel)
 			})
+			if err != nil {
+				return n, transform.SameTree, err
+			}
 			if nodeIsCacheable(ret.Children()[0], len(subScope.Schema())) {
 				sameN = transform.NewTree
 				ret = ret.(*plan.SubqueryAlias).WithCachedResults()
@@ -309,6 +312,9 @@ func cacheSubqueryResultsHelper(ctx *sql.Context, a *Analyzer, node sql.Node, sc
 				ret, sameN, err = transform.NodeChildren(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 					return cacheSubqueryResultsHelper(ctx, a, n, scope, sel)
 				})
+				if err != nil {
+					return n, transform.SameTree, err
+				}
 			}
 		}
 
