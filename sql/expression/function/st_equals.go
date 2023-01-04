@@ -147,7 +147,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if geom1.GetGeomType() != geom2.GetGeomType() {
-		return 0, nil
+		return int8(0), nil
 	}
 
 	if geom1.GetSRID() != geom2.GetSRID() {
