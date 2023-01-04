@@ -75,6 +75,8 @@ const (
 	ReplicaSqlRunning    = "Yes"
 )
 
+// ReplicationOption represents a single option for replication configuration, as specified through the
+// CHANGE REPLICATION SOURCE TO command: https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ReplicationOption struct {
 	Name  string
 	Value string

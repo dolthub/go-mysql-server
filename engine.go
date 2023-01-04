@@ -116,16 +116,16 @@ func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Analyzer          *analyzer.Analyzer
-	LS                *sql.LockSubsystem
-	ProcessList       sql.ProcessList
-	MemoryManager     *sql.MemoryManager
-	BackgroundThreads *sql.BackgroundThreads
-	IsReadOnly        bool
-	IsServerLocked    bool
-	PreparedDataCache *PreparedDataCache
+	Analyzer                *analyzer.Analyzer
+	LS                      *sql.LockSubsystem
+	ProcessList             sql.ProcessList
+	MemoryManager           *sql.MemoryManager
+	BackgroundThreads       *sql.BackgroundThreads
+	IsReadOnly              bool
+	IsServerLocked          bool
+	PreparedDataCache       *PreparedDataCache
 	BinlogReplicaController binlogreplication.BinlogReplicaController
-	mu                *sync.Mutex
+	mu                      *sync.Mutex
 }
 
 type ColumnWithRawDefault struct {
@@ -236,9 +236,10 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 	}
 
-	// TODO: This isn't the right place for this, but hacking it in here for now...
+	// The replica controller reference is held by |Engine|, so for any BinlogReplicaControllerCommands,
+	// we supply their replica controller here, before the command gets to the analyzer.
 	if nn, ok := parsed.(plan.BinlogReplicaControllerCommand); ok {
-		nn.WithBinlogReplicaController(e.BinlogReplicaController)
+		nn.SetBinlogReplicaController(e.BinlogReplicaController)
 	}
 
 	// Before we begin a transaction, we need to know if the database being operated on is not the one

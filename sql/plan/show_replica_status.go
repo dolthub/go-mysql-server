@@ -25,7 +25,6 @@ import (
 // ShowReplicaStatus is the plan node for the "SHOW REPLICA STATUS" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
-	// TODO: Consider an embeddable type for this
 	replicaController binlogreplication.BinlogReplicaController
 }
 
@@ -36,7 +35,7 @@ func NewShowReplicaStatus() *ShowReplicaStatus {
 	return &ShowReplicaStatus{}
 }
 
-func (s *ShowReplicaStatus) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
+func (s *ShowReplicaStatus) SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
 	s.replicaController = controller
 }
 
@@ -175,18 +174,18 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		nil,                      // Replica_SQL_Running_State
 		status.SourceRetryCount,  // Source_Retry_Count
 		nil,                      // Source_Bind
-		formatTimestamp(status.LastIoErrorTimestamp),  // Last_IO_Error_Timestamp
-		formatTimestamp(status.LastSqlErrorTimestamp), // Last_SQL_Error_Timestamp
-		status.RetrievedGtidSet,                       // Retrieved_Gtid_Set
-		status.ExecutedGtidSet,                        // Executed_Gtid_Set
-		status.AutoPosition,                           // Auto_Position
-		nil,                                           // Replicate_Rewrite_DB
+		formatReplicaStatusTimestamp(status.LastIoErrorTimestamp),  // Last_IO_Error_Timestamp
+		formatReplicaStatusTimestamp(status.LastSqlErrorTimestamp), // Last_SQL_Error_Timestamp
+		status.RetrievedGtidSet,                                    // Retrieved_Gtid_Set
+		status.ExecutedGtidSet,                                     // Executed_Gtid_Set
+		status.AutoPosition,                                        // Auto_Position
+		nil,                                                        // Replicate_Rewrite_DB
 	}
 
 	return sql.RowsToRowIter(row), nil
 }
 
-func formatTimestamp(t *time.Time) string {
+func formatReplicaStatusTimestamp(t *time.Time) string {
 	if t == nil {
 		return ""
 	}

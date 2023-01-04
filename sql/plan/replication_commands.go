@@ -21,15 +21,17 @@ import (
 	"strings"
 )
 
+// BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
+// (e.g. Start Replica, Show Replica Status).
 type BinlogReplicaControllerCommand interface {
-	WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController)
+	// SetBinlogReplicaController sets the BinlogReplicaController for this replication command to use.
+	SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController)
 }
 
 // ChangeReplicationSource is the plan node for the "CHANGE REPLICATION SOURCE TO" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ChangeReplicationSource struct {
-	Options []binlogreplication.ReplicationOption
-	// TODO: Could type embed something that does this for all the replication types
+	Options           []binlogreplication.ReplicationOption
 	replicaController binlogreplication.BinlogReplicaController
 }
 
@@ -42,7 +44,7 @@ func NewChangeReplicationSource(options []binlogreplication.ReplicationOption) *
 	}
 }
 
-func (c *ChangeReplicationSource) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
+func (c *ChangeReplicationSource) SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
 	c.replicaController = controller
 }
 
@@ -108,7 +110,7 @@ func NewStartReplica() *StartReplica {
 	return &StartReplica{}
 }
 
-func (s *StartReplica) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
+func (s *StartReplica) SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
 	s.replicaController = controller
 }
 
@@ -164,7 +166,7 @@ func NewStopReplica() *StopReplica {
 	return &StopReplica{}
 }
 
-func (s *StopReplica) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
+func (s *StopReplica) SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
 	s.replicaController = controller
 }
 
