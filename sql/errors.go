@@ -537,6 +537,9 @@ var (
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
 
+	// ErrDiffSRIDs is thrown when comparing two spatial types that have different SRIDs when they should be the same
+	ErrDiffSRIDs = errors.NewKind("binary geometry function %s given two geometries of different srids: %v and %v, which should have been identical")
+
 	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
 	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
 

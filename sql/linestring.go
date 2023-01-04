@@ -173,6 +173,11 @@ func (l LineString) SetSRID(srid uint32) GeometryValue {
 	}
 }
 
+// GetGeomType implements GeometryValue interface.
+func (l LineString) GetGeomType() uint32 {
+	return WKBLineID
+}
+
 // Serialize implements GeometryValue interface.
 func (l LineString) Serialize() (buf []byte) {
 	buf = allocateBuffer(len(l.Points), 1, 0)
