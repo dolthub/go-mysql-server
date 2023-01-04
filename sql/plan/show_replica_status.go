@@ -17,9 +17,10 @@ package plan
 import (
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // ShowReplicaStatus is the plan node for the "SHOW REPLICA STATUS" statement.

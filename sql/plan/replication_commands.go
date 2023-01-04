@@ -16,9 +16,10 @@ package plan
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
-	"strings"
 )
 
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
