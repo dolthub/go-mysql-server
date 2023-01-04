@@ -261,6 +261,13 @@ func TestInfoSchema(t *testing.T, h Harness) {
 			TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		})
 	}
+
+	for _, script := range queries.InfoSchemaScripts {
+		t.Run(script.Name, func(t *testing.T) {
+			t.Skip()
+			TestScript(t, h, script)
+		})
+	}
 }
 
 func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
