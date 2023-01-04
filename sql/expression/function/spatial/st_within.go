@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Within)(nil)
 func NewWithin(g1, g2 sql.Expression) sql.Expression {
 	return &Within{
 		expression.BinaryExpression{
-			Left: g1,
+			Left:  g1,
 			Right: g2,
 		},
 	}
@@ -98,8 +98,6 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if geom1.GetSRID() != geom2.GetSRID() {
 		return nil, sql.ErrDiffSRIDs.New(s.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
 	}
-
-
 
 	return nil, nil
 }

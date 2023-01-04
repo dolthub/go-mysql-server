@@ -46,8 +46,8 @@ func TestSTEquals(t *testing.T) {
 
 	t.Run("linestring vs linestring equals", func(t *testing.T) {
 		require := require.New(t)
-		l1 := sql.LineString{Points: []sql.Point{{X: 12, Y: 34},{X: 56, Y: 78},{X: 56, Y: 78}}}
-		l2 := sql.LineString{Points: []sql.Point{{X: 56, Y: 78}, {X: 12, Y: 34},{X: 12, Y: 34}}}
+		l1 := sql.LineString{Points: []sql.Point{{X: 12, Y: 34}, {X: 56, Y: 78}, {X: 56, Y: 78}}}
+		l2 := sql.LineString{Points: []sql.Point{{X: 56, Y: 78}, {X: 12, Y: 34}, {X: 12, Y: 34}}}
 		f := NewSTEquals(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -56,7 +56,7 @@ func TestSTEquals(t *testing.T) {
 
 	t.Run("linestring vs linestring not equals", func(t *testing.T) {
 		require := require.New(t)
-		l1 := sql.LineString{Points: []sql.Point{{X: 12, Y: 34},{X: 56, Y: 78}}}
+		l1 := sql.LineString{Points: []sql.Point{{X: 12, Y: 34}, {X: 56, Y: 78}}}
 		l2 := sql.LineString{Points: []sql.Point{{X: 56, Y: 78}, {X: 12, Y: 34}, {X: 123, Y: 349}}}
 		f := NewSTEquals(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -70,7 +70,7 @@ func TestSTEquals(t *testing.T) {
 		p2 := sql.Point{X: 0, Y: 1}
 		p3 := sql.Point{X: 1, Y: 0}
 		p4 := sql.Point{X: 1, Y: 1}
-		l1 := sql.LineString{Points: []sql.Point{p1,p2,p3,p4}}
+		l1 := sql.LineString{Points: []sql.Point{p1, p2, p3, p4}}
 		p := sql.Polygon{Lines: []sql.LineString{l1}}
 		ml := sql.MultiLineString{Lines: []sql.LineString{l1}}
 		f := NewSTEquals(expression.NewLiteral(p, sql.PolygonType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
@@ -79,7 +79,7 @@ func TestSTEquals(t *testing.T) {
 		require.Equal(int8(0), v)
 	})
 
-	t.Run("empty geometry vs empty geometry equal", func (t *testing.T) {
+	t.Run("empty geometry vs empty geometry equal", func(t *testing.T) {
 		require := require.New(t)
 		g1 := sql.GeomColl{}
 		g2 := sql.GeomColl{}
@@ -89,11 +89,11 @@ func TestSTEquals(t *testing.T) {
 		require.Equal(int8(1), v)
 	})
 
-	t.Run("point geometry vs linestring geometry not equal", func (t *testing.T) {
+	t.Run("point geometry vs linestring geometry not equal", func(t *testing.T) {
 		require := require.New(t)
 		p1 := sql.Point{X: 0, Y: 0}
 		p2 := sql.Point{X: 0, Y: 1}
-		l1 := sql.LineString{Points: []sql.Point{p1,p2}}
+		l1 := sql.LineString{Points: []sql.Point{p1, p2}}
 		g1 := sql.GeomColl{Geoms: []sql.GeometryValue{p1, p2}}
 		g2 := sql.GeomColl{Geoms: []sql.GeometryValue{l1}}
 		f := NewSTEquals(expression.NewLiteral(g1, sql.GeomCollType{}), expression.NewLiteral(g2, sql.GeomCollType{}))
