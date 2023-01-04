@@ -1430,6 +1430,70 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "basic tests on information_schema.schema_privileges table",
+		SetUpScript: []string{
+			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
+			"CREATE USER tester@localhost;",
+			"CREATE USER admin@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mysql.db;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT INSERT, REFERENCES ON mydb.* TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT UPDATE, GRANT OPTION ON mydb.* TO admin@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"},{"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"},{"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"},{"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}},
+			},
+			{
+				User:     "admin",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mysql.* TO admin@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "admin",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"},{"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"},{"'admin'@'localhost'", "def", "mysql", "SELECT", "NO"},{"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins

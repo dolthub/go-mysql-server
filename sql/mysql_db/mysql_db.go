@@ -554,6 +554,11 @@ func (db *MySQLDb) RoleEdgesTable() *mysqlTable {
 	return db.role_edges
 }
 
+// DbTable returns the "db" table.
+func (db *MySQLDb) DbTable() *mysqlTable {
+	return db.db.original
+}
+
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given
 // template.
 func columnTemplate(name string, source string, isPk bool, template *sql.Column) *sql.Column {

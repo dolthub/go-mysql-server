@@ -102,7 +102,7 @@ func (conv TablesPrivConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, ent
 		case "Drop":
 			privs = append(privs, sql.PrivilegeType_Drop)
 		case "Grant":
-			privs = append(privs, sql.PrivilegeType_Grant)
+			privs = append(privs, sql.PrivilegeType_GrantOption)
 		case "References":
 			privs = append(privs, sql.PrivilegeType_References)
 		case "Index":
@@ -188,7 +188,7 @@ func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table
 					privs = append(privs, "Create")
 				case sql.PrivilegeType_Drop:
 					privs = append(privs, "Drop")
-				case sql.PrivilegeType_Grant:
+				case sql.PrivilegeType_GrantOption:
 					privs = append(privs, "Grant")
 				case sql.PrivilegeType_References:
 					privs = append(privs, "References")

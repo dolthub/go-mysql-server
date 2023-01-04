@@ -1043,6 +1043,57 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// schemaPrivilegesRowIter implements the sql.RowIter for the information_schema.SCHEMA_PRIVILEGES table.
+func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
+		var users = make(map[*mysql_db.User]struct{})
+		db, err := c.Database(ctx, "mysql")
+		if err != nil {
+			return RowsToRowIter(rows...), nil
+		}
+
+		mysqlDb := db.(*mysql_db.MySQLDb)
+		dbTbl, _, err := mysqlDb.GetTableInsensitive(ctx, "db")
+		if err != nil {
+			return RowsToRowIter(rows...), nil
+		}
+		ri, err := dbTbl.PartitionRows(ctx, nil)
+		if err != nil {
+			return RowsToRowIter(rows...), nil
+		}
+		for {
+			r, rerr := ri.Next(ctx)
+			if rerr == io.EOF {
+				break
+			}
+			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
+			users[mysqlDb.GetUser(r[2].(string), r[0].(string), false)] = struct{}{}
+		}
+
+		for user := range users {
+			grantee := user.UserHostToString("'")
+			for _, privSetDb := range user.PrivilegeSet.GetDatabases() {
+				rows = append(rows, getSchemaPrivsRowsFromPrivDbSet(privSetDb, grantee)...)
+			}
+		}
+	} else {
+		// If current client does not have SELECT privilege on 'mysql' db, only available schema privileges is
+		// their current schema privileges only.
+		currClient := ctx.Session.Client()
+		grantee := fmt.Sprintf("'%s'@'%s'", currClient.User, currClient.Address)
+		dbs := c.AllDatabases(ctx)
+		for _, db := range dbs {
+			dbName := db.Name()
+			privSetDb := privSet.Database(dbName)
+			rows = append(rows, getSchemaPrivsRowsFromPrivDbSet(privSetDb, grantee)...)
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 // schemataRowIter implements the sql.RowIter for the information_schema.SCHEMATA table.
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases(ctx)
@@ -1633,7 +1684,7 @@ func NewInformationSchemaDatabase() Database {
 			SchemaPrivilegesTableName: &informationSchemaTable{
 				name:   SchemaPrivilegesTableName,
 				schema: schemaPrivilegesTableName,
-				reader: emptyRowIter,
+				reader: schemaPrivilegesRowIter,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:   SchemataTableName,
@@ -2195,4 +2246,27 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	}
 
 	return views, nil
+}
+
+// getSchemaPrivsRowsFromPrivDbSet returns SCHEMA_PRIVILEGES rows using given Database privilege set and grantee string.
+func getSchemaPrivsRowsFromPrivDbSet(privSetDb PrivilegeSetDatabase, grantee string) []Row {
+	var rows []Row
+	hasGrantOpt := privSetDb.Has(PrivilegeType_GrantOption)
+	for _, privType := range privSetDb.ToSlice() {
+		if privType == PrivilegeType_GrantOption {
+			continue
+		}
+		isGrantable := "NO"
+		if hasGrantOpt {
+			isGrantable = "YES"
+		}
+		rows = append(rows, Row{
+			grantee,           // grantee
+			"def",             // table_catalog
+			privSetDb.Name(),  // table_schema
+			privType.String(), // privilege_type
+			isGrantable,       // is_grantable
+		})
+	}
+	return rows
 }

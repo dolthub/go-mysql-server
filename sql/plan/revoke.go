@@ -133,7 +133,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_CreateTablespace,
 				sql.PrivilegeType_CreateRole,
 				sql.PrivilegeType_DropRole,
-				sql.PrivilegeType_Grant,
+				sql.PrivilegeType_GrantOption,
 			))
 		}
 		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
@@ -163,7 +163,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_ShowView,
 				sql.PrivilegeType_Trigger,
 				sql.PrivilegeType_Update,
-				sql.PrivilegeType_Grant,
+				sql.PrivilegeType_GrantOption,
 			))
 		}
 		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
@@ -185,7 +185,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 					sql.PrivilegeType_ShowView,
 					sql.PrivilegeType_Trigger,
 					sql.PrivilegeType_Update,
-					sql.PrivilegeType_Grant,
+					sql.PrivilegeType_GrantOption,
 				))
 		}
 		return opChecker.UserHasPrivileges(ctx,
@@ -306,6 +306,8 @@ func (n *Revoke) handleGlobalPrivileges(user *mysql_db.User) error {
 			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_Execute)
 		case PrivilegeType_File:
 			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_File)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:
@@ -382,6 +384,8 @@ func (n *Revoke) handleDatabasePrivileges(user *mysql_db.User, dbName string) er
 			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_Event)
 		case PrivilegeType_Execute:
 			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_Execute)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:
@@ -432,6 +436,8 @@ func (n *Revoke) handleTablePrivileges(user *mysql_db.User, dbName string, tblNa
 			user.PrivilegeSet.RemoveTable(dbName, tblName, sql.PrivilegeType_Delete)
 		case PrivilegeType_Drop:
 			user.PrivilegeSet.RemoveTable(dbName, tblName, sql.PrivilegeType_Drop)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			user.PrivilegeSet.RemoveTable(dbName, tblName, sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:

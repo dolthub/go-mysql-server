@@ -120,7 +120,7 @@ func generatePrivStrings(db, tbl, user string, privs []sql.PrivilegeType) string
 	withGrantOption := ""
 	for i, priv := range privs {
 		privStr := priv.String()
-		if privStr == sql.PrivilegeType_Grant.String() {
+		if privStr == sql.PrivilegeType_GrantOption.String() {
 			withGrantOption = " WITH GRANT OPTION"
 		} else {
 			if i > 0 {
