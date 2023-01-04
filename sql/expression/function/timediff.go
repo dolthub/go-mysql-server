@@ -136,7 +136,7 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		return leftTime.Subtract(rightTime), nil
 	}
-	return nil, ErrInvalidArgumentType.New("timediff")
+	return nil, sql.ErrInvalidArgumentType.New("timediff")
 }
 
 // DateDiff returns expr1 − expr2 expressed as a value in days from one date to the other.
