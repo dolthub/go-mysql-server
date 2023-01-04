@@ -574,7 +574,7 @@ var routinesSchema = Schema{
 	{Name: "DATABASE_COLLATION", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: RoutinesTableName},
 }
 
-var schemaPrivilegesTableName = Schema{
+var schemaPrivilegesSchema = Schema{
 	{Name: "GRANTEE", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 292), Default: nil, Nullable: false, Source: SchemaPrivilegesTableName},
 	{Name: "TABLE_CATALOG", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: SchemaPrivilegesTableName},
 	{Name: "TABLE_SCHEMA", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: SchemaPrivilegesTableName},
@@ -591,7 +591,7 @@ var schemataSchema = Schema{
 	{Name: "DEFAULT_ENCRYPTION", Type: MustCreateEnumType([]string{"NO", "YES"}, Collation_Default), Default: nil, Nullable: false, Source: SchemataTableName},
 }
 
-var schemataExtensionsTableName = Schema{
+var schemataExtensionsSchema = Schema{
 	{Name: "CATALOG_NAME", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
 	{Name: "SCHEMA_NAME", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
 	{Name: "OPTIONS", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
@@ -1079,8 +1079,8 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			}
 		}
 	} else {
-		// If current client does not have SELECT privilege on 'mysql' db, only available schema privileges is
-		// their current schema privileges only.
+		// If current client does not have SELECT privilege on 'mysql' db, only available schema privileges are
+		// their current schema privileges.
 		currClient := ctx.Session.Client()
 		grantee := fmt.Sprintf("'%s'@'%s'", currClient.User, currClient.Address)
 		dbs := c.AllDatabases(ctx)
@@ -1294,6 +1294,63 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 	return RowsToRowIter(rows...), nil
 }
+
+// tablePrivilegesRowIter implements the sql.RowIter for the information_schema.TABLE_PRIVILEGES table.
+func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
+		var users = make(map[*mysql_db.User]struct{})
+		db, err := c.Database(ctx, "mysql")
+		if err != nil {
+			return RowsToRowIter(rows...), nil
+		}
+
+		mysqlDb := db.(*mysql_db.MySQLDb)
+		tblsPriv, _, err := mysqlDb.GetTableInsensitive(ctx, "tables_priv")
+		if err != nil {
+			return RowsToRowIter(rows...), nil
+		}
+		ri, err := tblsPriv.PartitionRows(ctx, nil)
+		if err != nil {
+			return RowsToRowIter(rows...), nil
+		}
+		for {
+			r, rerr := ri.Next(ctx)
+			if rerr == io.EOF {
+				break
+			}
+			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
+			users[mysqlDb.GetUser(r[2].(string), r[0].(string), false)] = struct{}{}
+		}
+
+		for user := range users {
+			grantee := user.UserHostToString("'")
+			for _, privSetDb := range user.PrivilegeSet.GetDatabases() {
+				dbName := privSetDb.Name()
+				for _, privSetTbl := range privSetDb.GetTables() {
+					rows = append(rows, getTablePrivsRowsFromPrivTblSet(privSetTbl, grantee, dbName)...)
+				}
+			}
+		}
+	} else {
+		// If current client does not have SELECT privilege on 'mysql' db, only available table privileges are
+		// their current table privileges.
+		currClient := ctx.Session.Client()
+		grantee := fmt.Sprintf("'%s'@'%s'", currClient.User, currClient.Address)
+		dbs := c.AllDatabases(ctx)
+		for _, db := range dbs {
+			dbName := db.Name()
+			privSetDb := privSet.Database(dbName)
+			for _, privSetTbl := range privSetDb.GetTables() {
+				rows = append(rows, getTablePrivsRowsFromPrivTblSet(privSetTbl, grantee, dbName)...)
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 
 // tablesRowIter implements the sql.RowIter for the information_schema.TABLES table.
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
@@ -1683,7 +1740,7 @@ func NewInformationSchemaDatabase() Database {
 			},
 			SchemaPrivilegesTableName: &informationSchemaTable{
 				name:   SchemaPrivilegesTableName,
-				schema: schemaPrivilegesTableName,
+				schema: schemaPrivilegesSchema,
 				reader: schemaPrivilegesRowIter,
 			},
 			SchemataTableName: &informationSchemaTable{
@@ -1693,7 +1750,7 @@ func NewInformationSchemaDatabase() Database {
 			},
 			SchemataExtensionsTableName: &informationSchemaTable{
 				name:   SchemataExtensionsTableName,
-				schema: schemataExtensionsTableName,
+				schema: schemataExtensionsSchema,
 				reader: emptyRowIter,
 			},
 			StGeometryColumnsTableName: &informationSchemaTable{
@@ -1724,7 +1781,7 @@ func NewInformationSchemaDatabase() Database {
 			TablePrivilegesTableName: &informationSchemaTable{
 				name:   TablePrivilegesTableName,
 				schema: tablePrivilegesSchema,
-				reader: emptyRowIter,
+				reader: tablePrivilegesRowIter,
 			},
 			TablesTableName: &informationSchemaTable{
 				name:   TablesTableName,
@@ -2264,6 +2321,30 @@ func getSchemaPrivsRowsFromPrivDbSet(privSetDb PrivilegeSetDatabase, grantee str
 			grantee,           // grantee
 			"def",             // table_catalog
 			privSetDb.Name(),  // table_schema
+			privType.String(), // privilege_type
+			isGrantable,       // is_grantable
+		})
+	}
+	return rows
+}
+
+// getTablePrivsRowsFromPrivTblSet returns TABLE_PRIVILEGES rows using given Table privilege set and grantee and database name strings.
+func getTablePrivsRowsFromPrivTblSet(privSetTbl PrivilegeSetTable, grantee, dbName string) []Row {
+	var rows []Row
+	hasGrantOpt := privSetTbl.Has(PrivilegeType_GrantOption)
+	for _, privType := range privSetTbl.ToSlice() {
+		if privType == PrivilegeType_GrantOption {
+			continue
+		}
+		isGrantable := "NO"
+		if hasGrantOpt {
+			isGrantable = "YES"
+		}
+		rows = append(rows, Row{
+			grantee,           // grantee
+			"def",             // table_catalog
+			dbName,            // table_schema
+			privSetTbl.Name(), // table_name
 			privType.String(), // privilege_type
 			isGrantable,       // is_grantable
 		})
