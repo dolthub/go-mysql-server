@@ -34,7 +34,6 @@ const (
 type DeclareHandler struct {
 	Action    DeclareHandlerAction
 	Statement sql.Node
-	id        int
 	pRef      *expression.ProcedureReference
 	//TODO: implement other conditions besides NOT FOUND
 }
@@ -125,13 +124,6 @@ func (d *DeclareHandler) WithParamReference(pRef *expression.ProcedureReference)
 	return &nd
 }
 
-// WithId returns a new *DeclareHandler containing the given id.
-func (d *DeclareHandler) WithId(id int) *DeclareHandler {
-	nd := *d
-	nd.id = id
-	return &nd
-}
-
 // declareHandlerIter is the sql.RowIter of *DeclareHandler.
 type declareHandlerIter struct {
 	*DeclareHandler
@@ -141,7 +133,7 @@ var _ sql.RowIter = (*declareHandlerIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (d *declareHandlerIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.pRef.InitializeHandler(d.id, d.Statement, d.Action == DeclareHandlerAction_Exit)
+	d.pRef.InitializeHandler(d.Statement, d.Action == DeclareHandlerAction_Exit)
 	return nil, io.EOF
 }
 

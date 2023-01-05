@@ -22,13 +22,38 @@ import (
 
 // Block represents a collection of statements that should be executed in sequence.
 type Block struct {
-	statements          []sql.Node
-	rowIterSch          sql.Schema // This is set during RowIter, as the schema is unknown until iterating over the statements.
-	validExitHandlerIds []int      // This is set by BeginEndBlock, as other blocks should ignore exit handlers
+	statements []sql.Node
+	rowIterSch sql.Schema // This is set during RowIter, as the schema is unknown until iterating over the statements.
+}
+
+// RepresentsBlock is an interface that defines whether a node contains a Block node, or contains multiple child
+// statements similar to a block node. As a rule of thumb, if a parent node depends upon a child node, either explicitly
+// or implicitly, then it does not represent a Block.
+type RepresentsBlock interface {
+	sql.Node
+	implementsRepresentsBlock()
+}
+
+// RepresentsLabeledBlock is an interface that defines whether a node represents a Block node, while also carrying a
+// label that may be referenced by statements within the block (such as LEAVE, ITERATE, etc.). Some statements that use
+// labels only look for labels on statements that loop (such as LOOP and REPEAT), so there's an additional function
+// to check whether this also represents a loop.
+type RepresentsLabeledBlock interface {
+	RepresentsBlock
+	GetBlockLabel(ctx *sql.Context) string
+	RepresentsLoop() bool
+}
+
+// RepresentsScope is an interface that defines whether a node represents a new scope. Scopes define boundaries that
+// are used for variable resolution and control flow modification (via condition handling, etc.).
+type RepresentsScope interface {
+	RepresentsBlock
+	implementsRepresentsScope()
 }
 
 var _ sql.Node = (*Block)(nil)
 var _ sql.DebugStringer = (*Block)(nil)
+var _ RepresentsBlock = (*Block)(nil)
 
 // NewBlock creates a new *Block node.
 func NewBlock(statements []sql.Node) *Block {
@@ -151,13 +176,6 @@ func (b *Block) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil
 		}()
 		if err != nil {
-			if exitHandler, ok := err.(BlockExitError); ok {
-				for _, validExitHandlerId := range b.validExitHandlerIds {
-					if validExitHandlerId == int(exitHandler) {
-						return sql.RowsToRowIter(), nil
-					}
-				}
-			}
 			return nil, err
 		}
 	}
@@ -169,6 +187,9 @@ func (b *Block) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		sch:          returnSch,
 	}, nil
 }
+
+// implementsRepresentsBlock implements the RepresentsBlock interface.
+func (b *Block) implementsRepresentsBlock() {}
 
 // blockIter is a sql.RowIter that iterates over the given rows.
 type blockIter struct {
@@ -197,13 +218,4 @@ func (i *blockIter) RepresentingNode() sql.Node {
 // Schema implements the sql.BlockRowIter interface.
 func (i *blockIter) Schema() sql.Schema {
 	return i.sch
-}
-
-type BlockExitError int
-
-var _ error = BlockExitError(0)
-
-// Error implements the error interface.
-func (b BlockExitError) Error() string {
-	return "Block that EXIT handler was declared in could somehow not be found"
 }

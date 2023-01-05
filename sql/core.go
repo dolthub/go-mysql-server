@@ -40,6 +40,17 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+// ExpressionWithNodes is an expression that contains nodes as children.
+type ExpressionWithNodes interface {
+	Expression
+	// NodeChildren returns all node children.
+	NodeChildren() []Node
+	// WithNodeChildren returns a copy of the expression with its node children replaced. It will return an error if the
+	// number of children is different than the current number of children. They must be given in the same order as they
+	// are returned by NodeChildren.
+	WithNodeChildren(children ...Node) (ExpressionWithNodes, error)
+}
+
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will
 // signal the engine to not cache their results when this would otherwise appear to be safe.
 type NonDeterministicExpression interface {
