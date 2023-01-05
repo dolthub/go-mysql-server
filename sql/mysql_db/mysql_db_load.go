@@ -134,3 +134,12 @@ func LoadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
 		ToUser:   string(serialRoleEdge.ToUser()),
 	}
 }
+
+func LoadReplicaSourceInfo(serialReplicaSourceInfo *serial.ReplicaSourceInfo) *ReplicaSourceInfo {
+	return &ReplicaSourceInfo{
+		Host:     string(serialReplicaSourceInfo.Host()),
+		User:     string(serialReplicaSourceInfo.User()),
+		Password: string(serialReplicaSourceInfo.Password()),
+		Port:     serialReplicaSourceInfo.Port(),
+	}
+}

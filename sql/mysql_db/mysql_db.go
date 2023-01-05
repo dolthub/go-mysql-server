@@ -54,8 +54,10 @@ type PlaintextAuthPlugin interface {
 type MySQLDb struct {
 	Enabled bool
 
-	user        *mysqlTable
-	role_edges  *mysqlTable
+	user              *mysqlTable
+	role_edges        *mysqlTable
+	slave_master_info *mysqlTable
+
 	db          *mysqlTableShim
 	tables_priv *mysqlTableShim
 	//TODO: add the rest of these tables
@@ -95,6 +97,13 @@ func CreateEmptyMySQLDb() *MySQLDb {
 		RoleEdgesPrimaryKey{},
 		RoleEdgesFromKey{},
 		RoleEdgesToKey{},
+	)
+	mysqlDb.slave_master_info = newMySQLTable(
+		replicaSourceInfoTblName,
+		replicaSourceInfoTblSchema,
+		mysqlDb,
+		&ReplicaSourceInfo{},
+		ReplicaSourceInfoPrimaryKey{},
 	)
 
 	// mysqlTable shims
@@ -142,8 +151,9 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	}
 
 	type privDataJson struct {
-		Users []*User
-		Roles []*RoleEdge
+		Users              []*User
+		Roles              []*RoleEdge
+		ReplicaSourceInfos []*ReplicaSourceInfo
 	}
 
 	// if it's a json file, read it; will be rewritten as flatbuffer later
@@ -185,6 +195,18 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 		}
 		role := LoadRoleEdge(serialRoleEdge)
 		if err := db.role_edges.data.Put(ctx, role); err != nil {
+			return err
+		}
+	}
+
+	// Fill in the ReplicaSourceInfo table
+	for i := 0; i < serialMySQLDb.ReplicaSourceInfoLength(); i++ {
+		serialReplicaSourceInfo := new(serial.ReplicaSourceInfo)
+		if !serialMySQLDb.ReplicaSourceInfo(serialReplicaSourceInfo, i) {
+			continue
+		}
+		replicaSourceInfo := LoadReplicaSourceInfo(serialReplicaSourceInfo)
+		if err := db.slave_master_info.data.Put(ctx, replicaSourceInfo); err != nil {
 			return err
 		}
 	}
@@ -354,7 +376,7 @@ func (db *MySQLDb) Name() string {
 }
 
 // GetTableInsensitive implements the interface sql.Database.
-func (db *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
+func (db *MySQLDb) GetTableInsensitive(_ *sql.Context, tblName string) (sql.Table, bool, error) {
 	switch strings.ToLower(tblName) {
 	case userTblName:
 		return db.user, true, nil
@@ -364,6 +386,8 @@ func (db *MySQLDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Ta
 		return db.db, true, nil
 	case tablesPrivTblName:
 		return db.tables_priv, true, nil
+	case replicaSourceInfoTblName:
+		return db.slave_master_info, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -376,6 +400,7 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 		dbTblName,
 		tablesPrivTblName,
 		roleEdgesTblName,
+		replicaSourceInfoTblName,
 	}, nil
 }
 
@@ -524,17 +549,35 @@ func (db *MySQLDb) Persist(ctx *sql.Context) error {
 		return roles[i].FromHost < roles[j].FromHost
 	})
 
-	// TODO: serialize other tables when the exist
+	// Extract all replica source info entries from table, and sort
+	replicaSourceInfoEntries := db.slave_master_info.data.ToSlice(ctx)
+	replicaSourceInfos := make([]*ReplicaSourceInfo, len(replicaSourceInfoEntries))
+	for i, replicaSourceInfoEntry := range replicaSourceInfoEntries {
+		replicaSourceInfos[i] = replicaSourceInfoEntry.(*ReplicaSourceInfo)
+	}
+	sort.Slice(replicaSourceInfos, func(i, j int) bool {
+		if replicaSourceInfos[i].Host == replicaSourceInfos[j].Host {
+			if replicaSourceInfos[i].Port == replicaSourceInfos[j].Port {
+				return replicaSourceInfos[i].User < replicaSourceInfos[j].User
+			}
+			return replicaSourceInfos[i].Port < replicaSourceInfos[j].Port
+		}
+		return replicaSourceInfos[i].Host < replicaSourceInfos[j].Host
+	})
+
+	// TODO: serialize other tables when they exist
 
 	// Create flatbuffer
 	b := flatbuffers.NewBuilder(0)
 	user := serializeUser(b, users)
 	roleEdge := serializeRoleEdge(b, roles)
+	replicaSourceInfo := serializeReplicaSourceInfo(b, replicaSourceInfos)
 
 	// Write MySQL DB
 	serial.MySQLDbStart(b)
 	serial.MySQLDbAddUser(b, user)
 	serial.MySQLDbAddRoleEdges(b, roleEdge)
+	serial.MySQLDbAddReplicaSourceInfo(b, replicaSourceInfo)
 	mysqlDbOffset := serial.MySQLDbEnd(b)
 
 	// Finish writing
@@ -552,6 +595,11 @@ func (db *MySQLDb) UserTable() *mysqlTable {
 // RoleEdgesTable returns the "role_edges" table.
 func (db *MySQLDb) RoleEdgesTable() *mysqlTable {
 	return db.role_edges
+}
+
+// ReplicaSourceInfoTable returns the "slave_master_info" table.
+func (db *MySQLDb) ReplicaSourceInfoTable() *mysqlTable {
+	return db.slave_master_info
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given

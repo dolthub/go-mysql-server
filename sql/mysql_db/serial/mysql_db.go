@@ -657,6 +657,88 @@ func RoleEdgeEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
 }
 
+type ReplicaSourceInfo struct {
+	_tab flatbuffers.Table
+}
+
+func GetRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) *ReplicaSourceInfo {
+	n := flatbuffers.GetUOffsetT(buf[offset:])
+	x := &ReplicaSourceInfo{}
+	x.Init(buf, n+offset)
+	return x
+}
+
+func GetSizePrefixedRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) *ReplicaSourceInfo {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &ReplicaSourceInfo{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
+func (rcv *ReplicaSourceInfo) Init(buf []byte, i flatbuffers.UOffsetT) {
+	rcv._tab.Bytes = buf
+	rcv._tab.Pos = i
+}
+
+func (rcv *ReplicaSourceInfo) Table() flatbuffers.Table {
+	return rcv._tab
+}
+
+func (rcv *ReplicaSourceInfo) Host() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ReplicaSourceInfo) User() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ReplicaSourceInfo) Password() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ReplicaSourceInfo) Port() uint16 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.GetUint16(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ReplicaSourceInfo) MutatePort(n uint16) bool {
+	return rcv._tab.MutateUint16Slot(10, n)
+}
+
+func ReplicaSourceInfoStart(builder *flatbuffers.Builder) {
+	builder.StartObject(4)
+}
+func ReplicaSourceInfoAddHost(builder *flatbuffers.Builder, host flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(host), 0)
+}
+func ReplicaSourceInfoAddUser(builder *flatbuffers.Builder, user flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(user), 0)
+}
+func ReplicaSourceInfoAddPassword(builder *flatbuffers.Builder, password flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(password), 0)
+}
+func ReplicaSourceInfoAddPort(builder *flatbuffers.Builder, port uint16) {
+	builder.PrependUint16Slot(3, port, 0)
+}
+func ReplicaSourceInfoEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
+	return builder.EndObject()
+}
+
 type MySQLDb struct {
 	_tab flatbuffers.Table
 }
@@ -724,8 +806,28 @@ func (rcv *MySQLDb) RoleEdgesLength() int {
 	return 0
 }
 
+func (rcv *MySQLDb) ReplicaSourceInfo(obj *ReplicaSourceInfo, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MySQLDb) ReplicaSourceInfoLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
 func MySQLDbStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(3)
 }
 func MySQLDbAddUser(builder *flatbuffers.Builder, user flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(user), 0)
@@ -737,6 +839,12 @@ func MySQLDbAddRoleEdges(builder *flatbuffers.Builder, roleEdges flatbuffers.UOf
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(roleEdges), 0)
 }
 func MySQLDbStartRoleEdgesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func MySQLDbAddReplicaSourceInfo(builder *flatbuffers.Builder, replicaSourceInfo flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(replicaSourceInfo), 0)
+}
+func MySQLDbStartReplicaSourceInfoVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
 }
 func MySQLDbEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {

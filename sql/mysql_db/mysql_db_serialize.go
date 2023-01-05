@@ -193,3 +193,30 @@ func serializeRoleEdge(b *flatbuffers.Builder, roleEdges []*RoleEdge) flatbuffer
 	// Write role_edges vector (already in reversed order)
 	return serializeVectorOffsets(b, serial.MySQLDbStartRoleEdgesVector, offsets)
 }
+
+func serializeReplicaSourceInfo(b *flatbuffers.Builder, replicaSourceInfos []*ReplicaSourceInfo) flatbuffers.UOffsetT {
+	offsets := make([]flatbuffers.UOffsetT, len(replicaSourceInfos))
+
+	for i, replicaSourceInfo := range replicaSourceInfos {
+		host := b.CreateString(replicaSourceInfo.Host)
+		user := b.CreateString(replicaSourceInfo.User)
+		password := b.CreateString(replicaSourceInfo.Password)
+
+		// Start ReplicaSourceInfo
+		serial.ReplicaSourceInfoStart(b)
+
+		// Write their offsets to flatbuffer builder
+		serial.ReplicaSourceInfoAddHost(b, host)
+		serial.ReplicaSourceInfoAddUser(b, user)
+		serial.ReplicaSourceInfoAddPassword(b, password)
+
+		// Write Port (uint value doesn't need offset)
+		serial.ReplicaSourceInfoAddPort(b, replicaSourceInfo.Port)
+
+		// End ReplicaSourceInfo
+		offsets[len(replicaSourceInfos)-i-1] = serial.ReplicaSourceInfoEnd(b)
+	}
+
+	// Write replica source info vector (already in reversed order)
+	return serializeVectorOffsets(b, serial.MySQLDbStartReplicaSourceInfoVector, offsets)
+}
