@@ -252,7 +252,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		ctx, err := p.AddProcess(ctx, "SELECT foo")
 		require.NoError(t, err)
 
-		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{uint64(1), "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
 	})
 
 	for _, tt := range queries.SkippedInfoSchemaQueries {

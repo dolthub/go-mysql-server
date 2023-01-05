@@ -373,12 +373,31 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query:    `SELECT count(*) FROM information_schema.COLLATIONS`,
+		Expected: []sql.Row{{286}},
+	},
+	{
+		Query: `SELECT * FROM information_schema.COLLATIONS ORDER BY collation_name LIMIT 4`,
+		Expected: []sql.Row{
+			{"armscii8_bin", "armscii8", uint64(64), "", "Yes", uint32(1), "PAD SPACE"},
+			{"armscii8_general_ci", "armscii8", uint64(32), "Yes", "Yes", uint32(1), "PAD SPACE"},
+			{"ascii_bin", "ascii", uint64(65), "", "Yes", uint32(1), "PAD SPACE"},
+			{"ascii_general_ci", "ascii", uint64(11), "Yes", "Yes", uint32(1), "PAD SPACE"},
+		},
+	},
+	{
 		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
 		Expected: []sql.Row{
 			{"armscii8_bin", "armscii8"},
 			{"armscii8_general_ci", "armscii8"},
 			{"ascii_bin", "ascii"},
 			{"ascii_general_ci", "ascii"},
+		},
+	},
+	{
+		Query: `SELECT * FROM information_schema.ENGINES ORDER BY engine`,
+		Expected: []sql.Row{
+			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
 	},
 	{
@@ -612,6 +631,10 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 			{"mydb", "fk_tbl", "pk", 1, "PRIMARY"},
 			{"mydb", "mytable", "i", 1, "PRIMARY"},
 		},
+	},
+	{
+		Query:    "select * from information_schema.character_sets;",
+		Expected: []sql.Row{{"utf8mb4", "utf8mb4_0900_ai_ci", "UTF-8 Unicode", uint32(4)}},
 	},
 	{
 		Query: `show columns from fk_tbl from mydb`,

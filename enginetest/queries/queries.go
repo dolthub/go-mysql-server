@@ -5137,7 +5137,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_binary.String(),
 				"binary",
-				int64(sql.Collation_binary),
+				uint64(sql.Collation_binary),
 				sql.Collation_binary.IsDefault(),
 				sql.Collation_binary.IsCompiled(),
 				sql.Collation_binary.SortLength(),
@@ -5146,7 +5146,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_utf8_general_ci.String(),
 				"utf8mb3",
-				int64(sql.Collation_utf8_general_ci),
+				uint64(sql.Collation_utf8_general_ci),
 				sql.Collation_utf8_general_ci.IsDefault(),
 				sql.Collation_utf8_general_ci.IsCompiled(),
 				sql.Collation_utf8_general_ci.SortLength(),
@@ -5155,7 +5155,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
-				int64(sql.Collation_utf8mb4_0900_ai_ci),
+				uint64(sql.Collation_utf8mb4_0900_ai_ci),
 				sql.Collation_utf8mb4_0900_ai_ci.IsDefault(),
 				sql.Collation_utf8mb4_0900_ai_ci.IsCompiled(),
 				sql.Collation_utf8mb4_0900_ai_ci.SortLength(),
@@ -5173,7 +5173,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_binary.String(),
 				"binary",
-				int64(sql.Collation_binary),
+				uint64(sql.Collation_binary),
 				sql.Collation_binary.IsDefault(),
 				sql.Collation_binary.IsCompiled(),
 				sql.Collation_binary.SortLength(),
@@ -5191,7 +5191,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
-				int64(sql.Collation_utf8mb4_0900_ai_ci),
+				uint64(sql.Collation_utf8mb4_0900_ai_ci),
 				sql.Collation_utf8mb4_0900_ai_ci.IsDefault(),
 				sql.Collation_utf8mb4_0900_ai_ci.IsCompiled(),
 				sql.Collation_utf8mb4_0900_ai_ci.SortLength(),
