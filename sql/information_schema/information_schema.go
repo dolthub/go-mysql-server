@@ -857,7 +857,7 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		rows = append(rows, Row{
 			c.Name,
 			c.CharacterSet.Name(),
-			int64(c.ID),
+			uint64(c.ID),
 			c.ID.IsDefault(),
 			c.ID.IsCompiled(),
 			c.ID.SortLength(),
@@ -874,10 +874,15 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, db := range c.AllDatabases(ctx) {
-		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 
-			tableHist, err := statsTbl.Hist(ctx, db.Name(), t.Name())
+	privSet, privSetCount := ctx.GetPrivilegeSet()
+	for _, db := range c.AllDatabases(ctx) {
+		dbName := db.Name()
+		privSetDb := privSet.Database(dbName)
+
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			privSetTbl := privSetDb.Table(t.Name())
+			tableHist, err := statsTbl.Hist(ctx, dbName, t.Name())
 			if err != nil {
 				return true, nil
 			}
@@ -887,6 +892,10 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			}
 
 			for _, col := range t.Schema() {
+				privSetCol := privSetTbl.Column(col.Name)
+				if privSetCount == 0 && privSetDb.Count() == 0 && privSetTbl.Count() == 0 && privSetCol.Count() == 0 {
+					continue
+				}
 				if _, ok := col.Type.(StringType); ok {
 					continue
 				}
@@ -901,19 +910,14 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					buckets[i] = []interface{}{fmt.Sprintf("%.2f", b.LowerBound), fmt.Sprintf("%.2f", b.UpperBound), fmt.Sprintf("%.2f", b.Frequency)}
 				}
 
+				// TODO: missing other key/value pairs in the JSON
+				histogram := JSONDocument{Val: map[string]interface{}{"buckets": buckets}}
+
 				rows = append(rows, Row{
 					db.Name(), // table_schema
 					t.Name(),  // table_name
 					col.Name,  // column_name
-					//hist.Mean,          // mean
-					//hist.Min,           // min
-					//hist.Max,           // max
-					//hist.Count,         // count
-					//hist.NullCount,     // null_count
-					//hist.DistinctCount, // distinct_count
-					//bucketStrings, // buckets
-					// TODO: missing other key/value pairs in the JSON
-					JSONDocument{Val: map[string]interface{}{"buckets": buckets}}, // histogram
+					histogram, // histogram
 				})
 			}
 			return true, nil
@@ -1029,12 +1033,12 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 		sort.Strings(status)
 		rows[i] = Row{
-			int64(proc.Connection),       // id
+			uint64(proc.Connection),      // id
 			proc.User,                    // user
 			ctx.Session.Client().Address, // host
 			db,                           // db
 			"Query",                      // command
-			int64(proc.Seconds()),        // time
+			int32(proc.Seconds()),        // time
 			strings.Join(status, ", "),   // state
 			proc.Query,                   // info
 		}
