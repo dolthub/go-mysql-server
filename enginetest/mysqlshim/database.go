@@ -209,21 +209,6 @@ func (d Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.View
 	return sql.ViewDefinition{}, false, nil
 }
 
-// GetCreateViewStmt implements the interface sql.ViewDatabase.
-func (d Database) GetCreateViewStmt(ctx *sql.Context, viewName string) (string, bool, error) {
-	views, err := d.AllViews(ctx)
-	if err != nil {
-		return "", false, err
-	}
-	lowerName := strings.ToLower(viewName)
-	for _, view := range views {
-		if lowerName == strings.ToLower(view.Name) {
-			return view.CreateViewStatement, true, nil
-		}
-	}
-	return "", false, nil
-}
-
 // AllViews implements the interface sql.ViewDatabase.
 func (d Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	views, err := d.shim.QueryRows("", fmt.Sprintf("SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA = '%s' AND TABLE_TYPE = 'VIEW';", d.name))

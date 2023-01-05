@@ -230,11 +230,8 @@ type ViewDatabase interface {
 	// ErrViewDoesNotExist
 	DropView(ctx *Context, name string) error
 
-	// GetViewDefinition returns the textual definition of the view with the name given, or false if it doesn't exist.
+	// GetViewDefinition returns the ViewDefinition of the view with the name given, or false if it doesn't exist.
 	GetViewDefinition(ctx *Context, viewName string) (ViewDefinition, bool, error)
-
-	// GetCreateViewStmt returns the textual create view statement of the view with the name given, or false if it doesn't exist.
-	GetCreateViewStmt(ctx *Context, viewName string) (string, bool, error)
 
 	// AllViews returns the definitions of all views in the database
 	AllViews(ctx *Context) ([]ViewDefinition, error)

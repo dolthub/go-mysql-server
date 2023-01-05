@@ -356,12 +356,6 @@ func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.Vie
 	return viewDef, ok, nil
 }
 
-// GetCreateViewStmt implements the interface sql.ViewDatabase.
-func (d *Database) GetCreateViewStmt(ctx *sql.Context, viewName string) (string, bool, error) {
-	viewDef, ok := d.views[viewName]
-	return viewDef.CreateViewStatement, ok, nil
-}
-
 type ReadOnlyDatabase struct {
 	*HistoryDatabase
 }
