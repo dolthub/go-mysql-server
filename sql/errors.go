@@ -429,6 +429,9 @@ var (
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
+	// ErrInvalidArgumentType is thrown when a function receives invalid argument types
+	ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
+
 	// ErrInvalidArgumentDetails is returned when the argument is invalid with details of a specific function
 	ErrInvalidArgumentDetails = errors.NewKind("Invalid argument to %s: %s")
 
