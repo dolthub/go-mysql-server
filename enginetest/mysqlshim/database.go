@@ -195,18 +195,18 @@ func (d Database) DropView(ctx *sql.Context, name string) error {
 }
 
 // GetViewDefinition implements the interface sql.ViewDatabase.
-func (d Database) GetViewDefinition(ctx *sql.Context, viewName string) (string, bool, error) {
+func (d Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
 	views, err := d.AllViews(ctx)
 	if err != nil {
-		return "", false, err
+		return sql.ViewDefinition{}, false, err
 	}
 	lowerName := strings.ToLower(viewName)
 	for _, view := range views {
 		if lowerName == strings.ToLower(view.Name) {
-			return view.TextDefinition, true, nil
+			return view, true, nil
 		}
 	}
-	return "", false, nil
+	return sql.ViewDefinition{}, false, nil
 }
 
 // GetCreateViewStmt implements the interface sql.ViewDatabase.

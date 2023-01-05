@@ -351,9 +351,9 @@ func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 }
 
 // GetViewDefinition implements the interface sql.ViewDatabase.
-func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (string, bool, error) {
+func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
 	viewDef, ok := d.views[viewName]
-	return viewDef.TextDefinition, ok, nil
+	return viewDef, ok, nil
 }
 
 // GetCreateViewStmt implements the interface sql.ViewDatabase.
