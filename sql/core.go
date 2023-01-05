@@ -314,7 +314,7 @@ type SystemVariableRegistry interface {
 	// AssignValues assigns the given values to the system variables in this registry
 	AssignValues(vals map[string]interface{}) error
 	// NewSessionMap returns a map of system variables values that can be used by a session
-	NewSessionMap() map[string]interface{}
+	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
@@ -375,4 +375,9 @@ func (s SystemVariableScope) String() string {
 	default:
 		return "UNKNOWN_SYSTEM_SCOPE"
 	}
+}
+
+type SystemVarValue struct {
+	Var SystemVariable
+	Val interface{}
 }

@@ -208,7 +208,7 @@ type BaseSession struct {
 	logger           *logrus.Entry
 	currentDB        string
 	transactionDb    string
-	systemVars       map[string]interface{}
+	systemVars       map[string]SystemVarValue
 	userVars         SessionUserVariables
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
@@ -295,14 +295,14 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 
 // SetSessionVariable implements the Session interface.
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
-	if !sysVar.Dynamic {
+	if !sysVar.Var.Dynamic {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
-	return s.setSessVar(ctx, sysVar, sysVarName, value)
+	return s.setSessVar(ctx, sysVar.Var, sysVarName, value)
 }
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
@@ -330,7 +330,10 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.systemVars[sysVar.Name] = convertedVal
+	s.systemVars[sysVar.Name] = SystemVarValue{
+		Var: sysVar,
+		Val: convertedVal,
+	}
 	return nil
 }
 
@@ -341,27 +344,21 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 
 // GetSessionVariable implements the Session interface.
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
-	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	sysVarName = strings.ToLower(sysVarName)
+	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	val, ok := s.systemVars[strings.ToLower(sysVarName)]
-	if !ok {
-		s.systemVars[strings.ToLower(sysVarName)] = sysVar.Default
-		val = sysVar.Default
-	}
-	if sysType, ok := sysVar.Type.(SetType); ok {
-		if sv, ok := val.(uint64); ok {
-			var err error
-			val, err = sysType.BitsToString(sv)
-			if err != nil {
-				return nil, err
-			}
+	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
+	if sysType, ok := sysVar.Var.Type.(SetType); ok {
+		if sv, ok := sysVar.Val.(uint64); ok {
+			return sysType.BitsToString(sv)
 		}
 	}
-	return val, nil
+	return sysVar.Val, nil
 }
 
 // GetUserVariable implements the Session interface.
@@ -373,11 +370,11 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 func (s *BaseSession) GetCharacterSet() CharacterSetID {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	val, _ := s.systemVars[characterSetConnectionSysVarName]
-	if val == nil {
+	sysVar, _ := s.systemVars[characterSetConnectionSysVarName]
+	if sysVar.Val == nil {
 		return CharacterSet_Unspecified
 	}
-	charSet, err := ParseCharacterSet(val.(string))
+	charSet, err := ParseCharacterSet(sysVar.Val.(string))
 	if err != nil {
 		panic(err) // shouldn't happen
 	}
@@ -388,11 +385,11 @@ func (s *BaseSession) GetCharacterSet() CharacterSetID {
 func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	val, _ := s.systemVars[characterSetResultsSysVarName]
-	if val == nil {
+	sysVar, _ := s.systemVars[characterSetResultsSysVarName]
+	if sysVar.Val == nil {
 		return CharacterSet_Unspecified
 	}
-	charSet, err := ParseCharacterSet(val.(string))
+	charSet, err := ParseCharacterSet(sysVar.Val.(string))
 	if err != nil {
 		panic(err) // shouldn't happen
 	}
@@ -403,11 +400,11 @@ func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
 func (s *BaseSession) GetCollation() CollationID {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	val, _ := s.systemVars[collationConnectionSysVarName]
-	if val == nil {
+	sysVar, _ := s.systemVars[collationConnectionSysVarName]
+	if sysVar.Val == nil {
 		return Collation_Unspecified
 	}
-	valStr := val.(string)
+	valStr := sysVar.Val.(string)
 	collation, err := ParseCollation(nil, &valStr, false)
 	if err != nil {
 		panic(err) // shouldn't happen
@@ -657,11 +654,11 @@ func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
 // NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	var sessionVars map[string]interface{}
+	var sessionVars map[string]SystemVarValue
 	if SystemVariables != nil {
 		sessionVars = SystemVariables.NewSessionMap()
 	} else {
-		sessionVars = make(map[string]interface{})
+		sessionVars = make(map[string]SystemVarValue)
 	}
 	return &BaseSession{
 		addr:           server,
@@ -684,11 +681,11 @@ var autoSessionIDs uint32 = 1
 // NewBaseSession creates a new empty session.
 func NewBaseSession() *BaseSession {
 	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	var sessionVars map[string]interface{}
+	var sessionVars map[string]SystemVarValue
 	if SystemVariables != nil {
 		sessionVars = SystemVariables.NewSessionMap()
 	} else {
-		sessionVars = make(map[string]interface{})
+		sessionVars = make(map[string]SystemVarValue)
 	}
 	return &BaseSession{
 		id:             atomic.AddUint32(&autoSessionIDs, 1),

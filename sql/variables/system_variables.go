@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-//TODO: Add from the following sources because MySQL likes to not have every variable on a single page:
+// TODO: Add from the following sources because MySQL likes to not have every variable on a single page:
 // https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-options-variables.html
 // There's also this page, which shows that a TON of variables are still missing ):
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
@@ -35,7 +35,7 @@ var serverStartUpTime = time.Now()
 // globalSystemVariables is the underlying type of SystemVariables.
 type globalSystemVariables struct {
 	mutex      *sync.RWMutex
-	sysVarVals map[string]interface{}
+	sysVarVals map[string]sql.SystemVarValue
 }
 
 var _ sql.SystemVariableRegistry = (*globalSystemVariables)(nil)
@@ -50,7 +50,10 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 		lowerName := strings.ToLower(sysVar.Name)
 		sysVar.Name = lowerName
 		systemVars[lowerName] = sysVar
-		sv.sysVarVals[lowerName] = sysVar.Default
+		sv.sysVarVals[lowerName] = sql.SystemVarValue{
+			Var: sysVar,
+			Val: sysVar.Default,
+		}
 	}
 }
 
@@ -70,16 +73,19 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if err != nil {
 			return err
 		}
-		sv.sysVarVals[varName] = convertedVal
+		sv.sysVarVals[varName] = sql.SystemVarValue{
+			Var: sysVar,
+			Val: convertedVal,
+		}
 	}
 	return nil
 }
 
 // NewSessionMap returns a new map of system variable values for sessions.
-func (sv *globalSystemVariables) NewSessionMap() map[string]interface{} {
+func (sv *globalSystemVariables) NewSessionMap() map[string]sql.SystemVarValue {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
-	sessionVals := make(map[string]interface{}, len(sv.sysVarVals))
+	sessionVals := make(map[string]sql.SystemVarValue, len(sv.sysVarVals))
 	for key, val := range sv.sysVarVals {
 		sessionVals[key] = val
 	}
@@ -97,14 +103,14 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 		return sql.SystemVariable{}, nil, false
 	}
 	if name == "uptime" {
-		sv.sysVarVals[name] = int(time.Now().Sub(serverStartUpTime).Seconds())
+		sv.sysVarVals[name] = sql.SystemVarValue{Var: v, Val: int(time.Now().Sub(serverStartUpTime).Seconds())}
 	}
 	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
 	if sysType, ok := v.Type.(sql.SetType); ok {
-		if sv, ok := sysVal.(uint64); ok {
+		if sv, ok := sysVal.Val.(uint64); ok {
 			var err error
-			sysVal, err = sysType.BitsToString(sv)
+			sysVal.Val, err = sysType.BitsToString(sv)
 			if err != nil {
 				return sql.SystemVariable{}, nil, false
 			}
@@ -136,21 +142,27 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	if err != nil {
 		return err
 	}
-	sv.sysVarVals[name] = convertedVal
+	sv.sysVarVals[name] = sql.SystemVarValue{Var: sysVar, Val: convertedVal}
 	return nil
 }
 
 // InitSystemVariables resets the systemVars singleton in the sql package
 func InitSystemVariables() {
-	vars := &globalSystemVariables{&sync.RWMutex{}, make(map[string]interface{})}
+	vars := &globalSystemVariables{
+		mutex: &sync.RWMutex{},
+		sysVarVals: make(map[string]sql.SystemVarValue, len(systemVars)),
+	}
 	for _, sysVar := range systemVars {
-		vars.sysVarVals[sysVar.Name] = sysVar.Default
+		vars.sysVarVals[sysVar.Name] = sql.SystemVarValue{
+			Var: sysVar,
+			Val: sysVar.Default,
+		}
 	}
 	sql.SystemVariables = vars
 }
 
 // init initializes SystemVariables as it functions as a global variable.
-// TODO: get rid of me
+// TODO: get rid of me, make this construction the responsibility of the engine
 func init() {
 	InitSystemVariables()
 }
