@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -24,172 +23,126 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-type aliasScope struct {
-	p       *aliasScope
-	aliases map[string]string
+type applyJoin struct {
+	l    sql.Expression
+	r    *plan.Subquery
+	op   plan.JoinType
+	max1 bool
 }
 
-func newScope() *aliasScope {
-	return &aliasScope{
-		aliases: make(map[string]string),
-	}
-}
-func (s *aliasScope) add(a, t string) error {
-	lowerName := strings.ToLower(a)
-	if _, ok := s.aliases[lowerName]; ok && lowerName != plan.DualTableName {
-		return sql.ErrDuplicateAliasOrTable.New(a)
-	}
-	s.aliases[lowerName] = t
-	return nil
-}
+func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var applyId int
+	var dual bool
 
-func (s *aliasScope) new() *aliasScope {
-	ret := newScope()
-	ret.p = s
-	for k, v := range s.aliases {
-		ret.aliases[k] = v
-	}
-	return ret
-}
-
-func (s *aliasScope) get(n string) string {
-	return s._get(strings.ToLower(n))
-}
-
-func (s *aliasScope) _get(n string) string {
-	if t, ok := s.aliases[n]; ok {
-		return t
-	}
-	if s.p == nil {
-		return ""
-	}
-	return s.p._get(n)
-}
-
-// applyIndexesForSubqueryComparisons converts a `Filter(id = (SELECT ...),
-// Child)` or a `Filter(id in (SELECT ...), Child)` to be iterated lookups on
-// the Child instead. This analysis phase is currently very concrete. It only
-// applies when:
-// 1. There is a single `=` or `IN` expression in the Filter.
-// 2. The Subquery is on the right hand side of the expression.
-// 3. The left hand side is a GetField expression against the Child.
-// 4. The Child is a *plan.ResolvedTable.
-// 5. The referenced field in the Child is indexed.
-func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var recurse func(n sql.Node, inScope *aliasScope) (sql.Node, transform.TreeIdentity, error)
-	recurse = func(n sql.Node, inScope *aliasScope) (sql.Node, transform.TreeIdentity, error) {
-		var alias, target string
-		var err error
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		var f *plan.Filter
 		switch n := n.(type) {
-		case *plan.TableAlias:
-			alias = n.Name()
-			switch c := n.Child.(type) {
-			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
-				target = c.(sql.Nameable).Name()
-			case *plan.IndexedTableAccess:
-				target = c.Name()
-			case *plan.RecursiveCte:
-			default:
-				fmt.Errorf("unexpected child type of TableAlias: %T", c)
-			}
-		default:
+		case *plan.ResolvedTable:
+			dual = dual || plan.IsDualTable(n.Table)
+		case *plan.Filter:
+			f = n
 		}
 
-		if alias != "" {
-			err = inScope.add(alias, target)
+		if f == nil || dual {
+			return n, transform.SameTree, nil
+		}
+
+		subScope := scope.newScopeFromSubqueryExpression(n)
+		var matches []applyJoin
+		var newFilters []sql.Expression
+
+		for _, e := range splitConjunction(f.Expression) {
+			switch e := e.(type) {
+			case *plan.InSubquery:
+				sq := e.Right.(*plan.Subquery)
+				if !sqRefsDual(sq) {
+					if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+						matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeSemi})
+						continue
+					}
+				}
+			case *expression.Equals:
+				if r, ok := e.Right().(*plan.Subquery); ok {
+					if !sqRefsDual(r) {
+						if nodeIsCacheable(r.Query, len(subScope.Schema())) {
+							matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeSemi, max1: true})
+							continue
+						}
+					}
+				}
+			case *expression.Not:
+				switch e := e.Child.(type) {
+				case *plan.InSubquery:
+					sq := e.Right.(*plan.Subquery)
+					if !sqRefsDual(sq) {
+						if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+							matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeAnti})
+							continue
+						}
+					}
+				}
+			default:
+			}
+			newFilters = append(newFilters, e)
+		}
+		if len(matches) == 0 {
+			return n, transform.SameTree, nil
+		}
+
+		ret := f.Child
+		for _, m := range matches {
+			subq := m.r
+
+			name := fmt.Sprintf("applySubq%d", applyId)
+			applyId++
+
+			sch := subq.Query.Schema()
+			var rightF sql.Expression
+			if len(sch) == 1 {
+				subqCol := subq.Query.Schema()[0]
+				rightF = expression.NewGetFieldWithTable(len(scope.Schema()), subqCol.Type, name, subqCol.Name, subqCol.Nullable)
+			} else {
+				tup := make(expression.Tuple, len(sch))
+				for i, c := range sch {
+					tup[i] = expression.NewGetFieldWithTable(len(scope.Schema())+i, c.Type, name, c.Name, c.Nullable)
+				}
+				rightF = tup
+			}
+
+			q, _, err := FixFieldIndexesForNode(a, scope, subq.Query)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q)
+			if m.max1 {
+				newSubq = plan.NewMax1Row(newSubq)
+			}
+
+			condSch := append(ret.Schema(), newSubq.Schema()...)
+			filter, _, err := FixFieldIndexes(scope, a, condSch, expression.NewEquals(m.l, rightF))
 			if err != nil {
 				return n, transform.SameTree, err
 			}
+			ret = plan.NewJoin(ret, newSubq, m.op, filter)
 		}
 
-		_, isOp := n.(sql.OpaqueNode)
-		outScope := inScope
-		if isOp {
-			outScope = inScope.new()
+		if len(newFilters) == 0 {
+			return ret, transform.NewTree, nil
 		}
-
-		children := n.Children()
-		var newChildren []sql.Node
-		for i, c := range children {
-			child, same, _ := recurse(c, outScope)
-			if !same {
-				if newChildren == nil {
-					newChildren = make([]sql.Node, len(children))
-					copy(newChildren, children)
-				}
-				newChildren[i] = child
-			}
-		}
-
-		ret := n
-		same := transform.SameTree
-		if len(newChildren) > 0 {
-			ret, _ = ret.WithChildren(newChildren...)
-			same = transform.NewTree
-		}
-
-		var replacement sql.Node
-		switch n := ret.(type) {
-		case *plan.Filter:
-			switch e := n.Expression.(type) {
-			case *expression.Equals:
-				if rt, ok := n.Child.(*plan.ResolvedTable); ok {
-					replacement = getIndexedInSubqueryFilter(ctx, e.Left(), e.Right(), rt, true, inScope)
-				}
-			case *plan.InSubquery:
-				if rt, ok := n.Child.(*plan.ResolvedTable); ok {
-					replacement = getIndexedInSubqueryFilter(ctx, e.Left, e.Right, rt, false, inScope)
-				}
-			default:
-			}
-		default:
-		}
-		if replacement != nil {
-			ret = replacement
-			same = transform.NewTree
-		}
-
-		if same {
-			return n, transform.SameTree, nil
-		}
-		return ret, transform.NewTree, nil
-	}
-	return recurse(n, newScope())
+		return plan.NewFilter(expression.JoinAnd(newFilters...), ret), transform.NewTree, nil
+	})
 }
 
-func getIndexedInSubqueryFilter(
-	ctx *sql.Context,
-	left, right sql.Expression,
-	rt *plan.ResolvedTable,
-	equals bool,
-	scope *aliasScope,
-) sql.Node {
-	gf, isGetField := left.(*expression.GetField)
-	subq, isSubquery := right.(*plan.Subquery)
-	if !isGetField || !isSubquery || !subq.CanCacheResults() {
-		return nil
-	}
-	indexes, err := newIndexAnalyzerForNode(ctx, rt)
-	if err != nil {
-		return nil
-	}
-	defer indexes.releaseUsedIndexes()
-	if rt := scope.get(gf.Table()); rt != "" {
-		gf = gf.WithTable(rt)
-	}
-	idx := indexes.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rt.Name(), gf)
-	if idx == nil {
-		return nil
-	}
-	keyExpr := gf.WithIndex(0)
-	// We currently only support *expresssion.Equals and *InSubquery; neither matches null.
-	nullmask := []bool{false}
-	ita, err := plan.NewIndexedAccessForResolvedTable(rt, plan.NewLookupBuilder(idx, []sql.Expression{keyExpr}, nullmask))
-	if err != nil {
-		return nil
-	}
-	if canBuildIndex, err := ita.CanBuildIndex(ctx); err != nil || !canBuildIndex {
-		return nil
-	}
-	return plan.NewIndexedInSubqueryFilter(subq, ita, len(rt.Schema()), gf, equals)
+func sqRefsDual(n *plan.Subquery) bool {
+	var dual bool
+	transform.Inspect(n.Query, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			dual = dual || plan.IsDualTable(n.Table)
+		default:
+		}
+		return !dual
+	})
+	return dual
 }

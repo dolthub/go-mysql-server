@@ -45,11 +45,6 @@ func getTableName(node sql.Node) string {
 	return tableName
 }
 
-type NameableNode interface {
-	sql.Nameable
-	sql.Node
-}
-
 // Returns the underlying table name for the node given, ignoring table aliases
 func getUnaliasedTableName(node sql.Node) string {
 	var tableName string

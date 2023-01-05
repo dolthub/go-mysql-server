@@ -68,7 +68,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
-				analysisErr = passAliases.add(at, t.(NameableNode))
+				analysisErr = passAliases.add(at, t.(sql.NameableNode))
 			case *plan.IndexedTableAccess:
 				analysisErr = passAliases.add(at, t)
 			case *plan.RecursiveCte:
@@ -199,7 +199,7 @@ func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expres
 	// If the query has table aliases, use them to replace any table aliases in column expressions
 	normalized, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {
-			table := field.Table()
+			table := strings.ToLower(field.Table())
 			if rt, ok := tableAliases[table]; ok {
 				return field.WithTable(rt.Name()), transform.NewTree, nil
 			}

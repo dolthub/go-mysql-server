@@ -371,9 +371,6 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 			pruneTablesId,
 
 			// once after default rules should only be run once
-			cacheSubqueryResultsId,
-			cacheSubqueryAliasesInJoinsId,
-			inSubqueryIndexesId,
 			AutocommitId,
 			TrackProcessId,
 			parallelizeId,
@@ -406,10 +403,6 @@ func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 			resolveUnionsId,
 			// skip redundant finalize rules
 			finalizeSubqueriesId,
-			// skip caching rules, they should only be run once in outer scope
-			cacheSubqueryResultsId,
-			cacheSubqueryAliasesInJoinsId,
-			inSubqueryIndexesId,
 			TrackProcessId:
 			return false
 		}
@@ -425,10 +418,6 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 			resolveSubqueryExprsId,
 			resolveSubqueriesId,
 			resolveUnionsId,
-			// skip caching rules, they should only be run once in outer scope
-			cacheSubqueryResultsId,
-			cacheSubqueryAliasesInJoinsId,
-			inSubqueryIndexesId,
 			parallelizeId:
 			return false
 		}
@@ -454,6 +443,8 @@ func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	//a.Verbose = true
+	//a.Debug = true
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
 }
@@ -522,7 +513,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 
 		// OnceAfterDefault
 		subqueryIndexesId,
-		inSubqueryIndexesId,
 		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
 
@@ -558,7 +548,6 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 
 		pushdownFiltersId,
 		subqueryIndexesId,
-		inSubqueryIndexesId,
 		resolveInsertRowsId,
 
 		AutocommitId,

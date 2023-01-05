@@ -39,6 +39,7 @@ const (
 	JoinTypeInner                           // InnerJoin
 	JoinTypeSemi                            // SemiJoin
 	JoinTypeAnti                            // AntiJoin
+	JoinTypeRightSemi                       // RightSemiJoin
 	JoinTypeLeftOuter                       // LeftOuterJoin
 	JoinTypeFullOuter                       // FullOuterJoin
 	JoinTypeGroupBy                         // GroupByJoin
@@ -51,6 +52,9 @@ const (
 	JoinTypeLeftOuterMerge                  // LeftOuterMergeJoin
 	JoinTypeSemiHash                        // SemiHashJoin
 	JoinTypeAntiHash                        // AntiHashJoin
+	JoinTypeSemiLookup                      // SemiLookupJoin
+	JoinTypeAntiLookup                      // AntiLookupJoin
+	JoinTypeRightSemiLookup                 // RightSemiLookupJoin
 	JoinTypeSemiMerge                       // SemiMergeJoin
 	JoinTypeAntiMerge                       // AntiMergeJoin
 	JoinTypeNatural                         // NaturalJoin
@@ -96,11 +100,44 @@ func (i JoinType) IsDegenerate() bool {
 		i == JoinTypeCross
 }
 
+func (i JoinType) IsRightPartial() bool {
+	switch i {
+	case JoinTypeRightSemi, JoinTypeRightSemiLookup:
+		return true
+	default:
+
+		return false
+	}
+}
+
+func (i JoinType) IsSemi() bool {
+	switch i {
+	case JoinTypeRightSemi, JoinTypeSemi, JoinTypeSemiLookup, JoinTypeSemiMerge, JoinTypeSemiHash, JoinTypeRightSemiLookup:
+		return true
+	default:
+
+		return false
+	}
+}
+
+func (i JoinType) IsAnti() bool {
+	switch i {
+	case JoinTypeAnti, JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash:
+		return true
+	default:
+		return false
+	}
+}
+
 func (i JoinType) IsPartial() bool {
 	return i == JoinTypeSemi ||
 		i == JoinTypeAnti ||
+		i == JoinTypeRightSemi ||
 		i == JoinTypeSemiHash ||
-		i == JoinTypeAntiHash
+		i == JoinTypeAntiHash ||
+		i == JoinTypeAntiLookup ||
+		i == JoinTypeSemiLookup ||
+		i == JoinTypeRightSemiLookup
 }
 
 func (i JoinType) IsPlaceholder() bool {
@@ -206,6 +243,8 @@ func (j *JoinNode) Schema() sql.Schema {
 		return append(makeNullable(j.left.Schema()), j.right.Schema()...)
 	case j.Op.IsFullOuter():
 		return append(makeNullable(j.left.Schema()), makeNullable(j.right.Schema())...)
+	case j.Op.IsRightPartial():
+		return j.Right().Schema()
 	case j.Op.IsPartial():
 		return j.Left().Schema()
 	case j.Op.IsNatural():
