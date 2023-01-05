@@ -230,7 +230,12 @@ func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
 func (s *BaseSession) GetCollation() CollationID {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	sysVar, _ := s.systemVars[collationConnectionSysVarName]
+	sysVar, ok := s.systemVars[collationConnectionSysVarName]
+	
+	// In tests, the collation may not be set because the sys vars haven't been initialized
+	if !ok {
+		return Collation_Default
+	}
 	if sysVar.Val == nil {
 		return Collation_Unspecified
 	}
