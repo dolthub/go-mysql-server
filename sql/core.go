@@ -304,13 +304,20 @@ type Node2 interface {
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
 
-var SystemVariables GlobalSystemVariables
+var SystemVariables SystemVariableRegistry
 
-type GlobalSystemVariables interface {
+// SystemVariableRegistry is a registry of system variables. Each session gets its own copy of all values via the 
+// SessionMap() method.
+type SystemVariableRegistry interface {
+	// AddSystemVariables adds the given system variables to this registry 
 	AddSystemVariables(sysVars []SystemVariable)
+	// AssignValues assigns the given values to the system variables in this registry
 	AssignValues(vals map[string]interface{}) error
+	// NewSessionMap returns a map of system variables values that can be used by a session
 	NewSessionMap() map[string]interface{}
+	// GetGlobal returns the global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
+	// SetGlobal sets the global value of the system variable with the given name
 	SetGlobal(name string, val interface{}) error
 }
 
@@ -369,12 +376,3 @@ func (s SystemVariableScope) String() string {
 		return "UNKNOWN_SYSTEM_SCOPE"
 	}
 }
-
-type SessionUserVariables interface {
-	SetUserVariable(ctx *Context, varName string, value interface{}) error
-	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
-}
-
-type UserVariableFactory func() SessionUserVariables
-
-var NewUserVariables UserVariableFactory

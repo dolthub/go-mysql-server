@@ -38,7 +38,7 @@ type globalSystemVariables struct {
 	sysVarVals map[string]interface{}
 }
 
-var _ sql.GlobalSystemVariables = (*globalSystemVariables)(nil)
+var _ sql.SystemVariableRegistry = (*globalSystemVariables)(nil)
 
 // AddSystemVariables adds the given system variables to the collection. If a name is already used by an existing
 // variable, then it is overwritten with the new one.

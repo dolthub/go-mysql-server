@@ -30,8 +30,8 @@ func TestSessionConfig(t *testing.T) {
 	require.NoError(err)
 	require.Equal(Null, typ)
 	require.Equal(nil, v)
-
-	err = sess.SetUserVariable(ctx, "foo", int64(1))
+	
+	err = sess.SetUserVariable(ctx, "foo", int64(1), Int64)
 	require.NoError(err)
 
 	typ, v, err = sess.GetUserVariable(ctx, "foo")

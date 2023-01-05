@@ -75,7 +75,7 @@ type Session interface {
 	// initialization of readonly variables.
 	InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
-	SetUserVariable(ctx *Context, varName string, value interface{}) error
+	SetUserVariable(ctx *Context, varName string, value interface{}, typ Type) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
 	GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
 	// GetUserVariable returns this session's value of the user variable with the given name, along with its most
@@ -335,8 +335,8 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName
 }
 
 // SetUserVariable implements the Session interface.
-func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interface{}) error {
-	return s.userVars.SetUserVariable(ctx, varName, value)
+func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interface{}, typ Type) error {
+	return s.userVars.SetUserVariable(ctx, varName, value, typ)
 }
 
 // GetSessionVariable implements the Session interface.
@@ -657,12 +657,18 @@ func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
 // NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
+	var sessionVars map[string]interface{}
+	if SystemVariables != nil {
+		sessionVars = SystemVariables.NewSessionMap()
+	} else {
+		sessionVars = make(map[string]interface{})
+	}
 	return &BaseSession{
 		addr:           server,
 		client:         client,
 		id:             id,
-		systemVars:     SystemVariables.NewSessionMap(),
-		userVars:       NewUserVariables(),
+		systemVars:     sessionVars,
+		userVars:       NewUserVars(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
 		mu:             sync.RWMutex{},
@@ -678,10 +684,16 @@ var autoSessionIDs uint32 = 1
 // NewBaseSession creates a new empty session.
 func NewBaseSession() *BaseSession {
 	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
+	var sessionVars map[string]interface{}
+	if SystemVariables != nil {
+		sessionVars = SystemVariables.NewSessionMap()
+	} else {
+		sessionVars = make(map[string]interface{})
+	}
 	return &BaseSession{
 		id:             atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:     SystemVariables.NewSessionMap(),
-		userVars:       NewUserVariables(),
+		systemVars:     sessionVars,
+		userVars:       NewUserVars(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
 		mu:             sync.RWMutex{},
