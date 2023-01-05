@@ -1403,7 +1403,47 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
-		Name: "information_schema shows tables with privileges only",
+		Name: "information_schema.column_statistics shows columns with privileges only",
+		SetUpScript: []string{
+			"CREATE TABLE two (i int primary key, j int)",
+			"INSERT INTO two VALUES (1, 4), (2, 5), (3, 6)",
+			"CREATE TABLE one (f float)",
+			"INSERT INTO one VALUES (1.25), (45.25), (7.5), (10.5)",
+			"ANALYZE TABLE one",
+			"ANALYZE TABLE two",
+			"CREATE USER tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mydb.one TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Expected: []sql.Row{{"mydb", "one", "f", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mydb.two TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Expected: []sql.Row{{"mydb", "one", "f", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
+					{"mydb", "two", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
+					{"mydb", "two", "j", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}},},
+			},
+		},
+	},
+	{
+		Name: "information_schema.statistics shows tables with privileges only",
 		SetUpScript: []string{
 			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, c VARCHAR(20), p POINT default (POINT(1,1)))",
