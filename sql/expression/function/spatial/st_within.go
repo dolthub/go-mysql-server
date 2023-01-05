@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*Within)(nil)
 func NewWithin(g1, g2 sql.Expression) sql.Expression {
 	return &Within{
 		expression.BinaryExpression{
-			Left: g1,
+			Left:  g1,
 			Right: g2,
 		},
 	}
@@ -66,10 +66,10 @@ func (w *Within) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return NewWithin(children[0], children[1]), nil
 }
 
-func calcUnsquaredDist(a, b sql.Point) float64 {
+func calcDist(a, b sql.Point) float64 {
 	dx := b.X - a.X
 	dy := b.Y - a.Y
-	return dx * dx + dy * dy
+	return math.Sqrt(dx*dx + dy*dy)
 }
 
 // given 3 collinear points, check if they are intersecting
@@ -123,12 +123,14 @@ func linesIntersect(a, b, c, d sql.Point) bool {
 	return false
 }
 
-func countIntersections(a, b sql.Point, line sql.LineString) int {
-	for i := 0; i < len(line.Points) - 1; i++ {
+// TODO: many of these functions are used in rasterization, so they can be parallelized
 
-	}
+// calcSlope calculates the slope of line ab, does not handle divide by 0
+func calcSlope(a, b sql.Point) float64 {
+	return (b.Y - a.Y) / (b.X - a.X)
 }
 
+// isPointWithin checks if sql.Point p is within geometry g
 func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
@@ -137,29 +139,46 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		// TODO: perform distance check
 		// TODO: alternatively could perform cross product and bounds check
 		// for each line segment, check if point lies within it
-		for i := 0; i < len(g.Points) - 1; i++ {
-			totalDist := calcUnsquaredDist(g.Points[i], g.Points[i+1])
-			dist1 := calcUnsquaredDist(p, g.Points[i])
-			dist2 := calcUnsquaredDist(p, g.Points[i+1])
-			if dist1 + dist2 == totalDist {
+		for i := 0; i < len(g.Points)-1; i++ {
+			totalDist := calcDist(g.Points[i], g.Points[i+1])
+			dist1 := calcDist(p, g.Points[i])
+			dist2 := calcDist(p, g.Points[i+1])
+			if dist1+dist2 == totalDist {
 				return true
 			}
 		}
 		return false
 	case sql.Polygon:
-		// TODO: draw a ray from point outwards, if it crosses an odd number of line segments, it's inside
-		// TODO: watch out for corners; check what MySQL does
-
+		// TODO: a simpler, but possible more compute intensive option is to sum angles, and check if equal to 2pi
+		// Draw a horizontal ray starting at p to infinity, and count number of line segments it intersects.
+		// Handle special edge cases for crossing with vertexes.
+		numInters := 0
 		outerLine := g.Lines[0]
-		vals := FindBBox(outerLine) // minX, minY, maxX, maxY
-		q := sql.Point{SRID: p.SRID, X: vals[2], Y: vals[3]}
-		intersectCount := countIntersections(p, q, outerLine)
-		if intersectCount % 2 == 0 {
-			return false
+		for i := 0; i < len(outerLine.Points)-1; i++ {
+			a := outerLine.Points[i]
+			b := outerLine.Points[i+1]
+			// ignore horizontal line segments
+			if a.Y == b.Y {
+				continue
+			}
+			// p is either above or below line segment, will never intersect
+			if p.Y <= math.Min(a.Y, b.Y) || p.Y > math.Max(a.Y, b.Y) {
+				continue
+			}
+			// p is to the right of entire line segment, will never intersect
+			if p.X > math.Max(a.X, b.X) {
+				continue
+			}
+			// check intersection
+			if a.X != b.X && (p.Y-a.Y)*(b.X-a.X)-(p.X-a.X)*(b.Y-a.Y) > 0 {
+				continue
+			}
+			numInters += 1
 		}
-		// TODO: check if it's one of the holes
 
-		return false
+		// TODO: check holes in polygon
+		// TODO: points on boundary are NOT within polygon
+		return numInters%2 == 1
 	default:
 		return false
 	}
@@ -171,18 +190,8 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 	// TODO: point v linestring somewhat easy
 	// TODO: point v polygon somewhat easy
 	// TODO: come up with some generalization...might not be possible :/
-	var ok1, ok2 bool
-	p1, ok1 := g1.(sql.Point)
-	p2, ok2 := g2.(sql.Point)
-
-
+	return isPointWithin(g1.(sql.Point), g2)
 	// TODO: g1.GetGeomType() < g2.GetGeomType() except for the case of geometrycollection
-
-
-	if ok1 && ok2 {
-		return
-	}
-
 }
 
 // Eval implements the sql.Expression interface.
@@ -212,15 +221,9 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrInvalidGISData.New(w.FunctionName())
 	}
 
-	if geom1.GetGeomType() != geom2.GetGeomType() {
-		return 0, nil
-	}
-
 	if geom1.GetSRID() != geom2.GetSRID() {
 		return nil, sql.ErrDiffSRIDs.New(w.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
 	}
 
-	return isWithin(), nil
-
-	return nil, nil
+	return isWithin(geom1, geom2), nil
 }
