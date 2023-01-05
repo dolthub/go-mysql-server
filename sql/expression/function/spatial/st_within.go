@@ -66,6 +66,8 @@ func (w *Within) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return NewWithin(children[0], children[1]), nil
 }
 
+// TODO: move/organize helper methods to somewhere else, many of these are other st_... functions
+
 func calcDist(a, b sql.Point) float64 {
 	dx := b.X - a.X
 	dy := b.Y - a.Y
@@ -130,14 +132,36 @@ func calcSlope(a, b sql.Point) float64 {
 	return (b.Y - a.Y) / (b.X - a.X)
 }
 
+func startPoint(l sql.LineString) sql.Point {
+	return l.Points[0]
+}
+
+func endPoint(l sql.LineString) sql.Point {
+	return l.Points[len(l.Points)-1]
+}
+
+func pointsEqual(a, b sql.Point) bool {
+	return a.X == b.X && a.Y == b.Y
+}
+
+func isClosed(l sql.LineString) bool {
+	return pointsEqual(startPoint(l), endPoint(l))
+}
+
 // isPointWithin checks if sql.Point p is within geometry g
 func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
-		return p.X == g.X && p.Y == g.Y
+		return pointsEqual(p, g)
 	case sql.LineString:
 		// TODO: perform distance check
 		// TODO: alternatively could perform cross product and bounds check
+
+		// closed LineStrings technically don't have terminal points, and terminal points are not within linestring
+		if !isClosed(g) && (pointsEqual(p, startPoint(g)) || pointsEqual(p, endPoint(g))) {
+			return false
+		}
+
 		// for each line segment, check if point lies within it
 		for i := 0; i < len(g.Points)-1; i++ {
 			totalDist := calcDist(g.Points[i], g.Points[i+1])
@@ -170,6 +194,7 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				continue
 			}
 			// check intersection
+			// TODO: something ain't adding up; this is very similar to orientation, but not quite
 			if a.X != b.X && (p.Y-a.Y)*(b.X-a.X)-(p.X-a.X)*(b.Y-a.Y) > 0 {
 				continue
 			}
@@ -179,20 +204,89 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		// TODO: check holes in polygon
 		// TODO: points on boundary are NOT within polygon
 		return numInters%2 == 1
+	case sql.MultiPoint:
+		for _, pp := range g.Points {
+			if isPointWithin(p, pp) {
+				return true
+			}
+		}
+		return false
+	case sql.MultiLineString:
+		return false
+	case sql.MultiPolygon:
+		return false
+	case sql.GeomColl:
+		for _, gg := range g.Geoms {
+			if isPointWithin(p, gg) {
+				return true
+			}
+		}
+		return false
 	default:
 		return false
 	}
 }
 
+// flattenGeomtry recursively "flattens" the geometry value into a map of its points
+func flattenGeomtry(g sql.GeometryValue, points map[sql.Point]bool) {
+	switch g := g.(type) {
+	case sql.Point:
+		points[g] = true
+	case sql.LineString:
+		for _, p := range g.Points {
+			flattenGeomtry(p, points)
+		}
+	case sql.Polygon:
+		for _, l := range g.Lines {
+			flattenGeomtry(l, points)
+		}
+	case sql.MultiPoint:
+		for _, p := range g.Points {
+			flattenGeomtry(p, points)
+		}
+	case sql.MultiLineString:
+		for _, l := range g.Lines {
+			flattenGeomtry(l, points)
+		}
+	case sql.MultiPolygon:
+		for _, p := range g.Polygons {
+			flattenGeomtry(p, points)
+		}
+	case sql.GeomColl:
+		for _, gg := range g.Geoms {
+			flattenGeomtry(gg, points)
+		}
+	}
+}
+
+// want to verify that all points of g1 are within g2
 func isWithin(g1, g2 sql.GeometryValue) bool {
 	// TODO: implement a bunch of combination of comparisons
 	// TODO: point v point easy
 	// TODO: point v linestring somewhat easy
 	// TODO: point v polygon somewhat easy
 	// TODO: come up with some generalization...might not be possible :/
-	return isPointWithin(g1.(sql.Point), g2)
+	points := map[sql.Point]bool{}
+	flattenGeomtry(g1, points)
+	for p := range points {
+		if !isPointWithin(p, g2) {
+			return false
+		}
+	}
+	return true
 	// TODO: g1.GetGeomType() < g2.GetGeomType() except for the case of geometrycollection
 }
+
+// For geometry A to be within geometry B:
+// 1. The interior of A and interior of B must intersect
+// 2. The interior of A and exterior of B must NOT intersect
+// 3. The boundary of A and exterior of B must NOT intersect
+
+// For points: interior and boundary are the same
+// For lines: boundary are the end points, closed lines have no boundary
+// For polygons: boundary are the lines (including end points)
+
+// There's this thing called the DE9-IM? And it's useful apparently
 
 // Eval implements the sql.Expression interface.
 func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

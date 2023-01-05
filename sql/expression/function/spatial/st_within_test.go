@@ -24,6 +24,7 @@ import (
 )
 
 func TestWithin(t *testing.T) {
+	// Point vs Point
 	t.Run("point within point", func(t *testing.T) {
 		require := require.New(t)
 		p1 := sql.Point{X: 1, Y: 2}
@@ -44,6 +45,7 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
+	// Point vs LineString
 	t.Run("point within linestring", func(t *testing.T) {
 		require := require.New(t)
 		p := sql.Point{X: 1, Y: 1}
@@ -54,16 +56,25 @@ func TestWithin(t *testing.T) {
 		require.Equal(true, v)
 	})
 
-	t.Run("point is endpoint of linestring", func(t *testing.T) {
+	t.Run("endpoints of linestring are not within linestring", func(t *testing.T) {
 		require := require.New(t)
 		p1 := sql.Point{X: 1, Y: 1}
 		p2 := sql.Point{X: 2, Y: 2}
 		p3 := sql.Point{X: 3, Y: 3}
 		l := sql.LineString{Points: []sql.Point{p1, p2, p3}}
-		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
+
+		var f sql.Expression
+		var v interface{}
+		var err error
+		f = NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(true, v)
+		require.Equal(false, v)
+
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
 	})
 
 	t.Run("point not within linestring", func(t *testing.T) {
@@ -76,6 +87,7 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
+	// Point vs Polygon
 	t.Run("point within polygon", func(t *testing.T) {
 		require := require.New(t)
 		p := sql.Point{X: 1, Y: 1}
@@ -134,7 +146,52 @@ func TestWithin(t *testing.T) {
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
-
 	})
 
+	// Point vs MultiPoint
+	t.Run("points within multipoint", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{X: 1, Y: 1}
+		p2 := sql.Point{X: 2, Y: 2}
+		p3 := sql.Point{X: 3, Y: 3}
+		mp := sql.MultiPoint{Points: []sql.Point{p1, p2, p3}}
+
+		var f sql.Expression
+		var v interface{}
+		var err error
+		f = NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(mp, sql.MultiPointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(mp, sql.MultiPointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(mp, sql.MultiPointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("point not within multipoint", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+		p1 := sql.Point{X: 1, Y: 1}
+		p2 := sql.Point{X: 2, Y: 2}
+		p3 := sql.Point{X: 3, Y: 3}
+		mp := sql.MultiPoint{Points: []sql.Point{p1, p2, p3}}
+
+		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(mp, sql.MultiPointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
+	// Point vs MultiLineString
+
+	// Point vs MultiPolygon
+
+	// Point vs GeometryCollection
 }
