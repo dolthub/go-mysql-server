@@ -190,7 +190,7 @@ func (c *coster) costPartial(left, right *exprGroup) (float64, error) {
 	if err != nil {
 		return float64(0), nil
 	}
-	return l + r, nil
+	return l * (r / 2.0), nil
 }
 
 func (c *coster) costSubqueryAlias(_ *subqueryAlias) (float64, error) {

@@ -115,6 +115,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			}
 
 			var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q)
+			newSubq = simplifySubqExpr(newSubq)
 			if m.max1 {
 				newSubq = plan.NewMax1Row(newSubq)
 			}
@@ -145,4 +146,42 @@ func sqRefsDual(n *plan.Subquery) bool {
 		return !dual
 	})
 	return dual
+}
+
+// simplifySubqExpr converts a subquery expression into a table alias
+// for scopes with only tables and getField projections.
+// TODO we can pass filters upwards also, but this general approach
+// is flaky and should be refactored into a better decorrelation
+// framework.
+func simplifySubqExpr(n sql.Node) sql.Node {
+	sq, ok := n.(*plan.SubqueryAlias)
+	if !ok {
+		return n
+	}
+	simple := true
+	var tab sql.NameableNode
+	transform.Inspect(sq.Child, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.Filter, *plan.Limit, *plan.JoinNode:
+			simple = false
+		case *plan.Project:
+			transform.InspectExpressions(n, func(e sql.Expression) bool {
+				switch e.(type) {
+				case *expression.GetField:
+				default:
+					simple = false
+				}
+				return simple
+			})
+		case *plan.TableAlias:
+			tab = n
+		case *plan.ResolvedTable:
+			tab = n
+		}
+		return simple
+	})
+	if simple && tab != nil {
+		return plan.NewTableAlias(sq.Name(), tab)
+	}
+	return n
 }
