@@ -26,6 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestResolveSetVariables(t *testing.T) {
@@ -150,7 +152,7 @@ func TestResolveColumnsSession(t *testing.T) {
 	fooBarType := types.ApproximateTypeFromValue(fooBarValue)
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
-	err := ctx.SetUserVariable(ctx, "foo_bar", fooBarValue)
+	err := ctx.SetUserVariable(ctx, "foo_bar", fooBarValue, fooBarType)
 	require.NoError(err)
 	err = ctx.SetSessionVariable(ctx, "autocommit", true)
 	require.NoError(err)

@@ -288,7 +288,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	for k, v := range s.systemVars {
-		m[k] = v
+		m[k] = v.Val
 	}
 	return m
 }

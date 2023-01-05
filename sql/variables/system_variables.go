@@ -116,7 +116,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 			}
 		}
 	}
-	return v, sysVal, true
+	return v, sysVal.Val, true
 }
 
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,

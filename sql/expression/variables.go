@@ -101,7 +101,7 @@ type UserVar struct {
 // in a SetField assignment Expression. This method should not be used when the user variable is
 // being used as a value, since the correct type information will not be available.
 func NewUserVar(name string) *UserVar {
-	return &UserVar{name, types.Null}
+	return &UserVar{name, nil}
 }
 
 // NewUserVarWithType creates a UserVar with its type resolved, so that it can be used as a value
