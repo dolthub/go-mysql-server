@@ -192,6 +192,12 @@ func (c *Call) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
+func (c *Call) Dispose() {
+	if c.proc != nil {
+		disposeNode(c.proc)
+	}
+}
+
 // callIter is the row iterator for *Call.
 type callIter struct {
 	call      *Call

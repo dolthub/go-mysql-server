@@ -179,8 +179,8 @@ func (g *GroupBy) DebugString() string {
 	}
 
 	_ = pr.WriteChildren(
-		fmt.Sprintf("SelectedExprs(%s)", strings.Join(selectedExprs, ", ")),
-		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
+		fmt.Sprintf("select: %s", strings.Join(selectedExprs, ", ")),
+		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
 		sql.DebugString(g.Child),
 	)
 	return pr.String()

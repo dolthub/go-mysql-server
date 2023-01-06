@@ -369,6 +369,7 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 		switch id {
 		case optimizeJoinsId,
 			pruneTablesId,
+			transformJoinApplyId,
 
 			// once after default rules should only be run once
 			AutocommitId,
@@ -425,15 +426,10 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 	}
 }
 
-func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
+func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case
-			// skip recursive resolve rules
-			resolveSubqueryExprsId,
-			resolveSubqueriesId,
-			// skip redundant finalize rules
-			finalizeSubqueriesId:
+		case transformJoinApplyId:
 			return false
 		}
 		return sel(id)

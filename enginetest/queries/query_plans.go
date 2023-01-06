@@ -855,8 +855,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(*):0!null as cnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(*))\n" +
-			"     ├─ Grouping(ab.a:0!null)\n" +
+			"     ├─ select: COUNT(*)\n" +
+			"     ├─ group: ab.a:0!null\n" +
 			"     └─ RightSemiLookupJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ xy.x:0!null\n" +
@@ -2031,26 +2031,29 @@ inner join pq on true
 		Query: `SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i:2!null, selfjoin.i:0!null]\n" +
-			" └─ Filter\n" +
-			"     ├─ InSubquery\n" +
-			"     │   ├─ left: selfjoin.i:0!null\n" +
-			"     │   └─ right: Subquery\n" +
-			"     │       ├─ cacheable: true\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [1 (tinyint)]\n" +
-			"     │           └─ Table\n" +
-			"     │               └─ name: \n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ mytable.i:2!null\n" +
-			"         │   └─ selfjoin.i:0!null\n" +
-			"         ├─ TableAlias(selfjoin)\n" +
-			"         │   └─ Table\n" +
-			"         │       └─ name: mytable\n" +
-			"         └─ IndexedTableAccess\n" +
-			"             ├─ index: [mytable.i]\n" +
+			" └─ SemiJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ selfjoin.i:0!null\n" +
+			"     │   └─ applySubq0.1:4!null\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ mytable.i:2!null\n" +
+			"     │   │   └─ selfjoin.i:0!null\n" +
+			"     │   ├─ TableAlias(selfjoin)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       └─ name: mytable\n" +
+			"     │   └─ IndexedTableAccess\n" +
+			"     │       ├─ index: [mytable.i]\n" +
+			"     │       └─ Table\n" +
+			"     │           └─ name: mytable\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: applySubq0\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [1 (tinyint)]\n" +
 			"             └─ Table\n" +
-			"                 └─ name: mytable\n" +
+			"                 └─ name: \n" +
 			"",
 	},
 	{
@@ -6877,10 +6880,10 @@ inner join pq on true
 	{
 		Query: `with recursive a(x) as (select 1 union select 2) select * from a having x > 1 union select * from a having x > 1;`,
 		ExpectedPlan: "Union distinct\n" +
-			" ├─ Having(GreaterThan\n" +
-			" │   ├─ a.x:0!null\n" +
-			" │   └─ 1 (tinyint)\n" +
-			" │  )\n" +
+			" ├─ Having\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ a.x:0!null\n" +
+			" │   │   └─ 1 (tinyint)\n" +
 			" │   └─ SubqueryAlias\n" +
 			" │       ├─ name: a\n" +
 			" │       ├─ outerVisibility: false\n" +
@@ -6894,10 +6897,10 @@ inner join pq on true
 			" │               ├─ columns: [2 (tinyint)]\n" +
 			" │               └─ Table\n" +
 			" │                   └─ name: \n" +
-			" └─ Having(GreaterThan\n" +
-			"     ├─ a.x:0!null\n" +
-			"     └─ 1 (tinyint)\n" +
-			"    )\n" +
+			" └─ Having\n" +
+			"     ├─ GreaterThan\n" +
+			"     │   ├─ a.x:0!null\n" +
+			"     │   └─ 1 (tinyint)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -6969,8 +6972,8 @@ inner join pq on true
 			" │           └─ Table\n" +
 			" │               └─ name: \n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(a.x:0!null)\n" +
-			"     ├─ Grouping(a.x:0!null)\n" +
+			"     ├─ select: a.x:0!null\n" +
+			"     ├─ group: a.x:0!null\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -7023,8 +7026,8 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i:0!null))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: COUNT(n.i:0!null)\n" +
+			"     ├─ group: \n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -7050,8 +7053,8 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i:0!null))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: COUNT(n.i:0!null)\n" +
+			"     ├─ group: \n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -7064,13 +7067,13 @@ inner join pq on true
 			"                 │       └─ name: \n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i + 1):0!null]\n" +
-			"                     └─ Having(LessThanOrEqual\n" +
-			"                         ├─ (n.i:1!null + 1 (tinyint))\n" +
-			"                         └─ 10 (tinyint)\n" +
-			"                        )\n" +
+			"                     └─ Having\n" +
+			"                         ├─ LessThanOrEqual\n" +
+			"                         │   ├─ (n.i:1!null + 1 (tinyint))\n" +
+			"                         │   └─ 10 (tinyint)\n" +
 			"                         └─ GroupBy\n" +
-			"                             ├─ SelectedExprs((n.i:0!null + 1 (tinyint)), n.i:0!null)\n" +
-			"                             ├─ Grouping(n.i:0!null)\n" +
+			"                             ├─ select: (n.i:0!null + 1 (tinyint)), n.i:0!null\n" +
+			"                             ├─ group: n.i:0!null\n" +
 			"                             └─ RecursiveTable(n)\n" +
 			"",
 	},
@@ -7079,8 +7082,8 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i:0!null))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: COUNT(n.i:0!null)\n" +
+			"     ├─ group: \n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -7095,13 +7098,13 @@ inner join pq on true
 			"                 │       └─ name: \n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [(n.i + 1):0!null]\n" +
-			"                     └─ Having(LessThanOrEqual\n" +
-			"                         ├─ (n.i:1!null + 1 (tinyint))\n" +
-			"                         └─ 10 (tinyint)\n" +
-			"                        )\n" +
+			"                     └─ Having\n" +
+			"                         ├─ LessThanOrEqual\n" +
+			"                         │   ├─ (n.i:1!null + 1 (tinyint))\n" +
+			"                         │   └─ 10 (tinyint)\n" +
 			"                         └─ GroupBy\n" +
-			"                             ├─ SelectedExprs((n.i:0!null + 1 (tinyint)), n.i:0!null)\n" +
-			"                             ├─ Grouping(n.i:0!null)\n" +
+			"                             ├─ select: (n.i:0!null + 1 (tinyint)), n.i:0!null\n" +
+			"                             ├─ group: n.i:0!null\n" +
 			"                             └─ Filter\n" +
 			"                                 ├─ LessThanOrEqual\n" +
 			"                                 │   ├─ (n.i:0!null + 1 (tinyint))\n" +
@@ -7114,8 +7117,8 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i:0!null))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: COUNT(n.i:0!null)\n" +
+			"     ├─ group: \n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -7225,8 +7228,8 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(*):0!null as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(*))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: COUNT(*)\n" +
+			"     ├─ group: \n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -7694,15 +7697,15 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │           │   └─ GreaterThan\n" +
 			"     │           │       ├─ FBSRS:3!null\n" +
 			"     │           │       └─ 0 (tinyint)\n" +
-			"     │           └─ Having(GreaterThan\n" +
-			"     │               ├─ JTOA7:1!null\n" +
-			"     │               └─ 1 (tinyint)\n" +
-			"     │              )\n" +
+			"     │           └─ Having\n" +
+			"     │               ├─ GreaterThan\n" +
+			"     │               │   ├─ JTOA7:1!null\n" +
+			"     │               │   └─ 1 (tinyint)\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [ZH72S:0, COUNT(CCEFL.ZH72S):1!null as JTOA7, MIN(CCEFL.WGBRL):2!null as TTDPM, SUM(CCEFL.WGBRL):3!null as FBSRS]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(ZH72S:0, COUNT(CCEFL.ZH72S:2), MIN(CCEFL.WGBRL:1), SUM(CCEFL.WGBRL:1))\n" +
-			"     │                       ├─ Grouping(ZH72S:0)\n" +
+			"     │                       ├─ select: ZH72S:0, COUNT(CCEFL.ZH72S:2), MIN(CCEFL.WGBRL:1), SUM(CCEFL.WGBRL:1)\n" +
+			"     │                       ├─ group: ZH72S:0\n" +
 			"     │                       └─ Project\n" +
 			"     │                           ├─ columns: [CCEFL.ZH72S:1 as ZH72S, CCEFL.WGBRL:2, CCEFL.ZH72S:1]\n" +
 			"     │                           └─ SubqueryAlias\n" +
@@ -7713,8 +7716,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │                                   ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
 			"     │                                   │   ├─ cacheable: false\n" +
 			"     │                                   │   └─ GroupBy\n" +
-			"     │                                   │       ├─ SelectedExprs(COUNT(*))\n" +
-			"     │                                   │       ├─ Grouping()\n" +
+			"     │                                   │       ├─ select: COUNT(*)\n" +
+			"     │                                   │       ├─ group: \n" +
 			"     │                                   │       └─ Filter\n" +
 			"     │                                   │           ├─ Eq\n" +
 			"     │                                   │           │   ├─ HDDVB.UJ6XY:19!null\n" +
@@ -8193,15 +8196,15 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │           │   └─ GreaterThan\n" +
 			"     │           │       ├─ FLHXH:3!null\n" +
 			"     │           │       └─ 0 (tinyint)\n" +
-			"     │           └─ Having(GreaterThan\n" +
-			"     │               ├─ JTOA7:1!null\n" +
-			"     │               └─ 1 (tinyint)\n" +
-			"     │              )\n" +
+			"     │           └─ Having\n" +
+			"     │               ├─ GreaterThan\n" +
+			"     │               │   ├─ JTOA7:1!null\n" +
+			"     │               │   └─ 1 (tinyint)\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [ZH72S:0, COUNT(WOOJ5.ZH72S):1!null as JTOA7, MIN(WOOJ5.LEA4J):2!null as BADTB, SUM(WOOJ5.LEA4J):3!null as FLHXH]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(ZH72S:0, COUNT(WOOJ5.ZH72S:2), MIN(WOOJ5.LEA4J:1), SUM(WOOJ5.LEA4J:1))\n" +
-			"     │                       ├─ Grouping(ZH72S:0)\n" +
+			"     │                       ├─ select: ZH72S:0, COUNT(WOOJ5.ZH72S:2), MIN(WOOJ5.LEA4J:1), SUM(WOOJ5.LEA4J:1)\n" +
+			"     │                       ├─ group: ZH72S:0\n" +
 			"     │                       └─ Project\n" +
 			"     │                           ├─ columns: [WOOJ5.ZH72S:1 as ZH72S, WOOJ5.LEA4J:2, WOOJ5.ZH72S:1]\n" +
 			"     │                           └─ SubqueryAlias\n" +
@@ -8212,8 +8215,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │                                   ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
 			"     │                                   │   ├─ cacheable: false\n" +
 			"     │                                   │   └─ GroupBy\n" +
-			"     │                                   │       ├─ SelectedExprs(COUNT(*))\n" +
-			"     │                                   │       ├─ Grouping()\n" +
+			"     │                                   │       ├─ select: COUNT(*)\n" +
+			"     │                                   │       ├─ group: \n" +
 			"     │                                   │       └─ Filter\n" +
 			"     │                                   │           ├─ Eq\n" +
 			"     │                                   │           │   ├─ FLQLP.LUEVY:19!null\n" +
@@ -9019,15 +9022,15 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │           │   └─ GreaterThan\n" +
 			"     │           │       ├─ R5CKX:3!null\n" +
 			"     │           │       └─ 0 (tinyint)\n" +
-			"     │           └─ Having(GreaterThan\n" +
-			"     │               ├─ JTOA7:1!null\n" +
-			"     │               └─ 1 (tinyint)\n" +
-			"     │              )\n" +
+			"     │           └─ Having\n" +
+			"     │               ├─ GreaterThan\n" +
+			"     │               │   ├─ JTOA7:1!null\n" +
+			"     │               │   └─ 1 (tinyint)\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [ZH72S:0, COUNT(TQ57W.ZH72S):1!null as JTOA7, MIN(TQ57W.TJ66D):2!null as B4OVH, SUM(TQ57W.TJ66D):3!null as R5CKX]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(ZH72S:0, COUNT(TQ57W.ZH72S:2), MIN(TQ57W.TJ66D:1), SUM(TQ57W.TJ66D:1))\n" +
-			"     │                       ├─ Grouping(ZH72S:0)\n" +
+			"     │                       ├─ select: ZH72S:0, COUNT(TQ57W.ZH72S:2), MIN(TQ57W.TJ66D:1), SUM(TQ57W.TJ66D:1)\n" +
+			"     │                       ├─ group: ZH72S:0\n" +
 			"     │                       └─ Project\n" +
 			"     │                           ├─ columns: [TQ57W.ZH72S:1 as ZH72S, TQ57W.TJ66D:2, TQ57W.ZH72S:1]\n" +
 			"     │                           └─ SubqueryAlias\n" +
@@ -9038,8 +9041,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"     │                                   ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
 			"     │                                   │   ├─ cacheable: false\n" +
 			"     │                                   │   └─ GroupBy\n" +
-			"     │                                   │       ├─ SelectedExprs(COUNT(*))\n" +
-			"     │                                   │       ├─ Grouping()\n" +
+			"     │                                   │       ├─ select: COUNT(*)\n" +
+			"     │                                   │       ├─ group: \n" +
 			"     │                                   │       └─ Filter\n" +
 			"     │                                   │           ├─ Eq\n" +
 			"     │                                   │           │   ├─ AMYXQ.LUEVY:19!null\n" +
@@ -10206,8 +10209,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 		Query: `
 	SELECT COUNT(*) FROM NOXN3`,
 		ExpectedPlan: "GroupBy\n" +
-			" ├─ SelectedExprs(COUNT(*))\n" +
-			" ├─ Grouping()\n" +
+			" ├─ select: COUNT(*)\n" +
+			" ├─ group: \n" +
 			" └─ Table\n" +
 			"     ├─ name: NOXN3\n" +
 			"     └─ columns: [id brqp2 fftbj a7xo2 kbo7r ecdkm numk2 letoe ykssu fhcyt]\n" +
@@ -10702,8 +10705,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [T4IBQ:0!null, ECUWU:1, SUM(XPRW6.B5OUF):2!null as B5OUF, SUM(XPRW6.SP4SI):3!null as SP4SI]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(T4IBQ:0!null, ECUWU:1, SUM(XPRW6.B5OUF:2), SUM(XPRW6.SP4SI:3!null))\n" +
-			"     ├─ Grouping(T4IBQ:0!null, ECUWU:1)\n" +
+			"     ├─ select: T4IBQ:0!null, ECUWU:1, SUM(XPRW6.B5OUF:2), SUM(XPRW6.SP4SI:3!null)\n" +
+			"     ├─ group: T4IBQ:0!null, ECUWU:1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [XPRW6.T4IBQ:0!null as T4IBQ, XPRW6.ECUWU:1 as ECUWU, XPRW6.B5OUF:3, XPRW6.SP4SI:4!null]\n" +
 			"         └─ SubqueryAlias\n" +
@@ -10713,15 +10716,15 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             └─ Project\n" +
 			"                 ├─ columns: [T4IBQ:0!null, ECUWU:1, GSTQA:2, B5OUF:3, SUM(CASE  WHEN ((NRFJ3.OZTQF < 0.5) OR (NRFJ3.YHYLK = 0)) THEN 1 ELSE 0 END):4!null as SP4SI]\n" +
 			"                 └─ GroupBy\n" +
-			"                     ├─ SelectedExprs(T4IBQ:0!null, ECUWU:1, GSTQA:2, NRFJ3.B5OUF:3 as B5OUF, SUM(CASE  WHEN Or\n" +
+			"                     ├─ select: T4IBQ:0!null, ECUWU:1, GSTQA:2, NRFJ3.B5OUF:3 as B5OUF, SUM(CASE  WHEN Or\n" +
 			"                     │   ├─ LessThan\n" +
 			"                     │   │   ├─ NRFJ3.OZTQF:4\n" +
 			"                     │   │   └─ 0.500000 (double)\n" +
 			"                     │   └─ Eq\n" +
 			"                     │       ├─ NRFJ3.YHYLK:5\n" +
 			"                     │       └─ 0 (tinyint)\n" +
-			"                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END))\n" +
-			"                     ├─ Grouping(T4IBQ:0!null, ECUWU:1, GSTQA:2)\n" +
+			"                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END)\n" +
+			"                     ├─ group: T4IBQ:0!null, ECUWU:1, GSTQA:2\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [NRFJ3.T4IBQ:0!null as T4IBQ, NRFJ3.ECUWU:1 as ECUWU, NRFJ3.GSTQA:2 as GSTQA, NRFJ3.B5OUF:3, NRFJ3.OZTQF:5, NRFJ3.YHYLK:6]\n" +
 			"                         └─ SubqueryAlias\n" +
@@ -11130,8 +11133,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [T4IBQ:0!null, ECUWU:1, SUM(XPRW6.B5OUF):2!null as B5OUF, SUM(XPRW6.SP4SI):3!null as SP4SI]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(T4IBQ:0!null, ECUWU:1, SUM(XPRW6.B5OUF:2), SUM(XPRW6.SP4SI:3!null))\n" +
-			"     ├─ Grouping(T4IBQ:0!null, ECUWU:1)\n" +
+			"     ├─ select: T4IBQ:0!null, ECUWU:1, SUM(XPRW6.B5OUF:2), SUM(XPRW6.SP4SI:3!null)\n" +
+			"     ├─ group: T4IBQ:0!null, ECUWU:1\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [XPRW6.T4IBQ:0!null as T4IBQ, XPRW6.ECUWU:1 as ECUWU, XPRW6.B5OUF:3, XPRW6.SP4SI:4!null]\n" +
 			"         └─ SubqueryAlias\n" +
@@ -11141,15 +11144,15 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"             └─ Project\n" +
 			"                 ├─ columns: [T4IBQ:0!null, ECUWU:1, GSTQA:2, B5OUF:3, SUM(CASE  WHEN ((NRFJ3.OZTQF < 0.5) OR (NRFJ3.YHYLK = 0)) THEN 1 ELSE 0 END):4!null as SP4SI]\n" +
 			"                 └─ GroupBy\n" +
-			"                     ├─ SelectedExprs(T4IBQ:0!null, ECUWU:1, GSTQA:2, NRFJ3.B5OUF:3 as B5OUF, SUM(CASE  WHEN Or\n" +
+			"                     ├─ select: T4IBQ:0!null, ECUWU:1, GSTQA:2, NRFJ3.B5OUF:3 as B5OUF, SUM(CASE  WHEN Or\n" +
 			"                     │   ├─ LessThan\n" +
 			"                     │   │   ├─ NRFJ3.OZTQF:4\n" +
 			"                     │   │   └─ 0.500000 (double)\n" +
 			"                     │   └─ Eq\n" +
 			"                     │       ├─ NRFJ3.YHYLK:5\n" +
 			"                     │       └─ 0 (tinyint)\n" +
-			"                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END))\n" +
-			"                     ├─ Grouping(T4IBQ:0!null, ECUWU:1, GSTQA:2)\n" +
+			"                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END)\n" +
+			"                     ├─ group: T4IBQ:0!null, ECUWU:1, GSTQA:2\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [NRFJ3.T4IBQ:0!null as T4IBQ, NRFJ3.ECUWU:1 as ECUWU, NRFJ3.GSTQA:2 as GSTQA, NRFJ3.B5OUF:3, NRFJ3.OZTQF:5, NRFJ3.YHYLK:6]\n" +
 			"                         └─ SubqueryAlias\n" +
@@ -11568,8 +11571,8 @@ var IntegrationPlanTests = []QueryPlanTest{
 			"                             └─ Project\n" +
 			"                                 ├─ columns: [ZPAIK:0!null, MAX(AMYXQ.Z35GY):1!null as Z35GY]\n" +
 			"                                 └─ GroupBy\n" +
-			"                                     ├─ SelectedExprs(AMYXQ.LUEVY:0!null as ZPAIK, MAX(AMYXQ.Z35GY:1!null))\n" +
-			"                                     ├─ Grouping(AMYXQ.LUEVY:0!null)\n" +
+			"                                     ├─ select: AMYXQ.LUEVY:0!null as ZPAIK, MAX(AMYXQ.Z35GY:1!null)\n" +
+			"                                     ├─ group: AMYXQ.LUEVY:0!null\n" +
 			"                                     └─ Table\n" +
 			"                                         ├─ name: AMYXQ\n" +
 			"                                         └─ columns: [luevy z35gy]\n" +
@@ -14070,8 +14073,8 @@ ORDER BY id ASC`,
 		Query: `
 SELECT COUNT(*) FROM E2I7U`,
 		ExpectedPlan: "GroupBy\n" +
-			" ├─ SelectedExprs(COUNT(*))\n" +
-			" ├─ Grouping()\n" +
+			" ├─ select: COUNT(*)\n" +
+			" ├─ group: \n" +
 			" └─ Table\n" +
 			"     ├─ name: E2I7U\n" +
 			"     └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +

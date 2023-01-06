@@ -31,19 +31,20 @@ type applyJoin struct {
 }
 
 func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	switch n.(type) {
+	case *plan.DeleteFrom, *plan.InsertInto:
+		return n, transform.SameTree, nil
+	}
 	var applyId int
-	var dual bool
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var f *plan.Filter
 		switch n := n.(type) {
-		case *plan.ResolvedTable:
-			dual = dual || plan.IsDualTable(n.Table)
 		case *plan.Filter:
 			f = n
 		}
 
-		if f == nil || dual {
+		if f == nil {
 			return n, transform.SameTree, nil
 		}
 
@@ -55,28 +56,29 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			switch e := e.(type) {
 			case *plan.InSubquery:
 				sq := e.Right.(*plan.Subquery)
-				if !sqRefsDual(sq) {
-					if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
-						matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeSemi})
-						continue
-					}
+				if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+					matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeSemi})
+					continue
 				}
 			case *expression.Equals:
 				if r, ok := e.Right().(*plan.Subquery); ok {
-					if !sqRefsDual(r) {
-						if nodeIsCacheable(r.Query, len(subScope.Schema())) {
-							matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeSemi, max1: true})
-							continue
-						}
+					if nodeIsCacheable(r.Query, len(subScope.Schema())) {
+						matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeSemi, max1: true})
+						continue
 					}
 				}
 			case *expression.Not:
 				switch e := e.Child.(type) {
 				case *plan.InSubquery:
 					sq := e.Right.(*plan.Subquery)
-					if !sqRefsDual(sq) {
-						if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
-							matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeAnti})
+					if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+						matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeAnti})
+						continue
+					}
+				case *expression.Equals:
+					if r, ok := e.Right().(*plan.Subquery); ok {
+						if nodeIsCacheable(r.Query, len(subScope.Schema())) {
+							matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeAnti, max1: true})
 							continue
 						}
 					}
@@ -135,19 +137,6 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	})
 }
 
-func sqRefsDual(n *plan.Subquery) bool {
-	var dual bool
-	transform.Inspect(n.Query, func(n sql.Node) bool {
-		switch n := n.(type) {
-		case *plan.ResolvedTable:
-			dual = dual || plan.IsDualTable(n.Table)
-		default:
-		}
-		return !dual
-	})
-	return dual
-}
-
 // simplifySubqExpr converts a subquery expression into a table alias
 // for scopes with only tables and getField projections.
 // TODO we can pass filters upwards also, but this general approach
@@ -162,7 +151,7 @@ func simplifySubqExpr(n sql.Node) sql.Node {
 	var tab sql.NameableNode
 	transform.Inspect(sq.Child, func(n sql.Node) bool {
 		switch n := n.(type) {
-		case *plan.Filter, *plan.Limit, *plan.JoinNode:
+		case *plan.Filter, *plan.Limit, *plan.JoinNode, *plan.GroupBy, *plan.Window:
 			simple = false
 		case *plan.Project:
 			transform.InspectExpressions(n, func(e sql.Expression) bool {
