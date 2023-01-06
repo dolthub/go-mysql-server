@@ -188,7 +188,7 @@ type StatsReader interface {
 	// Hist returns a HistogramMap providing statistics for a table's columns
 	Hist(ctx *Context, db, table string) (HistogramMap, error)
 	// RowCount returns a table's row count
-	RowCount(ctx *Context, db, table string) (uint64, error)
+	RowCount(ctx *Context, db, table string) (uint64, bool, error)
 }
 
 type StatsWriter interface {

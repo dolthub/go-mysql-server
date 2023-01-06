@@ -2014,21 +2014,25 @@ func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, 
 	}
 }
 
-func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, error) {
+func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, bool, error) {
 	s, ok := n.stats[NewDbTable(db, table)]
 	if ok {
-		return s.RowCount, nil
+		return s.RowCount, true, nil
 	}
 
 	t, _, err := n.catalog.Table(ctx, db, table)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	st, ok := t.(StatisticsTable)
 	if !ok {
-		return 0, nil
+		return 0, false, nil
 	}
-	return st.RowCount(ctx)
+	cnt, err := st.RowCount(ctx)
+	if err != nil {
+		return 0, false, err
+	}
+	return cnt, true, nil
 }
 
 func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
