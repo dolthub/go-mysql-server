@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -97,4 +98,15 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHasDefaultValue(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+	sess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz", User: "bar"}, 1)
+
+	err := sess.SetSessionVariable(ctx, "auto_increment_increment", 123)
+	require.NoError(err)
+	require.False(sql.HasDefaultValue(ctx, sess, "auto_increment_increment"))
+	require.True(sql.HasDefaultValue(ctx, sess, "non_existing_key")) // Returns true for non-existent keys
 }

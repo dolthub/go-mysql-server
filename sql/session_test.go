@@ -22,17 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHasDefaultValue(t *testing.T) {
-	require := require.New(t)
-	ctx := NewEmptyContext()
-	sess := NewBaseSessionWithClientServer("foo", Client{Address: "baz", User: "bar"}, 1)
-
-	err := sess.SetSessionVariable(ctx, "auto_increment_increment", 123)
-	require.NoError(err)
-	require.False(HasDefaultValue(ctx, sess, "auto_increment_increment"))
-	require.True(HasDefaultValue(ctx, sess, "non_existing_key")) // Returns true for non-existent keys
-}
-
 func TestInitReadonlySessionVariable(t *testing.T) {
 	const readonlyVariable = "external_user"
 	const variableValue = "aoeu"
