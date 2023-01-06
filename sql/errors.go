@@ -546,9 +546,6 @@ var (
 	// ErrUnsupportedSRID is thrown for spatial functions over unsupported SRIDs
 	ErrUnsupportedSRID = errors.NewKind("SRID %v has not been implemented for geographic spatial reference systems.")
 
-	// ErrNoUnits is thrown when the specified SRID does not have units
-	ErrNoUnits = errors.NewKind("the geometry passed to function st_distance is in SRID %v, which doesn't specify a length unit. Can't convert to '%v'.")
-
 	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
 	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
 

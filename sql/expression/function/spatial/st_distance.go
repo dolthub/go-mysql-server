@@ -16,6 +16,7 @@ package spatial
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"strings"
 
@@ -29,6 +30,9 @@ type Distance struct {
 }
 
 var _ sql.FunctionExpression = (*Distance)(nil)
+
+// ErrNoUnits is thrown when the specified SRID does not have units
+var ErrNoUnits = errors.NewKind("the geometry passed to function st_distance is in SRID %v, which doesn't specify a length unit. Can't convert to '%v'.")
 
 // NewDistance creates a new Distance expression.
 func NewDistance(args ...sql.Expression) (sql.Expression, error) {
