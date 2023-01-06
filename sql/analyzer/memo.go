@@ -222,36 +222,57 @@ type relProps struct {
 }
 
 func newRelProps(rel relExpr) *relProps {
-	var tables sql.FastIntSet
-	var cols sql.Schema
-	switch n := rel.(type) {
-	case sourceRel:
-		cols = append(cols, n.outputCols()...)
-		tables = sql.NewFastIntSet(int(n.tableId()))
-	case *antiJoin:
-		tables = n.left.relProps.OutputTables()
-	case *semiJoin:
-		tables = n.left.relProps.OutputTables()
-	case joinRel:
-		tables = n.joinPrivate().left.relProps.OutputTables().Union(n.joinPrivate().right.relProps.OutputTables())
+	p := &relProps{
+		grp: rel.group(),
 	}
+	if r, ok := rel.(sourceRel); ok {
+		p.outputCols = r.outputCols()
+	}
+	p.populateOutputTables()
+	return p
+}
 
-	return &relProps{
-		grp:          rel.group(),
-		outputCols:   cols,
-		outputTables: tables,
+// populateOutputTables initializes the bitmap indicating which tables'
+// attributes are available outputs from the exprGroup
+func (p *relProps) populateOutputTables() {
+	switch n := p.grp.first.(type) {
+	case sourceRel:
+		p.outputTables = sql.NewFastIntSet(int(n.tableId()))
+	case *antiJoin:
+		p.outputTables = n.left.relProps.OutputTables()
+	case *semiJoin:
+		p.outputTables = n.left.relProps.OutputTables()
+	case joinRel:
+		p.outputTables = n.joinPrivate().left.relProps.OutputTables().Union(n.joinPrivate().right.relProps.OutputTables())
+	}
+}
+
+func (p *relProps) populateOutputCols() {
+	if !p.grp.done {
+		panic("expression group not fixed")
+	}
+	switch r := p.grp.best.(type) {
+	case *semiJoin:
+		p.outputCols = r.left.relProps.OutputCols()
+	case *antiJoin:
+		p.outputCols = r.left.relProps.OutputCols()
+	case *lookupJoin:
+		if r.op.IsRightPartial() {
+			p.outputCols = r.right.relProps.OutputCols()
+		} else if r.op.IsPartial() {
+			p.outputCols = r.left.relProps.OutputCols()
+		} else {
+			p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+		}
+	case joinRel:
+		p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
 	}
 }
 
 // OutputCols returns the output schema of a node
 func (p *relProps) OutputCols() sql.Schema {
-	if !p.grp.done {
-		panic("expression group not fixed")
-	}
 	if p.outputCols == nil {
-		for _, c := range p.grp.best.children() {
-			p.outputCols = append(p.outputCols, c.relProps.OutputCols()...)
-		}
+		p.populateOutputCols()
 	}
 	return p.outputCols
 }
@@ -582,6 +603,10 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	},
 	{
 		Name:       "subqueryAlias",
+		SourceType: "*plan.SubqueryAlias",
+	},
+	{
+		Name:       "max1RowSubquery",
 		SourceType: "*plan.SubqueryAlias",
 	},
 	{

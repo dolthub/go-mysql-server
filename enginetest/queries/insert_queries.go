@@ -1336,7 +1336,7 @@ var InsertScripts = []ScriptTest{
 				ExpectedWarning: mysql.ERBadNullError,
 			},
 			{
-				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk FROM y WHERE pk > 1);",
+				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk+10 FROM y WHERE pk > 1);",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 0}},
 				},

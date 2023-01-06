@@ -268,11 +268,14 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 					return nil, fmt.Errorf("%w; error on close: %s", err, iterErr)
 				}
 				if errors.Is(err, io.EOF) {
-					if i.typ == JoinTypeSemi {
+					if i.typ.IsSemi() {
 						// reset iter, no match
 						break
 					}
-					return left, nil
+					if i.typ.IsRightPartial() {
+						return append(left[:i.scopeLen], right...), nil
+					}
+					return i.removeParentRow(left), nil
 				}
 				return nil, err
 			}
@@ -289,9 +292,12 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			if i.typ == JoinTypeAnti {
+			if i.typ.IsAnti() {
 				// reset iter, found match -> no return row
 				break
+			}
+			if i.typ.IsRightPartial() {
+				return append(left[:i.scopeLen], right...), nil
 			}
 			return i.removeParentRow(left), nil
 		}

@@ -334,6 +334,34 @@ func (r *subqueryAlias) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
+type max1RowSubquery struct {
+	*relBase
+	table *plan.SubqueryAlias
+}
+
+var _ relExpr = (*max1RowSubquery)(nil)
+var _ sourceRel = (*max1RowSubquery)(nil)
+
+func (r *max1RowSubquery) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *max1RowSubquery) name() string {
+	return strings.ToLower(r.table.Name())
+}
+
+func (r *max1RowSubquery) tableId() TableId {
+	return tableIdForSource(r.g.id)
+}
+
+func (r *max1RowSubquery) children() []*exprGroup {
+	return nil
+}
+
+func (r *max1RowSubquery) outputCols() sql.Schema {
+	return r.table.Schema()
+}
+
 type tableFunc struct {
 	*relBase
 	table sql.TableFunction
@@ -396,6 +424,8 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("recursiveCte: %s", r.name())
 	case *subqueryAlias:
 		return fmt.Sprintf("subqueryAlias: %s", r.name())
+	case *max1RowSubquery:
+		return fmt.Sprintf("max1RowSubquery: %s", r.name())
 	case *tableFunc:
 		return fmt.Sprintf("tableFunc: %s", r.name())
 	default:
@@ -437,6 +467,8 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		return b.buildRecursiveCte(r, input, children...)
 	case *subqueryAlias:
 		return b.buildSubqueryAlias(r, input, children...)
+	case *max1RowSubquery:
+		return b.buildMax1RowSubquery(r, input, children...)
 	case *tableFunc:
 		return b.buildTableFunc(r, input, children...)
 	default:

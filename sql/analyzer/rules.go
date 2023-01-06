@@ -95,6 +95,7 @@ var DefaultRules = []Rule{
 // OnceAfterDefault contains the rules to be applied just once after the
 // DefaultRules.
 var OnceAfterDefault = []Rule{
+	{transformJoinApplyId, transformJoinApply},
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
@@ -142,7 +143,6 @@ var DefaultValidationRules = []Rule{
 var OnceAfterAll = []Rule{
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},
