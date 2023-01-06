@@ -187,7 +187,8 @@ type StatsReader interface {
 	CatalogTable
 	// Hist returns a HistogramMap providing statistics for a table's columns
 	Hist(ctx *Context, db, table string) (HistogramMap, error)
-	// RowCount returns a table's row count
+	// RowCount returns a table's row count if the table implements sql.StatisticsTable,
+	// false if the table does not, or an error if the table was not found.
 	RowCount(ctx *Context, db, table string) (uint64, bool, error)
 }
 
