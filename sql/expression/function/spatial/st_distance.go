@@ -112,10 +112,14 @@ func calcPointDist(a, b sql.Point) float64 {
 }
 
 // calcDist finds the minimum distance from a Point in g1 to a Point g2
-func calcDist(g1, g2 sql.GeometryValue) float64 {
+func calcDist(g1, g2 sql.GeometryValue) interface{} {
 	points1, points2 := map[sql.Point]bool{}, map[sql.Point]bool{}
 	flattenGeometry(g1, points1)
 	flattenGeometry(g2, points2)
+
+	if len(points1) == 0 || len(points2) == 0 {
+		return nil
+	}
 
 	minDist := math.MaxFloat64
 	for a := range points1 {
