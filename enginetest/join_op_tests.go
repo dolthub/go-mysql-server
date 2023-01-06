@@ -192,7 +192,7 @@ var JoinOpTests = []struct {
 			},
 			{
 				// anti join will be cross-join-right, be passed non-nil parent row
-				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2;",
+				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
 				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeAnti},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
