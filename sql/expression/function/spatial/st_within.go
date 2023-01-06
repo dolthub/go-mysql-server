@@ -148,28 +148,35 @@ func isClosed(l sql.LineString) bool {
 	return pointsEqual(startPoint(l), endPoint(l))
 }
 
+func isInBBox(a, b, c sql.Point) bool {
+	return c.X >= math.Min(a.X, b.X) &&
+		c.X <= math.Max(a.X, b.X) &&
+		c.Y >= math.Min(a.Y, b.Y) &&
+		c.Y <= math.Max(a.Y, b.Y)
+}
+
 // isPointWithin checks if sql.Point p is within geometry g
 func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
 		return pointsEqual(p, g)
 	case sql.LineString:
-		// TODO: perform distance check
-		// TODO: alternatively could perform cross product and bounds check
 
 		// closed LineStrings technically don't have terminal points, and terminal points are not within linestring
 		if !isClosed(g) && (pointsEqual(p, startPoint(g)) || pointsEqual(p, endPoint(g))) {
 			return false
 		}
 
-		// for each line segment, check if point lies within it
-		for i := 0; i < len(g.Points)-1; i++ {
-			totalDist := calcDist(g.Points[i], g.Points[i+1])
-			dist1 := calcDist(p, g.Points[i])
-			dist2 := calcDist(p, g.Points[i+1])
-			if dist1+dist2 == totalDist {
-				return true
+		// alternatively, we could calculate if dist(ap) + dist(ab) == dist(ap)
+		for i := 1; i < len(g.Points); i++ {
+			a, b := g.Points[i-1], g.Points[i]
+			if !isInBBox(a, b, p) {
+				continue
 			}
+			if orientation(a, b, p) != 0 {
+				continue
+			}
+			return true
 		}
 		return false
 	case sql.Polygon:

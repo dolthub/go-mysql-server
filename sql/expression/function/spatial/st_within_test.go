@@ -56,6 +56,33 @@ func TestWithin(t *testing.T) {
 		require.Equal(true, v)
 	})
 
+	t.Run("point within closed linestring of length 0", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 123, Y: 456}
+		l := sql.LineString{Points: []sql.Point{p, p}}
+
+		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		l = sql.LineString{Points: []sql.Point{p, p, p, p, p}}
+		f = NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("point not within linestring", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 100, Y: 200}
+		l := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}}}
+		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
 	t.Run("endpoints of linestring are not within linestring", func(t *testing.T) {
 		require := require.New(t)
 		p1 := sql.Point{X: 1, Y: 1}
@@ -63,11 +90,8 @@ func TestWithin(t *testing.T) {
 		p3 := sql.Point{X: 3, Y: 3}
 		l := sql.LineString{Points: []sql.Point{p1, p2, p3}}
 
-		var f sql.Expression
-		var v interface{}
-		var err error
-		f = NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
-		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
@@ -77,12 +101,30 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
-	t.Run("point not within linestring", func(t *testing.T) {
+	t.Run("endpoints of linestring that overlap with linestring are not within linestring", func(t *testing.T) {
 		require := require.New(t)
-		p := sql.Point{X: 100, Y: 200}
-		l := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}}}
-		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+
+		// it looks like two triangles:
+		//  /\  |  /\
+		// /__s_|_e__\
+		s := sql.Point{X: -1, Y: 0}
+		p1 := sql.Point{X: -2, Y: 1}
+
+		p2 := sql.Point{X: -3, Y: 0}
+		p3 := sql.Point{X: 3, Y: 0}
+
+		p4 := sql.Point{X: 2, Y: 1}
+		e := sql.Point{X: 1, Y: 0}
+
+		l := sql.LineString{Points: []sql.Point{s, p1, p2, p3, p4, e}}
+
+		f := NewWithin(expression.NewLiteral(s, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		f = NewWithin(expression.NewLiteral(e, sql.PointType{}), expression.NewLiteral(l, sql.PointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 	})
@@ -124,11 +166,8 @@ func TestWithin(t *testing.T) {
 		d := sql.Point{X: 0, Y: -1}
 		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
-		var f sql.Expression
-		var v interface{}
-		var err error
-		f = NewWithin(expression.NewLiteral(a, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
-		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		f := NewWithin(expression.NewLiteral(a, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 
