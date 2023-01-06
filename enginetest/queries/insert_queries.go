@@ -1757,6 +1757,38 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "INSERT INTO ... SELECT works properly with ENUM",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 ENUM('a','b','c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk, v1) VALUES (1, 'a');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "INSERT INTO test (pk, v1) SELECT 2 as pk, 'a' as v1;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "INSERT INTO ... SELECT works properly with SET",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 SET('a','b','c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk, v1) VALUES (1, 'a');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "INSERT INTO test (pk, v1) SELECT 2 as pk, 'a' as v1;",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
