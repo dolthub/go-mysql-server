@@ -498,7 +498,7 @@ func TypesEqual(a, b sql.Type) bool {
 	// TODO: replace all of the Type() == Type() calls with TypesEqual
 
 	// We can assume they have the same implementing type if this passes, so we have to check the parameters
-	if a.Type() != b.Type() {
+	if a == nil || b == nil || a.Type() != b.Type() {
 		return false
 	}
 	// Some types cannot be compared structurally as they contain non-comparable types (such as slices), so we handle

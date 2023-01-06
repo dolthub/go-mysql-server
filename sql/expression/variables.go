@@ -101,13 +101,13 @@ type UserVar struct {
 // in a SetField assignment Expression. This method should not be used when the user variable is
 // being used as a value, since the correct type information will not be available.
 func NewUserVar(name string) *UserVar {
-	return &UserVar{name, nil}
+	return &UserVar{Name: name, exprType: types.Null}
 }
 
 // NewUserVarWithType creates a UserVar with its type resolved, so that it can be used as a value
 // in other expressions.
 func NewUserVarWithType(name string, t sql.Type) *UserVar {
-	return &UserVar{name, t}
+	return &UserVar{Name: name, exprType: t}
 }
 
 // Children implements the sql.Expression interface.

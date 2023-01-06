@@ -125,6 +125,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 
 // SetSessionVariable implements the Session interface.
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
@@ -137,6 +138,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
 func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVarName = strings.ToLower(sysVarName)
 	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
@@ -150,6 +152,7 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	return s.setSessVar(ctx, sysVar, sysVarName, value)
 }
 
+// TODO NEXT: need to make sure that all sys var names are case-lowered at all access points
 func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName string, value interface{}) error {
 	if sysVar.Scope == SystemVariableScope_Global {
 		return ErrSystemVariableGlobalOnly.New(sysVarName)
