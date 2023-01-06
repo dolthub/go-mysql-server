@@ -42,7 +42,7 @@ func NewTriggerBeginEndBlock(block *BeginEndBlock) *TriggerBeginEndBlock {
 
 // WithChildren implements the sql.Node interface.
 func (b *TriggerBeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewTriggerBeginEndBlock(NewBeginEndBlock(NewBlock(children))), nil
+	return NewTriggerBeginEndBlock(NewBeginEndBlock(b.BeginEndBlock.Label, NewBlock(children))), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
