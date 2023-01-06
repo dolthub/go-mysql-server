@@ -2014,6 +2014,8 @@ func (n *defaultStatsTable) Hist(ctx *Context, db, table string) (HistogramMap, 
 	}
 }
 
+// RowCount returns a sql.StatisticsTable's row count, or false if the table does not
+// implement the interface, or an error if the table was not found.
 func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, bool, error) {
 	s, ok := n.stats[NewDbTable(db, table)]
 	if ok {
