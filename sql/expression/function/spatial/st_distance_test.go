@@ -63,4 +63,37 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		require.Equal(0.0, v)
 	})
+
+	t.Run("different SRIDs error", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{SRID: sql.CartesianSRID, X: 0, Y: 0}
+		p2 := sql.Point{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("geospatial SRID unsupported", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}
+		p2 := sql.Point{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("cartesian has no units", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{SRID: sql.CartesianSRID, X: 0, Y: 0}
+		p2 := sql.Point{SRID: sql.CartesianSRID, X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral("meters", sql.LongText))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
 }
