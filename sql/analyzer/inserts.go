@@ -275,8 +275,13 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 			if otherCol.Type == sql.Null {
 				continue
 			}
-			_, err := expr.Type().Convert(otherCol.Type.Zero())
+			exprType := expr.Type()
+			_, err := exprType.Convert(otherCol.Type.Zero())
 			if err != nil {
+				// The zero value will fail when passing string values to ENUM, so we specially handle this case
+				if _, ok := exprType.(sql.EnumType); ok && sql.IsText(otherCol.Type) {
+					continue
+				}
 				return plan.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
 			}
 		default:
