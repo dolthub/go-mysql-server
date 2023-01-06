@@ -166,7 +166,7 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if len(d.ChildExpressions) == 3 {
 		if srid1 == sql.CartesianSRID {
-			return nil, sql.ErrNoUnits.New(srid1)
+			return nil, ErrNoUnits.New(srid1)
 		}
 		// TODO: check valid unit arguments
 	}
