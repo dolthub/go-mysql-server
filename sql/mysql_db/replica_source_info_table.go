@@ -15,7 +15,6 @@
 package mysql_db
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
@@ -29,13 +28,7 @@ import (
 
 const replicaSourceInfoTblName = "slave_master_info"
 
-var (
-	// TODO: These errors are repeated across mysql_db tables and could be refactored to clean up
-	errReplicaSourceInfoPkEntry = fmt.Errorf("the primary key for the `%s` table was given an unknown entry", replicaSourceInfoTblName)
-	errReplicaSourceInfoPkRow   = fmt.Errorf("the primary key for the `%s` table was given a row belonging to an unknown schema", replicaSourceInfoTblName)
-
-	replicaSourceInfoTblSchema sql.Schema
-)
+var replicaSourceInfoTblSchema sql.Schema
 
 type ReplicaSourceInfoPrimaryKey struct {
 	Channel string
@@ -47,7 +40,7 @@ var _ in_mem_table.Key = ReplicaSourceInfoPrimaryKey{}
 func (r ReplicaSourceInfoPrimaryKey) KeyFromEntry(_ *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
 	_, ok := entry.(*ReplicaSourceInfo)
 	if !ok {
-		return nil, errReplicaSourceInfoPkEntry
+		return nil, errPrimaryKeyUnknownEntry.New(replicaSourceInfoTblName)
 	}
 	return ReplicaSourceInfoPrimaryKey{
 		Channel: "",
@@ -57,7 +50,7 @@ func (r ReplicaSourceInfoPrimaryKey) KeyFromEntry(_ *sql.Context, entry in_mem_t
 // KeyFromRow implements the interface in_mem_table.Key.
 func (r ReplicaSourceInfoPrimaryKey) KeyFromRow(_ *sql.Context, row sql.Row) (in_mem_table.Key, error) {
 	if len(row) != len(replicaSourceInfoTblSchema) {
-		return r, errReplicaSourceInfoPkRow
+		return r, errPrimaryKeyUnknownSchema.New(replicaSourceInfoTblName)
 	}
 	return ReplicaSourceInfoPrimaryKey{
 		Channel: "",

@@ -720,8 +720,16 @@ func (rcv *ReplicaSourceInfo) MutatePort(n uint16) bool {
 	return rcv._tab.MutateUint16Slot(10, n)
 }
 
+func (rcv *ReplicaSourceInfo) Uuid() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
 func ReplicaSourceInfoStart(builder *flatbuffers.Builder) {
-	builder.StartObject(4)
+	builder.StartObject(5)
 }
 func ReplicaSourceInfoAddHost(builder *flatbuffers.Builder, host flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(host), 0)
@@ -734,6 +742,9 @@ func ReplicaSourceInfoAddPassword(builder *flatbuffers.Builder, password flatbuf
 }
 func ReplicaSourceInfoAddPort(builder *flatbuffers.Builder, port uint16) {
 	builder.PrependUint16Slot(3, port, 0)
+}
+func ReplicaSourceInfoAddUuid(builder *flatbuffers.Builder, uuid flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(uuid), 0)
 }
 func ReplicaSourceInfoEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

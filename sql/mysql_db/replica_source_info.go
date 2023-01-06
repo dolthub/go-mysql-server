@@ -27,6 +27,7 @@ type ReplicaSourceInfo struct {
 	User     string
 	Password string
 	Port     uint16
+	Uuid     string
 }
 
 var _ in_mem_table.Entry = (*ReplicaSourceInfo)(nil)
@@ -42,6 +43,7 @@ func (r *ReplicaSourceInfo) NewFromRow(_ *sql.Context, row sql.Row) (in_mem_tabl
 		User:     row[replicaSourceInfoTblColIndex_User_name].(string),
 		Password: row[replicaSourceInfoTblColIndex_User_password].(string),
 		Port:     row[replicaSourceInfoTblColIndex_Port].(uint16),
+		Uuid:     row[replicaSourceInfoTblColIndex_Uuid].(string),
 	}, nil
 }
 
@@ -65,10 +67,18 @@ func (r *ReplicaSourceInfo) ToRow(ctx *sql.Context) sql.Row {
 		}
 	}
 	//TODO: once the remaining fields are added, fill those in as well
-	row[replicaSourceInfoTblColIndex_Host] = r.Host
-	row[replicaSourceInfoTblColIndex_User_name] = r.User
+	if r.Host != "" {
+		row[replicaSourceInfoTblColIndex_Host] = r.Host
+	}
+	if r.User != "" {
+		row[replicaSourceInfoTblColIndex_User_name] = r.User
+	}
+	if r.Uuid != "" {
+		row[replicaSourceInfoTblColIndex_Uuid] = r.Uuid
+	}
 	row[replicaSourceInfoTblColIndex_User_password] = r.Password
 	row[replicaSourceInfoTblColIndex_Port] = r.Port
+
 	return row
 }
 
@@ -83,7 +93,8 @@ func (r *ReplicaSourceInfo) Equals(_ *sql.Context, otherEntry in_mem_table.Entry
 	if r.User != other.User ||
 		r.Host != other.Host ||
 		r.Port != other.Port ||
-		r.Password != other.Password {
+		r.Password != other.Password ||
+		r.Uuid != other.Uuid {
 		return false
 	}
 

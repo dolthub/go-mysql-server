@@ -201,6 +201,7 @@ func serializeReplicaSourceInfo(b *flatbuffers.Builder, replicaSourceInfos []*Re
 		host := b.CreateString(replicaSourceInfo.Host)
 		user := b.CreateString(replicaSourceInfo.User)
 		password := b.CreateString(replicaSourceInfo.Password)
+		uuid := b.CreateString(replicaSourceInfo.Uuid)
 
 		// Start ReplicaSourceInfo
 		serial.ReplicaSourceInfoStart(b)
@@ -209,6 +210,7 @@ func serializeReplicaSourceInfo(b *flatbuffers.Builder, replicaSourceInfos []*Re
 		serial.ReplicaSourceInfoAddHost(b, host)
 		serial.ReplicaSourceInfoAddUser(b, user)
 		serial.ReplicaSourceInfoAddPassword(b, password)
+		serial.ReplicaSourceInfoAddUuid(b, uuid)
 
 		// Write Port (uint value doesn't need offset)
 		serial.ReplicaSourceInfoAddPort(b, replicaSourceInfo.Port)

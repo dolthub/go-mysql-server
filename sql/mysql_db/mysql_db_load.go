@@ -141,5 +141,6 @@ func LoadReplicaSourceInfo(serialReplicaSourceInfo *serial.ReplicaSourceInfo) *R
 		User:     string(serialReplicaSourceInfo.User()),
 		Password: string(serialReplicaSourceInfo.Password()),
 		Port:     serialReplicaSourceInfo.Port(),
+		Uuid:     string(serialReplicaSourceInfo.Uuid()),
 	}
 }
