@@ -266,6 +266,17 @@ func flattenGeomtry(g sql.GeometryValue, points map[sql.Point]bool) {
 	}
 }
 
+func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
+	switch g := g.(type) {
+	case sql.Point:
+		return false
+	case sql.LineString:
+		return false
+	default:
+		return false
+	}
+}
+
 // want to verify that all points of g1 are within g2
 func isWithin(g1, g2 sql.GeometryValue) bool {
 	// TODO: implement a bunch of combination of comparisons
@@ -273,15 +284,28 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 	// TODO: point v linestring somewhat easy
 	// TODO: point v polygon somewhat easy
 	// TODO: come up with some generalization...might not be possible :/
-	points := map[sql.Point]bool{}
-	flattenGeomtry(g1, points)
-	for p := range points {
-		if !isPointWithin(p, g2) {
-			return false
+	// TODO: g1.GetGeomType() < g2.GetGeomType() except for the case of geometrycollection
+	switch g1 := g1.(type) {
+	case sql.Point:
+		return isPointWithin(g1, g2)
+	case sql.LineString:
+		return false
+	case sql.MultiPoint:
+		checked := map[sql.Point]bool{}
+		for _, p := range g1.Points {
+			if checked[p] {
+				continue
+			}
+			checked[p] = true
+			if !isPointWithin(p, g2) {
+				return false
+			}
 		}
+		return false
+	default:
+		return false
 	}
 	return true
-	// TODO: g1.GetGeomType() < g2.GetGeomType() except for the case of geometrycollection
 }
 
 // For geometry A to be within geometry B:

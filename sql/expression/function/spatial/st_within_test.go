@@ -233,4 +233,6 @@ func TestWithin(t *testing.T) {
 	// Point vs MultiPolygon
 
 	// Point vs GeometryCollection
+
+	// LineString vs LineString
 }
