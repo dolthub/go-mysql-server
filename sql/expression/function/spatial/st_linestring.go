@@ -126,7 +126,7 @@ func (e *EndPoint) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 func endPoint(l sql.LineString) sql.Point {
-	return l.Points[0]
+	return l.Points[len(l.Points)-1]
 }
 
 // Eval implements the sql.Expression interface.
@@ -210,7 +210,7 @@ func (i *IsClosed) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := g.(sql.GeometryValue); ok {
+	if _, ok := g.(sql.GeometryValue); !ok {
 		return nil, sql.ErrInvalidGISData.New(i.FunctionName())
 	}
 
