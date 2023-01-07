@@ -366,3 +366,8 @@ type Node2 interface {
 	// evaluated is provided, as well the context of the query.
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
+
+type NameableNode interface {
+	Nameable
+	Node
+}

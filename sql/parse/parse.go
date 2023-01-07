@@ -206,6 +206,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertBeginEndBlock(ctx, n, query)
 	case *sqlparser.IfStatement:
 		return convertIfBlock(ctx, n)
+	case *sqlparser.CaseStatement:
+		return convertCaseStatement(ctx, n)
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
@@ -218,6 +220,10 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertClose(ctx, n)
 	case *sqlparser.Loop:
 		return convertLoop(ctx, n, query)
+	case *sqlparser.Repeat:
+		return convertRepeat(ctx, n, query)
+	case *sqlparser.While:
+		return convertWhile(ctx, n, query)
 	case *sqlparser.Leave:
 		return convertLeave(ctx, n)
 	case *sqlparser.Iterate:
@@ -323,7 +329,7 @@ func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query st
 	if err != nil {
 		return nil, err
 	}
-	return plan.NewBeginEndBlock(block), nil
+	return plan.NewBeginEndBlock(n.Label, block), nil
 }
 
 func convertIfBlock(ctx *sql.Context, n *sqlparser.IfStatement) (sql.Node, error) {
@@ -340,6 +346,37 @@ func convertIfBlock(ctx *sql.Context, n *sqlparser.IfStatement) (sql.Node, error
 		return nil, err
 	}
 	return plan.NewIfElse(ifConditionals, elseBlock), nil
+}
+
+func convertCaseStatement(ctx *sql.Context, n *sqlparser.CaseStatement) (sql.Node, error) {
+	ifConditionals := make([]*plan.IfConditional, len(n.Cases))
+	for i, c := range n.Cases {
+		ifConditional, err := convertIfConditional(ctx, sqlparser.IfStatementCondition{
+			Expr:       c.Case,
+			Statements: c.Statements,
+		})
+		if err != nil {
+			return nil, err
+		}
+		ifConditionals[i] = ifConditional
+	}
+	var elseBlock sql.Node
+	if n.Else != nil {
+		var err error
+		elseBlock, err = convertBlock(ctx, n.Else, "compound statement in else block")
+		if err != nil {
+			return nil, err
+		}
+	}
+	if n.Expr == nil {
+		return plan.NewCaseStatement(nil, ifConditionals, elseBlock), nil
+	} else {
+		caseExpr, err := ExprToExpression(ctx, n.Expr)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewCaseStatement(caseExpr, ifConditionals, elseBlock), nil
+	}
 }
 
 func convertIfConditional(ctx *sql.Context, n sqlparser.IfStatementCondition) (*plan.IfConditional, error) {
@@ -1453,6 +1490,30 @@ func convertLoop(ctx *sql.Context, loop *sqlparser.Loop, query string) (sql.Node
 		return nil, err
 	}
 	return plan.NewLoop(loop.Label, block), nil
+}
+
+func convertRepeat(ctx *sql.Context, repeat *sqlparser.Repeat, query string) (sql.Node, error) {
+	block, err := convertBlock(ctx, repeat.Statements, query)
+	if err != nil {
+		return nil, err
+	}
+	expr, err := ExprToExpression(ctx, repeat.Condition)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewRepeat(repeat.Label, expr, block), nil
+}
+
+func convertWhile(ctx *sql.Context, while *sqlparser.While, query string) (sql.Node, error) {
+	block, err := convertBlock(ctx, while.Statements, query)
+	if err != nil {
+		return nil, err
+	}
+	expr, err := ExprToExpression(ctx, while.Condition)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewWhile(while.Label, expr, block), nil
 }
 
 func convertLeave(ctx *sql.Context, leave *sqlparser.Leave) (sql.Node, error) {

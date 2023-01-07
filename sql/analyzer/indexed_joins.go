@@ -162,6 +162,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)
 
+	addRightSemiJoins(m)
 	addLookupJoins(m)
 	addHashJoins(m)
 	addMergeJoins(m)
@@ -200,7 +201,13 @@ func addLookupJoins(m *Memo) error {
 		case *leftJoin:
 			right = e.right
 			join = e.joinBase
-			//TODO semijoin, antijoin, fullouterjoin
+		//TODO fullouterjoin
+		case *semiJoin:
+			right = e.right
+			join = e.joinBase
+		case *antiJoin:
+			right = e.right
+			join = e.joinBase
 		default:
 			return nil
 		}
@@ -209,40 +216,7 @@ func addLookupJoins(m *Memo) error {
 			return nil
 		}
 
-		var attributeSource string
-		var indexableTable sql.IndexAddressableTable
-		var ok bool
-		switch n := right.first.(type) {
-		case *tableAlias:
-			attributeSource = strings.ToLower(n.table.Name())
-			rt, ok := n.table.Child.(*plan.ResolvedTable)
-			if !ok {
-				return nil
-			}
-			table := rt.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
-			indexableTable, ok = table.(sql.IndexAddressableTable)
-			if !ok {
-				return nil
-			}
-			aliases.add(n.table, indexableTable)
-		case *tableScan:
-			attributeSource = strings.ToLower(n.table.Name())
-			table := n.table.Table
-			if w, ok := table.(sql.TableWrapper); ok {
-				table = w.Underlying()
-			}
-			indexableTable, ok = table.(sql.IndexAddressableTable)
-			if !ok {
-				return nil
-			}
-		default:
-			return nil
-		}
-
-		indexes, err := indexableTable.GetIndexes(m.ctx)
+		attrSource, indexes, err := lookupCandidates(m.ctx, right.first, aliases)
 		if err != nil {
 			return err
 		}
@@ -254,7 +228,7 @@ func addLookupJoins(m *Memo) error {
 			// can consider multiple index options. Otherwise the search space blows
 			// up.
 			conds := splitDisjunction(or)
-			concat := splitIndexableOr(conds, indexes, attributeSource, aliases)
+			concat := splitIndexableOr(conds, indexes, attrSource, aliases)
 			if len(concat) != len(conds) {
 				return nil
 			}
@@ -269,7 +243,7 @@ func addLookupJoins(m *Memo) error {
 			return nil
 		}
 
-		conds := collectJoinConds(attributeSource, join.filter...)
+		conds := collectJoinConds(attrSource, join.filter...)
 		for _, idx := range indexes {
 			keyExprs, nullmask := indexMatchesKeyExprs(idx, conds, aliases)
 			if len(keyExprs) == 0 {
@@ -278,7 +252,7 @@ func addLookupJoins(m *Memo) error {
 			rel := &lookupJoin{
 				joinBase: join.copy(),
 				lookup: &lookup{
-					source:   attributeSource,
+					source:   attrSource,
 					index:    idx,
 					keyExprs: keyExprs,
 					nullmask: nullmask,
@@ -289,6 +263,100 @@ func addLookupJoins(m *Memo) error {
 		}
 		return nil
 	})
+}
+
+// addRightSemiJoins allows for a reversed semiJoin operator when
+// the join attributes of the left side are provably unique.
+func addRightSemiJoins(m *Memo) error {
+	var aliases = make(TableAliases)
+	seen := make(map[GroupId]struct{})
+	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+		semi, ok := e.(*semiJoin)
+		if !ok {
+			return nil
+		}
+
+		if len(semi.filter) == 0 {
+			return nil
+		}
+		attrSource, indexes, err := lookupCandidates(m.ctx, semi.left.first, aliases)
+		if err != nil {
+			return err
+		}
+
+		// check that the right side is unique on the join keys
+		conds := collectJoinConds(attrSource, semi.filter...)
+		for _, idx := range indexes {
+			if !idx.IsUnique() {
+				continue
+			}
+			keyExprs, nullmask := indexMatchesKeyExprs(idx, conds, aliases)
+			if len(keyExprs) == 0 {
+				continue
+			}
+			if len(keyExprs) != len(idx.Expressions()) {
+				continue
+			}
+
+			rel := &lookupJoin{
+				joinBase: semi.joinPrivate().copy(),
+				lookup: &lookup{
+					source:   attrSource,
+					index:    idx,
+					keyExprs: keyExprs,
+					nullmask: nullmask,
+				},
+			}
+			rel.op = plan.JoinTypeRightSemi
+			rel.left, rel.right = rel.right, rel.left
+			rel.lookup.parent = rel.joinBase
+			e.group().prepend(rel)
+		}
+		return nil
+	})
+}
+
+// lookupCandidates returns a normalized table name and a list of available
+// candidate indexes as replacements for the given relExpr, or empty values
+// if there are no suitable indexes.
+func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (string, []sql.Index, error) {
+	var attributeSource string
+	var indexableTable sql.IndexAddressableTable
+	var ok bool
+	switch n := rel.(type) {
+	case *tableAlias:
+		attributeSource = strings.ToLower(n.table.Name())
+		rt, ok := n.table.Child.(*plan.ResolvedTable)
+		if !ok {
+			return "", nil, nil
+		}
+		table := rt.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		indexableTable, ok = table.(sql.IndexAddressableTable)
+		if !ok {
+			return "", nil, nil
+		}
+		aliases.add(n.table, indexableTable)
+	case *tableScan:
+		attributeSource = strings.ToLower(n.table.Name())
+		table := n.table.Table
+		if w, ok := table.(sql.TableWrapper); ok {
+			table = w.Underlying()
+		}
+		indexableTable, ok = table.(sql.IndexAddressableTable)
+		if !ok {
+			return "", nil, nil
+		}
+	default:
+		return "", nil, nil
+	}
+	indexes, err := indexableTable.GetIndexes(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	return attributeSource, indexes, nil
 }
 
 // dfsExprGroup runs a callback |cb| on all execution plans in the memo expression
@@ -334,9 +402,9 @@ func collectJoinConds(attributeSource string, filters ...sql.Expression) []*join
 		// ex: (b.i = c.i 	+ 1) cannot use a c.i lookup without converting the
 		// expression to (b.i - 1 = c.i), so that (b.i - 1) is a proper lookup
 		// key
-		if _, ok := l.colExpr.(*expression.GetField); ok && l.col.Table() == attributeSource {
+		if _, ok := l.colExpr.(*expression.GetField); ok && strings.ToLower(l.col.Table()) == attributeSource {
 			conds = append(conds, l)
-		} else if _, ok := r.colExpr.(*expression.GetField); ok && r.col.Table() == attributeSource {
+		} else if _, ok := r.colExpr.(*expression.GetField); ok && strings.ToLower(r.col.Table()) == attributeSource {
 			conds = append(conds, r)
 		} else {
 			outer = append(outer, filters[i])
@@ -368,7 +436,7 @@ IndexExpressions:
 	for i := 0; i < count; i++ {
 		for j, col := range joinColExprs {
 			// check same column name
-			if idxExprs[i] == normalizeExpression(tableAliases, col.col).String() {
+			if strings.ToLower(idxExprs[i]) == strings.ToLower(normalizeExpression(tableAliases, col.col).String()) {
 				// get field into left table
 				keyExprs[i] = joinColExprs[j].comparand
 				nullmask[i] = joinColExprs[j].matchnull
@@ -562,52 +630,19 @@ func findSortedIndexScanForRel(
 	joinFilters []sql.Expression,
 	aliases TableAliases,
 ) (*indexScan, error) {
-	var attributeSource string
-	var indexableTable sql.IndexAddressableTable
-	var ok bool
-	switch n := rel.(type) {
-	case *tableAlias:
-		attributeSource = strings.ToLower(n.table.Name())
-		rt, ok := n.table.Child.(*plan.ResolvedTable)
-		if !ok {
-			return nil, nil
-		}
-		table := rt.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
-		indexableTable, ok = table.(sql.IndexAddressableTable)
-		if !ok {
-			return nil, nil
-		}
-		aliases.add(n.table, indexableTable)
-	case *tableScan:
-		attributeSource = strings.ToLower(n.table.Name())
-		table := n.table.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
-		indexableTable, ok = table.(sql.IndexAddressableTable)
-		if !ok {
-			return nil, nil
-		}
-	default:
-		return nil, nil
-	}
-
-	indexes, err := indexableTable.GetIndexes(ctx)
+	attrSource, indexes, err := lookupCandidates(ctx, rel, aliases)
 	if err != nil {
 		return nil, err
 	}
 
-	conds := collectJoinConds(attributeSource, joinFilters...)
+	conds := collectJoinConds(attrSource, joinFilters...)
 	for _, idx := range indexes {
 		keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
 		if len(keyExprs) == 0 {
 			continue
 		}
 		return &indexScan{
-			source: attributeSource,
+			source: attrSource,
 			idx:    idx,
 		}, nil
 	}

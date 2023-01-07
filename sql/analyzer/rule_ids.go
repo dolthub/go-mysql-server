@@ -47,6 +47,7 @@ const (
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePrivilegesId                        // validatePrivileges
 	reresolveTablesId                           // reresolveTables
+	transformJoinApplyId                        // transformJoinApply
 	setInsertColumnsId                          // setInsertColumns
 	validateJoinComplexityId                    // validateJoinComplexity
 
@@ -88,7 +89,6 @@ const (
 	optimizeJoinsId               // optimizeJoins
 	pushdownFiltersId             // pushdownFilters
 	subqueryIndexesId             // subqueryIndexes
-	inSubqueryIndexesId           // inSubqueryIndexes
 	pruneTablesId                 // pruneTables
 	setJoinScopeLenId             // setJoinScopeLen
 	eraseProjectionId             // eraseProjection
