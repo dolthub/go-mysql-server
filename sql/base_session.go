@@ -133,12 +133,11 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	if !sysVar.Var.Dynamic {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
-	return s.setSessVar(ctx, sysVar.Var, sysVarName, value)
+	return s.setSessVar(ctx, sysVar.Var, value)
 }
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
 func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	sysVarName = strings.ToLower(sysVarName)
 	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
@@ -149,13 +148,12 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
 
-	return s.setSessVar(ctx, sysVar, sysVarName, value)
+	return s.setSessVar(ctx, sysVar, value)
 }
 
-// TODO NEXT: need to make sure that all sys var names are case-lowered at all access points
-func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName string, value interface{}) error {
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}) error {
 	if sysVar.Scope == SystemVariableScope_Global {
-		return ErrSystemVariableGlobalOnly.New(sysVarName)
+		return ErrSystemVariableGlobalOnly.New(sysVar.Name)
 	}
 	convertedVal, err := sysVar.Type.Convert(value)
 	if err != nil {
