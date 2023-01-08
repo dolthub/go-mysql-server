@@ -543,6 +543,9 @@ var (
 	// ErrDiffSRIDs is thrown when comparing two spatial types that have different SRIDs when they should be the same
 	ErrDiffSRIDs = errors.NewKind("binary geometry function %s given two geometries of different srids: %v and %v, which should have been identical")
 
+	// ErrUnsupportedSRID is thrown for spatial functions over unsupported SRIDs
+	ErrUnsupportedSRID = errors.NewKind("SRID %v has not been implemented for geographic spatial reference systems.")
+
 	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
 	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
 
