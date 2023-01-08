@@ -66,14 +66,6 @@ func (w *Within) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return NewWithin(children[0], children[1]), nil
 }
 
-// TODO: move/organize helper methods to somewhere else, many of these are other st_... functions
-
-func calcDist(a, b sql.Point) float64 {
-	dx := b.X - a.X
-	dy := b.Y - a.Y
-	return math.Sqrt(dx*dx + dy*dy)
-}
-
 // given 3 collinear points, check if they are intersecting
 func collinearIntersect(a, b, c sql.Point) bool {
 	return c.X > math.Min(a.X, b.X) && c.X < math.Max(a.X, b.X) && c.Y > math.Min(a.Y, b.Y) && c.Y < math.Max(a.Y, b.Y)
@@ -127,25 +119,8 @@ func linesIntersect(a, b, c, d sql.Point) bool {
 
 // TODO: many of these functions are used in rasterization, so they can be parallelized
 
-// calcSlope calculates the slope of line ab, does not handle divide by 0
-func calcSlope(a, b sql.Point) float64 {
-	return (b.Y - a.Y) / (b.X - a.X)
-}
-
-func startPoint(l sql.LineString) sql.Point {
-	return l.Points[0]
-}
-
-func endPoint(l sql.LineString) sql.Point {
-	return l.Points[len(l.Points)-1]
-}
-
 func pointsEqual(a, b sql.Point) bool {
 	return a.X == b.X && a.Y == b.Y
-}
-
-func isClosed(l sql.LineString) bool {
-	return pointsEqual(startPoint(l), endPoint(l))
 }
 
 func isInBBox(a, b, c sql.Point) bool {
@@ -161,8 +136,7 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	case sql.Point:
 		return pointsEqual(p, g)
 	case sql.LineString:
-
-		// closed LineStrings technically don't have terminal points, and terminal points are not within linestring
+		// closed LineStrings technically don't contain their terminal points, and terminal points are not within linestring
 		if !isClosed(g) && (pointsEqual(p, startPoint(g)) || pointsEqual(p, endPoint(g))) {
 			return false
 		}
@@ -183,6 +157,11 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		// TODO: a simpler, but possible more compute intensive option is to sum angles, and check if equal to 2pi
 		// Draw a horizontal ray starting at p to infinity, and count number of line segments it intersects.
 		// Handle special edge cases for crossing with vertexes.
+		for _, line := range g.Lines {
+			if isPointWithin(p, line) {
+				return false
+			}
+		}
 		numInters := 0
 		outerLine := g.Lines[0]
 		for i := 0; i < len(outerLine.Points)-1; i++ {
@@ -234,41 +213,10 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	}
 }
 
-// flattenGeomtry recursively "flattens" the geometry value into a map of its points
-func flattenGeomtry(g sql.GeometryValue, points map[sql.Point]bool) {
-	switch g := g.(type) {
-	case sql.Point:
-		points[g] = true
-	case sql.LineString:
-		for _, p := range g.Points {
-			flattenGeomtry(p, points)
-		}
-	case sql.Polygon:
-		for _, l := range g.Lines {
-			flattenGeomtry(l, points)
-		}
-	case sql.MultiPoint:
-		for _, p := range g.Points {
-			flattenGeomtry(p, points)
-		}
-	case sql.MultiLineString:
-		for _, l := range g.Lines {
-			flattenGeomtry(l, points)
-		}
-	case sql.MultiPolygon:
-		for _, p := range g.Polygons {
-			flattenGeomtry(p, points)
-		}
-	case sql.GeomColl:
-		for _, gg := range g.Geoms {
-			flattenGeomtry(gg, points)
-		}
-	}
-}
-
 func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
+		g=g
 		return false
 	case sql.LineString:
 		return false
