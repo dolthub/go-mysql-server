@@ -184,7 +184,7 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		// TODO: a simpler, but possible more compute intensive option is to sum angles, and check if equal to 2pi
 		// Points on the Polygon Boundary are not considered part of the Polygon
 		for _, line := range g.Lines {
-			if isPointWithin(p, line) {
+			if isPointWithin(p, line){
 				return false
 			}
 		}
@@ -230,7 +230,7 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	case sql.GeomColl:
 		// Point is considered within GeometryCollection if it is within at least one Geometry
 		for _, gg := range g.Geoms {
-			if isPointWithin(p, gg) {
+			if isPointWithin(p, gg){
 				return true
 			}
 		}
@@ -252,13 +252,20 @@ func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 	}
 }
 
+// countConcreteGeomes recursively counts all the GeomTypes that are not GeomColl inside a GeomColl
+func countConcreteGeoms(gc sql.GeomColl) int {
+	count := 0
+	for _, g := range gc.Geoms {
+		if innerGC, ok := g.(sql.GeomColl); ok {
+			count += countConcreteGeoms(innerGC)
+		}
+		count++
+	}
+	return count
+}
+
 // want to verify that all points of g1 are within g2
 func isWithin(g1, g2 sql.GeometryValue) bool {
-	// TODO: implement a bunch of combination of comparisons
-	// TODO: point v point easy
-	// TODO: point v linestring somewhat easy
-	// TODO: point v polygon somewhat easy
-	// TODO: come up with some generalization...might not be possible :/
 	// TODO: g1.GetGeomType() < g2.GetGeomType() except for the case of geometrycollection
 	switch g1 := g1.(type) {
 	case sql.Point:
@@ -266,6 +273,7 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 	case sql.LineString:
 		return false
 	case sql.MultiPoint:
+		// A MultiPoint is considered within g2 if all points are within g2
 		checked := map[sql.Point]bool{}
 		for _, p := range g1.Points {
 			if checked[p] {
@@ -273,6 +281,14 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 			}
 			checked[p] = true
 			if !isPointWithin(p, g2) {
+				return false
+			}
+		}
+		return true
+	case sql.GeomColl:
+		// A GeomColl is within g2 if all geometries are within g2
+		for _, g := range g1.Geoms {
+			if !isWithin(g, g2) {
 				return false
 			}
 		}
@@ -322,6 +338,14 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if geom1.GetSRID() != geom2.GetSRID() {
 		return nil, sql.ErrDiffSRIDs.New(w.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
+	}
+
+	// Empty GeomColls return nil
+	if gc, ok := geom1.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
+		return nil, nil
+	}
+	if gc, ok := geom2.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
+		return nil, nil
 	}
 
 	return isWithin(geom1, geom2), nil
