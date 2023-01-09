@@ -17,11 +17,10 @@ package plan
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"io"
 	"sync"
 	"sync/atomic"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // cachedResultsGlobalCache manages the caches created by CachedResults nodes.
@@ -85,10 +84,7 @@ func (n *CachedResults) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error
 	} else if n.noCache {
 		return n.UnaryNode.Child.RowIter(ctx, r)
 	} else if n.finalized {
-		// Parents of CachedResults should handle the edge case
-		// where the cache is empty, and we return ErrEmptyCachedResult
-		// instead of performing a potentially expensive re-computation.
-		return nil, ErrEmptyCachedResult
+		return emptyIter, nil
 	}
 
 	ci, err := n.UnaryNode.Child.RowIter(ctx, r)
@@ -184,6 +180,20 @@ func (i *cachedResultsIter) Close(ctx *sql.Context) error {
 	i.cleanUp()
 	return i.iter.Close(ctx)
 }
+
+var emptyIter = &emptyCacheIter{}
+
+func isEmptyIter(i sql.RowIter) bool {
+	return i == emptyIter
+}
+
+type emptyCacheIter struct{}
+
+var _ sql.RowIter = (*emptyCacheIter)(nil)
+
+func (i *emptyCacheIter) Next(ctx *sql.Context) (sql.Row, error) { return nil, io.EOF }
+
+func (i *emptyCacheIter) Close(ctx *sql.Context) error { return nil }
 
 // cachedResultsManager manages the saved results collected by CachedResults nodes. It is necessary to do this outside
 // of the CachedResult node instances themselves, since executing a query plan can make transient transforms that are

@@ -295,6 +295,27 @@ order by 1;`,
 			},
 		},
 	},
+	{
+		name: "empty join tests",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+			"CREATE table uv (u int primary key, v int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+		},
+		tests: []JoinOpTest{
+			{
+				q:     "select * from xy where y-1 = (select u from uv limit 1 offset 5);",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{},
+			},
+			{
+				q:     "select * from xy where x != (select u from uv limit 1 offset 5);",
+				types: []plan.JoinType{plan.JoinTypeAnti},
+				exp:   []sql.Row{},
+			},
+		},
+	},
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
