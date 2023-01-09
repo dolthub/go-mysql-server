@@ -144,7 +144,7 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	}
 
 	val, ok := s.systemVars[sysVar.Name]
-	if ok && val != sysVar.Default {
+	if ok && val.Val != sysVar.Default {
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
 
