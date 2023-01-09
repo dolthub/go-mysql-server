@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// Distance is a function that returns the Area of a Polygon
+// Distance is a function that returns the shortest distance between two geometries
 type Distance struct {
 	expression.NaryExpression
 }
