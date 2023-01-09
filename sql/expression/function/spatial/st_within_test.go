@@ -360,19 +360,19 @@ func TestWithin(t *testing.T) {
 		require.NoError(err)
 		require.Equal(true, v)
 
-		//// passes through vertex a2 and segment a1b1
-		//p2 := sql.Point{X: -1, Y: 2}
-		//f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
-		//v, err = f.Eval(sql.NewEmptyContext(), nil)
-		//require.NoError(err)
-		//require.Equal(true, v)
-		//
-		//// passes through vertex c2 and segment b1c1
-		//p3 := sql.Point{X: -1, Y: -2}
-		//f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
-		//v, err = f.Eval(sql.NewEmptyContext(), nil)
-		//require.NoError(err)
-		//require.Equal(true, v)
+		// passes through vertex a2 and segment a1b1
+		p2 := sql.Point{X: -1, Y: 2}
+		f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		// passes through vertex c2 and segment b1c1
+		p3 := sql.Point{X: -1, Y: -2}
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
 	})
 
 	// Point vs MultiPoint
@@ -466,6 +466,29 @@ func TestWithin(t *testing.T) {
 	})
 
 	// Point vs MultiPolygon
+	t.Run("points not within multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+
+		a1 := sql.Point{X: 4, Y: 4}
+		b1 := sql.Point{X: 4, Y: -4}
+		c1 := sql.Point{X: -4, Y: -4}
+		d1 := sql.Point{X: -4, Y: 4}
+
+		a2 := sql.Point{X: 2, Y: 2}
+		b2 := sql.Point{X: 2, Y: -2}
+		c2 := sql.Point{X: -2, Y: -2}
+		d2 := sql.Point{X: -2, Y: 2}
+
+		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
+		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
+		mp := sql.MultiPolygon{Polygons: []sql.Polygon{{Lines: []sql.LineString{l1}}, {Lines: []sql.LineString{l2}}}}
+
+		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(mp, sql.MultiPointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Point vs GeometryCollection
 
