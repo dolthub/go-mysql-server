@@ -127,9 +127,22 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
+	
+	// Since we initialized the system variables in this session at session start time, any variables that were added since that time 
+	// will need to be added dynamically here.
+	// TODO: fix this with proper session lifecycle management
 	if !ok {
-		return ErrUnknownSystemVariable.New(sysVarName)
+		if SystemVariables != nil {
+			sv, _, ok := SystemVariables.GetGlobal(sysVarName)
+			if !ok {
+				return ErrUnknownSystemVariable.New(sysVarName)
+			}
+			return s.setSessVar(ctx, sv, value)
+		} else {
+			return ErrUnknownSystemVariable.New(sysVarName)
+		}
 	}
+	
 	if !sysVar.Var.Dynamic {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
