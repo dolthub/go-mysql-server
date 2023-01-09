@@ -173,9 +173,9 @@ func TestResolveColumnsSession(t *testing.T) {
 	expected := plan.NewProject(
 		[]sql.Expression{
 			expression.NewUserVarWithType("foo_bar", fooBarType),
-			expression.NewUserVar("bar_baz"),
+			expression.NewUserVarWithType("bar_baz", nil),
 			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
-			expression.NewUserVar("myvar"),
+			expression.NewUserVarWithType("myvar", nil),
 		},
 		plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 	)
