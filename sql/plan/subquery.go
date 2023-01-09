@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -266,13 +267,16 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 }
 
 func NewMax1Row(n sql.Node) *Max1RowSubquery {
-	return &Max1RowSubquery{Child: n}
+	return &Max1RowSubquery{Child: n, mu: &sync.Mutex{}}
 }
 
 // Max1RowSubquery throws a runtime error if its child (usually subquery) tries
 // to return more than one row.
 type Max1RowSubquery struct {
-	Child sql.Node
+	Child       sql.Node
+	result      sql.Row
+	mu          *sync.Mutex
+	emptyResult bool
 }
 
 var _ sql.Node = (*Max1RowSubquery)(nil)
@@ -320,11 +324,55 @@ func (m *Max1RowSubquery) DebugString() string {
 }
 
 func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if !m.hasResults() {
+		err := m.populateResults(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	switch {
+	case m.emptyResult:
+		return emptyIter, nil
+	case m.result != nil:
+		return sql.RowsToRowIter(m.result), nil
+	default:
+		return nil, fmt.Errorf("Max1Row failed to load results")
+	}
+}
+
+// populateResults loads and stores the state of its child iter:
+// 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
+// returned
+func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
 	i, err := m.Child.RowIter(ctx, row)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &max1RowIter{i: i}, nil
+	r1, err := i.Next(ctx)
+	if errors.Is(err, io.EOF) {
+		m.emptyResult = true
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	_, err = i.Next(ctx)
+	if err == nil {
+		return sql.ErrExpectedSingleRow.New()
+	} else if !errors.Is(err, io.EOF) {
+		return err
+	}
+	m.result = r1
+	return nil
+}
+
+// hasResults returns true after a successful call to populateResults()
+func (m *Max1RowSubquery) hasResults() bool {
+	return m.result != nil || m.emptyResult
 }
 
 func (m *Max1RowSubquery) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -339,29 +387,6 @@ func (m *Max1RowSubquery) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (m *Max1RowSubquery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return m.Child.CheckPrivileges(ctx, opChecker)
-}
-
-type max1RowIter struct {
-	i          sql.RowIter
-	seenOneRow bool
-}
-
-var _ sql.RowIter = (*max1RowIter)(nil)
-
-func (m *max1RowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	row, err := m.i.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if m.seenOneRow {
-		return nil, sql.ErrExpectedSingleRow.New()
-	}
-	m.seenOneRow = true
-	return row, nil
-}
-
-func (m *max1RowIter) Close(ctx *sql.Context) error {
-	return m.i.Close(ctx)
 }
 
 // EvalMultiple returns all rows returned by a subquery.
