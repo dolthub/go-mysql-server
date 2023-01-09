@@ -229,7 +229,7 @@ func (iter *callIter) Close(ctx *sql.Context) error {
 				return err
 			}
 
-			typ := iter.call.pRef.GetVariableType(i)
+			typ := iter.call.pRef.GetVariableType(param.Name)
 
 			switch callParam := iter.call.Params[i].(type) {
 			case *expression.UserVar:
@@ -251,7 +251,7 @@ func (iter *callIter) Close(ctx *sql.Context) error {
 			// If the var had a value before the call then it is basically removed.
 			switch callParam := iter.call.Params[i].(type) {
 			case *expression.UserVar:
-				err = ctx.SetUserVariable(ctx, callParam.Name, nil, iter.call.pRef.GetVariableType(i))
+				err = ctx.SetUserVariable(ctx, callParam.Name, nil, iter.call.pRef.GetVariableType(param.Name))
 				if err != nil {
 					return err
 				}
