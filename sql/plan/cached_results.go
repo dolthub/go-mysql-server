@@ -17,10 +17,11 @@ package plan
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
 	"sync"
 	"sync/atomic"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // cachedResultsGlobalCache manages the caches created by CachedResults nodes.
