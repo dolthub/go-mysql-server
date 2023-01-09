@@ -136,7 +136,7 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	case sql.Point:
 		return pointsEqual(p, g)
 	case sql.LineString:
-		// closed LineStrings technically don't contain their terminal points, and terminal points are not within linestring
+		// closed LineStrings contain their terminal points, and terminal points are not within linestring
 		if !isClosed(g) && (pointsEqual(p, startPoint(g)) || pointsEqual(p, endPoint(g))) {
 			return false
 		}
@@ -162,6 +162,8 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				return false
 			}
 		}
+		// TODO: check holes in polygon
+		// TODO: combine all linestrings into one?
 		numInters := 0
 		outerLine := g.Lines[0]
 		for i := 0; i < len(outerLine.Points)-1; i++ {
@@ -172,23 +174,16 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				continue
 			}
 			// p is either above or below line segment, will never intersect
+			// we use >, but not >= for Max, because of vertex intersections
 			if p.Y <= math.Min(a.Y, b.Y) || p.Y > math.Max(a.Y, b.Y) {
 				continue
 			}
 			// p is to the right of entire line segment, will never intersect
-			if p.X > math.Max(a.X, b.X) {
-				continue
-			}
-			// check intersection
-			// TODO: something ain't adding up; this is very similar to orientation, but not quite
-			if a.X != b.X && (p.Y-a.Y)*(b.X-a.X)-(p.X-a.X)*(b.Y-a.Y) > 0 {
+			if p.X >= math.Max(a.X, b.X) {
 				continue
 			}
 			numInters += 1
 		}
-
-		// TODO: check holes in polygon
-		// TODO: points on boundary are NOT within polygon
 		return numInters%2 == 1
 	case sql.MultiPoint:
 		for _, pp := range g.Points {

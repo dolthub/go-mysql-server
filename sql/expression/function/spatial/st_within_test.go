@@ -187,6 +187,30 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
+	t.Run("point not within polygon intersects vertex", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{X: -0.5, Y: 1}
+		p2 := sql.Point{X: -2, Y: 0}
+		p3 := sql.Point{X: -0.5, Y: -1}
+		a := sql.Point{X: -1, Y: 0}
+		b := sql.Point{X: 0, Y: 1}
+		c := sql.Point{X: 1, Y: 0}
+		d := sql.Point{X: 0, Y: -1}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
+		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+		f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
 	// Point vs MultiPoint
 	t.Run("points within multipoint", func(t *testing.T) {
 		require := require.New(t)
