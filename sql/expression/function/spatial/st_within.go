@@ -198,6 +198,17 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		}
 		return false
 	case sql.MultiLineString:
+		// if it's any of the terminal points it's not in it anymore??
+		for _, line := range g.Lines {
+			// closed LineStrings contain their terminal points, and terminal points are not within linestring
+			if !isClosed(line) && (pointsEqual(p, startPoint(line)) || pointsEqual(p, endPoint(line))) {
+				return false
+			}
+			if !isPointWithin(p, line) {
+				continue
+			}
+			return true
+		}
 		return false
 	case sql.MultiPolygon:
 		return false

@@ -417,10 +417,138 @@ func TestWithin(t *testing.T) {
 	})
 
 	// Point vs MultiLineString
+	t.Run("points within multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{X: -1, Y: -1}
+		p2 := sql.Point{X: 1, Y: 1}
+		p3 := sql.Point{X: 123, Y: 456}
+		l1 := sql.LineString{Points: []sql.Point{p1, p2}}
+		l2 := sql.LineString{Points: []sql.Point{p3, p3}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l1, l2}}
+
+		var f sql.Expression
+		var v interface{}
+		var err error
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(ml, sql.MultiPointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		p := sql.Point{X: 0, Y: 0}
+		f = NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(ml, sql.MultiPointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("points not within multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{X: -1, Y: -1}
+		p2 := sql.Point{X: 1, Y: 1}
+		p3 := sql.Point{X: 123, Y: 456}
+		l1 := sql.LineString{Points: []sql.Point{p1, p2}}
+		l2 := sql.LineString{Points: []sql.Point{p3, p3}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l1, l2}}
+
+		var f sql.Expression
+		var v interface{}
+		var err error
+		f = NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(ml, sql.MultiPointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		p := sql.Point{X: 100, Y: 1000}
+		f = NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(ml, sql.MultiPointType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Point vs MultiPolygon
 
 	// Point vs GeometryCollection
 
 	// LineString vs LineString
+
+	// LineString vs Polygon
+
+	// LineString vs MultiPoint
+
+	// LineString vs MultiLineString
+
+	// LineString vs MultiPolygon
+
+	// LineString vs GeometryCollection
+
+	// Polygon vs Point
+
+	// Polygon vs LineString
+
+	// Polygon vs Polygon
+
+	// Polygon vs MultiPoint
+
+	// Polygon vs MultiLineString
+
+	// Polygon vs MultiPolygon
+
+	// Polygon vs GeometryCollection
+
+	// MultiPoint vs Point
+
+	// MultiPoint vs LineString
+
+	// MultiPoint vs Polygon
+
+	// MultiPoint vs MultiPoint
+
+	// MultiPoint vs MultiLineString
+
+	// MultiPoint vs MultiPolygon
+
+	// MultiPoint vs GeometryCollection
+
+	// MultiLineString vs Point
+
+	// MultiLineString vs LineString
+
+	// MultiLineString vs Polygon
+
+	// MultiLineString vs MultiPoint
+
+	// MultiLineString vs MultiLineString
+
+	// MultiLineString vs MultiPolygon
+
+	// MultiLineString vs GeometryCollection
+
+	// MultiPolygon vs Point
+
+	// MultiPolygon vs LineString
+
+	// MultiPolygon vs Polygon
+
+	// MultiPolygon vs MultiPoint
+
+	// MultiPolygon vs MultiLineString
+
+	// MultiPolygon vs MultiPolygon
+
+	// MultiPolygon vs GeometryCollection
+
+	// GeometryCollection vs Point
+
+	// GeometryCollection vs LineString
+
+	// GeometryCollection vs Polygon
+
+	// GeometryCollection vs MultiPoint
+
+	// GeometryCollection vs MultiLineString
+
+	// GeometryCollection vs MultiPolygon
+
+	// GeometryCollection vs GeometryCollection
+
 }
