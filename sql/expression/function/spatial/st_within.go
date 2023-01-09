@@ -192,14 +192,12 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		if !isPointWithinClosedLineString(p, outerLine) {
 			return false
 		}
-
 		// Points in the holes of Polygon are outside of Polygon
 		for i := 1; i < len(g.Lines); i++ {
 			if isPointWithinClosedLineString(p, g.Lines[i]) {
 				return false
 			}
 		}
-
 		return true
 	case sql.MultiPoint:
 		// Point is considered within MultiPoint if it is within at least one Point
