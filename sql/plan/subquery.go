@@ -325,7 +325,7 @@ func (m *Max1RowSubquery) DebugString() string {
 func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if !m.hasResults() {
 		err := m.populateResults(ctx, row)
 		if err != nil {
@@ -339,10 +339,13 @@ func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	case m.result != nil:
 		return sql.RowsToRowIter(m.result), nil
 	default:
-		return nil, fmt.Errorf("failed to load Max1Row")
+		return nil, fmt.Errorf("Max1Row failed to load results")
 	}
 }
 
+// populateResults loads and stores the state of its child iter:
+// 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
+// returned
 func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
 	i, err := m.Child.RowIter(ctx, row)
 	if err != nil {
@@ -351,6 +354,7 @@ func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
 	r1, err := i.Next(ctx)
 	if errors.Is(err, io.EOF) {
 		m.emptyResult = true
+		return nil
 	} else if err != nil {
 		return err
 	}
@@ -365,6 +369,7 @@ func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
+// hasResults returns true after a successful call to populateResults()
 func (m *Max1RowSubquery) hasResults() bool {
 	return m.result != nil || m.emptyResult
 }
