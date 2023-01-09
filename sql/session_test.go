@@ -22,33 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInitReadonlySessionVariable(t *testing.T) {
-	const readonlyVariable = "external_user"
-	const variableValue = "aoeu"
-
-	require := require.New(t)
-	ctx := NewEmptyContext()
-	sess := NewBaseSessionWithClientServer("foo", Client{Address: "baz", User: "bar"}, 1)
-
-	err := sess.SetSessionVariable(ctx, readonlyVariable, variableValue)
-	require.Error(err)
-
-	val, err := sess.GetSessionVariable(ctx, readonlyVariable)
-	require.NoError(err)
-	require.NotEqual(variableValue, val.(string))
-
-	err = sess.InitSessionVariable(ctx, readonlyVariable, variableValue)
-	require.NoError(err)
-
-	val, err = sess.GetSessionVariable(ctx, readonlyVariable)
-	require.NoError(err)
-	require.Equal(variableValue, val.(string))
-
-	err = sess.InitSessionVariable(ctx, readonlyVariable, variableValue)
-	require.Error(err)
-	require.True(ErrSystemVariableReinitialized.Is(err))
-}
-
 type testNode struct{}
 
 func (*testNode) Resolved() bool {

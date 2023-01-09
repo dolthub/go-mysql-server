@@ -16,12 +16,15 @@ package enginetest_test
 
 import (
 	"context"
+	sql2 "database/sql"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
@@ -799,4 +802,73 @@ func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunct
 	}
 
 	return nil, sql.ErrTableFunctionNotFound.New(name)
+}
+
+func TestTimestampBindingsCanBeConverted(t *testing.T) {
+	db, close := newDatabase()
+	defer close()
+
+	_, err := db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
+	require.NoError(t, err)
+
+	// All we are doing in this test is ensuring that writing a timestamp to the
+	// database does not throw an error.
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", time.Now())
+	require.NoError(t, err)
+}
+
+func TestTimestampBindingsCanBeCompared(t *testing.T) {
+	db, close := newDatabase()
+	defer close()
+
+	_, err := db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
+	require.NoError(t, err)
+
+	// We'll insert both of these timestamps and then try and filter them.
+	t0 := time.Date(2022, 01, 01, 0, 0, 0, 0, time.UTC)
+	t1 := t0.Add(1 * time.Minute)
+
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", t0)
+	require.NoError(t, err)
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", t1)
+	require.NoError(t, err)
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(1) FROM mytable WHERE t > ?", t0).Scan(&count)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+}
+
+func newDatabase() (*sql2.DB, func()) {
+	// Grab an empty port so that tests do not fail if a specific port is already in use
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err = listener.Close(); err != nil {
+		panic(err)
+	}
+
+	provider := sql.NewDatabaseProvider(
+		memory.NewDatabase("mydb"),
+	)
+	engine := sqle.New(analyzer.NewDefault(provider), &sqle.Config{
+		IncludeRootAccount: true,
+	})
+	cfg := server.Config{
+		Protocol: "tcp",
+		Address:  fmt.Sprintf("localhost:%d", port),
+	}
+	srv, err := server.NewDefaultServer(cfg, engine)
+	if err != nil {
+		panic(err)
+	}
+	go srv.Start()
+
+	db, err := sql2.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/mydb", port))
+	if err != nil {
+		panic(err)
+	}
+	return db, func() { srv.Close() }
 }

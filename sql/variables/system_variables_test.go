@@ -110,3 +110,30 @@ func TestHasDefaultValue(t *testing.T) {
 	require.False(sql.HasDefaultValue(ctx, sess, "auto_increment_increment"))
 	require.True(sql.HasDefaultValue(ctx, sess, "non_existing_key")) // Returns true for non-existent keys
 }
+
+func TestInitReadonlySessionVariable(t *testing.T) {
+	const readonlyVariable = "external_user"
+	const variableValue = "aoeu"
+
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+	sess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz", User: "bar"}, 1)
+
+	err := sess.SetSessionVariable(ctx, readonlyVariable, variableValue)
+	require.Error(err)
+
+	val, err := sess.GetSessionVariable(ctx, readonlyVariable)
+	require.NoError(err)
+	require.NotEqual(variableValue, val.(string))
+
+	err = sess.InitSessionVariable(ctx, readonlyVariable, variableValue)
+	require.NoError(err)
+
+	val, err = sess.GetSessionVariable(ctx, readonlyVariable)
+	require.NoError(err)
+	require.Equal(variableValue, val.(string))
+
+	err = sess.InitSessionVariable(ctx, readonlyVariable, variableValue)
+	require.Error(err)
+	require.True(sql.ErrSystemVariableReinitialized.Is(err))
+}
