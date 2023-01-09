@@ -33,24 +33,23 @@ var PlanTests = []QueryPlanTest{
 			"     │   ├─ mytable.i:1!null\n" +
 			"     │   └─ applySubq0.i2:0!null\n" +
 			"     ├─ Max1Row\n" +
-			"     │   └─ CachedResults\n" +
-			"     │       └─ SubqueryAlias\n" +
-			"     │           ├─ name: applySubq0\n" +
-			"     │           ├─ outerVisibility: false\n" +
-			"     │           ├─ cacheable: true\n" +
-			"     │           └─ Project\n" +
-			"     │               ├─ columns: [othertable.i2:1!null]\n" +
-			"     │               └─ Filter\n" +
-			"     │                   ├─ Eq\n" +
-			"     │                   │   ├─ othertable.s2:0!null\n" +
-			"     │                   │   └─ second (longtext)\n" +
-			"     │                   └─ IndexedTableAccess\n" +
-			"     │                       ├─ index: [othertable.s2]\n" +
-			"     │                       ├─ static: [{[second, second]}]\n" +
-			"     │                       ├─ columns: [s2 i2]\n" +
-			"     │                       └─ Table\n" +
-			"     │                           ├─ name: othertable\n" +
-			"     │                           └─ projections: [0 1]\n" +
+			"     │   └─ SubqueryAlias\n" +
+			"     │       ├─ name: applySubq0\n" +
+			"     │       ├─ outerVisibility: false\n" +
+			"     │       ├─ cacheable: true\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [othertable.i2:1!null]\n" +
+			"     │           └─ Filter\n" +
+			"     │               ├─ Eq\n" +
+			"     │               │   ├─ othertable.s2:0!null\n" +
+			"     │               │   └─ second (longtext)\n" +
+			"     │               └─ IndexedTableAccess\n" +
+			"     │                   ├─ index: [othertable.s2]\n" +
+			"     │                   ├─ static: [{[second, second]}]\n" +
+			"     │                   ├─ columns: [s2 i2]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: othertable\n" +
+			"     │                       └─ projections: [0 1]\n" +
 			"     └─ IndexedTableAccess\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         └─ Table\n" +
@@ -3420,15 +3419,14 @@ inner join pq on true
 			" │   ├─ mytable.i:1!null\n" +
 			" │   └─ applySubq0.i2:0!null\n" +
 			" ├─ Max1Row\n" +
-			" │   └─ CachedResults\n" +
-			" │       └─ SubqueryAlias\n" +
-			" │           ├─ name: applySubq0\n" +
-			" │           ├─ outerVisibility: false\n" +
-			" │           ├─ cacheable: true\n" +
-			" │           └─ Limit(1)\n" +
-			" │               └─ Table\n" +
-			" │                   ├─ name: othertable\n" +
-			" │                   └─ columns: [i2]\n" +
+			" │   └─ SubqueryAlias\n" +
+			" │       ├─ name: applySubq0\n" +
+			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       └─ Limit(1)\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: othertable\n" +
+			" │               └─ columns: [i2]\n" +
 			" └─ IndexedTableAccess\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     └─ Table\n" +

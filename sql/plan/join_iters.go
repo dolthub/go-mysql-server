@@ -97,7 +97,9 @@ func (i *joinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		if isEmptyIter(rowIter) {
+			return nil, ErrEmptyCachedResult
+		}
 		i.secondary = rowIter
 	}
 
@@ -260,6 +262,10 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
+		if isEmptyIter(rIter) {
+			return nil, io.EOF
+		}
+
 		for {
 			right, err := rIter.Next(ctx)
 			if err != nil {
