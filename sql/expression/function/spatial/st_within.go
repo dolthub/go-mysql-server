@@ -140,7 +140,6 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		if !isClosed(g) && (pointsEqual(p, startPoint(g)) || pointsEqual(p, endPoint(g))) {
 			return false
 		}
-
 		// alternatively, we could calculate if dist(ap) + dist(ab) == dist(ap)
 		for i := 1; i < len(g.Points); i++ {
 			a, b := g.Points[i-1], g.Points[i]
@@ -163,27 +162,33 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 			}
 		}
 		// TODO: check holes in polygon
-		// TODO: combine all linestrings into one?
+		// TODO: combine all linestrings into one map?
 		numInters := 0
-		outerLine := g.Lines[0]
-		for i := 0; i < len(outerLine.Points)-1; i++ {
-			a := outerLine.Points[i]
-			b := outerLine.Points[i+1]
-			// ignore horizontal line segments
-			if a.Y == b.Y {
-				continue
+		for _, line := range g.Lines {
+			for i := 1; i < len(line.Points); i++ {
+				a := line.Points[i-1]
+				b := line.Points[i]
+				// ignore horizontal line segments
+				if a.Y == b.Y {
+					continue
+				}
+				// p is either above or below line segment, will never intersect
+				// we use >, but not >= for max, because of vertex intersections
+				if p.Y <= math.Min(a.Y, b.Y) || p.Y > math.Max(a.Y, b.Y) {
+					continue
+				}
+				// p is to the right of entire line segment, will never intersect
+				if p.X >= math.Max(a.X, b.X) {
+					continue
+				}
+				q := sql.Point{X: math.Max(a.X, b.X), Y: p.Y}
+				if !linesIntersect(a, b, p, q) {
+					continue
+				}
+				numInters += 1
 			}
-			// p is either above or below line segment, will never intersect
-			// we use >, but not >= for Max, because of vertex intersections
-			if p.Y <= math.Min(a.Y, b.Y) || p.Y > math.Max(a.Y, b.Y) {
-				continue
-			}
-			// p is to the right of entire line segment, will never intersect
-			if p.X >= math.Max(a.X, b.X) {
-				continue
-			}
-			numInters += 1
 		}
+
 		return numInters%2 == 1
 	case sql.MultiPoint:
 		for _, pp := range g.Points {

@@ -158,6 +158,84 @@ func TestWithin(t *testing.T) {
 		require.Equal(true, v)
 	})
 
+	t.Run("point within polygon (square) with hole", func(t *testing.T) {
+		require := require.New(t)
+
+		a1 := sql.Point{X: 4, Y: 4}
+		b1 := sql.Point{X: 4, Y: -4}
+		c1 := sql.Point{X: -4, Y: -4}
+		d1 := sql.Point{X: -4, Y: 4}
+
+		a2 := sql.Point{X: 2, Y: 2}
+		b2 := sql.Point{X: 2, Y: -2}
+		c2 := sql.Point{X: -2, Y: -2}
+		d2 := sql.Point{X: -2, Y: 2}
+
+		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
+		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
+
+		poly := sql.Polygon{Lines: []sql.LineString{l1, l2}}
+
+		// passes through segments c2d2, a1b1, and a2b2; overlaps segment d2a2
+		p1 := sql.Point{X: -3, Y: 2}
+		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		// passes through segments c2d2, a1b1, and a2b2
+		p2 := sql.Point{X: -3, Y: 0}
+		f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		// passes through segments c2d2, a1b1, and a2b2; overlaps segment b2c2
+		p3 := sql.Point{X: -3, Y: -2}
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("point within polygon (diamond) with hole", func(t *testing.T) {
+		require := require.New(t)
+
+		a1 := sql.Point{X: 0, Y: 4}
+		b1 := sql.Point{X: 4, Y: 0}
+		c1 := sql.Point{X: 0, Y: -4}
+		d1 := sql.Point{X: -4, Y: 0}
+
+		a2 := sql.Point{X: 0, Y: 2}
+		b2 := sql.Point{X: 2, Y: 0}
+		c2 := sql.Point{X: 0, Y: -2}
+		d2 := sql.Point{X: -2, Y: 0}
+
+		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
+		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
+
+		poly := sql.Polygon{Lines: []sql.LineString{l1, l2}}
+
+		p1 := sql.Point{X: -3, Y: 0}
+		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		// passes through vertex a2 and segment a1b1
+		p2 := sql.Point{X: -1, Y: 2}
+		f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		p3 := sql.Point{X: -1, Y: -2}
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
 	t.Run("point on polygon boundary not within", func(t *testing.T) {
 		require := require.New(t)
 		a := sql.Point{X: -1, Y: 0}
@@ -189,26 +267,112 @@ func TestWithin(t *testing.T) {
 
 	t.Run("point not within polygon intersects vertex", func(t *testing.T) {
 		require := require.New(t)
-		p1 := sql.Point{X: -0.5, Y: 1}
-		p2 := sql.Point{X: -2, Y: 0}
-		p3 := sql.Point{X: -0.5, Y: -1}
 		a := sql.Point{X: -1, Y: 0}
 		b := sql.Point{X: 0, Y: 1}
 		c := sql.Point{X: 1, Y: 0}
 		d := sql.Point{X: 0, Y: -1}
 		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
+
+		// passes through vertex b
+		p1 := sql.Point{X: -0.5, Y: 1}
 		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
+
+		// passes through vertex a and c
+		p2 := sql.Point{X: -2, Y: 0}
 		f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
+
+		// passes through vertex d
+		p3 := sql.Point{X: -0.5, Y: -1}
 		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
+	})
+
+	t.Run("point not within polygon (square) with hole", func(t *testing.T) {
+		require := require.New(t)
+
+		a1 := sql.Point{X: 4, Y: 4}
+		b1 := sql.Point{X: 4, Y: -4}
+		c1 := sql.Point{X: -4, Y: -4}
+		d1 := sql.Point{X: -4, Y: 4}
+
+		a2 := sql.Point{X: 2, Y: 2}
+		b2 := sql.Point{X: 2, Y: -2}
+		c2 := sql.Point{X: -2, Y: -2}
+		d2 := sql.Point{X: -2, Y: 2}
+
+		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
+		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
+
+		poly := sql.Polygon{Lines: []sql.LineString{l1, l2}}
+
+		// passes through segments a1b1 and a2b2
+		p1 := sql.Point{X: 0, Y: 0}
+		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		// passes through segments c1d1, c2d2, a1b1, and a2b2; overlaps segment d2a2
+		p2 := sql.Point{X: -5, Y: 2}
+		f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		// passes through segments c1d1, c2d2, a1b1, and a2b2; overlaps segment b2c2
+		p3 := sql.Point{X: -5, Y: -2}
+		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
+	t.Run("point not within polygon (diamond) with hole", func(t *testing.T) {
+		require := require.New(t)
+
+		a1 := sql.Point{X: 0, Y: 4}
+		b1 := sql.Point{X: 4, Y: 0}
+		c1 := sql.Point{X: 0, Y: -4}
+		d1 := sql.Point{X: -4, Y: 0}
+
+		a2 := sql.Point{X: 0, Y: 2}
+		b2 := sql.Point{X: 2, Y: 0}
+		c2 := sql.Point{X: 0, Y: -2}
+		d2 := sql.Point{X: -2, Y: 0}
+
+		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
+		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
+
+		poly := sql.Polygon{Lines: []sql.LineString{l1, l2}}
+
+		// passes through vertexes d2, b2, and b1
+		p1 := sql.Point{X: -3, Y: 0}
+		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		//// passes through vertex a2 and segment a1b1
+		//p2 := sql.Point{X: -1, Y: 2}
+		//f = NewWithin(expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		//v, err = f.Eval(sql.NewEmptyContext(), nil)
+		//require.NoError(err)
+		//require.Equal(true, v)
+		//
+		//// passes through vertex c2 and segment b1c1
+		//p3 := sql.Point{X: -1, Y: -2}
+		//f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		//v, err = f.Eval(sql.NewEmptyContext(), nil)
+		//require.NoError(err)
+		//require.Equal(true, v)
 	})
 
 	// Point vs MultiPoint
