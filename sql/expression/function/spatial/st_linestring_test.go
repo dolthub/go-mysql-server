@@ -45,6 +45,29 @@ func TestStartPoint(t *testing.T) {
 		require.NoError(err)
 		require.Equal(s, v)
 	})
+
+	t.Run("null argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewStartPoint(expression.NewLiteral(nil, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("non-linestring argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewStartPoint(expression.NewLiteral(sql.Point{SRID: sql.GeoSpatialSRID, X: 123, Y: 456}, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("non-geometry argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewStartPoint(expression.NewLiteral(123, sql.Int8))
+		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
 }
 
 func TestEndPoint(t *testing.T) {
@@ -68,6 +91,29 @@ func TestEndPoint(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(e, v)
+	})
+
+	t.Run("null argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewEndPoint(expression.NewLiteral(nil, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("non-linestring argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewEndPoint(expression.NewLiteral(sql.Point{SRID: sql.GeoSpatialSRID, X: 123, Y: 456}, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("non-geometry argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewEndPoint(expression.NewLiteral(123, sql.Int8))
+		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
 	})
 }
 
@@ -111,6 +157,36 @@ func TestIsClosed(t *testing.T) {
 		require.Equal(false, v)
 	})
 
+	t.Run("multilinestring all closed", func(t *testing.T) {
+		require := require.New(t)
+		s := sql.Point{X: 0, Y: 0}
+		p1 := sql.Point{X: 1, Y: 1}
+		p2 := sql.Point{X: 2, Y: 2}
+		p3 := sql.Point{X: 3, Y: 3}
+		l1 := sql.LineString{Points: []sql.Point{s, p1, p2, p3, s}}
+		l2 := sql.LineString{Points: []sql.Point{s, p2, p1, s}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l1, l2}}
+		f := NewIsClosed(expression.NewLiteral(ml, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("multilinestring one line not closed", func(t *testing.T) {
+		require := require.New(t)
+		s := sql.Point{X: 0, Y: 0}
+		p1 := sql.Point{X: 1, Y: 1}
+		p2 := sql.Point{X: 2, Y: 2}
+		p3 := sql.Point{X: 3, Y: 3}
+		l1 := sql.LineString{Points: []sql.Point{s, p1, p2, p3, s}}
+		l2 := sql.LineString{Points: []sql.Point{s, p2, p1}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l1, l2}}
+		f := NewIsClosed(expression.NewLiteral(ml, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
 	t.Run("zero length linestring is closed", func(t *testing.T) {
 		require := require.New(t)
 		s := sql.Point{X: 0, Y: 0}
@@ -119,5 +195,28 @@ func TestIsClosed(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
+	})
+
+	t.Run("null argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIsClosed(expression.NewLiteral(nil, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("non-linestring argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIsClosed(expression.NewLiteral(sql.Point{SRID: sql.GeoSpatialSRID, X: 123, Y: 456}, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("non-geometry argument", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIsClosed(expression.NewLiteral(123, sql.Int8))
+		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
 	})
 }
