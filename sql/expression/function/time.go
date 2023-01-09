@@ -26,9 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// ErrInvalidArgumentType is thrown when a function receives invalid argument types
-var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
-
 // ErrTimeUnexpectedlyNil is thrown when a function encounters and unexpectedly nil time
 var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly nil")
 
@@ -1365,14 +1362,14 @@ func (c *CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case int64:
 		fsp = int(val.(int64))
 	default:
-		return nil, ErrInvalidArgumentType.New(c.FunctionName())
+		return nil, sql.ErrInvalidArgumentType.New(c.FunctionName())
 	}
 
 	// Parse and return answer
 	if fsp > maxCurrTimestampPrecision {
 		return nil, ErrTooHighPrecision.New(fsp, c.FunctionName(), maxCurrTimestampPrecision)
 	} else if fsp < 0 {
-		return nil, ErrInvalidArgumentType.New(c.FunctionName())
+		return nil, sql.ErrInvalidArgumentType.New(c.FunctionName())
 	}
 
 	// Get the timestamp

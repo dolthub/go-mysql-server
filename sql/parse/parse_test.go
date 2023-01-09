@@ -4884,6 +4884,7 @@ END;`,
 				plan.ProcedureSecurityContext_Definer,
 				nil,
 				plan.NewBeginEndBlock(
+					"",
 					plan.NewBlock([]sql.Node{
 						plan.NewDeclareVariables([]string{"c"}, types.Int64, nil),
 						plan.NewDeclareCursor("cur1", plan.NewProject(
@@ -4949,6 +4950,7 @@ func TestParseCreateTrigger(t *testing.T) {
    END`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""), "myTrigger", "before", "update", nil,
 			plan.NewUnresolvedTable("foo", ""),
 			plan.NewBeginEndBlock(
+				"",
 				plan.NewBlock([]sql.Node{
 					plan.NewUpdate(plan.NewFilter(
 						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),

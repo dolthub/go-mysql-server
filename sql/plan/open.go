@@ -26,7 +26,6 @@ import (
 // Open represents the OPEN statement, which opens a cursor.
 type Open struct {
 	Name string
-	id   int
 	pRef *expression.ProcedureReference
 }
 
@@ -82,13 +81,6 @@ func (o *Open) WithParamReference(pRef *expression.ProcedureReference) sql.Node 
 	return &no
 }
 
-// WithId returns a new *Open containing the given id.
-func (o *Open) WithId(id int) *Open {
-	no := *o
-	no.id = id
-	return &no
-}
-
 // openIter is the sql.RowIter of *Open.
 type openIter struct {
 	*Open
@@ -99,7 +91,7 @@ var _ sql.RowIter = (*openIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (o *openIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if err := o.pRef.OpenCursor(ctx, o.id, o.Name, o.row); err != nil {
+	if err := o.pRef.OpenCursor(ctx, o.Name, o.row); err != nil {
 		return nil, err
 	}
 	return nil, io.EOF

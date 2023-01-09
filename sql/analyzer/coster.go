@@ -44,6 +44,8 @@ func (c *coster) costRel(n relExpr) (float64, error) {
 		return c.costLeftJoin(n)
 	case *hashJoin:
 		return c.costHashJoin(n)
+	case *mergeJoin:
+		return c.costMergeJoin(n)
 	case *lookupJoin:
 		return c.costLookupJoin(n)
 	case *semiJoin:
@@ -52,6 +54,8 @@ func (c *coster) costRel(n relExpr) (float64, error) {
 		return c.costAntiJoin(n)
 	case *subqueryAlias:
 		return c.costSubqueryAlias(n)
+	case *max1RowSubquery:
+		return c.costMax1RowSubquery(n)
 	case *tableFunc:
 		return c.costTableFunc(n)
 	case *fullOuterJoin:
@@ -82,8 +86,8 @@ func (c *coster) costRead(t sql.Table) (float64, error) {
 	}
 
 	db := c.ctx.GetCurrentDatabase()
-	card, err := c.s.RowCount(c.ctx, db, t.Name())
-	if err != nil {
+	card, ok, err := c.s.RowCount(c.ctx, db, t.Name())
+	if err != nil || !ok {
 		// TODO: better estimates for derived tables
 		return float64(1000), nil
 	}
@@ -129,6 +133,10 @@ func (c *coster) costHashJoin(n *hashJoin) (float64, error) {
 	r := n.right.cost
 	buildProbe := r / 2
 	return l + r + buildProbe, nil
+}
+
+func (c *coster) costMergeJoin(n *mergeJoin) (float64, error) {
+	return n.left.cost + n.right.cost, nil
 }
 
 func (c *coster) costLookupJoin(n *lookupJoin) (float64, error) {
@@ -182,15 +190,16 @@ func (c *coster) costPartial(left, right *exprGroup) (float64, error) {
 	if err != nil {
 		return float64(0), nil
 	}
-	if r > l {
-		return r, nil
-	}
-	return l, nil
+	return l * (r / 2.0), nil
 }
 
 func (c *coster) costSubqueryAlias(_ *subqueryAlias) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 10000, nil
+}
+
+func (c *coster) costMax1RowSubquery(_ *max1RowSubquery) (float64, error) {
+	return 1, nil
 }
 
 func (c *coster) costTableFunc(_ *tableFunc) (float64, error) {

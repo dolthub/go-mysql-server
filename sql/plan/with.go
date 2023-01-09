@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,6 +28,9 @@ type With struct {
 	CTEs      []*CommonTableExpression
 	Recursive bool
 }
+
+var _ sql.Node = (*With)(nil)
+var _ DisjointedChildrenNode = (*With)(nil)
 
 func NewWith(child sql.Node, ctes []*CommonTableExpression, recursive bool) *With {
 	return &With{
@@ -79,6 +83,41 @@ func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (w *With) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return w.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// DisjointedChildren implements the interface DisjointedChildrenNode.
+func (w *With) DisjointedChildren() [][]sql.Node {
+	cteAliases := make([]sql.Node, len(w.CTEs))
+	for i := range cteAliases {
+		cteAliases[i] = w.CTEs[i].Subquery
+	}
+	return [][]sql.Node{
+		{w.UnaryNode.Child},
+		cteAliases,
+	}
+}
+
+// WithDisjointedChildren implements the interface DisjointedChildrenNode.
+func (w *With) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
+	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != len(w.CTEs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 2)
+	}
+	nw := *w
+	nw.UnaryNode.Child = children[0][0]
+	newCTEs := make([]*CommonTableExpression, len(w.CTEs))
+	copy(newCTEs, w.CTEs)
+	for i, cteAliasChild := range children[1] {
+		subqueryAlias, ok := cteAliasChild.(*SubqueryAlias)
+		if !ok {
+			return nil, fmt.Errorf("%T: expected `%T`, got `%T`", w, nw.CTEs[i].Subquery, cteAliasChild)
+		}
+		newCTEs[i] = &CommonTableExpression{
+			Subquery: subqueryAlias,
+			Columns:  w.CTEs[i].Columns,
+		}
+	}
+	nw.CTEs = newCTEs
+	return &nw, nil
 }
 
 type CommonTableExpression struct {

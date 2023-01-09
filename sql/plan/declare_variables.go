@@ -28,7 +28,6 @@ type DeclareVariables struct {
 	Names      []string
 	Type       sql.Type
 	DefaultVal *sql.ColumnDefaultValue
-	ids        []int
 	pRef       *expression.ProcedureReference
 }
 
@@ -86,16 +85,6 @@ func (d *DeclareVariables) WithParamReference(pRef *expression.ProcedureReferenc
 	return &nd
 }
 
-// WithIds returns a new *DeclareVariables containing the given ids.
-func (d *DeclareVariables) WithIds(ctx *sql.Context, ids []int) (sql.Node, error) {
-	if len(ids) != len(d.Names) {
-		return nil, fmt.Errorf("expected %d declaration ids but received %d", len(d.Names), len(ids))
-	}
-	nd := *d
-	nd.ids = ids
-	return &nd, nil
-}
-
 // declareVariablesIter is the sql.RowIter of *DeclareVariables.
 type declareVariablesIter struct {
 	*DeclareVariables
@@ -110,8 +99,8 @@ func (d *declareVariablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := range d.ids {
-		if err := d.pRef.InitializeVariable(d.ids[i], d.Names[i], d.Type, defaultVal); err != nil {
+	for _, varName := range d.Names {
+		if err := d.pRef.InitializeVariable(varName, d.Type, defaultVal); err != nil {
 			return nil, err
 		}
 	}

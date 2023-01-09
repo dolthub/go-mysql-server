@@ -30,6 +30,8 @@ type TriggerBeginEndBlock struct {
 
 var _ sql.Node = (*TriggerBeginEndBlock)(nil)
 var _ sql.DebugStringer = (*TriggerBeginEndBlock)(nil)
+var _ RepresentsLabeledBlock = (*TriggerBeginEndBlock)(nil)
+var _ RepresentsScope = (*TriggerBeginEndBlock)(nil)
 
 // NewTriggerBeginEndBlock creates a new *TriggerBeginEndBlock node.
 func NewTriggerBeginEndBlock(block *BeginEndBlock) *TriggerBeginEndBlock {
@@ -40,7 +42,7 @@ func NewTriggerBeginEndBlock(block *BeginEndBlock) *TriggerBeginEndBlock {
 
 // WithChildren implements the sql.Node interface.
 func (b *TriggerBeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NewTriggerBeginEndBlock(NewBeginEndBlock(NewBlock(children))), nil
+	return NewTriggerBeginEndBlock(NewBeginEndBlock(b.BeginEndBlock.Label, NewBlock(children))), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

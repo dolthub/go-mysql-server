@@ -989,6 +989,7 @@ func (t *FilteredTable) Projections() []string {
 // for range lookups.
 type IndexedTable struct {
 	*Table
+	Idx *Index
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
@@ -1004,8 +1005,30 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
 }
 
-func (t *Table) IndexedAccess(sql.Index) sql.IndexedTable {
-	return &IndexedTable{Table: t}
+// PartitionRows implements the sql.PartitionRows interface.
+func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	iter, err := t.Table.PartitionRows(ctx, partition)
+	if err != nil {
+		return nil, err
+	}
+	if t.Idx != nil {
+		sf := make(sql.SortFields, len(t.Idx.Exprs))
+		for i, e := range t.Idx.Exprs {
+			sf[i] = sql.SortField{Column: e}
+		}
+		sorter := &expression.Sorter{
+			SortFields: sf,
+			Rows:       iter.(*tableIter).rows,
+			LastError:  nil,
+			Ctx:        ctx,
+		}
+		sort.Stable(sorter)
+	}
+	return iter, nil
+}
+
+func (t *Table) IndexedAccess(i sql.Index) sql.IndexedTable {
+	return &IndexedTable{Table: t, Idx: i.(*Index)}
 }
 
 // WithProjections implements sql.ProjectedTable

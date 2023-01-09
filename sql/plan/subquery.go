@@ -54,6 +54,7 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 }
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
+var _ sql.ExpressionWithNodes = (*Subquery)(nil)
 
 type StripRowNode struct {
 	UnaryNode
@@ -264,6 +265,105 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 	}
 }
 
+func NewMax1Row(n sql.Node) *Max1RowSubquery {
+	return &Max1RowSubquery{Child: n}
+}
+
+// Max1RowSubquery throws a runtime error if its child (usually subquery) tries
+// to return more than one row.
+type Max1RowSubquery struct {
+	Child sql.Node
+}
+
+var _ sql.Node = (*Max1RowSubquery)(nil)
+
+func (m *Max1RowSubquery) Subquery() *SubqueryAlias {
+	ret := m.Child
+	sq, ok := ret.(*SubqueryAlias)
+	for !ok {
+		ret = ret.Children()[0]
+		sq, ok = ret.(*SubqueryAlias)
+	}
+	return sq
+}
+
+func (m *Max1RowSubquery) Name() string {
+	return m.Subquery().Name()
+}
+
+func (m *Max1RowSubquery) Resolved() bool {
+	return m.Child.Resolved()
+}
+
+func (m *Max1RowSubquery) Schema() sql.Schema {
+	return m.Child.Schema()
+}
+
+func (m *Max1RowSubquery) Children() []sql.Node {
+	return []sql.Node{m.Child}
+}
+
+func (m *Max1RowSubquery) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Max1Row")
+	children := []string{m.Child.String()}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+func (m *Max1RowSubquery) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Max1Row")
+	children := []string{sql.DebugString(m.Child)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	i, err := m.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	return &max1RowIter{i: i}, nil
+}
+
+func (m *Max1RowSubquery) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
+	}
+	ret := *m
+	ret.Child = children[0]
+
+	return &ret, nil
+}
+
+func (m *Max1RowSubquery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return m.Child.CheckPrivileges(ctx, opChecker)
+}
+
+type max1RowIter struct {
+	i          sql.RowIter
+	seenOneRow bool
+}
+
+var _ sql.RowIter = (*max1RowIter)(nil)
+
+func (m *max1RowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := m.i.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if m.seenOneRow {
+		return nil, sql.ErrExpectedSingleRow.New()
+	}
+	m.seenOneRow = true
+	return row, nil
+}
+
+func (m *max1RowIter) Close(ctx *sql.Context) error {
+	return m.i.Close(ctx)
+}
+
 // EvalMultiple returns all rows returned by a subquery.
 func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
 	s.cacheMu.Lock()
@@ -469,6 +569,19 @@ func (s *Subquery) WithChildren(children ...sql.Expression) (sql.Expression, err
 // Children implements the Expression interface.
 func (s *Subquery) Children() []sql.Expression {
 	return nil
+}
+
+// NodeChildren implements the sql.ExpressionWithNodes interface.
+func (s *Subquery) NodeChildren() []sql.Node {
+	return []sql.Node{s.Query}
+}
+
+// WithNodeChildren implements the sql.ExpressionWithNodes interface.
+func (s *Subquery) WithNodeChildren(children ...sql.Node) (sql.ExpressionWithNodes, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
+	}
+	return s.WithQuery(children[0]), nil
 }
 
 // WithQuery returns the subquery with the query node changed.

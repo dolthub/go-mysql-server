@@ -219,7 +219,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				filters.markFiltersHandled(handled...)
 				return node, len(handled) == 0, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
-				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(NameableNode), scope, filters, tableAliases)
+				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(sql.NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -251,7 +251,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return n, transform.NewTree, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(NameableNode), scope, filters)
+				table, same, err := pushdownFiltersToAboveTable(ctx, a, node.(sql.NameableNode), scope, filters)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -473,7 +473,7 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *p
 func pushdownFiltersToTable(
 	ctx *sql.Context,
 	a *Analyzer,
-	tableNode NameableNode,
+	tableNode sql.NameableNode,
 	scope *Scope,
 	filters *filterSet,
 	tableAliases TableAliases,
@@ -545,7 +545,7 @@ func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.Filtere
 func pushdownFiltersToAboveTable(
 	ctx *sql.Context,
 	a *Analyzer,
-	tableNode NameableNode,
+	tableNode sql.NameableNode,
 	scope *Scope,
 	filters *filterSet,
 ) (sql.Node, transform.TreeIdentity, error) {
@@ -633,7 +633,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
-func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error) {
+func pushdownIndexesToTable(a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:

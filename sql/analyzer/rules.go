@@ -32,6 +32,7 @@ var OnceBeforeDefault = []Rule{
 	{liftCtesId, hoistCommonTableExpressions},
 	{resolveCtesId, resolveCommonTableExpressions},
 	{liftRecursiveCtesId, hoistRecursiveCte},
+	{validateCreateProcedureId, validateCreateProcedure},
 	{resolveDatabasesId, resolveDatabases},
 	{resolveTablesId, resolveTables},
 	{reresolveTablesId, reresolveTables},
@@ -55,7 +56,6 @@ var OnceBeforeDefault = []Rule{
 	{resolveTableFunctionsId, resolveTableFunctions},
 	{resolveDeclarationsId, resolveDeclarations},
 	{validateCreateTriggerId, validateCreateTrigger},
-	{validateCreateProcedureId, validateCreateProcedure},
 	{loadInfoSchemaId, loadInfoSchema},
 	{resolveColumnDefaultsId, resolveColumnDefaults},
 	{validateColumnDefaultsId, validateColumnDefaults},
@@ -95,13 +95,13 @@ var DefaultRules = []Rule{
 // OnceAfterDefault contains the rules to be applied just once after the
 // DefaultRules.
 var OnceAfterDefault = []Rule{
+	{transformJoinApplyId, transformJoinApply},
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
-	{hoistSelectExistsId, hoistSelectExists},
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{pruneColumnsId, pruneColumns},
@@ -142,7 +142,6 @@ var DefaultValidationRules = []Rule{
 var OnceAfterAll = []Rule{
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},

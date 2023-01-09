@@ -207,3 +207,31 @@ func FixFieldIndexesForTableNode(ctx *sql.Context, a *Analyzer, node sql.Node, s
 		return fixed, same, nil
 	})
 }
+
+func FixFieldIndexesForNode(a *Analyzer, scope *Scope, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		ret := n
+		var err error
+		sameN := transform.SameTree
+		switch n := n.(type) {
+		case *plan.SubqueryAlias:
+			scope := scope.newScopeFromSubqueryAlias(n)
+			ret, sameN, err = FixFieldIndexesForExpressions(a, n, scope)
+		default:
+			ret, sameN, err = FixFieldIndexesForExpressions(a, n, scope)
+		}
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+		ret, sameE, err := transform.NodeExprs(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if sq, ok := e.(*plan.Subquery); ok {
+				return FixFieldIndexes(scope, a, ret.Schema(), sq)
+			}
+			return e, transform.SameTree, nil
+		})
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+		return ret, sameN && sameE, nil
+	})
+}

@@ -429,6 +429,9 @@ var (
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
+	// ErrInvalidArgumentType is thrown when a function receives invalid argument types
+	ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
+
 	// ErrInvalidArgumentDetails is returned when the argument is invalid with details of a specific function
 	ErrInvalidArgumentDetails = errors.NewKind("Invalid argument to %s: %s")
 
@@ -536,6 +539,12 @@ var (
 
 	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
 	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
+
+	// ErrDiffSRIDs is thrown when comparing two spatial types that have different SRIDs when they should be the same
+	ErrDiffSRIDs = errors.NewKind("binary geometry function %s given two geometries of different srids: %v and %v, which should have been identical")
+
+	// ErrUnsupportedSRID is thrown for spatial functions over unsupported SRIDs
+	ErrUnsupportedSRID = errors.NewKind("SRID %v has not been implemented for geographic spatial reference systems.")
 
 	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
 	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")

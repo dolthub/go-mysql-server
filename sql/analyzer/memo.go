@@ -121,14 +121,14 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 func (m *Memo) updateBest(grp *exprGroup, n relExpr, cost float64) {
 	if m.orderHint != nil {
 		if m.orderHint.obeysOrder(n) {
-			if !grp.hintSatisfied {
+			if !grp.orderSatisfied {
 				grp.best = n
 				grp.cost = cost
-				grp.hintSatisfied = true
+				grp.orderSatisfied = true
 				return
 			}
 			grp.updateBest(n, cost)
-		} else if grp.best == nil || !grp.hintSatisfied {
+		} else if grp.best == nil || !grp.orderSatisfied {
 			grp.updateBest(n, cost)
 		}
 		return
@@ -222,36 +222,57 @@ type relProps struct {
 }
 
 func newRelProps(rel relExpr) *relProps {
-	var tables sql.FastIntSet
-	var cols sql.Schema
-	switch n := rel.(type) {
-	case sourceRel:
-		cols = append(cols, n.outputCols()...)
-		tables = sql.NewFastIntSet(int(n.tableId()))
-	case *antiJoin:
-		tables = n.left.relProps.OutputTables()
-	case *semiJoin:
-		tables = n.left.relProps.OutputTables()
-	case joinRel:
-		tables = n.joinPrivate().left.relProps.OutputTables().Union(n.joinPrivate().right.relProps.OutputTables())
+	p := &relProps{
+		grp: rel.group(),
 	}
+	if r, ok := rel.(sourceRel); ok {
+		p.outputCols = r.outputCols()
+	}
+	p.populateOutputTables()
+	return p
+}
 
-	return &relProps{
-		grp:          rel.group(),
-		outputCols:   cols,
-		outputTables: tables,
+// populateOutputTables initializes the bitmap indicating which tables'
+// attributes are available outputs from the exprGroup
+func (p *relProps) populateOutputTables() {
+	switch n := p.grp.first.(type) {
+	case sourceRel:
+		p.outputTables = sql.NewFastIntSet(int(n.tableId()))
+	case *antiJoin:
+		p.outputTables = n.left.relProps.OutputTables()
+	case *semiJoin:
+		p.outputTables = n.left.relProps.OutputTables()
+	case joinRel:
+		p.outputTables = n.joinPrivate().left.relProps.OutputTables().Union(n.joinPrivate().right.relProps.OutputTables())
+	}
+}
+
+func (p *relProps) populateOutputCols() {
+	if !p.grp.done {
+		panic("expression group not fixed")
+	}
+	switch r := p.grp.best.(type) {
+	case *semiJoin:
+		p.outputCols = r.left.relProps.OutputCols()
+	case *antiJoin:
+		p.outputCols = r.left.relProps.OutputCols()
+	case *lookupJoin:
+		if r.op.IsRightPartial() {
+			p.outputCols = r.right.relProps.OutputCols()
+		} else if r.op.IsPartial() {
+			p.outputCols = r.left.relProps.OutputCols()
+		} else {
+			p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+		}
+	case joinRel:
+		p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
 	}
 }
 
 // OutputCols returns the output schema of a node
 func (p *relProps) OutputCols() sql.Schema {
-	if !p.grp.done {
-		panic("expression group not fixed")
-	}
 	if p.outputCols == nil {
-		for _, c := range p.grp.best.children() {
-			p.outputCols = append(p.outputCols, c.relProps.OutputCols()...)
-		}
+		p.populateOutputCols()
 	}
 	return p.outputCols
 }
@@ -291,15 +312,17 @@ func (p *tableProps) getId(n string) (GroupId, bool) {
 // exprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type exprGroup struct {
-	id            GroupId
-	m             *Memo
-	first         relExpr
-	best          relExpr
-	cost          float64
-	done          bool
-	hintSatisfied bool
-
+	m        *Memo
 	relProps *relProps
+	first    relExpr
+	best     relExpr
+
+	id GroupId
+
+	cost           float64
+	done           bool
+	orderSatisfied bool
+	opHint         plan.JoinType
 }
 
 func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
@@ -313,6 +336,15 @@ func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
 	rel.setGroup(grp)
 	grp.relProps = newRelProps(rel)
 	return grp
+}
+
+func (e *exprGroup) obeysOpHint(n relExpr) bool {
+	switch n := n.(type) {
+	case joinRel:
+		return n.joinPrivate().op == e.opHint
+	default:
+		return true
+	}
 }
 
 // prepend adds a new plan to an expression group at the beginning of
@@ -334,7 +366,7 @@ func (e *exprGroup) children() []*exprGroup {
 }
 
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
-	if e.best == nil || grpCost <= e.cost {
+	if e.best == nil || grpCost <= e.cost || (!e.obeysOpHint(e.best) && e.obeysOpHint(n)) {
 		e.best = n
 		e.cost = grpCost
 	}
@@ -487,6 +519,13 @@ type lookup struct {
 	parent *joinBase
 }
 
+type indexScan struct {
+	source string
+	idx    sql.Index
+
+	parent *joinBase
+}
+
 var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
 		Name:   "crossJoin",
@@ -531,6 +570,14 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		},
 	},
 	{
+		Name:   "mergeJoin",
+		IsJoin: true,
+		JoinAttrs: [][2]string{
+			{"innerScan", "*indexScan"},
+			{"outerScan", "*indexScan"},
+		},
+	},
+	{
 		Name:   "fullOuterJoin",
 		IsJoin: true,
 	},
@@ -556,6 +603,10 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	},
 	{
 		Name:       "subqueryAlias",
+		SourceType: "*plan.SubqueryAlias",
+	},
+	{
+		Name:       "max1RowSubquery",
 		SourceType: "*plan.SubqueryAlias",
 	},
 	{

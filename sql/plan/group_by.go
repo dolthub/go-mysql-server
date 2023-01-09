@@ -180,8 +180,8 @@ func (g *GroupBy) DebugString() string {
 	}
 
 	_ = pr.WriteChildren(
-		fmt.Sprintf("SelectedExprs(%s)", strings.Join(selectedExprs, ", ")),
-		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
+		fmt.Sprintf("select: %s", strings.Join(selectedExprs, ", ")),
+		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
 		sql.DebugString(g.Child),
 	)
 	return pr.String()
@@ -434,10 +434,10 @@ func groupingKey(
 			}
 		}
 
-		switch t := expr.Type().(type) {
-		case types.StringType:
+		t, isStringType := expr.Type().(types.StringType)
+		if isStringType && v != nil {
 			err = t.Collation().WriteWeightString(hash, v.(string))
-		default:
+		} else {
 			_, err = fmt.Fprintf(hash, "%v", v)
 		}
 		if err != nil {
