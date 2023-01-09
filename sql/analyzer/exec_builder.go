@@ -62,7 +62,7 @@ func (b *ExecBuilder) buildSemiJoin(j *semiJoin, input sql.Schema, children ...s
 	if err != nil {
 		return nil, err
 	}
-	return plan.NewSemiJoin(children[0], children[1], filters), nil
+	return plan.NewJoin(children[0], children[1], j.op, filters), nil
 }
 
 func (b *ExecBuilder) buildAntiJoin(j *antiJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -70,7 +70,7 @@ func (b *ExecBuilder) buildAntiJoin(j *antiJoin, input sql.Schema, children ...s
 	if err != nil {
 		return nil, err
 	}
-	return plan.NewAntiJoin(children[0], children[1], filters), nil
+	return plan.NewJoin(children[0], children[1], j.op, filters), nil
 }
 
 func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -116,8 +116,14 @@ func (b *ExecBuilder) buildLookupJoin(j *lookupJoin, input sql.Schema, children 
 		newOp = plan.JoinTypeLookup
 	case plan.JoinTypeLeftOuter:
 		newOp = plan.JoinTypeLeftOuterLookup
+	case plan.JoinTypeSemi:
+		newOp = plan.JoinTypeSemiLookup
+	case plan.JoinTypeRightSemi:
+		newOp = plan.JoinTypeRightSemiLookup
+	case plan.JoinTypeAnti:
+		newOp = plan.JoinTypeAntiLookup
 	default:
-		panic("can only apply lookup to InnerJoin or LeftOuterJoin")
+		panic(fmt.Sprintf("can only apply lookup to InnerJoin or LeftOuterJoin, found %s", j.op))
 	}
 	return plan.NewJoin(children[0], right, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
@@ -262,6 +268,10 @@ func (b *ExecBuilder) buildMergeJoin(j *mergeJoin, input sql.Schema, children ..
 
 func (b *ExecBuilder) buildSubqueryAlias(r *subqueryAlias, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	return r.table, nil
+}
+
+func (b *ExecBuilder) buildMax1RowSubquery(r *max1RowSubquery, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return plan.NewMax1Row(r.table), nil
 }
 
 func (b *ExecBuilder) buildTableFunc(r *tableFunc, input sql.Schema, children ...sql.Node) (sql.Node, error) {

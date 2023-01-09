@@ -134,7 +134,9 @@ func (t *ProcedureResolvedTable) newestTable(ctx *sql.Context) (*ResolvedTable, 
 		return t.ResolvedTable, nil
 	}
 
-	if t.ResolvedTable.AsOf == nil {
+	if IsDualTable(t.ResolvedTable) {
+		return t.ResolvedTable, nil
+	} else if t.ResolvedTable.AsOf == nil {
 		tbl, ok, err := t.ResolvedTable.Database.GetTableInsensitive(ctx, t.ResolvedTable.Table.Name())
 		if err != nil {
 			return nil, err

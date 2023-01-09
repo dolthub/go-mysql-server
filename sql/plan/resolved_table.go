@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/memory"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -41,7 +43,7 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 
 // NewResolvedDualTable creates a new instance of ResolvedTable.
 func NewResolvedDualTable() *ResolvedTable {
-	return &ResolvedTable{Table: NewDualSqlTable(), Database: nil, AsOf: nil}
+	return &ResolvedTable{Table: NewDualSqlTable(), Database: memory.NewDatabase(""), AsOf: nil}
 }
 
 // Resolved implements the Resolvable interface.
