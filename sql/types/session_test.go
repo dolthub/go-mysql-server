@@ -28,7 +28,7 @@ func TestSessionConfig(t *testing.T) {
 	sess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz", User: "bar"}, 1)
 	typ, v, err := sess.GetUserVariable(ctx, "foo")
 	require.NoError(err)
-	require.Equal(Null, typ)
+	require.Nil(typ)
 	require.Equal(nil, v)
 	
 	err = sess.SetUserVariable(ctx, "foo", int64(1), Int64)
@@ -38,6 +38,14 @@ func TestSessionConfig(t *testing.T) {
 	require.NoError(err)
 	require.Equal(Int64, typ)
 	require.Equal(int64(1), v)
+
+	err = sess.SetUserVariable(ctx, "foo", nil, Int64)
+	require.NoError(err)
+
+	typ, v, err = sess.GetUserVariable(ctx, "foo")
+	require.NoError(err)
+	require.Equal(Int64, typ)
+	require.Equal(nil, v)
 
 	require.Equal(uint16(0), sess.WarningCount())
 
