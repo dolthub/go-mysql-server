@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -639,6 +640,25 @@ var SpatialQueryTests = []QueryTest{
 			{"MULTILINESTRING((2 1,4 3))"},
 			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
 			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+		},
+	},
+	{
+		Query: `SELECT ST_DISTANCE(st_srid(g, 0), point(0,0)) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{nil},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{nil},
 		},
 	},
 }
