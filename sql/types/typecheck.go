@@ -15,8 +15,9 @@
 package types
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // IsBlobType checks if t is BLOB
@@ -184,4 +185,3 @@ func IsTuple(t sql.Type) bool {
 func IsUnsigned(t sql.Type) bool {
 	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
 }
-

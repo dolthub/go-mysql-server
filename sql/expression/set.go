@@ -17,10 +17,10 @@ package expression
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var errCannotSetField = errors.NewKind("Expected GetField expression on left but got %T")

@@ -17,10 +17,10 @@ package expression
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestBetween(t *testing.T) {

@@ -222,4 +222,3 @@ type SystemVariableType interface {
 	// as the encoded value may technically be an "illegal" value according to the type rules.
 	DecodeValue(string) (interface{}, error)
 }
-

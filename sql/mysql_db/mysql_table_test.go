@@ -18,12 +18,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGrantTableData(t *testing.T) {

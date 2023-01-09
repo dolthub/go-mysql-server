@@ -22,11 +22,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var (
@@ -229,9 +230,9 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 	case time.Time:
 		h, m, s := value.Clock()
 		us := int64(value.Nanosecond())/nanosecondsPerMicrosecond +
-				microsecondsPerSecond*int64(s) +
-				microsecondsPerMinute*int64(m) +
-				microsecondsPerHour*int64(h)
+			microsecondsPerSecond*int64(s) +
+			microsecondsPerMinute*int64(m) +
+			microsecondsPerHour*int64(h)
 		return Timespan(us), nil
 	}
 
@@ -436,10 +437,10 @@ func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, m
 		negative = -1
 	}
 	return Timespan(negative *
-			(int64(microseconds) +
-					(int64(seconds) * microsecondsPerSecond) +
-					(int64(minutes) * microsecondsPerMinute) +
-					(int64(hours) * microsecondsPerHour)))
+		(int64(microseconds) +
+			(int64(seconds) * microsecondsPerSecond) +
+			(int64(minutes) * microsecondsPerMinute) +
+			(int64(hours) * microsecondsPerHour)))
 }
 
 func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) {

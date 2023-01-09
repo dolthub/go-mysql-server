@@ -149,7 +149,7 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 // InitSystemVariables resets the systemVars singleton in the sql package
 func InitSystemVariables() {
 	vars := &globalSystemVariables{
-		mutex: &sync.RWMutex{},
+		mutex:      &sync.RWMutex{},
 		sysVarVals: make(map[string]sql.SystemVarValue, len(systemVars)),
 	}
 	for _, sysVar := range systemVars {

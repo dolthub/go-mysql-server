@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,6 +34,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.

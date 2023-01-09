@@ -18,9 +18,9 @@ import (
 	"fmt"
 
 	"github.com/cespare/xxhash"
-	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // InTuple is an expression that checks an expression is inside a list of expressions.

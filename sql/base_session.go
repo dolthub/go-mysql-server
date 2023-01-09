@@ -127,8 +127,8 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
-	
-	// Since we initialized the system variables in this session at session start time, any variables that were added since that time 
+
+	// Since we initialized the system variables in this session at session start time, any variables that were added since that time
 	// will need to be added dynamically here.
 	// TODO: fix this with proper session lifecycle management
 	if !ok {
@@ -142,7 +142,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 			return ErrUnknownSystemVariable.New(sysVarName)
 		}
 	}
-	
+
 	if !sysVar.Var.Dynamic {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
@@ -245,7 +245,7 @@ func (s *BaseSession) GetCollation() CollationID {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sysVar, ok := s.systemVars[collationConnectionSysVarName]
-	
+
 	// In tests, the collation may not be set because the sys vars haven't been initialized
 	if !ok {
 		return Collation_Default

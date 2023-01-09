@@ -56,6 +56,6 @@ func (u *UserVars) GetUserVariable(ctx *Context, varName string) (Type, interfac
 	if !ok {
 		return nil, nil, nil
 	}
-	
+
 	return val.Typ, val.Value, nil
 }

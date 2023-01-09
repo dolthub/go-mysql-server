@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/oliveagle/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type jsonTablePartition struct {

@@ -17,13 +17,13 @@ package plan
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestWindowPlanToIter(t *testing.T) {

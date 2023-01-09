@@ -133,7 +133,7 @@ func setUserVar(ctx *sql.Context, userVar *expression.UserVar, right sql.Express
 		return err
 	}
 	typ := types.ApproximateTypeFromValue(val)
-	
+
 	err = ctx.SetUserVariable(ctx, userVar.Name, val, typ)
 	if err != nil {
 		return err

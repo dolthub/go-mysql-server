@@ -317,10 +317,10 @@ type Node2 interface {
 
 var SystemVariables SystemVariableRegistry
 
-// SystemVariableRegistry is a registry of system variables. Each session gets its own copy of all values via the 
+// SystemVariableRegistry is a registry of system variables. Each session gets its own copy of all values via the
 // SessionMap() method.
 type SystemVariableRegistry interface {
-	// AddSystemVariables adds the given system variables to this registry 
+	// AddSystemVariables adds the given system variables to this registry
 	AddSystemVariables(sysVars []SystemVariable)
 	// AssignValues assigns the given values to the system variables in this registry
 	AssignValues(vals map[string]interface{}) error

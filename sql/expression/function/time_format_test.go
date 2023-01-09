@@ -18,10 +18,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestTimeFormatting(t *testing.T) {

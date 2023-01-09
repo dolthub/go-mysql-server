@@ -20,4 +20,3 @@ func MustConvert(val interface{}, err error) interface{} {
 	}
 	return val
 }
-

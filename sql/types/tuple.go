@@ -19,9 +19,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var tupleValueType = reflect.TypeOf((*[]interface{})(nil)).Elem()

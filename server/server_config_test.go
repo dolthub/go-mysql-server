@@ -18,19 +18,19 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	
-	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestConfigWithDefaults(t *testing.T) {
 	tests := []struct {
-		Name  string
-		Scope sql.SystemVariableScope
-		Type  sql.SystemVariableType
+		Name        string
+		Scope       sql.SystemVariableScope
+		Type        sql.SystemVariableType
 		ConfigField string
 		Default     interface{}
 		ExpectedCmp interface{}

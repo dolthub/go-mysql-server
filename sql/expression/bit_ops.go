@@ -21,10 +21,10 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // BitOp expressions include BIT -AND, -OR and -XOR (&, | and ^) operations

@@ -17,8 +17,9 @@ package types
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestSessionConfig(t *testing.T) {
@@ -30,7 +31,7 @@ func TestSessionConfig(t *testing.T) {
 	require.NoError(err)
 	require.Nil(typ)
 	require.Equal(nil, v)
-	
+
 	err = sess.SetUserVariable(ctx, "foo", int64(1), Int64)
 	require.NoError(err)
 

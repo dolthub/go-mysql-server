@@ -17,9 +17,7 @@ package plan
 import (
 	"context"
 	"testing"
-	
-	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestSet(t *testing.T) {
@@ -70,9 +70,9 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 	setTests := []struct {
 		title        string
 		name         string
-		value int
-		scope sql.SystemVariableScope
-		err   *errors.Kind
+		value        int
+		scope        sql.SystemVariableScope
+		err          *errors.Kind
 		globalCmp    interface{}
 		persistedCmp interface{}
 	}{

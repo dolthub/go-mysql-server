@@ -17,14 +17,14 @@ package analyzer
 import (
 	"fmt"
 	"strings"
-	
-	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // resolveVariables replaces UnresolvedColumn which are variables with their literal values

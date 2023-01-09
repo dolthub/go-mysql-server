@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -28,6 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrGroupBy is returned when the aggregation is not supported.

@@ -18,10 +18,10 @@ import (
 	"database/sql/driver"
 	"reflect"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Rows is an iterator over an executed query's results.

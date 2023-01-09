@@ -20,10 +20,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // ApproximateTypeFromValue returns the closest matching type to the given value. For example, an int16 will return SMALLINT.
@@ -544,4 +545,3 @@ func TypesEqual(a, b sql.Type) bool {
 		return a == b
 	}
 }
-

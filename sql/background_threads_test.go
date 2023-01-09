@@ -21,8 +21,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestBackgroundThreads(t *testing.T) {
