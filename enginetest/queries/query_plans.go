@@ -7630,6 +7630,32 @@ var QueryPlanTODOs = []QueryPlanTest{
 var IntegrationPlanTests = []QueryPlanTest{
 	{
 		Query: `
+SELECT
+    id, FTQLQ
+FROM
+    YK2GW
+WHERE
+    id NOT IN (SELECT IXUXU FROM THNTS)
+;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [YK2GW.id:0!null, YK2GW.FTQLQ:1!null]\n" +
+			" └─ AntiLookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ YK2GW.id:0!null\n" +
+			"     │   └─ applySubq0.IXUXU:30\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: YK2GW\n" +
+			"     └─ TableAlias(applySubq0)\n" +
+			"         └─ IndexedTableAccess\n" +
+			"             ├─ index: [THNTS.IXUXU]\n" +
+			"             ├─ columns: [ixuxu]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: THNTS\n" +
+			"                 └─ projections: [2]\n" +
+			"",
+	},
+	{
+		Query: `
 	SELECT
 	   PBMRX.id AS id,
 	   PBMRX.TW55N AS TEYBZ,
