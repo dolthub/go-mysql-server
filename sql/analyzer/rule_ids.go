@@ -76,36 +76,34 @@ const (
 	optimizeDistinctId             // optimizeDistinct
 
 	// after default
-	finalizeSubqueriesId          // finalizeSubqueries
-	finalizeUnionsId              // finalizeUnions
-	loadTriggersId                // loadTriggers
-	processTruncateId             // processTruncate
-	resolveAlterColumnId          // resolveAlterColumn
-	resolveGeneratorsId           // resolveGenerators
-	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
-	pruneColumnsId                // pruneColumns
-	stripTableNameInDefaultsId    // stripTableNamesFromColumnDefaults
-	hoistSelectExistsId           // hoistSelectExists
-	optimizeJoinsId               // optimizeJoins
-	pushdownFiltersId             // pushdownFilters
-	subqueryIndexesId             // subqueryIndexes
-	pruneTablesId                 // pruneTables
-	setJoinScopeLenId             // setJoinScopeLen
-	eraseProjectionId             // eraseProjection
-	replaceSortPkId               // replaceSortPk
-	insertTopNId                  // insertTopN
-	cacheSubqueryResultsId        // cacheSubqueryResults
-	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
-	applyHashInId                 // applyHashIn
-	resolveInsertRowsId           // resolveInsertRows
-	resolvePreparedInsertId       // resolvePreparedInsert
-	applyTriggersId               // applyTriggers
-	applyProceduresId             // applyProcedures
-	assignRoutinesId              // assignRoutines
-	modifyUpdateExprsForJoinId    // modifyUpdateExprsForJoin
-	applyRowUpdateAccumulatorsId  // applyRowUpdateAccumulators
-	wrapWithRollbackId            // rollback triggers
-	applyFKsId                    // applyFKs
+	finalizeSubqueriesId         // finalizeSubqueries
+	finalizeUnionsId             // finalizeUnions
+	loadTriggersId               // loadTriggers
+	processTruncateId            // processTruncate
+	resolveAlterColumnId         // resolveAlterColumn
+	resolveGeneratorsId          // resolveGenerators
+	removeUnnecessaryConvertsId  // removeUnnecessaryConverts
+	pruneColumnsId               // pruneColumns
+	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
+	hoistSelectExistsId          // hoistSelectExists
+	optimizeJoinsId              // optimizeJoins
+	pushdownFiltersId            // pushdownFilters
+	subqueryIndexesId            // subqueryIndexes
+	pruneTablesId                // pruneTables
+	setJoinScopeLenId            // setJoinScopeLen
+	eraseProjectionId            // eraseProjection
+	replaceSortPkId              // replaceSortPk
+	insertTopNId                 // insertTopN
+	applyHashInId                // applyHashIn
+	resolveInsertRowsId          // resolveInsertRows
+	resolvePreparedInsertId      // resolvePreparedInsert
+	applyTriggersId              // applyTriggers
+	applyProceduresId            // applyProcedures
+	assignRoutinesId             // assignRoutines
+	modifyUpdateExprsForJoinId   // modifyUpdateExprsForJoin
+	applyRowUpdateAccumulatorsId // applyRowUpdateAccumulators
+	wrapWithRollbackId           // rollback triggers
+	applyFKsId                   // applyFKs
 
 	// validate
 	validateResolvedId          // validateResolved
@@ -122,8 +120,11 @@ const (
 	validateAggregationsId      // validateAggregations
 
 	// after all
-	AutocommitId    // addAutocommitNode
-	TrackProcessId  // trackProcess
-	parallelizeId   // parallelize
-	clearWarningsId // clearWarnings
+	normalizeSelectSingleRelId    // normalizeSelectSingleRel
+	cacheSubqueryResultsId        // cacheSubqueryResults
+	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
+	AutocommitId                  // addAutocommitNode
+	TrackProcessId                // trackProcess
+	parallelizeId                 // parallelize
+	clearWarningsId               // clearWarnings
 )

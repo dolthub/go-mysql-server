@@ -168,17 +168,19 @@ func simplifySubqExpr(n sql.NameableNode) sql.NameableNode {
 		switch n := n.(type) {
 		case *plan.Filter:
 			filters = append(filters, n.Expression)
-		case *plan.Limit, *plan.JoinNode, *plan.GroupBy, *plan.Window:
+		case *plan.Distinct, *plan.Limit, *plan.JoinNode, *plan.GroupBy, *plan.Window:
 			simple = false
 		case *plan.Project:
-			transform.InspectExpressions(n, func(e sql.Expression) bool {
-				switch e.(type) {
-				case sql.Function, *expression.Alias:
-					simple = false
-				default:
-				}
-				return simple
-			})
+			for _, f := range n.Projections {
+				transform.InspectExpr(f, func(e sql.Expression) bool {
+					switch e.(type) {
+					case *expression.GetField, *expression.Literal, *expression.Equals:
+					default:
+						simple = false
+					}
+					return !simple
+				})
+			}
 		case *plan.TableAlias:
 			tab = n
 		case *plan.ResolvedTable:
@@ -198,4 +200,23 @@ func simplifySubqExpr(n sql.NameableNode) sql.NameableNode {
 		return ret
 	}
 	return n
+}
+
+func normalizeSelectSingleRel(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		switch n := c.Node.(type) {
+		case *plan.SelectSingleRel:
+			if _, ok := c.Parent.(*plan.Max1Row); ok {
+				return plan.NewTableAlias(n.Name(), plan.NewFilter(expression.JoinAnd(n.Select...), n.Rel)), transform.NewTree, nil
+			} else {
+				return plan.NewFilter(expression.JoinAnd(n.Select...), n.Rel), transform.NewTree, nil
+			}
+		case *plan.Filter:
+			if f, ok := n.Child.(*plan.Filter); ok {
+				return plan.NewFilter(expression.NewAnd(n.Expression, f.Expression), f.Child), transform.NewTree, nil
+			}
+		default:
+		}
+		return c.Node, transform.SameTree, nil
+	})
 }

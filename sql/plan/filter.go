@@ -221,6 +221,7 @@ func (s *SelectSingleRel) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
+
 	nn, ok := children[0].(sql.NameableNode)
 	if !ok {
 		return nil, fmt.Errorf("SingleRelSelect.WithChildren() expected sql.NameableNode, found :%T", children[0])
