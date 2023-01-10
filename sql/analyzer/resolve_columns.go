@@ -766,9 +766,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		if len(columns) == 0 {
-			return n, transform.SameTree, nil
-		}
 
 		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
@@ -837,12 +834,15 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		}
 	}
 
+	if scope.OuterRelUnresolved() {
+		// the columns in this relation will be mis-indexed, skip
+		// until outer rel is resolved
+		return nil, nil
+	}
+
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
 	// ones of the same name. This matches the MySQL scope precedence rules.
 	indexSchema(scope.Schema())
-	if !scope.IsEmpty() && len(columns) == 0 {
-		return nil, nil
-	}
 
 	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
 	// itself. Skip this for DDL nodes that handle indexing separately.
