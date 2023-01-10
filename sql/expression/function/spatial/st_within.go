@@ -240,6 +240,44 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	}
 }
 
+// simplifyLineString condenses a LineString into its simplest line segments
+func simplifyLineString(l sql.LineString) sql.LineString {
+	// smallest possible point, closed or not
+	if len(l.Points) == 2 {
+		return l
+	}
+
+	// smallest possible closed point
+	closed := isClosed(l)
+	if closed && len(l.Points) == 3 {
+		return l
+	}
+
+	var a, b, c sql.Point
+	a = l.Points[0]
+	points := []sql.Point{a}
+	for i := 1; i < len(l.Points) - 1; i++ {
+		b = l.Points[i]
+		c = l.Points[i+1]
+
+		// TODO: check for perpendicular, horizontal, and vertical?
+		if orientation(a, b, c) != 0 {
+			points = append(points, b)
+			a = b
+		}
+	}
+
+	if isClosed(l) && len(points) > 3 {
+		if orientation(points[len(points)-1], points[0], points[1]) == 0 {
+			points = append(points[1:], points[1])
+		}
+	} else {
+		points = append(points, c)
+	}
+
+	return sql.LineString{SRID: l.SRID, Points: points}
+}
+
 func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
@@ -248,14 +286,15 @@ func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 	case sql.LineString:
 		// A LineString is within g, if it's Boundary and Interior are both inside the Interior of g
 		// So, every line segment of l and its terminal points, must be within at least 1 line segment of g
-		// TODO: simplify linestrings
-		for i := 1; i < len(l.Points); i++ {
-			c := l.Points[i-1]
-			d := l.Points[i]
+		l1 := simplifyLineString(l)
+		l2 := simplifyLineString(g)
+		for i := 1; i < len(l1.Points); i++ {
+			c := l1.Points[i-1]
+			d := l1.Points[i]
 			isIntersects := false
-			for j := 1; j < len(g.Points); j++ {
-				a := g.Points[j-1]
-				b := g.Points[j]
+			for j := 1; j < len(l2.Points); j++ {
+				a := l2.Points[j-1]
+				b := l2.Points[j]
 				if orientation(a, b, c) != 0 || orientation(a, b, d) != 0 {
 					continue
 				}

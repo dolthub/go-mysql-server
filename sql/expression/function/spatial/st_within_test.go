@@ -686,6 +686,23 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
+	t.Run("terminal line points not in line", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		l := sql.LineString{Points: []sql.Point{a, b}}
+		la := sql.LineString{Points: []sql.Point{a, a}}
+		lb := sql.LineString{Points: []sql.Point{b, b}}
+		f := NewWithin(expression.NewLiteral(la, sql.LineStringType{}), expression.NewLiteral(l, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+		f = NewWithin(expression.NewLiteral(lb, sql.LineStringType{}), expression.NewLiteral(l, sql.LineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
 	// LineString vs Polygon
 
 	// LineString vs MultiPoint
