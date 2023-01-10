@@ -66,11 +66,6 @@ func (w *Within) WithChildren(children ...sql.Expression) (sql.Expression, error
 	return NewWithin(children[0], children[1]), nil
 }
 
-// given 3 collinear points, check if they are intersecting
-func collinearIntersect(a, b, c sql.Point) bool {
-	return c.X > math.Min(a.X, b.X) && c.X < math.Max(a.X, b.X) && c.Y > math.Min(a.Y, b.Y) && c.Y < math.Max(a.Y, b.Y)
-}
-
 // TODO: https://www.geeksforgeeks.org/orientation-3-ordered-points/
 // checks the orientation of points a, b, c
 func orientation(a, b, c sql.Point) int {
@@ -100,16 +95,16 @@ func linesIntersect(a, b, c, d sql.Point) bool {
 	}
 
 	// if orientation is collinear, check if point is inside segment
-	if abc == 0 && collinearIntersect(a, b, c) {
+	if abc == 0 && isInBBox(a, b, c) {
 		return true
 	}
-	if abd == 0 && collinearIntersect(a, b, d) {
+	if abd == 0 && isInBBox(a, b, d) {
 		return true
 	}
-	if cda == 0 && collinearIntersect(c, d, a) {
+	if cda == 0 && isInBBox(c, d, a) {
 		return true
 	}
-	if cdb == 0 && collinearIntersect(c, d, b) {
+	if cdb == 0 && isInBBox(c, d, b) {
 		return true
 	}
 
@@ -119,15 +114,18 @@ func linesIntersect(a, b, c, d sql.Point) bool {
 
 // TODO: many of these functions are used in rasterization, so they can be parallelized
 
-func pointsEqual(a, b sql.Point) bool {
-	return a.X == b.X && a.Y == b.Y
-}
-
 func isInBBox(a, b, c sql.Point) bool {
 	return c.X >= math.Min(a.X, b.X) &&
 		c.X <= math.Max(a.X, b.X) &&
 		c.Y >= math.Min(a.Y, b.Y) &&
 		c.Y <= math.Max(a.Y, b.Y)
+}
+
+func isInStrictBBox(a, b, c sql.Point) bool {
+	return c.X > math.Min(a.X, b.X) &&
+		c.X < math.Max(a.X, b.X) &&
+		c.Y > math.Min(a.Y, b.Y) &&
+		c.Y < math.Max(a.Y, b.Y)
 }
 
 // isPointWithinClosedLineString checks if a point lies inside a Closed LineString
@@ -158,14 +156,19 @@ func isPointWithinClosedLineString(p sql.Point, l sql.LineString) bool {
 	return numInters%2 == 1
 }
 
+// Closed LineStrings have no Terminal Points, so will always return false for Closed LineStrings
+func isTerminalPoint(p sql.Point, l sql.LineString) bool {
+	return !isClosed(l) && (isPointEqual(p, startPoint(l)) || isPointEqual(p, endPoint(l)))
+}
+
 // isPointWithin checks if sql.Point p is within geometry g
 func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
-		return pointsEqual(p, g)
+		return isPointEqual(p, g)
 	case sql.LineString:
-		// Closed LineStrings contain their terminal points, and terminal points are not within linestring
-		if !isClosed(g) && (pointsEqual(p, startPoint(g)) || pointsEqual(p, endPoint(g))) {
+		// Terminal Points of LineStrings are not considered a part of their Interior
+		if isTerminalPoint(p, g) {
 			return false
 		}
 		// Alternatively, we could calculate if dist(ap) + dist(ab) == dist(ap)
@@ -180,8 +183,8 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 			return true
 		}
 	case sql.Polygon:
-		// TODO: a simpler, but possible more compute intensive option is to sum angles, and check if equal to 2pi
 		// Points on the Polygon Boundary are not considered part of the Polygon
+		// TODO: a simpler, but possible more compute intensive option is to sum angles, and check if equal to 2pi
 		for _, line := range g.Lines {
 			if isPointWithin(p, line) {
 				return false
@@ -199,7 +202,7 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		}
 		return true
 	case sql.MultiPoint:
-		// Point is considered within MultiPoint if it is within at least one Point
+		// Point is considered within MultiPoint if it's equal to at least one Point in MultiPoint
 		for _, pp := range g.Points {
 			if isPointWithin(p, pp) {
 				return true
@@ -207,12 +210,21 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 		}
 	case sql.MultiLineString:
 		// Point is considered within MultiLineString if it is within at least one LineString
-		for _, line := range g.Lines {
-			// Edge Case: if the point is any of the terminal points, it's not in the entire MultiLineString
-			if !isClosed(line) && (pointsEqual(p, startPoint(line)) || pointsEqual(p, endPoint(line))) {
-				return false
+		// Edge Case: If point is a terminal point for an odd number of lines,
+		//            then it's not within the entire MultiLineString.
+		//            This is the case regardless of how many other LineStrings the point is in
+		isOddTerminalPoint := false
+		for _, l := range g.Lines {
+			if isTerminalPoint(p, l) {
+				isOddTerminalPoint = !isOddTerminalPoint
 			}
-			if isPointWithin(p, line) {
+		}
+		if isOddTerminalPoint {
+			return false
+		}
+
+		for _, l := range g.Lines {
+			if isPointWithin(p, l) {
 				return true
 			}
 		}
@@ -270,12 +282,19 @@ func simplifyLineString(l sql.LineString) sql.LineString {
 	return sql.LineString{SRID: l.SRID, Points: points}
 }
 
+// isLineSegmentEqual checks if line segment ab is equal to line segment cd
+func isLineSegmentEqual(a, b, c, d sql.Point) bool {
+	return (isPointEqual(a, c) && isPointEqual(b, d)) ||
+		(isPointEqual(a, d) && isPointEqual(b, c))
+}
+
 func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point: // A LineString is never within a Point
 	case sql.LineString:
-		// A LineString is within a LineString, if it's Boundary and Interior are both inside the Interior of g
-		// So, every line segment of l and its terminal points, must be within at least 1 line segment of g
+		// A LineString is within a LineString, if its Interior is inside the Interior of g
+		// Every line segment of l must be collinear and within the bounding box of at least 1 line segment of g
+		// Edge Case: zero length LineStrings at the terminal points have no interior, so can't be within anything
 		l2 := simplifyLineString(g)
 		for i := 1; i < len(l.Points); i++ {
 			c := l.Points[i-1]
@@ -284,13 +303,18 @@ func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 			for j := 1; j < len(l2.Points); j++ {
 				a := l2.Points[j-1]
 				b := l2.Points[j]
+				if isLineSegmentEqual(a, b, c, d) {
+					isIntersects = true
+					break
+				}
 				if orientation(a, b, c) != 0 || orientation(a, b, d) != 0 {
 					continue
 				}
-				if !collinearIntersect(a, b, c) || !collinearIntersect(a, b, d) {
+				if !isInStrictBBox(a, b, c) || !isInStrictBBox(a, b, d) {
 					continue
 				}
 				isIntersects = true
+				break
 			}
 			if !isIntersects {
 				return false
@@ -302,6 +326,7 @@ func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 		// 1. at least one point is inside the Polygon
 		// 2. any number of points are on the boundaries
 		// 3. there are no points on the outside of the polygon
+		pointInInterior := false
 		for _, p := range l.Points {
 			for i, line := range g.Lines {
 				if isPointWithin(p, line) {
@@ -311,12 +336,13 @@ func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 					if i > 0 {
 						return false
 					}
+					pointInInterior = true
 					continue
 				}
 				return false
 			}
 		}
-		return true
+		return pointInInterior
 	case sql.MultiPoint: // A LineString is never within a MultiPoint
 	case sql.MultiLineString:
 		for _, line := range g.Lines {
@@ -381,9 +407,8 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 			}
 		}
 		return true
-	default:
-		return false
 	}
+	return false
 }
 
 // For geometry A to be within geometry B:
