@@ -766,6 +766,9 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+		if len(columns) == 0 {
+			return n, transform.SameTree, nil
+		}
 
 		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
