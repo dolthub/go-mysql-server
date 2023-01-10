@@ -130,7 +130,7 @@ func isInBBox(a, b, c sql.Point) bool {
 		c.Y <= math.Max(a.Y, b.Y)
 }
 
-// isPointWithinClosedLineString checks if a point lies inside of a Closed LineString
+// isPointWithinClosedLineString checks if a point lies inside a Closed LineString
 func isPointWithinClosedLineString(p sql.Point, l sql.LineString) bool {
 	numInters := 0
 	for i := 1; i < len(l.Points); i++ {
@@ -179,12 +179,11 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 			}
 			return true
 		}
-		return false
 	case sql.Polygon:
 		// TODO: a simpler, but possible more compute intensive option is to sum angles, and check if equal to 2pi
 		// Points on the Polygon Boundary are not considered part of the Polygon
 		for _, line := range g.Lines {
-			if isPointWithin(p, line){
+			if isPointWithin(p, line) {
 				return false
 			}
 		}
@@ -206,7 +205,6 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				return true
 			}
 		}
-		return false
 	case sql.MultiLineString:
 		// Point is considered within MultiLineString if it is within at least one LineString
 		for _, line := range g.Lines {
@@ -218,7 +216,6 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				return true
 			}
 		}
-		return false
 	case sql.MultiPolygon:
 		// Point is considered within MultiPolygon if it is within at least one Polygon
 		for _, poly := range g.Polygons {
@@ -226,7 +223,6 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				return true
 			}
 		}
-		return false
 	case sql.GeomColl:
 		// Point is considered within GeometryCollection if it is within at least one Geometry
 		for _, gg := range g.Geoms {
@@ -234,10 +230,8 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				return true
 			}
 		}
-		return false
-	default:
-		return false
 	}
+	return false
 }
 
 // simplifyLineString condenses a LineString into its simplest line segments
@@ -267,10 +261,8 @@ func simplifyLineString(l sql.LineString) sql.LineString {
 		}
 	}
 
-	if isClosed(l) && len(points) > 3 {
-		if orientation(points[len(points)-1], points[0], points[1]) == 0 {
-			points = append(points[1:], points[1])
-		}
+	if isClosed(l) && len(points) >= 3 && orientation(points[len(points)-1], points[0], points[1]) == 0 {
+		points = append(points[1:], points[1])
 	} else {
 		points = append(points, c)
 	}
@@ -280,17 +272,14 @@ func simplifyLineString(l sql.LineString) sql.LineString {
 
 func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 	switch g := g.(type) {
-	case sql.Point:
-		// A LineString is never within a Point
-		return false
+	case sql.Point: // A LineString is never within a Point
 	case sql.LineString:
-		// A LineString is within g, if it's Boundary and Interior are both inside the Interior of g
+		// A LineString is within a LineString, if it's Boundary and Interior are both inside the Interior of g
 		// So, every line segment of l and its terminal points, must be within at least 1 line segment of g
-		l1 := simplifyLineString(l)
 		l2 := simplifyLineString(g)
-		for i := 1; i < len(l1.Points); i++ {
-			c := l1.Points[i-1]
-			d := l1.Points[i]
+		for i := 1; i < len(l.Points); i++ {
+			c := l.Points[i-1]
+			d := l.Points[i]
 			isIntersects := false
 			for j := 1; j < len(l2.Points); j++ {
 				a := l2.Points[j-1]
@@ -308,9 +297,47 @@ func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 			}
 		}
 		return true
-	default:
-		return false
+	case sql.Polygon:
+		// A LineString is within a Polygon, if
+		// 1. at least one point is inside the Polygon
+		// 2. any number of points are on the boundaries
+		// 3. there are no points on the outside of the polygon
+		for _, p := range l.Points {
+			for i, line := range g.Lines {
+				if isPointWithin(p, line) {
+					continue
+				}
+				if isPointWithinClosedLineString(p, line) {
+					if i > 0 {
+						return false
+					}
+					continue
+				}
+				return false
+			}
+		}
+		return true
+	case sql.MultiPoint: // A LineString is never within a MultiPoint
+	case sql.MultiLineString:
+		for _, line := range g.Lines {
+			if isLineWithin(l, line) {
+				return true
+			}
+		}
+	case sql.MultiPolygon:
+		for _, p := range g.Polygons {
+			if isLineWithin(l, p) {
+				return true
+			}
+		}
+	case sql.GeomColl:
+		for _, geom := range g.Geoms {
+			if isLineWithin(l, geom) {
+				return true
+			}
+		}
 	}
+	return false
 }
 
 // countConcreteGeomes recursively counts all the GeomTypes that are not GeomColl inside a GeomColl
@@ -332,7 +359,7 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 	case sql.Point:
 		return isPointWithin(g1, g2)
 	case sql.LineString:
-		return isLineWithin(g1, g2)
+		return isLineWithin(simplifyLineString(g1), g2)
 	case sql.MultiPoint:
 		// A MultiPoint is considered within g2 if all points are within g2
 		checked := map[sql.Point]bool{}
