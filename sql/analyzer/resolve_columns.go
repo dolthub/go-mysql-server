@@ -837,6 +837,9 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
 	// ones of the same name. This matches the MySQL scope precedence rules.
 	indexSchema(scope.Schema())
+	if !scope.IsEmpty() && len(columns) == 0 {
+		return nil, nil
+	}
 
 	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
 	// itself. Skip this for DDL nodes that handle indexing separately.
