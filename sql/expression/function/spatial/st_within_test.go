@@ -584,31 +584,107 @@ func TestWithin(t *testing.T) {
 		require.Equal(true, v)
 	})
 
-	t.Run("point within multipolygon", func(t *testing.T) {
+	// LineString vs LineString
+	t.Run("linestring within linestring", func(t *testing.T) {
 		require := require.New(t)
-		p := sql.Point{X: 0, Y: 0}
-
-		a1 := sql.Point{X: 4, Y: 4}
-		b1 := sql.Point{X: 4, Y: -4}
-		c1 := sql.Point{X: -4, Y: -4}
-		d1 := sql.Point{X: -4, Y: 4}
-
-		a2 := sql.Point{X: 2, Y: 2}
-		b2 := sql.Point{X: 2, Y: -2}
-		c2 := sql.Point{X: -2, Y: -2}
-		d2 := sql.Point{X: -2, Y: 2}
-
-		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
-		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
-		mp := sql.MultiPolygon{Polygons: []sql.Polygon{{Lines: []sql.LineString{l1}}, {Lines: []sql.LineString{l2}}}}
-
-		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(mp, sql.MultiLineStringType{}))
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: -5, Y: -5}
+		d := sql.Point{X: 5, Y: 5}
+		l1 := sql.LineString{Points: []sql.Point{a, b}}
+		l2 := sql.LineString{Points: []sql.Point{c, d}}
+		f := NewWithin(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
 	})
 
-	// LineString vs LineString
+	t.Run("many line segments within larger line segment", func(t *testing.T) {
+		require := require.New(t)
+
+		a := sql.Point{X: 1, Y: 1}
+		b := sql.Point{X: 2, Y: 2}
+		c := sql.Point{X: 3, Y: 3}
+		l1 := sql.LineString{Points: []sql.Point{a, b, c}}
+
+		p := sql.Point{X: 0, Y: 0}
+		q := sql.Point{X: 4, Y: 4}
+		l2 := sql.LineString{Points: []sql.Point{p, q}}
+
+		f := NewWithin(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("larger line segment within many small line segments", func(t *testing.T) {
+		require := require.New(t)
+
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 2, Y: 2}
+		d := sql.Point{X: 3, Y: 3}
+		e := sql.Point{X: 4, Y: 4}
+		l1 := sql.LineString{Points: []sql.Point{b, d}}
+		l2 := sql.LineString{Points: []sql.Point{a, b, c, d, e}}
+
+		f := NewWithin(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("alternating line segments", func(t *testing.T) {
+		require := require.New(t)
+
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 2, Y: 2}
+		d := sql.Point{X: 3, Y: 3}
+		e := sql.Point{X: 4, Y: 4}
+		l1 := sql.LineString{Points: []sql.Point{b, d}}
+		l2 := sql.LineString{Points: []sql.Point{a, c, e}}
+
+		f := NewWithin(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("linestring not within perpendicular linestring", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 1, Y: 0}
+		d := sql.Point{X: 0, Y: 1}
+		l1 := sql.LineString{Points: []sql.Point{a, b}}
+		l2 := sql.LineString{Points: []sql.Point{c, d}}
+		f := NewWithin(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+		f = NewWithin(expression.NewLiteral(l2, sql.LineStringType{}), expression.NewLiteral(l1, sql.LineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
+	t.Run("axis-aligned perpendicular linestring not within", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 0, Y: 1}
+		c := sql.Point{X: 1, Y: 0}
+		l1 := sql.LineString{Points: []sql.Point{a, b}}
+		l2 := sql.LineString{Points: []sql.Point{a, c}}
+		f := NewWithin(expression.NewLiteral(l1, sql.LineStringType{}), expression.NewLiteral(l2, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+		f = NewWithin(expression.NewLiteral(l2, sql.LineStringType{}), expression.NewLiteral(l1, sql.LineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// LineString vs Polygon
 

@@ -243,10 +243,32 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
-		g=g
+		// A LineString is never within a Point
 		return false
 	case sql.LineString:
-		return false
+		// A LineString is within g, if it's Boundary and Interior are both inside the Interior of g
+		// So, every line segment of l and its terminal points, must be within at least 1 line segment of g
+		// TODO: simplify linestrings
+		for i := 1; i < len(l.Points); i++ {
+			c := l.Points[i-1]
+			d := l.Points[i]
+			isIntersects := false
+			for j := 1; j < len(g.Points); j++ {
+				a := g.Points[j-1]
+				b := g.Points[j]
+				if orientation(a, b, c) != 0 || orientation(a, b, d) != 0 {
+					continue
+				}
+				if !collinearIntersect(a, b, c) || !collinearIntersect(a, b, d) {
+					continue
+				}
+				isIntersects = true
+			}
+			if !isIntersects {
+				return false
+			}
+		}
+		return true
 	default:
 		return false
 	}
@@ -271,7 +293,7 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 	case sql.Point:
 		return isPointWithin(g1, g2)
 	case sql.LineString:
-		return false
+		return isLineWithin(g1, g2)
 	case sql.MultiPoint:
 		// A MultiPoint is considered within g2 if all points are within g2
 		checked := map[sql.Point]bool{}
