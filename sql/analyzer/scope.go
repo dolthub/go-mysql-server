@@ -41,6 +41,14 @@ func (s *Scope) IsEmpty() bool {
 	return s == nil || len(s.nodes) == 0
 }
 
+// OuterRelUnresolved returns true if the relations in the
+// outer scope are not qualified and resolved.
+// note: a subquery in the outer scope is itself a scope,
+// and by definition not an outer relation
+func (s *Scope) OuterRelUnresolved() bool {
+	return !s.IsEmpty() && s.Schema() == nil
+}
+
 // newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,
 // the Node given should be the sibling Node of the subquery.
 func (s *Scope) newScope(node sql.Node) *Scope {
