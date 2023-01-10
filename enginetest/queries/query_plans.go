@@ -30,26 +30,17 @@ var PlanTests = []QueryPlanTest{
 			" ├─ columns: [mytable.s:1!null]\n" +
 			" └─ RightSemiLookupJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ mytable.i:1!null\n" +
-			"     │   └─ applySubq0.i2:0!null\n" +
+			"     │   ├─ mytable.i:2!null\n" +
+			"     │   └─ applySubq0.i2:1!null\n" +
 			"     ├─ Max1Row\n" +
-			"     │   └─ SubqueryAlias\n" +
-			"     │       ├─ name: applySubq0\n" +
-			"     │       ├─ outerVisibility: false\n" +
-			"     │       ├─ cacheable: true\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [othertable.i2:1!null]\n" +
-			"     │           └─ Filter\n" +
-			"     │               ├─ Eq\n" +
-			"     │               │   ├─ othertable.s2:0!null\n" +
-			"     │               │   └─ second (longtext)\n" +
-			"     │               └─ IndexedTableAccess\n" +
-			"     │                   ├─ index: [othertable.s2]\n" +
-			"     │                   ├─ static: [{[second, second]}]\n" +
-			"     │                   ├─ columns: [s2 i2]\n" +
-			"     │                   └─ Table\n" +
-			"     │                       ├─ name: othertable\n" +
-			"     │                       └─ projections: [0 1]\n" +
+			"     │   └─ Select\n" +
+			"     │       ├─ filters: Eq\n" +
+			"     │       │   ├─ applySubq0.s2:0!null\n" +
+			"     │       │   └─ second (longtext)\n" +
+			"     │       └─ TableAlias(applySubq0)\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: othertable\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         └─ Table\n" +
@@ -8494,14 +8485,14 @@ WHERE
 			"     │               ├─ Eq\n" +
 			"     │               │   ├─ aac.BTXC5:36\n" +
 			"     │               │   └─ YLKSY.LJLUM:10\n" +
-			"     │               ├─ HashJoin\n" +
+			"     │               ├─ AntiLookupJoin\n" +
 			"     │               │   ├─ Eq\n" +
-			"     │               │   │   ├─ nd.ZH72S:25\n" +
-			"     │               │   │   └─ YLKSY.ZH72S:7\n" +
-			"     │               │   ├─ AntiJoin\n" +
+			"     │               │   │   ├─ YLKSY.id:5!null\n" +
+			"     │               │   │   └─ applySubq0.NRURT:35\n" +
+			"     │               │   ├─ LookupJoin\n" +
 			"     │               │   │   ├─ Eq\n" +
-			"     │               │   │   │   ├─ YLKSY.id:5!null\n" +
-			"     │               │   │   │   └─ applySubq0.NRURT:18\n" +
+			"     │               │   │   │   ├─ nd.ZH72S:25\n" +
+			"     │               │   │   │   └─ YLKSY.ZH72S:7\n" +
 			"     │               │   │   ├─ LookupJoin\n" +
 			"     │               │   │   │   ├─ Eq\n" +
 			"     │               │   │   │   │   ├─ ci.FTQLQ:1!null\n" +
@@ -8516,26 +8507,20 @@ WHERE
 			"     │               │   │   │               ├─ index: [OUBDL.FTQLQ]\n" +
 			"     │               │   │   │               └─ Table\n" +
 			"     │               │   │   │                   └─ name: OUBDL\n" +
-			"     │               │   │   └─ SubqueryAlias\n" +
-			"     │               │   │       ├─ name: applySubq0\n" +
-			"     │               │   │       ├─ outerVisibility: false\n" +
-			"     │               │   │       ├─ cacheable: true\n" +
-			"     │               │   │       └─ Filter\n" +
-			"     │               │   │           ├─ (NOT(FLQLP.NRURT:0 IS NULL))\n" +
-			"     │               │   │           └─ IndexedTableAccess\n" +
-			"     │               │   │               ├─ index: [FLQLP.NRURT]\n" +
-			"     │               │   │               ├─ static: [{(NULL, ∞)}]\n" +
-			"     │               │   │               ├─ columns: [nrurt]\n" +
-			"     │               │   │               └─ Table\n" +
-			"     │               │   │                   ├─ name: FLQLP\n" +
-			"     │               │   │                   └─ projections: [5]\n" +
-			"     │               │   └─ HashLookup\n" +
-			"     │               │       ├─ source: TUPLE(YLKSY.ZH72S:7)\n" +
-			"     │               │       ├─ target: TUPLE(nd.ZH72S:7)\n" +
-			"     │               │       └─ CachedResults\n" +
-			"     │               │           └─ TableAlias(nd)\n" +
+			"     │               │   │   └─ TableAlias(nd)\n" +
+			"     │               │   │       └─ IndexedTableAccess\n" +
+			"     │               │   │           ├─ index: [E2I7U.ZH72S]\n" +
+			"     │               │   │           └─ Table\n" +
+			"     │               │   │               └─ name: E2I7U\n" +
+			"     │               │   └─ Select\n" +
+			"     │               │       ├─ filters: (NOT(applySubq0.NRURT:0 IS NULL))\n" +
+			"     │               │       └─ TableAlias(applySubq0)\n" +
+			"     │               │           └─ IndexedTableAccess\n" +
+			"     │               │               ├─ index: [FLQLP.NRURT]\n" +
+			"     │               │               ├─ columns: [nrurt]\n" +
 			"     │               │               └─ Table\n" +
-			"     │               │                   └─ name: E2I7U\n" +
+			"     │               │                   ├─ name: FLQLP\n" +
+			"     │               │                   └─ projections: [5]\n" +
 			"     │               └─ TableAlias(aac)\n" +
 			"     │                   └─ IndexedTableAccess\n" +
 			"     │                       ├─ index: [TPXBU.BTXC5]\n" +
@@ -8646,7 +8631,7 @@ WHERE
 	   AND
 	       SWCQV = 0
 	`,
-		ExpectedPlan: "AntiJoin\n" +
+		ExpectedPlan: "AntiLookupJoin\n" +
 			" ├─ Eq\n" +
 			" │   ├─ HU5A5.id:0!null\n" +
 			" │   └─ applySubq0.XMM6Q:13\n" +
@@ -8656,15 +8641,11 @@ WHERE
 			" │   │   └─ 0 (tinyint)\n" +
 			" │   └─ Table\n" +
 			" │       └─ name: HU5A5\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: applySubq0\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ Filter\n" +
-			"         ├─ (NOT(FLQLP.XMM6Q:0 IS NULL))\n" +
+			" └─ Select\n" +
+			"     ├─ filters: (NOT(applySubq0.XMM6Q:0 IS NULL))\n" +
+			"     └─ TableAlias(applySubq0)\n" +
 			"         └─ IndexedTableAccess\n" +
 			"             ├─ index: [FLQLP.XMM6Q]\n" +
-			"             ├─ static: [{(NULL, ∞)}]\n" +
 			"             ├─ columns: [xmm6q]\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: FLQLP\n" +
@@ -14343,39 +14324,27 @@ ORDER BY cla.FTQLQ ASC`,
 			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
 			"         └─ RightSemiLookupJoin\n" +
 			"             ├─ Eq\n" +
-			"             │   ├─ cla.id:1!null\n" +
-			"             │   └─ applySubq0.IXUXU:0\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: applySubq0\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   └─ Project\n" +
-			"             │       ├─ columns: [bs.IXUXU:2]\n" +
-			"             │       └─ SemiLookupJoin\n" +
-			"             │           ├─ Eq\n" +
-			"             │           │   ├─ bs.id:0!null\n" +
-			"             │           │   └─ applySubq1.GXLUB:4!null\n" +
-			"             │           ├─ SemiLookupJoin\n" +
-			"             │           │   ├─ Eq\n" +
-			"             │           │   │   ├─ bs.id:0!null\n" +
-			"             │           │   │   └─ applySubq0.GXLUB:4!null\n" +
-			"             │           │   ├─ TableAlias(bs)\n" +
-			"             │           │   │   └─ Table\n" +
-			"             │           │   │       └─ name: THNTS\n" +
-			"             │           │   └─ TableAlias(applySubq0)\n" +
-			"             │           │       └─ IndexedTableAccess\n" +
-			"             │           │           ├─ index: [HGMQ6.GXLUB]\n" +
-			"             │           │           ├─ columns: [gxlub]\n" +
-			"             │           │           └─ Table\n" +
-			"             │           │               ├─ name: HGMQ6\n" +
-			"             │           │               └─ projections: [1]\n" +
-			"             │           └─ TableAlias(applySubq1)\n" +
-			"             │               └─ IndexedTableAccess\n" +
-			"             │                   ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
-			"             │                   ├─ columns: [gxlub]\n" +
-			"             │                   └─ Table\n" +
-			"             │                       ├─ name: AMYXQ\n" +
-			"             │                       └─ projections: [1]\n" +
+			"             │   ├─ cla.id:4!null\n" +
+			"             │   └─ applySubq0.IXUXU:2\n" +
+			"             ├─ Select\n" +
+			"             │   ├─ filters: AND\n" +
+			"             │   │   ├─ InSubquery\n" +
+			"             │   │   │   ├─ left: applySubq0.id:0!null\n" +
+			"             │   │   │   └─ right: Subquery\n" +
+			"             │   │   │       ├─ cacheable: true\n" +
+			"             │   │   │       └─ Table\n" +
+			"             │   │   │           ├─ name: HGMQ6\n" +
+			"             │   │   │           └─ columns: [gxlub]\n" +
+			"             │   │   └─ InSubquery\n" +
+			"             │   │       ├─ left: applySubq0.id:0!null\n" +
+			"             │   │       └─ right: Subquery\n" +
+			"             │   │           ├─ cacheable: true\n" +
+			"             │   │           └─ Table\n" +
+			"             │   │               ├─ name: AMYXQ\n" +
+			"             │   │               └─ columns: [gxlub]\n" +
+			"             │   └─ TableAlias(applySubq0)\n" +
+			"             │       └─ Table\n" +
+			"             │           └─ name: THNTS\n" +
 			"             └─ TableAlias(cla)\n" +
 			"                 └─ IndexedTableAccess\n" +
 			"                     ├─ index: [YK2GW.id]\n" +
@@ -14433,35 +14402,27 @@ ORDER BY cla.FTQLQ ASC`,
 			" └─ Distinct\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
-			"         └─ RightSemiLookupJoin\n" +
+			"         └─ SemiJoin\n" +
 			"             ├─ Eq\n" +
-			"             │   ├─ cla.id:1!null\n" +
-			"             │   └─ applySubq0.IXUXU:0\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: applySubq0\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   └─ Project\n" +
-			"             │       ├─ columns: [bs.IXUXU:2]\n" +
-			"             │       └─ SemiLookupJoin\n" +
-			"             │           ├─ Eq\n" +
-			"             │           │   ├─ bs.id:0!null\n" +
-			"             │           │   └─ applySubq0.GXLUB:4!null\n" +
-			"             │           ├─ TableAlias(bs)\n" +
-			"             │           │   └─ Table\n" +
-			"             │           │       └─ name: THNTS\n" +
-			"             │           └─ TableAlias(applySubq0)\n" +
-			"             │               └─ IndexedTableAccess\n" +
-			"             │                   ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
-			"             │                   ├─ columns: [gxlub]\n" +
-			"             │                   └─ Table\n" +
-			"             │                       ├─ name: AMYXQ\n" +
-			"             │                       └─ projections: [1]\n" +
-			"             └─ TableAlias(cla)\n" +
-			"                 └─ IndexedTableAccess\n" +
-			"                     ├─ index: [YK2GW.id]\n" +
-			"                     └─ Table\n" +
-			"                         └─ name: YK2GW\n" +
+			"             │   ├─ cla.id:0!null\n" +
+			"             │   └─ applySubq0.IXUXU:32\n" +
+			"             ├─ TableAlias(cla)\n" +
+			"             │   └─ Table\n" +
+			"             │       └─ name: YK2GW\n" +
+			"             └─ SemiLookupJoin\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ applySubq0.id:30!null\n" +
+			"                 │   └─ applySubq1.GXLUB:34!null\n" +
+			"                 ├─ TableAlias(applySubq0)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       └─ name: THNTS\n" +
+			"                 └─ TableAlias(applySubq1)\n" +
+			"                     └─ IndexedTableAccess\n" +
+			"                         ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
+			"                         ├─ columns: [gxlub]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: AMYXQ\n" +
+			"                             └─ projections: [1]\n" +
 			"",
 	},
 	{

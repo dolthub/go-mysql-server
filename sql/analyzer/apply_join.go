@@ -37,104 +37,118 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	}
 	var applyId int
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		var f *plan.Filter
-		switch n := n.(type) {
-		case *plan.Filter:
-			f = n
-		}
+	ret := n
+	var err error
+	same := transform.NewTree
+	for !same {
+		ret, same, err = transform.Node(ret, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+			var filters []sql.Expression
+			var child sql.Node
+			switch n := n.(type) {
+			case *plan.Filter:
+				child = n.Child
+				filters = splitConjunction(n.Expression)
+			case *plan.SelectSingleRel:
+				child = n.Rel
+				filters = n.Select
+			}
 
-		if f == nil {
-			return n, transform.SameTree, nil
-		}
+			if sel == nil {
+				return n, transform.SameTree, nil
+			}
 
-		subScope := scope.newScopeFromSubqueryExpression(n)
-		var matches []applyJoin
-		var newFilters []sql.Expression
+			subScope := scope.newScopeFromSubqueryExpression(n)
+			var matches []applyJoin
+			var newFilters []sql.Expression
 
-		for _, e := range splitConjunction(f.Expression) {
-			switch e := e.(type) {
-			case *plan.InSubquery:
-				sq := e.Right.(*plan.Subquery)
-				if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
-					matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeSemi})
-					continue
-				}
-			case *expression.Equals:
-				if r, ok := e.Right().(*plan.Subquery); ok {
-					if nodeIsCacheable(r.Query, len(subScope.Schema())) {
-						matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeSemi, max1: true})
-						continue
-					}
-				}
-			case *expression.Not:
-				switch e := e.Child.(type) {
+			for _, e := range filters {
+				switch e := e.(type) {
 				case *plan.InSubquery:
 					sq := e.Right.(*plan.Subquery)
 					if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
-						matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeAnti})
+						matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeSemi})
 						continue
 					}
 				case *expression.Equals:
 					if r, ok := e.Right().(*plan.Subquery); ok {
 						if nodeIsCacheable(r.Query, len(subScope.Schema())) {
-							matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeAnti, max1: true})
+							matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeSemi, max1: true})
 							continue
 						}
 					}
+				case *expression.Not:
+					switch e := e.Child.(type) {
+					case *plan.InSubquery:
+						sq := e.Right.(*plan.Subquery)
+						if nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+							matches = append(matches, applyJoin{l: e.Left, r: sq, op: plan.JoinTypeAnti})
+							continue
+						}
+					case *expression.Equals:
+						if r, ok := e.Right().(*plan.Subquery); ok {
+							if nodeIsCacheable(r.Query, len(subScope.Schema())) {
+								matches = append(matches, applyJoin{l: e.Left(), r: r, op: plan.JoinTypeAnti, max1: true})
+								continue
+							}
+						}
+					}
+				default:
 				}
-			default:
+				newFilters = append(newFilters, e)
 			}
-			newFilters = append(newFilters, e)
-		}
-		if len(matches) == 0 {
-			return n, transform.SameTree, nil
-		}
+			if len(matches) == 0 {
+				return n, transform.SameTree, nil
+			}
 
-		ret := f.Child
-		for _, m := range matches {
-			subq := m.r
+			ret := child
+			for _, m := range matches {
+				subq := m.r
 
-			name := fmt.Sprintf("applySubq%d", applyId)
-			applyId++
+				name := fmt.Sprintf("applySubq%d", applyId)
+				applyId++
 
-			sch := subq.Query.Schema()
-			var rightF sql.Expression
-			if len(sch) == 1 {
-				subqCol := subq.Query.Schema()[0]
-				rightF = expression.NewGetFieldWithTable(len(scope.Schema()), subqCol.Type, name, subqCol.Name, subqCol.Nullable)
-			} else {
-				tup := make(expression.Tuple, len(sch))
-				for i, c := range sch {
-					tup[i] = expression.NewGetFieldWithTable(len(scope.Schema())+i, c.Type, name, c.Name, c.Nullable)
+				sch := subq.Query.Schema()
+				var rightF sql.Expression
+				if len(sch) == 1 {
+					subqCol := subq.Query.Schema()[0]
+					rightF = expression.NewGetFieldWithTable(len(scope.Schema()), subqCol.Type, name, subqCol.Name, subqCol.Nullable)
+				} else {
+					tup := make(expression.Tuple, len(sch))
+					for i, c := range sch {
+						tup[i] = expression.NewGetFieldWithTable(len(scope.Schema())+i, c.Type, name, c.Name, c.Nullable)
+					}
+					rightF = tup
 				}
-				rightF = tup
+
+				q, _, err := FixFieldIndexesForNode(a, scope, subq.Query)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				var newSubq sql.NameableNode = plan.NewSubqueryAlias(name, subq.QueryString, q)
+				newSubq = simplifySubqExpr(newSubq)
+				if m.max1 {
+					newSubq = plan.NewMax1Row(newSubq)
+				}
+
+				condSch := append(ret.Schema(), newSubq.Schema()...)
+				filter, _, err := FixFieldIndexes(scope, a, condSch, expression.NewEquals(m.l, rightF))
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				ret = plan.NewJoin(ret, newSubq, m.op, filter)
 			}
 
-			q, _, err := FixFieldIndexesForNode(a, scope, subq.Query)
-			if err != nil {
-				return nil, transform.SameTree, err
+			if len(newFilters) == 0 {
+				return ret, transform.NewTree, nil
 			}
-
-			var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q)
-			newSubq = simplifySubqExpr(newSubq)
-			if m.max1 {
-				newSubq = plan.NewMax1Row(newSubq)
-			}
-
-			condSch := append(ret.Schema(), newSubq.Schema()...)
-			filter, _, err := FixFieldIndexes(scope, a, condSch, expression.NewEquals(m.l, rightF))
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			ret = plan.NewJoin(ret, newSubq, m.op, filter)
+			return plan.NewFilter(expression.JoinAnd(newFilters...), ret), transform.NewTree, nil
+		})
+		if err != nil {
+			return n, transform.SameTree, err
 		}
-
-		if len(newFilters) == 0 {
-			return ret, transform.NewTree, nil
-		}
-		return plan.NewFilter(expression.JoinAnd(newFilters...), ret), transform.NewTree, nil
-	})
+	}
+	return ret, transform.TreeIdentity(applyId > 0), nil
 }
 
 // simplifySubqExpr converts a subquery expression into a table alias
@@ -142,35 +156,46 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 // TODO we can pass filters upwards also, but this general approach
 // is flaky and should be refactored into a better decorrelation
 // framework.
-func simplifySubqExpr(n sql.Node) sql.Node {
+func simplifySubqExpr(n sql.NameableNode) sql.NameableNode {
 	sq, ok := n.(*plan.SubqueryAlias)
 	if !ok {
 		return n
 	}
 	simple := true
 	var tab sql.NameableNode
+	var filters []sql.Expression
 	transform.Inspect(sq.Child, func(n sql.Node) bool {
 		switch n := n.(type) {
-		case *plan.Filter, *plan.Limit, *plan.JoinNode, *plan.GroupBy, *plan.Window:
+		case *plan.Filter:
+			filters = append(filters, n.Expression)
+		case *plan.Limit, *plan.JoinNode, *plan.GroupBy, *plan.Window:
 			simple = false
 		case *plan.Project:
 			transform.InspectExpressions(n, func(e sql.Expression) bool {
 				switch e.(type) {
-				case *expression.GetField:
-				default:
+				case sql.Function, *expression.Alias:
 					simple = false
+				default:
 				}
 				return simple
 			})
 		case *plan.TableAlias:
 			tab = n
 		case *plan.ResolvedTable:
+			if plan.IsDualTable(n.Table) {
+				simple = false
+				return false
+			}
 			tab = n
 		}
 		return simple
 	})
 	if simple && tab != nil {
-		return plan.NewTableAlias(sq.Name(), tab)
+		var ret sql.NameableNode = plan.NewTableAlias(sq.Name(), tab)
+		if len(filters) > 0 {
+			ret = plan.NewSelectSingleRel(filters, ret).RequalifyFields(sq.Name())
+		}
+		return ret
 	}
 	return n
 }

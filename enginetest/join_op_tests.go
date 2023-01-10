@@ -182,7 +182,7 @@ var JoinOpTests = []struct {
 			},
 			{
 				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti, plan.JoinTypeAnti, plan.JoinTypeAnti},
+				types: []plan.JoinType{plan.JoinTypeAnti, plan.JoinTypeAnti, plan.JoinTypeAntiLookup},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -308,6 +308,27 @@ order by 1;`,
 				q:     "select * from xy where y-1 = (select u from uv limit 1 offset 5);",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{},
+			},
+			{
+				q:     "select * from xy where x != (select u from uv limit 1 offset 5);",
+				types: []plan.JoinType{plan.JoinTypeAnti},
+				exp:   []sql.Row{},
+			},
+		},
+	},
+	{
+		name: "decorrelate with scope filters",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+			"CREATE table uv (u int primary key, v int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+		},
+		tests: []JoinOpTest{
+			{
+				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{3, 3}},
 			},
 			{
 				q:     "select * from xy where x != (select u from uv limit 1 offset 5);",
