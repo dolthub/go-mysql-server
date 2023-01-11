@@ -29,6 +29,7 @@ type IfConditional struct {
 var _ sql.Node = (*IfConditional)(nil)
 var _ sql.DebugStringer = (*IfConditional)(nil)
 var _ sql.Expressioner = (*IfConditional)(nil)
+var _ RepresentsBlock = (*IfConditional)(nil)
 
 // NewIfConditional creates a new *IfConditional node.
 func NewIfConditional(condition sql.Expression, body sql.Node) *IfConditional {
@@ -106,6 +107,9 @@ func (ic *IfConditional) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 	return ic.Body.RowIter(ctx, row)
 }
 
+// implementsRepresentsBlock implements the RepresentsBlock interface.
+func (ic *IfConditional) implementsRepresentsBlock() {}
+
 // IfElseBlock represents IF/ELSE IF/ELSE statements.
 type IfElseBlock struct {
 	IfConditionals []*IfConditional
@@ -114,6 +118,7 @@ type IfElseBlock struct {
 
 var _ sql.Node = (*IfElseBlock)(nil)
 var _ sql.DebugStringer = (*IfElseBlock)(nil)
+var _ RepresentsBlock = (*IfElseBlock)(nil)
 
 // NewIfElse creates a new *IfElseBlock node.
 func NewIfElse(ifConditionals []*IfConditional, elseStatement sql.Node) *IfElseBlock {
@@ -266,6 +271,9 @@ func (ieb *IfElseBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		branchNode: ieb.Else,
 	}, nil
 }
+
+// implementsRepresentsBlock implements the RepresentsBlock interface.
+func (ieb *IfElseBlock) implementsRepresentsBlock() {}
 
 // ifElseIter is the row iterator for *IfElseBlock.
 type ifElseIter struct {

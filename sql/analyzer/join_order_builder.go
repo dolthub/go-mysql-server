@@ -182,6 +182,11 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
 	leftV, leftE := j.populateSubgraph(n.Left())
 	rightV, rightE := j.populateSubgraph(n.Right())
 	typ := n.JoinType()
+	var hint plan.JoinType
+	if typ.IsPhysical() {
+		hint = typ
+		typ = plan.JoinTypeInner
+	}
 	isInner := typ.IsInner()
 	op := &operator{
 		joinType:      typ,
@@ -202,6 +207,9 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
 		group = j.memoize(op.joinType, left, right, filters, nil)
 		j.plans[union] = group
 		j.m.root = group
+		if hint != plan.JoinTypeUnknown {
+			group.opHint = hint
+		}
 	}
 
 	if !isInner {
@@ -225,6 +233,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 		rel = &recursiveTable{relBase: b, table: n}
 	case *plan.SubqueryAlias:
 		rel = &subqueryAlias{relBase: b, table: n}
+	case *plan.Max1RowSubquery:
+		rel = &max1RowSubquery{relBase: b, table: n.Subquery()}
 	case *plan.RecursiveCte:
 		rel = &recursiveCte{relBase: b, table: n}
 	case *plan.IndexedTableAccess:
@@ -457,7 +467,7 @@ func (j *joinOrderBuilder) constructJoin(
 		rel = &fullOuterJoin{b}
 	case plan.JoinTypeLeftOuter:
 		rel = &leftJoin{b}
-	case plan.JoinTypeSemi:
+	case plan.JoinTypeSemi, plan.JoinTypeRightSemi:
 		rel = &semiJoin{b}
 	case plan.JoinTypeAnti:
 		rel = &antiJoin{b}
@@ -1074,7 +1084,7 @@ func getOpIdx(e *edge) int {
 		return 0
 	case plan.JoinTypeInner:
 		return 1
-	case plan.JoinTypeSemi:
+	case plan.JoinTypeSemi, plan.JoinTypeRightSemi:
 		return 2
 	case plan.JoinTypeAnti:
 		return 3

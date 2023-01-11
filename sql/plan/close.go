@@ -26,7 +26,6 @@ import (
 // Close represents the CLOSE statement, which closes a cursor.
 type Close struct {
 	Name string
-	id   int
 	pRef *expression.ProcedureReference
 }
 
@@ -82,13 +81,6 @@ func (c *Close) WithParamReference(pRef *expression.ProcedureReference) sql.Node
 	return &nc
 }
 
-// WithId returns a new *Close containing the given id.
-func (c *Close) WithId(id int) *Close {
-	nc := *c
-	nc.id = id
-	return &nc
-}
-
 // closeIter is the sql.RowIter of *Close.
 type closeIter struct {
 	c *Close
@@ -98,7 +90,7 @@ var _ sql.RowIter = (*closeIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (c *closeIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if err := c.c.pRef.CloseCursor(ctx, c.c.id, c.c.Name); err != nil {
+	if err := c.c.pRef.CloseCursor(ctx, c.c.Name); err != nil {
 		return nil, err
 	}
 	return nil, io.EOF

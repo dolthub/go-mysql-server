@@ -164,11 +164,12 @@ func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 		paramName := c.proc.Params[i].Name
 		paramType := c.proc.Params[i].Type
-		err = c.pRef.InitializeVariable(i, paramName, paramType, val)
+		err = c.pRef.InitializeVariable(paramName, paramType, val)
 		if err != nil {
 			return nil, err
 		}
 	}
+	c.pRef.PushScope()
 	innerIter, err := c.proc.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
@@ -189,6 +190,12 @@ func (c *Call) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *c
 	nc.db = db
 	return &nc, nil
+}
+
+func (c *Call) Dispose() {
+	if c.proc != nil {
+		disposeNode(c.proc)
+	}
 }
 
 // callIter is the row iterator for *Call.
@@ -216,8 +223,8 @@ func (iter *callIter) Close(ctx *sql.Context) error {
 	// Set all user and system variables from INOUT and OUT params
 	for i, param := range iter.call.proc.Params {
 		if param.Direction == ProcedureParamDirection_Inout ||
-			(param.Direction == ProcedureParamDirection_Out && iter.call.pRef.VariableHasBeenSet(i)) {
-			val, err := iter.call.pRef.GetVariableValue(i, param.Name)
+			(param.Direction == ProcedureParamDirection_Out && iter.call.pRef.VariableHasBeenSet(param.Name)) {
+			val, err := iter.call.pRef.GetVariableValue(param.Name)
 			if err != nil {
 				return err
 			}

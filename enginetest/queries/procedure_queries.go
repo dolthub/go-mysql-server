@@ -268,6 +268,163 @@ END;`,
 		},
 	},
 	{
+		Name: "CASE statements",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE
+			WHEN a < 4 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+			WHEN a < 8 THEN
+				SET b = CONCAT(b, "b");
+				SET a = a + 1;
+			ELSE
+				LEAVE tloop;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p2(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE a
+			WHEN 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+			WHEN 2 THEN
+				SET b = CONCAT(b, "b");
+				SET a = a + 1;
+			WHEN 3 THEN
+				SET b = CONCAT(b, "c");
+				SET a = a + 1;
+			ELSE
+				LEAVE tloop;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p3(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE a
+			WHEN 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p4(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE
+			WHEN a = 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p5(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	REPEAT
+		CASE
+			WHEN a <= 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+		END CASE;
+	UNTIL a > 1
+	END REPEAT;
+	SELECT b;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(0)",
+				Expected: []sql.Row{
+					{"aaaabbbb"},
+				},
+			},
+			{
+				Query: "CALL p1(3)",
+				Expected: []sql.Row{
+					{"abbbb"},
+				},
+			},
+			{
+				Query: "CALL p1(6)",
+				Expected: []sql.Row{
+					{"bb"},
+				},
+			},
+			{
+				Query: "CALL p1(9)",
+				Expected: []sql.Row{
+					{""},
+				},
+			},
+			{
+				Query: "CALL p2(1)",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "CALL p2(2)",
+				Expected: []sql.Row{
+					{"bc"},
+				},
+			},
+			{
+				Query: "CALL p2(3)",
+				Expected: []sql.Row{
+					{"c"},
+				},
+			},
+			{
+				Query: "CALL p2(4)",
+				Expected: []sql.Row{
+					{""},
+				},
+			},
+			{
+				Query:          "CALL p3(1)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query:          "CALL p3(2)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query:          "CALL p4(1)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query:          "CALL p4(-1)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query: "CALL p5(0)",
+				Expected: []sql.Row{
+					{"aa"},
+				},
+			},
+			{
+				Query: "CALL p5(1)",
+				Expected: []sql.Row{
+					{"a"},
+				},
+			},
+		},
+	},
+	{
 		Name: "SELECT with JOIN and table aliases",
 		SetUpScript: []string{
 			"CREATE TABLE foo(a BIGINT PRIMARY KEY, b VARCHAR(20))",
@@ -996,7 +1153,78 @@ END;`,
 		},
 	},
 	{
-		Name: "ITERATE and LEAVE loops",
+		Name: "Labeled BEGIN...END",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT DEFAULT 1;
+	tblock: BEGIN
+		LOOP
+			SET a = a + 3;
+			LEAVE tblock;
+		END LOOP;
+	END;
+	SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+			{
+				Query:       `CREATE PROCEDURE p2() BEGIN tblock: BEGIN ITERATE tblock; END; END;`,
+				ExpectedErr: sql.ErrLoopLabelNotFound,
+			},
+		},
+	},
+	{
+		Name: "REPEAT runs loop before first evaluation",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT DEFAULT 10;
+	REPEAT
+		SET a = a * 5;
+	UNTIL a > 0
+	END REPEAT;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+		},
+	},
+	{
+		Name: "WHILE runs evaluation before first loop",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT DEFAULT 10;
+	WHILE a < 10 DO
+		SET a = a * 10;
+	END WHILE;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE LOOP",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
 			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
@@ -1016,6 +1244,77 @@ BEGIN
 				LEAVE tloop;
             END IF;
 		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{2230},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE REPEAT",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND BEGIN END;
+    OPEN cur1;
+    BEGIN
+		tloop: REPEAT
+			FETCH cur1 INTO b;
+			SET a = (a + b) * 10;
+            IF a < 1000 THEN
+				ITERATE tloop;
+			ELSE
+				LEAVE tloop;
+            END IF;
+		UNTIL false
+		END REPEAT;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{2230},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE WHILE",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND BEGIN END;
+    OPEN cur1;
+    BEGIN
+		tloop: WHILE true DO
+			FETCH cur1 INTO b;
+			SET a = (a + b) * 10;
+            IF a < 1000 THEN
+				ITERATE tloop;
+			ELSE
+				LEAVE tloop;
+            END IF;
+		END WHILE;
     END;
     CLOSE cur1;
     SELECT a;
@@ -1091,6 +1390,39 @@ END`,
 				Query: "SELECT * FROM person_cal_entries;",
 				Expected: []sql.Row{
 					{"d17cb898-7b9b-11ed-a1eb-0242ac120002", "cb8ba301-6c27-4bf8-b99b-617082d72621", "6140e23e-7b9b-11ed-a1eb-0242ac120002"},
+				},
+			},
+		},
+	},
+	{
+		Name: "HANDLERs ignore variables declared after them",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE dvar BIGINT DEFAULT 1;
+	DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+    OPEN cur1;
+	BEGIN
+		DECLARE EXIT HANDLER FOR NOT FOUND SET dvar = 10;
+		BEGIN
+			DECLARE dvar BIGINT DEFAULT 2;
+			BEGIN
+				DECLARE dvar BIGINT DEFAULT 3;
+				LOOP
+					FETCH cur1 INTO dvar; # Handler is triggered here, but should only set the first "dvar"
+				END LOOP;
+            END;
+		END;
+    END;
+    SELECT dvar;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{10},
 				},
 			},
 		},
@@ -1428,6 +1760,78 @@ END;`,
 			{
 				Query:       "CALL p1();",
 				ExpectedErr: sql.ErrCursorNotOpen,
+			},
+		},
+	},
+	{
+		Name: "With CTE using variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE v1 INT DEFAULT 1234;
+	WITH cte as (SELECT v1)
+	SELECT * FROM cte;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{1234},
+				},
+			},
+		},
+	},
+	{
+		Name: "With CTE using parameter",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(v1 int)
+BEGIN
+	WITH cte as (SELECT v1)
+	SELECT * FROM cte;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(1234);",
+				Expected: []sql.Row{
+					{1234},
+				},
+			},
+		},
+	},
+	{
+		Name: "Dolt Issue #4480",
+		SetUpScript: []string{
+			"create table p1 (row_id int primary key, pred int, actual int)",
+			"create table p2 (row_id int primary key, pred int, actual int)",
+			"insert into p1 values (0, 0, 0), (1, 0, 1), (2, 1, 0), (3, 1, 1)",
+			"insert into p2 values (0, 0, 0), (1, 0, 1), (2, 1, 0), (3, 1, 1)",
+			`CREATE PROCEDURE computeSummary(c VARCHAR(200)) 
+BEGIN
+	with t as (
+		select
+			case
+				when p1.pred = p2.actual then 1
+			else 0
+			end as correct,
+			p1.actual
+			from p1
+			join p2
+			on p1.row_id = p2.row_id
+	)
+	select
+		sum(correct)/count(*),
+		count(*) as row_num
+		from t;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL computeSummary('i am not used');",
+				Expected: []sql.Row{
+					{"0.5000", 4},
+				},
 			},
 		},
 	},

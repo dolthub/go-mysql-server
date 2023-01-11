@@ -148,6 +148,13 @@ func (in *InSubquery) Children() []sql.Expression {
 	return []sql.Expression{in.Left, in.Right}
 }
 
+// Dispose implements sql.Disposable
+func (in *InSubquery) Dispose() {
+	if sq, ok := in.Right.(*Subquery); ok {
+		sq.Dispose()
+	}
+}
+
 // NewNotInSubquery creates a new NotInSubquery expression.
 func NewNotInSubquery(left sql.Expression, right sql.Expression) sql.Expression {
 	return expression.NewNot(NewInSubquery(left, right))

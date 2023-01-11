@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -639,6 +640,82 @@ var SpatialQueryTests = []QueryTest{
 			{"MULTILINESTRING((2 1,4 3))"},
 			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
 			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+		},
+	},
+	{
+		Query: `SELECT ST_DISTANCE(st_srid(g, 0), point(0,0)) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{nil},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT st_startpoint(g) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{nil},
+			{sql.Point{X: 1, Y: 2}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{sql.Point{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT st_endpoint(g) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{nil},
+			{sql.Point{X: 3, Y: 4}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{sql.Point{SRID: sql.GeoSpatialSRID, X: 3, Y: 4}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT st_isclosed(g) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{nil},
+			{false},
+			{nil},
+			{nil},
+			{false},
+			{nil},
+			{nil},
+			{nil},
+			{false},
+			{nil},
+			{nil},
+			{false},
+			{nil},
+			{nil},
 		},
 	},
 }
@@ -5137,7 +5214,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_binary.String(),
 				"binary",
-				int64(sql.Collation_binary),
+				uint64(sql.Collation_binary),
 				sql.Collation_binary.IsDefault(),
 				sql.Collation_binary.IsCompiled(),
 				sql.Collation_binary.SortLength(),
@@ -5146,7 +5223,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_utf8_general_ci.String(),
 				"utf8mb3",
-				int64(sql.Collation_utf8_general_ci),
+				uint64(sql.Collation_utf8_general_ci),
 				sql.Collation_utf8_general_ci.IsDefault(),
 				sql.Collation_utf8_general_ci.IsCompiled(),
 				sql.Collation_utf8_general_ci.SortLength(),
@@ -5155,7 +5232,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
-				int64(sql.Collation_utf8mb4_0900_ai_ci),
+				uint64(sql.Collation_utf8mb4_0900_ai_ci),
 				sql.Collation_utf8mb4_0900_ai_ci.IsDefault(),
 				sql.Collation_utf8mb4_0900_ai_ci.IsCompiled(),
 				sql.Collation_utf8mb4_0900_ai_ci.SortLength(),
@@ -5173,7 +5250,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_binary.String(),
 				"binary",
-				int64(sql.Collation_binary),
+				uint64(sql.Collation_binary),
 				sql.Collation_binary.IsDefault(),
 				sql.Collation_binary.IsCompiled(),
 				sql.Collation_binary.SortLength(),
@@ -5191,7 +5268,7 @@ var QueryTests = []QueryTest{
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
-				int64(sql.Collation_utf8mb4_0900_ai_ci),
+				uint64(sql.Collation_utf8mb4_0900_ai_ci),
 				sql.Collation_utf8mb4_0900_ai_ci.IsDefault(),
 				sql.Collation_utf8mb4_0900_ai_ci.IsCompiled(),
 				sql.Collation_utf8mb4_0900_ai_ci.SortLength(),
@@ -8911,12 +8988,31 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query:    `SELECT count(*) FROM information_schema.COLLATIONS`,
+		Expected: []sql.Row{{286}},
+	},
+	{
+		Query: `SELECT * FROM information_schema.COLLATIONS ORDER BY collation_name LIMIT 4`,
+		Expected: []sql.Row{
+			{"armscii8_bin", "armscii8", uint64(64), "", "Yes", uint32(1), "PAD SPACE"},
+			{"armscii8_general_ci", "armscii8", uint64(32), "Yes", "Yes", uint32(1), "PAD SPACE"},
+			{"ascii_bin", "ascii", uint64(65), "", "Yes", uint32(1), "PAD SPACE"},
+			{"ascii_general_ci", "ascii", uint64(11), "Yes", "Yes", uint32(1), "PAD SPACE"},
+		},
+	},
+	{
 		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
 		Expected: []sql.Row{
 			{"armscii8_bin", "armscii8"},
 			{"armscii8_general_ci", "armscii8"},
 			{"ascii_bin", "ascii"},
 			{"ascii_general_ci", "ascii"},
+		},
+	},
+	{
+		Query: `SELECT * FROM information_schema.ENGINES ORDER BY engine`,
+		Expected: []sql.Row{
+			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
 	},
 	{
@@ -9150,6 +9246,10 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 			{"mydb", "fk_tbl", "pk", 1, "PRIMARY"},
 			{"mydb", "mytable", "i", 1, "PRIMARY"},
 		},
+	},
+	{
+		Query:    "select * from information_schema.character_sets;",
+		Expected: []sql.Row{{"utf8mb4", "utf8mb4_0900_ai_ci", "UTF-8 Unicode", uint32(4)}},
 	},
 	{
 		Query: `show columns from fk_tbl from mydb`,

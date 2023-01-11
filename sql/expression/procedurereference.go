@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -23,27 +24,30 @@ import (
 
 // ProcedureReference contains the state for a single CALL statement of a stored procedure.
 type ProcedureReference struct {
-	idToParam   []*procedureParamReferenceValue
-	idToCursor  []*procedureCursorReferenceValue
-	idToHandler []*procedureHandlerReferenceValue
+	innermostScope *procedureScope
+	height         int
 }
-type procedureParamReferenceValue struct {
-	ID         int
+type procedureScope struct {
+	parent    *procedureScope
+	variables map[string]*procedureVariableReferenceValue
+	cursors   map[string]*procedureCursorReferenceValue
+	handlers  []*procedureHandlerReferenceValue
+}
+type procedureVariableReferenceValue struct {
 	Name       string
 	Value      interface{}
 	SqlType    sql.Type
 	HasBeenSet bool
 }
 type procedureCursorReferenceValue struct {
-	ID         int
 	Name       string
 	SelectStmt sql.Node
 	RowIter    sql.RowIter
 }
 type procedureHandlerReferenceValue struct {
-	ID     int
-	Stmt   sql.Node
-	IsExit bool
+	Stmt        sql.Node
+	IsExit      bool
+	ScopeHeight int
 	//TODO: support more than just NOT FOUND
 }
 
@@ -53,14 +57,14 @@ type ProcedureReferencable interface {
 }
 
 // InitializeVariable sets the initial value for the variable.
-func (ppr *ProcedureReference) InitializeVariable(id int, name string, sqlType sql.Type, val interface{}) error {
+func (ppr *ProcedureReference) InitializeVariable(name string, sqlType sql.Type, val interface{}) error {
 	convertedVal, err := sqlType.Convert(val)
 	if err != nil {
 		return err
 	}
-	ppr.idToParam[id] = &procedureParamReferenceValue{
-		ID:         id,
-		Name:       name,
+	lowerName := strings.ToLower(name)
+	ppr.innermostScope.variables[lowerName] = &procedureVariableReferenceValue{
+		Name:       lowerName,
 		Value:      convertedVal,
 		SqlType:    sqlType,
 		HasBeenSet: false,
@@ -69,149 +73,255 @@ func (ppr *ProcedureReference) InitializeVariable(id int, name string, sqlType s
 }
 
 // InitializeCursor sets the initial state for the cursor.
-func (ppr *ProcedureReference) InitializeCursor(id int, name string, selectStmt sql.Node) {
-	ppr.idToCursor[id] = &procedureCursorReferenceValue{
-		ID:         id,
-		Name:       name,
+func (ppr *ProcedureReference) InitializeCursor(name string, selectStmt sql.Node) {
+	lowerName := strings.ToLower(name)
+	ppr.innermostScope.cursors[lowerName] = &procedureCursorReferenceValue{
+		Name:       lowerName,
 		SelectStmt: selectStmt,
 		RowIter:    nil,
 	}
 }
 
 // InitializeHandler sets the given handler's statement.
-func (ppr *ProcedureReference) InitializeHandler(id int, stmt sql.Node, returnsExitError bool) {
-	ppr.idToHandler[id] = &procedureHandlerReferenceValue{
-		ID:     id,
-		Stmt:   stmt,
-		IsExit: returnsExitError,
-	}
+func (ppr *ProcedureReference) InitializeHandler(stmt sql.Node, returnsExitError bool) {
+	ppr.innermostScope.handlers = append(ppr.innermostScope.handlers, &procedureHandlerReferenceValue{
+		Stmt:        stmt,
+		IsExit:      returnsExitError,
+		ScopeHeight: ppr.height,
+	})
 }
 
 // GetVariableValue returns the value of the given parameter.
-func (ppr *ProcedureReference) GetVariableValue(id int, name string) (interface{}, error) {
-	if id >= len(ppr.idToParam) {
-		return nil, fmt.Errorf("cannot find value for parameter `%s`", name)
+func (ppr *ProcedureReference) GetVariableValue(name string) (interface{}, error) {
+	lowerName := strings.ToLower(name)
+	scope := ppr.innermostScope
+	for scope != nil {
+		if varRefVal, ok := scope.variables[lowerName]; ok {
+			return varRefVal.Value, nil
+		}
+		scope = scope.parent
 	}
-	return ppr.idToParam[id].Value, nil
+	return nil, fmt.Errorf("cannot find value for parameter `%s`", name)
 }
 
 // GetVariableType returns the type of the given parameter. Returns the NULL type if the type cannot be found.
-func (ppr *ProcedureReference) GetVariableType(id int) sql.Type {
-	if ppr == nil || id >= len(ppr.idToParam) {
+func (ppr *ProcedureReference) GetVariableType(name string) sql.Type {
+	if ppr == nil {
 		return sql.Null
 	}
-	return ppr.idToParam[id].SqlType
+	lowerName := strings.ToLower(name)
+	scope := ppr.innermostScope
+	for scope != nil {
+		if varRefVal, ok := scope.variables[lowerName]; ok {
+			return varRefVal.SqlType
+		}
+		scope = scope.parent
+	}
+	return sql.Null
 }
 
 // SetVariable updates the value of the given parameter.
-func (ppr *ProcedureReference) SetVariable(id int, name string, val interface{}, valType sql.Type) error {
-	if id >= len(ppr.idToParam) {
-		return fmt.Errorf("cannot find value for parameter `%s`", name)
+func (ppr *ProcedureReference) SetVariable(name string, val interface{}, valType sql.Type) error {
+	lowerName := strings.ToLower(name)
+	scope := ppr.innermostScope
+	for scope != nil {
+		if varRefVal, ok := scope.variables[lowerName]; ok {
+			//TODO: do some actual type checking using the given value's type
+			val, err := varRefVal.SqlType.Convert(val)
+			if err != nil {
+				return err
+			}
+			varRefVal.Value = val
+			varRefVal.HasBeenSet = true
+			return nil
+		}
+		scope = scope.parent
 	}
-	paramRefVal := ppr.idToParam[id]
-	//TODO: do some actual type checking using the given value's type
-	val, err := paramRefVal.SqlType.Convert(val)
-	if err != nil {
-		return err
-	}
-	paramRefVal.Value = val
-	paramRefVal.HasBeenSet = true
-	return nil
+	return fmt.Errorf("cannot find value for parameter `%s`", name)
 }
 
 // VariableHasBeenSet returns whether the parameter has had its value altered from the initial value.
-func (ppr *ProcedureReference) VariableHasBeenSet(id int) bool {
-	if id >= len(ppr.idToParam) {
-		return false
+func (ppr *ProcedureReference) VariableHasBeenSet(name string) bool {
+	lowerName := strings.ToLower(name)
+	scope := ppr.innermostScope
+	for scope != nil {
+		if varRefVal, ok := scope.variables[lowerName]; ok {
+			return varRefVal.HasBeenSet
+		}
+		scope = scope.parent
 	}
-	return ppr.idToParam[id].HasBeenSet
+	return false
 }
 
-// GetHandler returns a boolean indicating if the handler represents an EXIT handler, and a sql.Node containing the
-// logic to execute for this handler. Returns error if an invalid ID is given.
-func (ppr *ProcedureReference) GetHandler(id int) (bool, sql.Node, error) {
-	if id >= len(ppr.idToHandler) {
-		return false, nil, fmt.Errorf("cannot find a handler matching the ID: %d", id)
+// HandleError handles the given error by passing to a relevant HANDLER, if one has been declared. If no HANDLER has
+// been declared, then returns the given error. Otherwise, returns a new error that was created from the HANDLER, or a
+// nil error if it was a CONTINUE HANDLER.
+func (ppr *ProcedureReference) HandleError(ctx *sql.Context, incomingErr error) error {
+	scope := ppr.innermostScope
+	for scope != nil {
+		for i := len(scope.handlers) - 1; i >= 0; i-- {
+			//TODO: handle more than NOT FOUND handlers, handlers should check if the error applies to them first
+			originalScope := ppr.innermostScope
+			defer func() {
+				ppr.innermostScope = originalScope
+			}()
+			ppr.innermostScope = scope
+			handlerRefVal := scope.handlers[i]
+
+			handlerRowIter, err := handlerRefVal.Stmt.RowIter(ctx, nil)
+			if err != nil {
+				return err
+			}
+			defer handlerRowIter.Close(ctx)
+
+			for {
+				_, err := handlerRowIter.Next(ctx)
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					return err
+				}
+			}
+			if handlerRefVal.IsExit {
+				return ProcedureBlockExitError(handlerRefVal.ScopeHeight)
+			}
+			return io.EOF
+		}
+		scope = scope.parent
 	}
-	handler := ppr.idToHandler[id]
-	return handler.IsExit, handler.Stmt, nil
+	return incomingErr
 }
 
 // OpenCursor sets the designated cursor to open.
-func (ppr *ProcedureReference) OpenCursor(ctx *sql.Context, id int, name string, row sql.Row) error {
-	if id >= len(ppr.idToCursor) {
-		return fmt.Errorf("cannot find cursor `%s`", name)
+func (ppr *ProcedureReference) OpenCursor(ctx *sql.Context, name string, row sql.Row) error {
+	lowerName := strings.ToLower(name)
+	scope := ppr.innermostScope
+	for scope != nil {
+		if cursorRefVal, ok := scope.cursors[lowerName]; ok {
+			if cursorRefVal.RowIter != nil {
+				return sql.ErrCursorAlreadyOpen.New(name)
+			}
+			var err error
+			cursorRefVal.RowIter, err = cursorRefVal.SelectStmt.RowIter(ctx, row)
+			return err
+		}
+		scope = scope.parent
 	}
-	cursorRefVal := ppr.idToCursor[id]
-	if cursorRefVal.RowIter != nil {
-		return sql.ErrCursorAlreadyOpen.New(name)
-	}
-	var err error
-	cursorRefVal.RowIter, err = cursorRefVal.SelectStmt.RowIter(ctx, row)
-	return err
+	return fmt.Errorf("cannot find cursor `%s`", name)
 }
 
 // CloseCursor closes the designated cursor.
-func (ppr *ProcedureReference) CloseCursor(ctx *sql.Context, id int, name string) error {
-	if id >= len(ppr.idToCursor) {
-		return fmt.Errorf("cannot find cursor `%s`", name)
+func (ppr *ProcedureReference) CloseCursor(ctx *sql.Context, name string) error {
+	lowerName := strings.ToLower(name)
+	scope := ppr.innermostScope
+	for scope != nil {
+		if cursorRefVal, ok := scope.cursors[lowerName]; ok {
+			if cursorRefVal.RowIter == nil {
+				return sql.ErrCursorNotOpen.New(name)
+			}
+			err := cursorRefVal.RowIter.Close(ctx)
+			cursorRefVal.RowIter = nil
+			return err
+		}
+		scope = scope.parent
 	}
-	cursorRefVal := ppr.idToCursor[id]
-	if cursorRefVal.RowIter == nil {
-		return sql.ErrCursorNotOpen.New(name)
-	}
-	err := cursorRefVal.RowIter.Close(ctx)
-	cursorRefVal.RowIter = nil
-	return err
+	return fmt.Errorf("cannot find cursor `%s`", name)
 }
 
 // FetchCursor returns the next row from the designated cursor.
-func (ppr *ProcedureReference) FetchCursor(ctx *sql.Context, id int, name string) (sql.Row, sql.Schema, error) {
-	if id >= len(ppr.idToCursor) {
-		return nil, nil, fmt.Errorf("cannot find cursor `%s`", name)
+func (ppr *ProcedureReference) FetchCursor(ctx *sql.Context, name string) (sql.Row, sql.Schema, error) {
+	lowerName := strings.ToLower(name)
+	scope := ppr.innermostScope
+	for scope != nil {
+		if cursorRefVal, ok := scope.cursors[lowerName]; ok {
+			if cursorRefVal.RowIter == nil {
+				return nil, nil, sql.ErrCursorNotOpen.New(name)
+			}
+			row, err := cursorRefVal.RowIter.Next(ctx)
+			return row, cursorRefVal.SelectStmt.Schema(), err
+		}
+		scope = scope.parent
 	}
-	cursorRefVal := ppr.idToCursor[id]
-	if cursorRefVal.RowIter == nil {
-		return nil, nil, sql.ErrCursorNotOpen.New(name)
-	}
-	row, err := cursorRefVal.RowIter.Next(ctx)
-	return row, cursorRefVal.SelectStmt.Schema(), err
+	return nil, nil, fmt.Errorf("cannot find cursor `%s`", name)
 }
 
-// CloseAllCursors closes all cursors that are still open.
-func (ppr *ProcedureReference) CloseAllCursors(ctx *sql.Context) error {
+// PushScope creates a new scope inside the current one.
+func (ppr *ProcedureReference) PushScope() {
+	ppr.innermostScope = &procedureScope{
+		parent:    ppr.innermostScope,
+		variables: make(map[string]*procedureVariableReferenceValue),
+		cursors:   make(map[string]*procedureCursorReferenceValue),
+		handlers:  nil,
+	}
+	ppr.height++
+}
+
+// PopScope removes the innermost scope, returning to its parent. Also closes all open cursors.
+func (ppr *ProcedureReference) PopScope(ctx *sql.Context) error {
 	var err error
-	for _, cursor := range ppr.idToCursor {
-		if cursor.RowIter != nil {
-			nErr := cursor.RowIter.Close(ctx)
-			cursor.RowIter = nil
+	if ppr.innermostScope == nil {
+		return fmt.Errorf("attempted to pop an empty scope")
+	}
+	for _, cursorRefVal := range ppr.innermostScope.cursors {
+		if cursorRefVal.RowIter != nil {
+			nErr := cursorRefVal.RowIter.Close(ctx)
+			cursorRefVal.RowIter = nil
 			if err == nil {
 				err = nErr
 			}
 		}
 	}
+	ppr.innermostScope = ppr.innermostScope.parent
+	ppr.height--
+	return nil
+}
+
+// CloseAllCursors closes all cursors that are still open.
+func (ppr *ProcedureReference) CloseAllCursors(ctx *sql.Context) error {
+	var err error
+	scope := ppr.innermostScope
+	for scope != nil {
+		for _, cursorRefVal := range scope.cursors {
+			if cursorRefVal.RowIter != nil {
+				nErr := cursorRefVal.RowIter.Close(ctx)
+				cursorRefVal.RowIter = nil
+				if err == nil {
+					err = nErr
+				}
+			}
+		}
+		scope = scope.parent
+	}
 	return err
 }
 
-func NewProcedureReference(variableCount int, cursorCount int, handlerCount int) *ProcedureReference {
+// CurrentHeight returns the current height of the scope stack.
+func (ppr *ProcedureReference) CurrentHeight() int {
+	return ppr.height
+}
+
+func NewProcedureReference() *ProcedureReference {
 	return &ProcedureReference{
-		idToParam:   make([]*procedureParamReferenceValue, variableCount),
-		idToCursor:  make([]*procedureCursorReferenceValue, cursorCount),
-		idToHandler: make([]*procedureHandlerReferenceValue, handlerCount),
+		innermostScope: &procedureScope{
+			parent:    nil,
+			variables: make(map[string]*procedureVariableReferenceValue),
+			cursors:   make(map[string]*procedureCursorReferenceValue),
+			handlers:  nil,
+		},
+		height: 0,
 	}
 }
 
 // ProcedureParam represents the parameter of a stored procedure or stored function.
 type ProcedureParam struct {
-	id         int
 	name       string
 	pRef       *ProcedureReference
 	hasBeenSet bool
 }
 
 // NewProcedureParam creates a new ProcedureParam expression.
-func NewProcedureParam(id int, name string) *ProcedureParam {
-	return &ProcedureParam{id: id, name: strings.ToLower(name)}
+func NewProcedureParam(name string) *ProcedureParam {
+	return &ProcedureParam{name: strings.ToLower(name)}
 }
 
 // Children implements the sql.Expression interface.
@@ -231,7 +341,7 @@ func (*ProcedureParam) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (pp *ProcedureParam) Type() sql.Type {
-	return pp.pRef.GetVariableType(pp.id)
+	return pp.pRef.GetVariableType(pp.name)
 }
 
 // Name implements the Nameable interface.
@@ -246,7 +356,7 @@ func (pp *ProcedureParam) String() string {
 
 // Eval implements the sql.Expression interface.
 func (pp *ProcedureParam) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	return pp.pRef.GetVariableValue(pp.id, pp.name)
+	return pp.pRef.GetVariableValue(pp.name)
 }
 
 // WithChildren implements the sql.Expression interface.
@@ -266,7 +376,7 @@ func (pp *ProcedureParam) WithParamReference(pRef *ProcedureReference) *Procedur
 
 // Set sets the value of this procedure parameter to the given value.
 func (pp *ProcedureParam) Set(val interface{}, valType sql.Type) error {
-	return pp.pRef.SetVariable(pp.id, pp.name, val, valType)
+	return pp.pRef.SetVariable(pp.name, val, valType)
 }
 
 // UnresolvedProcedureParam represents an unresolved parameter of a stored procedure or stored function.
@@ -320,4 +430,14 @@ func (upp *UnresolvedProcedureParam) WithChildren(children ...sql.Expression) (s
 		return nil, sql.ErrInvalidChildrenNumber.New(upp, len(children), 0)
 	}
 	return upp, nil
+}
+
+// ProcedureBlockExitError contains the scope height that should exit.
+type ProcedureBlockExitError int
+
+var _ error = ProcedureBlockExitError(0)
+
+// Error implements the error interface.
+func (b ProcedureBlockExitError) Error() string {
+	return "Block that EXIT handler was declared in could somehow not be found"
 }
