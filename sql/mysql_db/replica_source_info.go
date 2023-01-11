@@ -36,7 +36,7 @@ var _ in_mem_table.Entry = (*ReplicaSourceInfo)(nil)
 
 // NewFromRow implements the interface in_mem_table.Entry.
 func (r *ReplicaSourceInfo) NewFromRow(_ *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	if err := userTblSchema.CheckRow(row); err != nil {
+	if err := replicaSourceInfoTblSchema.CheckRow(row); err != nil {
 		return nil, err
 	}
 
