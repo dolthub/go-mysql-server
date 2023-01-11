@@ -1166,10 +1166,88 @@ func TestWithin(t *testing.T) {
 	})
 
 	// Polygon vs MultiPolygon
+	t.Run("polygon not within split touching multipolygon", func(t *testing.T) {
+		require := require.New(t)
+		a1 := sql.Point{X: -1, Y: 1}
+		b1 := sql.Point{X: 1, Y: 1}
+		c1 := sql.Point{X: 1, Y: -1}
+		d1 := sql.Point{X: -1, Y: -1}
+		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
+		p1 := sql.Polygon{Lines: []sql.LineString{l1}}
+
+		a2 := sql.Point{X: -2, Y: 2}
+		b2 := sql.Point{X: 2, Y: 2}
+		c2 := sql.Point{X: 2, Y: -2}
+		d2 := sql.Point{X: -2, Y: -2}
+		e2 := sql.Point{X: 0, Y: 2}
+		f2 := sql.Point{X: 0, Y: -2}
+		l2 := sql.LineString{Points: []sql.Point{a2, e2, f2, d2, a1}}
+		p2 := sql.Polygon{Lines: []sql.LineString{l2}}
+		l3 := sql.LineString{Points: []sql.Point{e2, b2, c2, f2, e2}}
+		p3 := sql.Polygon{Lines: []sql.LineString{l3}}
+		mp := sql.MultiPolygon{Polygons: []sql.Polygon{p2, p3}}
+
+		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(mp, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Polygon vs GeometryCollection
+	t.Run("polygon within empty geometry collection returns null", func(t *testing.T) {
+		require := require.New(t)
+
+		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+		g := sql.GeomColl{}
+
+		f := NewWithin(expression.NewLiteral(p, sql.PolygonType{}), expression.NewLiteral(g, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("empty polygon within geometry collection", func(t *testing.T) {
+		require := require.New(t)
+
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+
+		a := sql.Point{X: -1, Y: 1}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 1, Y: -1}
+		d := sql.Point{X: -1, Y: -1}
+		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		p2 := sql.Polygon{Lines: []sql.LineString{l}}
+		g := sql.GeomColl{Geoms: []sql.GeometryValue{p2}}
+
+		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(g, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
 
 	// MultiPoint vs Point
+	t.Run("multipoint within point", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{}
+		mp := sql.MultiPoint{Points: []sql.Point{p1, p1, p1}}
+
+		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(p1, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("multipoint not within point", func(t *testing.T) {
+		require := require.New(t)
+		p1 := sql.Point{}
+		p2 := sql.Point{X: 1, Y: 2}
+		mp := sql.MultiPoint{Points: []sql.Point{p1, p2}}
+
+		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(p1, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// MultiPoint vs LineString
 
