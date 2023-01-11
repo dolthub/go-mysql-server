@@ -66,7 +66,7 @@ func (s *STLength) WithChildren(children ...sql.Expression) (sql.Expression, err
 	return NewSTLength(children...)
 }
 
-// calculateLength sums up the line segements formed from a LineString
+// calculateLength sums up the line segments formed from a LineString
 func calculateLength(l sql.LineString) float64 {
 	var length float64
 	for i := 0; i < len(l.Points)-1; i++ {

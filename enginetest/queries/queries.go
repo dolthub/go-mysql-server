@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -639,6 +640,82 @@ var SpatialQueryTests = []QueryTest{
 			{"MULTILINESTRING((2 1,4 3))"},
 			{"MULTIPOLYGON(((0 0,2 1,4 3,0 0)))"},
 			{"GEOMETRYCOLLECTION(GEOMETRYCOLLECTION())"},
+		},
+	},
+	{
+		Query: `SELECT ST_DISTANCE(st_srid(g, 0), point(0,0)) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{nil},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{math.Sqrt(5)},
+			{math.Sqrt(5)},
+			{0.0},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT st_startpoint(g) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{nil},
+			{sql.Point{X: 1, Y: 2}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{sql.Point{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT st_endpoint(g) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{nil},
+			{sql.Point{X: 3, Y: 4}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{sql.Point{SRID: sql.GeoSpatialSRID, X: 3, Y: 4}},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT st_isclosed(g) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{nil},
+			{false},
+			{nil},
+			{nil},
+			{false},
+			{nil},
+			{nil},
+			{nil},
+			{false},
+			{nil},
+			{nil},
+			{false},
+			{nil},
+			{nil},
 		},
 	},
 }

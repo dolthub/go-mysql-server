@@ -834,6 +834,12 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		}
 	}
 
+	if scope.OuterRelUnresolved() {
+		// the columns in this relation will be mis-indexed, skip
+		// until outer rel is resolved
+		return nil, nil
+	}
+
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
 	// ones of the same name. This matches the MySQL scope precedence rules.
 	indexSchema(scope.Schema())
