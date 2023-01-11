@@ -27,9 +27,8 @@ func TestWithin(t *testing.T) {
 	// Point vs Point
 	t.Run("point within point", func(t *testing.T) {
 		require := require.New(t)
-		p1 := sql.Point{X: 1, Y: 2}
-		p2 := sql.Point{X: 1, Y: 2}
-		f := NewWithin(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}))
+		p := sql.Point{X: 1, Y: 2}
+		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(p, sql.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1486,10 +1485,51 @@ func TestWithin(t *testing.T) {
 	})
 
 	// GeometryCollection vs Point
+	t.Run("geometrycollection within point", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{}
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{p}}
+		f := NewWithin(expression.NewLiteral(gc, sql.GeomCollType{}), expression.NewLiteral(p, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
 
 	// GeometryCollection vs LineString
+	t.Run("geometrycollection within linestring", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: -5, Y: -5}
+		d := sql.Point{X: 5, Y: 5}
+		ab := sql.LineString{Points: []sql.Point{a, b}}
+		cd := sql.LineString{Points: []sql.Point{c, d}}
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{cd}}
+		f := NewWithin(expression.NewLiteral(ab, sql.GeomCollType{}), expression.NewLiteral(gc, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
 
 	// GeometryCollection vs Polygon
+	t.Run("geometrycollection within polygon", func(t *testing.T) {
+		require := require.New(t)
+
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{p1}}
+
+		a := sql.Point{X: -1, Y: 1}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 1, Y: -1}
+		d := sql.Point{X: -1, Y: -1}
+		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		p2 := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(gc, sql.GeomCollType{}), expression.NewLiteral(p2, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
 
 	// GeometryCollection vs MultiPoint
 
