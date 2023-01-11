@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -262,6 +263,129 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 
 		return n, transform.SameTree, nil
 	}
+}
+
+func NewMax1Row(n sql.Node) *Max1RowSubquery {
+	return &Max1RowSubquery{Child: n, mu: &sync.Mutex{}}
+}
+
+// Max1RowSubquery throws a runtime error if its child (usually subquery) tries
+// to return more than one row.
+type Max1RowSubquery struct {
+	Child       sql.Node
+	result      sql.Row
+	mu          *sync.Mutex
+	emptyResult bool
+}
+
+var _ sql.Node = (*Max1RowSubquery)(nil)
+
+func (m *Max1RowSubquery) Subquery() *SubqueryAlias {
+	ret := m.Child
+	sq, ok := ret.(*SubqueryAlias)
+	for !ok {
+		ret = ret.Children()[0]
+		sq, ok = ret.(*SubqueryAlias)
+	}
+	return sq
+}
+
+func (m *Max1RowSubquery) Name() string {
+	return m.Subquery().Name()
+}
+
+func (m *Max1RowSubquery) Resolved() bool {
+	return m.Child.Resolved()
+}
+
+func (m *Max1RowSubquery) Schema() sql.Schema {
+	return m.Child.Schema()
+}
+
+func (m *Max1RowSubquery) Children() []sql.Node {
+	return []sql.Node{m.Child}
+}
+
+func (m *Max1RowSubquery) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Max1Row")
+	children := []string{m.Child.String()}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+func (m *Max1RowSubquery) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Max1Row")
+	children := []string{sql.DebugString(m.Child)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if !m.hasResults() {
+		err := m.populateResults(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	switch {
+	case m.emptyResult:
+		return emptyIter, nil
+	case m.result != nil:
+		return sql.RowsToRowIter(m.result), nil
+	default:
+		return nil, fmt.Errorf("Max1Row failed to load results")
+	}
+}
+
+// populateResults loads and stores the state of its child iter:
+// 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
+// returned
+func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
+	i, err := m.Child.RowIter(ctx, row)
+	if err != nil {
+		return err
+	}
+	r1, err := i.Next(ctx)
+	if errors.Is(err, io.EOF) {
+		m.emptyResult = true
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	_, err = i.Next(ctx)
+	if err == nil {
+		return sql.ErrExpectedSingleRow.New()
+	} else if !errors.Is(err, io.EOF) {
+		return err
+	}
+	m.result = r1
+	return nil
+}
+
+// hasResults returns true after a successful call to populateResults()
+func (m *Max1RowSubquery) hasResults() bool {
+	return m.result != nil || m.emptyResult
+}
+
+func (m *Max1RowSubquery) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
+	}
+	ret := *m
+	ret.Child = children[0]
+
+	return &ret, nil
+}
+
+func (m *Max1RowSubquery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return m.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // EvalMultiple returns all rows returned by a subquery.

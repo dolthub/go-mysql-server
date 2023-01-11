@@ -81,8 +81,9 @@ func (h *Having) String() string {
 }
 
 func (h *Having) DebugString() string {
-	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Having(%s)", sql.DebugString(h.Cond))
-	_ = p.WriteChildren(sql.DebugString(h.Child))
-	return p.String()
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Having")
+	children := []string{sql.DebugString(h.Cond), sql.DebugString(h.Child)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
