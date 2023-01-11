@@ -177,11 +177,6 @@ func (p MultiPoint) SetSRID(srid uint32) GeometryValue {
 	}
 }
 
-// GetGeomType implements GeometryValue interface.
-func (p MultiPoint) GetGeomType() uint32 {
-	return WKBMultiPointID
-}
-
 // Serialize implements GeometryValue interface.
 func (p MultiPoint) Serialize() (buf []byte) {
 	buf = allocateBuffer(len(p.Points), 1, len(p.Points))
