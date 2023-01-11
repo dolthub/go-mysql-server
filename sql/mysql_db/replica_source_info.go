@@ -21,7 +21,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 )
 
-// ReplicaSourceInfo represents
+// ReplicaSourceInfo represents the binlog replication metadata persisted
+// in the mysql.slave_master_info table.
+// For more details, see: https://dev.mysql.com/doc/refman/8.0/en/replica-logs-status.html
 type ReplicaSourceInfo struct {
 	Host     string
 	User     string

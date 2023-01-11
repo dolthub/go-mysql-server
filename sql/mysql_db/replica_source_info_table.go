@@ -21,11 +21,9 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 )
 
-// TODO: Check permissions for this table... or is it already done at the mysql database level?
-//        This table stores the raw source password!
-
-// https://dev.mysql.com/doc/refman/5.7/en/replica-logs-status.html
-
+// replicaSourceInfoTblName stores the name of the mysql table for persistent storage
+// of replication data.
+// For more details, see: https://dev.mysql.com/doc/refman/8.0/en/replica-logs-status.html
 const replicaSourceInfoTblName = "slave_master_info"
 
 var replicaSourceInfoTblSchema sql.Schema
@@ -58,11 +56,10 @@ func (r ReplicaSourceInfoPrimaryKey) KeyFromRow(_ *sql.Context, row sql.Row) (in
 }
 
 func init() {
-	// TODO: Why do these use different collations?
 	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
-	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
+	char64_utf8mb3_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_bin)
+	char64_utf8mb3_general_ci := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_general_ci)
 
-	// TODO: Why do we need to use columnTemplate?
 	replicaSourceInfoTblSchema = sql.Schema{
 		columnTemplate("Number_of_lines", replicaSourceInfoTblName, false, &sql.Column{
 			Type: sql.Uint32,
@@ -147,7 +144,7 @@ func init() {
 			Type: sql.Int8,
 		}),
 		columnTemplate("Channel_name", replicaSourceInfoTblName, true, &sql.Column{
-			Type: char64_utf8_bin,
+			Type: char64_utf8mb3_general_ci,
 		}),
 		columnTemplate("Tls_version", replicaSourceInfoTblName, false, &sql.Column{
 			Type:     sql.Text,
@@ -165,7 +162,7 @@ func init() {
 			Nullable: true,
 		}),
 		columnTemplate("Master_compression_algorithm", replicaSourceInfoTblName, false, &sql.Column{
-			Type: char64_utf8_bin,
+			Type: char64_utf8mb3_bin,
 		}),
 		columnTemplate("Master_zstd_compression_level", replicaSourceInfoTblName, false, &sql.Column{
 			Type: sql.Uint32,
