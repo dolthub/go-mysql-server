@@ -248,6 +248,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "st_srid", Fn: spatial.NewSRID},
 	sql.Function1{Name: "st_startpoint", Fn: spatial.NewStartPoint},
 	sql.Function1{Name: "st_swapxy", Fn: spatial.NewSwapXY},
+	sql.Function2{Name: "st_within", Fn: spatial.NewWithin},
 	sql.FunctionN{Name: "st_x", Fn: spatial.NewSTX},
 	sql.FunctionN{Name: "st_y", Fn: spatial.NewSTY},
 	sql.Function2{Name: "strcmp", Fn: NewStrCmp},

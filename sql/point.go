@@ -185,6 +185,11 @@ func (p Point) SetSRID(srid uint32) GeometryValue {
 	}
 }
 
+// GetGeomType implements GeometryValue interface.
+func (p Point) GetGeomType() uint32 {
+	return WKBPointID
+}
+
 // Serialize implements GeometryValue interface.
 func (p Point) Serialize() (buf []byte) {
 	buf = allocateBuffer(1, 0, 0)
