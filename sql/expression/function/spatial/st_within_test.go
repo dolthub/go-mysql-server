@@ -583,6 +583,18 @@ func TestWithin(t *testing.T) {
 		require.Equal(true, v)
 	})
 
+	t.Run("point not within geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+		a := sql.Point{X: 1, Y: 0}
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{a}}
+
+		f := NewWithin(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
 	// LineString vs Point
 	t.Run("linestring never within point", func(t *testing.T) {
 		require := require.New(t)
@@ -932,34 +944,89 @@ func TestWithin(t *testing.T) {
 	})
 
 	// LineString vs MultiPolygon
-	t.Run("terminal line points not in multilinestring", func(t *testing.T) {
+	t.Run("linestring within two separate touching polygons", func(t *testing.T) {
 		require := require.New(t)
-		a := sql.Point{X: 0, Y: 0}
-		b := sql.Point{X: 1, Y: 1}
-		c := sql.Point{X: 2, Y: 2}
-		ab := sql.LineString{Points: []sql.Point{a, b}}
-		bc := sql.LineString{Points: []sql.Point{b, c}}
-		ml := sql.MultiLineString{Lines: []sql.LineString{ab, bc}}
+		a := sql.Point{X: -2, Y: 1}
+		b := sql.Point{X: 0, Y: 1}
+		c := sql.Point{X: 0, Y: -1}
+		d := sql.Point{X: -2, Y: -1}
+		e := sql.Point{X: 2, Y: 1}
+		f := sql.Point{X: 2, Y: -1}
+		// these are two rectangles that share a side on the y axis
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
+		p2 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{b, e, f, c ,b}}}}
+		mp := sql.MultiPolygon{Polygons: []sql.Polygon{p1, p2}}
 
-		aa := sql.LineString{Points: []sql.Point{a, a}}
-		bb := sql.LineString{Points: []sql.Point{b, b}}
-		cc := sql.LineString{Points: []sql.Point{c, c}}
-		f := NewWithin(expression.NewLiteral(aa, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(false, v)
-		f = NewWithin(expression.NewLiteral(bb, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
-		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		l := sql.LineString{Points: []sql.Point{{X: -1, Y: 0}, {X: 1, Y: 0}}}
+		ff := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(mp, sql.MultiLineStringType{}))
+		v, err := ff.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
-		f = NewWithin(expression.NewLiteral(cc, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
-		v, err = f.Eval(sql.NewEmptyContext(), nil)
+
+		l = sql.LineString{Points: []sql.Point{{X: -3, Y: 0}, {X: 3, Y: 0}}}
+		ff = NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(mp, sql.MultiLineStringType{}))
+		v, err = ff.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
+	t.Run("linestring within two separate not touching polygons", func(t *testing.T) {
+		require := require.New(t)
+		// triangle
+		a := sql.Point{X: -3, Y: 0}
+		b := sql.Point{X: -2, Y: 2}
+		c := sql.Point{X: -1, Y: 0}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, a}}}}
+
+		// triangle
+		d := sql.Point{X: 1, Y: 0}
+		e := sql.Point{X: 2, Y: 2}
+		f := sql.Point{X: 3, Y: 0}
+		p2 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{d, e, f, d}}}}
+
+		mp := sql.MultiPolygon{Polygons: []sql.Polygon{p1, p2}}
+
+		l := sql.LineString{Points: []sql.Point{{X: -2, Y: 1}, {X: 2, Y: 1}}}
+		ff := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(mp, sql.MultiLineStringType{}))
+		v, err := ff.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 	})
 
 	// LineString vs GeometryCollection
-	
+	t.Run("linestring within empty geometrycollection returns null", func(t *testing.T) {
+		require := require.New(t)
+		l := sql.LineString{Points: []sql.Point{{},{}}}
+		gc := sql.GeomColl{}
+
+		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("linestring within geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		l := sql.LineString{Points: []sql.Point{{},{}}}
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{l}}
+
+		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("linestring not within geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		l := sql.LineString{Points: []sql.Point{{},{}}}
+		l1 := sql.LineString{Points: []sql.Point{{X: 1, Y: 1},{}}}
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{l1}}
+
+		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Polygon vs Point
 	t.Run("polygon never within point", func(t *testing.T) {
@@ -988,6 +1055,88 @@ func TestWithin(t *testing.T) {
 	})
 
 	// Polygon vs Polygon
+	t.Run("empty polygon within polygon", func(t *testing.T) {
+		require := require.New(t)
+
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+
+		a := sql.Point{X: -1, Y: 1}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 1, Y: -1}
+		d := sql.Point{X: -1, Y: -1}
+		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		p2 := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(p2, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("polygon within polygon touching border", func(t *testing.T) {
+		require := require.New(t)
+		// triangle inside polygon
+		a := sql.Point{X: -1, Y: 1}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 1, Y: -1}
+		d := sql.Point{X: -1, Y: -1}
+		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,b,{},a}}}}
+		p2 := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(p2, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("empty polygon on vertex not within polygon", func(t *testing.T) {
+		require := require.New(t)
+
+		a := sql.Point{X: -1, Y: 1}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 1, Y: -1}
+		d := sql.Point{X: -1, Y: -1}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,a,a,a}}}}
+		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		p2 := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(p2, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
+	t.Run("empty polygon not within itself", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+
+		f := NewWithin(expression.NewLiteral(p, sql.PolygonType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
+	t.Run("polygon not within overlapping polygon", func(t *testing.T) {
+		require := require.New(t)
+		// right triangles
+		a := sql.Point{X: -1, Y: 1}
+		b := sql.Point{X: 1, Y: 0}
+		c := sql.Point{X: -1, Y: 0}
+		d := sql.Point{X: 1, Y: 1}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, a}}}}
+		p2 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{b, c, d, b}}}}
+
+		f := NewWithin(expression.NewLiteral(p1, sql.LineStringType{}), expression.NewLiteral(p2, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		f = NewWithin(expression.NewLiteral(p2, sql.LineStringType{}), expression.NewLiteral(p1, sql.MultiLineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Polygon vs MultiPoint
 	t.Run("polygon never within point", func(t *testing.T) {
