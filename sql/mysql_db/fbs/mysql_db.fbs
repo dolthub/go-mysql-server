@@ -57,10 +57,20 @@ table RoleEdge {
     with_admin_option:bool;
 }
 
+// Entries in the slave_master_info table
+table ReplicaSourceInfo {
+    host:string;
+    user:string;
+    password:string;
+    port:uint16;
+    uuid:string;
+}
+
 // The MySQL Db containing all the tables
 table MySQLDb {
     user:[User];
     role_edges:[RoleEdge];
+    replica_source_info:[ReplicaSourceInfo];
 }
 
 root_type MySQLDb;
