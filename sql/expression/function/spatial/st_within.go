@@ -459,14 +459,14 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 	case sql.MultiLineString:
 		// A MultiLineString is within g2 if all LineStrings are within g2
 		for _, l := range g1.Lines {
-			if !isLineWithin(l, g1) {
+			if !isLineWithin(l, g2) {
 				return false
 			}
 		}
 	case sql.MultiPolygon:
 		// A MultiPolygon is within g2 if all Polygons are within g2
 		for _, p := range g1.Polygons {
-			if !isPolyWithin(p, g1) {
+			if !isPolyWithin(p, g2) {
 				return false
 			}
 		}
