@@ -584,6 +584,18 @@ func TestWithin(t *testing.T) {
 		require.Equal(true, v)
 	})
 
+	// LineString vs Point
+	t.Run("linestring never within point", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+		l := sql.LineString{Points: []sql.Point{p, p}}
+
+		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(p, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
 	// LineString vs LineString
 	t.Run("linestring within linestring", func(t *testing.T) {
 		require := require.New(t)
@@ -718,9 +730,9 @@ func TestWithin(t *testing.T) {
 	t.Run("linestring within polygon", func(t *testing.T) {
 		require := require.New(t)
 		a := sql.Point{X: 4, Y: 4}
-		b := sql.Point{X: -4, Y: 4}
-		c := sql.Point{X: 4, Y: -4}
-		d := sql.Point{X: -4, Y: -4}
+		b := sql.Point{X: 4, Y: -4}
+		c := sql.Point{X: -4, Y: -4}
+		d := sql.Point{X: -4, Y: 4}
 		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		i := sql.Point{X: -1, Y: -1}
@@ -736,9 +748,9 @@ func TestWithin(t *testing.T) {
 	t.Run("linestring touching boundary is within polygon", func(t *testing.T) {
 		require := require.New(t)
 		a := sql.Point{X: 4, Y: 4}
-		b := sql.Point{X: -4, Y: 4}
-		c := sql.Point{X: 4, Y: -4}
-		d := sql.Point{X: -4, Y: -4}
+		b := sql.Point{X: 4, Y: -4}
+		c := sql.Point{X: -4, Y: -4}
+		d := sql.Point{X: -4, Y: 4}
 		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		i := sql.Point{X: -1, Y: -1}
@@ -754,9 +766,9 @@ func TestWithin(t *testing.T) {
 	t.Run("linestring is not within polygon", func(t *testing.T) {
 		require := require.New(t)
 		a := sql.Point{X: 4, Y: 4}
-		b := sql.Point{X: -4, Y: 4}
-		c := sql.Point{X: 4, Y: -4}
-		d := sql.Point{X: -4, Y: -4}
+		b := sql.Point{X: 4, Y: -4}
+		c := sql.Point{X: -4, Y: -4}
+		d := sql.Point{X: -4, Y: 4}
 		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		i := sql.Point{X: -100, Y: 100}
@@ -772,9 +784,9 @@ func TestWithin(t *testing.T) {
 	t.Run("linestring crosses through polygon", func(t *testing.T) {
 		require := require.New(t)
 		a := sql.Point{X: 4, Y: 4}
-		b := sql.Point{X: -4, Y: 4}
-		c := sql.Point{X: 4, Y: -4}
-		d := sql.Point{X: -4, Y: -4}
+		b := sql.Point{X: 4, Y: -4}
+		c := sql.Point{X: -4, Y: -4}
+		d := sql.Point{X: -4, Y: 4}
 		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		i := sql.Point{X: -100, Y: -100}
@@ -787,13 +799,12 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
-
 	t.Run("linestring boundary is not within polygon", func(t *testing.T) {
 		require := require.New(t)
 		a := sql.Point{X: 4, Y: 4}
-		b := sql.Point{X: -4, Y: 4}
-		c := sql.Point{X: 4, Y: -4}
-		d := sql.Point{X: -4, Y: -4}
+		b := sql.Point{X: 4, Y: -4}
+		c := sql.Point{X: -4, Y: -4}
+		d := sql.Point{X: -4, Y: 4}
 		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
 		p := sql.Polygon{Lines: []sql.LineString{l}}
 
@@ -806,14 +817,15 @@ func TestWithin(t *testing.T) {
 	t.Run("linestring in hole is not within polygon", func(t *testing.T) {
 		require := require.New(t)
 		a1 := sql.Point{X: 4, Y: 4}
-		b1 := sql.Point{X: -4, Y: 4}
-		c1 := sql.Point{X: 4, Y: -4}
-		d1 := sql.Point{X: -4, Y: -4}
+		b1 := sql.Point{X: 4, Y: -4}
+		c1 := sql.Point{X: -4, Y: -4}
+		d1 := sql.Point{X: -4, Y: 4}
 		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
+
 		a2 := sql.Point{X: 2, Y: 2}
-		b2 := sql.Point{X: -2, Y: 2}
-		c2 := sql.Point{X: 2, Y: -2}
-		d2 := sql.Point{X: -2, Y: -2}
+		b2 := sql.Point{X: 2, Y: -2}
+		c2 := sql.Point{X: -2, Y: -2}
+		d2 := sql.Point{X: -2, Y: 2}
 		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
 		p := sql.Polygon{Lines: []sql.LineString{l1, l2}}
 
@@ -827,7 +839,6 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
-	// Looks like a
 	t.Run("linestring crosses exterior not within polygon", func(t *testing.T) {
 		require := require.New(t)
 		a := sql.Point{X: 4, Y: 0}
@@ -849,22 +860,136 @@ func TestWithin(t *testing.T) {
 	})
 
 	// LineString vs MultiPoint
+	t.Run("linestring never within multipoint", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 4, Y: 4}
+		b := sql.Point{X: 4, Y: -4}
+		c := sql.Point{X: -4, Y: -4}
+		d := sql.Point{X: -4, Y: 4}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d}}
+		mp := sql.MultiPoint{Points: []sql.Point{a, b, c, d}}
+
+		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(mp, sql.MultiPointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// LineString vs MultiLineString
+	t.Run("linestring within multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 2, Y: 2}
+		l := sql.LineString{Points: []sql.Point{a, b, c}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	// TODO: need to do that weird even odd thing...
+	t.Run("linestring within split multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 2, Y: 2}
+		l1 := sql.LineString{Points: []sql.Point{a, b}}
+		l2 := sql.LineString{Points: []sql.Point{b, c}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l1, l2}}
+		l := sql.LineString{Points: []sql.Point{a, c}}
+		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("terminal line points not ", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 2, Y: 2}
+		ab := sql.LineString{Points: []sql.Point{a, b}}
+		bc := sql.LineString{Points: []sql.Point{b, c}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{ab, bc}}
+
+		aa := sql.LineString{Points: []sql.Point{a, a}}
+		bb := sql.LineString{Points: []sql.Point{b, b}}
+		cc := sql.LineString{Points: []sql.Point{c, c}}
+		f := NewWithin(expression.NewLiteral(aa, sql.LineStringType{}), expression.NewLiteral(ml, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+		f = NewWithin(expression.NewLiteral(bb, sql.LineStringType{}), expression.NewLiteral(ml, sql.LineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+		f = NewWithin(expression.NewLiteral(cc, sql.LineStringType{}), expression.NewLiteral(ml, sql.LineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// LineString vs MultiPolygon
 
 	// LineString vs GeometryCollection
 
 	// Polygon vs Point
+	t.Run("polygon never within point", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+		l := sql.LineString{Points: []sql.Point{p, p, p, p}}
+		poly := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(poly, sql.PolygonType{}), expression.NewLiteral(p, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Polygon vs LineString
+	t.Run("polygon never within linestring", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+		l := sql.LineString{Points: []sql.Point{p, p, p, p}}
+		poly := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(poly, sql.PolygonType{}), expression.NewLiteral(l, sql.LineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Polygon vs Polygon
 
 	// Polygon vs MultiPoint
+	t.Run("polygon never within point", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+		l := sql.LineString{Points: []sql.Point{p, p, p, p}}
+		poly := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(poly, sql.PolygonType{}), expression.NewLiteral(p, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Polygon vs MultiLineString
+	t.Run("polygon never within multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		p := sql.Point{X: 0, Y: 0}
+		l := sql.LineString{Points: []sql.Point{p, p, p, p}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l}}
+		poly := sql.Polygon{Lines: []sql.LineString{l}}
+
+		f := NewWithin(expression.NewLiteral(poly, sql.PolygonType{}), expression.NewLiteral(ml, sql.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// Polygon vs MultiPolygon
 
@@ -925,5 +1050,4 @@ func TestWithin(t *testing.T) {
 	// GeometryCollection vs MultiPolygon
 
 	// GeometryCollection vs GeometryCollection
-
 }
