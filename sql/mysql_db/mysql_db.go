@@ -54,9 +54,9 @@ type PlaintextAuthPlugin interface {
 type MySQLDb struct {
 	Enabled bool
 
-	user              *mysqlTable
-	role_edges        *mysqlTable
-	slave_master_info *mysqlTable
+	user                *mysqlTable
+	role_edges          *mysqlTable
+	replica_source_info *mysqlTable
 
 	db          *mysqlTableShim
 	tables_priv *mysqlTableShim
@@ -98,7 +98,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 		RoleEdgesFromKey{},
 		RoleEdgesToKey{},
 	)
-	mysqlDb.slave_master_info = newMySQLTable(
+	mysqlDb.replica_source_info = newMySQLTable(
 		replicaSourceInfoTblName,
 		replicaSourceInfoTblSchema,
 		mysqlDb,
@@ -151,9 +151,8 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	}
 
 	type privDataJson struct {
-		Users              []*User
-		Roles              []*RoleEdge
-		ReplicaSourceInfos []*ReplicaSourceInfo
+		Users []*User
+		Roles []*RoleEdge
 	}
 
 	// if it's a json file, read it; will be rewritten as flatbuffer later
@@ -206,7 +205,7 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 			continue
 		}
 		replicaSourceInfo := LoadReplicaSourceInfo(serialReplicaSourceInfo)
-		if err := db.slave_master_info.data.Put(ctx, replicaSourceInfo); err != nil {
+		if err := db.replica_source_info.data.Put(ctx, replicaSourceInfo); err != nil {
 			return err
 		}
 	}
@@ -387,7 +386,7 @@ func (db *MySQLDb) GetTableInsensitive(_ *sql.Context, tblName string) (sql.Tabl
 	case tablesPrivTblName:
 		return db.tables_priv, true, nil
 	case replicaSourceInfoTblName:
-		return db.slave_master_info, true, nil
+		return db.replica_source_info, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -550,7 +549,7 @@ func (db *MySQLDb) Persist(ctx *sql.Context) error {
 	})
 
 	// Extract all replica source info entries from table, and sort
-	replicaSourceInfoEntries := db.slave_master_info.data.ToSlice(ctx)
+	replicaSourceInfoEntries := db.replica_source_info.data.ToSlice(ctx)
 	replicaSourceInfos := make([]*ReplicaSourceInfo, len(replicaSourceInfoEntries))
 	for i, replicaSourceInfoEntry := range replicaSourceInfoEntries {
 		replicaSourceInfos[i] = replicaSourceInfoEntry.(*ReplicaSourceInfo)
@@ -599,7 +598,7 @@ func (db *MySQLDb) RoleEdgesTable() *mysqlTable {
 
 // ReplicaSourceInfoTable returns the "slave_master_info" table.
 func (db *MySQLDb) ReplicaSourceInfoTable() *mysqlTable {
-	return db.slave_master_info
+	return db.replica_source_info
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given

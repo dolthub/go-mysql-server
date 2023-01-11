@@ -24,6 +24,9 @@ import (
 // replicaSourceInfoTblName stores the name of the mysql table for persistent storage
 // of replication data.
 // For more details, see: https://dev.mysql.com/doc/refman/8.0/en/replica-logs-status.html
+// Note: MySQL hasn't updated this table name yet to move to the newer, inclusive
+//
+//	naming terms, so for compatibility, we match the current name.
 const replicaSourceInfoTblName = "slave_master_info"
 
 var replicaSourceInfoTblSchema sql.Schema
