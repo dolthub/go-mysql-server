@@ -387,10 +387,10 @@ func TestWithin(t *testing.T) {
 		c2 := sql.Point{X: -2, Y: -2}
 		d2 := sql.Point{X: -2, Y: 2}
 
-		a3 := sql.Point{X: 2, Y: 2}
-		b3 := sql.Point{X: 2, Y: -2}
-		c3 := sql.Point{X: -2, Y: -2}
-		d3 := sql.Point{X: -2, Y: 2}
+		a3 := sql.Point{X: 1, Y: 1}
+		b3 := sql.Point{X: 1, Y: -1}
+		c3 := sql.Point{X: -1, Y: -1}
+		d3 := sql.Point{X: -1, Y: 1}
 
 		l1 := sql.LineString{Points: []sql.Point{a1, b1, c1, d1, a1}}
 		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
@@ -415,6 +415,48 @@ func TestWithin(t *testing.T) {
 		// passes through segments c1d1, c2d2, a1b1, and a2b2; overlaps segment b2c2
 		p3 := sql.Point{X: -5, Y: -2}
 		f = NewWithin(expression.NewLiteral(p3, sql.PointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+
+	t.Run("point within non-simple polygon", func(t *testing.T) {
+		require := require.New(t)
+		// looks like a bowtie
+		a := sql.Point{X: -2, Y: 2}
+		b := sql.Point{X: 2, Y: 2}
+		c := sql.Point{X: 2, Y: -2}
+		d := sql.Point{X: -2, Y: -2}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
+		p := sql.Polygon{Lines: []sql.LineString{l}}
+
+		o := sql.Point{}
+		w := sql.Point{X: -1, Y: 0}
+		x := sql.Point{X: 0, Y: 1}
+		y := sql.Point{X: 1, Y: 0}
+		z := sql.Point{X: 0, Y: -1}
+
+		f := NewWithin(expression.NewLiteral(o, sql.PointType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		f = NewWithin(expression.NewLiteral(w, sql.PointType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		f = NewWithin(expression.NewLiteral(x, sql.PointType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		f = NewWithin(expression.NewLiteral(y, sql.PointType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		f = NewWithin(expression.NewLiteral(z, sql.PointType{}), expression.NewLiteral(p, sql.PolygonType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -867,6 +909,48 @@ func TestWithin(t *testing.T) {
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
+	})
+
+	t.Run("linestring within non-simple polygon", func(t *testing.T) {
+		require := require.New(t)
+		// looks like a bowtie
+		a := sql.Point{X: -2, Y: 2}
+		b := sql.Point{X: 2, Y: 2}
+		c := sql.Point{X: 2, Y: -2}
+		d := sql.Point{X: -2, Y: -2}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
+		p := sql.Polygon{Lines: []sql.LineString{l}}
+
+		w := sql.Point{X: -1, Y: 0}
+		x := sql.Point{X: 0, Y: 1}
+		y := sql.Point{X: 1, Y: 0}
+		z := sql.Point{X: 0, Y: -1}
+
+		wx := sql.LineString{Points: []sql.Point{w, x}}
+		yz := sql.LineString{Points: []sql.Point{y, z}}
+		wy := sql.LineString{Points: []sql.Point{w, y}}
+		xz := sql.LineString{Points: []sql.Point{x, z}}
+
+		f := NewWithin(expression.NewLiteral(wx, sql.LineStringType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		f = NewWithin(expression.NewLiteral(yz, sql.LineStringType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		f = NewWithin(expression.NewLiteral(wy, sql.LineStringType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		// Oddly, the LineString that is completely out of the Polygon is the one that is true
+		f = NewWithin(expression.NewLiteral(xz, sql.LineStringType{}), expression.NewLiteral(p, sql.PolygonType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
 	})
 
 	// LineString vs MultiPoint
