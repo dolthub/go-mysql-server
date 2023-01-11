@@ -1037,7 +1037,7 @@ func TestWithin(t *testing.T) {
 		f := sql.Point{X: 2, Y: -1}
 		// these are two rectangles that share a side on the y axis
 		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
-		p2 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{b, e, f, c ,b}}}}
+		p2 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{b, e, f, c, b}}}}
 		mp := sql.MultiPolygon{Polygons: []sql.Polygon{p1, p2}}
 
 		l := sql.LineString{Points: []sql.Point{{X: -1, Y: 0}, {X: 1, Y: 0}}}
@@ -1079,7 +1079,7 @@ func TestWithin(t *testing.T) {
 	// LineString vs GeometryCollection
 	t.Run("linestring within empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
-		l := sql.LineString{Points: []sql.Point{{},{}}}
+		l := sql.LineString{Points: []sql.Point{{}, {}}}
 		gc := sql.GeomColl{}
 
 		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
@@ -1090,7 +1090,7 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring within geometrycollection", func(t *testing.T) {
 		require := require.New(t)
-		l := sql.LineString{Points: []sql.Point{{},{}}}
+		l := sql.LineString{Points: []sql.Point{{}, {}}}
 		gc := sql.GeomColl{Geoms: []sql.GeometryValue{l}}
 
 		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
@@ -1101,8 +1101,8 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring not within geometrycollection", func(t *testing.T) {
 		require := require.New(t)
-		l := sql.LineString{Points: []sql.Point{{},{}}}
-		l1 := sql.LineString{Points: []sql.Point{{X: 1, Y: 1},{}}}
+		l := sql.LineString{Points: []sql.Point{{}, {}}}
+		l1 := sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {}}}
 		gc := sql.GeomColl{Geoms: []sql.GeometryValue{l1}}
 
 		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
@@ -1143,13 +1143,13 @@ func TestWithin(t *testing.T) {
 	t.Run("empty polygon within polygon", func(t *testing.T) {
 		require := require.New(t)
 
-		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{}, {}, {}, {}}}}}
 
 		a := sql.Point{X: -1, Y: 1}
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
 		p2 := sql.Polygon{Lines: []sql.LineString{l}}
 
 		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(p2, sql.PolygonType{}))
@@ -1165,8 +1165,8 @@ func TestWithin(t *testing.T) {
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
-		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,b,{},a}}}}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, {}, a}}}}
 		p2 := sql.Polygon{Lines: []sql.LineString{l}}
 
 		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(p2, sql.PolygonType{}))
@@ -1182,8 +1182,8 @@ func TestWithin(t *testing.T) {
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,a,a,a}}}}
-		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, a, a, a}}}}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
 		p2 := sql.Polygon{Lines: []sql.LineString{l}}
 
 		f := NewWithin(expression.NewLiteral(p1, sql.PolygonType{}), expression.NewLiteral(p2, sql.PolygonType{}))
@@ -1194,7 +1194,7 @@ func TestWithin(t *testing.T) {
 
 	t.Run("empty polygon not within itself", func(t *testing.T) {
 		require := require.New(t)
-		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{}, {}, {}, {}}}}}
 
 		f := NewWithin(expression.NewLiteral(p, sql.PolygonType{}), expression.NewLiteral(p, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -1282,7 +1282,7 @@ func TestWithin(t *testing.T) {
 	t.Run("polygon within empty geometry collection returns null", func(t *testing.T) {
 		require := require.New(t)
 
-		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+		p := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{}, {}, {}, {}}}}}
 		g := sql.GeomColl{}
 
 		f := NewWithin(expression.NewLiteral(p, sql.PolygonType{}), expression.NewLiteral(g, sql.GeomCollType{}))
@@ -1294,13 +1294,13 @@ func TestWithin(t *testing.T) {
 	t.Run("empty polygon within geometry collection", func(t *testing.T) {
 		require := require.New(t)
 
-		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{}, {}, {}, {}}}}}
 
 		a := sql.Point{X: -1, Y: 1}
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
 		p2 := sql.Polygon{Lines: []sql.LineString{l}}
 		g := sql.GeomColl{Geoms: []sql.GeometryValue{p2}}
 
@@ -1396,7 +1396,7 @@ func TestWithin(t *testing.T) {
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,b,c,d,a}}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -1411,8 +1411,8 @@ func TestWithin(t *testing.T) {
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		mp := sql.MultiPoint{Points: []sql.Point{a,b,c,d,{}}}
-		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,b,c,d,a}}}}
+		mp := sql.MultiPoint{Points: []sql.Point{a, b, c, d, {}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -1427,8 +1427,8 @@ func TestWithin(t *testing.T) {
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		mp := sql.MultiPoint{Points: []sql.Point{a,b,c,d}}
-		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,b,c,d,a}}}}
+		mp := sql.MultiPoint{Points: []sql.Point{a, b, c, d}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -1443,8 +1443,8 @@ func TestWithin(t *testing.T) {
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		mp := sql.MultiPoint{Points: []sql.Point{a,{},sql.Point{X: 100, Y: 100}}}
-		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a,b,c,d,a}}}}
+		mp := sql.MultiPoint{Points: []sql.Point{a, {}, sql.Point{X: 100, Y: 100}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{a, b, c, d, a}}}}
 
 		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -1455,7 +1455,7 @@ func TestWithin(t *testing.T) {
 	t.Run("multipoint terminal points not within empty polygon", func(t *testing.T) {
 		require := require.New(t)
 		mp := sql.MultiPoint{Points: []sql.Point{{}}}
-		poly := sql.Polygon{Lines: []sql.LineString{{},{},{},{}}}
+		poly := sql.Polygon{Lines: []sql.LineString{{}, {}, {}, {}}}
 
 		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(poly, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -1472,7 +1472,7 @@ func TestWithin(t *testing.T) {
 	// MultiPoint vs GeometryCollection
 	t.Run("multipoint within empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
-		mp := sql.MultiPoint{Points: []sql.Point{{},{}}}
+		mp := sql.MultiPoint{Points: []sql.Point{{}, {}}}
 		gc := sql.GeomColl{}
 
 		f := NewWithin(expression.NewLiteral(mp, sql.MultiPointType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
@@ -1507,8 +1507,8 @@ func TestWithin(t *testing.T) {
 	// MultiLineString vs GeometryCollection
 	t.Run("multilinestring within empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
-		l := sql.LineString{Points: []sql.Point{{},{}}}
-		ml := sql.MultiLineString{Lines: []sql.LineString{l,l}}
+		l := sql.LineString{Points: []sql.Point{{}, {}}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{l, l}}
 		gc := sql.GeomColl{}
 
 		f := NewWithin(expression.NewLiteral(ml, sql.MultiLineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
@@ -1516,7 +1516,6 @@ func TestWithin(t *testing.T) {
 		require.NoError(err)
 		require.Equal(nil, v)
 	})
-
 
 	// MultiPolygon vs Point
 	t.Run("multipolygon never within point", func(t *testing.T) {
@@ -1557,9 +1556,9 @@ func TestWithin(t *testing.T) {
 	// MultiPolygon vs GeometryCollection
 	t.Run("multipolygon within empty geometrycollection returns null", func(t *testing.T) {
 		require := require.New(t)
-		l := sql.LineString{Points: []sql.Point{{},{},{},{}}}
+		l := sql.LineString{Points: []sql.Point{{}, {}, {}, {}}}
 		p := sql.Polygon{Lines: []sql.LineString{l}}
-		mp := sql.MultiPolygon{Polygons: []sql.Polygon{p,p}}
+		mp := sql.MultiPolygon{Polygons: []sql.Polygon{p, p}}
 		gc := sql.GeomColl{}
 
 		f := NewWithin(expression.NewLiteral(mp, sql.MultiPolygonType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
