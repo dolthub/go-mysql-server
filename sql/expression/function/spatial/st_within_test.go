@@ -918,23 +918,49 @@ func TestWithin(t *testing.T) {
 		aa := sql.LineString{Points: []sql.Point{a, a}}
 		bb := sql.LineString{Points: []sql.Point{b, b}}
 		cc := sql.LineString{Points: []sql.Point{c, c}}
-		f := NewWithin(expression.NewLiteral(aa, sql.LineStringType{}), expression.NewLiteral(ml, sql.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(aa, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
-		f = NewWithin(expression.NewLiteral(bb, sql.LineStringType{}), expression.NewLiteral(ml, sql.LineStringType{}))
+		f = NewWithin(expression.NewLiteral(bb, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
-		f = NewWithin(expression.NewLiteral(cc, sql.LineStringType{}), expression.NewLiteral(ml, sql.LineStringType{}))
+		f = NewWithin(expression.NewLiteral(cc, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
 	})
 
 	// LineString vs MultiPolygon
+	t.Run("terminal line points not in multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		a := sql.Point{X: 0, Y: 0}
+		b := sql.Point{X: 1, Y: 1}
+		c := sql.Point{X: 2, Y: 2}
+		ab := sql.LineString{Points: []sql.Point{a, b}}
+		bc := sql.LineString{Points: []sql.Point{b, c}}
+		ml := sql.MultiLineString{Lines: []sql.LineString{ab, bc}}
+
+		aa := sql.LineString{Points: []sql.Point{a, a}}
+		bb := sql.LineString{Points: []sql.Point{b, b}}
+		cc := sql.LineString{Points: []sql.Point{c, c}}
+		f := NewWithin(expression.NewLiteral(aa, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+		f = NewWithin(expression.NewLiteral(bb, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+		f = NewWithin(expression.NewLiteral(cc, sql.LineStringType{}), expression.NewLiteral(ml, sql.MultiLineStringType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
 
 	// LineString vs GeometryCollection
+	
 
 	// Polygon vs Point
 	t.Run("polygon never within point", func(t *testing.T) {
