@@ -606,11 +606,15 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		SourceType: "*plan.SubqueryAlias",
 	},
 	{
-		Name:       "max1RowSubquery",
-		SourceType: "*plan.SubqueryAlias",
+		Name:       "max1Row",
+		SourceType: "sql.NameableNode",
 	},
 	{
 		Name:       "tableFunc",
 		SourceType: "sql.TableFunction",
+	},
+	{
+		Name:       "selectSingleRel",
+		SourceType: "*plan.SelectSingleRel",
 	},
 }
