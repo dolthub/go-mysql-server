@@ -1605,14 +1605,14 @@ func TestWithin(t *testing.T) {
 	t.Run("geometrycollection within polygon", func(t *testing.T) {
 		require := require.New(t)
 
-		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{},{},{},{}}}}}
+		p1 := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{}, {}, {}, {}}}}}
 		gc := sql.GeomColl{Geoms: []sql.GeometryValue{p1}}
 
 		a := sql.Point{X: -1, Y: 1}
 		b := sql.Point{X: 1, Y: 1}
 		c := sql.Point{X: 1, Y: -1}
 		d := sql.Point{X: -1, Y: -1}
-		l := sql.LineString{Points: []sql.Point{a,b,c,d,a}}
+		l := sql.LineString{Points: []sql.Point{a, b, c, d, a}}
 		p2 := sql.Polygon{Lines: []sql.LineString{l}}
 
 		f := NewWithin(expression.NewLiteral(gc, sql.GeomCollType{}), expression.NewLiteral(p2, sql.PolygonType{}))
