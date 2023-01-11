@@ -397,7 +397,6 @@ func TestWithin(t *testing.T) {
 		l2 := sql.LineString{Points: []sql.Point{a2, b2, c2, d2, a2}}
 		l3 := sql.LineString{Points: []sql.Point{a3, b3, c3, d3, a3}}
 
-
 		poly := sql.Polygon{Lines: []sql.LineString{l1, l2, l3}}
 
 		// passes through segments a1b1 and a2b2
@@ -755,7 +754,7 @@ func TestWithin(t *testing.T) {
 
 		i := sql.Point{X: -1, Y: -1}
 		j := sql.Point{X: 1, Y: 1}
-		l := sql.LineString{Points: []sql.Point{i, j, a ,b}}
+		l := sql.LineString{Points: []sql.Point{i, j, a, b}}
 
 		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(p, sql.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -773,7 +772,7 @@ func TestWithin(t *testing.T) {
 
 		i := sql.Point{X: -100, Y: 100}
 		j := sql.Point{X: 100, Y: 100}
-		l := sql.LineString{Points: []sql.Point{i, j, a ,b}}
+		l := sql.LineString{Points: []sql.Point{i, j, a, b}}
 
 		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(p, sql.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -791,7 +790,7 @@ func TestWithin(t *testing.T) {
 
 		i := sql.Point{X: -100, Y: -100}
 		j := sql.Point{X: 100, Y: 100}
-		l := sql.LineString{Points: []sql.Point{i, j, a ,b}}
+		l := sql.LineString{Points: []sql.Point{i, j, a, b}}
 
 		f := NewWithin(expression.NewLiteral(l, sql.LineStringType{}), expression.NewLiteral(p, sql.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
