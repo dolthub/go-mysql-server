@@ -134,7 +134,7 @@ func linesIntersect(a, b, c, d sql.Point) bool {
 // A simpler, but possibly more compute intensive option is to sum angles, and check if equal to 2pi or 360 deg
 // Reference: https://en.wikipedia.org/wiki/Point_in_polygon
 func isPointWithinClosedLineString(p sql.Point, l sql.LineString) bool {
-	numInters := 0
+	hasOddInters := false
 	for i := 1; i < len(l.Points); i++ {
 		a := l.Points[i-1]
 		b := l.Points[i]
@@ -155,9 +155,9 @@ func isPointWithinClosedLineString(p sql.Point, l sql.LineString) bool {
 		if !linesIntersect(a, b, p, q) {
 			continue
 		}
-		numInters += 1
+		hasOddInters = !hasOddInters
 	}
-	return numInters%2 == 1
+	return hasOddInters
 }
 
 // countConcreteGeoms recursively counts all the Geometry Types that are not GeomColl inside a GeomColl
