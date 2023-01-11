@@ -959,7 +959,6 @@ func TestWithin(t *testing.T) {
 	})
 
 	// LineString vs GeometryCollection
-	
 
 	// Polygon vs Point
 	t.Run("polygon never within point", func(t *testing.T) {
