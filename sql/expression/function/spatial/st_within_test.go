@@ -1028,6 +1028,8 @@ func TestWithin(t *testing.T) {
 		require.Equal(false, v)
 	})
 
+	// LineString vs GeometryCollection
+
 	// Polygon vs Point
 	t.Run("polygon never within point", func(t *testing.T) {
 		require := require.New(t)
