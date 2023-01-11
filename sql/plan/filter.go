@@ -145,6 +145,10 @@ func NewSelectSingleRel(sel []sql.Expression, rel sql.NameableNode) *SelectSingl
 	}
 }
 
+// SelectSingleRel collapses table and filter nodes into one object.
+// Strong optimizations can be made for scopes that only has one
+// relation, compared to a join with multiple nodes. Additionally, filters
+// than only operate on a single table are easy to index.
 type SelectSingleRel struct {
 	Select []sql.Expression
 	Rel    sql.NameableNode
@@ -193,14 +197,7 @@ func (s *SelectSingleRel) Children() []sql.Node {
 }
 
 func (s *SelectSingleRel) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	ret, err := s.Rel.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range s.Select {
-		ret = NewFilterIter(f, ret)
-	}
-	return ret, nil
+	return nil, fmt.Errorf("*plan.SelectSingleRel is not an executable node; rule: normalizeSelectSingleRel should have normalized")
 }
 
 // Expressions implements the sql.Expressioner interface.
@@ -234,6 +231,8 @@ func (s *SelectSingleRel) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 	return s.Rel.CheckPrivileges(ctx, opChecker)
 }
 
+// RequalifyFields updates the |Select| filters source to a new
+// table alias.
 func (s *SelectSingleRel) RequalifyFields(to string) *SelectSingleRel {
 	newSel, same, _ := transform.Exprs(s.Select, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {

@@ -324,13 +324,13 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 	case *tableAlias:
 		return tableAliasLookupCand(ctx, n.table, aliases)
 	case *tableScan:
-		return tableScanLookupCand(ctx, n.table, aliases)
+		return tableScanLookupCand(ctx, n.table)
 	case *selectSingleRel:
 		switch t := n.table.Rel.(type) {
 		case *plan.TableAlias:
 			return tableAliasLookupCand(ctx, t, aliases)
 		case *plan.ResolvedTable:
-			return tableScanLookupCand(ctx, t, aliases)
+			return tableScanLookupCand(ctx, t)
 		default:
 		}
 	default:
@@ -339,7 +339,7 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 
 }
 
-func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable, aliases TableAliases) (string, []sql.Index, error) {
+func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable) (string, []sql.Index, error) {
 	attributeSource := strings.ToLower(n.Name())
 	table := n.Table
 	if w, ok := table.(sql.TableWrapper); ok {
@@ -349,7 +349,6 @@ func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable, aliases TableA
 	if !ok {
 		return "", nil, nil
 	}
-	aliases.add(n, indexableTable)
 	indexes, err := indexableTable.GetIndexes(ctx)
 	if err != nil {
 		return "", nil, err

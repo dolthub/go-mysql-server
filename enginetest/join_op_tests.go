@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -208,7 +209,7 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeAnti},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCross, plan.JoinTypeAnti},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
@@ -340,6 +341,47 @@ order by 1;`,
 				types: []plan.JoinType{plan.JoinTypeAnti},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {3, 3}},
 			},
+			{
+				q:     "select * from xy where (x,y+1) = (select u,v from uv where v = 2 order by 1 limit 1) order by 1;",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{2, 1}},
+			},
+		},
+	},
+	{
+		name: "decorrelate non-equality comparisons",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+			"CREATE table uv (u int primary key, v int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+		},
+		tests: []JoinOpTest{
+			{
+				q:     "select * from xy where y >= (select u from uv where u = 2) order by 1;",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{0, 2}, {3, 3}},
+			},
+			{
+				q:     "select * from xy where x <= (select u from uv where u = 2) order by 1;",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}},
+			},
+			{
+				q:     "select * from xy where x < (select u from uv where u = 2) order by 1;",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{0, 2}, {1, 0}},
+			},
+			{
+				q:     "select * from xy where x > (select u from uv where u = 2) order by 1;",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{3, 3}},
+			},
+			{
+				q:     "select * from uv where v <=> (select u from uv where u = 2) order by 1;",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{2, 2}, {3, 2}},
+			},
 		},
 	},
 }
@@ -379,7 +421,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinOpTe
 		require.NoError(t, err)
 
 		jts := collectJoinTypes(a)
-		require.Equal(t, tt.types, jts)
+		require.Equal(t, tt.types, jts, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})
 }
 

@@ -511,6 +511,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
+		finalizeSubqueriesId,
+		finalizeUnionsId,
 
 		// DefaultValidationRules
 		validateResolvedId,
@@ -548,6 +550,7 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		resolveInsertRowsId,
 
+		normalizeSelectSingleRelId,
 		AutocommitId,
 		TrackProcessId,
 		parallelizeId,
