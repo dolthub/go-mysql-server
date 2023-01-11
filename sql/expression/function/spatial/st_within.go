@@ -177,7 +177,7 @@ func simplifyLineString(l sql.LineString) sql.LineString {
 	var a, b, c sql.Point
 	a = l.Points[0]
 	points := []sql.Point{a}
-	for i := 1; i < len(l.Points) - 1; i++ {
+	for i := 1; i < len(l.Points)-1; i++ {
 		b = l.Points[i]
 		c = l.Points[i+1]
 
@@ -291,7 +291,7 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 	case sql.GeomColl:
 		// Point is considered within GeomColl if it is within at least one Geometry
 		for _, gg := range g.Geoms {
-			if isPointWithin(p, gg){
+			if isPointWithin(p, gg) {
 				return true
 			}
 		}
@@ -337,7 +337,6 @@ func isLineWithin(l sql.LineString, g sql.GeometryValue) bool {
 		// 1. at least one point is inside the Polygon
 		// 2. any number of points are on the boundaries
 		// 3. there are no points on the outside of the polygon
-
 
 		// check for points on the outside of the polygon
 		for _, p := range l.Points {
