@@ -465,7 +465,9 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateOperandsId,
 
 		// OnceAfterAll
-		TrackProcessId:
+		normalizeSelectSingleRelId,
+		TrackProcessId,
+		parallelizeId:
 		return false
 	default:
 		return true
@@ -509,6 +511,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
+		finalizeSubqueriesId,
+		finalizeUnionsId,
 
 		// DefaultValidationRules
 		validateResolvedId,
@@ -517,6 +521,8 @@ func postPrepareRuleSelector(id RuleId) bool {
 		//validateUnionSchemasMatchId, // TODO: we never validate UnionSchemasMatchId :)
 
 		// OnceAfterAll
+		normalizeSelectSingleRelId,
+		parallelizeId,
 		TrackProcessId:
 		return true
 	}
@@ -544,6 +550,7 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		resolveInsertRowsId,
 
+		normalizeSelectSingleRelId,
 		AutocommitId,
 		TrackProcessId,
 		parallelizeId,

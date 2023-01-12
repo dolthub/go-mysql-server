@@ -233,8 +233,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 		rel = &recursiveTable{relBase: b, table: n}
 	case *plan.SubqueryAlias:
 		rel = &subqueryAlias{relBase: b, table: n}
-	case *plan.Max1RowSubquery:
-		rel = &max1RowSubquery{relBase: b, table: n.Subquery()}
+	case *plan.Max1Row:
+		rel = &max1Row{relBase: b, table: n.Child}
 	case *plan.RecursiveCte:
 		rel = &recursiveCte{relBase: b, table: n}
 	case *plan.IndexedTableAccess:
@@ -243,6 +243,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 		rel = &values{relBase: b, table: n}
 	case sql.TableFunction:
 		rel = &tableFunc{relBase: b, table: n}
+	case *plan.SelectSingleRel:
+		rel = &selectSingleRel{relBase: b, table: n}
 	default:
 		panic(fmt.Sprintf("unrecognized join leaf: %T", n))
 	}

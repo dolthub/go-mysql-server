@@ -320,38 +320,57 @@ func addRightSemiJoins(m *Memo) error {
 // candidate indexes as replacements for the given relExpr, or empty values
 // if there are no suitable indexes.
 func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (string, []sql.Index, error) {
-	var attributeSource string
-	var indexableTable sql.IndexAddressableTable
-	var ok bool
 	switch n := rel.(type) {
 	case *tableAlias:
-		attributeSource = strings.ToLower(n.table.Name())
-		rt, ok := n.table.Child.(*plan.ResolvedTable)
-		if !ok {
-			return "", nil, nil
-		}
-		table := rt.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
-		indexableTable, ok = table.(sql.IndexAddressableTable)
-		if !ok {
-			return "", nil, nil
-		}
-		aliases.add(n.table, indexableTable)
+		return tableAliasLookupCand(ctx, n.table, aliases)
 	case *tableScan:
-		attributeSource = strings.ToLower(n.table.Name())
-		table := n.table.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
-		indexableTable, ok = table.(sql.IndexAddressableTable)
-		if !ok {
-			return "", nil, nil
+		return tableScanLookupCand(ctx, n.table)
+	case *selectSingleRel:
+		switch t := n.table.Rel.(type) {
+		case *plan.TableAlias:
+			return tableAliasLookupCand(ctx, t, aliases)
+		case *plan.ResolvedTable:
+			return tableScanLookupCand(ctx, t)
+		default:
 		}
 	default:
+	}
+	return "", nil, nil
+
+}
+
+func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable) (string, []sql.Index, error) {
+	attributeSource := strings.ToLower(n.Name())
+	table := n.Table
+	if w, ok := table.(sql.TableWrapper); ok {
+		table = w.Underlying()
+	}
+	indexableTable, ok := table.(sql.IndexAddressableTable)
+	if !ok {
 		return "", nil, nil
 	}
+	indexes, err := indexableTable.GetIndexes(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	return attributeSource, indexes, nil
+}
+
+func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAliases) (string, []sql.Index, error) {
+	attributeSource := strings.ToLower(n.Name())
+	rt, ok := n.Child.(*plan.ResolvedTable)
+	if !ok {
+		return "", nil, nil
+	}
+	table := rt.Table
+	if w, ok := table.(sql.TableWrapper); ok {
+		table = w.Underlying()
+	}
+	indexableTable, ok := table.(sql.IndexAddressableTable)
+	if !ok {
+		return "", nil, nil
+	}
+	aliases.add(n, indexableTable)
 	indexes, err := indexableTable.GetIndexes(ctx)
 	if err != nil {
 		return "", nil, err
