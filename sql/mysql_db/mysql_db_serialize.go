@@ -212,8 +212,10 @@ func serializeReplicaSourceInfo(b *flatbuffers.Builder, replicaSourceInfos []*Re
 		serial.ReplicaSourceInfoAddPassword(b, password)
 		serial.ReplicaSourceInfoAddUuid(b, uuid)
 
-		// Write Port (uint value doesn't need offset)
+		// Write non-string fields (uint value doesn't need offset)
 		serial.ReplicaSourceInfoAddPort(b, replicaSourceInfo.Port)
+		serial.ReplicaSourceInfoAddConnectRetryInterval(b, replicaSourceInfo.ConnectRetryInterval)
+		serial.ReplicaSourceInfoAddConnectRetryCount(b, replicaSourceInfo.ConnectRetryCount)
 
 		// End ReplicaSourceInfo
 		offsets[len(replicaSourceInfos)-i-1] = serial.ReplicaSourceInfoEnd(b)

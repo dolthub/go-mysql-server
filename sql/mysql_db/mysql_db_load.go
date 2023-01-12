@@ -137,10 +137,12 @@ func LoadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
 
 func LoadReplicaSourceInfo(serialReplicaSourceInfo *serial.ReplicaSourceInfo) *ReplicaSourceInfo {
 	return &ReplicaSourceInfo{
-		Host:     string(serialReplicaSourceInfo.Host()),
-		User:     string(serialReplicaSourceInfo.User()),
-		Password: string(serialReplicaSourceInfo.Password()),
-		Port:     serialReplicaSourceInfo.Port(),
-		Uuid:     string(serialReplicaSourceInfo.Uuid()),
+		Host:                 string(serialReplicaSourceInfo.Host()),
+		User:                 string(serialReplicaSourceInfo.User()),
+		Password:             string(serialReplicaSourceInfo.Password()),
+		Port:                 serialReplicaSourceInfo.Port(),
+		Uuid:                 string(serialReplicaSourceInfo.Uuid()),
+		ConnectRetryInterval: serialReplicaSourceInfo.ConnectRetryInterval(),
+		ConnectRetryCount:    serialReplicaSourceInfo.ConnectRetryCount(),
 	}
 }

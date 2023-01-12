@@ -64,6 +64,8 @@ table ReplicaSourceInfo {
     password:string;
     port:uint16;
     uuid:string;
+    connect_retry_interval:uint32;
+    connect_retry_count:uint64;
 }
 
 // The MySQL Db containing all the tables
