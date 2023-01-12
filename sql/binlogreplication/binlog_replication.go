@@ -34,14 +34,29 @@ type BinlogReplicaController interface {
 	// were any problems stopping replication. If no replication processes were running, no error is returned.
 	StopReplica(ctx *sql.Context) error
 
-	// SetReplicationOptions configures the binlog replica controller with the specified options. The replica controller
-	// must store this configuration. If any errors are encountered processing and storing the configuration options, an
-	// error is returned.
-	SetReplicationOptions(ctx *sql.Context, options []ReplicationOption) error
+	// SetReplicationSourceOptions configures the binlog replica controller with the specified source options. The
+	// replica controller must store this configuration. If any errors are encountered processing and storing the
+	// configuration options, an error is returned.
+	SetReplicationSourceOptions(ctx *sql.Context, options []ReplicationOption) error
+
+	// SetReplicationFilterOptions configures the binlog replica controller with the specified filter options. Although
+	// the official MySQL implementation does *NOT* persist these options, the replica controller should persist them.
+	// (MySQL requires these options to be manually set after every server restart, or to be specified as command line
+	// arguments when starting the MySQL process.) If any errors are encountered processing and storing the filter
+	// options, an error is returned.
+	SetReplicationFilterOptions(ctx *sql.Context, options []ReplicationOption) error
 
 	// GetReplicaStatus returns the current status of the replica, or nil if no replication processes are running. If
 	// any problems are encountered assembling the replica's status, an error is returned.
 	GetReplicaStatus(ctx *sql.Context) (*ReplicaStatus, error)
+
+	// ResetReplica resets the state for the replica. When the |resetAll| parameter is false, a "soft" or minimal reset
+	// is performed – replication errors are reset, but connection information and filters are NOT reset. If |resetAll|
+	// is true, a "hard" reset is performed – replication filters are removed, replication source options are removed,
+	// and `SHOW REPLICA STATUS` shows no results. If replication is currently running, this function should return an
+	// error indicating that replication needs to be stopped before it can be reset. If any errors were encountered
+	// resetting the replica state, an error is returned, otherwise nil is returned if the reset was successful.
+	ResetReplica(ctx *sql.Context, resetAll bool) error
 }
 
 // ReplicaStatus stores the status of a single binlog replica and is returned by `SHOW REPLICA STATUS`.
@@ -79,10 +94,10 @@ const (
 // CHANGE REPLICATION SOURCE TO command: https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ReplicationOption struct {
 	Name  string
-	Value string
+	Value interface{}
 }
 
-func NewReplicationOption(name string, value string) ReplicationOption {
+func NewReplicationOption(name string, value interface{}) ReplicationOption {
 	return ReplicationOption{
 		Name:  name,
 		Value: value,

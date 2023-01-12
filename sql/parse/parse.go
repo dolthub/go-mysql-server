@@ -205,10 +205,14 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewReleaseSavepoint(n.Identifier), nil
 	case *sqlparser.ChangeReplicationSource:
 		return convertChangeReplicationSource(n)
+	case *sqlparser.ChangeReplicationFilter:
+		return convertChangeReplicationFilter(n)
 	case *sqlparser.StartReplica:
 		return plan.NewStartReplica(), nil
 	case *sqlparser.StopReplica:
 		return plan.NewStopReplica(), nil
+	case *sqlparser.ResetReplica:
+		return plan.NewResetReplica(n.All), nil
 	case *sqlparser.BeginEndBlock:
 		return convertBeginEndBlock(ctx, n, query)
 	case *sqlparser.IfStatement:
@@ -529,6 +533,16 @@ func convertChangeReplicationSource(n *sqlparser.ChangeReplicationSource) (sql.N
 		convertedOptions = append(convertedOptions, binlogreplication.NewReplicationOption(option.Name, option.Value))
 	}
 	return plan.NewChangeReplicationSource(convertedOptions), nil
+}
+
+func convertChangeReplicationFilter(n *sqlparser.ChangeReplicationFilter) (sql.Node, error) {
+	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
+	for _, option := range n.Options {
+		// TODO: Changing ReplicationOption.Value to interface{} breaks this of course
+		//       Is this what we want to do?
+		convertedOptions = append(convertedOptions, binlogreplication.NewReplicationOption(option.Name, option.Value))
+	}
+	return plan.NewChangeReplicationFilter(convertedOptions), nil
 }
 
 func isSetNames(exprs sqlparser.SetVarExprs) bool {

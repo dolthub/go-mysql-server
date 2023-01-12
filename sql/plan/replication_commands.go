@@ -71,7 +71,8 @@ func (c *ChangeReplicationSource) String() string {
 		}
 		sb.WriteString(option.Name)
 		sb.WriteString(" = ")
-		sb.WriteString(option.Value)
+		// TODO: Fix this unsafe type cast
+		sb.WriteString(option.Value.(string))
 	}
 	return sb.String()
 }
@@ -89,7 +90,7 @@ func (c *ChangeReplicationSource) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowI
 		return nil, fmt.Errorf("no replication controller available")
 	}
 
-	err := c.replicaController.SetReplicationOptions(ctx, c.Options)
+	err := c.replicaController.SetReplicationSourceOptions(ctx, c.Options)
 	return sql.RowsToRowIter(), err
 }
 
@@ -103,6 +104,72 @@ func (c *ChangeReplicationSource) WithChildren(children ...sql.Node) (sql.Node, 
 }
 
 func (c *ChangeReplicationSource) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
+	// TODO: implement privilege checks
+	return true
+}
+
+// ChangeReplicationFilter is a plan node for the "CHANGE REPLICATION FILTER" statement.
+// https://dev.mysql.com/doc/refman/8.0/en/change-replication-filter.html
+type ChangeReplicationFilter struct {
+	binlogReplicaControllerCommand
+	Options []binlogreplication.ReplicationOption
+}
+
+var _ sql.Node = (*ChangeReplicationFilter)(nil)
+var _ BinlogReplicaControllerCommand = (*ChangeReplicationFilter)(nil)
+
+func NewChangeReplicationFilter(options []binlogreplication.ReplicationOption) *ChangeReplicationFilter {
+	return &ChangeReplicationFilter{
+		Options: options,
+	}
+}
+
+func (c *ChangeReplicationFilter) Resolved() bool {
+	return true
+}
+
+func (c *ChangeReplicationFilter) String() string {
+	sb := strings.Builder{}
+	sb.WriteString("CHANGE REPLICATION FILTER ")
+	for i, option := range c.Options {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(option.Name)
+		sb.WriteString(" = ")
+		// TODO: Fix this to use better typing
+		sb.WriteString(fmt.Sprintf("%s", option.Value))
+	}
+	return sb.String()
+}
+
+func (c *ChangeReplicationFilter) Schema() sql.Schema {
+	return nil
+}
+
+func (c *ChangeReplicationFilter) Children() []sql.Node {
+	return nil
+}
+
+func (c *ChangeReplicationFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	if c.replicaController == nil {
+		return nil, fmt.Errorf("no replication controller available")
+	}
+
+	err := c.replicaController.SetReplicationFilterOptions(ctx, c.Options)
+	return sql.RowsToRowIter(), err
+}
+
+func (c *ChangeReplicationFilter) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
+	}
+
+	newNode := *c
+	return &newNode, nil
+}
+
+func (c *ChangeReplicationFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// TODO: implement privilege checks
 	return true
 }
@@ -207,6 +274,66 @@ func (s *StopReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func (s *StopReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
+	// TODO: implement privilege checks
+	return true
+}
+
+// ResetReplica is a plan node for the "RESET REPLICA" statement.
+// https://dev.mysql.com/doc/refman/8.0/en/reset-replica.html
+type ResetReplica struct {
+	binlogReplicaControllerCommand
+	All bool
+}
+
+var _ sql.Node = (*ResetReplica)(nil)
+var _ BinlogReplicaControllerCommand = (*ResetReplica)(nil)
+
+func NewResetReplica(all bool) *ResetReplica {
+	return &ResetReplica{
+		All: all,
+	}
+}
+
+func (r *ResetReplica) Resolved() bool {
+	return true
+}
+
+func (r *ResetReplica) String() string {
+	sb := strings.Builder{}
+	sb.WriteString("RESET REPLICA")
+	if r.All {
+		sb.WriteString(" ALL")
+	}
+	return sb.String()
+}
+
+func (r *ResetReplica) Schema() sql.Schema {
+	return nil
+}
+
+func (r *ResetReplica) Children() []sql.Node {
+	return nil
+}
+
+func (r *ResetReplica) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	if r.replicaController == nil {
+		return nil, fmt.Errorf("no replication controller available")
+	}
+
+	err := r.replicaController.ResetReplica(ctx, r.All)
+	return sql.RowsToRowIter(), err
+}
+
+func (r *ResetReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+	}
+
+	newNode := *r
+	return &newNode, nil
+}
+
+func (r *ResetReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// TODO: implement privilege checks
 	return true
 }
