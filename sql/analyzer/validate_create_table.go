@@ -566,7 +566,14 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {
 			if len(idx.Columns) != 1 {
-				return sql.ErrInvalidGISData
+				return sql.ErrTooManyKeyParts.New(1)
+			}
+			schCol, _ := lwrNames[strings.ToLower(idx.Columns[0].Name)]
+			if !schCol.Type.Equals(sql.GeometryType{}) {
+				return sql.ErrBadSpatialIdxCol.New()
+			}
+			if schCol.Nullable {
+				return sql.ErrNullableSpatialIdx.New()
 			}
 		}
 	}
