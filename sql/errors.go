@@ -546,6 +546,10 @@ var (
 	// ErrUnsupportedSRID is thrown for spatial functions over unsupported SRIDs
 	ErrUnsupportedSRID = errors.NewKind("SRID %v has not been implemented for geographic spatial reference systems.")
 
+	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
+	// TODO: remove this error when all types are full supported by spatial type functions
+	ErrUnsupportedGISTypeForSpatialFunc = errors.NewKind("unsupported spatial type: %s for function %s")
+
 	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
 	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
 
