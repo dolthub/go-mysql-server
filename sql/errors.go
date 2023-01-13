@@ -560,7 +560,7 @@ var (
 
 	// ErrUnsupportedSpatialIdx is thrown when attempting to create a SPATIAL index
 	// TODO: remove this error when spatial index are created
-	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL");
+	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL")
 
 	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
 	// TODO: remove this error when all types are full supported by spatial type functions
