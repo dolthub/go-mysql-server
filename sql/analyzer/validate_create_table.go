@@ -33,7 +33,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, transform.SameTree, nil
 	}
 
-	err := validateIndexes(ct.TableSpec())
+	err := validateIndexes(ctx, ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -148,7 +148,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
-			indexes, err = validateAlterIndex(initialSch, sch, n.(*plan.AlterIndex), indexes)
+			indexes, err = validateAlterIndex(ctx, initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -352,7 +352,7 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 
 // validateAlterIndex validates the specified column can have an index added, dropped, or renamed. Returns an updated
 // list of index name given the add, drop, or rename operations.
-func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
+func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
 	tableName := getTableName(ai.Table)
 
 	switch ai.Action {
@@ -361,10 +361,26 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
-
 		err := validateIndexType(ai.Columns, sch)
 		if err != nil {
 			return nil, err
+		}
+
+		if ai.Constraint == sql.IndexConstraint_Spatial {
+			if len(ai.Columns) != 1 {
+				return nil, sql.ErrTooManyKeyParts.New(1)
+			}
+			schCol := sch[sch.IndexOfColName(ai.Columns[0].Name)]
+			if !schCol.Type.Equals(sql.GeometryType{}) {
+				return nil, sql.ErrBadSpatialIdxCol.New()
+			}
+			if schCol.Nullable {
+				return nil, sql.ErrNullableSpatialIdx.New()
+			}
+			if !schCol.Type.(sql.GeometryType).DefinedSRID {
+				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
+			}
+			return nil, sql.ErrUnsupportedSpatialIdx.New()
 		}
 
 		return append(indexes, ai.IndexName), nil
@@ -543,12 +559,11 @@ const textIndexPrefix = 1000
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 // TODO: this method is very similar to validateIndexType...
-func validateIndexes(tableSpec *plan.TableSpec) error {
+func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
 		lwrNames[strings.ToLower(col.Name)] = col
 	}
-
 	var hasPkIndexDef bool
 	for _, idx := range tableSpec.IdxDefs {
 		if idx.Constraint == sql.IndexConstraint_Primary {
@@ -563,6 +578,22 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 			if err != nil {
 				return err
 			}
+		}
+		if idx.Constraint == sql.IndexConstraint_Spatial {
+			if len(idx.Columns) != 1 {
+				return sql.ErrTooManyKeyParts.New(1)
+			}
+			schCol, _ := lwrNames[strings.ToLower(idx.Columns[0].Name)]
+			if !schCol.Type.Equals(sql.GeometryType{}) {
+				return sql.ErrBadSpatialIdxCol.New()
+			}
+			if schCol.Nullable {
+				return sql.ErrNullableSpatialIdx.New()
+			}
+			if !schCol.Type.(sql.GeometryType).DefinedSRID {
+				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
+			}
+			return sql.ErrUnsupportedSpatialIdx.New()
 		}
 	}
 
