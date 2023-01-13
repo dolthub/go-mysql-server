@@ -316,7 +316,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	vd, _ = maybePrivDb.(sql.ViewDatabase)
 	if vd != nil {
-		_, ok, err := vd.GetView(ctx, c.name)
+		_, ok, err := vd.GetViewDefinition(ctx, c.name)
 		if err != nil {
 			return nil, err
 		}
