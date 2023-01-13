@@ -3181,7 +3181,11 @@ var SpatialScriptTests = []ScriptTest{
 			{
 				Query:                           "create table geom(g geometry NOT NULL, SPATIAL INDEX(g))",
 				ExpectedWarningMessageSubstring: "will not be used by the query optimizer since the column does not have an SRID attribute",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
+			},
+			{
+				Query: "create table geom(g geometry not null srid 4326, spatial index (g))",
+				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
 			},
 		},
 	},

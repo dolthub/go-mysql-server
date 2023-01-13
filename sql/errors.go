@@ -558,6 +558,10 @@ var (
 	// ErrBadSpatialIdxCol is thrown when attempting to define a SPATIAL index over a non-geometry column
 	ErrBadSpatialIdxCol = errors.NewKind("a SPATIAL index may only contain a geometrical type column")
 
+	// ErrUnsupportedSpatialIdx is thrown when attempting to create a SPATIAL index
+	// TODO: remove this error when spatial index are created
+	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL");
+
 	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
 	// TODO: remove this error when all types are full supported by spatial type functions
 	ErrUnsupportedGISTypeForSpatialFunc = errors.NewKind("unsupported spatial type: %s for function %s")
