@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var offsetRegex = regexp.MustCompile(`(?m)^(\+|\-)(\d{2}):(\d{2})$`) // (?m)^\+|\-(\d{2}):(\d{2})$
+var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`) // (?m)^\+|\-(\d{2}):(\d{2})$
 
 type ConvertTz struct {
 	dt     sql.Expression
