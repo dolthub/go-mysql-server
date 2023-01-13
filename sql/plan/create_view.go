@@ -18,7 +18,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -28,11 +30,16 @@ import (
 // explicit columns specified by the query, if any.
 type CreateView struct {
 	UnaryNode
-	database   sql.Database
-	Name       string
-	Columns    []string
-	IsReplace  bool
-	Definition *SubqueryAlias
+	database         sql.Database
+	Name             string
+	Columns          []string
+	IsReplace        bool
+	Definition       *SubqueryAlias
+	CreateViewString string
+	Algorithm        string
+	Definer          string
+	Security         string
+	CheckOpt         string
 }
 
 // NewCreateView creates a CreateView node with the specified parameters,
@@ -43,20 +50,25 @@ func NewCreateView(
 	columns []string,
 	definition *SubqueryAlias,
 	isReplace bool,
+	createViewStr, algorithm, definer, security string,
 ) *CreateView {
 	return &CreateView{
-		UnaryNode:  UnaryNode{Child: definition},
-		database:   database,
-		Name:       name,
-		Columns:    columns,
-		IsReplace:  isReplace,
-		Definition: definition,
+		UnaryNode:        UnaryNode{Child: definition},
+		database:         database,
+		Name:             name,
+		Columns:          columns,
+		IsReplace:        isReplace,
+		Definition:       definition,
+		CreateViewString: createViewStr,
+		Algorithm:        algorithm,
+		Definer:          definer,
+		Security:         security,
 	}
 }
 
 // View returns the view that will be created by this node.
 func (cv *CreateView) View() *sql.View {
-	return cv.Definition.AsView()
+	return cv.Definition.AsView(cv.CreateViewString)
 }
 
 // Children implements the Node interface. It returns the Child of the
@@ -77,9 +89,7 @@ func (cv *CreateView) Resolved() bool {
 // set to false and the view already exists. The RowIter returned is always
 // empty.
 func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	view := cv.View()
 	registry := ctx.GetViewRegistry()
-
 	if cv.IsReplace {
 		if dropper, ok := cv.database.(sql.ViewDatabase); ok {
 			err := dropper.DropView(ctx, cv.Name)
@@ -87,7 +97,7 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				return sql.RowsToRowIter(), err
 			}
 		} else {
-			err := registry.Delete(cv.database.Name(), view.Name())
+			err := registry.Delete(cv.database.Name(), cv.Name)
 			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
 				return sql.RowsToRowIter(), err
 			}
@@ -103,11 +113,14 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
+	// TODO: isUpdatable should be defined at CREATE VIEW time
+	// isUpdatable := GetIsUpdatableFromCreateView(cv)
+
 	creator, ok := cv.database.(sql.ViewDatabase)
 	if ok {
-		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition)
+		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition, cv.CreateViewString)
 	} else {
-		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), view)
+		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), cv.View())
 	}
 }
 
@@ -160,4 +173,58 @@ func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
 	newCreate := *cv
 	newCreate.database = database
 	return &newCreate, nil
+}
+
+// GetIsUpdatableFromCreateView returns whether the view is updatable or not.
+// https://dev.mysql.com/doc/refman/8.0/en/view-updatability.html
+func GetIsUpdatableFromCreateView(cv *CreateView) bool {
+	isUpdatable := true
+	node := cv.Child
+
+	if cv.Algorithm == "TEMPTABLE" {
+		return false
+	}
+
+	transform.InspectExpressionsWithNode(node, func(n sql.Node, e sql.Expression) bool {
+		switch e.(type) {
+		case sql.Aggregation, sql.WindowAggregation, *Subquery:
+			isUpdatable = false
+			return false
+		}
+
+		switch nn := n.(type) {
+		case *Distinct, *GroupBy, *Having, *Union:
+			isUpdatable = false
+			return false
+		case *Project:
+			// Refers only to literal values (in this case, there is no underlying table to update)
+			allLiteral := true
+			transform.InspectExpressions(nn, func(ne sql.Expression) bool {
+				switch ne.(type) {
+				case *expression.Literal:
+
+				default:
+					allLiteral = false
+					return false
+				}
+				return true
+			})
+
+			if allLiteral {
+				isUpdatable = false
+			}
+
+			return false
+		}
+
+		// TODO: these are missing checks for isUpdatable = false in these conditions.
+		//  we do not differentiate 'view' from 'table' in FROM clause
+		// If the view is a join view, all components of the view must be updatable
+		// Reference to nonupdatable view in the FROM clause
+		// Multiple references to any column of a base table
+
+		return true
+	})
+
+	return isUpdatable
 }
