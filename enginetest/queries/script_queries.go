@@ -3163,23 +3163,23 @@ var SpatialScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "create spatial index errors",
+		Name:        "create spatial index errors",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create table geom(g geometry, SPATIAL INDEX(g))",
+				Query:       "create table geom(g geometry, SPATIAL INDEX(g))",
 				ExpectedErr: sql.ErrNullableSpatialIdx,
 			},
 			{
-				Query:    "create table geom(g geometry SRID 4326, SPATIAL INDEX(g))",
+				Query:       "create table geom(g geometry SRID 4326, SPATIAL INDEX(g))",
 				ExpectedErr: sql.ErrNullableSpatialIdx,
 			},
 			{
-				Query:    "create table geom(g1 geometry NOT NULL SRID 0, g2 geometry NOT NULL SRID 4326, SPATIAL INDEX(g1, g2))",
-				ExpectedErr:  sql.ErrTooManyKeyParts,
+				Query:       "create table geom(g1 geometry NOT NULL SRID 0, g2 geometry NOT NULL SRID 4326, SPATIAL INDEX(g1, g2))",
+				ExpectedErr: sql.ErrTooManyKeyParts,
 			},
 			{
-				Query:    "create table geom(g geometry NOT NULL, SPATIAL INDEX(g))",
+				Query:                           "create table geom(g geometry NOT NULL, SPATIAL INDEX(g))",
 				ExpectedWarningMessageSubstring: "will not be used by the query optimizer since the column does not have an SRID attribute",
 			},
 		},
@@ -3191,7 +3191,7 @@ var SpatialScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "alter table geom add spatial index (g)",
+				Query:       "alter table geom add spatial index (g)",
 				ExpectedErr: sql.ErrNullableSpatialIdx,
 			},
 		},
@@ -3203,7 +3203,7 @@ var SpatialScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "alter table geom add spatial index (g)",
+				Query:       "alter table geom add spatial index (g)",
 				ExpectedErr: sql.ErrNullableSpatialIdx,
 			},
 		},
