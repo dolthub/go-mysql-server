@@ -422,7 +422,6 @@ func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 		}
 		//c.CreateSchema.IndexOfColName()
 
-
 		err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
 			Name:       indexName,
 			Columns:    idxDef.Columns,
