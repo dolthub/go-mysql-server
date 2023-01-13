@@ -36,6 +36,15 @@ type ReplicaSourceInfo struct {
 
 var _ in_mem_table.Entry = (*ReplicaSourceInfo)(nil)
 
+// NewReplicaSourceInfo constructs a new ReplicaSourceInfo instance, with defaults applied.
+func NewReplicaSourceInfo() *ReplicaSourceInfo {
+	return &ReplicaSourceInfo{
+		Port:                 3306,
+		ConnectRetryInterval: 60,
+		ConnectRetryCount:    86400,
+	}
+}
+
 // NewFromRow implements the interface in_mem_table.Entry.
 func (r *ReplicaSourceInfo) NewFromRow(_ *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
 	if err := replicaSourceInfoTblSchema.CheckRow(row); err != nil {

@@ -20,13 +20,12 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 )
 
 // ShowReplicaStatus is the plan node for the "SHOW REPLICA STATUS" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
-	replicaController binlogreplication.BinlogReplicaController
+	binlogReplicaControllerCommand
 }
 
 var _ sql.Node = (*ShowReplicaStatus)(nil)
@@ -34,10 +33,6 @@ var _ BinlogReplicaControllerCommand = (*ShowReplicaStatus)(nil)
 
 func NewShowReplicaStatus() *ShowReplicaStatus {
 	return &ShowReplicaStatus{}
-}
-
-func (s *ShowReplicaStatus) SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
-	s.replicaController = controller
 }
 
 func (s *ShowReplicaStatus) Resolved() bool {
@@ -87,9 +82,9 @@ func (s *ShowReplicaStatus) Schema() sql.Schema {
 		{Name: "Source_SSL_Verify_Server_Cert", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Seconds_Behind_Source", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Last_IO_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Last_IO_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_IO_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: false},
 		{Name: "Last_SQL_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Last_SQL_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_SQL_Error", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: false},
 		{Name: "Replicate_Ignore_Server_Ids", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_Server_Id", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_UUID", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
