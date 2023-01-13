@@ -564,10 +564,15 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 				return err
 			}
 		}
+		if idx.Constraint == sql.IndexConstraint_Spatial {
+			if len(idx.Columns) != 1 {
+				return sql.ErrInvalidGISData
+			}
+		}
 	}
 
 	// if there was not a PkIndexDef, then any primary key text/blob columns must not have index lengths
-	// otherwise, then it would've been validated before this
+	// otherwise, it would've been validated before this
 	if !hasPkIndexDef {
 		for _, col := range tableSpec.Schema.Schema {
 			if col.PrimaryKey && sql.IsTextBlob(col.Type) {

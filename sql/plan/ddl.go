@@ -409,6 +409,20 @@ func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 		} else if _, ok = indexMap[strings.ToLower(idxDef.IndexName)]; ok {
 			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.IndexName)
 		}
+
+		// TODO: spatial indexes require that the column by NOT NULL
+		// TODO: throw warning, but allow creation of spatial index on column without DefinedSRID
+
+		// TODO: should this be in analyzer instead?
+		for _, col := range idxDef.Columns {
+			schCol := c.CreateSchema.Schema[c.CreateSchema.IndexOfColName(col.Name)]
+			if schCol.Nullable {
+				return sql.ErrInvalidGISData.New()
+			}
+		}
+		//c.CreateSchema.IndexOfColName()
+
+
 		err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
 			Name:       indexName,
 			Columns:    idxDef.Columns,
