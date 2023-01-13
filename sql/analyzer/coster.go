@@ -54,7 +54,7 @@ func (c *coster) costRel(n relExpr) (float64, error) {
 		return c.costAntiJoin(n)
 	case *subqueryAlias:
 		return c.costSubqueryAlias(n)
-	case *max1RowSubquery:
+	case *max1Row:
 		return c.costMax1RowSubquery(n)
 	case *tableFunc:
 		return c.costTableFunc(n)
@@ -62,6 +62,8 @@ func (c *coster) costRel(n relExpr) (float64, error) {
 		return c.costFullOuterJoin(n)
 	case *concatJoin:
 		return c.costConcatJoin(n)
+	case *selectSingleRel:
+		return c.costSelectSingleRel(n)
 	default:
 		panic(fmt.Sprintf("coster does not support type: %T", n))
 	}
@@ -154,6 +156,17 @@ func (c *coster) costConcatJoin(n *concatJoin) (float64, error) {
 	return l * mult * .75, nil
 }
 
+func (c *coster) costSelectSingleRel(n *selectSingleRel) (float64, error) {
+	switch t := n.table.Rel.(type) {
+	case *plan.TableAlias:
+		return c.costTableAlias(&tableAlias{relBase: n.relBase, table: t})
+	case *plan.ResolvedTable:
+		return c.costScan(&tableScan{relBase: n.relBase, table: t})
+	default:
+		return 0, fmt.Errorf("expected *selectSingleRel child to be *tableAlias or *tableScan, found %T", t)
+	}
+}
+
 func lookupMultiplier(l *lookup, filterCnt int) float64 {
 	var mult float64 = 1
 	if !l.index.IsUnique() {
@@ -198,7 +211,7 @@ func (c *coster) costSubqueryAlias(_ *subqueryAlias) (float64, error) {
 	return 10000, nil
 }
 
-func (c *coster) costMax1RowSubquery(_ *max1RowSubquery) (float64, error) {
+func (c *coster) costMax1RowSubquery(_ *max1Row) (float64, error) {
 	return 1, nil
 }
 
