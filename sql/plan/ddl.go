@@ -409,6 +409,7 @@ func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 		} else if _, ok = indexMap[strings.ToLower(idxDef.IndexName)]; ok {
 			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.IndexName)
 		}
+
 		err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
 			Name:       indexName,
 			Columns:    idxDef.Columns,

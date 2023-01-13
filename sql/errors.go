@@ -546,6 +546,22 @@ var (
 	// ErrUnsupportedSRID is thrown for spatial functions over unsupported SRIDs
 	ErrUnsupportedSRID = errors.NewKind("SRID %v has not been implemented for geographic spatial reference systems.")
 
+	// ErrSRIDOnNonGeomCol is thrown when attempting to define SRID over a non-geometry column
+	ErrSRIDOnNonGeomCol = errors.NewKind("incorrect usage of SRID and non-geometry column")
+
+	// ErrTooManyKeyParts is thrown when creating an index with too many columns
+	ErrTooManyKeyParts = errors.NewKind("too many key parts specified; max %d parts allowed")
+
+	// ErrNullableSpatialIdx is thrown when creating a SPATIAL index with a nullable column
+	ErrNullableSpatialIdx = errors.NewKind("All parts of a SPATIAL index must be NOT NULL")
+
+	// ErrBadSpatialIdxCol is thrown when attempting to define a SPATIAL index over a non-geometry column
+	ErrBadSpatialIdxCol = errors.NewKind("a SPATIAL index may only contain a geometrical type column")
+
+	// ErrUnsupportedSpatialIdx is thrown when attempting to create a SPATIAL index
+	// TODO: remove this error when spatial index are created
+	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL")
+
 	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
 	// TODO: remove this error when all types are full supported by spatial type functions
 	ErrUnsupportedGISTypeForSpatialFunc = errors.NewKind("unsupported spatial type: %s for function %s")
