@@ -17,6 +17,7 @@ package function
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"time"
 
@@ -95,14 +96,24 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	globalTimeZone, _, _ := sql.SystemVariables.GetGlobal("time_zone")
+
 	fromStr, ok := from.(string)
 	if !ok {
 		return nil, nil
 	}
 
+	if fromStr == globalTimeZone.Default {
+		fromStr = getSystemDelta()
+	}
+
 	toStr, ok := to.(string)
 	if !ok {
 		return nil, nil
+	}
+
+	if toStr == globalTimeZone.Default {
+		toStr = getSystemDelta()
 	}
 
 	converted, success := convertTimeZone(datetime, fromStr, toStr)
@@ -171,6 +182,22 @@ func getDeltaAsDuration(d string) (time.Duration, error) {
 	}
 
 	return time.ParseDuration(symbol + hours + "h" + mins + "m")
+}
+
+func getSystemDelta() string {
+	t := time.Now()
+	_, offset := t.Zone()
+	seconds := offset % (60 * 60 * 24)
+	hours := math.Floor(float64(seconds) / 60 / 60)
+	seconds = offset % (60 * 60)
+	minutes := math.Floor(float64(seconds) / 60)
+
+	result := fmt.Sprintf("%02d:%02d", int(math.Abs(hours)), int(math.Abs(minutes)))
+	if offset >= 0 {
+		result = fmt.Sprintf("+%s", result)
+	}
+
+	return result
 }
 
 // Children implements the sql.Expression interface.

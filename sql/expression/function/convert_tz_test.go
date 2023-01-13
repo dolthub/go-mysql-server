@@ -26,6 +26,8 @@ import (
 )
 
 func TestConvertTz(t *testing.T) {
+	_, offset := time.Now().Zone()
+
 	tests := []struct {
 		name           string
 		datetime       interface{}
@@ -123,6 +125,14 @@ func TestConvertTz(t *testing.T) {
 			fromTimeZone:   "-01:00",
 			toTimeZone:     "10:00",
 			expectedResult: nil,
+		},
+		{
+			name:         "Test with @@GLOBAL.time_zone value: SYSTEM",
+			datetime:     time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
+			fromTimeZone: "SYSTEM",
+			toTimeZone:   "+01:00",
+			expectedResult: time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC).
+				Add(time.Duration(offset-3600) * time.Second), // offset-3600 because of +01:00
 		},
 	}
 
