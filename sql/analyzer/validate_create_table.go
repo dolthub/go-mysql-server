@@ -367,6 +367,19 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 			return nil, err
 		}
 
+		if ai.Constraint == sql.IndexConstraint_Spatial {
+			if len(ai.Columns) != 1 {
+				return nil, sql.ErrTooManyKeyParts.New(1)
+			}
+			schCol := sch[sch.IndexOfColName(ai.Columns[0].Name)]
+			if !schCol.Type.Equals(sql.GeometryType{}) {
+				return nil, sql.ErrBadSpatialIdxCol.New()
+			}
+			if schCol.Nullable {
+				return nil, sql.ErrNullableSpatialIdx.New()
+			}
+		}
+
 		return append(indexes, ai.IndexName), nil
 	case plan.IndexAction_Drop:
 		savedIdx := -1
