@@ -89,6 +89,7 @@ func isPointIntersectPolyBoundary(point sql.Point, poly sql.Polygon) bool {
 // isPointIntersectPolyInterior checks if a Point p intersects the Polygon Interior
 // Point outside the first LineString is not in Polygon Interior
 // Point inside the other LineStrings is not in Polygon Interior
+// Note: this returns true for Polygon boundaries?
 func isPointIntersectPolyInterior(point sql.Point, poly sql.Polygon) bool {
 	if !isPointWithinClosedLineString(point, poly.Lines[0]) {
 		return false
@@ -101,15 +102,6 @@ func isPointIntersectPolyInterior(point sql.Point, poly sql.Polygon) bool {
 	return true
 }
 
-func isPointIntersectMultiPoint(point sql.Point, multiPoint sql.MultiPoint) bool {
-	for _, p := range multiPoint.Points {
-		if isPointEqual(point, p) {
-			return true
-		}
-	}
-	return false
-}
-
 func isPointIntersects(p sql.Point, g sql.GeometryValue) bool {
 	switch g := g.(type) {
 	case sql.Point:
@@ -117,10 +109,11 @@ func isPointIntersects(p sql.Point, g sql.GeometryValue) bool {
 	case sql.LineString:
 		return isPointIntersectLine(p, g)
 	case sql.Polygon:
-		return isPointIntersectPolyBoundary(p, g) || isPointIntersectPolyInterior(p, g)
+		// TODO: return isPointIntersectPolyBoundary(p, g) ||
+		return isPointIntersectPolyInterior(p, g)
 	case sql.MultiPoint:
 		for _, pp := range g.Points {
-			if isPointWithin(p, pp) {
+			if isPointIntersects(p, pp) {
 				return true
 			}
 		}
@@ -146,7 +139,7 @@ func isPointIntersects(p sql.Point, g sql.GeometryValue) bool {
 	return false
 }
 
-// linesIntersect checks if line ab intersects line cd
+// linesIntersect checks if line segment ab intersects line cd
 // Edge case for collinear points is to check if they are within the bounding box
 // Reference: https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
 func linesIntersect(a, b, c, d sql.Point) bool {
@@ -205,13 +198,13 @@ func isLineIntersects(l sql.LineString, g sql.GeometryValue) bool {
 		}
 	case sql.MultiPoint:
 		for _, p := range g.Points {
-			if isPointIntersectLine(p, l) {
+			if isLineIntersects(l, p) {
 				return true
 			}
 		}
 	case sql.MultiLineString:
 		for _, line := range g.Lines {
-			if isLineIntersectLine(l, line) {
+			if isLineIntersects(l, line) {
 				return true
 			}
 		}
@@ -231,74 +224,125 @@ func isLineIntersects(l sql.LineString, g sql.GeometryValue) bool {
 	return false
 }
 
+func isPolyIntersects(p sql.Polygon, g sql.GeometryValue) bool {
+	switch g := g.(type) {
+	case sql.Point:
+		return isPointIntersects(g, p)
+	case sql.LineString:
+		return isLineIntersects(g, p)
+	case sql.Polygon:
+		for _, l := range g.Lines {
+			for _, point := range l.Points {
+				if isPointIntersects(point, p) {
+					return true
+				}
+			}
+		}
+	case sql.MultiPoint:
+		for _, point := range g.Points {
+			if isPolyIntersects(p, point) {
+				return true
+			}
+		}
+	case sql.MultiLineString:
+		for _, l := range g.Lines {
+			if isPolyIntersects(p, l) {
+				return true
+			}
+		}
+	case sql.MultiPolygon:
+		for _, poly := range g.Polygons {
+			if isPolyIntersects(p, poly) {
+				return true
+			}
+		}
+	case sql.GeomColl:
+		for _, geom := range g.Geoms {
+			if isPolyIntersects(p, geom) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func isIntersects(g1, g2 sql.GeometryValue) bool {
 	switch g1 := g1.(type) {
 	case sql.Point:
 		return isPointIntersects(g1, g2)
 	case sql.LineString:
+		return isLineIntersects(g1, g2)
 	case sql.Polygon:
+		return isPolyIntersects(g1, g2)
 	case sql.MultiPoint:
+		for _, p := range g1.Points {
+			if isIntersects(p, g2) {
+				return true
+			}
+		}
 	case sql.MultiLineString:
+		for _, l := range g1.Lines {
+			if isIntersects(l, g2) {
+				return true
+			}
+		}
 	case sql.MultiPolygon:
+		for _, p := range g1.Polygons {
+			if isIntersects(p, g2) {
+				return true
+			}
+		}
 	case sql.GeomColl:
-		// TODO (james): implement these
+		for _, g := range g1.Geoms {
+			if isIntersects(g, g2) {
+				return true
+			}
+		}
 	}
-	return true
+	return false
+}
+
+// validateGeomComp validates that variables geom1 and geom2 are comparable geometries.
+// 1. Not a sql.GeometryValue, return error
+// 2. SRIDs don't match, return error
+// 3. Empty GeometryCollection, return nil
+func validateGeomComp(geom1, geom2 interface{}, funcName string) (sql.GeometryValue, sql.GeometryValue, error) {
+	g1, ok := geom1.(sql.GeometryValue)
+	if !ok {
+		return nil, nil, sql.ErrInvalidGISData.New(funcName)
+	}
+	g2, ok := geom2.(sql.GeometryValue)
+	if !ok {
+		return nil, nil, sql.ErrInvalidGISData.New(funcName)
+	}
+	if g1.GetSRID() != g2.GetSRID() {
+		return nil, nil, sql.ErrDiffSRIDs.New(funcName, g1.GetSRID(), g2.GetSRID())
+	}
+	if gc, ok := geom1.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
+		return nil, nil, nil
+	}
+	if gc, ok := geom2.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
+		return nil, nil, nil
+	}
+	return g1, g2, nil
 }
 
 // Eval implements the sql.Expression interface.
 func (i *Intersects) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	g1, err := i.Left.Eval(ctx, row)
+	geom1, err := i.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	g2, err := i.Right.Eval(ctx, row)
+	geom2, err := i.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
-	if g1 == nil || g2 == nil {
+	if geom1 == nil || geom2 == nil {
 		return nil, nil
 	}
-
-	var geom1, geom2 sql.GeometryValue
-	var ok bool
-	geom1, ok = g1.(sql.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(i.FunctionName())
+	g1, g2, err := validateGeomComp(geom1, geom2, i.FunctionName())
+	if err != nil {
+		return nil, err
 	}
-	geom2, ok = g2.(sql.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(i.FunctionName())
-	}
-
-	if geom1.GetSRID() != geom2.GetSRID() {
-		return nil, sql.ErrDiffSRIDs.New(i.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
-	}
-
-	// Empty GeomColls return nil
-	if gc, ok := geom1.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
-		return nil, nil
-	}
-	if gc, ok := geom2.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
-		return nil, nil
-	}
-
-	// TODO (james): remove this switch block when the other comparisons are implemented
-	switch geom1.(type) {
-	case sql.LineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", i.FunctionName())
-	case sql.Polygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", i.FunctionName())
-	case sql.MultiPoint:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", i.FunctionName())
-	case sql.MultiLineString:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", i.FunctionName())
-	case sql.MultiPolygon:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", i.FunctionName())
-	case sql.GeomColl:
-		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", i.FunctionName())
-	}
-
-	return isWithin(geom1, geom2), nil
+	return isIntersects(g1, g2), nil
 }
