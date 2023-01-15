@@ -725,3 +725,166 @@ func TestMultiPointIntersectsGeometryCollection(t *testing.T) {
 		require.Equal(false, v)
 	})
 }
+
+func TestMultiLineStringIntersectsMultiLineString(t *testing.T) {
+	t.Run("multilinestring intersects multilinestring", func(t *testing.T) {
+		require := require.New(t)
+
+		f := NewIntersects(expression.NewLiteral(simpleLineString, sql.MultiLineStringType{}), expression.NewLiteral(simpleMultiLineString, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("multilinestring not intersects multilinestring", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, sql.MultiLineStringType{}), expression.NewLiteral(simpleMultiLineString, sql.MultiLineStringType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+}
+
+func TestMultiLineStringIntersectsMultiPolygon(t *testing.T) {
+	mp := sql.MultiPolygon{Polygons: []sql.Polygon{squareWithHole}}
+	t.Run("multilinestring intersects multipolygon", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIntersects(expression.NewLiteral(simpleMultiPoint, sql.MultiLineStringType{}), expression.NewLiteral(mp, sql.MultiPolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("multilinestring not intersects multipolygon", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIntersects(expression.NewLiteral(emptyMultiPoint, sql.MultiLineStringType{}), expression.NewLiteral(mp, sql.MultiPolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+}
+
+func TestMultiLineStringIntersectsGeometryCollection(t *testing.T) {
+	t.Run("multilinestring intersects empty geometrycollection returns null", func(t *testing.T) {
+		require := require.New(t)
+		gc := sql.GeomColl{}
+		f := NewIntersects(expression.NewLiteral(emptyMultiLineString, sql.MultiLineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("multilinestring intersects geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{emptyMultiLineString}}
+		f := NewIntersects(expression.NewLiteral(emptyMultiLineString, sql.MultiLineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("multilinestring not intersects geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{simpleLineString}}
+		f := NewIntersects(expression.NewLiteral(emptyMultiLineString, sql.MultiLineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+}
+
+func TestMultiPolygonIntersectsMultiPolygon(t *testing.T) {
+	mp := sql.MultiPolygon{Polygons: []sql.Polygon{squareWithHole}}
+	t.Run("multipolygon intersects multipolygon", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIntersects(expression.NewLiteral(mp, sql.MultiPolygonType{}), expression.NewLiteral(mp, sql.MultiPolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("multipolygon not intersects multipolygon", func(t *testing.T) {
+		require := require.New(t)
+		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, sql.MultiPolygonType{}), expression.NewLiteral(mp, sql.MultiPolygonType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+}
+
+func TestMultiPolygonIntersectsGeometryCollection(t *testing.T) {
+	t.Run("multipolygon intersects empty geometrycollection returns null", func(t *testing.T) {
+		require := require.New(t)
+		gc := sql.GeomColl{}
+		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, sql.MultiPolygonType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("multipolygon intersects geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{emptyMultiPolygon}}
+		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, sql.MultiPolygonType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("multipolygon not intersects geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		mp := sql.MultiPolygon{Polygons: []sql.Polygon{squareWithHole}}
+		gc := sql.GeomColl{Geoms: []sql.GeometryValue{mp}}
+		f := NewIntersects(expression.NewLiteral(emptyMultiPolygon, sql.MultiLineStringType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+}
+
+func TestGeometryCollectionIntersectsGeometryCollection(t *testing.T) {
+	t.Run("empty geometrycollection intersects empty geometrycollection returns null", func(t *testing.T) {
+		require := require.New(t)
+		gc := sql.GeomColl{}
+		f := NewIntersects(expression.NewLiteral(gc, sql.GeomCollType{}), expression.NewLiteral(gc, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("geometrycollection intersects geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+
+		gc1 := sql.GeomColl{Geoms: []sql.GeometryValue{sql.Point{}}}
+		f := NewIntersects(expression.NewLiteral(gc1, sql.GeomCollType{}), expression.NewLiteral(gc1, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		gc2 := sql.GeomColl{Geoms: []sql.GeometryValue{square}}
+		f = NewIntersects(expression.NewLiteral(gc1, sql.GeomCollType{}), expression.NewLiteral(gc2, sql.GeomCollType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+
+		f = NewIntersects(expression.NewLiteral(gc2, sql.GeomCollType{}), expression.NewLiteral(gc1, sql.GeomCollType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(true, v)
+	})
+
+	t.Run("geometrycollection not intersects geometrycollection", func(t *testing.T) {
+		require := require.New(t)
+		gc1 := sql.GeomColl{Geoms: []sql.GeometryValue{squareWithHole}}
+		gc2 := sql.GeomColl{Geoms: []sql.GeometryValue{emptyLineString}}
+		f := NewIntersects(expression.NewLiteral(gc1, sql.GeomCollType{}), expression.NewLiteral(gc2, sql.GeomCollType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+
+		f = NewIntersects(expression.NewLiteral(gc1, sql.GeomCollType{}), expression.NewLiteral(gc2, sql.GeomCollType{}))
+		v, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(false, v)
+	})
+}
