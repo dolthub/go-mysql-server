@@ -16,6 +16,7 @@ package spatial
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -63,6 +64,7 @@ func (i *Intersects) WithChildren(children ...sql.Expression) (sql.Expression, e
 	}
 	return NewWithin(children[0], children[1]), nil
 }
+
 // isPointIntersectLine checks if Point p intersects the LineString l
 // Note: this will return true if p is a terminal point of l
 // Alternatively, we could calculate if dist(ap) + dist(ab) == dist(ap)

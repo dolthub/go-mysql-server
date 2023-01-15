@@ -24,26 +24,26 @@ import (
 )
 
 var (
-	simpleLineString = sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
-	simpleMultiPoint = sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
+	simpleLineString      = sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
+	simpleMultiPoint      = sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
 	simpleMultiLineString = sql.MultiLineString{Lines: []sql.LineString{simpleLineString}}
-	square = sql.Polygon{Lines: []sql.LineString{
-		{Points: []sql.Point{{X: -4, Y: 4},{X: 4, Y: 4},{X: 4, Y: -4},{X: -4, Y: -4},{X: -4, Y: 4}}},
+	square                = sql.Polygon{Lines: []sql.LineString{
+		{Points: []sql.Point{{X: -4, Y: 4}, {X: 4, Y: 4}, {X: 4, Y: -4}, {X: -4, Y: -4}, {X: -4, Y: 4}}},
 	}}
 	squareWithHole = sql.Polygon{Lines: []sql.LineString{
-		{Points: []sql.Point{{X: -4, Y: 4},{X: 4, Y: 4},{X: 4, Y: -4},{X: -4, Y: -4},{X: -4, Y: 4}}},
-		{Points: []sql.Point{{X: -2, Y: 2},{X: 2, Y: 2},{X: 2, Y: -2},{X: -2, Y: -2},{X: -2, Y: 2}}},
+		{Points: []sql.Point{{X: -4, Y: 4}, {X: 4, Y: 4}, {X: 4, Y: -4}, {X: -4, Y: -4}, {X: -4, Y: 4}}},
+		{Points: []sql.Point{{X: -2, Y: 2}, {X: 2, Y: 2}, {X: 2, Y: -2}, {X: -2, Y: -2}, {X: -2, Y: 2}}},
 	}}
 	triangle = sql.Polygon{Lines: []sql.LineString{
-		{Points: []sql.Point{{X: -1, Y: 0},{X: 0, Y: 2},{X: 1, Y: 0},{X: -1, Y: 0}}},
+		{Points: []sql.Point{{X: -1, Y: 0}, {X: 0, Y: 2}, {X: 1, Y: 0}, {X: -1, Y: 0}}},
 	}}
 	emptyLineString = sql.LineString{Points: []sql.Point{{}, {}}}
-	emptyPolygon = sql.Polygon{Lines: []sql.LineString{
+	emptyPolygon    = sql.Polygon{Lines: []sql.LineString{
 		{Points: []sql.Point{{}, {}, {}, {}}},
 	}}
-	emptyMultiPoint = sql.MultiPoint{Points: []sql.Point{{}}}
+	emptyMultiPoint      = sql.MultiPoint{Points: []sql.Point{{}}}
 	emptyMultiLineString = sql.MultiLineString{Lines: []sql.LineString{emptyLineString}}
-	emptyMultiPolygon = sql.MultiPolygon{Polygons: []sql.Polygon{emptyPolygon}}
+	emptyMultiPolygon    = sql.MultiPolygon{Polygons: []sql.Polygon{emptyPolygon}}
 )
 
 func TestPointIntersectsPoint(t *testing.T) {
@@ -430,7 +430,7 @@ func TestLineStringIntersectsMultiLineString(t *testing.T) {
 
 		a := sql.Point{X: 1.5, Y: 10}
 		b := sql.Point{X: 1.5, Y: -10}
-		ab := sql.LineString{Points:  []sql.Point{a, b}}
+		ab := sql.LineString{Points: []sql.Point{a, b}}
 		f = NewIntersects(expression.NewLiteral(ab, sql.LineStringType{}), expression.NewLiteral(simpleMultiLineString, sql.MultiLineStringType{}))
 		v, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
