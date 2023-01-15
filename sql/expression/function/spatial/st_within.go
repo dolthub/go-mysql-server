@@ -252,5 +252,5 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", w.FunctionName())
 	}
 
-	return isWithin(geom1, geom2), nil
+	return isWithin(g1, g2), nil
 }
