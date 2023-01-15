@@ -220,39 +220,19 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 
 // Eval implements the sql.Expression interface.
 func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	g1, err := w.Left.Eval(ctx, row)
+	geom1, err := w.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	g2, err := w.Right.Eval(ctx, row)
+	geom2, err := w.Right.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	g1, g2, err := validateGeomComp(geom1, geom2, w.FunctionName())
 	if err != nil {
 		return nil, err
 	}
 	if g1 == nil || g2 == nil {
-		return nil, nil
-	}
-
-	// TODO: convert this to helper method validateGeometryValue
-	var geom1, geom2 sql.GeometryValue
-	var ok bool
-	geom1, ok = g1.(sql.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(w.FunctionName())
-	}
-	geom2, ok = g2.(sql.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(w.FunctionName())
-	}
-
-	if geom1.GetSRID() != geom2.GetSRID() {
-		return nil, sql.ErrDiffSRIDs.New(w.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
-	}
-
-	// Empty GeomColls return nil
-	if gc, ok := geom1.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
-		return nil, nil
-	}
-	if gc, ok := geom2.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
 		return nil, nil
 	}
 

@@ -109,8 +109,7 @@ func isPointIntersects(p sql.Point, g sql.GeometryValue) bool {
 	case sql.LineString:
 		return isPointIntersectLine(p, g)
 	case sql.Polygon:
-		// TODO: return isPointIntersectPolyBoundary(p, g) ||
-		return isPointIntersectPolyInterior(p, g)
+		return isPointIntersectPolyBoundary(p, g) || isPointIntersectPolyInterior(p, g)
 	case sql.MultiPoint:
 		for _, pp := range g.Points {
 			if isPointIntersects(p, pp) {
@@ -303,10 +302,14 @@ func isIntersects(g1, g2 sql.GeometryValue) bool {
 }
 
 // validateGeomComp validates that variables geom1 and geom2 are comparable geometries.
-// 1. Not a sql.GeometryValue, return error
-// 2. SRIDs don't match, return error
-// 3. Empty GeometryCollection, return nil
+// 1. Nil values, return nil
+// 2. Not a sql.GeometryValue, return error
+// 3. SRIDs don't match, return error
+// 4. Empty GeometryCollection, return nil
 func validateGeomComp(geom1, geom2 interface{}, funcName string) (sql.GeometryValue, sql.GeometryValue, error) {
+	if geom1 == nil || geom2 == nil {
+		return nil, nil, nil
+	}
 	g1, ok := geom1.(sql.GeometryValue)
 	if !ok {
 		return nil, nil, sql.ErrInvalidGISData.New(funcName)
@@ -318,10 +321,10 @@ func validateGeomComp(geom1, geom2 interface{}, funcName string) (sql.GeometryVa
 	if g1.GetSRID() != g2.GetSRID() {
 		return nil, nil, sql.ErrDiffSRIDs.New(funcName, g1.GetSRID(), g2.GetSRID())
 	}
-	if gc, ok := geom1.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
+	if gc, ok := g1.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
 		return nil, nil, nil
 	}
-	if gc, ok := geom2.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
+	if gc, ok := g2.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
 		return nil, nil, nil
 	}
 	return g1, g2, nil
@@ -337,12 +340,12 @@ func (i *Intersects) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if geom1 == nil || geom2 == nil {
-		return nil, nil
-	}
 	g1, g2, err := validateGeomComp(geom1, geom2, i.FunctionName())
 	if err != nil {
 		return nil, err
+	}
+	if g1 == nil || g2 == nil {
+		return nil, nil
 	}
 	return isIntersects(g1, g2), nil
 }
