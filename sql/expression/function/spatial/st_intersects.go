@@ -239,6 +239,13 @@ func isPolyIntersects(p sql.Polygon, g sql.GeometryValue) bool {
 				}
 			}
 		}
+		for _, l := range p.Lines {
+			for _, point := range l.Points {
+				if isPointIntersects(point, g) {
+					return true
+				}
+			}
+		}
 	case sql.MultiPoint:
 		for _, point := range g.Points {
 			if isPolyIntersects(p, point) {
