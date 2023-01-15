@@ -195,7 +195,38 @@ func isLineIntersects(l sql.LineString, g sql.GeometryValue) bool {
 	case sql.LineString:
 		return isLineIntersectLine(l, g)
 	case sql.Polygon:
-		if isLineIntersectLine()
+		if isPointIntersects(startPoint(l), g) || isPointIntersects(endPoint(l), g) {
+			return true
+		}
+		for _, line := range g.Lines {
+			if isLineIntersectLine(l, line) {
+				return true
+			}
+		}
+	case sql.MultiPoint:
+		for _, p := range g.Points {
+			if isPointIntersectLine(p, l) {
+				return true
+			}
+		}
+	case sql.MultiLineString:
+		for _, line := range g.Lines {
+			if isLineIntersectLine(l, line) {
+				return true
+			}
+		}
+	case sql.MultiPolygon:
+		for _, p := range g.Polygons {
+			if isLineIntersects(l, p) {
+				return true
+			}
+		}
+	case sql.GeomColl:
+		for _, geom := range g.Geoms {
+			if isLineIntersects(l, geom) {
+				return true
+			}
+		}
 	}
 	return false
 }
