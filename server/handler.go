@@ -40,6 +40,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 )
 
+const (
+	maxLoggedQueryLen = 512
+)
+
 var errConnectionNotFound = errors.NewKind("connection not found: %c")
 
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
@@ -310,8 +314,11 @@ func (h *Handler) doQuery(
 	ctx = ctx.WithQuery(query)
 	more := remainder != ""
 
-	ctx.SetLogger(ctx.GetLogger().
-		WithField("query", string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
+	queryStr := string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
+	if len(queryStr) > maxLoggedQueryLen {
+		queryStr = queryStr[:maxLoggedQueryLen-3] + "..."
+	}
+	ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
 	ctx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(ctx, query)
