@@ -262,7 +262,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		})
 	}
 
-	for _, script := range queries.InfoSchemaScripts {
+	for _, script := range queries.SkippedInfoSchemaScripts {
 		t.Run(script.Name, func(t *testing.T) {
 			t.Skip()
 			TestScript(t, h, script)

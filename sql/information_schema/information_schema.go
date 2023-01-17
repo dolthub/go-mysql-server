@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
 	"io"
 	"sort"
 	"strings"
@@ -1014,6 +1015,19 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// keywordsRowIter implements the sql.RowIter for the information_schema.KEYWORDS table.
+func keywordsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, spRef := range keywordsArray {
+		rows = append(rows, Row{
+			spRef.Word,     // word
+			spRef.Reserved, // reserved
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 // processListRowIter implements the sql.RowIter for the information_schema.PROCESSLIST table.
 func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	processes := ctx.ProcessList.Processes()
@@ -1203,6 +1217,103 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			collation.String(),                // default_collation_name
 			nil,                               // sql_path
 			"NO",                              // default_encryption
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// schemataExtensionsRowIter implements the sql.RowIter for the information_schema.SCHEMATA_EXTENSIONS table.
+func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases(ctx) {
+		var readOnly string
+		if rodb, ok := db.(ReadOnlyDatabase); ok {
+			if rodb.IsReadOnly() {
+				readOnly = "READ ONLY=1"
+			}
+		}
+		rows = append(rows, Row{
+			"def",     // catalog_name
+			db.Name(), // schema_name
+			readOnly,  // options
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// stGeometryColumnsRowIter implements the sql.RowIter for the information_schema.ST_GEOMETRY_COLUMNS table.
+func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range cat.AllDatabases(ctx) {
+		dbName := db.Name()
+
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			tblName := t.Name()
+
+			for _, col := range t.Schema() {
+				s, ok := col.Type.(SpatialColumnType)
+				if !ok {
+					continue
+				}
+				var (
+					colName  = col.Name
+					srsName  interface{}
+					srsId    interface{}
+					typeName = col.Type.String()
+				)
+
+				if srid, d := s.GetSpatialTypeSRID(); d {
+					srsName = spatial.SupportedSRIDs[srid].Name
+					srsId = srid
+				}
+
+				rows = append(rows, Row{
+					"def",    // table_catalog
+					dbName,   // table_schema
+					tblName,  // table_name
+					colName,  // column_name
+					srsName,  // srs_name
+					srsId,    // srs_id
+					typeName, // geometry_type_name
+				})
+			}
+			return true, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// stSpatialReferenceSystemsRowIter implements the sql.RowIter for the information_schema.ST_SPATIAL_REFERENCE_SYSTEMS table.
+func stSpatialReferenceSystemsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, spRef := range spatial.SupportedSRIDs {
+		rows = append(rows, Row{
+			spRef.Name,          // srs_name
+			spRef.ID,            // srs_id
+			spRef.Organization,  // organization
+			spRef.OrgCoordsysId, // organization_coordsys_id
+			spRef.Definition,    // definition
+			spRef.Description,   // description
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+func stUnitsOfMeasureRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, spRef := range unitsOfMeasureArray {
+		rows = append(rows, Row{
+			spRef.Name,             // unit_name
+			spRef.Type,             // unit_type
+			spRef.ConversionFactor, // conversion_factor
+			spRef.Description,      // description
 		})
 	}
 
@@ -1701,6 +1812,51 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// userAttributesRowIter implements the sql.RowIter for the information_schema.USER_ATTRIBUTES table.
+func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
+	var rows []Row
+	curUserPrivSet, _ := ctx.GetPrivilegeSet()
+	// TODO: or has both of `CREATE USER` and `SYSTEM_USER` privileges
+	if curUserPrivSet.Has(PrivilegeType_Select) || curUserPrivSet.Has(PrivilegeType_Update) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Select) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Update) {
+		var users = make(map[*mysql_db.User]struct{})
+		db, err := catalog.Database(ctx, "mysql")
+		if err != nil {
+			return RowsToRowIter(rows...), nil
+		}
+
+		mysqlDb := db.(*mysql_db.MySQLDb)
+		userTbl := mysqlDb.UserTable()
+		userTblData := userTbl.Data()
+		for _, userEntry := range userTblData.ToSlice(ctx) {
+			r := userEntry.ToRow(ctx)
+			// mysql.user table will have 'Host', 'User' as first 2 columns in string format.
+			users[mysqlDb.GetUser(r[1].(string), r[0].(string), false)] = struct{}{}
+		}
+
+		for user := range users {
+			var attributes interface{}
+			if user.Attributes != nil {
+				attributes = *user.Attributes
+			}
+			rows = append(rows, Row{
+				user.User,  // user
+				user.Host,  // host
+				attributes, // attributes
+			})
+		}
+	} else {
+		// TODO: current user needs to be exposed to access user attribute from mysql_db
+		currClient := ctx.Session.Client()
+		rows = append(rows, Row{
+			currClient.User,    // user
+			currClient.Address, // host
+			nil,                // attributes
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 // userPrivilegesRowIter implements the sql.RowIter for the information_schema.USER_PRIVILEGES table.
 func userPrivilegesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
@@ -1900,7 +2056,7 @@ func NewInformationSchemaDatabase() Database {
 			KeywordsTableName: &informationSchemaTable{
 				name:   KeywordsTableName,
 				schema: keywordsSchema,
-				reader: emptyRowIter,
+				reader: keywordsRowIter,
 			},
 			OptimizerTraceTableName: &informationSchemaTable{
 				name:   OptimizerTraceTableName,
@@ -1975,22 +2131,22 @@ func NewInformationSchemaDatabase() Database {
 			SchemataExtensionsTableName: &informationSchemaTable{
 				name:   SchemataExtensionsTableName,
 				schema: schemataExtensionsSchema,
-				reader: emptyRowIter,
+				reader: schemataExtensionsRowIter,
 			},
 			StGeometryColumnsTableName: &informationSchemaTable{
 				name:   StGeometryColumnsTableName,
 				schema: stGeometryColumnsSchema,
-				reader: emptyRowIter,
+				reader: stGeometryColumnsRowIter,
 			},
 			StSpatialReferenceSystemsTableName: &informationSchemaTable{
 				name:   StSpatialReferenceSystemsTableName,
 				schema: stSpatialReferenceSystemsSchema,
-				reader: emptyRowIter,
+				reader: stSpatialReferenceSystemsRowIter,
 			},
 			StUnitsOfMeasureTableName: &informationSchemaTable{
 				name:   StUnitsOfMeasureTableName,
 				schema: stUnitsOfMeasureSchema,
-				reader: emptyRowIter,
+				reader: stUnitsOfMeasureRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:   TableConstraintsTableName,
@@ -2035,7 +2191,7 @@ func NewInformationSchemaDatabase() Database {
 			UserAttributesTableName: &informationSchemaTable{
 				name:   UserAttributesTableName,
 				schema: userAttributesSchema,
-				reader: emptyRowIter,
+				reader: userAttributesRowIter,
 			},
 			UserPrivilegesTableName: &informationSchemaTable{
 				name:   UserPrivilegesTableName,

@@ -1637,6 +1637,39 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "basic tests on information_schema.USER_ATTRIBUTES table",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			// TODO: attributes info is ignored in sqlparser
+			`CREATE USER admin@localhost ATTRIBUTE '{"fname": "Josh", "lname": "Scott"}';`,
+			"GRANT UPDATE ON mysql.* TO admin@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "select * from information_schema.user_attributes order by user;/*root*/",
+				Expected: []sql.Row{{"admin", "localhost", nil},
+					{"root", "localhost", nil},
+					{"tester", "localhost", nil}},
+			},
+			{
+				User:  "admin",
+				Host:  "localhost",
+				Query: "select * from information_schema.user_attributes order by user;/*admin*/",
+				Expected: []sql.Row{{"admin", "localhost", nil},
+					{"root", "localhost", nil},
+					{"tester", "localhost", nil}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select * from information_schema.user_attributes order by user;/*tester*/",
+				Expected: []sql.Row{{"tester", "localhost", nil}},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
