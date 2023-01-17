@@ -444,7 +444,7 @@ func TestPointWithinMultiLineString(t *testing.T) {
 func TestPointWithinMultiPolygon(t *testing.T) {
 	t.Run("point within multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewWithin(expression.NewLiteral(sql.Point{}, sql.PointType{}), expression.NewLiteral(squareWithHole, sql.MultiLineStringType{}))
+		f := NewWithin(expression.NewLiteral(sql.Point{}, sql.PointType{}), expression.NewLiteral(simpleMultiPolygon, sql.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)

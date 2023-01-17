@@ -38,6 +38,7 @@ var (
 		{Points: []sql.Point{{X: 0, Y: 4}, {X: 4, Y: 0}, {X: 0, Y: -4}, {X: -4, Y: 0}, {X: 0, Y: 4}}},
 	}}
 	diamondWithHole                = sql.Polygon{Lines: []sql.LineString{
+		{Points: []sql.Point{{X: 0, Y: 4}, {X: 4, Y: 0}, {X: 0, Y: -4}, {X: -4, Y: 0}, {X: 0, Y: 4}}},
 		{Points: []sql.Point{{X: 0, Y: 2}, {X: 2, Y: 0}, {X: 0, Y: -2}, {X: -2, Y: 0}, {X: 0, Y: 2}}},
 	}}
 
