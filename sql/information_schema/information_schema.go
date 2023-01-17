@@ -877,6 +877,9 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	}
 
 	privSet, privSetCount := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		return RowsToRowIter(rows...), nil
+	}
 	for _, db := range c.AllDatabases(ctx) {
 		dbName := db.Name()
 		privSetDb := privSet.Database(dbName)
@@ -1492,6 +1495,9 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
 	}
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		return RowsToRowIter(rows...), nil
+	}
 	hasGlobalTriggerPriv := privSet.Has(PrivilegeType_Trigger)
 	for _, db := range c.AllDatabases(ctx) {
 		triggerDb, ok := db.(TriggerDatabase)
@@ -1598,6 +1604,9 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		return RowsToRowIter(rows...), nil
+	}
 	hasGlobalShowViewPriv := privSet.Has(PrivilegeType_ShowView)
 	for _, db := range catalog.AllDatabases(ctx) {
 		dbName := db.Name()

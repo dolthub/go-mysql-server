@@ -40,6 +40,11 @@ func NewPrivilegeSet() PrivilegeSet {
 	}
 }
 
+// NewPrivilegeSetWithAllGlobalPrivileges returns a new PrivilegeSet with all global privileges granted.
+func NewPrivilegeSetWithAllGlobalPrivileges() PrivilegeSet {
+	return newPrivilegeSetWithAllPrivileges()
+}
+
 // newPrivilegeSetWithAllPrivileges returns a new PrivilegeSet with every global static privilege added.
 func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
 	return PrivilegeSet{
