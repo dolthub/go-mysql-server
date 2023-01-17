@@ -667,10 +667,124 @@ func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ExternalProcedureTests {
-		e, err := harness.NewEngine(t)
-		require.NoError(t, err)
-		defer e.Close()
-		enginetest.TestScriptWithEngine(t, e, harness, script)
+		func() {
+			e, err := harness.NewEngine(t)
+			require.NoError(t, err)
+			defer func() {
+				_ = e.Close()
+			}()
+			enginetest.TestScriptWithEngine(t, e, harness, script)
+		}()
+	}
+}
+
+func TestCallAsOf(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	enginetest.CreateVersionedTestData(t, harness)
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "AS OF propagates to nested CALLs",
+			SetUpScript: []string{
+				"CREATE PROCEDURE p1() BEGIN CALL p2(); END",
+				"CREATE PROCEDURE p1a() BEGIN CALL p2() AS OF '2019-01-01'; END",
+				"CREATE PROCEDURE p1b() BEGIN CALL p2a(); END",
+				"CREATE PROCEDURE p2() BEGIN SELECT * FROM myhistorytable; END",
+				"CREATE PROCEDURE p2a() BEGIN SELECT * FROM myhistorytable AS OF '2019-01-02'; END",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "CALL p1();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 3", "1"},
+						{int64(2), "second row, 3", "2"},
+						{int64(3), "third row, 3", "3"},
+					},
+				},
+				{
+					Query: "CALL p1a();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p1b();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+				{
+					Query: "CALL p2();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 3", "1"},
+						{int64(2), "second row, 3", "2"},
+						{int64(3), "third row, 3", "3"},
+					},
+				},
+				{
+					Query: "CALL p2a();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+				{
+					Query: "CALL p1() AS OF '2019-01-01';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p1a() AS OF '2019-01-03';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p1b() AS OF '2019-01-03';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+				{
+					Query: "CALL p2() AS OF '2019-01-01';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p2a() AS OF '2019-01-03';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+			},
+		},
+	}
+
+	for _, script := range scripts {
+		func() {
+			e, err := harness.NewEngine(t)
+			require.NoError(t, err)
+			defer func() {
+				_ = e.Close()
+			}()
+			enginetest.TestScriptWithEngine(t, e, harness, script)
+		}()
 	}
 }
 

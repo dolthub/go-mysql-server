@@ -169,6 +169,9 @@ var (
 	// ErrStoredProceduresNotSupported is returned when attempting to create a stored procedure on a database that doesn't support them.
 	ErrStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support stored procedures`)
 
+	// ErrVersionedStoredProceduresNotSupported is returned when attempting to retrieve a versioned stored procedure on a database that doesn't support them.
+	ErrVersionedStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support versioned stored procedures`)
+
 	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
 	ErrStoredProcedureAlreadyExists = errors.NewKind(`stored procedure "%s" already exists`)
 
@@ -180,6 +183,12 @@ var (
 
 	// ErrProcedureRecursiveCall is returned when a stored procedure has a CALL statement that refers to itself.
 	ErrProcedureRecursiveCall = errors.NewKind("recursive CALL on stored procedure `%s`")
+
+	// ErrProcedureNestedCallAsOf is returned when a stored procedure has a CALL ... AS OF statement, which is currently not allowed.
+	ErrProcedureNestedCallAsOf = errors.NewKind("CALL ... AS OF in stored procedure `%s`")
+
+	// ErrProcedureCallAsOfReadOnly is returned when a CALL ... AS OF statement attempts to modify a table.
+	ErrProcedureCallAsOfReadOnly = errors.NewKind("CALL ... AS OF converts databases to read only")
 
 	// ErrProcedureInvalidBodyStatement is returned when a stored procedure has a statement that is invalid inside of procedures.
 	ErrProcedureInvalidBodyStatement = errors.NewKind("`%s` statements are invalid inside of stored procedures")

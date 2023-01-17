@@ -1381,10 +1381,20 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 		db = sql.UnresolvedDatabase(c.ProcName.Qualifier.String())
 	}
 
+	var asOf sql.Expression = nil
+	if c.AsOf != nil {
+		var err error
+		asOf, err = ExprToExpression(ctx, c.AsOf)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return plan.NewCall(
 		db,
 		c.ProcName.Name.String(),
-		params), nil
+		params,
+		asOf), nil
 }
 
 func convertDeclare(ctx *sql.Context, d *sqlparser.Declare, query string) (sql.Node, error) {
