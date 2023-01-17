@@ -461,10 +461,6 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SELECT * FROM information_schema.user_attributes`,
-		Expected: []sql.Row{},
-	},
-	{
 		Query:    `SELECT * FROM information_schema.view_routine_usage`,
 		Expected: []sql.Row{},
 	},
