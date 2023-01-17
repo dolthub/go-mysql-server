@@ -931,8 +931,8 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// enginesRowIterimplements the sql.RowIter for the information_schema.ENGINES table.
-func enginesRowIter(ctx *Context, c Catalog) (RowIter, error) {
+// enginesRowIter implements the sql.RowIter for the information_schema.ENGINES table.
+func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
 		rows = append(rows, Row{
