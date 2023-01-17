@@ -29,6 +29,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // Config for the Engine.
