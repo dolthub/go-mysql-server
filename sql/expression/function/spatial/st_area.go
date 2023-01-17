@@ -28,7 +28,7 @@ type Area struct {
 
 var _ sql.FunctionExpression = (*Area)(nil)
 
-// NewArea creates a new STX expression.
+// NewArea creates a new Area expression.
 func NewArea(arg sql.Expression) sql.Expression {
 	return &Area{expression.UnaryExpression{Child: arg}}
 }

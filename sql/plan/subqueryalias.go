@@ -42,9 +42,9 @@ func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias
 	}
 }
 
-// Returns the view wrapper for this subquery
-func (sq *SubqueryAlias) AsView() *sql.View {
-	return sql.NewView(sq.Name(), sq, sq.TextDefinition)
+// AsView returns the view wrapper for this subquery
+func (sq *SubqueryAlias) AsView(createViewStmt string) *sql.View {
+	return sql.NewView(sq.Name(), sq, sq.TextDefinition, createViewStmt)
 }
 
 // Name implements the Table interface.
