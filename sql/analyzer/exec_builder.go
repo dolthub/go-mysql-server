@@ -91,6 +91,15 @@ func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.N
 	case *plan.TableAlias:
 		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
+	case *plan.SelectSingleRel:
+		switch n := n.Rel.(type) {
+		case *plan.ResolvedTable:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+		case *plan.TableAlias:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+			ret = plan.NewTableAlias(n.Name(), ret)
+		}
+		ret = plan.NewSelectSingleRel(n.Select, ret.(sql.NameableNode))
 	default:
 		panic("unexpected lookup child")
 	}
@@ -270,7 +279,7 @@ func (b *ExecBuilder) buildSubqueryAlias(r *subqueryAlias, input sql.Schema, chi
 	return r.table, nil
 }
 
-func (b *ExecBuilder) buildMax1RowSubquery(r *max1RowSubquery, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildMax1Row(r *max1Row, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	return plan.NewMax1Row(r.table), nil
 }
 
@@ -294,5 +303,9 @@ func (b *ExecBuilder) buildTableAlias(r *tableAlias, _ sql.Schema, _ ...sql.Node
 }
 
 func (b *ExecBuilder) buildTableScan(r *tableScan, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
+	return r.table, nil
+}
+
+func (b *ExecBuilder) buildSelectSingleRel(r *selectSingleRel, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.table, nil
 }

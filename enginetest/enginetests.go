@@ -263,6 +263,13 @@ func TestInfoSchema(t *testing.T, h Harness) {
 			TestQuery(t, h, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		})
 	}
+
+	for _, script := range queries.InfoSchemaScripts {
+		t.Run(script.Name, func(t *testing.T) {
+			t.Skip()
+			TestScript(t, h, script)
+		})
+	}
 }
 
 func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
@@ -1482,8 +1489,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                   // action_reference_old_row
 					"NEW",                   // action_reference_new_row
 					date,                    // created
-					"",                      // sql_mode
-					"",                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1506,8 +1513,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                   // action_reference_old_row
 					"NEW",                   // action_reference_new_row
 					date,                    // created
-					"",                      // sql_mode
-					"",                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1530,8 +1537,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                   // action_reference_old_row
 					"NEW",                   // action_reference_new_row
 					date,                    // created
-					"",                      // sql_mode
-					"",                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1554,8 +1561,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                   // action_reference_old_row
 					"NEW",                   // action_reference_new_row
 					date,                    // created
-					"",                      // sql_mode
-					"",                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1578,8 +1585,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                                   // action_reference_old_row
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
-					"",                                      // sql_mode
-					"",                                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1602,8 +1609,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                                   // action_reference_old_row
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
-					"",                                      // sql_mode
-					"",                                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1626,8 +1633,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                                   // action_reference_old_row
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
-					"",                                      // sql_mode
-					"",                                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1650,8 +1657,8 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"OLD",                                   // action_reference_old_row
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
-					"",                                      // sql_mode
-					"",                                      // definer
+					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
+					"`root`@`localhost`",                          // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1799,7 +1806,7 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 	vdb, ok := db.(sql.ViewDatabase)
 	require.True(t, ok, "expected sql.ViewDatabase")
 
-	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView")
+	err = vdb.CreateView(ctx, "recursiveView", "select * from recursiveView", "create view recursiveView AS select * from recursiveView")
 	require.NoError(t, err)
 
 	AssertErr(t, e, harness, "select * from recursiveView", analyzer.ErrMaxAnalysisIters)

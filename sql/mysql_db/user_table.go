@@ -239,7 +239,7 @@ func addSuperUser(userTable *mysqlTable, username string, host string, password 
 	err := userTable.data.Put(sql.NewEmptyContext(), &User{
 		User:                username,
 		Host:                host,
-		PrivilegeSet:        newPrivilegeSetWithAllPrivileges(),
+		PrivilegeSet:        NewPrivilegeSetWithAllPrivileges(),
 		Plugin:              "mysql_native_password",
 		Password:            password,
 		PasswordLastChanged: time.Unix(1, 0).UTC(),

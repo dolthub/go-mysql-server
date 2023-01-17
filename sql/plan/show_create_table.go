@@ -36,12 +36,13 @@ type ShowCreateTable struct {
 	Checks           sql.CheckConstraints
 	targetSchema     sql.Schema
 	primaryKeySchema sql.PrimaryKeySchema
-	AsOf             sql.Expression
+	asOf             sql.Expression
 }
 
 var _ sql.Node = (*ShowCreateTable)(nil)
 var _ sql.Expressioner = (*ShowCreateTable)(nil)
 var _ sql.SchemaTarget = (*ShowCreateTable)(nil)
+var _ Versionable = (*ShowCreateTable)(nil)
 
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
@@ -53,7 +54,7 @@ func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
-		AsOf:      asOf,
+		asOf:      asOf,
 	}
 }
 
@@ -146,6 +147,18 @@ func (sc *ShowCreateTable) GetTargetSchema() sql.Schema {
 	return sc.targetSchema
 }
 
+// WithAsOf implements the Versionable interface.
+func (sc *ShowCreateTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+	nsc := *sc
+	nsc.asOf = asOf
+	return &nsc, nil
+}
+
+// AsOf implements the Versionable interface.
+func (sc *ShowCreateTable) AsOf() sql.Expression {
+	return sc.asOf
+}
+
 // RowIter implements the Node interface
 func (sc *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
@@ -171,8 +184,8 @@ func (sc *ShowCreateTable) String() string {
 	}
 
 	asOfClause := ""
-	if sc.AsOf != nil {
-		asOfClause = fmt.Sprintf("as of %v", sc.AsOf)
+	if sc.asOf != nil {
+		asOfClause = fmt.Sprintf("as of %v", sc.asOf)
 	}
 
 	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)

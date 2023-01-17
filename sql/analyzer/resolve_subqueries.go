@@ -366,7 +366,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			}
 		case *plan.CachedResults:
 			isCachedRs = true
-		case *plan.Max1RowSubquery:
+		case *plan.Max1Row:
 			isMax1Row = true
 		default:
 		}

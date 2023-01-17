@@ -72,13 +72,15 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel
 		return node, transform.SameTree, nil
 	}
 
-	node, same, err := transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if !isParallelizable(node) {
-			return node, transform.SameTree, nil
+	node, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		if !isParallelizable(c.Node) {
+			return c.Node, transform.SameTree, nil
+		} else if _, ok := c.Parent.(*plan.Max1Row); ok {
+			return c.Node, transform.SameTree, nil
 		}
 		ParallelQueryCounter.With("parallelism", strconv.Itoa(a.Parallelism)).Add(1)
 
-		return plan.NewExchange(a.Parallelism, node), transform.NewTree, nil
+		return plan.NewExchange(a.Parallelism, c.Node), transform.NewTree, nil
 	})
 	if err != nil {
 		return nil, transform.SameTree, err

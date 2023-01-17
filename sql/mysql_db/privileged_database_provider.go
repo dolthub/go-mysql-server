@@ -299,6 +299,17 @@ func (pdb PrivilegedDatabase) DropTrigger(ctx *sql.Context, name string) error {
 	return sql.ErrTriggersNotSupported.New(pdb.db.Name())
 }
 
+// GetStoredProcedure implements the interface sql.StoredProcedureDatabase.
+func (pdb PrivilegedDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.StoredProcedureDetails, bool, error) {
+	if pdb.db.Name() == "information_schema" {
+		return sql.StoredProcedureDetails{}, false, nil
+	}
+	if db, ok := pdb.db.(sql.StoredProcedureDatabase); ok {
+		return db.GetStoredProcedure(ctx, name)
+	}
+	return sql.StoredProcedureDetails{}, false, sql.ErrStoredProceduresNotSupported.New(pdb.db.Name())
+}
+
 // GetStoredProcedures implements the interface sql.StoredProcedureDatabase.
 func (pdb PrivilegedDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
 	if pdb.db.Name() == "information_schema" {

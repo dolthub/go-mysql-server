@@ -17,7 +17,6 @@ package spatial
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -129,17 +128,6 @@ func isLinearRing(line types.LineString) bool {
 	// Check if it is closed (first and last point are the same)
 	if line.Points[0] != line.Points[numPoints-1] {
 		return false
-	}
-	return true // TODO: MySQL appears to not check this, and there are issues so return true for now
-	// TODO: how to deal with same point?
-	// TODO: easy, but slow O(n^2) solution; apparently O(nlogn) exists
-	// Check each segment for intersections
-	for i := 0; i < numPoints-1; i++ {
-		for j := i + 1; j < numPoints; j++ {
-			if lineSegmentsIntersect(line.Points[i], line.Points[i+1], line.Points[j], line.Points[j+1]) {
-				return false
-			}
-		}
 	}
 	return true
 }

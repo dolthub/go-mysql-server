@@ -33,12 +33,26 @@ type Scope struct {
 	// currentNodeIsFromSubqueryExpression is true when the last scope (i.e. the most inner of the outer scope levels) has been
 	// created by a subquery expression. This is needed in order to calculate outer scope visibility for derived tables.
 	currentNodeIsFromSubqueryExpression bool
+	// enforceReadOnly causes analysis to block all modification operations, as though a database is read only.
+	enforceReadOnly bool
 
 	procedures *ProcedureCache
 }
 
 func (s *Scope) IsEmpty() bool {
 	return s == nil || len(s.nodes) == 0
+}
+
+func (s *Scope) EnforcesReadOnly() bool {
+	return s != nil && s.enforceReadOnly
+}
+
+// OuterRelUnresolved returns true if the relations in the
+// outer scope are not qualified and resolved.
+// note: a subquery in the outer scope is itself a scope,
+// and by definition not an outer relation
+func (s *Scope) OuterRelUnresolved() bool {
+	return !s.IsEmpty() && s.Schema() == nil && len(s.nodes[0].Children()) > 0
 }
 
 // newScope creates a new Scope object with the additional innermost Node context. When constructing with a subquery,

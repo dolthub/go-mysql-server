@@ -596,6 +596,7 @@ func tableColsContains(strs []tableCol, target tableCol) bool {
 func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	valid := true
 	var readOnlyDB sql.ReadOnlyDatabase
+	enforceReadOnly := scope.EnforcesReadOnly()
 
 	// if a ReadOnlyDatabase is found, invalidate the query
 	readOnlyDBSearch := func(node sql.Node) bool {
@@ -603,6 +604,8 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			if ro, ok := rt.Database.(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
+					valid = false
+				} else if enforceReadOnly {
 					valid = false
 				}
 			}
@@ -627,6 +630,8 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
 					valid = false
+				} else if enforceReadOnly {
+					valid = false
 				}
 			}
 			// "CREATE TABLE ... LIKE ..." and
@@ -647,7 +652,11 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return valid
 	})
 	if !valid {
-		return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+		if enforceReadOnly {
+			return nil, transform.SameTree, sql.ErrProcedureCallAsOfReadOnly.New()
+		} else {
+			return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+		}
 	}
 
 	return n, transform.SameTree, nil
@@ -662,7 +671,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	}
 
 	// If this is a normal read write transaction don't enforce read-only. Otherwise we must prevent an invalid query.
-	if !t.IsReadOnly() {
+	if !t.IsReadOnly() && !scope.EnforcesReadOnly() {
 		return n, transform.SameTree, nil
 	}
 
