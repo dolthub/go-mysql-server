@@ -648,6 +648,9 @@ func pushdownIndexesToTable(a *Analyzer, tableNode sql.NameableNode, indexes map
 				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
 					ret, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
+					if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+						return n, transform.SameTree, nil
+					}
 					if err != nil {
 						return nil, transform.SameTree, err
 					}

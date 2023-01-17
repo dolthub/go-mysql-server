@@ -45,7 +45,7 @@ var _ sql.CheckTable = Table{}
 var _ sql.StatisticsTable = Table{}
 var _ sql.PrimaryKeyAlterableTable = Table{}
 
-func (t Table) IndexedAccess(sql.Index) sql.IndexedTable {
+func (t Table) IndexedAccess(sql.IndexLookup) sql.IndexedTable {
 	panic("not implemented")
 }
 
