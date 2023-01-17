@@ -24,9 +24,9 @@ import (
 )
 
 var (
-	simpleLineString      = sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
-	simpleMultiPoint      = sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
-	simpleMultiLineString = sql.MultiLineString{Lines: []sql.LineString{simpleLineString}}
+	triangle = sql.Polygon{Lines: []sql.LineString{
+		{Points: []sql.Point{{X: -1, Y: 0}, {X: 0, Y: 2}, {X: 1, Y: 0}, {X: -1, Y: 0}}},
+	}}
 	square                = sql.Polygon{Lines: []sql.LineString{
 		{Points: []sql.Point{{X: -4, Y: 4}, {X: 4, Y: 4}, {X: 4, Y: -4}, {X: -4, Y: -4}, {X: -4, Y: 4}}},
 	}}
@@ -34,9 +34,13 @@ var (
 		{Points: []sql.Point{{X: -4, Y: 4}, {X: 4, Y: 4}, {X: 4, Y: -4}, {X: -4, Y: -4}, {X: -4, Y: 4}}},
 		{Points: []sql.Point{{X: -2, Y: 2}, {X: 2, Y: 2}, {X: 2, Y: -2}, {X: -2, Y: -2}, {X: -2, Y: 2}}},
 	}}
-	triangle = sql.Polygon{Lines: []sql.LineString{
-		{Points: []sql.Point{{X: -1, Y: 0}, {X: 0, Y: 2}, {X: 1, Y: 0}, {X: -1, Y: 0}}},
+	diamond                = sql.Polygon{Lines: []sql.LineString{
+		{Points: []sql.Point{{X: 0, Y: 4}, {X: 4, Y: 0}, {X: 0, Y: -4}, {X: -4, Y: 0}, {X: 0, Y: 4}}},
 	}}
+	diamondWithHole                = sql.Polygon{Lines: []sql.LineString{
+		{Points: []sql.Point{{X: 0, Y: 2}, {X: 2, Y: 0}, {X: 0, Y: -2}, {X: -2, Y: 0}, {X: 0, Y: 2}}},
+	}}
+
 	emptyLineString = sql.LineString{Points: []sql.Point{{}, {}}}
 	emptyPolygon    = sql.Polygon{Lines: []sql.LineString{
 		{Points: []sql.Point{{}, {}, {}, {}}},
@@ -44,6 +48,12 @@ var (
 	emptyMultiPoint      = sql.MultiPoint{Points: []sql.Point{{}}}
 	emptyMultiLineString = sql.MultiLineString{Lines: []sql.LineString{emptyLineString}}
 	emptyMultiPolygon    = sql.MultiPolygon{Polygons: []sql.Polygon{emptyPolygon}}
+
+	simpleLineString      = sql.LineString{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
+	simpleMultiPoint      = sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
+	simpleMultiLineString = sql.MultiLineString{Lines: []sql.LineString{simpleLineString}}
+	simpleMultiPolygon = sql.MultiPolygon{Polygons: []sql.Polygon{square}}
+	simpleGeomColl = sql.GeomColl{Geoms: []sql.GeometryValue{sql.Point{}}}
 )
 
 func TestPointIntersectsPoint(t *testing.T) {
