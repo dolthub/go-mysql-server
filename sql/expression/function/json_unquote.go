@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/strings"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSONUnquote unquotes JSON value and returns the result as a utf8mb4 string.
@@ -58,7 +59,7 @@ func (js *JSONUnquote) String() string {
 
 // Type implements the Expression interface.
 func (*JSONUnquote) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 // WithChildren implements the Expression interface.
@@ -76,7 +77,7 @@ func (js *JSONUnquote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return json, err
 	}
 
-	ex, err := sql.LongText.Convert(json)
+	ex, err := types.LongText.Convert(json)
 	if err != nil {
 		return nil, err
 	}

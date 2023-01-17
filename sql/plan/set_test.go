@@ -26,6 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestSet(t *testing.T) {
@@ -35,8 +37,8 @@ func TestSet(t *testing.T) {
 
 	s := NewSet(
 		[]sql.Expression{
-			expression.NewSetField(expression.NewUserVar("foo"), expression.NewLiteral("bar", sql.LongText)),
-			expression.NewSetField(expression.NewUserVar("baz"), expression.NewLiteral(int64(1), sql.Int64)),
+			expression.NewSetField(expression.NewUserVar("foo"), expression.NewLiteral("bar", types.LongText)),
+			expression.NewSetField(expression.NewUserVar("baz"), expression.NewLiteral(int64(1), types.Int64)),
 		},
 	)
 
@@ -45,12 +47,12 @@ func TestSet(t *testing.T) {
 
 	typ, v, err := ctx.GetUserVariable(ctx, "foo")
 	require.NoError(err)
-	require.Equal(sql.MustCreateStringWithDefaults(sqltypes.VarChar, 3), typ)
+	require.Equal(types.MustCreateStringWithDefaults(sqltypes.VarChar, 3), typ)
 	require.Equal("bar", v)
 
 	typ, v, err = ctx.GetUserVariable(ctx, "baz")
 	require.NoError(err)
-	require.Equal(sql.Int64, typ)
+	require.Equal(types.Int64, typ)
 	require.Equal(int64(1), v)
 }
 
@@ -83,11 +85,11 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 
 	for _, test := range setTests {
 		t.Run(test.title, func(t *testing.T) {
-			sql.InitSystemVariables()
+			variables.InitSystemVariables()
 			sqlCtx, globals := newPersistedSqlContext()
 			s := NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar(test.name, test.scope), expression.NewLiteral(int64(test.value), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar(test.name, test.scope), expression.NewLiteral(int64(test.value), types.Int64)),
 				},
 			)
 

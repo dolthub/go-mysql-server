@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func getForeignKeyTable(t sql.Table) (sql.ForeignKeyTable, error) {
@@ -83,7 +84,7 @@ func (p *CreateForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.Privi
 
 // Schema implements the interface sql.Node.
 func (p *CreateForeignKey) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // DatabaseProvider implements the interface sql.MultiDatabaser.
@@ -152,7 +153,7 @@ func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // String implements the interface sql.Node.
@@ -400,7 +401,7 @@ func (p *DropForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // WithChildren implements the interface sql.Node.
@@ -416,7 +417,7 @@ func (p *DropForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 
 // Schema implements the interface sql.Node.
 func (p *DropForeignKey) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // DatabaseProvider implements the interface sql.MultiDatabaser.
@@ -595,8 +596,8 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 		if type1.Type() == type2.Type() {
 			switch type1.Type() {
 			case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
-				type1String := type1.(sql.StringType)
-				type2String := type2.(sql.StringType)
+				type1String := type1.(types.StringType)
+				type2String := type2.(types.StringType)
 				if type1String.Collation().CharacterSet() != type2String.Collation().CharacterSet() {
 					return false
 				}

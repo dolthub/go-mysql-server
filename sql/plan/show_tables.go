@@ -19,6 +19,7 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -28,7 +29,7 @@ import (
 type ShowTables struct {
 	db   sql.Database
 	Full bool
-	AsOf sql.Expression
+	asOf sql.Expression
 }
 
 // NewShowTables creates a new show tables node given a database.
@@ -36,12 +37,13 @@ func NewShowTables(database sql.Database, full bool, asOf sql.Expression) *ShowT
 	return &ShowTables{
 		db:   database,
 		Full: full,
-		AsOf: asOf,
+		asOf: asOf,
 	}
 }
 
 var _ sql.Databaser = (*ShowTables)(nil)
 var _ sql.Expressioner = (*ShowTables)(nil)
+var _ Versionable = (*ShowTables)(nil)
 
 // Database implements the sql.Databaser interface.
 func (p *ShowTables) Database() sql.Database {
@@ -71,12 +73,24 @@ func (p *ShowTables) Schema() sql.Schema {
 	var sch sql.Schema
 	colName := fmt.Sprintf("Tables_in_%s", p.Database().Name())
 	sch = sql.Schema{
-		{Name: colName, Type: sql.LongText},
+		{Name: colName, Type: types.LongText},
 	}
 	if p.Full {
-		sch = append(sch, &sql.Column{Name: "Table_type", Type: sql.LongText})
+		sch = append(sch, &sql.Column{Name: "Table_type", Type: types.LongText})
 	}
 	return sch
+}
+
+// WithAsOf implements the Versionable interface.
+func (p *ShowTables) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+	np := *p
+	np.asOf = asOf
+	return &np, nil
+}
+
+// AsOf implements the Versionable interface.
+func (p *ShowTables) AsOf() sql.Expression {
+	return p.asOf
 }
 
 // RowIter implements the Node interface.
@@ -84,9 +98,9 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	var tableNames []string
 
 	// TODO: this entire analysis should really happen in the analyzer, as opposed to at execution time
-	if p.AsOf != nil {
+	if p.asOf != nil {
 		if vdb, ok := p.db.(sql.VersionedDatabase); ok {
-			asOf, err := p.AsOf.Eval(ctx, nil)
+			asOf, err := p.asOf.Eval(ctx, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -172,10 +186,10 @@ func (p ShowTables) String() string {
 
 // Expressions implements sql.Expressioner
 func (p *ShowTables) Expressions() []sql.Expression {
-	if p.AsOf == nil {
+	if p.asOf == nil {
 		return nil
 	}
-	return []sql.Expression{p.AsOf}
+	return []sql.Expression{p.asOf}
 }
 
 // WithExpressions implements sql.Expressioner
@@ -185,6 +199,6 @@ func (p *ShowTables) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	}
 
 	np := *p
-	np.AsOf = exprs[0]
+	np.asOf = exprs[0]
 	return &np, nil
 }

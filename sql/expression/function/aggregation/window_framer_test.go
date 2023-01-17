@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestWindowRowFramers(t *testing.T) {
@@ -265,7 +266,7 @@ func TestWindowRangeFramers(t *testing.T) {
 		{Start: 10, End: 16},
 		{Start: 16, End: 19},
 	}
-	expr := expression.NewGetField(1, sql.Int64, "", false)
+	expr := expression.NewGetField(1, types.Int64, "", false)
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
@@ -326,17 +327,17 @@ func (d dummyFrame) EndCurrentRow() bool {
 }
 
 func (d dummyFrame) StartNPreceding() sql.Expression {
-	return expression.NewLiteral(int8(2), sql.Int8)
+	return expression.NewLiteral(int8(2), types.Int8)
 }
 
 func (d dummyFrame) StartNFollowing() sql.Expression {
-	return expression.NewLiteral(int8(1), sql.Int8)
+	return expression.NewLiteral(int8(1), types.Int8)
 }
 
 func (d dummyFrame) EndNPreceding() sql.Expression {
-	return expression.NewLiteral(int8(1), sql.Int8)
+	return expression.NewLiteral(int8(1), types.Int8)
 }
 
 func (d dummyFrame) EndNFollowing() sql.Expression {
-	return expression.NewLiteral(int8(1), sql.Int8)
+	return expression.NewLiteral(int8(1), types.Int8)
 }

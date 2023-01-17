@@ -21,10 +21,11 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestTrim(t *testing.T) {
-	f := NewTrim(expression.NewGetField(0, sql.LongText, "", false), expression.NewGetField(1, sql.LongText, "", false), "b")
+	f := NewTrim(expression.NewGetField(0, types.LongText, "", false), expression.NewGetField(1, types.LongText, "", false), "b")
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -57,7 +58,7 @@ func TestTrim(t *testing.T) {
 }
 
 func TestLTrim(t *testing.T) {
-	f := NewLeftTrim(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewLeftTrim(expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -90,7 +91,7 @@ func TestLTrim(t *testing.T) {
 }
 
 func TestRTrim(t *testing.T) {
-	f := NewRightTrim(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewRightTrim(expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row

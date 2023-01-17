@@ -18,6 +18,7 @@ import (
 	"bytes"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CaseBranch is a single branch of a case expression.
@@ -42,53 +43,53 @@ func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression
 // From the description of operator typing here:
 // https://dev.mysql.com/doc/refman/8.0/en/flow-control-functions.html#operator_case
 func combinedCaseBranchType(left, right sql.Type) sql.Type {
-	if left == sql.Null {
+	if left == types.Null {
 		return right
 	}
-	if right == sql.Null {
+	if right == types.Null {
 		return left
 	}
-	if sql.IsTextOnly(left) && sql.IsTextOnly(right) {
-		return sql.LongText
+	if types.IsTextOnly(left) && types.IsTextOnly(right) {
+		return types.LongText
 	}
-	if sql.IsTextBlob(left) && sql.IsTextBlob(right) {
-		return sql.LongBlob
+	if types.IsTextBlob(left) && types.IsTextBlob(right) {
+		return types.LongBlob
 	}
-	if sql.IsTime(left) && sql.IsTime(right) {
+	if types.IsTime(left) && types.IsTime(right) {
 		if left == right {
 			return left
 		}
-		return sql.Datetime
+		return types.Datetime
 	}
-	if sql.IsNumber(left) && sql.IsNumber(right) {
-		if left == sql.Float64 || right == sql.Float64 {
-			return sql.Float64
+	if types.IsNumber(left) && types.IsNumber(right) {
+		if left == types.Float64 || right == types.Float64 {
+			return types.Float64
 		}
-		if left == sql.Float32 || right == sql.Float32 {
-			return sql.Float32
+		if left == types.Float32 || right == types.Float32 {
+			return types.Float32
 		}
-		if sql.IsDecimal(left) || sql.IsDecimal(right) {
-			return sql.MustCreateDecimalType(65, 10)
+		if types.IsDecimal(left) || types.IsDecimal(right) {
+			return types.MustCreateDecimalType(65, 10)
 		}
-		if left == sql.Uint64 && sql.IsSigned(right) ||
-			right == sql.Uint64 && sql.IsSigned(left) {
-			return sql.MustCreateDecimalType(65, 10)
+		if left == types.Uint64 && types.IsSigned(right) ||
+			right == types.Uint64 && types.IsSigned(left) {
+			return types.MustCreateDecimalType(65, 10)
 		}
-		if !sql.IsSigned(left) && !sql.IsSigned(right) {
-			return sql.Uint64
+		if !types.IsSigned(left) && !types.IsSigned(right) {
+			return types.Uint64
 		} else {
-			return sql.Int64
+			return types.Int64
 		}
 	}
-	if sql.IsJSON(left) && sql.IsJSON(right) {
-		return sql.JSON
+	if types.IsJSON(left) && types.IsJSON(right) {
+		return types.JSON
 	}
-	return sql.LongText
+	return types.LongText
 }
 
 // Type implements the sql.Expression interface.
 func (c *Case) Type() sql.Type {
-	curr := sql.Null
+	curr := types.Null
 	for _, b := range c.Branches {
 		curr = combinedCaseBranchType(curr, b.Value.Type())
 	}

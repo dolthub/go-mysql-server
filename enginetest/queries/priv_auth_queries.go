@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // UserPrivilegeTest is used to define a test on the user and privilege systems. These tests always have the root
@@ -130,7 +131,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -148,7 +149,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON *.* FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{ // Ensure we've reverted to initial state (all SELECTs after REVOKEs are doing this)
 				User:        "tester",
@@ -166,7 +167,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -184,7 +185,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON mydb.* FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -202,7 +203,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -220,7 +221,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON mydb.test FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -238,7 +239,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.test2 TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -256,7 +257,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON mydb.test2 FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -274,7 +275,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT test_role TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -302,11 +303,11 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 			{
 				Query:    "CREATE USER IF NOT EXISTS testuser@`127.0.0.1`;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'testuser2');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "SELECT * FROM mysql.user WHERE User = 'root';",
@@ -451,13 +452,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "INSERT INTO test VALUES (4);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				User:        "tester",
@@ -475,7 +476,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -495,7 +496,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT, UPDATE, EXECUTE ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -507,7 +508,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE UPDATE ON mydb.* FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -519,7 +520,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'tester';",
-				Expected: []sql.Row{{sql.OkResult{
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -548,7 +549,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT, DELETE, DROP ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -560,7 +561,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE DELETE ON mydb.test FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -572,7 +573,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "UPDATE mysql.tables_priv SET table_priv = 'References,Index' WHERE User = 'tester';",
-				Expected: []sql.Row{{sql.OkResult{
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -615,7 +616,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON *.* FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -644,7 +645,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "INSERT INTO test VALUES (4);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				User:     "tester",
@@ -662,7 +663,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE ALL ON *.* FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -725,7 +726,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT test_role TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -775,7 +776,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE test_role FROM tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -831,7 +832,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP ROLE test_role;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -867,7 +868,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP ROLE IF EXISTS test_role;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -893,7 +894,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP USER tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -923,7 +924,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP USER IF EXISTS tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -968,7 +969,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE ON *.* TO tester@localhost WITH GRANT OPTION;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:  "root",
@@ -1326,7 +1327,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP USER admin;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:  "root",
@@ -1356,7 +1357,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -1368,7 +1369,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -1380,7 +1381,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE ON mydb.checks TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -1418,27 +1419,27 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.one TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{{"mydb", "one", "f", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}}},
+				Expected: []sql.Row{{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.two TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:  "tester",
 				Host:  "localhost",
 				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{{"mydb", "one", "f", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
-					{"mydb", "two", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
-					{"mydb", "two", "j", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}}},
+				Expected: []sql.Row{{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
+					{"mydb", "two", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
+					{"mydb", "two", "j", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}}},
 			},
 		},
 	},
@@ -1460,7 +1461,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON mydb.checks TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",

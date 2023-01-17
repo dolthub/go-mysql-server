@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const tablesPrivTblName = "tables_priv"
@@ -219,14 +220,14 @@ func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table
 // init creates the schema for the "tables_priv" Grant Table.
 func init() {
 	// Types
-	char32_utf8_bin := sql.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
-	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
-	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
-	set_ColumnPrivs_utf8_general_ci := sql.MustCreateSetType([]string{"Select", "Insert", "Update", "References"}, sql.Collation_utf8_general_ci)
-	set_TablePrivs_utf8_general_ci := sql.MustCreateSetType([]string{
+	char32_utf8_bin := types.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
+	char64_utf8_bin := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
+	char255_ascii_general_ci := types.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
+	set_ColumnPrivs_utf8_general_ci := types.MustCreateSetType([]string{"Select", "Insert", "Update", "References"}, sql.Collation_utf8_general_ci)
+	set_TablePrivs_utf8_general_ci := types.MustCreateSetType([]string{
 		"Select", "Insert", "Update", "Delete", "Create", "Drop", "Grant",
 		"References", "Index", "Alter", "Create View", "Show view", "Trigger"}, sql.Collation_utf8_general_ci)
-	varchar288_utf8_bin := sql.MustCreateString(sqltypes.VarChar, 288, sql.Collation_utf8_bin)
+	varchar288_utf8_bin := types.MustCreateString(sqltypes.VarChar, 288, sql.Collation_utf8_bin)
 
 	// Column Templates
 	char32_utf8_bin_not_null_default_empty := &sql.Column{
@@ -255,8 +256,8 @@ func init() {
 		Nullable: false,
 	}
 	timestamp_not_null_default_epoch := &sql.Column{
-		Type:     sql.Timestamp,
-		Default:  mustDefault(expression.NewLiteral(time.Unix(1, 0).UTC(), sql.Timestamp), sql.Timestamp, true, false),
+		Type:     types.Timestamp,
+		Default:  mustDefault(expression.NewLiteral(time.Unix(1, 0).UTC(), types.Timestamp), types.Timestamp, true, false),
 		Nullable: false,
 	}
 	varchar288_utf8_bin_not_null_default_empty := &sql.Column{

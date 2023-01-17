@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Set represents a set statement. This can be variables, but in some instances can also refer to row values.
@@ -131,7 +132,9 @@ func setUserVar(ctx *sql.Context, userVar *expression.UserVar, right sql.Express
 	if err != nil {
 		return err
 	}
-	err = ctx.SetUserVariable(ctx, userVar.Name, val)
+	typ := types.ApproximateTypeFromValue(val)
+
+	err = ctx.SetUserVariable(ctx, userVar.Name, val, typ)
 	if err != nil {
 		return err
 	}
@@ -200,7 +203,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 			Scope: sysVar.Scope,
 		}
 		if val == nil {
-			err = setSystemVar(ctx, newSysVar, expression.NewLiteral("", sql.LongText), row)
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral("", types.LongText), row)
 			if err != nil {
 				return err
 			}
@@ -214,7 +217,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 				return err
 			}
 			charset = charset
-			err = setSystemVar(ctx, newSysVar, expression.NewLiteral(charset.DefaultCollation().Name(), sql.LongText), row)
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral(charset.DefaultCollation().Name(), types.LongText), row)
 			if err != nil {
 				return err
 			}

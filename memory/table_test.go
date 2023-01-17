@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestTablePartitionsCount(t *testing.T) {
@@ -38,7 +39,7 @@ func TestTablePartitionsCount(t *testing.T) {
 func TestTableName(t *testing.T) {
 	require := require.New(t)
 	s := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: sql.Text, Nullable: true},
+		{Name: "col1", Type: types.Text, Nullable: true},
 	})
 
 	table := memory.NewTable("test", s, nil)
@@ -48,8 +49,8 @@ func TestTableName(t *testing.T) {
 func TestTableString(t *testing.T) {
 	require := require.New(t)
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: sql.Text, Nullable: true},
-		{Name: "col2", Type: sql.Int64, Nullable: false},
+		{Name: "col1", Type: types.Text, Nullable: true},
+		{Name: "col2", Type: types.Int64, Nullable: false},
 	}), nil)
 	require.Equal("foo", table.String())
 }
@@ -128,9 +129,9 @@ var tests = []struct {
 	{
 		name: "test",
 		schema: sql.NewPrimaryKeySchema(sql.Schema{
-			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false)},
-			&sql.Column{Name: "col2", Source: "test", Type: sql.Int32, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int32, false)},
-			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false)},
+			&sql.Column{Name: "col1", Source: "test", Type: types.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, types.Text, false)},
+			&sql.Column{Name: "col2", Source: "test", Type: types.Int32, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int32, false)},
+			&sql.Column{Name: "col3", Source: "test", Type: types.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int64, false)},
 		}),
 		numPartitions: 2,
 		rows: []sql.Row{
@@ -143,8 +144,8 @@ var tests = []struct {
 		},
 		filters: []sql.Expression{
 			expression.NewEquals(
-				expression.NewGetFieldWithTable(1, sql.Int32, "test", "col2", false),
-				expression.NewLiteral(int32(10), sql.Int32),
+				expression.NewGetFieldWithTable(1, types.Int32, "test", "col2", false),
+				expression.NewLiteral(int32(10), types.Int32),
 			),
 		},
 		expectedFiltered: []sql.Row{

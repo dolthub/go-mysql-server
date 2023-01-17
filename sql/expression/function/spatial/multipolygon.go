@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -50,7 +51,7 @@ func (p *MultiPolygon) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *MultiPolygon) Type() sql.Type {
-	return sql.MultiPolygonType{}
+	return types.MultiPolygonType{}
 }
 
 func (p *MultiPolygon) String() string {
@@ -68,21 +69,21 @@ func (p *MultiPolygon) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // Eval implements the sql.Expression interface.
 func (p *MultiPolygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var polys = make([]sql.Polygon, len(p.ChildExpressions))
+	var polys = make([]types.Polygon, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		switch v := val.(type) {
-		case sql.Polygon:
+		case types.Polygon:
 			polys[i] = v
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(p.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.MultiPolygon{Polygons: polys}, nil
+	return types.MultiPolygon{Polygons: polys}, nil
 }

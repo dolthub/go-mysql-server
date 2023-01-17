@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Soundex is a function that returns the soundex of a string. Two strings that
@@ -59,7 +60,7 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	v, err = sql.LongText.Convert(v)
+	v, err = types.LongText.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -123,5 +124,5 @@ func (s *Soundex) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Type implements the Expression interface.
 func (s *Soundex) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestShowColumns(t *testing.T) {
@@ -31,9 +32,9 @@ func TestShowColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	schema := sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
-		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
-		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
+		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
+		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
+		{Name: "c", Source: "foo", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
 	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
@@ -60,11 +61,11 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	schema := sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
-		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
-		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
-		{Name: "d", Source: "foo", Type: sql.Int64, Nullable: true},
-		{Name: "e", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
+		{Name: "a", Source: "foo", Type: types.Text, PrimaryKey: true},
+		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
+		{Name: "c", Source: "foo", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
+		{Name: "d", Source: "foo", Type: types.Int64, Nullable: true},
+		{Name: "e", Source: "foo", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
 	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
@@ -78,8 +79,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "a",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", true),
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
 			},
 			unique: true,
 		},
@@ -88,8 +89,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "b",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "d", true),
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "e", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "d", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "e", true),
 			},
 			unique: false,
 		},
@@ -118,8 +119,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "c",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", true),
 			},
 			unique: true,
 		},
@@ -128,8 +129,8 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 			table: "foo",
 			id:    "d",
 			exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", true),
-				expression.NewGetFieldWithTable(0, sql.Int64, "foo", "d", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", true),
+				expression.NewGetFieldWithTable(0, types.Int64, "foo", "d", true),
 			},
 			unique: false,
 		},
@@ -149,9 +150,9 @@ func TestShowColumnsFull(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	schema := sql.Schema{
-		{Name: "a", Type: sql.Text, PrimaryKey: true},
-		{Name: "b", Type: sql.Int64, Nullable: true},
-		{Name: "c", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false), Comment: "a comment"},
+		{Name: "a", Type: types.Text, PrimaryKey: true},
+		{Name: "b", Type: types.Int64, Nullable: true},
+		{Name: "c", Type: types.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false), Comment: "a comment"},
 	}
 	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 

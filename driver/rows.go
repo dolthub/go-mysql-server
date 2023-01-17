@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Rows is an iterator over an executed query's results.
@@ -67,7 +68,7 @@ again:
 		return nil
 	}
 
-	if _, ok := row[0].(sql.OkResult); ok {
+	if _, ok := row[0].(types.OkResult); ok {
 		// skip OK results
 		goto again
 	}
@@ -115,7 +116,7 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 		if err != nil {
 			break
 		}
-		doc, ok := sqlValue.(sql.JSONDocument)
+		doc, ok := sqlValue.(types.JSONDocument)
 		if !ok {
 			break
 		}

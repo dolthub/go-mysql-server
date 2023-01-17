@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CollatedExpression represents an expression (returning a string or byte slice) that carries a collation (which
@@ -75,7 +76,7 @@ func (ce *CollatedExpression) Type() sql.Type {
 // Eval implements the sql.Expression interface.
 func (ce *CollatedExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := ce.expr.Type()
-	if !sql.IsText(typ) {
+	if !types.IsText(typ) {
 		return nil, sql.ErrCollatedExprWrongType.New()
 	}
 	if ce.collation.CharacterSet() != typ.(sql.TypeWithCollation).Collation().CharacterSet() {

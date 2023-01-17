@@ -169,6 +169,9 @@ var (
 	// ErrStoredProceduresNotSupported is returned when attempting to create a stored procedure on a database that doesn't support them.
 	ErrStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support stored procedures`)
 
+	// ErrVersionedStoredProceduresNotSupported is returned when attempting to retrieve a versioned stored procedure on a database that doesn't support them.
+	ErrVersionedStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support versioned stored procedures`)
+
 	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
 	ErrStoredProcedureAlreadyExists = errors.NewKind(`stored procedure "%s" already exists`)
 
@@ -180,6 +183,12 @@ var (
 
 	// ErrProcedureRecursiveCall is returned when a stored procedure has a CALL statement that refers to itself.
 	ErrProcedureRecursiveCall = errors.NewKind("recursive CALL on stored procedure `%s`")
+
+	// ErrProcedureNestedCallAsOf is returned when a stored procedure has a CALL ... AS OF statement, which is currently not allowed.
+	ErrProcedureNestedCallAsOf = errors.NewKind("CALL ... AS OF in stored procedure `%s`")
+
+	// ErrProcedureCallAsOfReadOnly is returned when a CALL ... AS OF statement attempts to modify a table.
+	ErrProcedureCallAsOfReadOnly = errors.NewKind("CALL ... AS OF converts databases to read only")
 
 	// ErrProcedureInvalidBodyStatement is returned when a stored procedure has a statement that is invalid inside of procedures.
 	ErrProcedureInvalidBodyStatement = errors.NewKind("`%s` statements are invalid inside of stored procedures")
@@ -718,6 +727,16 @@ var (
 
 	// ErrNoAutoIncrementCol is returned when there is no auto increment column defined on a table.
 	ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
+
+	// ErrValueOutOfRange is returned when a value is out of range for a type.
+	ErrValueOutOfRange = errors.NewKind("%v out of range for %v")
+
+	ErrConvertingToSet   = errors.NewKind("value %v is not valid for this set")
+	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
+	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")
+	ErrTooLargeForSet    = errors.NewKind(`value "%v" is too large for this set`)
+	ErrNotPoint          = errors.NewKind("value of type %T is not a point")
+	ErrNotLineString     = errors.NewKind("value of type %T is not a linestring")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

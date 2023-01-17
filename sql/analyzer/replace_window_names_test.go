@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestReplaceWindowNames(t *testing.T) {
@@ -32,7 +33,7 @@ func TestReplaceWindowNames(t *testing.T) {
 						expression.NewUnresolvedColumn("x"),
 					}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
 						expression.NewInterval(
-							expression.NewLiteral("2:30", sql.LongText),
+							expression.NewLiteral("2:30", types.LongText),
 							"MINUTE_SECOND",
 						),
 					), "", "w"),
@@ -57,7 +58,7 @@ func TestReplaceWindowNames(t *testing.T) {
 								nil,
 								plan.NewRangeNPrecedingToCurrentRowFrame(
 									expression.NewInterval(
-										expression.NewLiteral("2:30", sql.LongText),
+										expression.NewLiteral("2:30", types.LongText),
 										"MINUTE_SECOND",
 									),
 								), "", "",
@@ -188,7 +189,7 @@ func TestReplaceWindowNames(t *testing.T) {
 						expression.NewUnresolvedColumn("x"),
 					}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
 						expression.NewInterval(
-							expression.NewLiteral("2:30", sql.LongText),
+							expression.NewLiteral("2:30", types.LongText),
 							"MINUTE_SECOND",
 						),
 					), "", "w"),
@@ -275,7 +276,7 @@ func TestReplaceWindowNames(t *testing.T) {
 						[]sql.Expression{}, nil,
 						plan.NewRangeNPrecedingToCurrentRowFrame(
 							expression.NewInterval(
-								expression.NewLiteral("2:30", sql.LongText),
+								expression.NewLiteral("2:30", types.LongText),
 								"MINUTE_SECOND",
 							),
 						), "", "w"),
@@ -288,7 +289,7 @@ func TestReplaceWindowNames(t *testing.T) {
 									[]sql.Expression{}, nil,
 									plan.NewRangeNPrecedingToCurrentRowFrame(
 										expression.NewInterval(
-											expression.NewLiteral("2:35", sql.LongText),
+											expression.NewLiteral("2:35", types.LongText),
 											"MINUTE_SECOND",
 										),
 									), "w", "")),

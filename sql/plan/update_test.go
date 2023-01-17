@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestUpdateIgnoreConversions(t *testing.T) {
@@ -37,30 +38,30 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 	}{
 		{
 			name:      "inserting a string into a integer defaults to a 0",
-			colType:   sql.Int64,
+			colType:   types.Int64,
 			value:     "dadasd",
-			valueType: sql.Text,
+			valueType: types.Text,
 			expected:  int64(0),
 		},
 		{
 			name:      "string too long gets truncated",
-			colType:   sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2),
+			colType:   types.MustCreateStringWithDefaults(sqltypes.VarChar, 2),
 			value:     "dadsa",
-			valueType: sql.Text,
+			valueType: types.Text,
 			expected:  "da",
 		},
 		{
 			name:      "inserting a string into a datetime results in 0 time",
-			colType:   sql.Datetime,
+			colType:   types.Datetime,
 			value:     "dadasd",
-			valueType: sql.Text,
+			valueType: types.Text,
 			expected:  time.Unix(-62167219200, 0).UTC(),
 		},
 		{
 			name:      "inserting a negative into an unsigned int results in 0",
-			colType:   sql.Uint64,
+			colType:   types.Uint64,
 			value:     -1,
-			valueType: sql.Int8,
+			valueType: types.Int8,
 			expected:  uint64(0),
 		},
 	}

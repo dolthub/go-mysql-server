@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // tableEditor manages the edits that a table receives.
@@ -163,7 +164,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		}
 		if cmp > 0 {
 			// Provided value larger than autoIncVal, set autoIncVal to that value
-			v, err := sql.Uint64.Convert(row[idx])
+			v, err := types.Uint64.Convert(row[idx])
 			if err != nil {
 				return err
 			}

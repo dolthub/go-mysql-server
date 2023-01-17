@@ -5,6 +5,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TableCopier is a supporting node that allows for the optimization of copying tables. It should be used in two cases.
@@ -132,7 +133,7 @@ func (tc *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, desti
 		return sql.RowsToRowIter(), err
 	}
 
-	return sql.RowsToRowIter([]sql.Row{{sql.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
+	return sql.RowsToRowIter([]sql.Row{{types.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
 }
 
 func (tc *TableCopier) Schema() sql.Schema {

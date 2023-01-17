@@ -12,48 +12,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package sql_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestRangeCutCompare(t *testing.T) {
 	type tc struct {
-		left, right RangeCut
+		left, right sql.RangeCut
 		res         int
 	}
 	for _, testcase := range []tc{
-		{AboveAll{}, AboveNull{}, 1},
-		{AboveAll{}, BelowNull{}, 1},
-		{AboveAll{}, Above{1}, 1},
-		{AboveAll{}, Below{1}, 1},
-		{AboveAll{}, AboveAll{}, 0},
+		{sql.AboveAll{}, sql.BelowNull{}, 1},
+		{sql.AboveAll{}, sql.AboveNull{}, 1},
+		{sql.AboveAll{}, sql.Above{1}, 1},
+		{sql.AboveAll{}, sql.Below{1}, 1},
+		{sql.AboveAll{}, sql.AboveAll{}, 0},
 
-		{Above{1}, AboveNull{}, 1},
-		{Above{1}, BelowNull{}, 1},
-		{Above{1}, Above{1}, 0},
-		{Above{1}, Below{1}, 1},
-		{Above{2}, Above{1}, 1},
+		{sql.Above{1}, sql.AboveNull{}, 1},
+		{sql.Above{1}, sql.BelowNull{}, 1},
+		{sql.Above{1}, sql.Above{1}, 0},
+		{sql.Above{1}, sql.Below{1}, 1},
+		{sql.Above{2}, sql.Above{1}, 1},
 
-		{Below{1}, AboveNull{}, 1},
-		{Below{1}, BelowNull{}, 1},
-		{Below{1}, Below{1}, 0},
-		{Below{2}, Below{1}, 1},
+		{sql.Below{1}, sql.AboveNull{}, 1},
+		{sql.Below{1}, sql.BelowNull{}, 1},
+		{sql.Below{1}, sql.Below{1}, 0},
+		{sql.Below{2}, sql.Below{1}, 1},
 
-		{AboveNull{}, BelowNull{}, 1},
+		{sql.AboveNull{}, sql.BelowNull{}, 1},
 
-		{BelowNull{}, BelowNull{}, 0},
+		{sql.BelowNull{}, sql.BelowNull{}, 0},
 	} {
 		t.Run(fmt.Sprintf("%s/%s = %d", testcase.left.String(), testcase.right.String(), testcase.res), func(t *testing.T) {
-			res, err := testcase.left.Compare(testcase.right, Int8)
+			res, err := testcase.left.Compare(testcase.right, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, testcase.res, res, "forward Compare")
 
-			res, err = testcase.right.Compare(testcase.left, Int8)
+			res, err = testcase.right.Compare(testcase.left, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, -testcase.res, res, "reverse Compare")
 		})

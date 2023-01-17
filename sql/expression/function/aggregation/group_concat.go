@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type GroupConcat struct {
@@ -145,17 +146,17 @@ func (g *GroupConcat) String() string {
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat for explanations
 // on return type.
 func (g *GroupConcat) Type() sql.Type {
-	if g.returnType == sql.Blob {
+	if g.returnType == types.Blob {
 		if g.maxLen <= 512 {
-			return sql.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary)
+			return types.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary)
 		} else {
-			return sql.Blob
+			return types.Blob
 		}
 	} else {
 		if g.maxLen <= 512 {
-			return sql.MustCreateString(query.Type_VARCHAR, 512, sql.Collation_Default)
+			return types.MustCreateString(query.Type_VARCHAR, 512, sql.Collation_Default)
 		} else {
-			return sql.Text
+			return types.Text
 		}
 	}
 }
@@ -205,8 +206,8 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	var v interface{}
 	var vs string
-	if sql.IsBlobType(retType) {
-		v, err = sql.Blob.Convert(evalRow[0])
+	if types.IsBlobType(retType) {
+		v, err = types.Blob.Convert(evalRow[0])
 		if err != nil {
 			return err
 		}
@@ -215,7 +216,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 			return nil
 		}
 	} else {
-		v, err = sql.LongText.Convert(evalRow[0])
+		v, err = types.LongText.Convert(evalRow[0])
 		if err != nil {
 			return err
 		}
@@ -299,7 +300,7 @@ func (g *groupConcatBuffer) Dispose() {
 
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
 	result := make(sql.Row, len(exprs))
-	retType := sql.Blob
+	retType := types.Blob
 	for i, expr := range exprs {
 		var err error
 		result[i], err = expr.Eval(ctx, row)
@@ -308,8 +309,8 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 		}
 
 		// If every expression returns Blob type return Blob otherwise return Text.
-		if expr.Type() != sql.Blob {
-			retType = sql.Text
+		if expr.Type() != types.Blob {
+			retType = types.Text
 		}
 	}
 

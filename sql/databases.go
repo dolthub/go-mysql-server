@@ -211,6 +211,8 @@ type TableCopierDatabase interface {
 // case-sensitivity.
 type StoredProcedureDatabase interface {
 	Database
+	// GetStoredProcedure returns the desired StoredProcedureDetails from the database.
+	GetStoredProcedure(ctx *Context, name string) (StoredProcedureDetails, bool, error)
 	// GetStoredProcedures returns all StoredProcedureDetails for the database.
 	GetStoredProcedures(ctx *Context) ([]StoredProcedureDetails, error)
 	// SaveStoredProcedure stores the given StoredProcedureDetails to the database. The integrator should verify that

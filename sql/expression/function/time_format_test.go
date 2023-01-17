@@ -20,8 +20,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestTimeFormatting(t *testing.T) {
@@ -62,9 +62,9 @@ func TestTimeFormatting(t *testing.T) {
 }
 
 func TestTimeFormatEval(t *testing.T) {
-	timeLit := expression.NewLiteral("04:05:06.000007", sql.Time)
-	format := expression.NewLiteral("%H-%i-%s|%f", sql.Text)
-	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	timeLit := expression.NewLiteral("04:05:06.000007", types.Time)
+	format := expression.NewLiteral("%H-%i-%s|%f", types.Text)
+	nullLiteral := expression.NewLiteral(nil, types.Null)
 
 	timeFormat := NewTimeFormat(timeLit, format)
 	res, err := timeFormat.Eval(nil, nil)

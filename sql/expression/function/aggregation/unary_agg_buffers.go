@@ -9,6 +9,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type anyValueBuffer struct {
@@ -78,7 +79,7 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 func (m *sumBuffer) PerformSum(v interface{}) {
 	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
-	if s, isStr := v.(string); isStr && sql.IsDecimal(m.expr.Type()) {
+	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type()) {
 		val, err := m.expr.Type().Convert(s)
 		if err == nil {
 			v = val
@@ -97,7 +98,7 @@ func (m *sumBuffer) PerformSum(v interface{}) {
 			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(n)
 		}
 	default:
-		val, err := sql.Float64.Convert(n)
+		val, err := types.Float64.Convert(n)
 		if err != nil {
 			val = float64(0)
 		}
@@ -105,7 +106,7 @@ func (m *sumBuffer) PerformSum(v interface{}) {
 			m.sum = float64(0)
 			m.isnil = false
 		}
-		sum, err := sql.Float64.Convert(m.sum)
+		sum, err := types.Float64.Convert(m.sum)
 		if err != nil {
 			sum = float64(0)
 		}
@@ -259,7 +260,7 @@ func (b *bitAndBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = sql.Uint64.Convert(v)
+	v, err = types.Uint64.Convert(v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -306,7 +307,7 @@ func (b *bitOrBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = sql.Uint64.Convert(v)
+	v, err = types.Uint64.Convert(v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -353,7 +354,7 @@ func (b *bitXorBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = sql.Uint64.Convert(v)
+	v, err = types.Uint64.Convert(v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -627,7 +628,7 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := v.(sql.JSONValue); ok {
+	if js, ok := v.(types.JSONValue); ok {
 		doc, err := js.Unmarshall(ctx)
 		if err != nil {
 			return err
@@ -642,7 +643,7 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 // Eval implements the AggregationBuffer interface.
 func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
-	return sql.JSONDocument{Val: j.vals}, nil
+	return types.JSONDocument{Val: j.vals}, nil
 }
 
 // Dispose implements the Disposable interface.

@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // StrCmp compares two strings
@@ -50,7 +51,7 @@ func (s *StrCmp) Description() string {
 
 // Type implements the Expression interface.
 func (s *StrCmp) Type() sql.Type {
-	return sql.Int8
+	return types.Int8
 }
 
 func (s *StrCmp) String() string {
@@ -93,6 +94,6 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	strType := sql.CreateLongText(collationPreference)
+	strType := types.CreateLongText(collationPreference)
 	return strType.Compare(expr1, expr2)
 }

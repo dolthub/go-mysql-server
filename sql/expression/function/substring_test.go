@@ -21,13 +21,14 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestSubstring(t *testing.T) {
 	f, err := NewSubstring(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.Int32, "start", false),
-		expression.NewGetField(2, sql.Int64, "len", false),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.Int32, "start", false),
+		expression.NewGetField(2, types.Int64, "len", false),
 	)
 	require.NoError(t, err)
 
@@ -69,9 +70,9 @@ func TestSubstring(t *testing.T) {
 
 func TestSubstringIndex(t *testing.T) {
 	f := NewSubstringIndex(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "delim", true),
-		expression.NewGetField(2, sql.Int64, "count", false),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "delim", true),
+		expression.NewGetField(2, types.Int64, "count", false),
 	)
 	testCases := []struct {
 		name     string
@@ -111,8 +112,8 @@ func TestSubstringIndex(t *testing.T) {
 
 func TestInstr(t *testing.T) {
 	f := NewInstr(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "substr", false),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "substr", false),
 	)
 
 	testCases := []struct {
@@ -155,8 +156,8 @@ func TestInstr(t *testing.T) {
 
 func TestLeft(t *testing.T) {
 	f := NewLeft(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.Int64, "len", false),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.Int64, "len", false),
 	)
 
 	testCases := []struct {
@@ -195,8 +196,8 @@ func TestLeft(t *testing.T) {
 
 func TestRight(t *testing.T) {
 	f := NewRight(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.Int64, "len", false),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.Int64, "len", false),
 	)
 
 	testCases := []struct {
