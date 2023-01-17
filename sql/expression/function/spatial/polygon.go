@@ -17,6 +17,7 @@ package spatial
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
