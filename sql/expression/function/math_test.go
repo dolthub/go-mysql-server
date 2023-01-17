@@ -25,12 +25,13 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestRand(t *testing.T) {
 	r, _ := NewRand()
 
-	assert.Equal(t, sql.Float64, r.Type())
+	assert.Equal(t, types.Float64, r.Type())
 	assert.Equal(t, "rand()", r.String())
 
 	f, err := r.Eval(nil, nil)
@@ -50,9 +51,9 @@ func TestRand(t *testing.T) {
 }
 
 func TestRandWithSeed(t *testing.T) {
-	r, _ := NewRand(expression.NewLiteral(10, sql.Int8))
+	r, _ := NewRand(expression.NewLiteral(10, types.Int8))
 
-	assert.Equal(t, sql.Float64, r.Type())
+	assert.Equal(t, types.Float64, r.Type())
 	assert.Equal(t, "rand(10)", r.String())
 
 	f, err := r.Eval(nil, nil)
@@ -68,7 +69,7 @@ func TestRandWithSeed(t *testing.T) {
 
 	assert.Equal(t, f64, f642)
 
-	r, _ = NewRand(expression.NewLiteral("not a number", sql.LongText))
+	r, _ = NewRand(expression.NewLiteral("not a number", types.LongText))
 	assert.Equal(t, `rand('not a number')`, r.String())
 
 	f, err = r.Eval(nil, nil)
@@ -162,7 +163,7 @@ func TestCRC32(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
 
-	nullLiteral := expression.NewLiteral(nil, sql.Null)
+	nullLiteral := expression.NewLiteral(nil, types.Null)
 	crc32 = f.Fn(nullLiteral)
 	res, err = crc32.Eval(nil, nil)
 	assert.NoError(t, err)
@@ -271,7 +272,7 @@ func TestMod(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mod, err := f.Fn(expression.NewLiteral(test.left, sql.Int32), expression.NewLiteral(test.right, sql.Int32))
+			mod, err := f.Fn(expression.NewLiteral(test.left, types.Int32), expression.NewLiteral(test.right, types.Int32))
 			res, err := mod.Eval(nil, nil)
 			assert.NoError(t, err)
 			if r, ok := res.(decimal.Decimal); ok {

@@ -19,6 +19,7 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -72,10 +73,10 @@ func (p *ShowTables) Schema() sql.Schema {
 	var sch sql.Schema
 	colName := fmt.Sprintf("Tables_in_%s", p.Database().Name())
 	sch = sql.Schema{
-		{Name: colName, Type: sql.LongText},
+		{Name: colName, Type: types.LongText},
 	}
 	if p.Full {
-		sch = append(sch, &sql.Column{Name: "Table_type", Type: sql.LongText})
+		sch = append(sch, &sql.Column{Name: "Table_type", Type: types.LongText})
 	}
 	return sch
 }

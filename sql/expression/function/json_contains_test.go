@@ -22,47 +22,48 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONContains(t *testing.T) {
 	// Quickly assert that an error is thrown with < 2 and > 3 arguments
 	_, err := NewJSONContains(
-		expression.NewGetField(0, sql.JSON, "arg1", false),
+		expression.NewGetField(0, types.JSON, "arg1", false),
 	)
 	require.Error(t, err)
 
 	_, err = NewJSONContains(
-		expression.NewGetField(0, sql.JSON, "arg1", false),
-		expression.NewGetField(1, sql.JSON, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
-		expression.NewGetField(3, sql.LongText, "arg4", false),
+		expression.NewGetField(0, types.JSON, "arg1", false),
+		expression.NewGetField(1, types.JSON, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
+		expression.NewGetField(3, types.LongText, "arg4", false),
 	)
 	require.Error(t, err)
 
 	f, err := NewJSONContains(
-		expression.NewGetField(0, sql.JSON, "arg1", false),
-		expression.NewGetField(1, sql.JSON, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(0, types.JSON, "arg1", false),
+		expression.NewGetField(1, types.JSON, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 
 	f2, err := NewJSONContains(
-		expression.NewGetField(0, sql.JSON, "arg1", false),
-		expression.NewGetField(1, sql.JSON, "arg2", false),
+		expression.NewGetField(0, types.JSON, "arg1", false),
+		expression.NewGetField(1, types.JSON, "arg2", false),
 	)
 	require.NoError(t, err)
 
-	json, err := sql.JSON.Convert(`{` +
+	json, err := types.JSON.Convert(`{` +
 		`"a": [1, 2, 3, 4], ` +
 		`"b": {"c": "foo", "d": true}, ` +
 		`"e": [[1, 2], [3, 4]] ` +
 		`}`)
 	require.NoError(t, err)
 
-	badMap, err := sql.JSON.Convert(`{"x": [[1, 2], [3, 4]]}`)
+	badMap, err := types.JSON.Convert(`{"x": [[1, 2], [3, 4]]}`)
 	require.NoError(t, err)
 
-	goodMap, err := sql.JSON.Convert(`{"e": [[1, 2], [3, 4]]}`)
+	goodMap, err := types.JSON.Convert(`{"e": [[1, 2], [3, 4]]}`)
 	require.NoError(t, err)
 
 	testCases := []struct {

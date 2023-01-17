@@ -24,15 +24,16 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJoinSchema(t *testing.T) {
 	t1 := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Int64},
+		{Name: "a", Source: "foo", Type: types.Int64},
 	}), nil), nil, nil)
 
 	t2 := NewResolvedTable(memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "b", Source: "bar", Type: sql.Int64},
+		{Name: "b", Source: "bar", Type: types.Int64},
 	}), nil), nil, nil)
 
 	t.Run("inner", func(t *testing.T) {
@@ -40,8 +41,8 @@ func TestJoinSchema(t *testing.T) {
 		result := j.Schema()
 
 		require.Equal(t, sql.Schema{
-			{Name: "a", Source: "foo", Type: sql.Int64},
-			{Name: "b", Source: "bar", Type: sql.Int64},
+			{Name: "a", Source: "foo", Type: types.Int64},
+			{Name: "b", Source: "bar", Type: types.Int64},
 		}, result)
 	})
 
@@ -50,8 +51,8 @@ func TestJoinSchema(t *testing.T) {
 		result := j.Schema()
 
 		require.Equal(t, sql.Schema{
-			{Name: "a", Source: "foo", Type: sql.Int64},
-			{Name: "b", Source: "bar", Type: sql.Int64, Nullable: true},
+			{Name: "a", Source: "foo", Type: types.Int64},
+			{Name: "b", Source: "bar", Type: types.Int64, Nullable: true},
 		}, result)
 	})
 
@@ -60,8 +61,8 @@ func TestJoinSchema(t *testing.T) {
 		result := j.Schema()
 
 		require.Equal(t, sql.Schema{
-			{Name: "a", Source: "foo", Type: sql.Int64, Nullable: true},
-			{Name: "b", Source: "bar", Type: sql.Int64},
+			{Name: "a", Source: "foo", Type: types.Int64, Nullable: true},
+			{Name: "b", Source: "bar", Type: types.Int64},
 		}, result)
 	})
 }
@@ -97,8 +98,8 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 		NewResolvedTable(ltable, nil, nil),
 		NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Text, "lcol1", false),
-			expression.NewGetField(4, sql.Text, "rcol1", false),
+			expression.NewGetField(0, types.Text, "lcol1", false),
+			expression.NewGetField(4, types.Text, "rcol1", false),
 		))
 
 	rows := collectRows(t, j)
@@ -120,8 +121,8 @@ func TestInnerJoinEmpty(t *testing.T) {
 		NewResolvedTable(ltable, nil, nil),
 		NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Text, "lcol1", false),
-			expression.NewGetField(4, sql.Text, "rcol1", false),
+			expression.NewGetField(0, types.Text, "lcol1", false),
+			expression.NewGetField(4, types.Text, "rcol1", false),
 		))
 
 	iter, err := j.RowIter(ctx, nil)
@@ -132,13 +133,13 @@ func TestInnerJoinEmpty(t *testing.T) {
 
 func BenchmarkInnerJoin(b *testing.B) {
 	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Int64},
-		{Name: "b", Source: "foo", Type: sql.Text},
+		{Name: "a", Source: "foo", Type: types.Int64},
+		{Name: "b", Source: "foo", Type: types.Text},
 	}), nil)
 
 	t2 := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "bar", Type: sql.Int64},
-		{Name: "b", Source: "bar", Type: sql.Text},
+		{Name: "a", Source: "bar", Type: types.Int64},
+		{Name: "b", Source: "bar", Type: types.Text},
 	}), nil)
 
 	for i := 0; i < 5; i++ {
@@ -150,15 +151,15 @@ func BenchmarkInnerJoin(b *testing.B) {
 		NewResolvedTable(t1, nil, nil),
 		NewResolvedTable(t2, nil, nil),
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Int64, "a", false),
-			expression.NewGetField(2, sql.Int64, "a", false),
+			expression.NewGetField(0, types.Int64, "a", false),
+			expression.NewGetField(2, types.Int64, "a", false),
 		),
 	)
 
 	n2 := NewFilter(
 		expression.NewEquals(
-			expression.NewGetField(0, sql.Int64, "a", false),
-			expression.NewGetField(2, sql.Int64, "a", false),
+			expression.NewGetField(0, types.Int64, "a", false),
+			expression.NewGetField(2, types.Int64, "a", false),
 		),
 		NewCrossJoin(
 			NewResolvedTable(t1, nil, nil),
@@ -250,10 +251,10 @@ func TestLeftJoin(t *testing.T) {
 		NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
 			expression.NewPlus(
-				expression.NewGetField(2, sql.Text, "lcol3", false),
-				expression.NewLiteral(int32(2), sql.Int32),
+				expression.NewGetField(2, types.Text, "lcol3", false),
+				expression.NewLiteral(int32(2), types.Int32),
 			),
-			expression.NewGetField(6, sql.Text, "rcol3", false),
+			expression.NewGetField(6, types.Text, "rcol3", false),
 		))
 
 	ctx := sql.NewEmptyContext()

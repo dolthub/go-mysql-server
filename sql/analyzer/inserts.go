@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -272,14 +273,14 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 		case *expression.GetField:
 			otherCol := schema[e.Index()]
 			// special case: null field type, will get checked at execution time
-			if otherCol.Type == sql.Null {
+			if otherCol.Type == types.Null {
 				continue
 			}
 			exprType := expr.Type()
 			_, err := exprType.Convert(otherCol.Type.Zero())
 			if err != nil {
 				// The zero value will fail when passing string values to ENUM, so we specially handle this case
-				if _, ok := exprType.(sql.EnumType); ok && sql.IsText(otherCol.Type) {
+				if _, ok := exprType.(sql.EnumType); ok && types.IsText(otherCol.Type) {
 					continue
 				}
 				return plan.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())

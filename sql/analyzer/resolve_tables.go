@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -107,7 +108,7 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 
 			// special case for AsOf's that use naked identifiers; they are interpreted as UnresolvedColumns
 			if col, ok := asOfExpr.(*expression.UnresolvedColumn); ok {
-				asOfExpr = expression.NewLiteral(col.String(), sql.LongText)
+				asOfExpr = expression.NewLiteral(col.String(), types.LongText)
 			}
 
 			if !asOfExpr.Resolved() {

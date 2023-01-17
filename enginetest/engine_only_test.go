@@ -16,8 +16,10 @@ package enginetest_test
 
 import (
 	"context"
+	sql2 "database/sql"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -33,12 +35,14 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -262,7 +266,7 @@ func TestTrackProcess(t *testing.T) {
 	node := plan.NewInnerJoin(
 		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
 		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
-		expression.NewLiteral(int64(1), sql.Int64),
+		expression.NewLiteral(int64(1), types.Int64),
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(sqle.NewProcessList()))
@@ -396,7 +400,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 		{
@@ -405,7 +409,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 		{
@@ -415,8 +419,8 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				greatest, err := function.NewGreatest(
-					expression.NewLiteral("abc123", sql.LongText),
-					expression.NewLiteral("cde456", sql.LongText),
+					expression.NewLiteral("abc123", types.LongText),
+					expression.NewLiteral("cde456", types.LongText),
 				)
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, greatest)
@@ -429,7 +433,7 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				timestamp, err := function.NewTimestamp(
-					expression.NewLiteral("20200101:120000Z", sql.LongText),
+					expression.NewLiteral("20200101:120000Z", types.LongText),
 				)
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, timestamp)
@@ -441,7 +445,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 	}
@@ -812,11 +816,11 @@ func (s SimpleTableFunction) Schema() sql.Schema {
 	schema := []*sql.Column{
 		&sql.Column{
 			Name: "one",
-			Type: sql.TinyText,
+			Type: types.TinyText,
 		},
 		&sql.Column{
 			Name: "two",
-			Type: sql.Int64,
+			Type: types.Int64,
 		},
 	}
 
@@ -912,4 +916,73 @@ func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunct
 	}
 
 	return nil, sql.ErrTableFunctionNotFound.New(name)
+}
+
+func TestTimestampBindingsCanBeConverted(t *testing.T) {
+	db, close := newDatabase()
+	defer close()
+
+	_, err := db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
+	require.NoError(t, err)
+
+	// All we are doing in this test is ensuring that writing a timestamp to the
+	// database does not throw an error.
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", time.Now())
+	require.NoError(t, err)
+}
+
+func TestTimestampBindingsCanBeCompared(t *testing.T) {
+	db, close := newDatabase()
+	defer close()
+
+	_, err := db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
+	require.NoError(t, err)
+
+	// We'll insert both of these timestamps and then try and filter them.
+	t0 := time.Date(2022, 01, 01, 0, 0, 0, 0, time.UTC)
+	t1 := t0.Add(1 * time.Minute)
+
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", t0)
+	require.NoError(t, err)
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", t1)
+	require.NoError(t, err)
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(1) FROM mytable WHERE t > ?", t0).Scan(&count)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+}
+
+func newDatabase() (*sql2.DB, func()) {
+	// Grab an empty port so that tests do not fail if a specific port is already in use
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err = listener.Close(); err != nil {
+		panic(err)
+	}
+
+	provider := sql.NewDatabaseProvider(
+		memory.NewDatabase("mydb"),
+	)
+	engine := sqle.New(analyzer.NewDefault(provider), &sqle.Config{
+		IncludeRootAccount: true,
+	})
+	cfg := server.Config{
+		Protocol: "tcp",
+		Address:  fmt.Sprintf("localhost:%d", port),
+	}
+	srv, err := server.NewDefaultServer(cfg, engine)
+	if err != nil {
+		panic(err)
+	}
+	go srv.Start()
+
+	db, err := sql2.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/mydb", port))
+	if err != nil {
+		panic(err)
+	}
+	return db, func() { srv.Close() }
 }

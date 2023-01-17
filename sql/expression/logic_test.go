@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestAnd(t *testing.T) {
@@ -46,8 +47,8 @@ func TestAnd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewAnd(
-				NewLiteral(tt.left, sql.Boolean),
-				NewLiteral(tt.right, sql.Boolean),
+				NewLiteral(tt.left, types.Boolean),
+				NewLiteral(tt.right, types.Boolean),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)
@@ -80,8 +81,8 @@ func TestOr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewOr(
-				NewLiteral(tt.left, sql.Boolean),
-				NewLiteral(tt.right, sql.Boolean),
+				NewLiteral(tt.left, types.Boolean),
+				NewLiteral(tt.right, types.Boolean),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)
@@ -114,8 +115,8 @@ func TestXor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewXor(
-				NewLiteral(tt.left, sql.Boolean),
-				NewLiteral(tt.right, sql.Boolean),
+				NewLiteral(tt.left, types.Boolean),
+				NewLiteral(tt.right, types.Boolean),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)

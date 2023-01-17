@@ -21,27 +21,28 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONMergePreserve(t *testing.T) {
 	f2, err := NewJSONMergePreserve(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
 	f3, err := NewJSONMergePreserve(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 
 	f4, err := NewJSONMergePreserve(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
-		expression.NewGetField(3, sql.LongText, "arg4", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
+		expression.NewGetField(3, types.LongText, "arg4", false),
 	)
 	require.NoError(t, err)
 
@@ -113,16 +114,16 @@ func TestJSONMergePreserve(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f2, sql.Row{nil, nil}, sql.JSONDocument{Val: []interface{}{nil, nil}}, nil},
-		{f2, sql.Row{jsonArray1, nil}, sql.JSONDocument{Val: []interface{}{float64(1), float64(2), nil}}, nil},
-		{f2, sql.Row{jsonArray1, jsonArray2}, sql.JSONDocument{Val: []interface{}{float64(1), float64(2), true, false}}, nil},
-		{f2, sql.Row{jsonObj1, jsonObj2}, sql.JSONDocument{Val: map[string]interface{}{"name": "x", "id": float64(47)}}, nil},
-		{f2, sql.Row{1, true}, sql.JSONDocument{Val: []interface{}{float64(1), true}}, nil},
-		{f2, sql.Row{jsonArray1, jsonObj2}, sql.JSONDocument{Val: []interface{}{float64(1), float64(2), map[string]interface{}{"id": float64(47)}}}, nil},
-		{f3, sql.Row{jsonObj3, jsonObj4, jsonObj5}, sql.JSONDocument{Val: json3ObjResult}, nil},
-		{f2, sql.Row{sData1, sData2}, sql.JSONDocument{Val: resultData}, nil},
-		{f4, sql.Row{jsonObj3, jsonObj4, jsonObj5, jsonObj6}, sql.JSONDocument{Val: json4ObjResult}, nil},
-		{f3, sql.Row{jsonObj3, jsonObj7, jsonValue1}, sql.JSONDocument{Val: mixedData}, nil},
+		{f2, sql.Row{nil, nil}, types.JSONDocument{Val: []interface{}{nil, nil}}, nil},
+		{f2, sql.Row{jsonArray1, nil}, types.JSONDocument{Val: []interface{}{float64(1), float64(2), nil}}, nil},
+		{f2, sql.Row{jsonArray1, jsonArray2}, types.JSONDocument{Val: []interface{}{float64(1), float64(2), true, false}}, nil},
+		{f2, sql.Row{jsonObj1, jsonObj2}, types.JSONDocument{Val: map[string]interface{}{"name": "x", "id": float64(47)}}, nil},
+		{f2, sql.Row{1, true}, types.JSONDocument{Val: []interface{}{float64(1), true}}, nil},
+		{f2, sql.Row{jsonArray1, jsonObj2}, types.JSONDocument{Val: []interface{}{float64(1), float64(2), map[string]interface{}{"id": float64(47)}}}, nil},
+		{f3, sql.Row{jsonObj3, jsonObj4, jsonObj5}, types.JSONDocument{Val: json3ObjResult}, nil},
+		{f2, sql.Row{sData1, sData2}, types.JSONDocument{Val: resultData}, nil},
+		{f4, sql.Row{jsonObj3, jsonObj4, jsonObj5, jsonObj6}, types.JSONDocument{Val: json4ObjResult}, nil},
+		{f3, sql.Row{jsonObj3, jsonObj7, jsonValue1}, types.JSONDocument{Val: mixedData}, nil},
 	}
 
 	for _, tt := range testCases {

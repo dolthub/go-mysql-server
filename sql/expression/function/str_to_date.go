@@ -5,6 +5,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse/dateparse"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // NewStrToDate constructs a new function expression from the given child expressions.
@@ -44,7 +45,7 @@ func (s StrToDate) String() string {
 
 // Type returns the expression type.
 func (s StrToDate) Type() sql.Type {
-	return sql.Datetime
+	return types.Datetime
 }
 
 // IsNullable returns whether the expression can be null.

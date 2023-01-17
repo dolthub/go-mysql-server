@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -35,52 +36,52 @@ var (
 	errorType = reflect.TypeOf((*error)(nil)).Elem()
 	// externalStoredProcedurePointerTypes maps a non-pointer type to a sql.Type for external stored procedures.
 	externalStoredProcedureTypes = map[reflect.Type]sql.Type{
-		reflect.TypeOf(int(0)):            sql.Int64,
-		reflect.TypeOf(int8(0)):           sql.Int8,
-		reflect.TypeOf(int16(0)):          sql.Int16,
-		reflect.TypeOf(int32(0)):          sql.Int32,
-		reflect.TypeOf(int64(0)):          sql.Int64,
-		reflect.TypeOf(uint(0)):           sql.Uint64,
-		reflect.TypeOf(uint8(0)):          sql.Uint8,
-		reflect.TypeOf(uint16(0)):         sql.Uint16,
-		reflect.TypeOf(uint32(0)):         sql.Uint32,
-		reflect.TypeOf(uint64(0)):         sql.Uint64,
-		reflect.TypeOf(float32(0)):        sql.Float32,
-		reflect.TypeOf(float64(0)):        sql.Float64,
-		reflect.TypeOf(bool(false)):       sql.Int8,
-		reflect.TypeOf(string("")):        sql.LongText,
-		reflect.TypeOf([]byte{}):          sql.LongBlob,
-		reflect.TypeOf(time.Time{}):       sql.Datetime,
-		reflect.TypeOf(decimal.Decimal{}): sql.InternalDecimalType,
+		reflect.TypeOf(int(0)):            types.Int64,
+		reflect.TypeOf(int8(0)):           types.Int8,
+		reflect.TypeOf(int16(0)):          types.Int16,
+		reflect.TypeOf(int32(0)):          types.Int32,
+		reflect.TypeOf(int64(0)):          types.Int64,
+		reflect.TypeOf(uint(0)):           types.Uint64,
+		reflect.TypeOf(uint8(0)):          types.Uint8,
+		reflect.TypeOf(uint16(0)):         types.Uint16,
+		reflect.TypeOf(uint32(0)):         types.Uint32,
+		reflect.TypeOf(uint64(0)):         types.Uint64,
+		reflect.TypeOf(float32(0)):        types.Float32,
+		reflect.TypeOf(float64(0)):        types.Float64,
+		reflect.TypeOf(bool(false)):       types.Int8,
+		reflect.TypeOf(string("")):        types.LongText,
+		reflect.TypeOf([]byte{}):          types.LongBlob,
+		reflect.TypeOf(time.Time{}):       types.Datetime,
+		reflect.TypeOf(decimal.Decimal{}): types.InternalDecimalType,
 	}
 	// externalStoredProcedurePointerTypes maps a pointer type to a sql.Type for external stored procedures.
 	externalStoredProcedurePointerTypes = map[reflect.Type]sql.Type{
-		reflect.TypeOf((*int)(nil)):             sql.Int64,
-		reflect.TypeOf((*int8)(nil)):            sql.Int8,
-		reflect.TypeOf((*int16)(nil)):           sql.Int16,
-		reflect.TypeOf((*int32)(nil)):           sql.Int32,
-		reflect.TypeOf((*int64)(nil)):           sql.Int64,
-		reflect.TypeOf((*uint)(nil)):            sql.Uint64,
-		reflect.TypeOf((*uint8)(nil)):           sql.Uint8,
-		reflect.TypeOf((*uint16)(nil)):          sql.Uint16,
-		reflect.TypeOf((*uint32)(nil)):          sql.Uint32,
-		reflect.TypeOf((*uint64)(nil)):          sql.Uint64,
-		reflect.TypeOf((*float32)(nil)):         sql.Float32,
-		reflect.TypeOf((*float64)(nil)):         sql.Float64,
-		reflect.TypeOf((*bool)(nil)):            sql.Int8,
-		reflect.TypeOf((*string)(nil)):          sql.LongText,
-		reflect.TypeOf((*[]byte)(nil)):          sql.LongBlob,
-		reflect.TypeOf((*time.Time)(nil)):       sql.Datetime,
-		reflect.TypeOf((*decimal.Decimal)(nil)): sql.InternalDecimalType,
+		reflect.TypeOf((*int)(nil)):             types.Int64,
+		reflect.TypeOf((*int8)(nil)):            types.Int8,
+		reflect.TypeOf((*int16)(nil)):           types.Int16,
+		reflect.TypeOf((*int32)(nil)):           types.Int32,
+		reflect.TypeOf((*int64)(nil)):           types.Int64,
+		reflect.TypeOf((*uint)(nil)):            types.Uint64,
+		reflect.TypeOf((*uint8)(nil)):           types.Uint8,
+		reflect.TypeOf((*uint16)(nil)):          types.Uint16,
+		reflect.TypeOf((*uint32)(nil)):          types.Uint32,
+		reflect.TypeOf((*uint64)(nil)):          types.Uint64,
+		reflect.TypeOf((*float32)(nil)):         types.Float32,
+		reflect.TypeOf((*float64)(nil)):         types.Float64,
+		reflect.TypeOf((*bool)(nil)):            types.Int8,
+		reflect.TypeOf((*string)(nil)):          types.LongText,
+		reflect.TypeOf((*[]byte)(nil)):          types.LongBlob,
+		reflect.TypeOf((*time.Time)(nil)):       types.Datetime,
+		reflect.TypeOf((*decimal.Decimal)(nil)): types.InternalDecimalType,
 	}
 )
 
 func init() {
 	if strconv.IntSize == 32 {
-		externalStoredProcedureTypes[reflect.TypeOf(int(0))] = sql.Int32
-		externalStoredProcedureTypes[reflect.TypeOf(uint(0))] = sql.Uint32
-		externalStoredProcedurePointerTypes[reflect.TypeOf((*int)(nil))] = sql.Int32
-		externalStoredProcedurePointerTypes[reflect.TypeOf((*uint)(nil))] = sql.Uint32
+		externalStoredProcedureTypes[reflect.TypeOf(int(0))] = types.Int32
+		externalStoredProcedureTypes[reflect.TypeOf(uint(0))] = types.Uint32
+		externalStoredProcedurePointerTypes[reflect.TypeOf((*int)(nil))] = types.Int32
+		externalStoredProcedurePointerTypes[reflect.TypeOf((*uint)(nil))] = types.Uint32
 	}
 }
 

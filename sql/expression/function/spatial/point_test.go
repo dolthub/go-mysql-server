@@ -21,35 +21,36 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestPoint(t *testing.T) {
 	t.Run("create valid point with integers", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(1, sql.Int64),
-			expression.NewLiteral(2, sql.Int64),
+		f := NewPoint(expression.NewLiteral(1, types.Int64),
+			expression.NewLiteral(2, types.Int64),
 		)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 1, Y: 2}, v)
+		require.Equal(types.Point{X: 1, Y: 2}, v)
 	})
 
 	t.Run("create valid point with floats", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(123.456, sql.Float64),
-			expression.NewLiteral(789.000, sql.Float64),
+		f := NewPoint(expression.NewLiteral(123.456, types.Float64),
+			expression.NewLiteral(789.000, types.Float64),
 		)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 123.456, Y: 789}, v)
+		require.Equal(types.Point{X: 123.456, Y: 789}, v)
 	})
 
 	t.Run("create valid point with null x", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(nil, sql.Null),
-			expression.NewLiteral(2, sql.Int32),
+		f := NewPoint(expression.NewLiteral(nil, types.Null),
+			expression.NewLiteral(2, types.Int32),
 		)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -59,8 +60,8 @@ func TestPoint(t *testing.T) {
 
 	t.Run("create valid point with null y", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(1, sql.Int32),
-			expression.NewLiteral(nil, sql.Null),
+		f := NewPoint(expression.NewLiteral(1, types.Int32),
+			expression.NewLiteral(nil, types.Null),
 		)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -70,8 +71,8 @@ func TestPoint(t *testing.T) {
 
 	t.Run("create valid point with nulls", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(nil, sql.Null),
-			expression.NewLiteral(nil, sql.Null),
+		f := NewPoint(expression.NewLiteral(nil, types.Null),
+			expression.NewLiteral(nil, types.Null),
 		)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)

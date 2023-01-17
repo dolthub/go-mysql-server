@@ -23,22 +23,23 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestResolveNaturalJoins(t *testing.T) {
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t1"},
-		{Name: "b", Type: sql.Int64, Source: "t1"},
-		{Name: "c", Type: sql.Int64, Source: "t1"},
+		{Name: "a", Type: types.Int64, Source: "t1"},
+		{Name: "b", Type: types.Int64, Source: "t1"},
+		{Name: "c", Type: types.Int64, Source: "t1"},
 	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "d", Type: sql.Int64, Source: "t2"},
-		{Name: "c", Type: sql.Int64, Source: "t2"},
-		{Name: "b", Type: sql.Int64, Source: "t2"},
-		{Name: "e", Type: sql.Int64, Source: "t2"},
+		{Name: "d", Type: types.Int64, Source: "t2"},
+		{Name: "c", Type: types.Int64, Source: "t2"},
+		{Name: "b", Type: types.Int64, Source: "t2"},
+		{Name: "e", Type: types.Int64, Source: "t2"},
 	}), nil)
 
 	node := plan.NewNaturalJoin(
@@ -52,23 +53,23 @@ func TestResolveNaturalJoins(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-			expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
-			expression.NewGetFieldWithTable(3, sql.Int64, "t2", "d", false),
-			expression.NewGetFieldWithTable(6, sql.Int64, "t2", "e", false),
+			expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+			expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
+			expression.NewGetFieldWithTable(3, types.Int64, "t2", "d", false),
+			expression.NewGetFieldWithTable(6, types.Int64, "t2", "e", false),
 		},
 		plan.NewInnerJoin(
 			plan.NewResolvedTable(left, nil, nil),
 			plan.NewResolvedTable(right, nil, nil),
 			expression.JoinAnd(
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-					expression.NewGetFieldWithTable(5, sql.Int64, "t2", "b", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(5, types.Int64, "t2", "b", false),
 				),
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-					expression.NewGetFieldWithTable(4, sql.Int64, "t2", "c", false),
+					expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+					expression.NewGetFieldWithTable(4, types.Int64, "t2", "c", false),
 				),
 			),
 		),
@@ -82,16 +83,16 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t1"},
-		{Name: "b", Type: sql.Int64, Source: "t1"},
-		{Name: "c", Type: sql.Int64, Source: "t1"},
+		{Name: "a", Type: types.Int64, Source: "t1"},
+		{Name: "b", Type: types.Int64, Source: "t1"},
+		{Name: "c", Type: types.Int64, Source: "t1"},
 	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "d", Type: sql.Int64, Source: "t2"},
-		{Name: "c", Type: sql.Int64, Source: "t2"},
-		{Name: "b", Type: sql.Int64, Source: "t2"},
-		{Name: "e", Type: sql.Int64, Source: "t2"},
+		{Name: "d", Type: types.Int64, Source: "t2"},
+		{Name: "c", Type: types.Int64, Source: "t2"},
+		{Name: "b", Type: types.Int64, Source: "t2"},
+		{Name: "e", Type: types.Int64, Source: "t2"},
 	}), nil)
 
 	node := plan.NewProject(
@@ -113,23 +114,23 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-				expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-				expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
-				expression.NewGetFieldWithTable(3, sql.Int64, "t2", "d", false),
-				expression.NewGetFieldWithTable(6, sql.Int64, "t2", "e", false),
+				expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+				expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+				expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
+				expression.NewGetFieldWithTable(3, types.Int64, "t2", "d", false),
+				expression.NewGetFieldWithTable(6, types.Int64, "t2", "e", false),
 			},
 			plan.NewInnerJoin(
 				plan.NewResolvedTable(left, nil, nil),
 				plan.NewResolvedTable(right, nil, nil),
 				expression.JoinAnd(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(5, sql.Int64, "t2", "b", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+						expression.NewGetFieldWithTable(5, types.Int64, "t2", "b", false),
 					),
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-						expression.NewGetFieldWithTable(4, sql.Int64, "t2", "c", false),
+						expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+						expression.NewGetFieldWithTable(4, types.Int64, "t2", "c", false),
 					),
 				),
 			),
@@ -144,16 +145,16 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t1"},
-		{Name: "b", Type: sql.Int64, Source: "t1"},
-		{Name: "c", Type: sql.Int64, Source: "t1"},
+		{Name: "a", Type: types.Int64, Source: "t1"},
+		{Name: "b", Type: types.Int64, Source: "t1"},
+		{Name: "c", Type: types.Int64, Source: "t1"},
 	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "d", Type: sql.Int64, Source: "t2"},
-		{Name: "c", Type: sql.Int64, Source: "t2"},
-		{Name: "b", Type: sql.Int64, Source: "t2"},
-		{Name: "e", Type: sql.Int64, Source: "t2"},
+		{Name: "d", Type: types.Int64, Source: "t2"},
+		{Name: "c", Type: types.Int64, Source: "t2"},
+		{Name: "b", Type: types.Int64, Source: "t2"},
+		{Name: "e", Type: types.Int64, Source: "t2"},
 	}), nil)
 
 	node := plan.NewProject(
@@ -177,23 +178,23 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-				expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-				expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
-				expression.NewGetFieldWithTable(3, sql.Int64, "t2-alias", "d", false),
-				expression.NewGetFieldWithTable(6, sql.Int64, "t2-alias", "e", false),
+				expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+				expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+				expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
+				expression.NewGetFieldWithTable(3, types.Int64, "t2-alias", "d", false),
+				expression.NewGetFieldWithTable(6, types.Int64, "t2-alias", "e", false),
 			},
 			plan.NewInnerJoin(
 				plan.NewResolvedTable(left, nil, nil),
 				plan.NewTableAlias("t2-alias", plan.NewResolvedTable(right, nil, nil)),
 				expression.JoinAnd(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(5, sql.Int64, "t2-alias", "b", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+						expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "b", false),
 					),
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-						expression.NewGetFieldWithTable(4, sql.Int64, "t2-alias", "c", false),
+						expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+						expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "c", false),
 					),
 				),
 			),
@@ -208,24 +209,24 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t1"},
-		{Name: "b", Type: sql.Int64, Source: "t1"},
-		{Name: "c", Type: sql.Int64, Source: "t1"},
-		{Name: "f", Type: sql.Int64, Source: "t1"},
+		{Name: "a", Type: types.Int64, Source: "t1"},
+		{Name: "b", Type: types.Int64, Source: "t1"},
+		{Name: "c", Type: types.Int64, Source: "t1"},
+		{Name: "f", Type: types.Int64, Source: "t1"},
 	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "d", Type: sql.Int64, Source: "t2"},
-		{Name: "c", Type: sql.Int64, Source: "t2"},
-		{Name: "b", Type: sql.Int64, Source: "t2"},
-		{Name: "e", Type: sql.Int64, Source: "t2"},
+		{Name: "d", Type: types.Int64, Source: "t2"},
+		{Name: "c", Type: types.Int64, Source: "t2"},
+		{Name: "b", Type: types.Int64, Source: "t2"},
+		{Name: "e", Type: types.Int64, Source: "t2"},
 	}), nil)
 
 	upperRight := memory.NewTable("t3", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t3"},
-		{Name: "b", Type: sql.Int64, Source: "t3"},
-		{Name: "f", Type: sql.Int64, Source: "t3"},
-		{Name: "g", Type: sql.Int64, Source: "t3"},
+		{Name: "a", Type: types.Int64, Source: "t3"},
+		{Name: "b", Type: types.Int64, Source: "t3"},
+		{Name: "f", Type: types.Int64, Source: "t3"},
+		{Name: "g", Type: types.Int64, Source: "t3"},
 	}), nil)
 
 	node := plan.NewProject(
@@ -254,35 +255,35 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		},
 		plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, sql.Int64, "t1", "b", false),
-				expression.NewGetFieldWithTable(2, sql.Int64, "t1", "a", false),
-				expression.NewGetFieldWithTable(3, sql.Int64, "t1", "f", false),
-				expression.NewGetFieldWithTable(1, sql.Int64, "t1", "c", false),
-				expression.NewGetFieldWithTable(4, sql.Int64, "t2-alias", "d", false),
-				expression.NewGetFieldWithTable(5, sql.Int64, "t2-alias", "e", false),
-				expression.NewGetFieldWithTable(9, sql.Int64, "t3-alias", "g", false),
+				expression.NewGetFieldWithTable(0, types.Int64, "t1", "b", false),
+				expression.NewGetFieldWithTable(2, types.Int64, "t1", "a", false),
+				expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
+				expression.NewGetFieldWithTable(1, types.Int64, "t1", "c", false),
+				expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "d", false),
+				expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "e", false),
+				expression.NewGetFieldWithTable(9, types.Int64, "t3-alias", "g", false),
 			},
 			plan.NewInnerJoin(
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
-						expression.NewGetFieldWithTable(3, sql.Int64, "t1", "f", false),
-						expression.NewGetFieldWithTable(4, sql.Int64, "t2-alias", "d", false),
-						expression.NewGetFieldWithTable(7, sql.Int64, "t2-alias", "e", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+						expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
+						expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
+						expression.NewGetFieldWithTable(4, types.Int64, "t2-alias", "d", false),
+						expression.NewGetFieldWithTable(7, types.Int64, "t2-alias", "e", false),
 					},
 					plan.NewInnerJoin(
 						plan.NewResolvedTable(left, nil, nil),
 						plan.NewTableAlias("t2-alias", plan.NewResolvedTable(right, nil, nil)),
 						expression.JoinAnd(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-								expression.NewGetFieldWithTable(6, sql.Int64, "t2-alias", "b", false),
+								expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+								expression.NewGetFieldWithTable(6, types.Int64, "t2-alias", "b", false),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-								expression.NewGetFieldWithTable(5, sql.Int64, "t2-alias", "c", false),
+								expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+								expression.NewGetFieldWithTable(5, types.Int64, "t2-alias", "c", false),
 							),
 						),
 					),
@@ -290,16 +291,16 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 				plan.NewTableAlias("t3-alias", plan.NewResolvedTable(upperRight, nil, nil)),
 				expression.JoinAnd(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "t1", "b", false),
-						expression.NewGetFieldWithTable(7, sql.Int64, "t3-alias", "b", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "t1", "b", false),
+						expression.NewGetFieldWithTable(7, types.Int64, "t3-alias", "b", false),
 					),
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, sql.Int64, "t1", "a", false),
-						expression.NewGetFieldWithTable(6, sql.Int64, "t3-alias", "a", false),
+						expression.NewGetFieldWithTable(2, types.Int64, "t1", "a", false),
+						expression.NewGetFieldWithTable(6, types.Int64, "t3-alias", "a", false),
 					),
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(3, sql.Int64, "t1", "f", false),
-						expression.NewGetFieldWithTable(8, sql.Int64, "t3-alias", "f", false),
+						expression.NewGetFieldWithTable(3, types.Int64, "t1", "f", false),
+						expression.NewGetFieldWithTable(8, types.Int64, "t3-alias", "f", false),
 					),
 				),
 			),
@@ -313,15 +314,15 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t1"},
-		{Name: "b", Type: sql.Int64, Source: "t1"},
-		{Name: "c", Type: sql.Int64, Source: "t1"},
+		{Name: "a", Type: types.Int64, Source: "t1"},
+		{Name: "b", Type: types.Int64, Source: "t1"},
+		{Name: "c", Type: types.Int64, Source: "t1"},
 	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t2"},
-		{Name: "b", Type: sql.Int64, Source: "t2"},
-		{Name: "c", Type: sql.Int64, Source: "t2"},
+		{Name: "a", Type: types.Int64, Source: "t2"},
+		{Name: "b", Type: types.Int64, Source: "t2"},
+		{Name: "c", Type: types.Int64, Source: "t2"},
 	}), nil)
 
 	node := plan.NewNaturalJoin(
@@ -335,25 +336,25 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
-			expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-			expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
+			expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+			expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
 		},
 		plan.NewInnerJoin(
 			plan.NewResolvedTable(left, nil, nil),
 			plan.NewResolvedTable(right, nil, nil),
 			expression.JoinAnd(
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "a", false),
-					expression.NewGetFieldWithTable(3, sql.Int64, "t2", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "t1", "a", false),
+					expression.NewGetFieldWithTable(3, types.Int64, "t2", "a", false),
 				),
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(1, sql.Int64, "t1", "b", false),
-					expression.NewGetFieldWithTable(4, sql.Int64, "t2", "b", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "t1", "b", false),
+					expression.NewGetFieldWithTable(4, types.Int64, "t2", "b", false),
 				),
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(2, sql.Int64, "t1", "c", false),
-					expression.NewGetFieldWithTable(5, sql.Int64, "t2", "c", false),
+					expression.NewGetFieldWithTable(2, types.Int64, "t1", "c", false),
+					expression.NewGetFieldWithTable(5, types.Int64, "t2", "c", false),
 				),
 			),
 		),
@@ -366,14 +367,14 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 	require := require.New(t)
 
 	left := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t1"},
-		{Name: "b", Type: sql.Int64, Source: "t1"},
-		{Name: "c", Type: sql.Int64, Source: "t1"},
+		{Name: "a", Type: types.Int64, Source: "t1"},
+		{Name: "b", Type: types.Int64, Source: "t1"},
+		{Name: "c", Type: types.Int64, Source: "t1"},
 	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "d", Type: sql.Int64, Source: "t2"},
-		{Name: "e", Type: sql.Int64, Source: "t2"},
+		{Name: "d", Type: types.Int64, Source: "t2"},
+		{Name: "e", Type: types.Int64, Source: "t2"},
 	}), nil)
 
 	node := plan.NewNaturalJoin(

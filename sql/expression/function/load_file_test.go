@@ -9,6 +9,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // createTempDirAndFile returns the temporary directory, as well creates a new file (var filename) that lives in it.
@@ -34,7 +35,7 @@ func TestLoadFileNoSecurePriv(t *testing.T) {
 	_, err = file.Write([]byte("my data"))
 	assert.NoError(t, err)
 
-	fileName := expression.NewLiteral(file.Name(), sql.Text)
+	fileName := expression.NewLiteral(file.Name(), types.Text)
 	fn := NewLoadFile(fileName)
 
 	// Assert that Load File returns the regardless since secure_file_priv is set to an empty directory
@@ -60,7 +61,7 @@ func TestLoadFileBadDir(t *testing.T) {
 	_, err = file.Write([]byte("my data"))
 	assert.NoError(t, err)
 
-	fileName := expression.NewLiteral(file.Name(), sql.Text)
+	fileName := expression.NewLiteral(file.Name(), types.Text)
 	fn := NewLoadFile(fileName)
 
 	// Assert that Load File returns nil since the file is not in secure_file_priv directory
@@ -117,7 +118,7 @@ func runLoadFileTest(t *testing.T, tt loadFileTestCase, dir string) {
 	assert.NoError(t, err)
 
 	// Setup the file data
-	fileName := expression.NewLiteral(file.Name(), sql.Text)
+	fileName := expression.NewLiteral(file.Name(), types.Text)
 	fn := NewLoadFile(fileName)
 
 	// Load the file in

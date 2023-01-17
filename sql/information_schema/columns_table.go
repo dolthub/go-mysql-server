@@ -28,6 +28,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var typeToNumericPrecision = map[query.Type]int{
@@ -202,17 +203,17 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 		nullable = "YES"
 	}
 
-	if sql.IsText(col.Type) {
-		if sql.IsTextOnly(col.Type) {
+	if types.IsText(col.Type) {
+		if types.IsTextOnly(col.Type) {
 			charName = sql.Collation_Default.CharacterSet().String()
 			collName = sql.Collation_Default.String()
 		}
 
-		if st, ok := col.Type.(sql.StringType); ok {
+		if st, ok := col.Type.(types.StringType); ok {
 			charMaxLen = st.MaxCharacterLength()
 			charOctetLen = st.MaxByteLength()
 		}
-	} else if sql.IsEnum(col.Type) || sql.IsSet(col.Type) {
+	} else if types.IsEnum(col.Type) || types.IsSet(col.Type) {
 		charName = sql.Collation_Default.CharacterSet().String()
 		collName = sql.Collation_Default.String()
 		charOctetLen = int64(col.Type.MaxTextResponseByteLength())
@@ -230,9 +231,9 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 	}
 
 	numericPrecision, numericScale := getColumnPrecisionAndScale(col)
-	if sql.IsDatetimeType(col.Type) || sql.IsTimestampType(col.Type) {
+	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
 		datetimePrecision = 0
-	} else if sql.IsTimespan(col.Type) {
+	} else if types.IsTimespan(col.Type) {
 		// TODO: TIME length not yet supported
 		datetimePrecision = 6
 	}
@@ -463,14 +464,14 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
 			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
 		}
-		if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		if types.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
 			defStr = strings.Replace(defStr, "NOW", "CURRENT_TIMESTAMP", -1)
 			defStr = strings.TrimSuffix(defStr, "()")
 		}
 		return fmt.Sprint(defStr)
 	}
 
-	if sql.IsEnum(cd.Type()) || sql.IsSet(cd.Type()) {
+	if types.IsEnum(cd.Type()) || types.IsSet(cd.Type()) {
 		return strings.Trim(defStr, "'")
 	}
 
@@ -487,7 +488,7 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		v = fmt.Sprintf("0x%s", hexStr)
 	}
 
-	if sql.IsBit(cd.Type()) {
+	if types.IsBit(cd.Type()) {
 		if i, ok := v.(uint64); ok {
 			bitStr := strconv.FormatUint(i, 2)
 			v = fmt.Sprintf("b'%s'", bitStr)
@@ -527,7 +528,7 @@ func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Sc
 func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
 	var numericScale interface{}
 	switch t := col.Type.(type) {
-	case sql.BitType:
+	case types.BitType:
 		return int(t.NumberOfBits()), numericScale
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())

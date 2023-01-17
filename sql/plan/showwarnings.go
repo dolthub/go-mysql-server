@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowWarnings is a node that shows the session warnings
@@ -48,9 +49,9 @@ func (ShowWarnings) String() string {
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (ShowWarnings) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Level", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Code", Type: sql.Int32, Nullable: true},
-		&sql.Column{Name: "Message", Type: sql.LongText, Nullable: false},
+		&sql.Column{Name: "Level", Type: types.LongText, Nullable: false},
+		&sql.Column{Name: "Code", Type: types.Int32, Nullable: true},
+		&sql.Column{Name: "Message", Type: types.LongText, Nullable: false},
 	}
 }
 

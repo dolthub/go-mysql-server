@@ -25,18 +25,19 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestResolveSubqueries(t *testing.T) {
 	foo := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: types.Int64, Source: "foo"},
 	}), nil)
 	bar := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "b", Type: sql.Int64, Source: "bar"},
-		{Name: "k", Type: sql.Int64, Source: "bar"},
+		{Name: "b", Type: types.Int64, Source: "bar"},
+		{Name: "k", Type: types.Int64, Source: "bar"},
 	}), nil)
 	baz := memory.NewTable("baz", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c", Type: sql.Int64, Source: "baz"},
+		{Name: "c", Type: types.Int64, Source: "baz"},
 	}), nil)
 	db := memory.NewDatabase("mydb")
 	db.AddTable("foo", foo)
@@ -67,11 +68,11 @@ func TestResolveSubqueries(t *testing.T) {
 				[]sql.Expression{
 					plan.NewSubquery(
 						plan.NewGroupBy(
-							[]sql.Expression{aggregation.NewMax(expression.NewGetFieldWithTable(1, sql.Int64, "sqa1", "a", false))},
+							[]sql.Expression{aggregation.NewMax(expression.NewGetFieldWithTable(1, types.Int64, "sqa1", "a", false))},
 							[]sql.Expression{},
 							newSubqueryAlias("sqa1", "select a from bar", true, false,
 								plan.NewProject(
-									[]sql.Expression{expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)},
+									[]sql.Expression{expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)},
 									plan.NewResolvedTable(bar, db, nil)),
 							),
 						), "select MAX(a) from (select a from bar) sqa1",
@@ -160,12 +161,12 @@ func newSubqueryAlias(name, textDefinition string, hasOuterScopeVisibility, canC
 
 func TestResolveSubqueryExpressions(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "x", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: types.Int64, Source: "mytable"},
+		{Name: "x", Type: types.Int64, Source: "mytable"},
 	}), nil)
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable2"},
-		{Name: "y", Type: sql.Int64, Source: "mytable2"},
+		{Name: "i", Type: types.Int64, Source: "mytable2"},
+		{Name: "y", Type: types.Int64, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -430,12 +431,12 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 
 func TestFinalizeSubqueryExpressions(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "x", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: types.Int64, Source: "mytable"},
+		{Name: "x", Type: types.Int64, Source: "mytable"},
 	}), nil)
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable2"},
-		{Name: "y", Type: sql.Int64, Source: "mytable2"},
+		{Name: "i", Type: types.Int64, Source: "mytable2"},
+		{Name: "y", Type: types.Int64, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -479,12 +480,12 @@ func TestFinalizeSubqueryExpressions(t *testing.T) {
 
 func TestCacheSubqueryResults(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable"},
-		{Name: "x", Type: sql.Int64, Source: "mytable"},
+		{Name: "i", Type: types.Int64, Source: "mytable"},
+		{Name: "x", Type: types.Int64, Source: "mytable"},
 	}), nil)
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable2"},
-		{Name: "y", Type: sql.Int64, Source: "mytable2"},
+		{Name: "i", Type: types.Int64, Source: "mytable2"},
+		{Name: "y", Type: types.Int64, Source: "mytable2"},
 	}), nil)
 
 	testCases := []analyzerFnTestCase{

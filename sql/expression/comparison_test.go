@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const (
@@ -34,7 +35,7 @@ const (
 )
 
 var comparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.LongText: {
+	types.LongText: {
 		testEqual: {
 			{"foo", "foo"},
 			{"", ""},
@@ -53,7 +54,7 @@ var comparisonCases = map[sql.Type]map[int][][]interface{}{
 			{nil, nil},
 		},
 	},
-	sql.Int32: {
+	types.Int32: {
 		testEqual: {
 			{int32(1), int32(1)},
 			{int32(0), int32(0)},
@@ -75,7 +76,7 @@ var comparisonCases = map[sql.Type]map[int][][]interface{}{
 }
 
 var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
-	sql.LongText: {
+	types.LongText: {
 		testRegexp: {
 			{"foobar", ".*bar"},
 			{"foobarfoo", ".*bar.*"},
@@ -94,7 +95,7 @@ var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
 			{nil, nil},
 		},
 	},
-	sql.Int32: {
+	types.Int32: {
 		testRegexp: {
 			{int32(1), int32(1)},
 			{int32(0), int32(0)},
@@ -115,7 +116,7 @@ func TestEquals(t *testing.T) {
 		require.NotNil(get1)
 		eq := expression.NewEquals(get0, get1)
 		require.NotNil(eq)
-		require.Equal(sql.Boolean, eq.Type())
+		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -142,7 +143,7 @@ func TestNullSafeEquals(t *testing.T) {
 		require.NotNil(get1)
 		seq := expression.NewNullSafeEquals(get0, get1)
 		require.NotNil(seq)
-		require.Equal(sql.Int8, seq.Type())
+		require.Equal(types.Int8, seq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -173,7 +174,7 @@ func TestLessThan(t *testing.T) {
 		require.NotNil(get1)
 		eq := expression.NewLessThan(get0, get1)
 		require.NotNil(eq)
-		require.Equal(sql.Boolean, eq.Type())
+		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -200,7 +201,7 @@ func TestGreaterThan(t *testing.T) {
 		require.NotNil(get1)
 		eq := expression.NewGreaterThan(get0, get1)
 		require.NotNil(eq)
-		require.Equal(sql.Boolean, eq.Type())
+		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
 			for _, pair := range cases {
 				row := sql.NewRow(pair[0], pair[1])
@@ -238,7 +239,7 @@ func testRegexpCases(t *testing.T) {
 			for _, pair := range cases {
 				eq := expression.NewRegexp(get0, get1)
 				require.NotNil(eq)
-				require.Equal(sql.Boolean, eq.Type())
+				require.Equal(types.Boolean, eq.Type())
 
 				row := sql.NewRow(pair[0], pair[1])
 				require.NotNil(row)
@@ -259,8 +260,8 @@ func TestInvalidRegexp(t *testing.T) {
 	t.Helper()
 	require := require.New(t)
 
-	col1 := expression.NewGetField(0, sql.LongText, "col1", true)
-	invalid := expression.NewLiteral("*col1", sql.LongText)
+	col1 := expression.NewGetField(0, types.LongText, "col1", true)
+	invalid := expression.NewLiteral("*col1", types.LongText)
 	r := expression.NewRegexp(col1, invalid)
 	row := sql.NewRow("col1")
 

@@ -23,33 +23,34 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestWindowPlanToIter(t *testing.T) {
 	n1, err := window.NewRowNumber().(sql.WindowAggregation).WithWindow(
 		&sql.WindowDefinition{
 			PartitionBy: []sql.Expression{
-				expression.NewGetField(2, sql.Int64, "c", false)},
+				expression.NewGetField(2, types.Int64, "c", false)},
 			OrderBy: nil,
 		})
 	require.NoError(t, err)
 
 	n2, err := aggregation.NewMax(
-		expression.NewGetField(0, sql.Int64, "a", false),
+		expression.NewGetField(0, types.Int64, "a", false),
 	).WithWindow(
 		&sql.WindowDefinition{
 			PartitionBy: []sql.Expression{
-				expression.NewGetField(1, sql.Int64, "b", false)},
+				expression.NewGetField(1, types.Int64, "b", false)},
 			OrderBy: nil,
 		})
 	require.NoError(t, err)
-	n3 := expression.NewGetField(0, sql.Int64, "a", false)
+	n3 := expression.NewGetField(0, types.Int64, "a", false)
 	n4, err := aggregation.NewMin(
-		expression.NewGetField(0, sql.Int64, "a", false),
+		expression.NewGetField(0, types.Int64, "a", false),
 	).WithWindow(
 		&sql.WindowDefinition{
 			PartitionBy: []sql.Expression{
-				expression.NewGetField(1, sql.Int64, "b", false)},
+				expression.NewGetField(1, types.Int64, "b", false)},
 			OrderBy: nil,
 		})
 	require.NoError(t, err)
@@ -96,8 +97,8 @@ func TestWindowPlanToIter(t *testing.T) {
 	require.ElementsMatch(t, allPartitionBy, [][]sql.Expression{
 		nil,
 		{
-			expression.NewGetField(1, sql.Int64, "b", false),
+			expression.NewGetField(1, types.Int64, "b", false),
 		}, {
-			expression.NewGetField(2, sql.Int64, "c", false),
+			expression.NewGetField(2, types.Int64, "c", false),
 		}})
 }

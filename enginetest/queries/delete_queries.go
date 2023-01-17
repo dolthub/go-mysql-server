@@ -16,120 +16,121 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var DeleteTests = []WriteQueryTest{
 	{
 		WriteQuery:          "DELETE FROM mytable;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      nil,
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i = 2;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE I = 2;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i < 3;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i > 1;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i <= 2;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i >= 2;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE s = 'first row';",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE s <> 'dne';",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      nil,
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i in (2,3);",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE s LIKE '%row';",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      nil,
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE s = 'dne';",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE i = 'invalid';",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable ORDER BY i ASC LIMIT 2;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable ORDER BY i DESC LIMIT 1;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable ORDER BY i DESC LIMIT 1 OFFSET 1;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "DELETE FROM mytable WHERE (i,s) = (1, 'first row');",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          `DELETE FROM tabletest where 's' = 'something'`,
-		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 0}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "with t (n) as (select (1) from dual) delete from mytable where i in (select n from t)",
-		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 		SelectQuery:         "select * from mytable order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(2, "second row"),
@@ -138,7 +139,7 @@ var DeleteTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 2) delete from mytable where i in (select n from t)",
-		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 2}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 		SelectQuery:         "select * from mytable order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(3, "third row"),
@@ -149,19 +150,19 @@ var DeleteTests = []WriteQueryTest{
 var SpatialDeleteTests = []WriteQueryTest{
 	{
 		WriteQuery:          "DELETE FROM point_table;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
 		ExpectedSelect:      nil,
 	},
 	{
 		WriteQuery:          "DELETE FROM line_table;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM line_table;",
 		ExpectedSelect:      nil,
 	},
 	{
 		WriteQuery:          "DELETE FROM polygon_table;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
 		ExpectedSelect:      nil,
 	},

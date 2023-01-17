@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type process struct {
@@ -46,14 +47,14 @@ func (p process) toRow() sql.Row {
 }
 
 var processListSchema = sql.Schema{
-	{Name: "Id", Type: sql.Int64},
-	{Name: "User", Type: sql.LongText},
-	{Name: "Host", Type: sql.LongText},
-	{Name: "db", Type: sql.LongText},
-	{Name: "Command", Type: sql.LongText},
-	{Name: "Time", Type: sql.Int64},
-	{Name: "State", Type: sql.LongText},
-	{Name: "Info", Type: sql.LongText},
+	{Name: "Id", Type: types.Int64},
+	{Name: "User", Type: types.LongText},
+	{Name: "Host", Type: types.LongText},
+	{Name: "db", Type: types.LongText},
+	{Name: "Command", Type: types.LongText},
+	{Name: "Time", Type: types.Int64},
+	{Name: "State", Type: types.LongText},
+	{Name: "Info", Type: types.LongText},
 }
 
 // ShowProcessList shows a list of all current running processes.

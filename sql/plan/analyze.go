@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type AnalyzeTable struct {
@@ -15,10 +16,10 @@ type AnalyzeTable struct {
 }
 
 var analyzeSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-	{Name: "Op", Type: sql.LongText},
-	{Name: "Msg_type", Type: sql.LongText},
-	{Name: "Msg_text", Type: sql.LongText},
+	{Name: "Table", Type: types.LongText},
+	{Name: "Op", Type: types.LongText},
+	{Name: "Msg_type", Type: types.LongText},
+	{Name: "Msg_text", Type: types.LongText},
 }
 
 func NewAnalyze(names []sql.DbTable) *AnalyzeTable {

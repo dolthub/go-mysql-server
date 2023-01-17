@@ -163,7 +163,7 @@ func (e *ColumnDefaultValue) DebugString() string {
 // Type implements sql.Expression
 func (e *ColumnDefaultValue) Type() Type {
 	if e == nil {
-		return Null
+		return nil
 	}
 	if e.outType == nil {
 		return e.Expression.Type()

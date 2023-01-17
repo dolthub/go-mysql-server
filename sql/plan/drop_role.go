@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // DropRole represents the statement DROP ROLE.
@@ -43,7 +44,7 @@ var _ sql.Databaser = (*DropRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *DropRole) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -147,5 +148,5 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }

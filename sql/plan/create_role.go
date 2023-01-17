@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -44,7 +45,7 @@ var _ sql.Node = (*CreateRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *CreateRole) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -143,5 +144,5 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }

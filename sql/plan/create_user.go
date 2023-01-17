@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CreateUser represents the statement CREATE USER.
@@ -41,7 +42,7 @@ var _ sql.Databaser = (*CreateUser)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *CreateUser) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -151,5 +152,5 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }

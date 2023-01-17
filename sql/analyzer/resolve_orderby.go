@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // pushdownSort pushes the Sort node underneath the Project or GroupBy node in the case that columns needed to
@@ -333,13 +334,13 @@ func resolveSortFields(a *Analyzer, sfs sql.SortFields, schema sql.Schema) (sql.
 }
 
 func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.SortField, transform.TreeIdentity, error) {
-	if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
+	if lit, ok := f.Column.(*expression.Literal); ok && types.IsNumber(f.Column.Type()) {
 		v, err := lit.Eval(nil, nil)
 		if err != nil {
 			return sql.SortField{}, transform.SameTree, err
 		}
 
-		v, err = sql.Int64.Convert(v)
+		v, err = types.Int64.Convert(v)
 		if err != nil {
 			return sql.SortField{}, transform.SameTree, err
 		}

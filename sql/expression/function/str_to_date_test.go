@@ -8,6 +8,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestStrToDate(t *testing.T) {
@@ -24,8 +25,8 @@ func TestStrToDate(t *testing.T) {
 
 	for _, tt := range testCases {
 		f, err := NewStrToDate(
-			expression.NewGetField(0, sql.Text, "", true),
-			expression.NewGetField(1, sql.Text, "", true),
+			expression.NewGetField(0, types.Text, "", true),
+			expression.NewGetField(1, types.Text, "", true),
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -52,8 +53,8 @@ func TestStrToDateFailure(t *testing.T) {
 
 	for _, tt := range testCases {
 		f, err := NewStrToDate(
-			expression.NewGetField(0, sql.Text, "", true),
-			expression.NewGetField(1, sql.Text, "", true),
+			expression.NewGetField(0, types.Text, "", true),
+			expression.NewGetField(1, types.Text, "", true),
 		)
 		if err != nil {
 			t.Fatal(err)

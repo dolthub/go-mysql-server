@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var TriggerTests = []ScriptTest{
@@ -48,7 +49,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (4,0), (5,0)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -77,7 +78,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (0,0), (0,0)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -106,7 +107,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (7), (9)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -136,7 +137,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (7), (9)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -189,7 +190,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (7), (9)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -218,7 +219,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (7,8), (9,10)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -248,7 +249,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (7), (9)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -358,7 +359,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a (y, x) values (5,7), (9,11)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -380,7 +381,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a (y, x) values (5,7), (9,11)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -477,7 +478,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into foo.a values (7), (9)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
@@ -508,7 +509,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "update a set x = x + 1 where x = 5",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -594,7 +595,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "update a set x = x + 1 where x = 5",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -777,7 +778,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "delete from a where x = 5",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 		},
@@ -857,7 +858,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "delete from a where x = 0",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 		},
@@ -972,7 +973,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (2), (3), (5)",
 				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
@@ -1001,7 +1002,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (3)",
 				Expected: []sql.Row{
-					{sql.NewOkResult(2)},
+					{types.NewOkResult(2)},
 				},
 			},
 			{
@@ -1026,7 +1027,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (3)",
 				Expected: []sql.Row{
-					{sql.NewOkResult(2)},
+					{types.NewOkResult(2)},
 				},
 			},
 			{
@@ -1050,7 +1051,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "update a set x = x * 2",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 3,
 						Info: plan.UpdateInfo{
 							Matched: 3,
@@ -1088,7 +1089,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "update a set x = x * 2",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 3,
 						Info: plan.UpdateInfo{
 							Matched: 3,
@@ -1124,7 +1125,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "delete from a",
 				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
@@ -1154,7 +1155,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "delete from a",
 				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
@@ -1190,7 +1191,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (3)",
 				Expected: []sql.Row{
-					{sql.NewOkResult(2)},
+					{types.NewOkResult(2)},
 				},
 			},
 			{
@@ -1232,7 +1233,7 @@ end;`,
 				Query: "update trigger_on_update set id = 1, first = 'george', last = 'smith' where id = 1",
 				Expected: []sql.Row{
 					{
-						sql.OkResult{
+						types.OkResult{
 							RowsAffected: 0,
 							Info: plan.UpdateInfo{
 								Matched: 1,
@@ -1331,7 +1332,7 @@ end;`,
 			{
 				Query: "insert into a values (1), (3)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -1728,7 +1729,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "drop table a",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
@@ -1743,7 +1744,7 @@ end;`,
 			},
 			{
 				Query:    "drop table if exists b, d, e",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
@@ -1770,7 +1771,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "drop table a",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show triggers",
@@ -1797,15 +1798,15 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into mytable () values ();",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable (sometext) values ('hello');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable values (10, 'goodbye');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "select * from mytable order by id",
@@ -1835,19 +1836,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into mytable () values ();",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable (sometext) values ('hello');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable values (10, 'goodbye');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable () values (), ();",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query: "select * from mytable order by id",
@@ -1869,7 +1870,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "create trigger insert_into_b after insert on a for each row insert into b values (new.x + 1)",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:       "insert into a values (1), (3), (5)",
@@ -1877,12 +1878,12 @@ end;`,
 			},
 			{
 				Query:    "create table b (y int primary key)",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query: "insert into a values (1), (3), (5)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 3}},
+					{types.OkResult{RowsAffected: 3}},
 				},
 			},
 			{
@@ -1908,7 +1909,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TRIGGER ins_film AFTER INSERT ON film FOR EACH ROW BEGIN INSERT INTO film_text (film_id, title, description) VALUES (new.film_id, new.title, new.description); END;",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query: `CREATE TRIGGER upd_film AFTER UPDATE ON film FOR EACH ROW BEGIN
@@ -1920,11 +1921,11 @@ end;`,
                 film_id=new.film_id
         WHERE film_id=old.film_id;
     END IF; END;`,
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE TRIGGER del_film AFTER DELETE ON film FOR EACH ROW BEGIN DELETE FROM film_text WHERE film_id = old.film_id; END;",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:       "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
@@ -1940,7 +1941,7 @@ end;`,
 			},
 			{
 				Query:    "CREATE TABLE film_text (film_id smallint NOT NULL, title varchar(255) NOT NULL, description text, PRIMARY KEY (film_id))",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film",
@@ -1948,7 +1949,7 @@ end;`,
 			},
 			{
 				Query:    "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 3}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film",
@@ -1960,7 +1961,7 @@ end;`,
 			},
 			{
 				Query:    "UPDATE film SET title = 'DIFFERENT MOVIE' WHERE title = 'ADAPTATION HOLES'",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1, Warnings: 0}}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1, Warnings: 0}}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
@@ -1968,7 +1969,7 @@ end;`,
 			},
 			{
 				Query:    "DELETE FROM film WHERE title = 'DIFFERENT MOVIE'",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
@@ -1992,11 +1993,11 @@ end;`,
 				Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
 SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
 INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
@@ -2004,11 +2005,11 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 			{
 				Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "CALL add_entry(4, 'aaa');",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",
@@ -2040,7 +2041,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -2072,7 +2073,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -2105,7 +2106,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -2138,7 +2139,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -2172,7 +2173,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
@@ -2206,7 +2207,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
@@ -2250,7 +2251,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (0)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
@@ -2294,7 +2295,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (0)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
@@ -2328,7 +2329,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "update a set i = 1",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -2367,7 +2368,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "update a set i = 1",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -2407,7 +2408,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "update a set i = 1",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -2447,7 +2448,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "update a set i = 1",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -2487,7 +2488,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "update a set i = 1",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -2527,7 +2528,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "update a set i = 1",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -2567,7 +2568,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (2), (3), (5)",
 				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
@@ -2613,7 +2614,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "insert into a values (1), (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
@@ -2647,7 +2648,7 @@ var RollbackTriggerTests = []ScriptTest{
 			{
 				Query: "update a set i = 1",
 				Expected: []sql.Row{
-					{sql.OkResult{
+					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
 							Matched: 1,
@@ -2690,7 +2691,7 @@ var BrokenTriggerQueries = []ScriptTest{
 			// Should produce new keys 2, 3, but instead produces a duplicate key error
 			{
 				Query:    "insert into mytable () values (), ();",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query: "select * from mytable order by id",
@@ -2810,7 +2811,7 @@ var BrokenTriggerQueries = []ScriptTest{
 			{
 				Query: "insert into a values (4,0), (5,0)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 2}},
+					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 		},

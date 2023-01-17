@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestLocate(t *testing.T) {
@@ -113,13 +114,13 @@ func TestLocate(t *testing.T) {
 			require := require.New(t)
 
 			exprs := []sql.Expression{
-				expression.NewGetField(0, sql.Text, "substr", false),
-				expression.NewGetField(1, sql.LongText, "str", false),
+				expression.NewGetField(0, types.Text, "substr", false),
+				expression.NewGetField(1, types.LongText, "str", false),
 			}
 			row := sql.Row{tt.Substr, tt.Str}
 
 			if tt.Start != nil {
-				exprs = append(exprs, expression.NewGetField(2, sql.Int32, "start", false))
+				exprs = append(exprs, expression.NewGetField(2, types.Int32, "start", false))
 				row = append(row, *tt.Start)
 			}
 

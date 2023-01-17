@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestEmptyCoalesce(t *testing.T) {
@@ -36,10 +37,10 @@ func TestCoalesce(t *testing.T) {
 		typ      sql.Type
 		nullable bool
 	}{
-		{"coalesce(1, 2, 3)", []sql.Expression{expression.NewLiteral(1, sql.Int32), expression.NewLiteral(2, sql.Int32), expression.NewLiteral(3, sql.Int32)}, 1, sql.Int32, false},
-		{"coalesce(NULL, NULL, 3)", []sql.Expression{nil, nil, expression.NewLiteral(3, sql.Int32)}, 3, sql.Int32, false},
-		{"coalesce(NULL, NULL, '3')", []sql.Expression{nil, nil, expression.NewLiteral("3", sql.LongText)}, "3", sql.LongText, false},
-		{"coalesce(NULL, '2', 3)", []sql.Expression{nil, expression.NewLiteral("2", sql.LongText), expression.NewLiteral(3, sql.Int32)}, "2", sql.LongText, false},
+		{"coalesce(1, 2, 3)", []sql.Expression{expression.NewLiteral(1, types.Int32), expression.NewLiteral(2, types.Int32), expression.NewLiteral(3, types.Int32)}, 1, types.Int32, false},
+		{"coalesce(NULL, NULL, 3)", []sql.Expression{nil, nil, expression.NewLiteral(3, types.Int32)}, 3, types.Int32, false},
+		{"coalesce(NULL, NULL, '3')", []sql.Expression{nil, nil, expression.NewLiteral("3", types.LongText)}, "3", types.LongText, false},
+		{"coalesce(NULL, '2', 3)", []sql.Expression{nil, expression.NewLiteral("2", types.LongText), expression.NewLiteral(3, types.Int32)}, "2", types.LongText, false},
 		{"coalesce(NULL, NULL, NULL)", []sql.Expression{nil, nil, nil}, nil, nil, true},
 	}
 
@@ -64,16 +65,16 @@ func TestComposeCoalasce(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, nil, v)
 
-	c2, err := NewCoalesce(nil, expression.NewLiteral(1, sql.Int32))
+	c2, err := NewCoalesce(nil, expression.NewLiteral(1, types.Int32))
 	require.NoError(t, err)
-	require.Equal(t, sql.Int32, c2.Type())
+	require.Equal(t, types.Int32, c2.Type())
 	v, err = c2.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, v)
 
 	c, err := NewCoalesce(nil, c1, c2)
 	require.NoError(t, err)
-	require.Equal(t, sql.Int32, c.Type())
+	require.Equal(t, types.Int32, c.Type())
 	v, err = c.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, v)
