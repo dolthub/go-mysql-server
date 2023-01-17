@@ -270,6 +270,17 @@ func (d *BaseDatabase) DropTrigger(ctx *sql.Context, name string) error {
 	return nil
 }
 
+// GetStoredProcedure implements sql.StoredProcedureDatabase
+func (d *BaseDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.StoredProcedureDetails, bool, error) {
+	name = strings.ToLower(name)
+	for _, spd := range d.storedProcedures {
+		if name == strings.ToLower(spd.Name) {
+			return spd, true, nil
+		}
+	}
+	return sql.StoredProcedureDetails{}, false, nil
+}
+
 // GetStoredProcedures implements sql.StoredProcedureDatabase
 func (d *BaseDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
 	var spds []sql.StoredProcedureDetails
