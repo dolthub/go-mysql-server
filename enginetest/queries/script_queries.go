@@ -2811,6 +2811,18 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "decimal literals should be parsed correctly",
+		SetUpScript: []string{
+			"SET @testValue = 809826404100301269648758758005707100;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT @testValue;",
+				Expected: []sql.Row{{"809826404100301269648758758005707100"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

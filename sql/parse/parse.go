@@ -3693,13 +3693,14 @@ func convertInt(value string, base int) (sql.Expression, error) {
 	if i64, err := strconv.ParseInt(value, base, 64); err == nil {
 		return expression.NewLiteral(int64(i64), types.Int64), nil
 	}
-
-	ui64, err := strconv.ParseUint(value, base, 64)
-	if err != nil {
-		return nil, err
+	if ui64, err := strconv.ParseUint(value, base, 64); err == nil {
+		return expression.NewLiteral(uint64(ui64), types.Uint64), nil
+	}
+	if decimal, err := types.InternalDecimalType.Convert(value); err == nil {
+		return expression.NewLiteral(decimal, types.InternalDecimalType), nil
 	}
 
-	return expression.NewLiteral(uint64(ui64), types.Uint64), nil
+	return nil, fmt.Errorf("could not convert %s to any numerical type", value)
 }
 
 func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
