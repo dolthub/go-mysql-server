@@ -216,7 +216,7 @@ func addLookupJoins(m *Memo) error {
 			return nil
 		}
 
-		attrSource, indexes, err := lookupCandidates(m.ctx, right.first, aliases)
+		attrSource, iat, indexes, err := lookupCandidates(m.ctx, right.first, aliases)
 		if err != nil {
 			return err
 		}
@@ -228,7 +228,7 @@ func addLookupJoins(m *Memo) error {
 			// can consider multiple index options. Otherwise the search space blows
 			// up.
 			conds := splitDisjunction(or)
-			concat := splitIndexableOr(conds, indexes, attrSource, aliases)
+			concat := splitIndexableOr(conds, iat, indexes, attrSource, aliases)
 			if len(concat) != len(conds) {
 				return nil
 			}
@@ -245,7 +245,7 @@ func addLookupJoins(m *Memo) error {
 
 		conds := collectJoinConds(attrSource, join.filter...)
 		for _, idx := range indexes {
-			keyExprs, nullmask := indexMatchesKeyExprs(idx, conds, aliases)
+			keyExprs, nullmask := indexMatchesKeyExprs(idx, iat, conds, aliases)
 			if len(keyExprs) == 0 {
 				continue
 			}
@@ -279,7 +279,7 @@ func addRightSemiJoins(m *Memo) error {
 		if len(semi.filter) == 0 {
 			return nil
 		}
-		attrSource, indexes, err := lookupCandidates(m.ctx, semi.left.first, aliases)
+		attrSource, iat, indexes, err := lookupCandidates(m.ctx, semi.left.first, aliases)
 		if err != nil {
 			return err
 		}
@@ -290,7 +290,7 @@ func addRightSemiJoins(m *Memo) error {
 			if !idx.IsUnique() {
 				continue
 			}
-			keyExprs, nullmask := indexMatchesKeyExprs(idx, conds, aliases)
+			keyExprs, nullmask := indexMatchesKeyExprs(idx, iat, conds, aliases)
 			if len(keyExprs) == 0 {
 				continue
 			}
@@ -319,7 +319,7 @@ func addRightSemiJoins(m *Memo) error {
 // lookupCandidates returns a normalized table name and a list of available
 // candidate indexes as replacements for the given relExpr, or empty values
 // if there are no suitable indexes.
-func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (string, []sql.Index, error) {
+func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (string, sql.IndexAddressableTable, []sql.Index, error) {
 	switch n := rel.(type) {
 	case *tableAlias:
 		return tableAliasLookupCand(ctx, n.table, aliases)
@@ -335,11 +335,11 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 		}
 	default:
 	}
-	return "", nil, nil
+	return "", nil, nil, nil
 
 }
 
-func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable) (string, []sql.Index, error) {
+func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable) (string, sql.IndexAddressableTable, []sql.Index, error) {
 	attributeSource := strings.ToLower(n.Name())
 	table := n.Table
 	if w, ok := table.(sql.TableWrapper); ok {
@@ -347,20 +347,20 @@ func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable) (string, []sql
 	}
 	indexableTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
-		return "", nil, nil
+		return "", nil, nil, nil
 	}
 	indexes, err := indexableTable.GetIndexes(ctx)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
-	return attributeSource, indexes, nil
+	return attributeSource, indexableTable, indexes, nil
 }
 
-func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAliases) (string, []sql.Index, error) {
+func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAliases) (string, sql.IndexAddressableTable, []sql.Index, error) {
 	attributeSource := strings.ToLower(n.Name())
 	rt, ok := n.Child.(*plan.ResolvedTable)
 	if !ok {
-		return "", nil, nil
+		return "", nil, nil, nil
 	}
 	table := rt.Table
 	if w, ok := table.(sql.TableWrapper); ok {
@@ -368,14 +368,14 @@ func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAli
 	}
 	indexableTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
-		return "", nil, nil
+		return "", nil, nil, nil
 	}
 	aliases.add(n, indexableTable)
 	indexes, err := indexableTable.GetIndexes(ctx)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, nil
 	}
-	return attributeSource, indexes, nil
+	return attributeSource, indexableTable, indexes, nil
 }
 
 // dfsExprGroup runs a callback |cb| on all execution plans in the memo expression
@@ -440,6 +440,7 @@ func collectJoinConds(attributeSource string, filters ...sql.Expression) []*join
 // the table lookup (xy.x, xy.y).
 func indexMatchesKeyExprs(
 	i sql.Index,
+	iat sql.IndexAddressableTable,
 	joinColExprs []*joinColExpr,
 	tableAliases TableAliases,
 ) ([]sql.Expression, []bool) {
@@ -465,17 +466,27 @@ IndexExpressions:
 		return nil, nil
 	}
 
+	// TODO: better way of validating that we can apply an index lookup
+	lb := plan.NewLookupBuilder(i, keyExprs, nullmask)
+	look, err := lb.GetLookup(lb.GetZeroKey())
+	if err != nil {
+		return nil, nil
+	}
+	if it := iat.IndexedAccess(look); it == nil {
+		return nil, nil
+	}
+
 	return keyExprs, nullmask
 }
 
 // splitIndexableOr attempts to build a list of index lookups for a disjoint
 // filter expression. The prototypical pattern will be a tree of OR and equality
 // expressions: [eq] OR [eq] OR [eq] ...
-func splitIndexableOr(filters []sql.Expression, indexes []sql.Index, attributeSource string, aliases TableAliases) []*lookup {
+func splitIndexableOr(filters []sql.Expression, iat sql.IndexAddressableTable, indexes []sql.Index, attributeSource string, aliases TableAliases) []*lookup {
 	var concat []*lookup
 	for _, f := range filters {
 		if eq, ok := f.(*expression.Equals); ok {
-			i := firstMatchingIndex(eq, indexes, attributeSource, aliases)
+			i := firstMatchingIndex(eq, iat, indexes, attributeSource, aliases)
 			if i == nil {
 				return nil
 			}
@@ -488,13 +499,14 @@ func splitIndexableOr(filters []sql.Expression, indexes []sql.Index, attributeSo
 // firstMatchingIndex returns first index that |e| can use as a lookup.
 // This simplifies index selection for concatJoin to avoid building
 // memo objects for equality expressions and indexes.
-func firstMatchingIndex(e *expression.Equals, indexes []sql.Index, attributeSource string, aliases TableAliases) *lookup {
+func firstMatchingIndex(e *expression.Equals, iat sql.IndexAddressableTable, indexes []sql.Index, attributeSource string, aliases TableAliases) *lookup {
 	for _, lIdx := range indexes {
 		lConds := collectJoinConds(attributeSource, e)
-		lKeyExprs, lNullmask := indexMatchesKeyExprs(lIdx, lConds, aliases)
+		lKeyExprs, lNullmask := indexMatchesKeyExprs(lIdx, iat, lConds, aliases)
 		if len(lKeyExprs) == 0 {
 			continue
 		}
+
 		return &lookup{
 			index:    lIdx,
 			keyExprs: lKeyExprs,
@@ -649,14 +661,14 @@ func findSortedIndexScanForRel(
 	joinFilters []sql.Expression,
 	aliases TableAliases,
 ) (*indexScan, error) {
-	attrSource, indexes, err := lookupCandidates(ctx, rel, aliases)
+	attrSource, iat, indexes, err := lookupCandidates(ctx, rel, aliases)
 	if err != nil {
 		return nil, err
 	}
 
 	conds := collectJoinConds(attrSource, joinFilters...)
 	for _, idx := range indexes {
-		keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
+		keyExprs, _ := indexMatchesKeyExprs(idx, iat, conds, aliases)
 		if len(keyExprs) == 0 {
 			continue
 		}
