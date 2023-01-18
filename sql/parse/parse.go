@@ -2528,6 +2528,8 @@ func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
 			privType = plan.PrivilegeType_Execute
 		case sqlparser.PrivilegeType_File:
 			privType = plan.PrivilegeType_File
+		case sqlparser.PrivilegeType_GrantOption:
+			privType = plan.PrivilegeType_GrantOption
 		case sqlparser.PrivilegeType_Index:
 			privType = plan.PrivilegeType_Index
 		case sqlparser.PrivilegeType_Insert:

@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	. "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -576,7 +577,7 @@ var routinesSchema = Schema{
 	{Name: "DATABASE_COLLATION", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: RoutinesTableName},
 }
 
-var schemaPrivilegesTableName = Schema{
+var schemaPrivilegesSchema = Schema{
 	{Name: "GRANTEE", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 292), Default: nil, Nullable: false, Source: SchemaPrivilegesTableName},
 	{Name: "TABLE_CATALOG", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: SchemaPrivilegesTableName},
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: SchemaPrivilegesTableName},
@@ -593,7 +594,7 @@ var schemataSchema = Schema{
 	{Name: "DEFAULT_ENCRYPTION", Type: types.MustCreateEnumType([]string{"NO", "YES"}, Collation_Default), Default: nil, Nullable: false, Source: SchemataTableName},
 }
 
-var schemataExtensionsTableName = Schema{
+var schemataExtensionsSchema = Schema{
 	{Name: "CATALOG_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
 	{Name: "SCHEMA_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
 	{Name: "OPTIONS", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
@@ -935,8 +936,34 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// enginesRowIterimplements the sql.RowIter for the information_schema.ENGINES table.
-func enginesRowIter(ctx *Context, c Catalog) (RowIter, error) {
+// columnsExtensionsRowIter implements the sql.RowIter for the information_schema.COLUMNS_EXTENSIONS table.
+func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range cat.AllDatabases(ctx) {
+		dbName := db.Name()
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			tblName := t.Name()
+			for _, col := range t.Schema() {
+				rows = append(rows, Row{
+					"def",    // table_catalog
+					dbName,   // table_schema
+					tblName,  // table_name
+					col.Name, // column_name
+					nil,      // engine_attribute // TODO: reserved for future use
+					nil,      // secondary_engine_attribute // TODO: reserved for future use
+				})
+			}
+			return true, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return RowsToRowIter(rows...), nil
+}
+
+// enginesRowIter implements the sql.RowIter for the information_schema.ENGINES table.
+func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
 		rows = append(rows, Row{
@@ -1013,6 +1040,19 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 			}
 		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// keywordsRowIter implements the sql.RowIter for the information_schema.KEYWORDS table.
+func keywordsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, spRef := range keywordsArray {
+		rows = append(rows, Row{
+			spRef.Word,     // word
+			spRef.Reserved, // reserved
+		})
 	}
 
 	return RowsToRowIter(rows...), nil
@@ -1142,6 +1182,60 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// schemaPrivilegesRowIter implements the sql.RowIter for the information_schema.SCHEMA_PRIVILEGES table.
+func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
+		var users = make(map[*mysql_db.User]struct{})
+		db, err := c.Database(ctx, "mysql")
+		if err != nil {
+			return nil, err
+		}
+
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
+		dbTbl, _, err := mysqlDb.GetTableInsensitive(ctx, "db")
+		if err != nil {
+			return nil, err
+		}
+		ri, err := dbTbl.PartitionRows(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			r, rerr := ri.Next(ctx)
+			if rerr == io.EOF {
+				break
+			}
+			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
+			users[mysqlDb.GetUser(r[2].(string), r[0].(string), false)] = struct{}{}
+		}
+
+		for user := range users {
+			grantee := user.UserHostToString("'")
+			for _, privSetDb := range user.PrivilegeSet.GetDatabases() {
+				rows = append(rows, getSchemaPrivsRowsFromPrivDbSet(privSetDb, grantee)...)
+			}
+		}
+	} else {
+		// If current client does not have SELECT privilege on 'mysql' db, only available schema privileges are
+		// their current schema privileges.
+		currClient := ctx.Session.Client()
+		grantee := fmt.Sprintf("'%s'@'%s'", currClient.User, currClient.Address)
+		dbs := c.AllDatabases(ctx)
+		for _, db := range dbs {
+			dbName := db.Name()
+			privSetDb := privSet.Database(dbName)
+			rows = append(rows, getSchemaPrivsRowsFromPrivDbSet(privSetDb, grantee)...)
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 // schemataRowIter implements the sql.RowIter for the information_schema.SCHEMATA table.
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases(ctx)
@@ -1162,7 +1256,105 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// tableConstraintsRowIter implements the sql.RowIter for the information_schema.STATISTICS table.
+// schemataExtensionsRowIter implements the sql.RowIter for the information_schema.SCHEMATA_EXTENSIONS table.
+func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases(ctx) {
+		var readOnly string
+		if rodb, ok := db.(ReadOnlyDatabase); ok {
+			if rodb.IsReadOnly() {
+				readOnly = "READ ONLY=1"
+			}
+		}
+		rows = append(rows, Row{
+			"def",     // catalog_name
+			db.Name(), // schema_name
+			readOnly,  // options
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// stGeometryColumnsRowIter implements the sql.RowIter for the information_schema.ST_GEOMETRY_COLUMNS table.
+func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range cat.AllDatabases(ctx) {
+		dbName := db.Name()
+
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			tblName := t.Name()
+
+			for _, col := range t.Schema() {
+				s, ok := col.Type.(SpatialColumnType)
+				if !ok {
+					continue
+				}
+				var (
+					colName  = col.Name
+					srsName  interface{}
+					srsId    interface{}
+					typeName = col.Type.String()
+				)
+
+				if srid, d := s.GetSpatialTypeSRID(); d {
+					srsName = spatial.SupportedSRIDs[srid].Name
+					srsId = srid
+				}
+
+				rows = append(rows, Row{
+					"def",    // table_catalog
+					dbName,   // table_schema
+					tblName,  // table_name
+					colName,  // column_name
+					srsName,  // srs_name
+					srsId,    // srs_id
+					typeName, // geometry_type_name
+				})
+			}
+			return true, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// stSpatialReferenceSystemsRowIter implements the sql.RowIter for the information_schema.ST_SPATIAL_REFERENCE_SYSTEMS table.
+func stSpatialReferenceSystemsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, spRef := range spatial.SupportedSRIDs {
+		rows = append(rows, Row{
+			spRef.Name,          // srs_name
+			spRef.ID,            // srs_id
+			spRef.Organization,  // organization
+			spRef.OrgCoordsysId, // organization_coordsys_id
+			spRef.Definition,    // definition
+			spRef.Description,   // description
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// stUnitsOfMeasureRowIter implements the sql.RowIter for the information_schema.ST_UNITS_OF_MEASURE table.
+func stUnitsOfMeasureRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, spRef := range unitsOfMeasureArray {
+		rows = append(rows, Row{
+			spRef.Name,             // unit_name
+			spRef.Type,             // unit_type
+			spRef.ConversionFactor, // conversion_factor
+			spRef.Description,      // description
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// statisticsRowIter implements the sql.RowIter for the information_schema.STATISTICS table.
 func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	dbs := c.AllDatabases(ctx)
@@ -1269,7 +1461,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// implements the sql.RowIter for the information_schema.TABLE_CONSTRAINTS table.
+// tableConstraintsRowIter implements the sql.RowIter for the information_schema.TABLE_CONSTRAINTS table.
 func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
@@ -1337,6 +1529,155 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				for _, fk := range fks {
 					rows = append(rows, Row{"def", db.Name(), fk.Name, db.Name(), tbl.Name(), "FOREIGN KEY", "YES"})
 				}
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// tableConstraintsExtensionsRowIter implements the sql.RowIter for the information_schema.TABLE_CONSTRAINTS_EXTENSIONS table.
+func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases(ctx) {
+		dbName := db.Name()
+		tableNames, err := db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+			tblName := tbl.Name()
+
+			// Get all the CHECKs
+			checkTbl, ok := tbl.(CheckTable)
+			if ok {
+				checkDefinitions, err := checkTbl.GetChecks(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, checkDefinition := range checkDefinitions {
+					rows = append(rows, Row{
+						"def",                // constraint_catalog
+						dbName,               // constraint_schema
+						checkDefinition.Name, // constraint_name
+						tblName,              // table_name
+						nil,                  // engine_attribute
+						nil,                  // second_engine_attribute
+					})
+				}
+			}
+
+			// Get UNIQUEs, PRIMARY KEYs
+			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
+			indexTable, ok := tbl.(IndexAddressable)
+			if ok {
+				indexes, err := indexTable.GetIndexes(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, index := range indexes {
+					if index.ID() != "PRIMARY" {
+						if !index.IsUnique() {
+							// In this case we have a multi-index which is not represented in this table
+							continue
+						}
+					}
+
+					rows = append(rows, Row{
+						"def",
+						dbName,
+						index.ID(),
+						tblName,
+						nil,
+						nil,
+					})
+				}
+			}
+
+			// Get FKs
+			fkTable, ok := tbl.(ForeignKeyTable)
+			if ok {
+				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, fk := range fks {
+					rows = append(rows, Row{
+						"def",
+						dbName,
+						fk.Name,
+						tblName,
+						nil,
+						nil,
+					})
+				}
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// tablePrivilegesRowIter implements the sql.RowIter for the information_schema.TABLE_PRIVILEGES table.
+func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
+		var users = make(map[*mysql_db.User]struct{})
+		db, err := c.Database(ctx, "mysql")
+		if err != nil {
+			return nil, err
+		}
+
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
+		tblsPriv, _, err := mysqlDb.GetTableInsensitive(ctx, "tables_priv")
+		if err != nil {
+			return nil, err
+		}
+		ri, err := tblsPriv.PartitionRows(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			r, rerr := ri.Next(ctx)
+			if rerr == io.EOF {
+				break
+			}
+			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
+			users[mysqlDb.GetUser(r[2].(string), r[0].(string), false)] = struct{}{}
+		}
+
+		for user := range users {
+			grantee := user.UserHostToString("'")
+			for _, privSetDb := range user.PrivilegeSet.GetDatabases() {
+				dbName := privSetDb.Name()
+				for _, privSetTbl := range privSetDb.GetTables() {
+					rows = append(rows, getTablePrivsRowsFromPrivTblSet(privSetTbl, grantee, dbName)...)
+				}
+			}
+		}
+	} else {
+		// If current client does not have SELECT privilege on 'mysql' db, only available table privileges are
+		// their current table privileges.
+		currClient := ctx.Session.Client()
+		grantee := fmt.Sprintf("'%s'@'%s'", currClient.User, currClient.Address)
+		dbs := c.AllDatabases(ctx)
+		for _, db := range dbs {
+			dbName := db.Name()
+			privSetDb := privSet.Database(dbName)
+			for _, privSetTbl := range privSetDb.GetTables() {
+				rows = append(rows, getTablePrivsRowsFromPrivTblSet(privSetTbl, grantee, dbName)...)
 			}
 		}
 	}
@@ -1472,6 +1813,28 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// tablesExtensionsRowIter implements the sql.RowIter for the information_schema.TABLES_EXTENSIONS table.
+func tablesExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range cat.AllDatabases(ctx) {
+		dbName := db.Name()
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			rows = append(rows, Row{
+				"def",    // table_catalog
+				dbName,   // table_schema
+				t.Name(), // table_name
+				nil,      // engine_attribute // TODO: reserved for future use
+				nil,      // secondary_engine_attribute // TODO: reserved for future use
+			})
+			return true, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return RowsToRowIter(rows...), nil
+}
+
 // triggersRowIter implements the sql.RowIter for the information_schema.TRIGGERS table.
 func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
@@ -1598,6 +1961,92 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			}
 		}
 	}
+	return RowsToRowIter(rows...), nil
+}
+
+// userAttributesRowIter implements the sql.RowIter for the information_schema.USER_ATTRIBUTES table.
+func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
+	var rows []Row
+	curUserPrivSet, _ := ctx.GetPrivilegeSet()
+	// TODO: or has both of `CREATE USER` and `SYSTEM_USER` privileges
+	if curUserPrivSet.Has(PrivilegeType_Select) || curUserPrivSet.Has(PrivilegeType_Update) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Select) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Update) {
+		var users = make(map[*mysql_db.User]struct{})
+		db, err := catalog.Database(ctx, "mysql")
+		if err != nil {
+			return nil, err
+		}
+
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
+		userTbl := mysqlDb.UserTable()
+		userTblData := userTbl.Data()
+		for _, userEntry := range userTblData.ToSlice(ctx) {
+			r := userEntry.ToRow(ctx)
+			// mysql.user table will have 'Host', 'User' as first 2 columns in string format.
+			users[mysqlDb.GetUser(r[1].(string), r[0].(string), false)] = struct{}{}
+		}
+
+		for user := range users {
+			var attributes interface{}
+			if user.Attributes != nil {
+				attributes = *user.Attributes
+			}
+			rows = append(rows, Row{
+				user.User,  // user
+				user.Host,  // host
+				attributes, // attributes
+			})
+		}
+	} else {
+		// TODO: current user needs to be exposed to access user attribute from mysql_db
+		currClient := ctx.Session.Client()
+		rows = append(rows, Row{
+			currClient.User,    // user
+			currClient.Address, // host
+			nil,                // attributes
+		})
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// userPrivilegesRowIter implements the sql.RowIter for the information_schema.USER_PRIVILEGES table.
+func userPrivilegesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
+	var rows []Row
+	curUserPrivSet, _ := ctx.GetPrivilegeSet()
+	if curUserPrivSet.Has(PrivilegeType_Select) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Select) {
+		var users = make(map[*mysql_db.User]struct{})
+		db, err := catalog.Database(ctx, "mysql")
+		if err != nil {
+			return nil, err
+		}
+
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
+		userTbl := mysqlDb.UserTable()
+		userTblData := userTbl.Data()
+		for _, userEntry := range userTblData.ToSlice(ctx) {
+			r := userEntry.ToRow(ctx)
+			// mysql.user table will have 'Host', 'User' as first 2 columns in string format.
+			users[mysqlDb.GetUser(r[1].(string), r[0].(string), false)] = struct{}{}
+		}
+
+		for user := range users {
+			grantee := user.UserHostToString("'")
+			rows = append(rows, getGlobalPrivsRowsFromPrivSet(user.PrivilegeSet, grantee)...)
+		}
+	} else {
+		// If current client does not have SELECT privilege on 'mysql' db, only available schema privileges are
+		// their current schema privileges.
+		currClient := ctx.Session.Client()
+		grantee := fmt.Sprintf("'%s'@'%s'", currClient.User, currClient.Address)
+		rows = getGlobalPrivsRowsFromPrivSet(curUserPrivSet, grantee)
+	}
+
 	return RowsToRowIter(rows...), nil
 }
 
@@ -1738,7 +2187,7 @@ func NewInformationSchemaDatabase() Database {
 			ColumnsExtensionsTableName: &informationSchemaTable{
 				name:   ColumnsExtensionsTableName,
 				schema: columnsExtensionsSchema,
-				reader: emptyRowIter,
+				reader: columnsExtensionsRowIter,
 			},
 			EnabledRolesTablesName: &informationSchemaTable{
 				name:   EnabledRolesTablesName,
@@ -1768,7 +2217,7 @@ func NewInformationSchemaDatabase() Database {
 			KeywordsTableName: &informationSchemaTable{
 				name:   KeywordsTableName,
 				schema: keywordsSchema,
-				reader: emptyRowIter,
+				reader: keywordsRowIter,
 			},
 			OptimizerTraceTableName: &informationSchemaTable{
 				name:   OptimizerTraceTableName,
@@ -1832,8 +2281,8 @@ func NewInformationSchemaDatabase() Database {
 			},
 			SchemaPrivilegesTableName: &informationSchemaTable{
 				name:   SchemaPrivilegesTableName,
-				schema: schemaPrivilegesTableName,
-				reader: emptyRowIter,
+				schema: schemaPrivilegesSchema,
+				reader: schemaPrivilegesRowIter,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:   SchemataTableName,
@@ -1842,23 +2291,23 @@ func NewInformationSchemaDatabase() Database {
 			},
 			SchemataExtensionsTableName: &informationSchemaTable{
 				name:   SchemataExtensionsTableName,
-				schema: schemataExtensionsTableName,
-				reader: emptyRowIter,
+				schema: schemataExtensionsSchema,
+				reader: schemataExtensionsRowIter,
 			},
 			StGeometryColumnsTableName: &informationSchemaTable{
 				name:   StGeometryColumnsTableName,
 				schema: stGeometryColumnsSchema,
-				reader: emptyRowIter,
+				reader: stGeometryColumnsRowIter,
 			},
 			StSpatialReferenceSystemsTableName: &informationSchemaTable{
 				name:   StSpatialReferenceSystemsTableName,
 				schema: stSpatialReferenceSystemsSchema,
-				reader: emptyRowIter,
+				reader: stSpatialReferenceSystemsRowIter,
 			},
 			StUnitsOfMeasureTableName: &informationSchemaTable{
 				name:   StUnitsOfMeasureTableName,
 				schema: stUnitsOfMeasureSchema,
-				reader: emptyRowIter,
+				reader: stUnitsOfMeasureRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:   TableConstraintsTableName,
@@ -1868,12 +2317,12 @@ func NewInformationSchemaDatabase() Database {
 			TableConstraintsExtensionsTableName: &informationSchemaTable{
 				name:   TableConstraintsExtensionsTableName,
 				schema: tableConstraintsExtensionsSchema,
-				reader: emptyRowIter,
+				reader: tableConstraintsExtensionsRowIter,
 			},
 			TablePrivilegesTableName: &informationSchemaTable{
 				name:   TablePrivilegesTableName,
 				schema: tablePrivilegesSchema,
-				reader: emptyRowIter,
+				reader: tablePrivilegesRowIter,
 			},
 			TablesTableName: &informationSchemaTable{
 				name:   TablesTableName,
@@ -1883,7 +2332,7 @@ func NewInformationSchemaDatabase() Database {
 			TablesExtensionsTableName: &informationSchemaTable{
 				name:   TablesExtensionsTableName,
 				schema: tablesExtensionsSchema,
-				reader: emptyRowIter,
+				reader: tablesExtensionsRowIter,
 			},
 			TablespacesTableName: &informationSchemaTable{
 				name:   TablespacesTableName,
@@ -1903,12 +2352,12 @@ func NewInformationSchemaDatabase() Database {
 			UserAttributesTableName: &informationSchemaTable{
 				name:   UserAttributesTableName,
 				schema: userAttributesSchema,
-				reader: emptyRowIter,
+				reader: userAttributesRowIter,
 			},
 			UserPrivilegesTableName: &informationSchemaTable{
 				name:   UserPrivilegesTableName,
 				schema: userPrivilegesSchema,
-				reader: emptyRowIter,
+				reader: userPrivilegesRowIter,
 			},
 			ViewRoutineUsageTableName: &informationSchemaTable{
 				name:   ViewRoutineUsageTableName,
@@ -2402,4 +2851,73 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	}
 
 	return views, nil
+}
+
+// getGlobalPrivsRowsFromPrivSet returns USER_PRIVILEGES rows using given global privilege set and grantee name string.
+func getGlobalPrivsRowsFromPrivSet(privSet PrivilegeSet, grantee string) []Row {
+	var rows []Row
+	hasGrantOpt := privSet.Has(PrivilegeType_GrantOption)
+	for _, priv := range privSet.ToSlice() {
+		if priv == PrivilegeType_GrantOption {
+			continue
+		}
+		isGrantable := "NO"
+		if hasGrantOpt {
+			isGrantable = "YES"
+		}
+		rows = append(rows, Row{
+			grantee,       // grantee
+			"def",         // table_catalog
+			priv.String(), // privilege_type
+			isGrantable,   // is_grantable
+		})
+	}
+	return rows
+}
+
+// getSchemaPrivsRowsFromPrivDbSet returns SCHEMA_PRIVILEGES rows using given Database privilege set and grantee string.
+func getSchemaPrivsRowsFromPrivDbSet(privSetDb PrivilegeSetDatabase, grantee string) []Row {
+	var rows []Row
+	hasGrantOpt := privSetDb.Has(PrivilegeType_GrantOption)
+	for _, privType := range privSetDb.ToSlice() {
+		if privType == PrivilegeType_GrantOption {
+			continue
+		}
+		isGrantable := "NO"
+		if hasGrantOpt {
+			isGrantable = "YES"
+		}
+		rows = append(rows, Row{
+			grantee,           // grantee
+			"def",             // table_catalog
+			privSetDb.Name(),  // table_schema
+			privType.String(), // privilege_type
+			isGrantable,       // is_grantable
+		})
+	}
+	return rows
+}
+
+// getTablePrivsRowsFromPrivTblSet returns TABLE_PRIVILEGES rows using given Table privilege set and grantee and database name strings.
+func getTablePrivsRowsFromPrivTblSet(privSetTbl PrivilegeSetTable, grantee, dbName string) []Row {
+	var rows []Row
+	hasGrantOpt := privSetTbl.Has(PrivilegeType_GrantOption)
+	for _, privType := range privSetTbl.ToSlice() {
+		if privType == PrivilegeType_GrantOption {
+			continue
+		}
+		isGrantable := "NO"
+		if hasGrantOpt {
+			isGrantable = "YES"
+		}
+		rows = append(rows, Row{
+			grantee,           // grantee
+			"def",             // table_catalog
+			dbName,            // table_schema
+			privSetTbl.Name(), // table_name
+			privType.String(), // privilege_type
+			isGrantable,       // is_grantable
+		})
+	}
+	return rows
 }

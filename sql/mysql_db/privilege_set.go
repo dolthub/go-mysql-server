@@ -54,7 +54,7 @@ func NewPrivilegeSetWithAllPrivileges() PrivilegeSet {
 			sql.PrivilegeType_Shutdown:          {},
 			sql.PrivilegeType_Process:           {},
 			sql.PrivilegeType_File:              {},
-			sql.PrivilegeType_Grant:             {},
+			sql.PrivilegeType_GrantOption:       {},
 			sql.PrivilegeType_References:        {},
 			sql.PrivilegeType_Index:             {},
 			sql.PrivilegeType_Alter:             {},

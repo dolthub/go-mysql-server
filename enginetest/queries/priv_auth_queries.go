@@ -1471,6 +1471,206 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "basic tests on information_schema.SCHEMA_PRIVILEGES table",
+		SetUpScript: []string{
+			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
+			"CREATE USER tester@localhost;",
+			"CREATE USER admin@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT INSERT, REFERENCES ON mydb.* TO tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT UPDATE, GRANT OPTION ON mydb.* TO admin@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}, {"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}},
+			},
+			{
+				User:     "admin",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mysql.* TO admin@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "admin",
+				Host:     "localhost",
+				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}, {"'admin'@'localhost'", "def", "mysql", "SELECT", "NO"}, {"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+			},
+		},
+	},
+	{
+		Name: "basic tests on information_schema.TABLE_PRIVILEGES table",
+		SetUpScript: []string{
+			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, c VARCHAR(20), p POINT default (POINT(1,1)))",
+			"CREATE USER tester@localhost;",
+			"CREATE USER admin@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "select * from information_schema.table_privileges;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT INSERT ON mydb.checks TO tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT UPDATE, GRANT OPTION ON mydb.test TO tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*root*/",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*tester*/",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
+			},
+			{
+				User:     "admin",
+				Host:     "localhost",
+				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*admin1*/",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mysql.* TO admin@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "admin",
+				Host:     "localhost",
+				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*admin2*/",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
+			},
+		},
+	},
+	{
+		Name: "basic tests on information_schema.USER_PRIVILEGES table",
+		SetUpScript: []string{
+			"CREATE TABLE checks (a INTEGER PRIMARY KEY, b INTEGER, c VARCHAR(20))",
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, c VARCHAR(20), p POINT default (POINT(1,1)))",
+			"CREATE USER tester@localhost;",
+			"CREATE USER admin@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "select * from information_schema.user_privileges order by privilege_type LIMIT 4;/*root*/",
+				Expected: []sql.Row{{"'root'@'localhost'", "def", "ALTER", "YES"},
+					{"'root'@'localhost'", "def", "ALTER ROUTINE", "YES"},
+					{"'root'@'localhost'", "def", "CREATE", "YES"},
+					{"'root'@'localhost'", "def", "CREATE ROLE", "YES"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT INSERT ON *.* TO tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select * from information_schema.user_privileges order by privilege_type, is_grantable;/*tester1*/",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "INSERT", "NO"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT UPDATE, GRANT OPTION ON *.* TO tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select * from information_schema.user_privileges order by privilege_type, is_grantable;/*tester2*/",
+				Expected: []sql.Row{{"'tester'@'localhost'", "def", "INSERT", "YES"}, {"'tester'@'localhost'", "def", "UPDATE", "YES"}},
+			},
+			{
+				User:     "admin",
+				Host:     "localhost",
+				Query:    "select * from information_schema.user_privileges order by privilege_type, is_grantable;/*admin*/",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "basic tests on information_schema.USER_ATTRIBUTES table",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			// TODO: attributes info is ignored in sqlparser
+			`CREATE USER admin@localhost ATTRIBUTE '{"fname": "Josh", "lname": "Scott"}';`,
+			"GRANT UPDATE ON mysql.* TO admin@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "select * from information_schema.user_attributes order by user;/*root*/",
+				Expected: []sql.Row{{"admin", "localhost", nil},
+					{"root", "localhost", nil},
+					{"tester", "localhost", nil}},
+			},
+			{
+				User:  "admin",
+				Host:  "localhost",
+				Query: "select * from information_schema.user_attributes order by user;/*admin*/",
+				Expected: []sql.Row{{"admin", "localhost", nil},
+					{"root", "localhost", nil},
+					{"tester", "localhost", nil}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select * from information_schema.user_attributes order by user;/*tester*/",
+				Expected: []sql.Row{{"tester", "localhost", nil}},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins

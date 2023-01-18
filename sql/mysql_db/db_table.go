@@ -90,7 +90,7 @@ func (conv DbConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_me
 			case dbTblColIndex_Drop_priv:
 				privs = append(privs, sql.PrivilegeType_Drop)
 			case dbTblColIndex_Grant_priv:
-				privs = append(privs, sql.PrivilegeType_Grant)
+				privs = append(privs, sql.PrivilegeType_GrantOption)
 			case dbTblColIndex_References_priv:
 				privs = append(privs, sql.PrivilegeType_References)
 			case dbTblColIndex_Index_priv:
@@ -179,7 +179,7 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 				row[dbTblColIndex_Create_priv] = uint16(2)
 			case sql.PrivilegeType_Drop:
 				row[dbTblColIndex_Drop_priv] = uint16(2)
-			case sql.PrivilegeType_Grant:
+			case sql.PrivilegeType_GrantOption:
 				row[dbTblColIndex_Grant_priv] = uint16(2)
 			case sql.PrivilegeType_References:
 				row[dbTblColIndex_References_priv] = uint16(2)
