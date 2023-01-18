@@ -1706,7 +1706,8 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			tableType = "BASE TABLE"
 			engine = "InnoDB"
 			rowFormat = "Dynamic"
-			tableCollation = Collation_Default.String()
+			dbCollation := plan.GetDatabaseCollation(ctx, db)
+			tableCollation = dbCollation.String()
 		}
 
 		y2k, _ := types.Timestamp.Convert("2000-01-01 00:00:00")
@@ -2068,8 +2069,9 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			return nil, err
 		}
 
-		charset := Collation_Default.CharacterSet().String()
-		collation := Collation_Default.String()
+		dbCollation := plan.GetDatabaseCollation(ctx, db)
+		charset := dbCollation.CharacterSet().String()
+		collation := dbCollation.String()
 
 		for _, view := range views {
 			privTblSet := privDbSet.Table(view.Name)

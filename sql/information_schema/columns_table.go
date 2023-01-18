@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"sort"
 	"strconv"
 	"strings"
@@ -185,7 +186,7 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 // getRowFromColumn returns a single row for given column. The arguments passed are used to define all row values.
 // These include the current ordinal position, so this column will get the next position number, sql.Column object,
 // database name, table name, column key and column privileges information through privileges set for the table.
-func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
+func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbCollation sql.CollationID, dbName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
 	var (
 		charName          interface{}
 		collName          interface{}
@@ -193,11 +194,11 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 		charOctetLen      interface{}
 		nullable          = "NO"
 		ordinalPos        = uint32(curOrdPos + 1)
-		colType           = strings.Split(col.Type.String(), " COLLATE")[0]
-		dataType          = colType
 		datetimePrecision interface{}
 		srsId             interface{}
 	)
+
+	colType, dataType := getDtdIdAndDataType(col.Type)
 
 	if col.Nullable {
 		nullable = "YES"
@@ -205,8 +206,8 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 
 	if types.IsText(col.Type) {
 		if types.IsTextOnly(col.Type) {
-			charName = sql.Collation_Default.CharacterSet().String()
-			collName = sql.Collation_Default.String()
+			charName = dbCollation.CharacterSet().String()
+			collName = dbCollation.String()
 		}
 
 		if st, ok := col.Type.(types.StringType); ok {
@@ -214,15 +215,11 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 			charOctetLen = st.MaxByteLength()
 		}
 	} else if types.IsEnum(col.Type) || types.IsSet(col.Type) {
-		charName = sql.Collation_Default.CharacterSet().String()
-		collName = sql.Collation_Default.String()
+		charName = dbCollation.CharacterSet().String()
+		collName = dbCollation.String()
 		charOctetLen = int64(col.Type.MaxTextResponseByteLength())
-		charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / sql.Collation_Default.CharacterSet().MaxLength()
+		charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / dbCollation.CharacterSet().MaxLength()
 	}
-
-	// The DATA_TYPE value is the type name only with no other information
-	dataType = strings.Split(dataType, "(")[0]
-	dataType = strings.Split(dataType, " ")[0]
 
 	if s, ok := col.Type.(sql.SpatialColumnType); ok {
 		if srid, d := s.GetSpatialTypeSRID(); d {
@@ -289,7 +286,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 }
 
 // getRowsFromTable returns array of rows for all accessible columns of the given table.
-func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
+func getRowsFromTable(ctx *sql.Context, db sql.Database, dbCollation sql.CollationID, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
 	var rows []sql.Row
 
 	privSetTbl := privSetDb.Table(t.Name())
@@ -315,7 +312,7 @@ func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb 
 			}
 		}
 
-		r := getRowFromColumn(ctx, i, col, db.Name(), tblName, columnKey, privSetTbl, curPrivSetMap)
+		r := getRowFromColumn(ctx, i, col, dbCollation, db.Name(), tblName, columnKey, privSetTbl, curPrivSetMap)
 		if r != nil {
 			rows = append(rows, r)
 		}
@@ -376,8 +373,9 @@ func getRowsFromDatabase(ctx *sql.Context, db sql.Database, privSet sql.Privileg
 		curPrivSetMap["select"] = struct{}{}
 	}
 
+	dbCollation := plan.GetDatabaseCollation(ctx, db)
 	err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
-		rs, err := getRowsFromTable(ctx, db, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
+		rs, err := getRowsFromTable(ctx, db, dbCollation, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
 		if err != nil {
 			return false, err
 		}
@@ -521,6 +519,19 @@ func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Sc
 	}
 
 	return allColsWithDefaultValue[start:end]
+}
+
+// get DtdIdAndDataType returns data types for given sql.Type but in two different ways.
+// The DTD_IDENTIFIER value contains the type name and possibly other information such as the precision or length.
+// The DATA_TYPE value is the type name only with no other information.
+func getDtdIdAndDataType(colType sql.Type) (string, string) {
+	dtdId := strings.Split(strings.Split(colType.String(), " COLLATE")[0], " CHARACTER SET")[0]
+
+	// The DATA_TYPE value is the type name only with no other information
+	dataType := strings.Split(dtdId, "(")[0]
+	dataType = strings.Split(dataType, " ")[0]
+
+	return dtdId, dataType
 }
 
 // getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
