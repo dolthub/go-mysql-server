@@ -1190,17 +1190,20 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		var users = make(map[*mysql_db.User]struct{})
 		db, err := c.Database(ctx, "mysql")
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 
-		mysqlDb := db.(*mysql_db.MySQLDb)
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
 		dbTbl, _, err := mysqlDb.GetTableInsensitive(ctx, "db")
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 		ri, err := dbTbl.PartitionRows(ctx, nil)
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 		for {
 			r, rerr := ri.Next(ctx)
@@ -1631,17 +1634,20 @@ func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		var users = make(map[*mysql_db.User]struct{})
 		db, err := c.Database(ctx, "mysql")
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 
-		mysqlDb := db.(*mysql_db.MySQLDb)
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
 		tblsPriv, _, err := mysqlDb.GetTableInsensitive(ctx, "tables_priv")
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 		ri, err := tblsPriv.PartitionRows(ctx, nil)
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 		for {
 			r, rerr := ri.Next(ctx)
@@ -1967,10 +1973,13 @@ func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 		var users = make(map[*mysql_db.User]struct{})
 		db, err := catalog.Database(ctx, "mysql")
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 
-		mysqlDb := db.(*mysql_db.MySQLDb)
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
 		userTbl := mysqlDb.UserTable()
 		userTblData := userTbl.Data()
 		for _, userEntry := range userTblData.ToSlice(ctx) {
@@ -2011,10 +2020,13 @@ func userPrivilegesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 		var users = make(map[*mysql_db.User]struct{})
 		db, err := catalog.Database(ctx, "mysql")
 		if err != nil {
-			return RowsToRowIter(rows...), nil
+			return nil, err
 		}
 
-		mysqlDb := db.(*mysql_db.MySQLDb)
+		mysqlDb, ok := db.(*mysql_db.MySQLDb)
+		if !ok {
+			return nil, ErrDatabaseNotFound.New("mysql")
+		}
 		userTbl := mysqlDb.UserTable()
 		userTblData := userTbl.Data()
 		for _, userEntry := range userTblData.ToSlice(ctx) {
