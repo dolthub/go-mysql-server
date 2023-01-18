@@ -84,8 +84,9 @@ type ProjectedTable interface {
 // IndexAddressable is a table that can be scanned through a primary index
 type IndexAddressable interface {
 	// IndexedAccess returns a table that can perform scans constrained to
-	// an IndexLookup on the index given
-	IndexedAccess(Index) IndexedTable
+	// an IndexLookup on the index given, or nil if the index cannot support
+	// the lookup expression.
+	IndexedAccess(IndexLookup) IndexedTable
 	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
 }

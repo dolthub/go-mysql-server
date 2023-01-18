@@ -104,7 +104,16 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 			}
 			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				ret := plan.NewIndexedTableAccess(n, iat.IndexedAccess(index), plan.NewLookupBuilder(index, keyExpr, nullmask))
+				lb := plan.NewLookupBuilder(index, keyExpr, nullmask)
+				lookup, err := lb.GetLookup(lb.GetZeroKey())
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				ia := iat.IndexedAccess(lookup)
+				if ia == nil {
+					return n, transform.SameTree, nil
+				}
+				ret := plan.NewIndexedTableAccess(n, ia, lb)
 				return ret, transform.NewTree, nil
 			}
 		}

@@ -25,6 +25,7 @@ import (
 
 var ErrNoIndexableTable = errors.NewKind("expected an IndexableTable, couldn't find one in %v")
 var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, couldn't find one in %v")
+var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not support given lookup: %s")
 
 // IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The values for the key used to access
 // the indexed table is provided in RowIter(), or during static analysis.
@@ -64,10 +65,18 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
+	lookup, err := lb.GetLookup(lb.GetZeroKey())
+	if err != nil {
+		return nil, err
+	}
+	ia := iaTable.IndexedAccess(lookup)
+	if ia == nil {
+		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
+	}
 	return &IndexedTableAccess{
 		ResolvedTable: rt,
 		lb:            lb,
-		Table:         iaTable.IndexedAccess(lb.index),
+		Table:         ia,
 	}, nil
 }
 
@@ -94,10 +103,14 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
+	ia := iaTable.IndexedAccess(lookup)
+	if ia == nil {
+		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
+	}
 	return &IndexedTableAccess{
 		ResolvedTable: rt,
 		lookup:        lookup,
-		Table:         iaTable.IndexedAccess(lookup.Index),
+		Table:         ia,
 	}, nil
 }
 
@@ -186,7 +199,7 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	}
 
 	key := i.lb.GetZeroKey()
-	lookup, err := i.lb.GetLookup(ctx, key)
+	lookup, err := i.lb.GetLookup(key)
 	return err == nil && !lookup.IsEmpty(), nil
 }
 
@@ -200,7 +213,7 @@ func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	if err != nil {
 		return sql.IndexLookup{}, err
 	}
-	return i.lb.GetLookup(ctx, key)
+	return i.lb.GetLookup(key)
 }
 
 func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.IndexLookup, error) {
@@ -213,7 +226,7 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.Ind
 	if err != nil {
 		return sql.IndexLookup{}, err
 	}
-	return i.lb.GetLookup(ctx, key)
+	return i.lb.GetLookup(key)
 }
 
 func (i *IndexedTableAccess) String() string {
@@ -329,7 +342,20 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 	if !ok {
 		return nil, fmt.Errorf("table does not support indexed access")
 	}
-	i.Table = iat.IndexedAccess(i.Index())
+
+	var ia sql.IndexedTable
+	if i.lookup.Index != nil {
+		ia = iat.IndexedAccess(i.lookup)
+	} else if i.lb != nil {
+		lookup, err := i.lb.GetLookup(i.lb.GetZeroKey())
+		if err != nil {
+			return nil, err
+		}
+		ia = iat.IndexedAccess(lookup)
+	}
+	if ia == nil {
+		return nil, ErrInvalidLookupForIndexedTable.New(sql.DebugString(i.lookup))
+	}
 
 	return &i, nil
 }
@@ -451,7 +477,7 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	return
 }
 
-func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
+func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
 		return sql.IndexLookup{
