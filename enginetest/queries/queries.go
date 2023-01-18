@@ -8011,6 +8011,26 @@ With c as (
 		Query:    "SELECT STRCMP((SELECT CONCAT('a', 'b')), (SELECT SUBSTRING('cab', 2, 3)));",
 		Expected: []sql.Row{{0}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that decimal parses as decimal
+		Query:    "SELECT 809826404100301269648758758005707100;",
+		Expected: []sql.Row{{"809826404100301269648758758005707100"}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that decimal parses as decimal
+		Query:    "SELECT 809826404100301269648758758005707100.12345;",
+		Expected: []sql.Row{{"809826404100301269648758758005707100.12345"}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that uint64 still parses as uint64
+		Query:    "SELECT 4294967295;",
+		Expected: []sql.Row{{uint64(4294967295)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that int64 still parses as int64
+		Query:    "SELECT 4294967296;",
+		Expected: []sql.Row{{int64(4294967296)}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
