@@ -1489,13 +1489,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT, REFERENCES ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE, GRANT OPTION ON mydb.* TO admin@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -1519,7 +1519,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mysql.* TO admin@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "admin",
@@ -1548,13 +1548,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON mydb.checks TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE, GRANT OPTION ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
@@ -1578,7 +1578,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mysql.* TO admin@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "admin",
@@ -1610,7 +1610,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
@@ -1622,7 +1622,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE, GRANT OPTION ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
