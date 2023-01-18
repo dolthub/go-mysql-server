@@ -472,7 +472,7 @@ IndexExpressions:
 	if err != nil {
 		return nil, nil
 	}
-	if it := iat.IndexedAccess(look); it == nil {
+	if !i.CanSupport(look.Ranges...) {
 		return nil, nil
 	}
 

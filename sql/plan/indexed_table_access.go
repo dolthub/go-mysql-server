@@ -69,10 +69,10 @@ func NewIndexedAccessForResolvedTable(rt *ResolvedTable, lb *LookupBuilder) (*In
 	if err != nil {
 		return nil, err
 	}
-	ia := iaTable.IndexedAccess(lookup)
-	if ia == nil {
+	if !lookup.Index.CanSupport(lookup.Ranges...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
+	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
 		ResolvedTable: rt,
 		lb:            lb,
@@ -103,10 +103,10 @@ func NewStaticIndexedAccessForResolvedTable(rt *ResolvedTable, lookup sql.IndexL
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	ia := iaTable.IndexedAccess(lookup)
-	if ia == nil {
+	if !lookup.Index.CanSupport(lookup.Ranges...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
+	ia := iaTable.IndexedAccess(lookup)
 	return &IndexedTableAccess{
 		ResolvedTable: rt,
 		lookup:        lookup,
@@ -338,23 +338,22 @@ func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, err
 		table = t.Underlying()
 	}
 
-	iat, ok := table.(sql.IndexAddressableTable)
+	_, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table does not support indexed access")
 	}
 
-	var ia sql.IndexedTable
+	var lookup sql.IndexLookup
 	if i.lookup.Index != nil {
-		ia = iat.IndexedAccess(i.lookup)
+		lookup = i.lookup
 	} else if i.lb != nil {
-		lookup, err := i.lb.GetLookup(i.lb.GetZeroKey())
+		lookup, err = i.lb.GetLookup(i.lb.GetZeroKey())
 		if err != nil {
 			return nil, err
 		}
-		ia = iat.IndexedAccess(lookup)
 	}
-	if ia == nil {
-		return nil, ErrInvalidLookupForIndexedTable.New(sql.DebugString(i.lookup))
+	if lookup.Index.CanSupport(lookup.Ranges...) {
+		return nil, ErrInvalidLookupForIndexedTable.New(sql.DebugString(i.lookup.Ranges))
 	}
 
 	return &i, nil
