@@ -414,10 +414,6 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SELECT * FROM information_schema.columns_extensions`,
-		Expected: []sql.Row{},
-	},
-	{
 		Query:    `SELECT * FROM information_schema.optimizer_trace`,
 		Expected: []sql.Row{},
 	},
@@ -443,14 +439,6 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query:    `SELECT * FROM information_schema.role_routine_grants`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.table_constraints_extensions`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.tables_extensions`,
 		Expected: []sql.Row{},
 	},
 	{
@@ -637,6 +625,18 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	{
 		Query:    "SELECT * FROM information_schema.schemata_extensions",
 		Expected: []sql.Row{{"def", "information_schema", ""}, {"def", "foo", ""}, {"def", "mydb", ""}},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.columns_extensions where table_name = 'mytable'`,
+		Expected: []sql.Row{{"def", "mydb", "mytable", "i", nil, nil}, {"def", "mydb", "mytable", "s", nil, nil}},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.table_constraints_extensions where table_name = 'fk_tbl'`,
+		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,
+		Expected: []sql.Row{{"def", "mydb", "mytable", nil, nil}},
 	},
 }
 

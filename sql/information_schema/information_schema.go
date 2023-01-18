@@ -936,6 +936,32 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// columnsExtensionsRowIter implements the sql.RowIter for the information_schema.COLUMNS_EXTENSIONS table.
+func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range cat.AllDatabases(ctx) {
+		dbName := db.Name()
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			tblName := t.Name()
+			for _, col := range t.Schema() {
+				rows = append(rows, Row{
+					"def",    // table_catalog
+					dbName,   // table_schema
+					tblName,  // table_name
+					col.Name, // column_name
+					nil,      // engine_attribute // TODO: reserved for future use
+					nil,      // secondary_engine_attribute // TODO: reserved for future use
+				})
+			}
+			return true, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return RowsToRowIter(rows...), nil
+}
+
 // enginesRowIter implements the sql.RowIter for the information_schema.ENGINES table.
 func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
@@ -1310,6 +1336,7 @@ func stSpatialReferenceSystemsRowIter(ctx *Context, cat Catalog) (RowIter, error
 	return RowsToRowIter(rows...), nil
 }
 
+// stUnitsOfMeasureRowIter implements the sql.RowIter for the information_schema.ST_UNITS_OF_MEASURE table.
 func stUnitsOfMeasureRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, spRef := range unitsOfMeasureArray {
@@ -1324,7 +1351,7 @@ func stUnitsOfMeasureRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// tableConstraintsRowIter implements the sql.RowIter for the information_schema.STATISTICS table.
+// statisticsRowIter implements the sql.RowIter for the information_schema.STATISTICS table.
 func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	dbs := c.AllDatabases(ctx)
@@ -1431,7 +1458,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// implements the sql.RowIter for the information_schema.TABLE_CONSTRAINTS table.
+// tableConstraintsRowIter implements the sql.RowIter for the information_schema.TABLE_CONSTRAINTS table.
 func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
@@ -1498,6 +1525,96 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 				for _, fk := range fks {
 					rows = append(rows, Row{"def", db.Name(), fk.Name, db.Name(), tbl.Name(), "FOREIGN KEY", "YES"})
+				}
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+// tableConstraintsExtensionsRowIter implements the sql.RowIter for the information_schema.TABLE_CONSTRAINTS_EXTENSIONS table.
+func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases(ctx) {
+		dbName := db.Name()
+		tableNames, err := db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+			tblName := tbl.Name()
+
+			// Get all the CHECKs
+			checkTbl, ok := tbl.(CheckTable)
+			if ok {
+				checkDefinitions, err := checkTbl.GetChecks(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, checkDefinition := range checkDefinitions {
+					rows = append(rows, Row{
+						"def",                // constraint_catalog
+						dbName,               // constraint_schema
+						checkDefinition.Name, // constraint_name
+						tblName,              // table_name
+						nil,                  // engine_attribute
+						nil,                  // second_engine_attribute
+					})
+				}
+			}
+
+			// Get UNIQUEs, PRIMARY KEYs
+			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
+			indexTable, ok := tbl.(IndexAddressable)
+			if ok {
+				indexes, err := indexTable.GetIndexes(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, index := range indexes {
+					if index.ID() != "PRIMARY" {
+						if !index.IsUnique() {
+							// In this case we have a multi-index which is not represented in this table
+							continue
+						}
+					}
+
+					rows = append(rows, Row{
+						"def",
+						dbName,
+						index.ID(),
+						tblName,
+						nil,
+						nil,
+					})
+				}
+			}
+
+			// Get FKs
+			fkTable, ok := tbl.(ForeignKeyTable)
+			if ok {
+				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, fk := range fks {
+					rows = append(rows, Row{
+						"def",
+						dbName,
+						fk.Name,
+						tblName,
+						nil,
+						nil,
+					})
 				}
 			}
 		}
@@ -1687,6 +1804,28 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		}
 	}
 
+	return RowsToRowIter(rows...), nil
+}
+
+// tablesExtensionsRowIter implements the sql.RowIter for the information_schema.TABLES_EXTENSIONS table.
+func tablesExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range cat.AllDatabases(ctx) {
+		dbName := db.Name()
+		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			rows = append(rows, Row{
+				"def",    // table_catalog
+				dbName,   // table_schema
+				t.Name(), // table_name
+				nil,      // engine_attribute // TODO: reserved for future use
+				nil,      // secondary_engine_attribute // TODO: reserved for future use
+			})
+			return true, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
 	return RowsToRowIter(rows...), nil
 }
 
@@ -2036,7 +2175,7 @@ func NewInformationSchemaDatabase() Database {
 			ColumnsExtensionsTableName: &informationSchemaTable{
 				name:   ColumnsExtensionsTableName,
 				schema: columnsExtensionsSchema,
-				reader: emptyRowIter,
+				reader: columnsExtensionsRowIter,
 			},
 			EnabledRolesTablesName: &informationSchemaTable{
 				name:   EnabledRolesTablesName,
@@ -2166,7 +2305,7 @@ func NewInformationSchemaDatabase() Database {
 			TableConstraintsExtensionsTableName: &informationSchemaTable{
 				name:   TableConstraintsExtensionsTableName,
 				schema: tableConstraintsExtensionsSchema,
-				reader: emptyRowIter,
+				reader: tableConstraintsExtensionsRowIter,
 			},
 			TablePrivilegesTableName: &informationSchemaTable{
 				name:   TablePrivilegesTableName,
@@ -2181,7 +2320,7 @@ func NewInformationSchemaDatabase() Database {
 			TablesExtensionsTableName: &informationSchemaTable{
 				name:   TablesExtensionsTableName,
 				schema: tablesExtensionsSchema,
-				reader: emptyRowIter,
+				reader: tablesExtensionsRowIter,
 			},
 			TablespacesTableName: &informationSchemaTable{
 				name:   TablespacesTableName,
