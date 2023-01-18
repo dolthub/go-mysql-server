@@ -220,7 +220,9 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				return node, len(handled) == 0, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(sql.NameableNode), scope, filters, tableAliases)
-				if err != nil {
+				if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+					return node, transform.SameTree, nil
+				} else if err != nil {
 					return nil, transform.SameTree, err
 				}
 				n, sameFix, err := pushdownFixIndices(a, n, scope)
@@ -578,7 +580,9 @@ func pushdownFiltersToAboveTable(
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		node, _, err := withTable(tableNode, table)
-		if err != nil {
+		if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+			node = tableNode
+		} else if err != nil {
 			return nil, transform.SameTree, err
 		}
 
