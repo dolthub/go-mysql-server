@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowPrivileges represents the statement SHOW PRIVILEGES.
@@ -31,9 +32,9 @@ func NewShowPrivileges() *ShowPrivileges {
 // Schema implements the interface sql.Node.
 func (n *ShowPrivileges) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Privilege", Type: sql.LongText},
-		&sql.Column{Name: "Context", Type: sql.LongText},
-		&sql.Column{Name: "Comment", Type: sql.LongText},
+		&sql.Column{Name: "Privilege", Type: types.LongText},
+		&sql.Column{Name: "Context", Type: types.LongText},
+		&sql.Column{Name: "Comment", Type: types.LongText},
 	}
 }
 

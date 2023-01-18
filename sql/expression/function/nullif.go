@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // NullIf function compares two expressions and returns NULL if they are equal. Otherwise, the first expression is returned.
@@ -50,7 +51,7 @@ func (f *NullIf) Description() string {
 
 // Eval implements the Expression interface.
 func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if sql.IsNull(f.Left) && sql.IsNull(f.Right) {
+	if types.IsNull(f.Left) && types.IsNull(f.Right) {
 		return nil, nil
 	}
 
@@ -67,8 +68,8 @@ func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the Expression interface.
 func (f *NullIf) Type() sql.Type {
-	if sql.IsNull(f.Left) {
-		return sql.Null
+	if types.IsNull(f.Left) {
+		return types.Null
 	}
 
 	return f.Left.Type()

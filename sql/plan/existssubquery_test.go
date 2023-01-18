@@ -23,12 +23,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestExistsSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
@@ -36,7 +37,7 @@ func TestExistsSubquery(t *testing.T) {
 	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
 
 	emptyTable := memory.NewTable("empty", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "empty", Type: sql.Int64},
+		{Name: "t", Source: "empty", Type: types.Int64},
 	}), nil)
 
 	project := func(expr sql.Expression, tbl *memory.Table) sql.Node {
@@ -54,7 +55,7 @@ func TestExistsSubquery(t *testing.T) {
 		{
 			"Null returns as true",
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false), table,
+				expression.NewGetField(1, types.Text, "foo", false), table,
 			),
 			sql.NewRow(nil),
 			true,
@@ -62,7 +63,7 @@ func TestExistsSubquery(t *testing.T) {
 		{
 			"Non NULL evaluates as true",
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false), table,
+				expression.NewGetField(1, types.Text, "foo", false), table,
 			),
 			sql.NewRow("four"),
 			true,
@@ -70,7 +71,7 @@ func TestExistsSubquery(t *testing.T) {
 		{
 			"Empty Set Passes",
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false), emptyTable,
+				expression.NewGetField(1, types.Text, "foo", false), emptyTable,
 			),
 			sql.NewRow(),
 			false,

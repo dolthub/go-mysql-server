@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -29,8 +30,8 @@ func TestReorderProjection(t *testing.T) {
 	f := getRule(reorderProjectionId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Source: "mytable", Type: sql.Int64},
-		{Name: "s", Source: "mytable", Type: sql.Int64},
+		{Name: "i", Source: "mytable", Type: types.Int64},
+		{Name: "s", Source: "mytable", Type: types.Int64},
 	}), nil)
 
 	testCases := []analyzerFnTestCase{
@@ -151,13 +152,13 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 	f := getRule(reorderProjectionId)
 
 	onepk := memory.NewTable("one_pk", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "pk", Source: "one_pk", Type: sql.Int64, PrimaryKey: true},
-		{Name: "c1", Source: "one_pk", Type: sql.Int64},
+		{Name: "pk", Source: "one_pk", Type: types.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "one_pk", Type: types.Int64},
 	}), nil)
 	twopk := memory.NewTable("two_pk", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "pk1", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
-		{Name: "pk2", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
-		{Name: "c1", Source: "two_pk", Type: sql.Int64},
+		{Name: "pk1", Source: "two_pk", Type: types.Int64, PrimaryKey: true},
+		{Name: "pk2", Source: "two_pk", Type: types.Int64, PrimaryKey: true},
+		{Name: "c1", Source: "two_pk", Type: types.Int64},
 	}), nil)
 
 	testCases := []analyzerFnTestCase{

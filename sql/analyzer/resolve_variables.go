@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // resolveVariables replaces UnresolvedColumn which are variables with their literal values
@@ -142,7 +143,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 				if uc, ok := setVal.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
 					_, setScope, _ := sqlparser.VarScope(uc.Name())
 					if setScope == sqlparser.SetScope_None {
-						setVal = expression.NewLiteral(uc.Name(), sql.LongText)
+						setVal = expression.NewLiteral(uc.Name(), types.LongText)
 					}
 				}
 			}
@@ -194,7 +195,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			if uc, ok := setVal.(column); ok && uc.Table() == "" {
 				_, setScope, _ := sqlparser.VarScope(uc.Name())
 				if setScope == sqlparser.SetScope_None {
-					setVal = expression.NewLiteral(uc.Name(), sql.LongText)
+					setVal = expression.NewLiteral(uc.Name(), types.LongText)
 				}
 			}
 
@@ -255,16 +256,16 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				charsetStr := plan.GetDatabaseCollation(ctx, db).CharacterSet().String()
-				return expression.NewNamedLiteral(name, charsetStr, sql.Text), transform.NewTree, nil
+				return expression.NewNamedLiteral(name, charsetStr, types.Text), transform.NewTree, nil
 			}
-			return expression.NewNamedLiteral(name, sql.Collation_Default.CharacterSet().String(), sql.Text), transform.NewTree, nil
+			return expression.NewNamedLiteral(name, sql.Collation_Default.CharacterSet().String(), types.Text), transform.NewTree, nil
 		case "collation_database":
 			name := expression.NewSystemVar(varName, sql.SystemVariableScope_Session).String()
 			if db, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase()); err == nil {
 				collationStr := plan.GetDatabaseCollation(ctx, db).String()
-				return expression.NewNamedLiteral(name, collationStr, sql.Text), transform.NewTree, nil
+				return expression.NewNamedLiteral(name, collationStr, types.Text), transform.NewTree, nil
 			}
-			return expression.NewNamedLiteral(name, sql.Collation_Default.String(), sql.Text), transform.NewTree, nil
+			return expression.NewNamedLiteral(name, sql.Collation_Default.String(), types.Text), transform.NewTree, nil
 		default:
 			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), transform.NewTree, nil
 		}
@@ -293,7 +294,7 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 			if !ok {
 				return nil, sql.ErrUnknownSystemVariable.New(varName)
 			}
-			return expression.NewLiteral(value, sql.ApproximateTypeFromValue(value)), nil
+			return expression.NewLiteral(value, types.ApproximateTypeFromValue(value)), nil
 		case sqlparser.SetScope_Persist:
 			return nil, sql.ErrUnsupportedFeature.New("PERSIST")
 		case sqlparser.SetScope_PersistOnly:
@@ -309,7 +310,7 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		return e, nil
 	}
 
-	if sql.IsTextOnly(e.Type()) {
+	if types.IsTextOnly(e.Type()) {
 		txt, err := e.Eval(ctx, nil)
 		if err != nil {
 			return nil, err
@@ -323,15 +324,15 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 
 		switch strings.ToLower(val) {
 		case sqlparser.KeywordString(sqlparser.ON):
-			return expression.NewLiteral(true, sql.Boolean), nil
+			return expression.NewLiteral(true, types.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.TRUE):
-			return expression.NewLiteral(true, sql.Boolean), nil
+			return expression.NewLiteral(true, types.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.OFF):
-			return expression.NewLiteral(false, sql.Boolean), nil
+			return expression.NewLiteral(false, types.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.FALSE):
-			return expression.NewLiteral(false, sql.Boolean), nil
+			return expression.NewLiteral(false, types.Boolean), nil
 		}
-	} else if e.Type() == sql.Boolean {
+	} else if e.Type() == types.Boolean {
 		val, err := e.Eval(ctx, nil)
 		if err != nil {
 			return nil, err
@@ -343,9 +344,9 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		}
 
 		if b {
-			return expression.NewLiteral(1, sql.Boolean), nil
+			return expression.NewLiteral(1, types.Boolean), nil
 		} else {
-			return expression.NewLiteral(0, sql.Boolean), nil
+			return expression.NewLiteral(0, types.Boolean), nil
 		}
 	}
 

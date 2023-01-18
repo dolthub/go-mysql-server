@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Ceil returns the smallest integer value not less than X.
@@ -51,10 +52,10 @@ func (c *Ceil) Description() string {
 // Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
 	childType := c.Child.Type()
-	if sql.IsNumber(childType) {
+	if types.IsNumber(childType) {
 		return childType
 	}
-	return sql.Int32
+	return types.Int32
 }
 
 func (c *Ceil) String() string {
@@ -82,8 +83,8 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// non number type will be caught here
-	if !sql.IsNumber(c.Child.Type()) {
-		child, err = sql.Float64.Convert(child)
+	if !types.IsNumber(c.Child.Type()) {
+		child, err = types.Float64.Convert(child)
 		if err != nil {
 			return int32(0), nil
 		}
@@ -129,10 +130,10 @@ func (f *Floor) Description() string {
 // Type implements the Expression interface.
 func (f *Floor) Type() sql.Type {
 	childType := f.Child.Type()
-	if sql.IsNumber(childType) {
+	if types.IsNumber(childType) {
 		return childType
 	}
-	return sql.Int32
+	return types.Int32
 }
 
 func (f *Floor) String() string {
@@ -160,8 +161,8 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// non number type will be caught here
-	if !sql.IsNumber(f.Child.Type()) {
-		child, err = sql.Float64.Convert(child)
+	if !types.IsNumber(f.Child.Type()) {
+		child, err = types.Float64.Convert(child)
 		if err != nil {
 			return int32(0), nil
 		}
@@ -277,7 +278,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				}
 				dVal = float64(val)
 			default:
-				dTemp, err = sql.Float64.Convert(dTemp)
+				dTemp, err = types.Float64.Convert(dTemp)
 				if err == nil {
 					dVal = dTemp.(float64)
 				}
@@ -288,13 +289,13 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	if sql.IsText(r.Left.Type()) {
-		xVal, err = sql.Float64.Convert(xVal)
+	if types.IsText(r.Left.Type()) {
+		xVal, err = types.Float64.Convert(xVal)
 		if err != nil {
 			return int32(0), nil
 		}
-	} else if !sql.IsNumber(r.Left.Type()) {
-		xVal, err = sql.Float64.Convert(xVal)
+	} else if !types.IsNumber(r.Left.Type()) {
+		xVal, err = types.Float64.Convert(xVal)
 		if err != nil {
 			return int32(0), nil
 		}
@@ -364,10 +365,10 @@ func (r *Round) Resolved() bool {
 // Type implements the Expression interface.
 func (r *Round) Type() sql.Type {
 	leftChildType := r.Left.Type()
-	if sql.IsNumber(leftChildType) {
+	if types.IsNumber(leftChildType) {
 		return leftChildType
 	}
-	return sql.Int32
+	return types.Int32
 }
 
 // WithChildren implements the Expression interface.

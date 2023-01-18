@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestCeil(t *testing.T) {
@@ -32,18 +33,18 @@ func TestCeil(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"float64 is nil", sql.Float64, sql.NewRow(nil), nil, nil},
-		{"float64 is ok", sql.Float64, sql.NewRow(5.8), float64(6), nil},
-		{"float32 is nil", sql.Float32, sql.NewRow(nil), nil, nil},
-		{"float32 is ok", sql.Float32, sql.NewRow(float32(5.8)), float32(6), nil},
-		{"int32 is nil", sql.Int32, sql.NewRow(nil), nil, nil},
-		{"int32 is ok", sql.Int32, sql.NewRow(int32(6)), int32(6), nil},
-		{"int64 is nil", sql.Int64, sql.NewRow(nil), nil, nil},
-		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
-		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
-		{"string int is ok", sql.Text, sql.NewRow("1"), int32(1), nil},
-		{"string float is ok", sql.Text, sql.NewRow("1.2"), int32(2), nil},
+		{"float64 is nil", types.Float64, sql.NewRow(nil), nil, nil},
+		{"float64 is ok", types.Float64, sql.NewRow(5.8), float64(6), nil},
+		{"float32 is nil", types.Float32, sql.NewRow(nil), nil, nil},
+		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), float32(6), nil},
+		{"int32 is nil", types.Int32, sql.NewRow(nil), nil, nil},
+		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int32(6), nil},
+		{"int64 is nil", types.Int64, sql.NewRow(nil), nil, nil},
+		{"int64 is ok", types.Int64, sql.NewRow(int64(6)), int64(6), nil},
+		{"blob is nil", types.Blob, sql.NewRow(nil), nil, nil},
+		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
+		{"string int is ok", types.Text, sql.NewRow("1"), int32(1), nil},
+		{"string float is ok", types.Text, sql.NewRow("1.2"), int32(2), nil},
 	}
 
 	for _, tt := range testCases {
@@ -65,14 +66,14 @@ func TestCeil(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsFloat(tt.rowType):
-				require.True(sql.IsFloat(f.Type()))
+			case types.IsFloat(tt.rowType):
+				require.True(types.IsFloat(f.Type()))
 				require.False(f.IsNullable())
-			case sql.IsInteger(tt.rowType):
-				require.True(sql.IsInteger(f.Type()))
+			case types.IsInteger(tt.rowType):
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			default:
-				require.True(sql.IsInteger(f.Type()))
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			}
 		})
@@ -87,18 +88,18 @@ func TestFloor(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"float64 is nil", sql.Float64, sql.NewRow(nil), nil, nil},
-		{"float64 is ok", sql.Float64, sql.NewRow(5.8), float64(5), nil},
-		{"float32 is nil", sql.Float32, sql.NewRow(nil), nil, nil},
-		{"float32 is ok", sql.Float32, sql.NewRow(float32(5.8)), float32(5), nil},
-		{"int32 is nil", sql.Int32, sql.NewRow(nil), nil, nil},
-		{"int32 is ok", sql.Int32, sql.NewRow(int32(6)), int32(6), nil},
-		{"int64 is nil", sql.Int64, sql.NewRow(nil), nil, nil},
-		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
-		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
-		{"string int is ok", sql.Text, sql.NewRow("1"), int32(1), nil},
-		{"string float is ok", sql.Text, sql.NewRow("1.2"), int32(1), nil},
+		{"float64 is nil", types.Float64, sql.NewRow(nil), nil, nil},
+		{"float64 is ok", types.Float64, sql.NewRow(5.8), float64(5), nil},
+		{"float32 is nil", types.Float32, sql.NewRow(nil), nil, nil},
+		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), float32(5), nil},
+		{"int32 is nil", types.Int32, sql.NewRow(nil), nil, nil},
+		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int32(6), nil},
+		{"int64 is nil", types.Int64, sql.NewRow(nil), nil, nil},
+		{"int64 is ok", types.Int64, sql.NewRow(int64(6)), int64(6), nil},
+		{"blob is nil", types.Blob, sql.NewRow(nil), nil, nil},
+		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
+		{"string int is ok", types.Text, sql.NewRow("1"), int32(1), nil},
+		{"string float is ok", types.Text, sql.NewRow("1.2"), int32(1), nil},
 	}
 
 	for _, tt := range testCases {
@@ -120,14 +121,14 @@ func TestFloor(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsFloat(tt.rowType):
-				require.True(sql.IsFloat(f.Type()))
+			case types.IsFloat(tt.rowType):
+				require.True(types.IsFloat(f.Type()))
 				require.False(f.IsNullable())
-			case sql.IsInteger(tt.rowType):
-				require.True(sql.IsInteger(f.Type()))
+			case types.IsInteger(tt.rowType):
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			default:
-				require.True(sql.IsInteger(f.Type()))
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			}
 		})
@@ -143,91 +144,91 @@ func TestRound(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"float64 is nil", sql.Float64, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"float64 without d", sql.Float64, sql.Int32, sql.NewRow(5.8, nil), float64(6), nil},
-		{"float64 with d", sql.Float64, sql.Int32, sql.NewRow(5.855, 2), float64(5.86), nil},
-		{"float64 with negative d", sql.Float64, sql.Int32, sql.NewRow(52.855, -1), float64(50), nil},
-		{"float64 with float d", sql.Float64, sql.Float64, sql.NewRow(5.855, float64(2.123)), float64(5.86), nil},
-		{"float64 with float negative d", sql.Float64, sql.Float64, sql.NewRow(52.855, float64(-1)), float64(50), nil},
-		{"float64 with blob d", sql.Float64, sql.Blob, sql.NewRow(5.855, []byte{1, 2, 3}), float64(5.855), nil},
-		{"float32 is nil", sql.Float32, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"float32 without d", sql.Float32, sql.Int32, sql.NewRow(float32(5.8), nil), float32(6), nil},
-		{"float32 with d", sql.Float32, sql.Int32, sql.NewRow(float32(5.855), 2), float32(5.86), nil},
-		{"float32 with negative d", sql.Float32, sql.Int32, sql.NewRow(float32(52.855), -1), float32(50), nil},
-		{"float32 with float d", sql.Float32, sql.Float64, sql.NewRow(float32(5.855), float32(2.123)), float32(5.86), nil},
-		{"float32 with float negative d", sql.Float32, sql.Float64, sql.NewRow(float32(52.855), float32(-1)), float32(50), nil},
-		{"float32 with blob d", sql.Float32, sql.Blob, sql.NewRow(float32(5.855), []byte{1, 2, 3}), float32(5.855), nil},
-		{"int64 is nil", sql.Int64, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"int64 without d", sql.Int64, sql.Int32, sql.NewRow(int64(5), nil), int64(5), nil},
-		{"int64 with d", sql.Int64, sql.Int32, sql.NewRow(int64(5), 2), int64(5), nil},
-		{"int64 with negative d", sql.Int64, sql.Int32, sql.NewRow(int64(52), -1), int64(50), nil},
-		{"int64 with float d", sql.Int64, sql.Float64, sql.NewRow(int64(5), float32(2.123)), int64(5), nil},
-		{"int64 with float negative d", sql.Int64, sql.Float64, sql.NewRow(int64(52), float32(-1)), int64(50), nil},
-		{"int32 with blob d", sql.Int32, sql.Blob, sql.NewRow(int32(5), []byte{1, 2, 3}), int32(5), nil},
-		{"int32 is nil", sql.Int32, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"int32 without d", sql.Int32, sql.Int32, sql.NewRow(int32(5), nil), int32(5), nil},
-		{"int32 with d", sql.Int32, sql.Int32, sql.NewRow(int32(5), 2), int32(5), nil},
-		{"int32 with negative d", sql.Int32, sql.Int32, sql.NewRow(int32(52), -1), int32(50), nil},
-		{"int32 with float d", sql.Int32, sql.Float64, sql.NewRow(int32(5), float32(2.123)), int32(5), nil},
-		{"int32 with float negative d", sql.Int32, sql.Float64, sql.NewRow(int32(52), float32(-1)), int32(50), nil},
-		{"int32 with blob d", sql.Int32, sql.Blob, sql.NewRow(int32(5), []byte{1, 2, 3}), int32(5), nil},
-		{"int16 is nil", sql.Int16, sql.Int16, sql.NewRow(nil, nil), nil, nil},
-		{"int16 without d", sql.Int16, sql.Int16, sql.NewRow(int16(5), nil), int16(5), nil},
-		{"int16 with d", sql.Int16, sql.Int16, sql.NewRow(int16(5), 2), int16(5), nil},
-		{"int16 with negative d", sql.Int16, sql.Int16, sql.NewRow(int16(52), -1), int16(50), nil},
-		{"int16 with float d", sql.Int16, sql.Float64, sql.NewRow(int16(5), float32(2.123)), int16(5), nil},
-		{"int16 with float negative d", sql.Int16, sql.Float64, sql.NewRow(int16(52), float32(-1)), int16(50), nil},
-		{"int16 with blob d", sql.Int16, sql.Blob, sql.NewRow(int16(5), []byte{1, 2, 3}), int16(5), nil},
-		{"int8 is nil", sql.Int8, sql.Int8, sql.NewRow(nil, nil), nil, nil},
-		{"int8 without d", sql.Int8, sql.Int8, sql.NewRow(int8(5), nil), int8(5), nil},
-		{"int8 with d", sql.Int8, sql.Int8, sql.NewRow(int8(5), 2), int8(5), nil},
-		{"int8 with negative d", sql.Int8, sql.Int8, sql.NewRow(int8(52), -1), int8(50), nil},
-		{"int8 with float d", sql.Int8, sql.Float64, sql.NewRow(int8(5), float32(2.123)), int8(5), nil},
-		{"int8 with float negative d", sql.Int8, sql.Float64, sql.NewRow(int8(52), float32(-1)), int8(50), nil},
-		{"int8 with blob d", sql.Int8, sql.Blob, sql.NewRow(int8(5), []byte{1, 2, 3}), int8(5), nil},
-		{"uint64 is nil", sql.Uint64, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"uint64 without d", sql.Uint64, sql.Int32, sql.NewRow(uint64(5), nil), uint64(5), nil},
-		{"uint64 with d", sql.Uint64, sql.Int32, sql.NewRow(uint64(5), 2), uint64(5), nil},
-		{"uint64 with negative d", sql.Uint64, sql.Int32, sql.NewRow(uint64(52), -1), uint64(50), nil},
-		{"uint64 with float d", sql.Uint64, sql.Float64, sql.NewRow(uint64(5), float32(2.123)), uint64(5), nil},
-		{"uint64 with float negative d", sql.Uint64, sql.Float64, sql.NewRow(uint64(52), float32(-1)), uint64(50), nil},
-		{"uint32 with blob d", sql.Uint32, sql.Blob, sql.NewRow(uint32(5), []byte{1, 2, 3}), uint32(5), nil},
-		{"uint32 is nil", sql.Uint32, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"uint32 without d", sql.Uint32, sql.Int32, sql.NewRow(uint32(5), nil), uint32(5), nil},
-		{"uint32 with d", sql.Uint32, sql.Int32, sql.NewRow(uint32(5), 2), uint32(5), nil},
-		{"uint32 with negative d", sql.Uint32, sql.Int32, sql.NewRow(uint32(52), -1), uint32(50), nil},
-		{"uint32 with float d", sql.Uint32, sql.Float64, sql.NewRow(uint32(5), float32(2.123)), uint32(5), nil},
-		{"uint32 with float negative d", sql.Uint32, sql.Float64, sql.NewRow(uint32(52), float32(-1)), uint32(50), nil},
-		{"uint32 with blob d", sql.Uint32, sql.Blob, sql.NewRow(uint32(5), []byte{1, 2, 3}), uint32(5), nil},
-		{"uint16 with blob d", sql.Uint16, sql.Blob, sql.NewRow(uint16(5), []byte{1, 2, 3}), uint16(5), nil},
-		{"uint16 is nil", sql.Uint16, sql.Int16, sql.NewRow(nil, nil), nil, nil},
-		{"uint16 without d", sql.Uint16, sql.Int16, sql.NewRow(uint16(5), nil), uint16(5), nil},
-		{"uint16 with d", sql.Uint16, sql.Int16, sql.NewRow(uint16(5), 2), uint16(5), nil},
-		{"uint16 with negative d", sql.Uint16, sql.Int16, sql.NewRow(uint16(52), -1), uint16(50), nil},
-		{"uint16 with float d", sql.Uint16, sql.Float64, sql.NewRow(uint16(5), float32(2.123)), uint16(5), nil},
-		{"uint16 with float negative d", sql.Uint16, sql.Float64, sql.NewRow(uint16(52), float32(-1)), uint16(50), nil},
-		{"uint16 with blob d", sql.Uint16, sql.Blob, sql.NewRow(uint16(5), []byte{1, 2, 3}), uint16(5), nil},
-		{"uint8 with blob d", sql.Uint8, sql.Blob, sql.NewRow(uint8(5), []byte{1, 2, 3}), uint8(5), nil},
-		{"uint8 is nil", sql.Uint8, sql.Int8, sql.NewRow(nil, nil), nil, nil},
-		{"uint8 without d", sql.Uint8, sql.Int8, sql.NewRow(uint8(5), nil), uint8(5), nil},
-		{"uint8 with d", sql.Uint8, sql.Int8, sql.NewRow(uint8(5), 2), uint8(5), nil},
-		{"uint8 with negative d", sql.Uint8, sql.Int8, sql.NewRow(uint8(52), -1), uint8(50), nil},
-		{"uint8 with float d", sql.Uint8, sql.Float64, sql.NewRow(uint8(5), float32(2.123)), uint8(5), nil},
-		{"uint8 with float negative d", sql.Uint8, sql.Float64, sql.NewRow(uint8(52), float32(-1)), uint8(50), nil},
-		{"uint8 with blob d", sql.Uint8, sql.Blob, sql.NewRow(uint8(5), []byte{1, 2, 3}), uint8(5), nil},
-		{"blob is nil", sql.Blob, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil), float64(66051), nil},
-		{"text int without d", sql.Text, sql.Int32, sql.NewRow("5", nil), float64(5), nil},
-		{"text int with d", sql.Text, sql.Int32, sql.NewRow("5", 2), float64(5), nil},
-		{"text int with negative d", sql.Text, sql.Int32, sql.NewRow("52", -1), float64(50), nil},
-		{"text int with float d", sql.Text, sql.Float64, sql.NewRow("5", float32(2.123)), float64(5), nil},
-		{"text int with float negative d", sql.Text, sql.Float64, sql.NewRow("52", float32(-1)), float64(50), nil},
-		{"text float without d", sql.Text, sql.Int32, sql.NewRow("5.8", nil), float64(6), nil},
-		{"text float with d", sql.Text, sql.Int32, sql.NewRow("5.855", 2), float64(5.86), nil},
-		{"text float with negative d", sql.Text, sql.Int32, sql.NewRow("52.855", -1), float64(50), nil},
-		{"text float with float d", sql.Text, sql.Float64, sql.NewRow("5.855", float64(2.123)), float64(5.86), nil},
-		{"text float with float negative d", sql.Text, sql.Float64, sql.NewRow("52.855", float64(-1)), float64(50), nil},
-		{"text float with blob d", sql.Text, sql.Blob, sql.NewRow("5.855", []byte{1, 2, 3}), float64(5.855), nil},
+		{"float64 is nil", types.Float64, types.Int32, sql.NewRow(nil, nil), nil, nil},
+		{"float64 without d", types.Float64, types.Int32, sql.NewRow(5.8, nil), float64(6), nil},
+		{"float64 with d", types.Float64, types.Int32, sql.NewRow(5.855, 2), float64(5.86), nil},
+		{"float64 with negative d", types.Float64, types.Int32, sql.NewRow(52.855, -1), float64(50), nil},
+		{"float64 with float d", types.Float64, types.Float64, sql.NewRow(5.855, float64(2.123)), float64(5.86), nil},
+		{"float64 with float negative d", types.Float64, types.Float64, sql.NewRow(52.855, float64(-1)), float64(50), nil},
+		{"float64 with blob d", types.Float64, types.Blob, sql.NewRow(5.855, []byte{1, 2, 3}), float64(5.855), nil},
+		{"float32 is nil", types.Float32, types.Int32, sql.NewRow(nil, nil), nil, nil},
+		{"float32 without d", types.Float32, types.Int32, sql.NewRow(float32(5.8), nil), float32(6), nil},
+		{"float32 with d", types.Float32, types.Int32, sql.NewRow(float32(5.855), 2), float32(5.86), nil},
+		{"float32 with negative d", types.Float32, types.Int32, sql.NewRow(float32(52.855), -1), float32(50), nil},
+		{"float32 with float d", types.Float32, types.Float64, sql.NewRow(float32(5.855), float32(2.123)), float32(5.86), nil},
+		{"float32 with float negative d", types.Float32, types.Float64, sql.NewRow(float32(52.855), float32(-1)), float32(50), nil},
+		{"float32 with blob d", types.Float32, types.Blob, sql.NewRow(float32(5.855), []byte{1, 2, 3}), float32(5.855), nil},
+		{"int64 is nil", types.Int64, types.Int32, sql.NewRow(nil, nil), nil, nil},
+		{"int64 without d", types.Int64, types.Int32, sql.NewRow(int64(5), nil), int64(5), nil},
+		{"int64 with d", types.Int64, types.Int32, sql.NewRow(int64(5), 2), int64(5), nil},
+		{"int64 with negative d", types.Int64, types.Int32, sql.NewRow(int64(52), -1), int64(50), nil},
+		{"int64 with float d", types.Int64, types.Float64, sql.NewRow(int64(5), float32(2.123)), int64(5), nil},
+		{"int64 with float negative d", types.Int64, types.Float64, sql.NewRow(int64(52), float32(-1)), int64(50), nil},
+		{"int32 with blob d", types.Int32, types.Blob, sql.NewRow(int32(5), []byte{1, 2, 3}), int32(5), nil},
+		{"int32 is nil", types.Int32, types.Int32, sql.NewRow(nil, nil), nil, nil},
+		{"int32 without d", types.Int32, types.Int32, sql.NewRow(int32(5), nil), int32(5), nil},
+		{"int32 with d", types.Int32, types.Int32, sql.NewRow(int32(5), 2), int32(5), nil},
+		{"int32 with negative d", types.Int32, types.Int32, sql.NewRow(int32(52), -1), int32(50), nil},
+		{"int32 with float d", types.Int32, types.Float64, sql.NewRow(int32(5), float32(2.123)), int32(5), nil},
+		{"int32 with float negative d", types.Int32, types.Float64, sql.NewRow(int32(52), float32(-1)), int32(50), nil},
+		{"int32 with blob d", types.Int32, types.Blob, sql.NewRow(int32(5), []byte{1, 2, 3}), int32(5), nil},
+		{"int16 is nil", types.Int16, types.Int16, sql.NewRow(nil, nil), nil, nil},
+		{"int16 without d", types.Int16, types.Int16, sql.NewRow(int16(5), nil), int16(5), nil},
+		{"int16 with d", types.Int16, types.Int16, sql.NewRow(int16(5), 2), int16(5), nil},
+		{"int16 with negative d", types.Int16, types.Int16, sql.NewRow(int16(52), -1), int16(50), nil},
+		{"int16 with float d", types.Int16, types.Float64, sql.NewRow(int16(5), float32(2.123)), int16(5), nil},
+		{"int16 with float negative d", types.Int16, types.Float64, sql.NewRow(int16(52), float32(-1)), int16(50), nil},
+		{"int16 with blob d", types.Int16, types.Blob, sql.NewRow(int16(5), []byte{1, 2, 3}), int16(5), nil},
+		{"int8 is nil", types.Int8, types.Int8, sql.NewRow(nil, nil), nil, nil},
+		{"int8 without d", types.Int8, types.Int8, sql.NewRow(int8(5), nil), int8(5), nil},
+		{"int8 with d", types.Int8, types.Int8, sql.NewRow(int8(5), 2), int8(5), nil},
+		{"int8 with negative d", types.Int8, types.Int8, sql.NewRow(int8(52), -1), int8(50), nil},
+		{"int8 with float d", types.Int8, types.Float64, sql.NewRow(int8(5), float32(2.123)), int8(5), nil},
+		{"int8 with float negative d", types.Int8, types.Float64, sql.NewRow(int8(52), float32(-1)), int8(50), nil},
+		{"int8 with blob d", types.Int8, types.Blob, sql.NewRow(int8(5), []byte{1, 2, 3}), int8(5), nil},
+		{"uint64 is nil", types.Uint64, types.Int32, sql.NewRow(nil, nil), nil, nil},
+		{"uint64 without d", types.Uint64, types.Int32, sql.NewRow(uint64(5), nil), uint64(5), nil},
+		{"uint64 with d", types.Uint64, types.Int32, sql.NewRow(uint64(5), 2), uint64(5), nil},
+		{"uint64 with negative d", types.Uint64, types.Int32, sql.NewRow(uint64(52), -1), uint64(50), nil},
+		{"uint64 with float d", types.Uint64, types.Float64, sql.NewRow(uint64(5), float32(2.123)), uint64(5), nil},
+		{"uint64 with float negative d", types.Uint64, types.Float64, sql.NewRow(uint64(52), float32(-1)), uint64(50), nil},
+		{"uint32 with blob d", types.Uint32, types.Blob, sql.NewRow(uint32(5), []byte{1, 2, 3}), uint32(5), nil},
+		{"uint32 is nil", types.Uint32, types.Int32, sql.NewRow(nil, nil), nil, nil},
+		{"uint32 without d", types.Uint32, types.Int32, sql.NewRow(uint32(5), nil), uint32(5), nil},
+		{"uint32 with d", types.Uint32, types.Int32, sql.NewRow(uint32(5), 2), uint32(5), nil},
+		{"uint32 with negative d", types.Uint32, types.Int32, sql.NewRow(uint32(52), -1), uint32(50), nil},
+		{"uint32 with float d", types.Uint32, types.Float64, sql.NewRow(uint32(5), float32(2.123)), uint32(5), nil},
+		{"uint32 with float negative d", types.Uint32, types.Float64, sql.NewRow(uint32(52), float32(-1)), uint32(50), nil},
+		{"uint32 with blob d", types.Uint32, types.Blob, sql.NewRow(uint32(5), []byte{1, 2, 3}), uint32(5), nil},
+		{"uint16 with blob d", types.Uint16, types.Blob, sql.NewRow(uint16(5), []byte{1, 2, 3}), uint16(5), nil},
+		{"uint16 is nil", types.Uint16, types.Int16, sql.NewRow(nil, nil), nil, nil},
+		{"uint16 without d", types.Uint16, types.Int16, sql.NewRow(uint16(5), nil), uint16(5), nil},
+		{"uint16 with d", types.Uint16, types.Int16, sql.NewRow(uint16(5), 2), uint16(5), nil},
+		{"uint16 with negative d", types.Uint16, types.Int16, sql.NewRow(uint16(52), -1), uint16(50), nil},
+		{"uint16 with float d", types.Uint16, types.Float64, sql.NewRow(uint16(5), float32(2.123)), uint16(5), nil},
+		{"uint16 with float negative d", types.Uint16, types.Float64, sql.NewRow(uint16(52), float32(-1)), uint16(50), nil},
+		{"uint16 with blob d", types.Uint16, types.Blob, sql.NewRow(uint16(5), []byte{1, 2, 3}), uint16(5), nil},
+		{"uint8 with blob d", types.Uint8, types.Blob, sql.NewRow(uint8(5), []byte{1, 2, 3}), uint8(5), nil},
+		{"uint8 is nil", types.Uint8, types.Int8, sql.NewRow(nil, nil), nil, nil},
+		{"uint8 without d", types.Uint8, types.Int8, sql.NewRow(uint8(5), nil), uint8(5), nil},
+		{"uint8 with d", types.Uint8, types.Int8, sql.NewRow(uint8(5), 2), uint8(5), nil},
+		{"uint8 with negative d", types.Uint8, types.Int8, sql.NewRow(uint8(52), -1), uint8(50), nil},
+		{"uint8 with float d", types.Uint8, types.Float64, sql.NewRow(uint8(5), float32(2.123)), uint8(5), nil},
+		{"uint8 with float negative d", types.Uint8, types.Float64, sql.NewRow(uint8(52), float32(-1)), uint8(50), nil},
+		{"uint8 with blob d", types.Uint8, types.Blob, sql.NewRow(uint8(5), []byte{1, 2, 3}), uint8(5), nil},
+		{"blob is nil", types.Blob, types.Int32, sql.NewRow(nil, nil), nil, nil},
+		{"blob is ok", types.Blob, types.Int32, sql.NewRow([]byte{1, 2, 3}, nil), float64(66051), nil},
+		{"text int without d", types.Text, types.Int32, sql.NewRow("5", nil), float64(5), nil},
+		{"text int with d", types.Text, types.Int32, sql.NewRow("5", 2), float64(5), nil},
+		{"text int with negative d", types.Text, types.Int32, sql.NewRow("52", -1), float64(50), nil},
+		{"text int with float d", types.Text, types.Float64, sql.NewRow("5", float32(2.123)), float64(5), nil},
+		{"text int with float negative d", types.Text, types.Float64, sql.NewRow("52", float32(-1)), float64(50), nil},
+		{"text float without d", types.Text, types.Int32, sql.NewRow("5.8", nil), float64(6), nil},
+		{"text float with d", types.Text, types.Int32, sql.NewRow("5.855", 2), float64(5.86), nil},
+		{"text float with negative d", types.Text, types.Int32, sql.NewRow("52.855", -1), float64(50), nil},
+		{"text float with float d", types.Text, types.Float64, sql.NewRow("5.855", float64(2.123)), float64(5.86), nil},
+		{"text float with float negative d", types.Text, types.Float64, sql.NewRow("52.855", float64(-1)), float64(50), nil},
+		{"text float with blob d", types.Text, types.Blob, sql.NewRow("5.855", []byte{1, 2, 3}), float64(5.855), nil},
 	}
 
 	for _, tt := range testCases {
@@ -251,14 +252,14 @@ func TestRound(t *testing.T) {
 			}
 
 			switch {
-			case sql.IsFloat(tt.xType):
-				require.True(sql.IsFloat(f.Type()))
+			case types.IsFloat(tt.xType):
+				require.True(types.IsFloat(f.Type()))
 				require.False(f.IsNullable())
-			case sql.IsInteger(tt.xType):
-				require.True(sql.IsInteger(f.Type()))
+			case types.IsInteger(tt.xType):
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			default:
-				require.True(sql.IsInteger(f.Type()))
+				require.True(types.IsInteger(f.Type()))
 				require.False(f.IsNullable())
 			}
 		})
@@ -266,8 +267,8 @@ func TestRound(t *testing.T) {
 
 	// Test on invalid type return 0
 	var args = make([]sql.Expression, 2)
-	args[0] = expression.NewGetField(0, sql.Blob, "", false)
-	args[1] = expression.NewGetField(1, sql.Int32, "", false)
+	args[0] = expression.NewGetField(0, types.Blob, "", false)
+	args[1] = expression.NewGetField(1, types.Int32, "", false)
 
 	f, err := NewRound(args...)
 	req := require.New(t)

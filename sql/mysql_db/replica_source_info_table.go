@@ -17,6 +17,8 @@ package mysql_db
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
@@ -60,128 +62,128 @@ func (r ReplicaSourceInfoPrimaryKey) KeyFromRow(_ *sql.Context, row sql.Row) (in
 }
 
 func init() {
-	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
-	char64_utf8mb3_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_bin)
-	char64_utf8mb3_general_ci := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_general_ci)
+	char255_ascii_general_ci := types.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
+	char64_utf8mb3_bin := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_bin)
+	char64_utf8mb3_general_ci := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_general_ci)
 
 	replicaSourceInfoTblSchema = sql.Schema{
 		columnTemplate("Number_of_lines", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Uint32,
+			Type: types.Uint32,
 		}),
 		columnTemplate("Master_log_name", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Text,
+			Type: types.Text,
 		}),
 		columnTemplate("Master_log_pos", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Uint64,
+			Type: types.Uint64,
 		}),
 		columnTemplate("Host", replicaSourceInfoTblName, false, &sql.Column{
 			Type:     char255_ascii_general_ci,
 			Nullable: true,
 		}),
 		columnTemplate("User_name", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("User_password", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Port", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Uint32,
+			Type: types.Uint32,
 		}),
 		columnTemplate("Connect_retry", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Uint32,
+			Type: types.Uint32,
 		}),
 		columnTemplate("Enabled_ssl", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Int8,
+			Type: types.Int8,
 		}),
 		columnTemplate("Ssl_ca", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Ssl_capath", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Ssl_cert", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Ssl_cipher", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Ssl_key", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Ssl_verify_server_cert", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Int8,
+			Type: types.Int8,
 		}),
 		columnTemplate("Heartbeat", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Float32,
+			Type: types.Float32,
 		}),
 		columnTemplate("Bind", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Ignored_server_ids", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Uuid", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Retry_count", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Uint64,
+			Type: types.Uint64,
 		}),
 		columnTemplate("Ssl_crl", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Ssl_crlpath", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Enabled_auto_position", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Int8,
+			Type: types.Int8,
 		}),
 		columnTemplate("Channel_name", replicaSourceInfoTblName, true, &sql.Column{
 			Type: char64_utf8mb3_general_ci,
 		}),
 		columnTemplate("Tls_version", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Public_key_path", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Get_public_key", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Int8,
+			Type: types.Int8,
 		}),
 		columnTemplate("Network_namespace", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Master_compression_algorithm", replicaSourceInfoTblName, false, &sql.Column{
 			Type: char64_utf8mb3_bin,
 		}),
 		columnTemplate("Master_zstd_compression_level", replicaSourceInfoTblName, false, &sql.Column{
-			Type: sql.Uint32,
+			Type: types.Uint32,
 		}),
 		columnTemplate("Tls_ciphersuites", replicaSourceInfoTblName, false, &sql.Column{
-			Type:     sql.Text,
+			Type:     types.Text,
 			Nullable: true,
 		}),
 		columnTemplate("Source_connection_auto_failover", replicaSourceInfoTblName, false, &sql.Column{
-			Type:    sql.Int8,
-			Default: mustDefault(expression.NewLiteral(0, sql.Int8), sql.Int8, true, false),
+			Type:    types.Int8,
+			Default: mustDefault(expression.NewLiteral(0, types.Int8), types.Int8, true, false),
 		}),
 		columnTemplate("Gtid_only", replicaSourceInfoTblName, false, &sql.Column{
-			Type:    sql.Int8,
-			Default: mustDefault(expression.NewLiteral(0, sql.Int8), sql.Int8, true, false),
+			Type:    types.Int8,
+			Default: mustDefault(expression.NewLiteral(0, types.Int8), types.Int8, true, false),
 		}),
 	}
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // IsNull is a function that returns whether a value is null or not.
@@ -71,5 +72,5 @@ func (ib *IsNull) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Type implements the Expression interface.
 func (ib *IsNull) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }

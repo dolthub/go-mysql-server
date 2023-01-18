@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type TriggerOrder struct {
@@ -152,7 +153,7 @@ func (c *createTriggerIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.Row{sql.NewOkResult(0)}, nil
+	return sql.Row{types.NewOkResult(0)}, nil
 }
 
 func (c *createTriggerIter) Close(*sql.Context) error {

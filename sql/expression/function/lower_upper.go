@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Lower is a function that returns the lowercase of the text provided.
@@ -57,7 +58,7 @@ func (l *Lower) Eval(
 		return nil, nil
 	}
 
-	vStr, collation, err := sql.ConvertToCollatedString(v, l.Child.Type())
+	vStr, collation, err := types.ConvertToCollatedString(v, l.Child.Type())
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +118,7 @@ func (u *Upper) Eval(
 		return nil, nil
 	}
 
-	vStr, collation, err := sql.ConvertToCollatedString(v, u.Child.Type())
+	vStr, collation, err := types.ConvertToCollatedString(v, u.Child.Type())
 	if err != nil {
 		return nil, err
 	}

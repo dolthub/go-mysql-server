@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package sql_test
 
 import (
 	"context"
@@ -22,10 +22,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestBackgroundThreads(t *testing.T) {
-	var bThreads *BackgroundThreads
+	var bThreads *sql.BackgroundThreads
 	var err error
 
 	var b []int
@@ -46,7 +48,7 @@ func TestBackgroundThreads(t *testing.T) {
 
 	t.Run("add, close", func(t *testing.T) {
 		b = make([]int, 0)
-		bThreads = NewBackgroundThreads()
+		bThreads = sql.NewBackgroundThreads()
 		defer bThreads.Shutdown()
 
 		err = bThreads.Add("first", f(1))
@@ -67,7 +69,7 @@ func TestBackgroundThreads(t *testing.T) {
 
 	t.Run("close is idempotent", func(t *testing.T) {
 		b = make([]int, 0)
-		bThreads = NewBackgroundThreads()
+		bThreads = sql.NewBackgroundThreads()
 		defer bThreads.Shutdown()
 
 		err = bThreads.Add("first", f(1))
@@ -84,14 +86,14 @@ func TestBackgroundThreads(t *testing.T) {
 
 	t.Run("can't add after closed", func(t *testing.T) {
 		b = make([]int, 0)
-		bThreads = NewBackgroundThreads()
+		bThreads = sql.NewBackgroundThreads()
 		defer bThreads.Shutdown()
 
 		err = bThreads.Shutdown()
 		assert.True(t, errors.Is(err, context.Canceled))
 
 		err = bThreads.Add("first", f(1))
-		assert.True(t, errors.Is(err, ErrCannotAddToClosedBackgroundThreads))
+		assert.True(t, errors.Is(err, sql.ErrCannotAddToClosedBackgroundThreads))
 
 		sort.Ints(b)
 		assert.Equal(t, []int{}, b)

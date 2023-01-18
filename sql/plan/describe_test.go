@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestDescribe(t *testing.T) {
@@ -30,8 +31,8 @@ func TestDescribe(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c1", Type: sql.Text},
-		{Name: "c2", Type: sql.Int32},
+		{Name: "c1", Type: types.Text},
+		{Name: "c2", Type: types.Int32},
 	}), nil)
 
 	d := NewDescribe(NewResolvedTable(table, nil, nil))
@@ -71,19 +72,19 @@ func TestDescribeQuery(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Source: "foo", Name: "a", Type: sql.Text},
-		{Source: "foo", Name: "b", Type: sql.Text},
+		{Source: "foo", Name: "a", Type: types.Text},
+		{Source: "foo", Name: "b", Type: types.Text},
 	}), nil)
 
 	node := NewDescribeQuery("tree", NewProject(
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Text, "foo", "a", false),
-			expression.NewGetFieldWithTable(1, sql.Text, "foo", "b", false),
+			expression.NewGetFieldWithTable(0, types.Text, "foo", "a", false),
+			expression.NewGetFieldWithTable(1, types.Text, "foo", "b", false),
 		},
 		NewFilter(
 			expression.NewEquals(
-				expression.NewGetFieldWithTable(0, sql.Text, "foo", "a", false),
-				expression.NewLiteral("foo", sql.LongText),
+				expression.NewGetFieldWithTable(0, types.Text, "foo", "a", false),
+				expression.NewLiteral("foo", types.LongText),
 			),
 			NewResolvedTable(table, nil, nil),
 		),

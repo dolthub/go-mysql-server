@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestPatternToRegex(t *testing.T) {
@@ -120,11 +121,11 @@ func TestLike(t *testing.T) {
 		t.Run(fmt.Sprintf("%q LIKE %q", tt.value, tt.pattern), func(t *testing.T) {
 			var escape sql.Expression
 			if tt.escape != "" {
-				escape = NewLiteral(tt.escape, sql.LongText)
+				escape = NewLiteral(tt.escape, types.LongText)
 			}
 			f := NewLike(
-				NewGetField(0, sql.CreateText(tt.collation), "", false),
-				NewGetField(1, sql.CreateText(tt.collation), "", false),
+				NewGetField(0, types.CreateText(tt.collation), "", false),
+				NewGetField(1, types.CreateText(tt.collation), "", false),
 				escape,
 			)
 			value, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(

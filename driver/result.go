@@ -19,10 +19,11 @@ import (
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, bool, error) {
-	var okr sql.OkResult
+func getOKResult(ctx *sql.Context, rows sql.RowIter) (types.OkResult, bool, error) {
+	var okr types.OkResult
 	var found bool
 	for !found {
 		row, err := rows.Next(ctx)
@@ -36,7 +37,7 @@ func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, bool, error)
 			continue
 		}
 
-		okr, found = row[0].(sql.OkResult)
+		okr, found = row[0].(types.OkResult)
 	}
 
 	err := rows.Close(ctx)
@@ -45,7 +46,7 @@ func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, bool, error)
 
 // Result is the result of a query execution.
 type Result struct {
-	result sql.OkResult
+	result types.OkResult
 }
 
 // LastInsertId returns the database's auto-generated ID

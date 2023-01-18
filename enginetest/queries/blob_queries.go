@@ -14,7 +14,10 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 var BlobQueries = []QueryTest{
 	{
@@ -80,7 +83,7 @@ var BlobQueries = []QueryTest{
 var BlobWriteQueries = []WriteQueryTest{
 	{
 		WriteQuery:          "insert into blobt values (4, '100000000')",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "select * from blobt where i = 4",
 		ExpectedSelect:      []sql.Row{{4, []byte("100000000")}},
 	},
@@ -92,7 +95,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "delete from blobt where i = 1",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "select * from blobt",
 		ExpectedSelect: []sql.Row{
 			{2, []byte("second row")},
@@ -101,7 +104,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "alter table blobt rename column b to v, add v1 int",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "select * from blobt",
 		ExpectedSelect: []sql.Row{
 			{1, []byte("first row"), nil},
@@ -111,7 +114,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "ALTER TABLE blobt ADD COLUMN v2 BIGINT DEFAULT (i + 2) AFTER b",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "select * from blobt",
 		ExpectedSelect: []sql.Row{
 			{1, []byte("first row"), 3},
@@ -121,7 +124,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "insert into textt values (4, '100000000')",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "select * from textt where i = 4",
 		ExpectedSelect:      []sql.Row{{4, "100000000"}},
 	},
@@ -133,7 +136,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "delete from textt where i = 1",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "select * from textt",
 		ExpectedSelect: []sql.Row{
 			{2, "second row"},
@@ -142,7 +145,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "alter table textt rename column t to v, add v1 int",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "select * from textt",
 		ExpectedSelect: []sql.Row{
 			{1, "first row", nil},
@@ -152,7 +155,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "ALTER TABLE textt ADD COLUMN v2 BIGINT DEFAULT (i + 2) AFTER t",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "select * from textt",
 		ExpectedSelect: []sql.Row{
 			{1, "first row", 3},

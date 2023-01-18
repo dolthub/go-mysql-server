@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestOffsetPlan(t *testing.T) {
@@ -28,7 +29,7 @@ func TestOffsetPlan(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	table, _ := getTestingTable(t)
-	offset := NewOffset(expression.NewLiteral(0, sql.Int8), NewResolvedTable(table, nil, nil))
+	offset := NewOffset(expression.NewLiteral(0, types.Int8), NewResolvedTable(table, nil, nil))
 	require.Equal(1, len(offset.Children()))
 
 	iter, err := offset.RowIter(ctx, nil)
@@ -41,7 +42,7 @@ func TestOffset(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	table, n := getTestingTable(t)
-	offset := NewOffset(expression.NewLiteral(1, sql.Int8), NewResolvedTable(table, nil, nil))
+	offset := NewOffset(expression.NewLiteral(1, types.Int8), NewResolvedTable(table, nil, nil))
 
 	iter, err := offset.RowIter(ctx, nil)
 	require.NoError(err)

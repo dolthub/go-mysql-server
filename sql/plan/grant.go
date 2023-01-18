@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -55,7 +56,7 @@ func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level
 
 // Schema implements the interface sql.Node.
 func (n *Grant) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -281,7 +282,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // grantAllGlobalPrivileges adds all global static privileges to the given user, except for the grant privilege (which
@@ -585,7 +586,7 @@ func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole
 
 // Schema implements the interface sql.Node.
 func (n *GrantRole) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -704,7 +705,7 @@ func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // GrantProxy represents the statement GRANT PROXY.
@@ -727,7 +728,7 @@ func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
 
 // Schema implements the interface sql.Node.
 func (n *GrantProxy) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.

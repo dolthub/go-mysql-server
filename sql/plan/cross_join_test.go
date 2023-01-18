@@ -22,20 +22,21 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var lSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "lcol1", Type: sql.Text},
-	{Name: "lcol2", Type: sql.Text},
-	{Name: "lcol3", Type: sql.Int32},
-	{Name: "lcol4", Type: sql.Int64},
+	{Name: "lcol1", Type: types.Text},
+	{Name: "lcol2", Type: types.Text},
+	{Name: "lcol3", Type: types.Int32},
+	{Name: "lcol4", Type: types.Int64},
 })
 
 var rSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "rcol1", Type: sql.Text},
-	{Name: "rcol2", Type: sql.Text},
-	{Name: "rcol3", Type: sql.Int32},
-	{Name: "rcol4", Type: sql.Int64},
+	{Name: "rcol1", Type: types.Text},
+	{Name: "rcol2", Type: types.Text},
+	{Name: "rcol3", Type: types.Int32},
+	{Name: "rcol4", Type: types.Int64},
 })
 
 func TestCrossJoin(t *testing.T) {
@@ -43,14 +44,14 @@ func TestCrossJoin(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	resultSchema := sql.Schema{
-		{Name: "lcol1", Type: sql.Text},
-		{Name: "lcol2", Type: sql.Text},
-		{Name: "lcol3", Type: sql.Int32},
-		{Name: "lcol4", Type: sql.Int64},
-		{Name: "rcol1", Type: sql.Text},
-		{Name: "rcol2", Type: sql.Text},
-		{Name: "rcol3", Type: sql.Int32},
-		{Name: "rcol4", Type: sql.Int64},
+		{Name: "lcol1", Type: types.Text},
+		{Name: "lcol2", Type: types.Text},
+		{Name: "lcol3", Type: types.Int32},
+		{Name: "lcol4", Type: types.Int64},
+		{Name: "rcol1", Type: types.Text},
+		{Name: "rcol2", Type: types.Text},
+		{Name: "rcol3", Type: types.Int32},
+		{Name: "rcol4", Type: types.Int64},
 	}
 
 	ltable := memory.NewTable("left", lSchema, nil)

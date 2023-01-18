@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -56,7 +57,7 @@ func (n *ShowGrants) Schema() sql.Schema {
 	}
 	return sql.Schema{{
 		Name: fmt.Sprintf("Grants for %s", user.String("")),
-		Type: sql.LongText,
+		Type: types.LongText,
 	}}
 }
 

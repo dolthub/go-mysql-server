@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestRegexpReplaceInvalidArgNumber(t *testing.T) {
@@ -28,33 +29,33 @@ func TestRegexpReplaceInvalidArgNumber(t *testing.T) {
 	require.Error(t, err)
 
 	_, err = NewRegexpReplace(
-		expression.NewGetField(0, sql.LongText, "str", true),
+		expression.NewGetField(0, types.LongText, "str", true),
 	)
 	require.Error(t, err)
 
 	_, err = NewRegexpReplace(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "pattern", true),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "pattern", true),
 	)
 	require.Error(t, err)
 
 	_, err = NewRegexpReplace(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "pattern", true),
-		expression.NewGetField(2, sql.LongText, "replaceStr", true),
-		expression.NewGetField(3, sql.LongText, "position", true),
-		expression.NewGetField(4, sql.LongText, "occurrence", true),
-		expression.NewGetField(5, sql.LongText, "flags", true),
-		expression.NewGetField(6, sql.LongText, "???", true),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "pattern", true),
+		expression.NewGetField(2, types.LongText, "replaceStr", true),
+		expression.NewGetField(3, types.LongText, "position", true),
+		expression.NewGetField(4, types.LongText, "occurrence", true),
+		expression.NewGetField(5, types.LongText, "flags", true),
+		expression.NewGetField(6, types.LongText, "???", true),
 	)
 	require.Error(t, err)
 }
 
 func TestRegexpReplace(t *testing.T) {
 	f, err := NewRegexpReplace(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "pattern", true),
-		expression.NewGetField(2, sql.LongText, "replaceStr", true),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "pattern", true),
+		expression.NewGetField(2, types.LongText, "replaceStr", true),
 	)
 	require.NoError(t, err)
 
@@ -126,10 +127,10 @@ func TestRegexpReplace(t *testing.T) {
 
 func TestRegexpReplaceWithPosition(t *testing.T) {
 	f, err := NewRegexpReplace(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "pattern", true),
-		expression.NewGetField(2, sql.LongText, "replaceStr", true),
-		expression.NewGetField(3, sql.LongText, "position", true),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "pattern", true),
+		expression.NewGetField(2, types.LongText, "replaceStr", true),
+		expression.NewGetField(3, types.LongText, "position", true),
 	)
 	require.NoError(t, err)
 
@@ -207,11 +208,11 @@ func TestRegexpReplaceWithPosition(t *testing.T) {
 
 func TestRegexpReplaceWithOccurrence(t *testing.T) {
 	f, err := NewRegexpReplace(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "pattern", true),
-		expression.NewGetField(2, sql.LongText, "replaceStr", true),
-		expression.NewGetField(3, sql.LongText, "position", true),
-		expression.NewGetField(4, sql.LongText, "occurrence", true),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "pattern", true),
+		expression.NewGetField(2, types.LongText, "replaceStr", true),
+		expression.NewGetField(3, types.LongText, "position", true),
+		expression.NewGetField(4, types.LongText, "occurrence", true),
 	)
 	require.NoError(t, err)
 
@@ -289,12 +290,12 @@ func TestRegexpReplaceWithOccurrence(t *testing.T) {
 
 func TestRegexpReplaceWithFlags(t *testing.T) {
 	f, err := NewRegexpReplace(
-		expression.NewGetField(0, sql.LongText, "str", true),
-		expression.NewGetField(1, sql.LongText, "pattern", true),
-		expression.NewGetField(2, sql.LongText, "replaceStr", true),
-		expression.NewGetField(3, sql.LongText, "position", true),
-		expression.NewGetField(4, sql.LongText, "occurrence", true),
-		expression.NewGetField(5, sql.LongText, "flags", true),
+		expression.NewGetField(0, types.LongText, "str", true),
+		expression.NewGetField(1, types.LongText, "pattern", true),
+		expression.NewGetField(2, types.LongText, "replaceStr", true),
+		expression.NewGetField(3, types.LongText, "position", true),
+		expression.NewGetField(4, types.LongText, "occurrence", true),
+		expression.NewGetField(5, types.LongText, "flags", true),
 	)
 	require.NoError(t, err)
 

@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestIf(t *testing.T) {
@@ -29,19 +30,19 @@ func TestIf(t *testing.T) {
 		row      sql.Row
 		expected interface{}
 	}{
-		{eq(lit(1, sql.Int64), lit(1, sql.Int64)), sql.Row{"a", "b"}, "a"},
-		{eq(lit(1, sql.Int64), lit(0, sql.Int64)), sql.Row{"a", "b"}, "b"},
-		{eq(lit(1, sql.Int64), lit(1, sql.Int64)), sql.Row{1, 2}, 1},
-		{eq(lit(1, sql.Int64), lit(0, sql.Int64)), sql.Row{1, 2}, 2},
-		{eq(lit(nil, sql.Int64), lit(1, sql.Int64)), sql.Row{"a", "b"}, "b"},
-		{eq(lit(1, sql.Int64), lit(1, sql.Int64)), sql.Row{nil, "b"}, nil},
+		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.Row{"a", "b"}, "a"},
+		{eq(lit(1, types.Int64), lit(0, types.Int64)), sql.Row{"a", "b"}, "b"},
+		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.Row{1, 2}, 1},
+		{eq(lit(1, types.Int64), lit(0, types.Int64)), sql.Row{1, 2}, 2},
+		{eq(lit(nil, types.Int64), lit(1, types.Int64)), sql.Row{"a", "b"}, "b"},
+		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.Row{nil, "b"}, nil},
 	}
 
 	for _, tc := range testCases {
 		f := NewIf(
 			tc.expr,
-			expression.NewGetField(0, sql.LongText, "true", true),
-			expression.NewGetField(1, sql.LongText, "false", true),
+			expression.NewGetField(0, types.LongText, "true", true),
+			expression.NewGetField(1, types.LongText, "false", true),
 		)
 
 		v, err := f.Eval(sql.NewEmptyContext(), tc.row)

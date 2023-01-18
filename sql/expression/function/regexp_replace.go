@@ -21,6 +21,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // RegexpReplace implements the REGEXP_REPLACE function.
@@ -51,7 +52,7 @@ func (r *RegexpReplace) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpReplace) Type() sql.Type { return sql.LongText }
+func (r *RegexpReplace) Type() sql.Type { return types.LongText }
 
 // IsNullable implements the sql.Expression interface.
 func (r *RegexpReplace) IsNullable() bool { return true }
@@ -98,7 +99,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if str == nil {
 		return nil, nil
 	}
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if replaceStr == nil {
 		return nil, nil
 	}
-	replaceStr, err = sql.LongText.Convert(replaceStr)
+	replaceStr, err = types.LongText.Convert(replaceStr)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 
 		// Convert to int32
-		pos, err = sql.Int32.Convert(pos)
+		pos, err = types.Int32.Convert(pos)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +190,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 
 		// Convert occurrence to int32
-		occ, err = sql.Int32.Convert(occ)
+		occ, err = types.Int32.Convert(occ)
 		if err != nil {
 			return nil, err
 		}

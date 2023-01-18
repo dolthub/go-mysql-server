@@ -26,14 +26,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestQualifyColumnsProject(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "foo"},
-		{Name: "b", Type: sql.Text, Source: "foo"},
+		{Name: "a", Type: types.Text, Source: "foo"},
+		{Name: "b", Type: types.Text, Source: "foo"},
 	}), nil)
 
 	node := plan.NewProject(
@@ -73,7 +74,7 @@ func TestMisusedAlias(t *testing.T) {
 	f := getRule(resolveColumnsId)
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32},
+		{Name: "i", Type: types.Int32},
 	}), nil)
 
 	node := plan.NewProject(
@@ -93,8 +94,8 @@ func TestQualifyVariables(t *testing.T) {
 	assert := assert.New(t)
 	f := getRule(qualifyColumnsId)
 
-	sessionTable := memory.NewTable("@@session", sql.NewPrimaryKeySchema(sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}}), nil)
-	globalTable := memory.NewTable("@@global", sql.NewPrimaryKeySchema(sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}}), nil)
+	sessionTable := memory.NewTable("@@session", sql.NewPrimaryKeySchema(sql.Schema{{Name: "autocommit", Type: types.Int64, Source: "@@session"}}), nil)
+	globalTable := memory.NewTable("@@global", sql.NewPrimaryKeySchema(sql.Schema{{Name: "max_allowed_packet", Type: types.Int64, Source: "@@global"}}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -145,12 +146,12 @@ func TestQualifyVariables(t *testing.T) {
 func TestQualifyColumns(t *testing.T) {
 	f := getRule(qualifyColumnsId)
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "mytable"},
-		{Name: "x", Type: sql.Int32, Source: "mytable"},
+		{Name: "i", Type: types.Int32, Source: "mytable"},
+		{Name: "x", Type: types.Int32, Source: "mytable"},
 	}), nil)
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "mytable2"},
-		{Name: "y", Type: sql.Int32, Source: "mytable2"},
+		{Name: "i", Type: types.Int32, Source: "mytable2"},
+		{Name: "y", Type: types.Int32, Source: "mytable2"},
 	}), nil)
 
 	testCases := []analyzerFnTestCase{
@@ -231,7 +232,7 @@ func TestQualifyColumns(t *testing.T) {
 						"b", "",
 						plan.NewProject(
 							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
 							},
 							plan.NewResolvedTable(table, nil, nil),
 						),
@@ -248,7 +249,7 @@ func TestQualifyColumns(t *testing.T) {
 						"b", "",
 						plan.NewProject(
 							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
 							},
 							plan.NewResolvedTable(table, nil, nil),
 						),
@@ -390,7 +391,7 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 	require := require.New(t)
 	f := getRule(qualifyColumnsId)
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), nil)
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: types.Int32}}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -424,12 +425,12 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 func TestResolveColumns(t *testing.T) {
 	f := getRule(resolveColumnsId)
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "t1"},
-		{Name: "x", Type: sql.Int64, Source: "t1"},
+		{Name: "i", Type: types.Int64, Source: "t1"},
+		{Name: "x", Type: types.Int64, Source: "t1"},
 	}), nil)
 	t2 := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "t2"},
-		{Name: "y", Type: sql.Int64, Source: "t2"},
+		{Name: "i", Type: types.Int64, Source: "t2"},
+		{Name: "y", Type: types.Int64, Source: "t2"},
 	}), nil)
 
 	testCases := []analyzerFnTestCase{

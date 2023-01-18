@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -29,15 +30,15 @@ func TestPruneColumns(t *testing.T) {
 	rule := getRuleFrom(OnceAfterDefault, pruneColumnsId)
 
 	t1 := plan.NewResolvedTable(memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "foo", Type: sql.Int64, Source: "t1"},
-		{Name: "bar", Type: sql.Int64, Source: "t1"},
-		{Name: "bax", Type: sql.Int64, Source: "t1"},
+		{Name: "foo", Type: types.Int64, Source: "t1"},
+		{Name: "bar", Type: types.Int64, Source: "t1"},
+		{Name: "bax", Type: types.Int64, Source: "t1"},
 	}), nil), nil, nil)
 
 	t2 := plan.NewResolvedTable(memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "foo", Type: sql.Int64, Source: "t2"},
-		{Name: "baz", Type: sql.Int64, Source: "t2"},
-		{Name: "bux", Type: sql.Int64, Source: "t2"},
+		{Name: "foo", Type: types.Int64, Source: "t2"},
+		{Name: "baz", Type: types.Int64, Source: "t2"},
+		{Name: "bux", Type: types.Int64, Source: "t2"},
 	}), nil), nil, nil)
 
 	testCases := []analyzerFnTestCase{
