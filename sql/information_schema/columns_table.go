@@ -193,36 +193,29 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 		charOctetLen      interface{}
 		nullable          = "NO"
 		ordinalPos        = uint32(curOrdPos + 1)
-		colType           = strings.Split(col.Type.String(), " COLLATE")[0]
-		dataType          = colType
 		datetimePrecision interface{}
 		srsId             interface{}
 	)
+
+	colType, dataType := getDtdIdAndDataType(col.Type)
 
 	if col.Nullable {
 		nullable = "YES"
 	}
 
-	if types.IsText(col.Type) {
-		if types.IsTextOnly(col.Type) {
-			charName = sql.Collation_Default.CharacterSet().String()
-			collName = sql.Collation_Default.String()
+	if twc, ok := col.Type.(sql.TypeWithCollation); ok && !types.IsBinaryType(col.Type) {
+		colColl := twc.Collation()
+		collName = colColl.Name()
+		charName = colColl.CharacterSet().String()
+		if types.IsEnum(col.Type) || types.IsSet(col.Type) {
+			charOctetLen = int64(col.Type.MaxTextResponseByteLength())
+			charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / colColl.CharacterSet().MaxLength()
 		}
-
-		if st, ok := col.Type.(types.StringType); ok {
-			charMaxLen = st.MaxCharacterLength()
-			charOctetLen = st.MaxByteLength()
-		}
-	} else if types.IsEnum(col.Type) || types.IsSet(col.Type) {
-		charName = sql.Collation_Default.CharacterSet().String()
-		collName = sql.Collation_Default.String()
-		charOctetLen = int64(col.Type.MaxTextResponseByteLength())
-		charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / sql.Collation_Default.CharacterSet().MaxLength()
 	}
-
-	// The DATA_TYPE value is the type name only with no other information
-	dataType = strings.Split(dataType, "(")[0]
-	dataType = strings.Split(dataType, " ")[0]
+	if st, ok := col.Type.(types.StringType); ok {
+		charMaxLen = st.MaxCharacterLength()
+		charOctetLen = st.MaxByteLength()
+	}
 
 	if s, ok := col.Type.(sql.SpatialColumnType); ok {
 		if srid, d := s.GetSpatialTypeSRID(); d {
@@ -521,6 +514,19 @@ func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Sc
 	}
 
 	return allColsWithDefaultValue[start:end]
+}
+
+// get DtdIdAndDataType returns data types for given sql.Type but in two different ways.
+// The DTD_IDENTIFIER value contains the type name and possibly other information such as the precision or length.
+// The DATA_TYPE value is the type name only with no other information.
+func getDtdIdAndDataType(colType sql.Type) (string, string) {
+	dtdId := strings.Split(strings.Split(colType.String(), " COLLATE")[0], " CHARACTER SET")[0]
+
+	// The DATA_TYPE value is the type name only with no other information
+	dataType := strings.Split(dtdId, "(")[0]
+	dataType = strings.Split(dataType, " ")[0]
+
+	return dtdId, dataType
 }
 
 // getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
