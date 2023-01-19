@@ -334,31 +334,31 @@ func (r *subqueryAlias) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
-type max1RowSubquery struct {
+type max1Row struct {
 	*relBase
-	table *plan.SubqueryAlias
+	table sql.NameableNode
 }
 
-var _ relExpr = (*max1RowSubquery)(nil)
-var _ sourceRel = (*max1RowSubquery)(nil)
+var _ relExpr = (*max1Row)(nil)
+var _ sourceRel = (*max1Row)(nil)
 
-func (r *max1RowSubquery) String() string {
+func (r *max1Row) String() string {
 	return formatRelExpr(r)
 }
 
-func (r *max1RowSubquery) name() string {
+func (r *max1Row) name() string {
 	return strings.ToLower(r.table.Name())
 }
 
-func (r *max1RowSubquery) tableId() TableId {
+func (r *max1Row) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *max1RowSubquery) children() []*exprGroup {
+func (r *max1Row) children() []*exprGroup {
 	return nil
 }
 
-func (r *max1RowSubquery) outputCols() sql.Schema {
+func (r *max1Row) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
@@ -387,6 +387,34 @@ func (r *tableFunc) children() []*exprGroup {
 }
 
 func (r *tableFunc) outputCols() sql.Schema {
+	return r.table.Schema()
+}
+
+type selectSingleRel struct {
+	*relBase
+	table *plan.SelectSingleRel
+}
+
+var _ relExpr = (*selectSingleRel)(nil)
+var _ sourceRel = (*selectSingleRel)(nil)
+
+func (r *selectSingleRel) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *selectSingleRel) name() string {
+	return strings.ToLower(r.table.Name())
+}
+
+func (r *selectSingleRel) tableId() TableId {
+	return tableIdForSource(r.g.id)
+}
+
+func (r *selectSingleRel) children() []*exprGroup {
+	return nil
+}
+
+func (r *selectSingleRel) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
@@ -424,10 +452,12 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("recursiveCte: %s", r.name())
 	case *subqueryAlias:
 		return fmt.Sprintf("subqueryAlias: %s", r.name())
-	case *max1RowSubquery:
-		return fmt.Sprintf("max1RowSubquery: %s", r.name())
+	case *max1Row:
+		return fmt.Sprintf("max1Row: %s", r.name())
 	case *tableFunc:
 		return fmt.Sprintf("tableFunc: %s", r.name())
+	case *selectSingleRel:
+		return fmt.Sprintf("selectSingleRel: %s", r.name())
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
@@ -467,10 +497,12 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		return b.buildRecursiveCte(r, input, children...)
 	case *subqueryAlias:
 		return b.buildSubqueryAlias(r, input, children...)
-	case *max1RowSubquery:
-		return b.buildMax1RowSubquery(r, input, children...)
+	case *max1Row:
+		return b.buildMax1Row(r, input, children...)
 	case *tableFunc:
 		return b.buildTableFunc(r, input, children...)
+	case *selectSingleRel:
+		return b.buildSelectSingleRel(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}

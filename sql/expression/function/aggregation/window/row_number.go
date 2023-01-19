@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type RowNumber struct {
@@ -76,7 +77,7 @@ func (r *RowNumber) FunctionName() string {
 
 // Type implements sql.Expression
 func (r *RowNumber) Type() sql.Type {
-	return sql.Int64
+	return types.Int64
 }
 
 // IsNullable implements sql.Expression

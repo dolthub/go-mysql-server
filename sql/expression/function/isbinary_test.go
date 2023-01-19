@@ -21,10 +21,11 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestIsBinary(t *testing.T) {
-	f := NewIsBinary(expression.NewGetField(0, sql.Blob, "blob", true))
+	f := NewIsBinary(expression.NewGetField(0, types.Blob, "blob", true))
 
 	testCases := []struct {
 		name     string
@@ -44,7 +45,7 @@ func TestIsBinary(t *testing.T) {
 }
 
 func TestSubstringArity(t *testing.T) {
-	expr := expression.NewGetField(0, sql.Int64, "foo", false)
+	expr := expression.NewGetField(0, types.Int64, "foo", false)
 	testCases := []struct {
 		name string
 		args []sql.Expression

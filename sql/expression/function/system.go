@@ -14,7 +14,10 @@
 
 package function
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 type ConnectionID struct {
 	NoArgFunc
@@ -32,7 +35,7 @@ var _ sql.FunctionExpression = ConnectionID{}
 
 func NewConnectionID() sql.Expression {
 	return ConnectionID{
-		NoArgFunc: NoArgFunc{"connection_id", sql.Uint32},
+		NoArgFunc: NoArgFunc{"connection_id", types.Uint32},
 	}
 }
 
@@ -81,13 +84,13 @@ func (c User) Description() string {
 
 func NewUser() sql.Expression {
 	return User{
-		NoArgFunc: NoArgFunc{"user", sql.LongText},
+		NoArgFunc: NoArgFunc{"user", types.LongText},
 	}
 }
 
 func NewCurrentUser() sql.Expression {
 	return User{
-		NoArgFunc: NoArgFunc{"current_user", sql.LongText},
+		NoArgFunc: NoArgFunc{"current_user", types.LongText},
 	}
 }
 

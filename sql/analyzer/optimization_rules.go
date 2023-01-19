@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // eraseProjection removes redundant Project nodes from the plan. A project is redundant if it doesn't alter the schema
@@ -360,7 +361,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 
 func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == sql.Boolean && lit.Value() != nil {
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
 		switch v := lit.Value().(type) {
 		case bool:
 			return !v
@@ -373,7 +374,7 @@ func isFalse(e sql.Expression) bool {
 
 func isTrue(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == sql.Boolean && lit.Value() != nil {
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
 		switch v := lit.Value().(type) {
 		case bool:
 			return v

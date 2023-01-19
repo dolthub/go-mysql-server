@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // STX is a function that returns the x value from a given point.
@@ -54,9 +55,9 @@ func (s *STX) Description() string {
 // Type implements the sql.Expression interface.
 func (s *STX) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
 }
 
@@ -87,7 +88,7 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(s.FunctionName())
 	}
@@ -109,13 +110,13 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := sql.Float64.Convert(x)
+	_x, err := types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create point with new X and old Y
-	return sql.Point{SRID: _p.SRID, X: _x.(float64), Y: _p.Y}, nil
+	return types.Point{SRID: _p.SRID, X: _x.(float64), Y: _p.Y}, nil
 }
 
 // STY is a function that returns the y value from a given point.
@@ -146,9 +147,9 @@ func (s *STY) Description() string {
 // Type implements the sql.Expression interface.
 func (s *STY) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
 }
 
@@ -179,7 +180,7 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(s.FunctionName())
 	}
@@ -201,13 +202,13 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := sql.Float64.Convert(y)
+	_y, err := types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create point with old X and new Ys
-	return sql.Point{SRID: _p.SRID, X: _p.X, Y: _y.(float64)}, nil
+	return types.Point{SRID: _p.SRID, X: _p.X, Y: _y.(float64)}, nil
 }
 
 // Longitude is a function that returns the x value from a given point.
@@ -242,9 +243,9 @@ func (l *Longitude) Description() string {
 // Type implements the sql.Expression interface.
 func (l *Longitude) Type() sql.Type {
 	if len(l.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
 }
 
@@ -275,13 +276,13 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(l.FunctionName())
 	}
 
 	// Point needs to have SRID 4326
-	if _p.SRID != sql.GeoSpatialSRID {
+	if _p.SRID != types.GeoSpatialSRID {
 		return nil, ErrNonGeographic.New(l.FunctionName(), _p.SRID)
 	}
 
@@ -302,7 +303,7 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	x, err = sql.Float64.Convert(x)
+	x, err = types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +315,7 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Create point with new X and old Y
-	return sql.Point{SRID: _p.SRID, X: _x, Y: _p.Y}, nil
+	return types.Point{SRID: _p.SRID, X: _x, Y: _p.Y}, nil
 }
 
 // Latitude is a function that returns the x value from a given point.
@@ -345,9 +346,9 @@ func (l *Latitude) Description() string {
 // Type implements the sql.Expression interface.
 func (l *Latitude) Type() sql.Type {
 	if len(l.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
 }
 
@@ -378,14 +379,14 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(l.FunctionName())
 	}
 
 	// Point needs to have SRID 4326
 	// TODO: might need to be == Cartesian instead for other SRIDs
-	if _p.SRID != sql.GeoSpatialSRID {
+	if _p.SRID != types.GeoSpatialSRID {
 		return nil, ErrNonGeographic.New(l.FunctionName(), _p.SRID)
 	}
 
@@ -406,7 +407,7 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	y, err = sql.Float64.Convert(y)
+	y, err = types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
@@ -418,5 +419,5 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Create point with old X and new Y
-	return sql.Point{SRID: _p.SRID, X: _p.X, Y: _y}, nil
+	return types.Point{SRID: _p.SRID, X: _p.X, Y: _y}, nil
 }

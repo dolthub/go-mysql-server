@@ -22,13 +22,14 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestDistance(t *testing.T) {
 	t.Run("point distance from itself", func(t *testing.T) {
 		require := require.New(t)
-		p := sql.Point{X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p, sql.PointType{}), expression.NewLiteral(p, sql.PointType{}))
+		p := types.Point{X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p, types.PointType{}), expression.NewLiteral(p, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -38,9 +39,9 @@ func TestDistance(t *testing.T) {
 
 	t.Run("simple point distance", func(t *testing.T) {
 		require := require.New(t)
-		p1 := sql.Point{X: 100, Y: 200}
-		p2 := sql.Point{X: 101, Y: 201}
-		f, err := NewDistance(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}))
+		p1 := types.Point{X: 100, Y: 200}
+		p2 := types.Point{X: 101, Y: 201}
+		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -50,13 +51,13 @@ func TestDistance(t *testing.T) {
 
 	t.Run("geomcollection vs multipoint", func(t *testing.T) {
 		require := require.New(t)
-		p0 := sql.Point{X: 0, Y: 0}
-		p1 := sql.Point{X: 1, Y: 1}
-		p2 := sql.Point{X: 2, Y: 2}
-		l := sql.LineString{Points: []sql.Point{p0, p1, p2}}
-		mp := sql.MultiPoint{Points: []sql.Point{p2, p1, p0}}
-		gc := sql.GeomColl{Geoms: []sql.GeometryValue{p0, l}}
-		f, err := NewDistance(expression.NewLiteral(gc, sql.GeomCollType{}), expression.NewLiteral(mp, sql.MultiPointType{}))
+		p0 := types.Point{X: 0, Y: 0}
+		p1 := types.Point{X: 1, Y: 1}
+		p2 := types.Point{X: 2, Y: 2}
+		l := types.LineString{Points: []types.Point{p0, p1, p2}}
+		mp := types.MultiPoint{Points: []types.Point{p2, p1, p0}}
+		gc := types.GeomColl{Geoms: []types.GeometryValue{p0, l}}
+		f, err := NewDistance(expression.NewLiteral(gc, types.GeomCollType{}), expression.NewLiteral(mp, types.MultiPointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -66,9 +67,9 @@ func TestDistance(t *testing.T) {
 
 	t.Run("different SRIDs error", func(t *testing.T) {
 		require := require.New(t)
-		p1 := sql.Point{SRID: sql.CartesianSRID, X: 0, Y: 0}
-		p2 := sql.Point{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}))
+		p1 := types.Point{SRID: types.CartesianSRID, X: 0, Y: 0}
+		p2 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -77,9 +78,9 @@ func TestDistance(t *testing.T) {
 
 	t.Run("geospatial SRID unsupported", func(t *testing.T) {
 		require := require.New(t)
-		p1 := sql.Point{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}
-		p2 := sql.Point{SRID: sql.GeoSpatialSRID, X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}))
+		p1 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
+		p2 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -88,9 +89,9 @@ func TestDistance(t *testing.T) {
 
 	t.Run("cartesian has no units", func(t *testing.T) {
 		require := require.New(t)
-		p1 := sql.Point{SRID: sql.CartesianSRID, X: 0, Y: 0}
-		p2 := sql.Point{SRID: sql.CartesianSRID, X: 0, Y: 0}
-		f, err := NewDistance(expression.NewLiteral(p1, sql.PointType{}), expression.NewLiteral(p2, sql.PointType{}), expression.NewLiteral("meters", sql.LongText))
+		p1 := types.Point{SRID: types.CartesianSRID, X: 0, Y: 0}
+		p2 := types.Point{SRID: types.CartesianSRID, X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}), expression.NewLiteral("meters", types.LongText))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ExistsSubquery is an expression that checks that a subquery returns a non-empty result set. It's in the plan package,
@@ -81,5 +82,5 @@ func (e *ExistsSubquery) String() string {
 
 // Type implements the Expression interface.
 func (e *ExistsSubquery) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }

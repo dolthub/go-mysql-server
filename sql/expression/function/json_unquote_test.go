@@ -21,11 +21,12 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONUnquote(t *testing.T) {
 	require := require.New(t)
-	js := NewJSONUnquote(expression.NewGetField(0, sql.LongText, "json", false))
+	js := NewJSONUnquote(expression.NewGetField(0, types.LongText, "json", false))
 
 	testCases := []struct {
 		row      sql.Row

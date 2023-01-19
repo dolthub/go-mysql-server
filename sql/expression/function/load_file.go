@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type LoadFile struct {
@@ -52,7 +53,7 @@ func (l *LoadFile) String() string {
 
 // Type implements sql.Expression.
 func (l *LoadFile) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
 }
 
 // IsNullable implements sql.Expression.

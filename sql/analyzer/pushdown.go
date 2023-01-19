@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // filterHasBindVar looks for any BindVars found in filter nodes
@@ -219,7 +220,9 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				return node, len(handled) == 0, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(sql.NameableNode), scope, filters, tableAliases)
-				if err != nil {
+				if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+					return node, transform.SameTree, nil
+				} else if err != nil {
 					return nil, transform.SameTree, err
 				}
 				n, sameFix, err := pushdownFixIndices(a, n, scope)
@@ -577,7 +580,9 @@ func pushdownFiltersToAboveTable(
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		node, _, err := withTable(tableNode, table)
-		if err != nil {
+		if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+			node = tableNode
+		} else if err != nil {
 			return nil, transform.SameTree, err
 		}
 
@@ -648,6 +653,9 @@ func pushdownIndexesToTable(a *Analyzer, tableNode sql.NameableNode, indexes map
 				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
 					ret, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
+					if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+						return n, transform.SameTree, nil
+					}
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
@@ -885,7 +893,7 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 		if !ok {
 			return e, transform.SameTree, nil
 		}
-		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
+		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, types.Null)), transform.NewTree, nil
 	})
 	return expr
 }

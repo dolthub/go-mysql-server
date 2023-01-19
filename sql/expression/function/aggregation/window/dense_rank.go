@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type DenseRank struct {
@@ -75,7 +76,7 @@ func (p *DenseRank) FunctionName() string {
 
 // Type implements sql.Expression
 func (p *DenseRank) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
 }
 
 // IsNullable implements sql.Expression

@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // tableEditor manages the edits that a table receives.
@@ -163,7 +164,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		}
 		if cmp > 0 {
 			// Provided value larger than autoIncVal, set autoIncVal to that value
-			v, err := sql.Uint64.Convert(row[idx])
+			v, err := types.Uint64.Convert(row[idx])
 			if err != nil {
 				return err
 			}
@@ -255,7 +256,7 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
-func (t *tableEditor) IndexedAccess(i sql.Index) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
 		newTable, err := newTable(pkTea.table, pkTea.table.schema)
@@ -278,7 +279,7 @@ func (t *tableEditor) IndexedAccess(i sql.Index) sql.IndexedTable {
 		if err != nil {
 			panic(err)
 		}
-		return &IndexedTable{Table: newTable, Idx: i.(*Index)}
+		return &IndexedTable{Table: newTable, Idx: i.Index.(*Index)}
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
 		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
@@ -301,7 +302,7 @@ func (t *tableEditor) IndexedAccess(i sql.Index) sql.IndexedTable {
 		if err != nil {
 			panic(err)
 		}
-		return &IndexedTable{Table: newTable, Idx: i.(*Index)}
+		return &IndexedTable{Table: newTable, Idx: i.Index.(*Index)}
 	}
 }
 

@@ -21,28 +21,29 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/require"
 )
 
 func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Source: "mytable", Type: sql.Int32},
-		{Name: "s", Source: "mytable", Type: sql.Text},
+		{Name: "i", Source: "mytable", Type: types.Int32},
+		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
 
 	db.AddTable("db", table)
 
-	subqueryAlias := NewSubqueryAlias("myview", "select i",
+	subqueryAlias := NewSubqueryAlias("myview", "select i from mytable",
 		NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
 			},
-			NewUnresolvedTable("dual", ""),
+			NewUnresolvedTable(table.Name(), ""),
 		),
 	)
 
-	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace)
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, isReplace, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
 
 	return createView
 }
@@ -58,7 +59,7 @@ func TestCreateViewWithRegistry(t *testing.T) {
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(err)
 
-	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
+	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition, createView.CreateViewString)
 	actualView, ok := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
 	require.True(ok)
 	require.Equal(expectedView, actualView)
@@ -88,34 +89,34 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	expectedView := createView.Definition.TextDefinition
-	view, ok, err := db.GetView(ctx, createView.Name)
+	expectedViewTextDef := createView.Definition.TextDefinition
+	view, ok, err := db.GetViewDefinition(ctx, createView.Name)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, expectedView, view)
+	require.Equal(t, expectedViewTextDef, view.TextDefinition)
 
 	// This is kind of nonsensical, but we just want to see if it gets stored correctly
-	subqueryAlias := NewSubqueryAlias("myview", "select i + 1",
+	subqueryAlias := NewSubqueryAlias("myview", "select i + 1 from mytable",
 		NewProject(
 			[]sql.Expression{
 				expression.NewArithmetic(
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "i", true),
-					expression.NewLiteral(1, sql.Int8),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "i", true),
+					expression.NewLiteral(1, types.Int8),
 					"+",
 				),
 			},
-			NewUnresolvedTable("dual", ""),
+			NewUnresolvedTable("mytable", ""),
 		),
 	)
 
-	createView = NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true)
+	createView = NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true, "CREATE VIEW myview AS SELECT i + 1 FROM mytable", "", "", "")
 	_, err = createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	view, ok, err = db.GetView(ctx, createView.Name)
+	view, ok, err = db.GetViewDefinition(ctx, createView.Name)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, subqueryAlias.TextDefinition, view)
+	require.Equal(t, subqueryAlias.TextDefinition, view.TextDefinition)
 }
 
 // Tests that CreateView works as expected and that the view is registered in
@@ -128,11 +129,11 @@ func TestCreateViewNative(t *testing.T) {
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	actualView, ok, err := db.GetView(ctx, createView.Name)
+	actualView, ok, err := db.GetViewDefinition(ctx, createView.Name)
 
 	require.True(t, ok)
 	require.NoError(t, err)
-	require.Equal(t, createView.Definition.TextDefinition, actualView)
+	require.Equal(t, createView.Definition.TextDefinition, actualView.TextDefinition)
 }
 
 // Tests that CreateView RowIter returns an error when the view exists
@@ -161,7 +162,7 @@ func TestReplaceExistingViewWithRegistry(t *testing.T) {
 
 	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false)
 
-	view := sql.NewView(createView.Name, nil, "")
+	view := sql.NewView(createView.Name, nil, "", "")
 	viewReg := sql.NewViewRegistry()
 	err := viewReg.Register(createView.database.Name(), view)
 	require.NoError(err)

@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -93,7 +94,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
-				if !sql.IsInteger(e.Type()) {
+				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
 				}
@@ -102,7 +103,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return false
 				}
 
-				i64, err = sql.Int64.Convert(i)
+				i64, err = types.Int64.Convert(i)
 				if err != nil {
 					return false
 				}
@@ -119,7 +120,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
-				if !sql.IsInteger(e.Type()) {
+				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
 				}
@@ -128,7 +129,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return false
 				}
 
-				i64, err = sql.Int64.Convert(i)
+				i64, err = types.Int64.Convert(i)
 				if err != nil {
 					return false
 				}
@@ -453,7 +454,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
-				nc := sql.NumColumns(e.Type())
+				nc := types.NumColumns(e.Type())
 				if nc != 1 {
 					if _, ok := er.(*plan.HashLookup); ok {
 						// hash lookup expressions are tuples with >= 1 columns
@@ -472,21 +473,21 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 					switch e.(type) {
 					case *plan.InSubquery, *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 						*expression.LessThan, *expression.GreaterThanOrEqual, *expression.LessThanOrEqual:
-						err = sql.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+						err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
 					case *expression.InTuple, *expression.HashInTuple:
 						t, ok := e.Children()[1].(expression.Tuple)
 						if ok && len(t.Children()) == 1 {
 							// A single element Tuple treats itself like the element it contains.
-							err = sql.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+							err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
 						} else {
-							err = sql.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
+							err = types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
 						}
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
 							return false
 						}
 						for _, e := range e.Children() {
-							nc := sql.NumColumns(e.Type())
+							nc := types.NumColumns(e.Type())
 							if nc != 1 {
 								err = sql.ErrInvalidOperandColumns.New(1, nc)
 							}
@@ -497,7 +498,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						// Any number of columns are allowed.
 					default:
 						for _, e := range e.Children() {
-							nc := sql.NumColumns(e.Type())
+							nc := types.NumColumns(e.Type())
 							if nc != 1 {
 								err = sql.ErrInvalidOperandColumns.New(1, nc)
 							}
@@ -595,6 +596,7 @@ func tableColsContains(strs []tableCol, target tableCol) bool {
 func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	valid := true
 	var readOnlyDB sql.ReadOnlyDatabase
+	enforceReadOnly := scope.EnforcesReadOnly()
 
 	// if a ReadOnlyDatabase is found, invalidate the query
 	readOnlyDBSearch := func(node sql.Node) bool {
@@ -602,6 +604,8 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			if ro, ok := rt.Database.(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
+					valid = false
+				} else if enforceReadOnly {
 					valid = false
 				}
 			}
@@ -626,6 +630,8 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
 					valid = false
+				} else if enforceReadOnly {
+					valid = false
 				}
 			}
 			// "CREATE TABLE ... LIKE ..." and
@@ -646,7 +652,11 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return valid
 	})
 	if !valid {
-		return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+		if enforceReadOnly {
+			return nil, transform.SameTree, sql.ErrProcedureCallAsOfReadOnly.New()
+		} else {
+			return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+		}
 	}
 
 	return n, transform.SameTree, nil
@@ -661,7 +671,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	}
 
 	// If this is a normal read write transaction don't enforce read-only. Otherwise we must prevent an invalid query.
-	if !t.IsReadOnly() {
+	if !t.IsReadOnly() && !scope.EnforcesReadOnly() {
 		return n, transform.SameTree, nil
 	}
 
@@ -868,6 +878,6 @@ func fds(e sql.Expression) int {
 	case *expression.UnresolvedFunction:
 		return 1
 	default:
-		return sql.NumColumns(e.Type())
+		return types.NumColumns(e.Type())
 	}
 }

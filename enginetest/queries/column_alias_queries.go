@@ -17,6 +17,8 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -36,7 +38,7 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "cOl",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
@@ -46,11 +48,11 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "cOl",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 					{
 						Name: "COL",
-						Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 					},
 				},
 				Expected: []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
@@ -93,11 +95,11 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "COL1",
-						Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 					},
 					{
 						Name: "COL2",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{
@@ -122,11 +124,11 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "coL1",
-						Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 					},
 					{
 						Name: "coL2",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{
@@ -141,11 +143,11 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "Date",
-						Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 					},
 					{
 						Name: "TimeStamp",
-						Type: sql.Int64,
+						Type: types.Int64,
 					},
 				},
 				Expected: []sql.Row{

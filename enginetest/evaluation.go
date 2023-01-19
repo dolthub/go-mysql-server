@@ -34,6 +34,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.
@@ -516,7 +517,7 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	for i, v := range row {
 
 		var vw interface{}
-		if i < len(sch) && sql.IsJSON(sch[i].Type) {
+		if i < len(sch) && types.IsJSON(sch[i].Type) {
 			widened[i] = widenJSONValues(v)
 			continue
 		}
@@ -548,12 +549,12 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	return widened
 }
 
-func widenJSONValues(val interface{}) sql.JSONValue {
+func widenJSONValues(val interface{}) types.JSONValue {
 	if val == nil {
 		return nil
 	}
 
-	js, ok := val.(sql.JSONValue)
+	js, ok := val.(types.JSONValue)
 	if !ok {
 		panic(fmt.Sprintf("%v is not json", val))
 	}

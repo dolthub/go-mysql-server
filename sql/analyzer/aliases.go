@@ -69,6 +69,8 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
 				analysisErr = passAliases.add(at, t.(sql.NameableNode))
+			case *plan.TableAlias:
+				analysisErr = passAliases.add(at, t)
 			case *plan.IndexedTableAccess:
 				analysisErr = passAliases.add(at, t)
 			case *plan.RecursiveCte:

@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowDatabases is a node that shows the databases.
@@ -45,7 +46,7 @@ func (*ShowDatabases) Children() []sql.Node {
 func (*ShowDatabases) Schema() sql.Schema {
 	return sql.Schema{{
 		Name:     "Database",
-		Type:     sql.LongText,
+		Type:     types.LongText,
 		Nullable: false,
 	}}
 }

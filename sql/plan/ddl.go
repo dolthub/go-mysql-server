@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -56,7 +57,7 @@ func (c *ddlNode) Database() sql.Database {
 
 // Schema implements the Node interface.
 func (*ddlNode) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // Children implements the Node interface.
@@ -205,7 +206,7 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 
 // Schema implements the sql.Node interface.
 func (c *CreateTable) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (c *CreateTable) PkSchema() sql.PrimaryKeySchema {
@@ -316,7 +317,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	vd, _ = maybePrivDb.(sql.ViewDatabase)
 	if vd != nil {
-		_, ok, err := vd.GetView(ctx, c.name)
+		_, ok, err := vd.GetViewDefinition(ctx, c.name)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +365,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // ForeignKeys returns any foreign keys that will be declared on this table.
@@ -797,7 +798,7 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // Children implements the Node interface.
@@ -818,7 +819,7 @@ func (d *DropTable) Resolved() bool {
 
 // Schema implements the sql.Expression interface.
 func (d *DropTable) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface.

@@ -53,6 +53,7 @@ const (
 	PrivilegeType_Event
 	PrivilegeType_Execute
 	PrivilegeType_File
+	PrivilegeType_GrantOption
 	PrivilegeType_Index
 	PrivilegeType_Insert
 	PrivilegeType_LockTables
@@ -110,6 +111,8 @@ func convertToSqlPrivilegeType(addGrant bool, privs ...Privilege) []sql.Privileg
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Execute)
 		case PrivilegeType_File:
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_File)
+		case PrivilegeType_GrantOption:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:
@@ -147,7 +150,7 @@ func convertToSqlPrivilegeType(addGrant bool, privs ...Privilege) []sql.Privileg
 		}
 	}
 	if addGrant {
-		sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Grant)
+		sqlPrivs = append(sqlPrivs, sql.PrivilegeType_GrantOption)
 	}
 	return sqlPrivs
 }

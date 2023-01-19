@@ -23,12 +23,13 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestAddColumnToSchema(t *testing.T) {
 	myTable := sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}
 
 	type testCase struct {
@@ -40,52 +41,52 @@ func TestAddColumnToSchema(t *testing.T) {
 		projections []sql.Expression
 	}
 
-	varchar20 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
+	varchar20 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
 	testCases := []testCase{
 		{
 			name:      "add at end",
 			schema:    myTable,
-			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"},
+			newColumn: &sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"},
 			newSchema: sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
-				{Name: "i2", Type: sql.Int64, Source: "mytable"},
+				{Name: "i2", Type: types.Int64, Source: "mytable"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
-				colDefaultExpression{&sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"}},
+				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
 			},
 		},
 		{
 			name:      "add at end, with 'after'",
 			schema:    myTable,
-			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"},
+			newColumn: &sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"},
 			order:     &sql.ColumnOrder{AfterColumn: "s"},
 			newSchema: sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
-				{Name: "i2", Type: sql.Int64, Source: "mytable"},
+				{Name: "i2", Type: types.Int64, Source: "mytable"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
-				colDefaultExpression{&sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"}},
+				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
 			},
 		},
 		{
 			name:      "add at beginning",
 			schema:    myTable,
-			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"},
+			newColumn: &sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"},
 			order:     &sql.ColumnOrder{First: true},
 			newSchema: sql.Schema{
-				{Name: "i2", Type: sql.Int64, Source: "mytable"},
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "i2", Type: types.Int64, Source: "mytable"},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				colDefaultExpression{&sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"}},
-				expression.NewGetField(0, sql.Int64, "i", false),
+				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
+				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
 			},
 		},
@@ -94,40 +95,40 @@ func TestAddColumnToSchema(t *testing.T) {
 			schema: myTable,
 			newColumn: &sql.Column{
 				Name:    "i2",
-				Type:    sql.Int64,
+				Type:    types.Int64,
 				Source:  "mytable",
-				Default: mustDefault(expression.NewGetField(1, sql.Int64, "i", false), sql.Int64, false, true, true),
+				Default: mustDefault(expression.NewGetField(1, types.Int64, "i", false), types.Int64, false, true, true),
 			},
 			order: &sql.ColumnOrder{First: true},
 			newSchema: sql.Schema{
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true, true)},
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "i2", Type: types.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(0, types.Int64, "i", false), types.Int64, false, true, true)},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
 				colDefaultExpression{&sql.Column{
 					Name:    "i2",
-					Type:    sql.Int64,
+					Type:    types.Int64,
 					Source:  "mytable",
-					Default: mustDefault(expression.NewGetField(0, sql.Int64, "i", false), sql.Int64, false, true, true),
+					Default: mustDefault(expression.NewGetField(0, types.Int64, "i", false), types.Int64, false, true, true),
 				}},
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
 			},
 		},
 		{
 			name:      "add in middle",
 			schema:    myTable,
-			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"},
+			newColumn: &sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"},
 			order:     &sql.ColumnOrder{AfterColumn: "i"},
 			newSchema: sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "i2", Type: sql.Int64, Source: "mytable"},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "i2", Type: types.Int64, Source: "mytable"},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
-				colDefaultExpression{&sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable"}},
+				expression.NewGetField(0, types.Int64, "i", false),
+				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
 				expression.NewGetField(1, varchar20, "s", false),
 			},
 		},
@@ -136,23 +137,23 @@ func TestAddColumnToSchema(t *testing.T) {
 			schema: myTable,
 			newColumn: &sql.Column{
 				Name:    "i2",
-				Type:    sql.Int64,
+				Type:    types.Int64,
 				Source:  "mytable",
-				Default: mustDefault(expression.NewGetField(2, sql.Int64, "s", false), sql.Int64, false, true, true),
+				Default: mustDefault(expression.NewGetField(2, types.Int64, "s", false), types.Int64, false, true, true),
 			},
 			order: &sql.ColumnOrder{AfterColumn: "i"},
 			newSchema: sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true, true)},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "i2", Type: types.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, types.Int64, "s", false), types.Int64, false, true, true)},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 				colDefaultExpression{&sql.Column{
 					Name:    "i2",
-					Type:    sql.Int64,
+					Type:    types.Int64,
 					Source:  "mytable",
-					Default: mustDefault(expression.NewGetField(1, sql.Int64, "s", false), sql.Int64, false, true, true),
+					Default: mustDefault(expression.NewGetField(1, types.Int64, "s", false), types.Int64, false, true, true),
 				}},
 				expression.NewGetField(1, varchar20, "s", false),
 			},
@@ -173,11 +174,11 @@ func TestAddColumnToSchema(t *testing.T) {
 }
 
 func TestModifyColumnInSchema(t *testing.T) {
-	varchar20 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
+	varchar20 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 20)
 
 	myTable := sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "f", Type: sql.Float64, Source: "mytable"},
+		{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "f", Type: types.Float64, Source: "mytable"},
 		{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 	}
 
@@ -196,15 +197,15 @@ func TestModifyColumnInSchema(t *testing.T) {
 			name:      "modify last in place",
 			schema:    myTable,
 			colName:   "s",
-			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable"},
+			newColumn: &sql.Column{Name: "s2", Type: types.Int64, Source: "mytable"},
 			newSchema: sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "f", Type: sql.Float64, Source: "mytable"},
-				{Name: "s2", Type: sql.Int64, Source: "mytable"},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "f", Type: types.Float64, Source: "mytable"},
+				{Name: "s2", Type: types.Int64, Source: "mytable"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
-				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(0, types.Int64, "i", false),
+				expression.NewGetField(1, types.Float64, "f", false),
 				expression.NewGetField(2, varchar20, "s", false),
 			},
 		},
@@ -212,15 +213,15 @@ func TestModifyColumnInSchema(t *testing.T) {
 			name:      "modify first in place",
 			schema:    myTable,
 			colName:   "i",
-			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
+			newColumn: &sql.Column{Name: "i2", Type: types.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 			newSchema: sql.Schema{
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
-				{Name: "f", Type: sql.Float64, Source: "mytable"},
+				{Name: "i2", Type: types.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
+				{Name: "f", Type: types.Float64, Source: "mytable"},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
-				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(0, types.Int64, "i", false),
+				expression.NewGetField(1, types.Float64, "f", false),
 				expression.NewGetField(2, varchar20, "s", false),
 			},
 		},
@@ -229,15 +230,15 @@ func TestModifyColumnInSchema(t *testing.T) {
 			schema:    myTable,
 			colName:   "i",
 			order:     &sql.ColumnOrder{AfterColumn: "F"},
-			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
+			newColumn: &sql.Column{Name: "i2", Type: types.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 			newSchema: sql.Schema{
-				{Name: "f", Type: sql.Float64, Source: "mytable"},
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
+				{Name: "f", Type: types.Float64, Source: "mytable"},
+				{Name: "i2", Type: types.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(1, sql.Float64, "f", false),
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(1, types.Float64, "f", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(2, varchar20, "s", false),
 			},
 		},
@@ -246,16 +247,16 @@ func TestModifyColumnInSchema(t *testing.T) {
 			schema:    myTable,
 			colName:   "i",
 			order:     &sql.ColumnOrder{AfterColumn: "s"},
-			newColumn: &sql.Column{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
+			newColumn: &sql.Column{Name: "i2", Type: types.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 			newSchema: sql.Schema{
-				{Name: "f", Type: sql.Float64, Source: "mytable"},
+				{Name: "f", Type: types.Float64, Source: "mytable"},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
-				{Name: "i2", Type: sql.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
+				{Name: "i2", Type: types.Int64, Source: "mytable", Comment: "my comment", PrimaryKey: true},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(1, types.Float64, "f", false),
 				expression.NewGetField(2, varchar20, "s", false),
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 			},
 		},
 		{
@@ -263,16 +264,16 @@ func TestModifyColumnInSchema(t *testing.T) {
 			schema:    myTable,
 			colName:   "s",
 			order:     &sql.ColumnOrder{First: true},
-			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newColumn: &sql.Column{Name: "s2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
 			newSchema: sql.Schema{
-				{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "f", Type: sql.Float64, Source: "mytable"},
+				{Name: "s2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "f", Type: types.Float64, Source: "mytable"},
 			},
 			projections: []sql.Expression{
 				expression.NewGetField(2, varchar20, "s", false),
-				expression.NewGetField(0, sql.Int64, "i", false),
-				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(0, types.Int64, "i", false),
+				expression.NewGetField(1, types.Float64, "f", false),
 			},
 		},
 		{
@@ -280,15 +281,15 @@ func TestModifyColumnInSchema(t *testing.T) {
 			schema:    myTable,
 			colName:   "f",
 			order:     &sql.ColumnOrder{First: true},
-			newColumn: &sql.Column{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newColumn: &sql.Column{Name: "f2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
 			newSchema: sql.Schema{
-				{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "f2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(1, sql.Float64, "f", false),
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(1, types.Float64, "f", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(2, varchar20, "s", false),
 			},
 		},
@@ -297,15 +298,15 @@ func TestModifyColumnInSchema(t *testing.T) {
 			schema:    myTable,
 			colName:   "f",
 			order:     &sql.ColumnOrder{AfterColumn: "I"},
-			newColumn: &sql.Column{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newColumn: &sql.Column{Name: "f2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
 			newSchema: sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "f2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "f2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
-				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(0, types.Int64, "i", false),
+				expression.NewGetField(1, types.Float64, "f", false),
 				expression.NewGetField(2, varchar20, "s", false),
 			},
 		},
@@ -314,49 +315,49 @@ func TestModifyColumnInSchema(t *testing.T) {
 			schema:    myTable,
 			colName:   "s",
 			order:     &sql.ColumnOrder{AfterColumn: "I"},
-			newColumn: &sql.Column{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
+			newColumn: &sql.Column{Name: "s2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
 			newSchema: sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "s2", Type: sql.Int64, Source: "mytable", Comment: "my comment"},
-				{Name: "f", Type: sql.Float64, Source: "mytable"},
+				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "s2", Type: types.Int64, Source: "mytable", Comment: "my comment"},
+				{Name: "f", Type: types.Float64, Source: "mytable"},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(0, sql.Int64, "i", false),
+				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(2, varchar20, "s", false),
-				expression.NewGetField(1, sql.Float64, "f", false),
+				expression.NewGetField(1, types.Float64, "f", false),
 			},
 		},
 		{
 			name: "modify middle, move first with defaults",
 			schema: sql.Schema{
-				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "two", Type: sql.Int64, Source: "mytable"},
-				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
-					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "two", false),
-					sql.Int64, false, true, false),
+				{Name: "one", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "two", Type: types.Int64, Source: "mytable"},
+				{Name: "three", Type: types.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(1, types.Int64, "mytable", "two", false),
+					types.Int64, false, true, false),
 				},
 			},
 			colName: "two",
 			order:   &sql.ColumnOrder{First: true},
-			newColumn: &sql.Column{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "one", false),
-				sql.Int64, false, true, false),
+			newColumn: &sql.Column{Name: "two", Type: types.Int64, Source: "mytable", Default: mustDefault(
+				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "one", false),
+				types.Int64, false, true, false),
 			},
 			newSchema: sql.Schema{
-				{Name: "two", Type: sql.Int64, Source: "mytable", Default: mustDefault(
-					expression.NewGetFieldWithTable(1, sql.Int64, "mytable", "one", false),
-					sql.Int64, false, true, false),
+				{Name: "two", Type: types.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(1, types.Int64, "mytable", "one", false),
+					types.Int64, false, true, false),
 				},
-				{Name: "one", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "three", Type: sql.Int64, Source: "mytable", Default: mustDefault(
-					expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "two", false),
-					sql.Int64, false, true, false),
+				{Name: "one", Type: types.Int64, Source: "mytable", PrimaryKey: true},
+				{Name: "three", Type: types.Int64, Source: "mytable", Default: mustDefault(
+					expression.NewGetFieldWithTable(0, types.Int64, "mytable", "two", false),
+					types.Int64, false, true, false),
 				},
 			},
 			projections: []sql.Expression{
-				expression.NewGetField(1, sql.Int64, "two", false),
-				expression.NewGetField(0, sql.Int64, "one", false),
-				expression.NewGetField(2, sql.Int64, "three", false),
+				expression.NewGetField(1, types.Int64, "two", false),
+				expression.NewGetField(0, types.Int64, "one", false),
+				expression.NewGetField(2, types.Int64, "three", false),
 			},
 		},
 	}

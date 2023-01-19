@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_MERGE_PRESERVE(json_doc, json_doc[, json_doc] ...)
@@ -97,7 +98,7 @@ func (j *JSONMergePreserve) String() string {
 
 // Type implements the Expression interface.
 func (j *JSONMergePreserve) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 // IsNullable implements the Expression interface.
@@ -122,7 +123,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		return nil, err
 	}
 
-	mergedMap := sql.DeepCopyJson(initialJSON.(sql.JSONDocument).Val)
+	mergedMap := types.DeepCopyJson(initialJSON.(types.JSONDocument).Val)
 
 	for _, json := range j.JSONDocs[1:] {
 		js, jErr := json.Eval(ctx, row)
@@ -135,13 +136,13 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 			return nil, err
 		}
 
-		jsMap := js.(sql.JSONDocument).Val
+		jsMap := js.(types.JSONDocument).Val
 
 		mergedMap = merge(mergedMap, jsMap)
 
 	}
 
-	return sql.JSONDocument{Val: mergedMap}, nil
+	return types.JSONDocument{Val: mergedMap}, nil
 }
 
 // Children implements the Expression interface.

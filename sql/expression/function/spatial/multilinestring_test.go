@@ -21,37 +21,38 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestMultiLineString(t *testing.T) {
 	t.Run("create valid multilinestring", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewMultiLineString(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, sql.LineStringType{}))
+		f, err := NewMultiLineString(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}}}, v)
+		require.Equal(types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}}}, v)
 	})
 
 	t.Run("create valid multilinestring with multiple linestrings", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewMultiLineString(expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, sql.LineStringType{}),
-			expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}}}, sql.LineStringType{}),
-			expression.NewLiteral(sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}}}, sql.LineStringType{}))
+		f, err := NewMultiLineString(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}),
+			expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}}}, types.LineStringType{}),
+			expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}}}, types.LineStringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}}}}}, v)
+		require.Equal(types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}}}, {Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}}}, {Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}}}}}, v)
 	})
 }
 
 func TestNewMultiLineString(t *testing.T) {
 	require := require.New(t)
-	_, err := NewMultiLineString(expression.NewLiteral(nil, sql.LineStringType{}),
-		expression.NewLiteral(nil, sql.LineStringType{}),
-		expression.NewLiteral(nil, sql.LineStringType{}),
+	_, err := NewMultiLineString(expression.NewLiteral(nil, types.LineStringType{}),
+		expression.NewLiteral(nil, types.LineStringType{}),
+		expression.NewLiteral(nil, types.LineStringType{}),
 	)
 	require.NoError(err)
 }

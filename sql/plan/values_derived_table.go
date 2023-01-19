@@ -7,6 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ValueDerivedTable struct {
@@ -182,9 +183,9 @@ func getSchema(rows [][]sql.Expression) sql.Schema {
 // getMostPermissiveType returns the most permissive type given the current type and the expression type.
 // The ordering is "other types < uint < int < decimal (float should be interpreted as decimal) < string"
 func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
-	if sql.IsText(s.Type) {
+	if types.IsText(s.Type) {
 		return s.Type
-	} else if sql.IsText(e.Type()) {
+	} else if types.IsText(e.Type()) {
 		return e.Type()
 	}
 
@@ -202,28 +203,28 @@ func getMostPermissiveType(s *sql.Column, e sql.Expression) sql.Type {
 		if et.Scale() > frac {
 			frac = et.Scale()
 		}
-		return sql.MustCreateDecimalType(whole+frac, frac)
-	} else if sql.IsDecimal(e.Type()) {
+		return types.MustCreateDecimalType(whole+frac, frac)
+	} else if types.IsDecimal(e.Type()) {
 		return e.Type()
 	}
 
 	// TODO: float type should be interpreted as decimal type
-	if sql.IsFloat(s.Type) {
+	if types.IsFloat(s.Type) {
 		return s.Type
-	} else if sql.IsFloat(e.Type()) {
-		return sql.Float64
+	} else if types.IsFloat(e.Type()) {
+		return types.Float64
 	}
 
-	if sql.IsSigned(s.Type) {
+	if types.IsSigned(s.Type) {
 		return s.Type
-	} else if sql.IsSigned(e.Type()) {
-		return sql.Int64
+	} else if types.IsSigned(e.Type()) {
+		return types.Int64
 	}
 
-	if sql.IsUnsigned(s.Type) {
+	if types.IsUnsigned(s.Type) {
 		return s.Type
-	} else if sql.IsUnsigned(e.Type()) {
-		return sql.Uint64
+	} else if types.IsUnsigned(e.Type()) {
+		return types.Uint64
 	}
 
 	return s.Type

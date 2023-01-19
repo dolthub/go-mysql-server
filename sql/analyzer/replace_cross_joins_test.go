@@ -22,23 +22,24 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestConvertCrossJoin(t *testing.T) {
 	tableA := memory.NewTable("a", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "x", Type: sql.Int64, Source: "a"},
-		{Name: "y", Type: sql.Int64, Source: "a"},
-		{Name: "z", Type: sql.Int64, Source: "a"},
+		{Name: "x", Type: types.Int64, Source: "a"},
+		{Name: "y", Type: types.Int64, Source: "a"},
+		{Name: "z", Type: types.Int64, Source: "a"},
 	}), nil)
 	tableB := memory.NewTable("b", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "x", Type: sql.Int64, Source: "b"},
-		{Name: "y", Type: sql.Int64, Source: "b"},
-		{Name: "z", Type: sql.Int64, Source: "b"},
+		{Name: "x", Type: types.Int64, Source: "b"},
+		{Name: "y", Type: types.Int64, Source: "b"},
+		{Name: "z", Type: types.Int64, Source: "b"},
 	}), nil)
 
-	fieldAx := expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false)
-	fieldBy := expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)
-	litOne := expression.NewLiteral(1, sql.Int64)
+	fieldAx := expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false)
+	fieldBy := expression.NewGetFieldWithTable(0, types.Int64, "b", "y", false)
+	litOne := expression.NewLiteral(1, types.Int64)
 
 	matching := []sql.Expression{
 		expression.NewEquals(fieldAx, fieldBy),
@@ -67,12 +68,12 @@ func TestConvertCrossJoin(t *testing.T) {
 
 	nonMatching := []sql.Expression{
 		expression.NewEquals(
-			expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-			expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "b", "x", false),
+			expression.NewGetFieldWithTable(0, types.Int64, "b", "y", false),
 		),
 		expression.NewEquals(
-			expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-			aggregation.NewMax(expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)),
+			expression.NewGetFieldWithTable(0, types.Int64, "b", "x", false),
+			aggregation.NewMax(expression.NewGetFieldWithTable(0, types.Int64, "b", "y", false)),
 		),
 	}
 
@@ -172,17 +173,17 @@ func TestConvertCrossJoin(t *testing.T) {
 					expression.NewEquals(fieldAx, fieldBy),
 					expression.NewAnd(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-							expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "b", "x", false),
+							expression.NewGetFieldWithTable(1, types.Int64, "c", "y", false),
 						),
 						expression.NewAnd(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-								expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int64, "c", "x", false),
-								expression.NewGetFieldWithTable(1, sql.Int64, "d", "y", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "c", "x", false),
+								expression.NewGetFieldWithTable(1, types.Int64, "d", "y", false),
 							),
 						),
 					),
@@ -200,8 +201,8 @@ func TestConvertCrossJoin(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false),
 				),
 				plan.NewInnerJoin(
 					plan.NewResolvedTable(tableA, nil, nil),
@@ -211,13 +212,13 @@ func TestConvertCrossJoin(t *testing.T) {
 							plan.NewTableAlias("c", plan.NewResolvedTable(tableB, nil, nil)),
 							plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int64, "c", "x", false),
-								expression.NewGetFieldWithTable(1, sql.Int64, "d", "y", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "c", "x", false),
+								expression.NewGetFieldWithTable(1, types.Int64, "d", "y", false),
 							),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-							expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "b", "x", false),
+							expression.NewGetFieldWithTable(1, types.Int64, "c", "y", false),
 						),
 					),
 					expression.NewEquals(fieldAx, fieldBy),
@@ -230,8 +231,8 @@ func TestConvertCrossJoin(t *testing.T) {
 				expression.NewAnd(
 					expression.NewEquals(fieldAx, fieldBy),
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-						expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "b", "x", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "c", "y", false),
 					),
 				),
 				plan.NewCrossJoin(
@@ -254,8 +255,8 @@ func TestConvertCrossJoin(t *testing.T) {
 						plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
 					),
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-						expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "b", "x", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "c", "y", false),
 					),
 				),
 				expression.NewEquals(fieldAx, fieldBy),

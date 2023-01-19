@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -265,48 +266,38 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 	}
 }
 
-func NewMax1Row(n sql.Node) *Max1RowSubquery {
-	return &Max1RowSubquery{Child: n, mu: &sync.Mutex{}}
+func NewMax1Row(n sql.NameableNode) *Max1Row {
+	return &Max1Row{Child: n, mu: &sync.Mutex{}}
 }
 
-// Max1RowSubquery throws a runtime error if its child (usually subquery) tries
+// Max1Row throws a runtime error if its child (usually subquery) tries
 // to return more than one row.
-type Max1RowSubquery struct {
-	Child       sql.Node
+type Max1Row struct {
+	Child       sql.NameableNode
 	result      sql.Row
 	mu          *sync.Mutex
 	emptyResult bool
 }
 
-var _ sql.Node = (*Max1RowSubquery)(nil)
+var _ sql.Node = (*Max1Row)(nil)
 
-func (m *Max1RowSubquery) Subquery() *SubqueryAlias {
-	ret := m.Child
-	sq, ok := ret.(*SubqueryAlias)
-	for !ok {
-		ret = ret.Children()[0]
-		sq, ok = ret.(*SubqueryAlias)
-	}
-	return sq
+func (m *Max1Row) Name() string {
+	return m.Child.Name()
 }
 
-func (m *Max1RowSubquery) Name() string {
-	return m.Subquery().Name()
-}
-
-func (m *Max1RowSubquery) Resolved() bool {
+func (m *Max1Row) Resolved() bool {
 	return m.Child.Resolved()
 }
 
-func (m *Max1RowSubquery) Schema() sql.Schema {
+func (m *Max1Row) Schema() sql.Schema {
 	return m.Child.Schema()
 }
 
-func (m *Max1RowSubquery) Children() []sql.Node {
+func (m *Max1Row) Children() []sql.Node {
 	return []sql.Node{m.Child}
 }
 
-func (m *Max1RowSubquery) String() string {
+func (m *Max1Row) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Max1Row")
 	children := []string{m.Child.String()}
@@ -314,7 +305,7 @@ func (m *Max1RowSubquery) String() string {
 	return pr.String()
 }
 
-func (m *Max1RowSubquery) DebugString() string {
+func (m *Max1Row) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Max1Row")
 	children := []string{sql.DebugString(m.Child)}
@@ -322,7 +313,7 @@ func (m *Max1RowSubquery) DebugString() string {
 	return pr.String()
 }
 
-func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (m *Max1Row) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -346,7 +337,7 @@ func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 // populateResults loads and stores the state of its child iter:
 // 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
 // returned
-func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
+func (m *Max1Row) populateResults(ctx *sql.Context, row sql.Row) error {
 	i, err := m.Child.RowIter(ctx, row)
 	if err != nil {
 		return err
@@ -370,21 +361,26 @@ func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
 }
 
 // hasResults returns true after a successful call to populateResults()
-func (m *Max1RowSubquery) hasResults() bool {
+func (m *Max1Row) hasResults() bool {
 	return m.result != nil || m.emptyResult
 }
 
-func (m *Max1RowSubquery) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
 	ret := *m
-	ret.Child = children[0]
+
+	nn, ok := children[0].(sql.NameableNode)
+	if !ok {
+		return nil, fmt.Errorf("expected *Max1Row child to be sql.NameableNode, found %T", children[0])
+	}
+	ret.Child = nn
 
 	return &ret, nil
 }
 
-func (m *Max1RowSubquery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (m *Max1Row) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return m.Child.CheckPrivileges(ctx, opChecker)
 }
 
@@ -579,7 +575,7 @@ func (s *Subquery) Type() sql.Type {
 	for i, c := range qs {
 		ts[i] = c.Type
 	}
-	return sql.CreateTuple(ts...)
+	return types.CreateTuple(ts...)
 }
 
 // WithChildren implements the Expression interface.

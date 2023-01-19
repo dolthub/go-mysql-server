@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -25,7 +26,7 @@ import (
 // Database is an in-memory database.
 type Database struct {
 	*BaseDatabase
-	views map[string]string
+	views map[string]sql.ViewDefinition
 }
 
 type MemoryDatabase interface {
@@ -61,7 +62,7 @@ var _ MemoryDatabase = (*BaseDatabase)(nil)
 func NewDatabase(name string) *Database {
 	return &Database{
 		BaseDatabase: NewViewlessDatabase(name),
-		views:        make(map[string]string),
+		views:        make(map[string]sql.ViewDefinition),
 	}
 }
 
@@ -192,7 +193,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 	for _, idxCol := range idxDef.Columns {
 		col := sch.Schema[sch.Schema.IndexOfColName(idxCol.Name)]
-		if col.PrimaryKey && sql.IsText(col.Type) && idxCol.Length > 0 {
+		if col.PrimaryKey && types.IsText(col.Type) && idxCol.Length > 0 {
 			return sql.ErrUnsupportedIndexPrefix.New(col.Name)
 		}
 	}
@@ -270,6 +271,17 @@ func (d *BaseDatabase) DropTrigger(ctx *sql.Context, name string) error {
 	return nil
 }
 
+// GetStoredProcedure implements sql.StoredProcedureDatabase
+func (d *BaseDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.StoredProcedureDetails, bool, error) {
+	name = strings.ToLower(name)
+	for _, spd := range d.storedProcedures {
+		if name == strings.ToLower(spd.Name) {
+			return spd, true, nil
+		}
+	}
+	return sql.StoredProcedureDetails{}, false, nil
+}
+
 // GetStoredProcedures implements sql.StoredProcedureDatabase
 func (d *BaseDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
 	var spds []sql.StoredProcedureDetails
@@ -319,16 +331,18 @@ func (d *BaseDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID)
 	return nil
 }
 
-func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement string) error {
+// CreateView implements the interface sql.ViewDatabase.
+func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
 	_, ok := d.views[name]
 	if ok {
 		return sql.ErrExistingView.New(name)
 	}
 
-	d.views[name] = selectStatement
+	d.views[name] = sql.ViewDefinition{Name: name, TextDefinition: selectStatement, CreateViewStatement: createViewStmt}
 	return nil
 }
 
+// DropView implements the interface sql.ViewDatabase.
 func (d *Database) DropView(ctx *sql.Context, name string) error {
 	_, ok := d.views[name]
 	if !ok {
@@ -339,18 +353,17 @@ func (d *Database) DropView(ctx *sql.Context, name string) error {
 	return nil
 }
 
+// AllViews implements the interface sql.ViewDatabase.
 func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	var views []sql.ViewDefinition
-	for name, def := range d.views {
-		views = append(views, sql.ViewDefinition{
-			Name:           name,
-			TextDefinition: def,
-		})
+	for _, def := range d.views {
+		views = append(views, def)
 	}
 	return views, nil
 }
 
-func (d *Database) GetView(ctx *sql.Context, viewName string) (string, bool, error) {
+// GetViewDefinition implements the interface sql.ViewDatabase.
+func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
 	viewDef, ok := d.views[viewName]
 	return viewDef, ok, nil
 }

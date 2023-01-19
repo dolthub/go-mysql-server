@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const mysqlVersion = "8.0.11"
@@ -50,7 +51,7 @@ func (f Version) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f Version) Type() sql.Type { return sql.LongText }
+func (f Version) Type() sql.Type { return types.LongText }
 
 // IsNullable implements the Expression interface.
 func (f Version) IsNullable() bool {

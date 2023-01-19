@@ -23,6 +23,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrUintOverflow = errors.NewKind(
@@ -37,7 +38,7 @@ func compEval(
 	cmp compareFn,
 ) (interface{}, error) {
 
-	if returnType == sql.Null {
+	if returnType == types.Null {
 		return nil, nil
 	}
 
@@ -97,7 +98,7 @@ func compEval(
 			}
 
 		case string:
-			if sql.IsTextOnly(returnType) && (i == 0 || cmp(t, selectedString)) {
+			if types.IsTextOnly(returnType) && (i == 0 || cmp(t, selectedString)) {
 				selectedString = t
 			}
 
@@ -125,11 +126,11 @@ func compEval(
 	}
 
 	switch returnType {
-	case sql.Int64:
+	case types.Int64:
 		return int64(selectedNum), nil
-	case sql.LongText:
+	case types.LongText:
 		return selectedString, nil
-	case sql.Datetime:
+	case types.Datetime:
 		return selectedTime, nil
 	}
 
@@ -153,39 +154,39 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 			return nil, nil
 		}
 		argType := arg.Type()
-		if sql.IsTuple(argType) {
+		if types.IsTuple(argType) {
 			return nil, sql.ErrInvalidType.New("tuple")
-		} else if sql.IsNumber(argType) {
+		} else if types.IsNumber(argType) {
 			allString = false
 			allDatetime = false
-			if sql.IsFloat(argType) {
+			if types.IsFloat(argType) {
 				allString = false
 				allInt = false
 			}
-		} else if sql.IsText(argType) {
+		} else if types.IsText(argType) {
 			allInt = false
 			allDatetime = false
-		} else if sql.IsTime(argType) {
+		} else if types.IsTime(argType) {
 			allString = false
 			allInt = false
-		} else if sql.IsDeferredType(argType) {
+		} else if types.IsDeferredType(argType) {
 			return argType, nil
-		} else if argType == sql.Null {
+		} else if argType == types.Null {
 			// When a Null is present the return will always be Null
-			return sql.Null, nil
+			return types.Null, nil
 		} else {
 			return nil, ErrUnsupportedType.New(argType)
 		}
 	}
 
 	if allString {
-		return sql.LongText, nil
+		return types.LongText, nil
 	} else if allInt {
-		return sql.Int64, nil
+		return types.Int64, nil
 	} else if allDatetime {
-		return sql.Datetime, nil
+		return types.Datetime, nil
 	} else {
-		return sql.Float64, nil
+		return types.Float64, nil
 	}
 }
 

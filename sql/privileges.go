@@ -115,7 +115,7 @@ const (
 	PrivilegeType_Shutdown
 	PrivilegeType_Process
 	PrivilegeType_File
-	PrivilegeType_Grant
+	PrivilegeType_GrantOption
 	PrivilegeType_References
 	PrivilegeType_Index
 	PrivilegeType_Alter
@@ -150,7 +150,7 @@ var privilegeTypeStrings = []string{
 	"SHUTDOWN",
 	"PROCESS",
 	"FILE",
-	"GRANT",
+	"GRANT OPTION",
 	"REFERENCES",
 	"INDEX",
 	"ALTER",
@@ -190,7 +190,7 @@ var privilegeTypeStringMap = map[string]PrivilegeType{
 	"SHUTDOWN":                PrivilegeType_Shutdown,
 	"PROCESS":                 PrivilegeType_Process,
 	"FILE":                    PrivilegeType_File,
-	"GRANT":                   PrivilegeType_Grant,
+	"GRANT OPTION":            PrivilegeType_GrantOption,
 	"REFERENCES":              PrivilegeType_References,
 	"INDEX":                   PrivilegeType_Index,
 	"ALTER":                   PrivilegeType_Alter,

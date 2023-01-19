@@ -14,21 +14,9 @@
 
 package sql
 
-import (
-	"encoding/json"
-)
-
 func MustConvert(val interface{}, err error) interface{} {
 	if err != nil {
 		panic(err)
 	}
 	return val
-}
-
-func MustJSON(s string) JSONDocument {
-	var doc interface{}
-	if err := json.Unmarshal([]byte(s), &doc); err != nil {
-		panic(err)
-	}
-	return JSONDocument{Val: doc}
 }

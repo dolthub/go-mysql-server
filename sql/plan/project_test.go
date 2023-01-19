@@ -23,25 +23,26 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestProject(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: sql.Text, Nullable: true},
-		{Name: "col2", Type: sql.Text, Nullable: true},
+		{Name: "col1", Type: types.Text, Nullable: true},
+		{Name: "col2", Type: types.Text, Nullable: true},
 	})
 	child := memory.NewTable("test", childSchema, nil)
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
 	p := NewProject(
-		[]sql.Expression{expression.NewGetField(1, sql.Text, "col2", true)},
+		[]sql.Expression{expression.NewGetField(1, types.Text, "col2", true)},
 		NewResolvedTable(child, nil, nil),
 	)
 	require.Equal(1, len(p.Children()))
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col2", Type: sql.Text, Nullable: true},
+		{Name: "col2", Type: types.Text, Nullable: true},
 	})
 	require.Equal(schema.Schema, p.Schema())
 	iter, err := p.RowIter(ctx, nil)
@@ -65,10 +66,10 @@ func TestProject(t *testing.T) {
 	require.Equal(0, len(p.Schema()))
 
 	p = NewProject([]sql.Expression{
-		expression.NewAlias("foo", expression.NewGetField(1, sql.Text, "col2", true)),
+		expression.NewAlias("foo", expression.NewGetField(1, types.Text, "col2", true)),
 	}, NewResolvedTable(child, nil, nil))
 	schema = sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "foo", Type: sql.Text, Nullable: true},
+		{Name: "foo", Type: types.Text, Nullable: true},
 	})
 	require.Equal(schema.Schema, p.Schema())
 }
@@ -79,12 +80,12 @@ func BenchmarkProject(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		d := NewProject([]sql.Expression{
-			expression.NewGetField(0, sql.Text, "strfield", true),
-			expression.NewGetField(1, sql.Float64, "floatfield", true),
-			expression.NewGetField(2, sql.Boolean, "boolfield", false),
-			expression.NewGetField(3, sql.Int32, "intfield", false),
-			expression.NewGetField(4, sql.Int64, "bigintfield", false),
-			expression.NewGetField(5, sql.Blob, "blobfield", false),
+			expression.NewGetField(0, types.Text, "strfield", true),
+			expression.NewGetField(1, types.Float64, "floatfield", true),
+			expression.NewGetField(2, types.Boolean, "boolfield", false),
+			expression.NewGetField(3, types.Int32, "intfield", false),
+			expression.NewGetField(4, types.Int64, "bigintfield", false),
+			expression.NewGetField(5, types.Blob, "blobfield", false),
 		}, NewResolvedTable(benchtable, nil, nil))
 
 		iter, err := d.RowIter(ctx, nil)
