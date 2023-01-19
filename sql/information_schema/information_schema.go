@@ -401,6 +401,7 @@ var parametersSchema = Schema{
 	{Name: "CHARACTER_OCTET_LENGTH", Type: types.Int64, Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "NUMERIC_PRECISION", Type: types.Uint32, Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "NUMERIC_SCALE", Type: types.Int64, Default: nil, Nullable: true, Source: ParametersTableName},
+	{Name: "DATETIME_PRECISION", Type: types.Uint32, Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "CHARACTER_SET_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "COLLATION_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "DTD_IDENTIFIER", Type: types.MediumText, Default: nil, Nullable: false, Source: ParametersTableName},
@@ -1294,7 +1295,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					colName  = col.Name
 					srsName  interface{}
 					srsId    interface{}
-					typeName = col.Type.String()
+					typeName = strings.Split(col.Type.String(), " COLLATE")[0]
 				)
 
 				if srid, d := s.GetSpatialTypeSRID(); d {
@@ -2225,10 +2226,10 @@ func NewInformationSchemaDatabase() Database {
 				schema: optimizerTraceSchema,
 				reader: emptyRowIter,
 			},
-			ParametersTableName: &informationSchemaTable{
+			ParametersTableName: &routineTable{
 				name:   ParametersTableName,
 				schema: parametersSchema,
-				reader: emptyRowIter,
+				rowIter: parametersRowIter,
 			},
 			PartitionsTableName: &informationSchemaTable{
 				name:   PartitionsTableName,
