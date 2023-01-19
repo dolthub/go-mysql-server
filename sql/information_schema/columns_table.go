@@ -27,7 +27,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -186,7 +185,7 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 // getRowFromColumn returns a single row for given column. The arguments passed are used to define all row values.
 // These include the current ordinal position, so this column will get the next position number, sql.Column object,
 // database name, table name, column key and column privileges information through privileges set for the table.
-func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbCollation sql.CollationID, dbName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
+func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
 	var (
 		charName          interface{}
 		collName          interface{}
@@ -283,7 +282,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbCollat
 }
 
 // getRowsFromTable returns array of rows for all accessible columns of the given table.
-func getRowsFromTable(ctx *sql.Context, db sql.Database, dbCollation sql.CollationID, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
+func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
 	var rows []sql.Row
 
 	privSetTbl := privSetDb.Table(t.Name())
@@ -309,7 +308,7 @@ func getRowsFromTable(ctx *sql.Context, db sql.Database, dbCollation sql.Collati
 			}
 		}
 
-		r := getRowFromColumn(ctx, i, col, dbCollation, db.Name(), tblName, columnKey, privSetTbl, curPrivSetMap)
+		r := getRowFromColumn(ctx, i, col, db.Name(), tblName, columnKey, privSetTbl, curPrivSetMap)
 		if r != nil {
 			rows = append(rows, r)
 		}
@@ -370,9 +369,8 @@ func getRowsFromDatabase(ctx *sql.Context, db sql.Database, privSet sql.Privileg
 		curPrivSetMap["select"] = struct{}{}
 	}
 
-	dbCollation := plan.GetDatabaseCollation(ctx, db)
 	err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
-		rs, err := getRowsFromTable(ctx, db, dbCollation, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
+		rs, err := getRowsFromTable(ctx, db, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
 		if err != nil {
 			return false, err
 		}
