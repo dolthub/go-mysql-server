@@ -537,10 +537,10 @@ func getColumnPrecisionAndScale(colType sql.Type) (interface{}, interface{}) {
 
 func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {
 	var (
-		charName          interface{}
-		collName          interface{}
-		charMaxLen        interface{}
-		charOctetLen      interface{}
+		charName     interface{}
+		collName     interface{}
+		charMaxLen   interface{}
+		charOctetLen interface{}
 	)
 	if twc, ok := colType.(sql.TypeWithCollation); ok && !types.IsBinaryType(colType) {
 		colColl := twc.Collation()

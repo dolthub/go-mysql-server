@@ -2227,8 +2227,8 @@ func NewInformationSchemaDatabase() Database {
 				reader: emptyRowIter,
 			},
 			ParametersTableName: &routineTable{
-				name:   ParametersTableName,
-				schema: parametersSchema,
+				name:    ParametersTableName,
+				schema:  parametersSchema,
 				rowIter: parametersRowIter,
 			},
 			PartitionsTableName: &informationSchemaTable{
