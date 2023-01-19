@@ -1295,8 +1295,8 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					colName  = col.Name
 					srsName  interface{}
 					srsId    interface{}
-					typeName = strings.Split(col.Type.String(), " COLLATE")[0]
 				)
+				typeName, _ := getDtdIdAndDataType(col.Type)
 
 				if srid, d := s.GetSpatialTypeSRID(); d {
 					srsName = spatial.SupportedSRIDs[srid].Name
