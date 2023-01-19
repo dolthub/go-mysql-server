@@ -47,6 +47,22 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 	}
 }
 
+// SplitConjunction breaks AND expressions into their left and right parts, recursively
+func SplitConjunction(expr sql.Expression) []sql.Expression {
+	if expr == nil {
+		return nil
+	}
+	and, ok := expr.(*And)
+	if !ok {
+		return []sql.Expression{expr}
+	}
+
+	return append(
+		SplitConjunction(and.Left),
+		SplitConjunction(and.Right)...,
+	)
+}
+
 func (a *And) String() string {
 	return fmt.Sprintf("(%s AND %s)", a.Left, a.Right)
 }

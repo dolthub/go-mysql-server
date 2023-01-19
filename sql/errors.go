@@ -737,6 +737,12 @@ var (
 	ErrTooLargeForSet    = errors.NewKind(`value "%v" is too large for this set`)
 	ErrNotPoint          = errors.NewKind("value of type %T is not a point")
 	ErrNotLineString     = errors.NewKind("value of type %T is not a linestring")
+
+	// ErrMergeJoinExpectsComparerFilters is returned when we attempt to build a merge join with an invalid filter.
+	ErrMergeJoinExpectsComparerFilters = errors.NewKind("merge join expects expression.Comparer filters, found: %T")
+
+	// ErrNoJoinFilters is returned when we attempt to build a filtered join without filters
+	ErrNoJoinFilters = errors.NewKind("join expected non-nil filters")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
