@@ -530,17 +530,43 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 func convertChangeReplicationSource(n *sqlparser.ChangeReplicationSource) (sql.Node, error) {
 	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
 	for _, option := range n.Options {
-		convertedOptions = append(convertedOptions, binlogreplication.NewReplicationOption(option.Name, option.Value))
+		convertedOption, err := convertReplicationOption(option)
+		if err != nil {
+			return nil, err
+		}
+		convertedOptions = append(convertedOptions, *convertedOption)
 	}
 	return plan.NewChangeReplicationSource(convertedOptions), nil
+}
+
+func convertReplicationOption(option *sqlparser.ReplicationOption) (*binlogreplication.ReplicationOption, error) {
+	if option.Value == nil {
+		return nil, fmt.Errorf("nil replication option specified for option %q", option.Name)
+	}
+	switch vv := option.Value.(type) {
+	case string:
+		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.StringReplicationOptionValue{Value: vv}), nil
+	case int:
+		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.IntegerReplicationOptionValue{Value: vv}), nil
+	case sqlparser.TableNames:
+		urts := make([]sql.UnresolvedTable, len(vv))
+		for i, tableName := range vv {
+			urts[i] = tableNameToUnresolvedTable(tableName)
+		}
+		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.TableNamesReplicationOptionValue{Value: urts}), nil
+	default:
+		return nil, fmt.Errorf("unsupported option value type '%T' specified for option %q", option.Value, option.Name)
+	}
 }
 
 func convertChangeReplicationFilter(n *sqlparser.ChangeReplicationFilter) (sql.Node, error) {
 	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
 	for _, option := range n.Options {
-		// TODO: Changing ReplicationOption.Value to interface{} breaks this of course
-		//       Is this what we want to do?
-		convertedOptions = append(convertedOptions, binlogreplication.NewReplicationOption(option.Name, option.Value))
+		convertedOption, err := convertReplicationOption(option)
+		if err != nil {
+			return nil, err
+		}
+		convertedOptions = append(convertedOptions, *convertedOption)
 	}
 	return plan.NewChangeReplicationFilter(convertedOptions), nil
 }

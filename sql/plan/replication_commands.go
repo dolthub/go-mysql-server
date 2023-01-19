@@ -69,10 +69,7 @@ func (c *ChangeReplicationSource) String() string {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(option.Name)
-		sb.WriteString(" = ")
-		// TODO: Fix this unsafe type cast
-		sb.WriteString(option.Value.(string))
+		sb.WriteString(fmt.Sprintf("%s = %s", option.Name, option.Value))
 	}
 	return sb.String()
 }

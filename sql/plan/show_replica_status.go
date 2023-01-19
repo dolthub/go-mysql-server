@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -59,8 +60,8 @@ func (s *ShowReplicaStatus) Schema() sql.Schema {
 		{Name: "Replica_SQL_Running", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
 		{Name: "Replicate_Do_DB", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
 		{Name: "Replicate_Ignore_DB", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
-		{Name: "Replicate_Do_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
-		{Name: "Replicate_Ignore_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
+		{Name: "Replicate_Do_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: false},
+		{Name: "Replicate_Ignore_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: false},
 		{Name: "Replicate_Wild_Do_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
 		{Name: "Replicate_Wild_Ignore_Table", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
 		{Name: "Last_Errno", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
@@ -120,6 +121,12 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		return sql.RowsToRowIter(), nil
 	}
 
+	replicateDoTables := strings.Join(status.ReplicateDoTables, ",")
+	replicateIgnoreTables := strings.Join(status.ReplicateIgnoreTables, ",")
+
+	lastIoErrorTimestamp := formatReplicaStatusTimestamp(status.LastIoErrorTimestamp)
+	lastSqlErrorTimestamp := formatReplicaStatusTimestamp(status.LastSqlErrorTimestamp)
+
 	row = sql.Row{
 		"",                       // Replica_IO_State
 		status.SourceHost,        // Source_Host
@@ -135,8 +142,8 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		status.ReplicaSqlRunning, // Replica_SQL_Running
 		nil,                      // Replicate_Do_DB
 		nil,                      // Replicate_Ignore_DB
-		nil,                      // Replicate_Do_Table
-		nil,                      // Replicate_Ignore_Table
+		replicateDoTables,        // Replicate_Do_Table
+		replicateIgnoreTables,    // Replicate_Ignore_Table
 		nil,                      // Replicate_Wild_Do_Table
 		nil,                      // Replicate_Wild_Ignore_Table
 		status.LastSqlErrNumber,  // Last_Errno
@@ -170,12 +177,12 @@ func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		nil,                      // Replica_SQL_Running_State
 		status.SourceRetryCount,  // Source_Retry_Count
 		nil,                      // Source_Bind
-		formatReplicaStatusTimestamp(status.LastIoErrorTimestamp),  // Last_IO_Error_Timestamp
-		formatReplicaStatusTimestamp(status.LastSqlErrorTimestamp), // Last_SQL_Error_Timestamp
-		status.RetrievedGtidSet,                                    // Retrieved_Gtid_Set
-		status.ExecutedGtidSet,                                     // Executed_Gtid_Set
-		status.AutoPosition,                                        // Auto_Position
-		nil,                                                        // Replicate_Rewrite_DB
+		lastIoErrorTimestamp,     // Last_IO_Error_Timestamp
+		lastSqlErrorTimestamp,    // Last_SQL_Error_Timestamp
+		status.RetrievedGtidSet,  // Retrieved_Gtid_Set
+		status.ExecutedGtidSet,   // Executed_Gtid_Set
+		status.AutoPosition,      // Auto_Position
+		nil,                      // Replicate_Rewrite_DB
 	}
 
 	return sql.RowsToRowIter(row), nil

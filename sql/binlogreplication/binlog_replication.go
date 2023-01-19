@@ -15,6 +15,9 @@
 package binlogreplication
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -80,6 +83,8 @@ type ReplicaStatus struct {
 	RetrievedGtidSet      string
 	ExecutedGtidSet       string
 	AutoPosition          bool
+	ReplicateDoTables     []string
+	ReplicateIgnoreTables []string
 }
 
 const (
@@ -94,11 +99,96 @@ const (
 // CHANGE REPLICATION SOURCE TO command: https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ReplicationOption struct {
 	Name  string
-	Value interface{}
+	Value ReplicationOptionValue
 }
 
-func NewReplicationOption(name string, value interface{}) ReplicationOption {
-	return ReplicationOption{
+// ReplicationOptionValue defines an interface for configuration option values for binlog replication. It holds the
+// values of options for configuring the replication source (i.e. "CHANGE REPLICATION SOURCE TO" options) and for
+// replication filtering (i.g. "SET REPLICATION FILTER" options).
+type ReplicationOptionValue interface {
+	fmt.Stringer
+
+	// GetValue returns the raw, untyped option value. This method should generally not be used; callers should instead
+	// find the specific type implementing the ReplicationOptionValue interface and use its functions in order to get
+	// typed values.
+	GetValue() interface{}
+}
+
+// StringReplicationOptionValue is a ReplicationOptionValue implementation that holds a string value.
+type StringReplicationOptionValue struct {
+	Value string
+}
+
+var _ ReplicationOptionValue = (*StringReplicationOptionValue)(nil)
+
+func (ov StringReplicationOptionValue) GetValue() interface{} {
+	return ov.GetValueAsString()
+}
+
+func (ov StringReplicationOptionValue) GetValueAsString() string {
+	return ov.Value
+}
+
+// String implements the Stringer interface and returns a string representation of this option value.
+func (ov StringReplicationOptionValue) String() string {
+	return ov.Value
+}
+
+// TableNamesReplicationOptionValue is a ReplicationOptionValue implementation that holds a list of table names for
+// its value.
+type TableNamesReplicationOptionValue struct {
+	Value []sql.UnresolvedTable
+}
+
+var _ ReplicationOptionValue = (*TableNamesReplicationOptionValue)(nil)
+
+func (ov TableNamesReplicationOptionValue) GetValue() interface{} {
+	return ov.GetValueAsTableList()
+}
+
+func (ov TableNamesReplicationOptionValue) GetValueAsTableList() []sql.UnresolvedTable {
+	return ov.Value
+}
+
+// String implements the Stringer interface and returns a string representation of this option value.
+func (ov TableNamesReplicationOptionValue) String() string {
+	sb := strings.Builder{}
+	for i, urt := range ov.Value {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		if urt.Database() != "" {
+			sb.WriteString(urt.Database())
+			sb.WriteString(".")
+		}
+		sb.WriteString(urt.Name())
+	}
+	return sb.String()
+}
+
+// IntegerReplicationOptionValue is a ReplicationOptionValue implementation that holds an integer value.
+type IntegerReplicationOptionValue struct {
+	Value int
+}
+
+var _ ReplicationOptionValue = (*IntegerReplicationOptionValue)(nil)
+
+func (ov IntegerReplicationOptionValue) GetValue() interface{} {
+	return ov.GetValueAsInt()
+}
+
+func (ov IntegerReplicationOptionValue) GetValueAsInt() int {
+	return ov.Value
+}
+
+// String implements the Stringer interface and returns a string representation of this option value.
+func (ov IntegerReplicationOptionValue) String() string {
+	return strconv.Itoa(ov.Value)
+}
+
+// NewReplicationOption creates a new ReplicationOption instance, with the specified |name| and |value|.
+func NewReplicationOption(name string, value ReplicationOptionValue) *ReplicationOption {
+	return &ReplicationOption{
 		Name:  name,
 		Value: value,
 	}
