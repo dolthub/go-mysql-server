@@ -1292,9 +1292,9 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					continue
 				}
 				var (
-					colName  = col.Name
-					srsName  interface{}
-					srsId    interface{}
+					colName = col.Name
+					srsName interface{}
+					srsId   interface{}
 				)
 				typeName, _ := getDtdIdAndDataType(col.Type)
 
