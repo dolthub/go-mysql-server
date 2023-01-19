@@ -204,21 +204,18 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbCollat
 		nullable = "YES"
 	}
 
-	if types.IsText(col.Type) {
-		if types.IsTextOnly(col.Type) {
-			charName = dbCollation.CharacterSet().String()
-			collName = dbCollation.String()
+	if twc, ok := col.Type.(sql.TypeWithCollation); ok && !types.IsBinaryType(col.Type) {
+		colColl := twc.Collation()
+		collName = colColl.Name()
+		charName = colColl.CharacterSet().String()
+		if types.IsEnum(col.Type) || types.IsSet(col.Type) {
+			charOctetLen = int64(col.Type.MaxTextResponseByteLength())
+			charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / colColl.CharacterSet().MaxLength()
 		}
-
-		if st, ok := col.Type.(types.StringType); ok {
-			charMaxLen = st.MaxCharacterLength()
-			charOctetLen = st.MaxByteLength()
-		}
-	} else if types.IsEnum(col.Type) || types.IsSet(col.Type) {
-		charName = dbCollation.CharacterSet().String()
-		collName = dbCollation.String()
-		charOctetLen = int64(col.Type.MaxTextResponseByteLength())
-		charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / dbCollation.CharacterSet().MaxLength()
+	}
+	if st, ok := col.Type.(types.StringType); ok {
+		charMaxLen = st.MaxCharacterLength()
+		charOctetLen = st.MaxByteLength()
 	}
 
 	if s, ok := col.Type.(sql.SpatialColumnType); ok {
