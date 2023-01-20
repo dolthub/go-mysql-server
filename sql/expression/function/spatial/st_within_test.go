@@ -295,13 +295,13 @@ func TestPointWithinPolygon(t *testing.T) {
 	t.Run("point not within polygon (square) with hole in hole", func(t *testing.T) {
 		require := require.New(t)
 
-		a3 := sql.Point{X: 1, Y: 1}
-		b3 := sql.Point{X: 1, Y: -1}
-		c3 := sql.Point{X: -1, Y: -1}
-		d3 := sql.Point{X: -1, Y: 1}
+		a3 := types.Point{X: 1, Y: 1}
+		b3 := types.Point{X: 1, Y: -1}
+		c3 := types.Point{X: -1, Y: -1}
+		d3 := types.Point{X: -1, Y: 1}
 
-		l3 := sql.LineString{Points: []sql.Point{a3, b3, c3, d3, a3}}
-		poly := sql.Polygon{Lines: []sql.LineString{squareWithHole.Lines[0], squareWithHole.Lines[1], l3}}
+		l3 := types.LineString{Points: []types.Point{a3, b3, c3, d3, a3}}
+		poly := types.Polygon{Lines: []types.LineString{squareWithHole.Lines[0], squareWithHole.Lines[1], l3}}
 
 		// passes through segments a1b1 and a2b2
 		p1 := types.Point{X: 0, Y: 0}
