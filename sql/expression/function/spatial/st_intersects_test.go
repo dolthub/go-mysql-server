@@ -15,30 +15,30 @@
 package spatial
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
 	triangle = types.Polygon{Lines: []types.LineString{
 		{Points: []types.Point{{X: -1, Y: 0}, {X: 0, Y: 2}, {X: 1, Y: 0}, {X: -1, Y: 0}}},
 	}}
-	square                = types.Polygon{Lines: []types.LineString{
+	square = types.Polygon{Lines: []types.LineString{
 		{Points: []types.Point{{X: -4, Y: 4}, {X: 4, Y: 4}, {X: 4, Y: -4}, {X: -4, Y: -4}, {X: -4, Y: 4}}},
 	}}
 	squareWithHole = types.Polygon{Lines: []types.LineString{
 		{Points: []types.Point{{X: -4, Y: 4}, {X: 4, Y: 4}, {X: 4, Y: -4}, {X: -4, Y: -4}, {X: -4, Y: 4}}},
 		{Points: []types.Point{{X: -2, Y: 2}, {X: 2, Y: 2}, {X: 2, Y: -2}, {X: -2, Y: -2}, {X: -2, Y: 2}}},
 	}}
-	diamond                = types.Polygon{Lines: []types.LineString{
+	diamond = types.Polygon{Lines: []types.LineString{
 		{Points: []types.Point{{X: 0, Y: 4}, {X: 4, Y: 0}, {X: 0, Y: -4}, {X: -4, Y: 0}, {X: 0, Y: 4}}},
 	}}
-	diamondWithHole                = types.Polygon{Lines: []types.LineString{
+	diamondWithHole = types.Polygon{Lines: []types.LineString{
 		{Points: []types.Point{{X: 0, Y: 4}, {X: 4, Y: 0}, {X: 0, Y: -4}, {X: -4, Y: 0}, {X: 0, Y: 4}}},
 		{Points: []types.Point{{X: 0, Y: 2}, {X: 2, Y: 0}, {X: 0, Y: -2}, {X: -2, Y: 0}, {X: 0, Y: 2}}},
 	}}
@@ -54,8 +54,8 @@ var (
 	simpleLineString      = types.LineString{Points: []types.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
 	simpleMultiPoint      = types.MultiPoint{Points: []types.Point{{X: 1, Y: 1}, {X: 2, Y: 2}, {X: 3, Y: 3}}}
 	simpleMultiLineString = types.MultiLineString{Lines: []types.LineString{simpleLineString}}
-	simpleMultiPolygon = types.MultiPolygon{Polygons: []types.Polygon{square}}
-	simpleGeomColl = types.GeomColl{Geoms: []types.GeometryValue{types.Point{}}}
+	simpleMultiPolygon    = types.MultiPolygon{Polygons: []types.Polygon{square}}
+	simpleGeomColl        = types.GeomColl{Geoms: []types.GeometryValue{types.Point{}}}
 )
 
 func TestPointIntersectsPoint(t *testing.T) {
