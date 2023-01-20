@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ScriptTest struct {
@@ -89,7 +90,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				// enginetests returns the enum id, but the text representation is sent over the wire
@@ -144,7 +145,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
@@ -164,11 +165,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 		},
 	},
@@ -678,7 +679,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (1)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -686,7 +687,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 2}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -694,7 +695,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into b (x) values (1), (2)",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -710,7 +711,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into a (y) values (1)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -718,7 +719,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -739,7 +740,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "replace into b values (1)",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "select row_count()",
@@ -759,7 +760,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "update b set x = x + 10 where x <> 2",
-				Expected: []sql.Row{{sql.OkResult{
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 3,
 					Info: plan.UpdateInfo{
 						Matched: 3,
@@ -777,7 +778,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "delete from b where x <> 2",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "select row_count()",
@@ -789,7 +790,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "alter table b add column y int null",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select row_count()",
@@ -901,7 +902,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into b values (10), (11), (12), (13)",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query:    "select found_rows()",
@@ -909,7 +910,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "update b set x = x where x < 40",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 8}}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 8}}}},
 			},
 			{
 				Query:    "select found_rows()",
@@ -917,7 +918,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "update b set x = x where x > 10",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 3}}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 3}}}},
 			},
 			{
 				Query:    "select found_rows()",
@@ -1106,7 +1107,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -1118,7 +1119,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test (pk) VALUES (2);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -1189,7 +1190,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test VALUES (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -1403,7 +1404,7 @@ var ScriptTests = []ScriptTest{
                              dcim_rackgroup.level 
                            FROM dcim_rackgroup
 							order by 2 limit 1`,
-				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", sql.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", interface{}(nil), "", uint64(1), uint64(2), uint64(1), uint64(0)}},
+				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", interface{}(nil), "", uint64(1), uint64(2), uint64(1), uint64(0)}},
 			},
 		},
 	},
@@ -1437,7 +1438,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: `CREATE TABLE test SELECT * FROM t1`,
-				Expected: []sql.Row{sql.Row{sql.OkResult{
+				Expected: []sql.Row{sql.Row{types.OkResult{
 					RowsAffected: 3,
 					InsertID:     0,
 					Info:         nil,
@@ -1492,7 +1493,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -1500,7 +1501,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -1536,7 +1537,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `update test2 inner join (select * from test3 order by val) as t3 on test2.pk = t3.k SET test2.val=t3.val`,
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{
 					Matched:  1,
 					Updated:  1,
 					Warnings: 0,
@@ -1550,7 +1551,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
 					Matched:  6, // TODO: The answer should be 8
 					Updated:  6,
 					Warnings: 0,
@@ -1636,7 +1637,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE FROM `GzaKtwgIya` WHERE `K7t5WY` = '58567047399981325523662211357420045483361289734772861386428.89028';",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM GzaKtwgIya",
@@ -1658,7 +1659,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test VALUES (11981.5923291839784651);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
@@ -1666,7 +1667,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test VALUES (119815923291839784651.11981592329183978465111981592329183978465144);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('119815923291839784651.1198159232918398', DECIMAL)",
@@ -1674,7 +1675,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test VALUES (1.1981592329183978465111981592329183978465111981592329183978465144);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183978', DECIMAL)",
@@ -1682,7 +1683,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test VALUES (1.1981592329183978545111981592329183978465111981592329183978465144);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183979', DECIMAL)",
@@ -1690,7 +1691,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "INSERT INTO small_test VALUES (12.1);",
-				ExpectedErr: sql.ErrConvertToDecimalLimit,
+				ExpectedErr: types.ErrConvertToDecimalLimit,
 			},
 		},
 	},
@@ -1783,7 +1784,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into t values (1, 10) on duplicate key update b = 10",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 		},
 	},
@@ -1802,7 +1803,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "delete from a where x = 0",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM a where x = 0",
@@ -1821,11 +1822,11 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "delete from a where y = 2",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "delete from a where y = 2",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select * from a where y = 2",
@@ -1868,7 +1869,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1911,7 +1912,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), ADD INDEX myidx (v2)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1959,7 +1960,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1972,11 +1973,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v5 int), RENAME INDEX myidx2 TO myidx3",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t DROP INDEX myidx, ADD INDEX v5idx (v5)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1998,7 +1999,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table test add column j int;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -2028,11 +2029,11 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "describe test",
@@ -2043,11 +2044,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test (v2) values (11)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 100}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 100}}},
 			},
 			{
 				Query:    "SELECT * from test where pk = 100",
@@ -2088,7 +2089,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v2, add column (v5 int NOT NULL)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE test",
@@ -2101,7 +2102,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "describe test",
@@ -2202,7 +2203,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test CHANGE v1 v2 VARCHAR(255) CHARACTER SET utf8mb4 BINARY NOT NULL;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
@@ -2210,7 +2211,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4 BINARY);",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE test2;",
@@ -2521,51 +2522,51 @@ var ScriptTests = []ScriptTest{
 			// 1901 - 2155 are interpreted as 1901 - 2155
 			{
 				Query:    "INSERT INTO t VALUES (1, '1901'), (2, 1901);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (3, '2000'), (4, 2000);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (5, '2155'), (6, 2155);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			// 1 - 69 are interpreted as 2001 - 2069
 			{
 				Query:    "INSERT INTO t VALUES (7, '1'), (8, 1);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (9, '35'), (10, 35);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (11, '69'), (12, 69);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			// 70 - 99 are interpreted as 1970 - 1999
 			{
 				Query:    "INSERT INTO t VALUES (13, '70'), (14, 70);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (15, '85'), (16, 85);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (17, '99'), (18, 99);",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			// '0', and '00' are interpreted as 2000
 			{
 				Query:    "INSERT INTO t VALUES (19, '0'), (20, '00');",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			// 0 is interpreted as 0000
 			{
 				Query:    "INSERT INTO t VALUES (21, 0)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			// Assert that returned values are correct.
 			{
@@ -2630,7 +2631,7 @@ var ScriptTests = []ScriptTest{
 						'val11', 'val12', 'val13', 'val14', 'val15', 'val16', 'val17'
 					);
 				`,
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "SELECT * from t",
@@ -2648,7 +2649,7 @@ var ScriptTests = []ScriptTest{
 						float64(0),
 						float64(0),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
-						sql.Timespan(0),
+						types.Timespan(0),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						0,
@@ -2715,11 +2716,11 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO setenumtest VALUES (1, 1, 1), (2, 1, 1), (3, 3, 1), (4, 1, 3);",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
-				Expected: []sql.Row{{sql.OkResult{
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 					Info: plan.UpdateInfo{
 						Matched:  1,
@@ -2739,11 +2740,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM setenumtest WHERE v1 = 3;",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "DELETE FROM setenumtest WHERE v2 = 3;",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "SELECT * FROM setenumtest ORDER BY pk;",
@@ -2807,6 +2808,18 @@ var ScriptTests = []ScriptTest{
 					{float64(15), float64(21)},
 					{float64(15), float64(21)},
 				},
+			},
+		},
+	},
+	{
+		Name: "decimal literals should be parsed correctly",
+		SetUpScript: []string{
+			"SET @testValue = 809826404100301269648758758005707100;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT @testValue;",
+				Expected: []sql.Row{{"809826404100301269648758758005707100"}},
 			},
 		},
 	},
@@ -2964,7 +2977,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO tab0 VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4326))",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(g) FROM tab0",
@@ -2976,7 +2989,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(g) FROM tab0",
@@ -2996,7 +3009,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO tab1 VALUES (1, LINESTRING(POINT(0, 0),POINT(2, 2)))",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(l) FROM tab1",
@@ -3020,7 +3033,7 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE tab2 ADD COLUMN p POINT NOT NULL SRID 0",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table tab2",
@@ -3028,7 +3041,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO tab2 VALUES (1, POINT(2, 2))",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(p) FROM tab2",
@@ -3044,11 +3057,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(p) FROM tab2",
@@ -3060,11 +3073,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "delete from tab2 where i = 1",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table tab2",
@@ -3084,7 +3097,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO tab3 VALUES (1, polygon(linestring(point(0,0),point(8,0),point(12,9),point(0,9),point(0,0))))",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(y) FROM tab3",
@@ -3092,7 +3105,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 0",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 4326",
@@ -3104,7 +3117,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE tab3 MODIFY COLUMN y GEOMETRY NULL SRID 0",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(y) FROM tab3",
@@ -3146,7 +3159,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 4326",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table table1",
@@ -3154,7 +3167,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO table1 VALUES (2, ST_SRID(LINESTRING(POINT(0, 0),POINT(2, 2)),4326))",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "ALTER TABLE table1 CHANGE COLUMN p p point srid 4326",
@@ -3471,7 +3484,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "prepare s from 'select 1'",
 				Expected: []sql.Row{
-					{sql.OkResult{Info: plan.PrepareInfo{}}},
+					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
@@ -3483,7 +3496,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "deallocate prepare s",
 				Expected: []sql.Row{
-					{sql.OkResult{}},
+					{types.OkResult{}},
 				},
 			},
 			{
@@ -3503,7 +3516,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "prepare s from 'select ?'",
 				Expected: []sql.Row{
-					{sql.OkResult{Info: plan.PrepareInfo{}}},
+					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
@@ -3541,7 +3554,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "deallocate prepare s",
 				Expected: []sql.Row{
-					{sql.OkResult{}},
+					{types.OkResult{}},
 				},
 			},
 			{
@@ -3561,7 +3574,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "prepare s from 'insert into t values (?,?)'",
 				Expected: []sql.Row{
-					{sql.OkResult{Info: plan.PrepareInfo{}}},
+					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
@@ -3571,7 +3584,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @a, @b",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
@@ -3583,7 +3596,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "deallocate prepare s",
 				Expected: []sql.Row{
-					{sql.OkResult{}},
+					{types.OkResult{}},
 				},
 			},
 			{
@@ -3607,7 +3620,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "prepare s from 'SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = ?)) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN (?, ?)))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC'",
 				Expected: []sql.Row{
-					{sql.OkResult{Info: plan.PrepareInfo{}}},
+					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
@@ -3672,7 +3685,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO a VALUES (1, 1)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "INSERT INTO a VALUES (1, 1)",
@@ -3688,7 +3701,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -3712,7 +3725,7 @@ var BrokenScriptTests = []ScriptTest{
 			},
 			{ // This last modification ends up with a UNIQUE constraint on pk
 				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v2`, ADD COLUMN v7 int NOT NULL",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
@@ -3749,7 +3762,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable DROP COLUMN col2",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},

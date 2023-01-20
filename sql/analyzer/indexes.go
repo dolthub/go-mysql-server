@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // indexLookup contains an sql.IndexLookup and all sql.Index that are involved
@@ -177,7 +178,7 @@ func getIndexes(
 
 		result[getField.Table()] = lookup
 	case *expression.IsNull:
-		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, sql.Null)), tableAliases)
+		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, types.Null)), tableAliases)
 	case *expression.Not:
 		r, err := getNegatedIndexes(ctx, ia, e, tableAliases)
 		if err != nil {
@@ -483,7 +484,7 @@ func getNegatedIndexes(
 			expression.NewNot(
 				expression.NewNullSafeEquals(
 					e.Child,
-					expression.NewLiteral(nil, sql.Null),
+					expression.NewLiteral(nil, types.Null),
 				),
 			),
 			tableAliases)

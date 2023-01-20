@@ -150,6 +150,21 @@ func (d Database) DropTrigger(ctx *sql.Context, name string) error {
 	return d.shim.Exec(d.name, fmt.Sprintf("DROP TRIGGER `%s`;", name))
 }
 
+// GetStoredProcedure implements the interface sql.StoredProcedureDatabase.
+func (d Database) GetStoredProcedure(ctx *sql.Context, name string) (sql.StoredProcedureDetails, bool, error) {
+	name = strings.ToLower(name)
+	procedures, err := d.GetStoredProcedures(ctx)
+	if err != nil {
+		return sql.StoredProcedureDetails{}, false, err
+	}
+	for _, procedure := range procedures {
+		if name == strings.ToLower(procedure.Name) {
+			return procedure, true, nil
+		}
+	}
+	return sql.StoredProcedureDetails{}, false, nil
+}
+
 // GetStoredProcedures implements the interface sql.StoredProcedureDatabase.
 func (d Database) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
 	procedures, err := d.shim.QueryRows("", fmt.Sprintf("SHOW PROCEDURE STATUS WHERE Db = '%s';", d.name))

@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var InfoSchemaQueries = []QueryTest{
@@ -413,14 +414,6 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SELECT * FROM information_schema.columns_extensions`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.keywords`,
-		Expected: []sql.Row{},
-	},
-	{
 		Query:    `SELECT * FROM information_schema.optimizer_trace`,
 		Expected: []sql.Row{},
 	},
@@ -449,47 +442,11 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SELECT * FROM information_schema.schema_privileges`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.schemata_extensions`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.st_geometry_columns`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.st_spatial_reference_systems`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.st_units_of_measure`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.table_constraints_extensions`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.table_privileges`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.tables_extensions`,
-		Expected: []sql.Row{},
-	},
-	{
 		Query:    `SELECT * FROM information_schema.tablespaces`,
 		Expected: []sql.Row{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tablespaces_extensions`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT * FROM information_schema.user_attributes`,
 		Expected: []sql.Row{},
 	},
 	{
@@ -650,6 +607,37 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 			{"def", "mydb", "fk1", "def", "mydb", nil, "NONE", "NO ACTION", "CASCADE", "fk_tbl", "mytable"},
 		},
 	},
+	{
+		Query:    "SELECT count(*) FROM information_schema.keywords",
+		Expected: []sql.Row{{747}},
+	},
+	{
+		Query: "SELECT * FROM information_schema.st_spatial_reference_systems order by srs_id",
+		Expected: []sql.Row{
+			{"", uint32(0), nil, nil, "", nil},
+			{"WGS 84", uint32(4326), "EPSG", uint32(4326), "GEOGCS[\"WGS 84\",DATUM[\"World Geodetic System 1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.017453292519943278,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Lat\",NORTH],AXIS[\"Lon\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]", nil},
+		},
+	},
+	{
+		Query:    "SELECT count(*) FROM information_schema.st_units_of_measure",
+		Expected: []sql.Row{{47}},
+	},
+	{
+		Query:    "SELECT * FROM information_schema.schemata_extensions",
+		Expected: []sql.Row{{"def", "information_schema", ""}, {"def", "foo", ""}, {"def", "mydb", ""}},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.columns_extensions where table_name = 'mytable'`,
+		Expected: []sql.Row{{"def", "mydb", "mytable", "i", nil, nil}, {"def", "mydb", "mytable", "s", nil, nil}},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.table_constraints_extensions where table_name = 'fk_tbl'`,
+		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,
+		Expected: []sql.Row{{"def", "mydb", "mytable", nil, nil}},
+	},
 }
 
 var SkippedInfoSchemaQueries = []QueryTest{
@@ -660,6 +648,27 @@ var SkippedInfoSchemaQueries = []QueryTest{
 }
 
 var InfoSchemaScripts = []ScriptTest{
+	{
+		Name: "test databases created with non default collation and charset",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db CHARACTER SET utf8mb3 COLLATE utf8mb3_bin;",
+			"USE test_db",
+			"CREATE TABLE small_table (a binary, b VARCHAR(50));",
+			"CREATE TABLE test_table (id INT PRIMARY KEY, col1 TEXT, col2 CHAR(20) CHARACTER SET latin1 COLLATE latin1_german1_ci) CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT table_schema, table_name, column_name, character_set_name, collation_name, column_type FROM information_schema.columns where table_schema = 'test_db' order by column_name",
+				Expected: []sql.Row{
+					{"test_db", "small_table", "a", nil, nil, "binary(1)"},
+					{"test_db", "small_table", "b", "utf8mb3", "utf8mb3_bin", "varchar(50)"},
+					{"test_db", "test_table", "col1", "utf8mb4", "utf8mb4_0900_bin", "text"},
+					{"test_db", "test_table", "col2", "latin1", "latin1_german1_ci", "char(20)"},
+					{"test_db", "test_table", "id", nil, nil, "int"},
+				},
+			},
+		},
+	},
 	{
 		Name: "information_schema.table_constraints ignores non-unique indexes",
 		SetUpScript: []string{
@@ -739,25 +748,6 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 		},
 	},
-	// TODO: Skipping because creating FK references on a table in different db is not supported in Dolt
-	//{
-	//	Name: "information_schema.key_column_usage works with foreign key across different databases",
-	//	SetUpScript: []string{
-	//		"CREATE TABLE my_table (i int primary key, height int)",
-	//		"CREATE DATABASE keydb",
-	//		"USE keydb",
-	//		"CREATE TABLE key_table (a int primary key, weight int)",
-	//		"alter table key_table add constraint fk_across_dbs foreign key (a) references mydb.my_table(i)",
-	//	},
-	//	Assertions: []ScriptTestAssertion{
-	//		{
-	//			Query: "SELECT * FROM information_schema.key_column_usage where constraint_name = 'fk_across_dbs'",
-	//			Expected: []sql.Row{
-	//				{"def", "keydb", "fk_across_dbs", "def", "keydb", "key_table", "a", 1, 1, "mydb", "my_table", "i"},
-	//			},
-	//		},
-	//	},
-	//},
 	{
 		Name: "information_schema.triggers create trigger definer defined",
 		SetUpScript: []string{
@@ -1408,6 +1398,38 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 		},
 	},
+	{
+		Name: "information_schema.st_geometry_columns shows all column values",
+		SetUpScript: []string{
+			"CREATE TABLE spatial_table (id INT PRIMARY KEY, g GEOMETRY SRID 0, m MULTIPOINT, p POLYGON SRID 4326);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.st_geometry_columns where table_schema = 'mydb' order by column_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "spatial_table", "g", "", uint32(0), "geometry"},
+					{"def", "mydb", "spatial_table", "m", nil, nil, "multipoint"},
+					{"def", "mydb", "spatial_table", "p", "WGS 84", uint32(4326), "polygon"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.parameters shows all column values",
+		SetUpScript: []string{
+			"CREATE PROCEDURE testabc(IN x DOUBLE, IN y FLOAT, OUT abc DECIMAL(5,1)) SELECT x*y INTO abc",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.parameters where specific_name = 'testabc'",
+				Expected: []sql.Row{
+					{"def", "mydb", "testabc", uint64(1), "IN", "x", "double", nil, nil, 22, 0, nil, nil, nil, "double", "PROCEDURE"},
+					{"def", "mydb", "testabc", uint64(2), "IN", "y", "float", nil, nil, 12, 0, nil, nil, nil, "float", "PROCEDURE"},
+					{"def", "mydb", "testabc", uint64(3), "OUT", "abc", "decimal", nil, nil, 5, 1, nil, nil, nil, "decimal(5,1)", "PROCEDURE"},
+				},
+			},
+		},
+	},
 }
 
 var SkippedInfoSchemaScripts = []ScriptTest{
@@ -1443,7 +1465,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
 				},
 			},
 		},
@@ -1459,8 +1481,8 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
-					{"mydb", "t", "j", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
+					{"mydb", "t", "j", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}},
 				},
 			},
 		},
@@ -1476,7 +1498,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
 				},
 			},
 		},
@@ -1491,7 +1513,7 @@ var StatisticsQueries = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", sql.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{}}}},
+					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{}}}},
 				},
 			},
 		},

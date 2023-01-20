@@ -17,6 +17,7 @@ package queries
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ChecksOnUpdateScriptTests = []ScriptTest{
@@ -61,7 +62,7 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
-				Expected: []sql.Row{{sql.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
+				Expected: []sql.Row{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
 			},
 			{
 				Query:    "select * from sales;",
@@ -69,7 +70,7 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET S1.year_built = 1902;",
-				Expected: []sql.Row{{sql.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
+				Expected: []sql.Row{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
 			},
 			{
 				Query:    "select * from sales;",

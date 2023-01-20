@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -56,7 +57,7 @@ func (n *ShowGrants) Schema() sql.Schema {
 	}
 	return sql.Schema{{
 		Name: fmt.Sprintf("Grants for %s", user.String("")),
-		Type: sql.LongText,
+		Type: types.LongText,
 	}}
 }
 
@@ -120,7 +121,7 @@ func generatePrivStrings(db, tbl, user string, privs []sql.PrivilegeType) string
 	withGrantOption := ""
 	for i, priv := range privs {
 		privStr := priv.String()
-		if privStr == sql.PrivilegeType_Grant.String() {
+		if privStr == sql.PrivilegeType_GrantOption.String() {
 			withGrantOption = " WITH GRANT OPTION"
 		} else {
 			if i > 0 {

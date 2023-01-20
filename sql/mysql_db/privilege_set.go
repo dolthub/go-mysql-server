@@ -40,8 +40,8 @@ func NewPrivilegeSet() PrivilegeSet {
 	}
 }
 
-// newPrivilegeSetWithAllPrivileges returns a new PrivilegeSet with every global static privilege added.
-func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
+// NewPrivilegeSetWithAllPrivileges returns a new PrivilegeSet with every global static privilege added.
+func NewPrivilegeSetWithAllPrivileges() PrivilegeSet {
 	return PrivilegeSet{
 		map[sql.PrivilegeType]struct{}{
 			sql.PrivilegeType_Select:            {},
@@ -54,7 +54,7 @@ func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
 			sql.PrivilegeType_Shutdown:          {},
 			sql.PrivilegeType_Process:           {},
 			sql.PrivilegeType_File:              {},
-			sql.PrivilegeType_Grant:             {},
+			sql.PrivilegeType_GrantOption:       {},
 			sql.PrivilegeType_References:        {},
 			sql.PrivilegeType_Index:             {},
 			sql.PrivilegeType_Alter:             {},

@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type Trim struct {
@@ -61,7 +62,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert pat into string
-	pat, err = sql.LongText.Convert(pat)
+	pat, err = types.LongText.Convert(pat)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
 	}
@@ -78,7 +79,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert pat into string
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
@@ -187,7 +188,7 @@ func (t *LeftTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -244,7 +245,7 @@ func (t *RightTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}

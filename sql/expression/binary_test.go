@@ -21,13 +21,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestBinary(t *testing.T) {
 	require := require.New(t)
 
 	// Validate Binary is reflexive
-	e := NewBinary(NewGetField(0, sql.Text, "foo", true))
+	e := NewBinary(NewGetField(0, types.Text, "foo", true))
 	require.Equal(eval(t, e, sql.NewRow("hi")), eval(t, e, sql.NewRow("hi")))
 
 	// Go through assorted test cases
@@ -36,10 +37,10 @@ func TestBinary(t *testing.T) {
 		valType  sql.Type
 		expected []byte
 	}{
-		{"hi", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("hi")},
-		{int8(1), sql.Int8, []byte("1")},
-		{true, sql.Boolean, []byte("true")},
-		{"hello", sql.LongText, []byte("hello")},
+		{"hi", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("hi")},
+		{int8(1), types.Int8, []byte("1")},
+		{true, types.Boolean, []byte("true")},
+		{"hello", types.LongText, []byte("hello")},
 	}
 
 	for _, tt := range testCases {
@@ -48,6 +49,6 @@ func TestBinary(t *testing.T) {
 	}
 
 	// Try with nil case
-	e = NewBinary(NewLiteral(nil, sql.Null))
+	e = NewBinary(NewLiteral(nil, types.Null))
 	require.Equal(nil, eval(t, e, sql.Row{nil}))
 }

@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func not(e sql.Expression) sql.Expression {
@@ -64,7 +65,7 @@ func and(left, right sql.Expression) sql.Expression {
 }
 
 func col(idx int, table, col string) sql.Expression {
-	return expression.NewGetFieldWithTable(idx, sql.Int64, table, col, false)
+	return expression.NewGetFieldWithTable(idx, types.Int64, table, col, false)
 }
 
 func eq(left, right sql.Expression) sql.Expression {
@@ -72,7 +73,7 @@ func eq(left, right sql.Expression) sql.Expression {
 }
 
 func lit(n int64) sql.Expression {
-	return expression.NewLiteral(n, sql.Int64)
+	return expression.NewLiteral(n, types.Int64)
 }
 
 func litT(n interface{}, t sql.Type) sql.Expression {
@@ -80,7 +81,7 @@ func litT(n interface{}, t sql.Type) sql.Expression {
 }
 
 func gf(idx int, table, name string) *expression.GetField {
-	return expression.NewGetFieldWithTable(idx, sql.Int64, table, name, false)
+	return expression.NewGetFieldWithTable(idx, types.Int64, table, name, false)
 }
 
 func gfCol(idx int, col *sql.Column) *expression.GetField {
@@ -104,7 +105,7 @@ func null(col sql.Expression) sql.Expression {
 }
 
 func litNull() sql.Expression {
-	return expression.NewLiteral(nil, sql.Null)
+	return expression.NewLiteral(nil, types.Null)
 }
 
 // Creates a new top-level scope from the node given

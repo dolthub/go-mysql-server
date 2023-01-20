@@ -21,13 +21,14 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestCountEval1(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCount(expression.NewLiteral(1, sql.Int32))
+	c := NewCount(expression.NewLiteral(1, types.Int32))
 	b, _ := c.NewBuffer()
 	require.Equal(int64(0), evalBuffer(t, b))
 
@@ -59,7 +60,7 @@ func TestCountEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCount(expression.NewGetField(0, sql.Text, "", true))
+	c := NewCount(expression.NewGetField(0, types.Text, "", true))
 	b, _ := c.NewBuffer()
 	require.Equal(int64(0), evalBuffer(t, b))
 
@@ -74,7 +75,7 @@ func TestCountDistinctEval1(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCountDistinct(expression.NewLiteral(1, sql.Int32))
+	c := NewCountDistinct(expression.NewLiteral(1, types.Int32))
 	b, _ := c.NewBuffer()
 	require.Equal(int64(0), evalBuffer(t, b))
 
@@ -106,7 +107,7 @@ func TestCountDistinctEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCountDistinct(expression.NewGetField(0, sql.Text, "", true))
+	c := NewCountDistinct(expression.NewGetField(0, types.Text, "", true))
 	b, _ := c.NewBuffer()
 	require.Equal(int64(0), evalBuffer(t, b))
 

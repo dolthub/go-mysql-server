@@ -24,15 +24,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestFlattenAggregationExprs(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Int64, Source: "foo"},
-		{Name: "c", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: types.Int64, Source: "foo"},
+		{Name: "b", Type: types.Int64, Source: "foo"},
+		{Name: "c", Type: types.Int64, Source: "foo"},
 	}), nil)
 	rule := getRule(flattenAggregationExprsId)
 
@@ -47,14 +48,14 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewArithmetic(
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int64(1), types.Int64),
 						"+",
 					),
 				},
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			),
@@ -62,19 +63,19 @@ func TestFlattenAggregationExprs(t *testing.T) {
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewArithmetic(
-						expression.NewGetField(0, sql.Int64, "SUM(foo.a)", false),
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+						expression.NewLiteral(int64(1), types.Int64),
 						"+",
 					),
 				},
 				plan.NewGroupBy(
 					[]sql.Expression{
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
 					},
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -87,14 +88,14 @@ func TestFlattenAggregationExprs(t *testing.T) {
 					expression.NewAlias("x",
 						expression.NewArithmetic(
 							aggregation.NewSum(
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 							),
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 							"+",
 						)),
 				},
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			),
@@ -102,19 +103,19 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewAlias("x",
 						expression.NewArithmetic(
-							expression.NewGetField(0, sql.Int64, "SUM(foo.a)", false),
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+							expression.NewLiteral(int64(1), types.Int64),
 							"+",
 						)),
 				},
 				plan.NewGroupBy(
 					[]sql.Expression{
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
 					},
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -126,41 +127,41 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewDiv(
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
 						aggregation.NewCount(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
 					),
-					expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
 				},
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewDiv(
-						expression.NewGetField(0, sql.Int64, "SUM(foo.a)", false),
-						expression.NewGetField(1, sql.Int64, "COUNT(foo.a)", false),
+						expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+						expression.NewGetField(1, types.Int64, "COUNT(foo.a)", false),
 					),
-					expression.NewGetFieldWithTable(2, sql.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(2, types.Int64, "foo", "b", false),
 				},
 				plan.NewGroupBy(
 					[]sql.Expression{
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
 						aggregation.NewCount(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
-						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
 					},
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -172,14 +173,14 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewArithmetic(
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
-						expression.NewGetFieldWithTable(1, sql.Int64, "bar", "a", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "bar", "a", false),
 						"+",
 					),
 				},
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 				},
 				plan.NewResolvedTable(table, nil, nil),
 			),
@@ -187,20 +188,20 @@ func TestFlattenAggregationExprs(t *testing.T) {
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewArithmetic(
-						expression.NewGetField(0, sql.Int64, "SUM(foo.a)", false),
-						expression.NewGetFieldWithTable(1, sql.Int64, "bar", "a", false),
+						expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "bar", "a", false),
 						"+",
 					),
 				},
 				plan.NewGroupBy(
 					[]sql.Expression{
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						),
-						expression.NewGetFieldWithTable(1, sql.Int64, "bar", "a", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "bar", "a", false),
 					},
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),

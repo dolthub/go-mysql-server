@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const dbTblName = "db"
@@ -89,7 +90,7 @@ func (conv DbConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_me
 			case dbTblColIndex_Drop_priv:
 				privs = append(privs, sql.PrivilegeType_Drop)
 			case dbTblColIndex_Grant_priv:
-				privs = append(privs, sql.PrivilegeType_Grant)
+				privs = append(privs, sql.PrivilegeType_GrantOption)
 			case dbTblColIndex_References_priv:
 				privs = append(privs, sql.PrivilegeType_References)
 			case dbTblColIndex_Index_priv:
@@ -178,7 +179,7 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 				row[dbTblColIndex_Create_priv] = uint16(2)
 			case sql.PrivilegeType_Drop:
 				row[dbTblColIndex_Drop_priv] = uint16(2)
-			case sql.PrivilegeType_Grant:
+			case sql.PrivilegeType_GrantOption:
 				row[dbTblColIndex_Grant_priv] = uint16(2)
 			case sql.PrivilegeType_References:
 				row[dbTblColIndex_References_priv] = uint16(2)
@@ -215,10 +216,10 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 // init creates the schema for the "db" Grant Table.
 func init() {
 	// Types
-	char32_utf8_bin := sql.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
-	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
-	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
-	enum_N_Y_utf8_general_ci := sql.MustCreateEnumType([]string{"N", "Y"}, sql.Collation_utf8_general_ci)
+	char32_utf8_bin := types.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
+	char64_utf8_bin := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
+	char255_ascii_general_ci := types.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
+	enum_N_Y_utf8_general_ci := types.MustCreateEnumType([]string{"N", "Y"}, sql.Collation_utf8_general_ci)
 
 	// Column Templates
 	char32_utf8_bin_not_null_default_empty := &sql.Column{

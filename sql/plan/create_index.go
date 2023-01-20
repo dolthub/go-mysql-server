@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -142,7 +143,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 
 	for _, e := range exprs {
-		if sql.IsBlobType(e.Type()) || sql.IsJSON(e.Type()) {
+		if types.IsBlobType(e.Type()) || types.IsJSON(e.Type()) {
 			return nil, ErrExprTypeNotIndexable.New(e, e.Type())
 		}
 	}

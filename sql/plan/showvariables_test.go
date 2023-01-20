@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestShowVariables(t *testing.T) {
@@ -54,8 +55,8 @@ func TestShowVariables(t *testing.T) {
 
 func TestShowVariablesWithLike(t *testing.T) {
 	sv := NewShowVariables(expression.NewLike(
-		expression.NewGetField(0, sql.LongText, "", false),
-		expression.NewLiteral("%t_into_buffer_size", sql.LongText),
+		expression.NewGetField(0, types.LongText, "", false),
+		expression.NewLiteral("%t_into_buffer_size", types.LongText),
 		nil,
 	))
 	require.True(t, sv.Resolved())
@@ -78,7 +79,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 }
 
 func TestShowVariablesWithWhere(t *testing.T) {
-	filter := expression.NewEquals(expression.NewGetField(0, sql.Text, "variable_name", true), expression.NewLiteral("select_into_buffer_size", sql.Text))
+	filter := expression.NewEquals(expression.NewGetField(0, types.Text, "variable_name", true), expression.NewLiteral("select_into_buffer_size", types.Text))
 	sv := NewShowVariables(filter)
 	require.True(t, sv.Resolved())
 

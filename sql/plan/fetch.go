@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -42,7 +43,7 @@ func NewFetch(name string, variables []string) *Fetch {
 	for i := range variables {
 		exprs[i] = expression.NewSetField(
 			expression.NewUnresolvedColumn(variables[i]),
-			expression.NewGetField(i, sql.Null, "", true),
+			expression.NewGetField(i, types.Null, "", true),
 		)
 	}
 	return &Fetch{

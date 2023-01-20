@@ -17,13 +17,13 @@ package analyzer
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // validColumnDefaultFuncs is the set of functions that are legal in a column default value
@@ -942,10 +942,10 @@ func resolveColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapp
 		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
 			switch val := literalExpr.Value().(type) {
 			case float32:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
+				newDefault.Expression = expression.NewLiteral(-val, types.Float32)
 				isLiteral = true
 			case float64:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
+				newDefault.Expression = expression.NewLiteral(-val, types.Float64)
 				isLiteral = true
 			}
 		}
@@ -973,7 +973,7 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 	}
 
 	// Some column types can only have a NULL for a literal default, must be an expression otherwise
-	isLiteralRestrictedType := sql.IsTextBlob(col.Type) || sql.IsJSON(col.Type) || sql.IsGeometry(col.Type)
+	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
 	if isLiteralRestrictedType && newDefault.IsLiteral() {
 		lit, err := newDefault.Expression.Eval(ctx, nil)
 		if err != nil {

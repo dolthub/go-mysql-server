@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestResolveHaving(t *testing.T) {
@@ -31,28 +32,28 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false))),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					},
-					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+					[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 					plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 				),
 			),
 			expected: plan.NewHaving(
 				expression.NewGreaterThan(
-					expression.NewGetField(0, sql.Int64, "x", true),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewGetField(0, types.Int64, "x", true),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false))),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					},
-					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+					[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 					plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 				),
 			),
@@ -62,28 +63,28 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewAvg(&deferredColumn{expression.NewUnresolvedColumn("foo")}),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false))),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					},
-					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+					[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 					plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 				),
 			),
 			expected: plan.NewHaving(
 				expression.NewGreaterThan(
-					expression.NewGetField(0, sql.Int64, "x", true),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewGetField(0, types.Int64, "x", true),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
-						expression.NewGetField(0, sql.Int64, "foo", false),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false))),
+						expression.NewGetField(0, types.Int64, "foo", false),
 					},
-					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+					[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 					plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 				),
 			),
@@ -93,34 +94,34 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false))),
-						expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, types.Int64, "foo", false))),
+						expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
 					},
-					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+					[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 					plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Int64, "x", true),
-					expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
+					expression.NewGetField(0, types.Int64, "x", true),
+					expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
 				},
 				plan.NewHaving(
 					expression.NewGreaterThan(
-						expression.NewGetField(2, sql.Int64, "COUNT(*)", false),
-						expression.NewLiteral(int64(5), sql.Int64),
+						expression.NewGetField(2, types.Int64, "COUNT(*)", false),
+						expression.NewLiteral(int64(5), types.Int64),
 					),
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false))),
-							expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
+							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, types.Int64, "foo", false))),
+							expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
 							aggregation.NewCount(expression.NewStar()),
 						},
-						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+						[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 					),
 				),
@@ -132,37 +133,37 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedColumn("i"),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
 					},
-					[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
+					[]sql.Expression{expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false)},
 					plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
-						{Type: sql.Int64, Name: "i", Source: "t"},
-						{Type: sql.Int64, Name: "foo", Source: "t"},
+						{Type: types.Int64, Name: "i", Source: "t"},
+						{Type: types.Int64, Name: "foo", Source: "t"},
 					}), nil), nil, nil),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
 				},
 				plan.NewHaving(
 					expression.NewGreaterThan(
 						expression.NewUnresolvedColumn("i"),
-						expression.NewLiteral(int64(5), sql.Int64),
+						expression.NewLiteral(int64(5), types.Int64),
 					),
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
-							expression.NewGetFieldWithTable(0, sql.Int64, "t", "i", false),
+							expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "t", "i", false),
 						},
-						[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
+						[]sql.Expression{expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
-							{Type: sql.Int64, Name: "i", Source: "t"},
-							{Type: sql.Int64, Name: "foo", Source: "t"},
+							{Type: types.Int64, Name: "i", Source: "t"},
+							{Type: types.Int64, Name: "foo", Source: "t"},
 						}), nil), nil, nil),
 					),
 				),
@@ -173,47 +174,47 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedColumn("i"),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
+							expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
 						},
-						[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
+						[]sql.Expression{expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
-							{Type: sql.Int64, Name: "i", Source: "t"},
-							{Type: sql.Int64, Name: "foo", Source: "t"},
+							{Type: types.Int64, Name: "i", Source: "t"},
+							{Type: types.Int64, Name: "foo", Source: "t"},
 						}), nil), nil, nil),
 					),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
 				},
 				plan.NewHaving(
 					expression.NewGreaterThan(
 						expression.NewUnresolvedColumn("i"),
-						expression.NewLiteral(int64(5), sql.Int64),
+						expression.NewLiteral(int64(5), types.Int64),
 					),
 					plan.NewProject(
 						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
-							expression.NewGetFieldWithTable(1, sql.Int64, "t", "i", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
+							expression.NewGetFieldWithTable(1, types.Int64, "t", "i", false),
 						},
 						plan.NewGroupBy(
 							[]sql.Expression{
-								expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
-								expression.NewGetFieldWithTable(0, sql.Int64, "t", "i", false),
+								expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "t", "i", false),
 							},
-							[]sql.Expression{expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false)},
+							[]sql.Expression{expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false)},
 							plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
-								{Type: sql.Int64, Name: "i", Source: "t"},
-								{Type: sql.Int64, Name: "foo", Source: "t"},
+								{Type: types.Int64, Name: "i", Source: "t"},
+								{Type: types.Int64, Name: "foo", Source: "t"},
 							}), nil), nil, nil),
 						),
 					),
@@ -225,46 +226,46 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetField(0, sql.Float64, "avg(foo)", false)),
-						expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
+						expression.NewAlias("x", expression.NewGetField(0, types.Float64, "avg(foo)", false)),
+						expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false)),
-							expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
+							aggregation.NewAvg(expression.NewGetField(0, types.Int64, "foo", false)),
+							expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
 						},
-						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+						[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 					),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Float64, "x", false),
-					expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
+					expression.NewGetField(0, types.Float64, "x", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
 				},
 				plan.NewHaving(
 					expression.NewGreaterThan(
-						expression.NewGetField(2, sql.Int64, "COUNT(*)", false),
-						expression.NewLiteral(int64(5), sql.Int64),
+						expression.NewGetField(2, types.Int64, "COUNT(*)", false),
+						expression.NewLiteral(int64(5), types.Int64),
 					),
 					plan.NewProject(
 						[]sql.Expression{
-							expression.NewAlias("x", expression.NewGetField(0, sql.Float64, "avg(foo)", false)),
-							expression.NewGetFieldWithTable(1, sql.Int64, "t", "foo", false),
-							expression.NewGetField(2, sql.Int64, "COUNT(*)", false),
+							expression.NewAlias("x", expression.NewGetField(0, types.Float64, "avg(foo)", false)),
+							expression.NewGetFieldWithTable(1, types.Int64, "t", "foo", false),
+							expression.NewGetField(2, types.Int64, "COUNT(*)", false),
 						},
 						plan.NewGroupBy(
 							[]sql.Expression{
-								aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false)),
-								expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
+								aggregation.NewAvg(expression.NewGetField(0, types.Int64, "foo", false)),
+								expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false),
 								aggregation.NewCount(expression.NewStar()),
 							},
-							[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+							[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 							plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 						),
 					),
@@ -276,39 +277,39 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Float64, "x", false),
-						expression.NewGetField(1, sql.Int64, "foo", false),
+						expression.NewGetField(0, types.Float64, "x", false),
+						expression.NewGetField(1, types.Int64, "foo", false),
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
-							expression.NewGetField(0, sql.Int64, "foo", false),
+							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false))),
+							expression.NewGetField(0, types.Int64, "foo", false),
 						},
-						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+						[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 					),
 				),
 			),
 			expected: plan.NewHaving(
 				expression.NewGreaterThan(
-					expression.NewGetField(0, sql.Float64, "x", false),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewGetField(0, types.Float64, "x", false),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Float64, "x", false),
-						expression.NewGetField(1, sql.Int64, "foo", false),
+						expression.NewGetField(0, types.Float64, "x", false),
+						expression.NewGetField(1, types.Int64, "foo", false),
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
-							expression.NewGetField(0, sql.Int64, "foo", false),
+							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, types.Int64, "t", "foo", false))),
+							expression.NewGetField(0, types.Int64, "foo", false),
 						},
-						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+						[]sql.Expression{expression.NewGetField(0, types.Int64, "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 					),
 				),
@@ -319,7 +320,7 @@ func TestResolveHaving(t *testing.T) {
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
-					expression.NewLiteral(int64(5), sql.Int64),
+					expression.NewLiteral(int64(5), types.Int64),
 				),
 				plan.NewResolvedTable(memory.NewTable("t", sql.PrimaryKeySchema{}, nil), nil, nil),
 			),

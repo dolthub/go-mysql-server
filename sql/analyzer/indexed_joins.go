@@ -373,7 +373,7 @@ func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAli
 	aliases.add(n, indexableTable)
 	indexes, err := indexableTable.GetIndexes(ctx)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil
 	}
 	return attributeSource, indexes, nil
 }
@@ -465,6 +465,16 @@ IndexExpressions:
 		return nil, nil
 	}
 
+	// TODO: better way of validating that we can apply an index lookup
+	lb := plan.NewLookupBuilder(i, keyExprs, nullmask)
+	look, err := lb.GetLookup(lb.GetZeroKey())
+	if err != nil {
+		return nil, nil
+	}
+	if !i.CanSupport(look.Ranges...) {
+		return nil, nil
+	}
+
 	return keyExprs, nullmask
 }
 
@@ -495,6 +505,7 @@ func firstMatchingIndex(e *expression.Equals, indexes []sql.Index, attributeSour
 		if len(lKeyExprs) == 0 {
 			continue
 		}
+
 		return &lookup{
 			index:    lIdx,
 			keyExprs: lKeyExprs,

@@ -26,6 +26,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // MD5 function returns the MD5 hash of the input.
@@ -38,7 +39,7 @@ var _ sql.FunctionExpression = (*MD5)(nil)
 
 // NewMD5 returns a new MD5 function expression
 func NewMD5(arg sql.Expression) sql.Expression {
-	return &MD5{NewUnaryFunc(arg, "MD5", sql.LongText)}
+	return &MD5{NewUnaryFunc(arg, "MD5", types.LongText)}
 }
 
 // Description implements sql.FunctionExpression
@@ -56,7 +57,7 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongText.Convert(arg)
+	val, err := types.LongText.Convert(arg)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +88,7 @@ var _ sql.FunctionExpression = (*SHA1)(nil)
 
 // NewSHA1 returns a new SHA1 function expression
 func NewSHA1(arg sql.Expression) sql.Expression {
-	return &SHA1{NewUnaryFunc(arg, "SHA1", sql.LongText)}
+	return &SHA1{NewUnaryFunc(arg, "SHA1", types.LongText)}
 }
 
 // Description implements sql.FunctionExpression
@@ -105,7 +106,7 @@ func (f *SHA1) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongText.Convert(arg)
+	val, err := types.LongText.Convert(arg)
 	if err != nil {
 		return nil, err
 	}
@@ -161,11 +162,11 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongText.Convert(arg)
+	val, err := types.LongText.Convert(arg)
 	if err != nil {
 		return nil, err
 	}
-	count, err := sql.Int64.Convert(countArg)
+	count, err := types.Int64.Convert(countArg)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +204,7 @@ func (f *SHA2) String() string {
 
 // Type implements sql.Expression
 func (f *SHA2) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 // WithChildren implements sql.Expression

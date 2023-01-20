@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestDiv(t *testing.T) {
@@ -45,8 +46,8 @@ func TestDiv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := NewDiv(
 				// The numbers are interpreted as Float64 without going through parser, so we lose precision here for 1.0
-				NewLiteral(tt.left, sql.Float64),
-				NewLiteral(tt.right, sql.Float64),
+				NewLiteral(tt.left, types.Float64),
+				NewLiteral(tt.right, types.Float64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
@@ -74,8 +75,8 @@ func TestDiv(t *testing.T) {
 	for _, tt := range intTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := NewDiv(
-				NewLiteral(tt.left, sql.Int64),
-				NewLiteral(tt.right, sql.Int64),
+				NewLiteral(tt.left, types.Int64),
+				NewLiteral(tt.right, types.Int64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
@@ -102,8 +103,8 @@ func TestDiv(t *testing.T) {
 	for _, tt := range uintTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := NewDiv(
-				NewLiteral(tt.left, sql.Uint64),
-				NewLiteral(tt.right, sql.Uint64),
+				NewLiteral(tt.left, types.Uint64),
+				NewLiteral(tt.right, types.Uint64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(t, err)
 			if tt.null {
@@ -125,15 +126,15 @@ func TestIntDiv(t *testing.T) {
 		expected            int64
 		null                bool
 	}{
-		{"1 div 1", 1, 1, sql.Int64, sql.Int64, 1, false},
-		{"8 div 3", 8, 3, sql.Int64, sql.Int64, 2, false},
-		{"1 div 3", 1, 3, sql.Int64, sql.Int64, 0, false},
-		{"0 div -1024", 0, -1024, sql.Int64, sql.Int64, 0, false},
-		{"1 div 0", 1, 0, sql.Int64, sql.Int64, 0, true},
-		{"0 div 0", 1, 0, sql.Int64, sql.Int64, 0, true},
-		{"10.24 div 0.6", 10.24, 0.6, sql.Float64, sql.Float64, 17, false},
-		{"-10.24 div 0.6", -10.24, 0.6, sql.Float64, sql.Float64, -17, false},
-		{"-10.24 div -0.6", -10.24, -0.6, sql.Float64, sql.Float64, 17, false},
+		{"1 div 1", 1, 1, types.Int64, types.Int64, 1, false},
+		{"8 div 3", 8, 3, types.Int64, types.Int64, 2, false},
+		{"1 div 3", 1, 3, types.Int64, types.Int64, 0, false},
+		{"0 div -1024", 0, -1024, types.Int64, types.Int64, 0, false},
+		{"1 div 0", 1, 0, types.Int64, types.Int64, 0, true},
+		{"0 div 0", 1, 0, types.Int64, types.Int64, 0, true},
+		{"10.24 div 0.6", 10.24, 0.6, types.Float64, types.Float64, 17, false},
+		{"-10.24 div 0.6", -10.24, 0.6, types.Float64, types.Float64, -17, false},
+		{"-10.24 div -0.6", -10.24, -0.6, types.Float64, types.Float64, 17, false},
 	}
 
 	for _, tt := range testCases {

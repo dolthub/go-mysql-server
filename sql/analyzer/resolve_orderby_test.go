@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestPushdownSortProject(t *testing.T) {
@@ -31,8 +32,8 @@ func TestPushdownSortProject(t *testing.T) {
 	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: types.Int64, Source: "foo"},
+		{Name: "b", Type: types.Int64, Source: "foo"},
 	}), nil)
 
 	tests := []analyzerFnTestCase{
@@ -44,7 +45,7 @@ func TestPushdownSortProject(t *testing.T) {
 				},
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -58,14 +59,14 @@ func TestPushdownSortProject(t *testing.T) {
 				},
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+					expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 				},
 				plan.NewSort(
 					[]sql.SortField{
@@ -83,14 +84,14 @@ func TestPushdownSortProject(t *testing.T) {
 				},
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(1, types.Int64, "foo", "b", false),
 				},
 				plan.NewSort(
 					[]sql.SortField{
@@ -110,8 +111,8 @@ func TestPushdownSortGroupby(t *testing.T) {
 	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: types.Int64, Source: "foo"},
+		{Name: "b", Type: types.Int64, Source: "foo"},
 	}), nil)
 
 	tests := []analyzerFnTestCase{
@@ -123,10 +124,10 @@ func TestPushdownSortGroupby(t *testing.T) {
 				},
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 					},
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -140,20 +141,20 @@ func TestPushdownSortGroupby(t *testing.T) {
 				},
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 					},
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewGroupBy(
 				[]sql.Expression{
-					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+					expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 				},
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 				},
 				plan.NewSort(
 					[]sql.SortField{
@@ -172,17 +173,17 @@ func TestPushdownSortGroupby(t *testing.T) {
 				},
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 					},
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "", "x", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "", "x", false),
 				},
 				plan.NewSort(
 					[]sql.SortField{
@@ -191,11 +192,11 @@ func TestPushdownSortGroupby(t *testing.T) {
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+							expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 							expression.NewUnresolvedColumn("a"),
 						},
 						[]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 						},
 						plan.NewResolvedTable(table, nil, nil),
 					),
@@ -212,8 +213,8 @@ func TestPushdownSortWindow(t *testing.T) {
 	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: types.Int64, Source: "foo"},
+		{Name: "b", Type: types.Int64, Source: "foo"},
 	}), nil)
 
 	tests := []analyzerFnTestCase{
@@ -225,13 +226,13 @@ func TestPushdownSortWindow(t *testing.T) {
 				},
 				plan.NewWindow(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
 							sql.NewWindowDefinition([]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 							}, sql.SortFields{
 								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+									Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 								},
 							}, nil, "", ""),
 						)),
@@ -248,13 +249,13 @@ func TestPushdownSortWindow(t *testing.T) {
 				},
 				plan.NewWindow(
 					[]sql.Expression{
-						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
 							sql.NewWindowDefinition([]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 							}, sql.SortFields{
 								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+									Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 								},
 							}, nil, "", ""),
 						)),
@@ -264,13 +265,13 @@ func TestPushdownSortWindow(t *testing.T) {
 			),
 			expected: plan.NewWindow(
 				[]sql.Expression{
-					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+					expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
 						sql.NewWindowDefinition([]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 						}, sql.SortFields{
 							{
-								Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+								Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 							},
 						}, nil, "", ""),
 					)),
@@ -291,13 +292,13 @@ func TestPushdownSortWindow(t *testing.T) {
 				},
 				plan.NewWindow(
 					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
 							sql.NewWindowDefinition([]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+								expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 							}, sql.SortFields{
 								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+									Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 								},
 							}, nil, "", ""),
 						)),
@@ -307,13 +308,13 @@ func TestPushdownSortWindow(t *testing.T) {
 			),
 			expected: plan.NewWindow(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
 						sql.NewWindowDefinition([]sql.Expression{
-							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 						}, sql.SortFields{
 							{
-								Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+								Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 							},
 						}, nil, "", ""),
 					)),
@@ -336,14 +337,14 @@ func TestResolveOrderByLiterals(t *testing.T) {
 	f := getRule(resolveOrderbyLiteralsId)
 
 	table := memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "t"},
-		{Name: "b", Type: sql.Int64, Source: "t"},
+		{Name: "a", Type: types.Int64, Source: "t"},
+		{Name: "b", Type: types.Int64, Source: "t"},
 	}), nil)
 
 	node := plan.NewSort(
 		[]sql.SortField{
-			{Column: expression.NewLiteral(int64(2), sql.Int64)},
-			{Column: expression.NewLiteral(int64(1), sql.Int64)},
+			{Column: expression.NewLiteral(int64(2), types.Int64)},
+			{Column: expression.NewLiteral(int64(1), types.Int64)},
 		},
 		plan.NewResolvedTable(table, nil, nil),
 	)
@@ -370,8 +371,8 @@ func TestResolveOrderByLiterals(t *testing.T) {
 
 	node = plan.NewSort(
 		[]sql.SortField{
-			{Column: expression.NewLiteral(int64(3), sql.Int64)},
-			{Column: expression.NewLiteral(int64(1), sql.Int64)},
+			{Column: expression.NewLiteral(int64(3), types.Int64)},
+			{Column: expression.NewLiteral(int64(1), types.Int64)},
 		},
 		plan.NewResolvedTable(table, nil, nil),
 	)

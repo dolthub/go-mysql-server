@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const MaxBytePrefix = 3072
@@ -279,7 +280,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	// not becoming a text/blob column
 	newCol := mc.NewColumn()
-	if !sql.IsTextBlob(newCol.Type) {
+	if !types.IsTextBlob(newCol.Type) {
 		return newSch, nil
 	}
 
@@ -297,7 +298,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 				if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
 					return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
 				}
-				if sql.IsTextOnly(newCol.Type) && prefixLengths[i]*4 > MaxBytePrefix {
+				if types.IsTextOnly(newCol.Type) && prefixLengths[i]*4 > MaxBytePrefix {
 					return nil, sql.ErrKeyTooLong.New()
 				}
 			}
@@ -421,13 +422,13 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
 func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 	// Throw prefix length error for non-string types with prefixes
-	if idxCol.Length > 0 && !sql.IsText(schCol.Type) {
+	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
 	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
 	prefixByteLength := idxCol.Length
-	if sql.IsTextOnly(schCol.Type) {
+	if types.IsTextOnly(schCol.Type) {
 		prefixByteLength = 4 * idxCol.Length
 	}
 
@@ -443,7 +444,7 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 	}
 
 	// Prefix length is only required for BLOB and TEXT columns
-	if sql.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
+	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
 		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
 	}
 
@@ -601,7 +602,7 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 	// otherwise, then it would've been validated before this
 	if !hasPkIndexDef {
 		for _, col := range tableSpec.Schema.Schema {
-			if col.PrimaryKey && sql.IsTextBlob(col.Type) {
+			if col.PrimaryKey && types.IsTextBlob(col.Type) {
 				return sql.ErrInvalidBlobTextKey.New(col.Name)
 			}
 		}

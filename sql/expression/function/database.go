@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Database implements the DATABASE() function
@@ -45,7 +46,7 @@ func (db *Database) Description() string {
 }
 
 // Type implements the sql.Expression (sql.LongText)
-func (db *Database) Type() sql.Type { return sql.LongText }
+func (db *Database) Type() sql.Type { return types.LongText }
 
 // IsNullable implements the sql.Expression interface.
 // The function returns always true

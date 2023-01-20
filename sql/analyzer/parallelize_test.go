@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestParallelize(t *testing.T) {
@@ -35,14 +36,14 @@ func TestParallelize(t *testing.T) {
 		nil,
 		plan.NewInnerJoin(
 			plan.NewFilter(
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(1, types.Int64),
 				plan.NewResolvedTable(table, nil, nil),
 			),
 			plan.NewFilter(
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(1, types.Int64),
 				plan.NewResolvedTable(table, nil, nil),
 			),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
 		),
 	)
 
@@ -52,18 +53,18 @@ func TestParallelize(t *testing.T) {
 			plan.NewExchange(
 				2,
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			plan.NewExchange(
 				2,
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
 		),
 	)
 
@@ -105,7 +106,7 @@ func TestIsParallelizable(t *testing.T) {
 		{
 			"filter",
 			plan.NewFilter(
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(1, types.Int64),
 				plan.NewResolvedTable(table, nil, nil),
 			),
 			true,
@@ -142,7 +143,7 @@ func TestIsParallelizable(t *testing.T) {
 			plan.NewProject(
 				nil,
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
@@ -155,7 +156,7 @@ func TestIsParallelizable(t *testing.T) {
 					plan.NewProject([]sql.Expression{lit(1)}, plan.NewResolvedTable(table, nil, nil)), "select 1 from table"),
 			},
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
@@ -172,7 +173,7 @@ func TestIsParallelizable(t *testing.T) {
 				),
 			},
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
@@ -183,7 +184,7 @@ func TestIsParallelizable(t *testing.T) {
 			plan.NewInnerJoin(
 				plan.NewResolvedTable(table, nil, nil),
 				plan.NewResolvedTable(table, nil, nil),
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(1, types.Int64),
 			),
 			false,
 		},
@@ -199,7 +200,7 @@ func TestIsParallelizable(t *testing.T) {
 		{
 			"limit",
 			plan.NewLimit(
-				expression.NewLiteral(5, sql.Int8),
+				expression.NewLiteral(5, types.Int8),
 				plan.NewResolvedTable(nil, nil, nil),
 			),
 			false,
@@ -207,7 +208,7 @@ func TestIsParallelizable(t *testing.T) {
 		{
 			"offset",
 			plan.NewOffset(
-				expression.NewLiteral(5, sql.Int8),
+				expression.NewLiteral(5, types.Int8),
 				plan.NewResolvedTable(nil, nil, nil),
 			),
 			false,
@@ -254,7 +255,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 			plan.NewExchange(
 				1,
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewExchange(
 						1,
 						plan.NewResolvedTable(table, nil, nil),
@@ -264,14 +265,14 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 			plan.NewExchange(
 				1,
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewExchange(
 						1,
 						plan.NewResolvedTable(table, nil, nil),
 					),
 				),
 			),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
 		),
 	)
 
@@ -281,18 +282,18 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 			plan.NewExchange(
 				1,
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			plan.NewExchange(
 				1,
 				plan.NewFilter(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
-			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(1, types.Int64),
 		),
 	)
 

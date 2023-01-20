@@ -22,6 +22,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+var ErrMergeJoinExpectsComparerFilters = errors.New("merge join expects expression.Comparer filters, found: %T")
+
 // NewMergeJoin returns a node that performs a presorted merge join on
 // two relations. We require 1) the join filter is an equality with disjoint
 // join attributes, 2) the free attributes for a relation are a prefix for
@@ -50,16 +52,37 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		copy(fullRow[0:], row[:])
 	}
 
-	return &mergeJoinIter{
+	var first expression.Comparer
+	var filters []sql.Expression
+	for i, f := range expression.SplitConjunction(j.Filter) {
+		c, ok := f.(expression.Comparer)
+		if !ok {
+			return nil, sql.ErrMergeJoinExpectsComparerFilters.New(f)
+		}
+		if i == 0 {
+			first = c
+		}
+		filters = append(filters, c)
+	}
+
+	if len(filters) == 0 {
+		return nil, sql.ErrNoJoinFilters.New()
+	}
+
+	var iter sql.RowIter = &mergeJoinIter{
 		left:        l,
 		right:       r,
-		expr:        j.Filter.(expression.Comparer),
+		expr:        first,
 		typ:         j.Op,
 		fullRow:     fullRow,
 		scopeLen:    j.ScopeLen,
 		leftRowLen:  len(j.left.Schema()),
 		rightRowLen: len(j.right.Schema()),
-	}, nil
+	}
+	if len(filters) > 1 {
+		iter = NewFilterIter(expression.JoinAnd(filters...), iter)
+	}
+	return iter, nil
 }
 
 // mergeJoinIter alternates incrementing two RowIters, assuming

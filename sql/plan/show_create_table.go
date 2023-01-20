@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrNotView = errors.NewKind("'%' is not VIEW")
@@ -35,12 +36,13 @@ type ShowCreateTable struct {
 	Checks           sql.CheckConstraints
 	targetSchema     sql.Schema
 	primaryKeySchema sql.PrimaryKeySchema
-	AsOf             sql.Expression
+	asOf             sql.Expression
 }
 
 var _ sql.Node = (*ShowCreateTable)(nil)
 var _ sql.Expressioner = (*ShowCreateTable)(nil)
 var _ sql.SchemaTarget = (*ShowCreateTable)(nil)
+var _ Versionable = (*ShowCreateTable)(nil)
 
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
@@ -52,7 +54,7 @@ func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
-		AsOf:      asOf,
+		asOf:      asOf,
 	}
 }
 
@@ -125,15 +127,15 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 	switch sc.Child.(type) {
 	case *SubqueryAlias:
 		return sql.Schema{
-			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "Create View", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "View", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "Create View", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "character_set_client", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "collation_connection", Type: types.LongText, Nullable: false},
 		}
 	case *ResolvedTable, sql.UnresolvedTable:
 		return sql.Schema{
-			&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "Table", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "Create Table", Type: types.LongText, Nullable: false},
 		}
 	default:
 		panic(fmt.Sprintf("unexpected type %T", sc.Child))
@@ -143,6 +145,18 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 // GetTargetSchema returns the final resolved target schema of show create table.
 func (sc *ShowCreateTable) GetTargetSchema() sql.Schema {
 	return sc.targetSchema
+}
+
+// WithAsOf implements the Versionable interface.
+func (sc *ShowCreateTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+	nsc := *sc
+	nsc.asOf = asOf
+	return &nsc, nil
+}
+
+// AsOf implements the Versionable interface.
+func (sc *ShowCreateTable) AsOf() sql.Expression {
+	return sc.asOf
 }
 
 // RowIter implements the Node interface
@@ -170,8 +184,8 @@ func (sc *ShowCreateTable) String() string {
 	}
 
 	asOfClause := ""
-	if sc.AsOf != nil {
-		asOfClause = fmt.Sprintf("as of %v", sc.AsOf)
+	if sc.asOf != nil {
+		asOfClause = fmt.Sprintf("as of %v", sc.asOf)
 	}
 
 	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)
@@ -268,7 +282,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		if col.Default != nil {
 			// TODO : string literals should have character set introducer
 			defStr := col.Default.String()
-			if defStr != "NULL" && col.Default.IsLiteral() && !sql.IsTime(col.Default.Type()) && !sql.IsText(col.Default.Type()) {
+			if defStr != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {
 				v, err := col.Default.Eval(ctx, nil)
 				if err != nil {
 					return "", err

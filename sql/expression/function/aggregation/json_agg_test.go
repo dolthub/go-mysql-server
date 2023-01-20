@@ -21,12 +21,13 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJsonArrayAgg_Name(t *testing.T) {
 	assert := require.New(t)
 
-	m := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("JSON_ARRAYAGG(field)", m.String())
 }
 
@@ -34,7 +35,7 @@ func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := j.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(float64(7)))
@@ -42,14 +43,14 @@ func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
-	assert.Equal(sql.MustJSON(`[7, 2]`), v)
+	assert.Equal(types.MustJSON(`[7, 2]`), v)
 }
 
 func TestJsonArrayAgg_Strings(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := j.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("hi"))
@@ -57,30 +58,30 @@ func TestJsonArrayAgg_Strings(t *testing.T) {
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
-	assert.Equal(sql.MustJSON(`["hi","hello"]`), v)
+	assert.Equal(types.MustJSON(`["hi","hello"]`), v)
 }
 
 func TestJsonArrayAgg_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.Int32, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := j.NewBuffer()
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
-	assert.Equal(sql.JSONDocument{Val: []interface{}(nil)}, v)
+	assert.Equal(types.JSONDocument{Val: []interface{}(nil)}, v)
 }
 
 func TestJsonArrayAgg_JSON(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJsonArray(expression.NewGetField(0, sql.JSON, "field", true))
+	j := NewJsonArray(expression.NewGetField(0, types.JSON, "field", true))
 	b, _ := j.NewBuffer()
-	b.Update(ctx, sql.NewRow(sql.MustJSON(`{"key1": "value1", "key2": "value2"}`)))
+	b.Update(ctx, sql.NewRow(types.MustJSON(`{"key1": "value1", "key2": "value2"}`)))
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
-	assert.Equal(sql.MustJSON(`[{"key1": "value1", "key2": "value2"}]`), v)
+	assert.Equal(types.MustJSON(`[{"key1": "value1", "key2": "value2"}]`), v)
 }

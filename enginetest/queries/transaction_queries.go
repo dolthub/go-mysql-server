@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TransactionTest is a script to test transaction correctness. It's similar to ScriptTest, but its assertions name
@@ -63,7 +64,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ create table t(pk int primary key);",
-				Expected: []sql.Row{{sql.OkResult{}}},
+				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				// Trigger a query error to make sure explicit transaction is still
@@ -94,7 +95,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -102,7 +103,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client b */ insert into t values (3, 3)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -131,7 +132,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client b */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "/* client a */ select * from t order by x",
@@ -141,7 +142,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (3,3)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -198,7 +199,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client b */ insert into t values (2,2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -242,7 +243,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -265,7 +266,7 @@ var TransactionTests = []TransactionTest{
 			// After commit, autocommit turns back on
 			{
 				Query:    "/* client a */ insert into t values (3, 3)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -298,11 +299,11 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ insert into t values (3, 3)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -326,7 +327,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -375,11 +376,11 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ insert into t values (3, 3)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ savepoint spa1",
@@ -391,11 +392,11 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (4, 4)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ insert into t values (5, 5)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ savepoint spa2",
@@ -407,11 +408,11 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (6, 6)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ insert into t values (7, 7)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -544,11 +545,11 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client b */ insert into t values (3, 3)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ savepoint spa1",
@@ -597,7 +598,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (2, 2)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ savepoint spa1",
@@ -605,7 +606,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (3, 3)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ savepoint spa2",
@@ -613,7 +614,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (4, 4)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ savepoint SPA1",
@@ -621,7 +622,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ insert into t values (5, 5)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -678,7 +679,7 @@ var TransactionTests = []TransactionTest{
 			// Client a starts by insert into t
 			{
 				Query:    "/* client a */ insert into t (y) values (2)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -691,7 +692,7 @@ var TransactionTests = []TransactionTest{
 			// Client b inserts into t
 			{
 				Query:    "/* client b */ insert into t (y) values (3)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 3}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
 			},
 			{
 				Query: "/* client a */ select * from t order by x",
@@ -708,7 +709,7 @@ var TransactionTests = []TransactionTest{
 			// Client c inserts into t2
 			{
 				Query:    "/* client c */ insert into t2 (y) values (11)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 11}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 11}}},
 			},
 			{
 				Query:    "/* client a */ select * from t2 order by x",
@@ -725,7 +726,7 @@ var TransactionTests = []TransactionTest{
 			// Client a inserts into t2
 			{
 				Query:    "/* client a */ insert into t2 (y) values (12)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 12}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 12}}},
 			},
 			{
 				Query:    "/* client a */ select * from t2 order by x",
@@ -836,20 +837,20 @@ var TransactionTests = []TransactionTest{
 			// Client a does a skip ahead
 			{
 				Query:    "/* client a */ insert into t values (10, 10)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 10}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 10}}},
 			},
 			{
 				Query:    "/* client b */ insert into t (y) values (11)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 11}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 11}}},
 			},
 			// Client c skips ahead
 			{
 				Query:    "/* client c */ insert into t values (50, 50)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 50}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 50}}},
 			},
 			{
 				Query:    "/* client b */ insert into t (y) values (51)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 51}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 51}}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -890,7 +891,7 @@ var TransactionTests = []TransactionTest{
 			// Client a does a simple insert to ensure merging worked
 			{
 				Query:    "/* client a */ insert into t values (NULL, 52)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 52}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 52}}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -907,7 +908,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ insert into t2 (y) values (2)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "/* client b */ select * from t2 order by x",
@@ -915,7 +916,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client b */ insert into t2 (y) values (3)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 3}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
 			},
 			{
 				Query:    "/* client a */ select * from t2 order by x",
@@ -923,7 +924,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ alter table t2 modify column x int",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0}}},
 			},
 			{
 				Query:       "/* client a */ INSERT INTO t2 values (NULL, 3)",
@@ -931,15 +932,15 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ DROP TABLE t2",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0}}},
 			},
 			{
 				Query:    "/* client a */ CREATE table t2 (x int PRIMARY KEY AUTO_INCREMENT, y int)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0}}},
 			},
 			{
 				Query:    "/* client a */ insert into t2 (y) values (4)",
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "/* client a */ SELECT * FROM t2",
@@ -961,7 +962,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ create temporary table tmp(pk int primary key)",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "/* client a */  START TRANSACTION READ ONLY",
@@ -969,7 +970,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ INSERT INTO tmp VALUES (1)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "/* client a */ insert into t2 values (1, 1)",
@@ -986,7 +987,7 @@ var TransactionTests = []TransactionTest{
 			{
 
 				Query:    "/* client a */ alter table t2 add val2 int",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "/* client a */ select * from t2",

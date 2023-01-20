@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const (
@@ -34,7 +35,7 @@ const (
 // TODO: look over all of the "invalid type" tests later, ignoring them for now since they're unlikely to be hit
 func TestTime_Year(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewYear(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewYear(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -63,7 +64,7 @@ func TestTime_Year(t *testing.T) {
 
 func TestTime_Month(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewMonth(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewMonth(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -93,7 +94,7 @@ func TestTime_Month(t *testing.T) {
 
 func TestTime_Day(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDay(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewDay(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -123,7 +124,7 @@ func TestTime_Day(t *testing.T) {
 
 func TestTime_Weekday(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewWeekday(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewWeekday(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -153,7 +154,7 @@ func TestTime_Weekday(t *testing.T) {
 
 func TestTime_Hour(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewHour(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewHour(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -183,7 +184,7 @@ func TestTime_Hour(t *testing.T) {
 
 func TestTime_Minute(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewMinute(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewMinute(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -213,7 +214,7 @@ func TestTime_Minute(t *testing.T) {
 
 func TestTime_Second(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewSecond(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewSecond(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -243,7 +244,7 @@ func TestTime_Second(t *testing.T) {
 
 func TestTime_DayOfWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDayOfWeek(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewDayOfWeek(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -273,7 +274,7 @@ func TestTime_DayOfWeek(t *testing.T) {
 
 func TestTime_DayOfYear(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDayOfYear(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewDayOfYear(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -303,7 +304,7 @@ func TestTime_DayOfYear(t *testing.T) {
 
 func TestYearWeek(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f, err := NewYearWeek(expression.NewGetField(0, sql.LongText, "foo", false))
+	f, err := NewYearWeek(expression.NewGetField(0, types.LongText, "foo", false))
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -374,32 +375,32 @@ func TestNow(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(0, sql.Int8)},
+			args:      []sql.Expression{expression.NewLiteral(0, types.Int8)},
 			result:    date,
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(0, sql.Int64)},
+			args:      []sql.Expression{expression.NewLiteral(0, types.Int64)},
 			result:    date,
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(6, sql.Uint8)},
+			args:      []sql.Expression{expression.NewLiteral(6, types.Uint8)},
 			result:    date,
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(7, sql.Int8)},
+			args:      []sql.Expression{expression.NewLiteral(7, types.Int8)},
 			result:    time.Time{},
 			expectErr: true,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(-1, sql.Int8)},
+			args:      []sql.Expression{expression.NewLiteral(-1, types.Int8)},
 			result:    time.Time{},
 			expectErr: true,
 		},
 		{
-			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", sql.Text), expression.ConvertToDatetime)},
+			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", types.Text), expression.ConvertToDatetime)},
 			result:    time.Time{},
 			expectErr: true,
 		},
@@ -444,32 +445,32 @@ func TestUTCTimestamp(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(0, sql.Int8)},
+			args:      []sql.Expression{expression.NewLiteral(0, types.Int8)},
 			result:    date,
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(0, sql.Int64)},
+			args:      []sql.Expression{expression.NewLiteral(0, types.Int64)},
 			result:    date,
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(6, sql.Uint8)},
+			args:      []sql.Expression{expression.NewLiteral(6, types.Uint8)},
 			result:    date,
 			expectErr: false,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(7, sql.Int8)},
+			args:      []sql.Expression{expression.NewLiteral(7, types.Int8)},
 			result:    time.Time{},
 			expectErr: true,
 		},
 		{
-			args:      []sql.Expression{expression.NewLiteral(-1, sql.Int8)},
+			args:      []sql.Expression{expression.NewLiteral(-1, types.Int8)},
 			result:    time.Time{},
 			expectErr: true,
 		},
 		{
-			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", sql.Text), expression.ConvertToDatetime)},
+			args:      []sql.Expression{expression.NewConvert(expression.NewLiteral("2020-10-10 01:02:03", types.Text), expression.ConvertToDatetime)},
 			result:    time.Time{},
 			expectErr: true,
 		},
@@ -492,7 +493,7 @@ func TestUTCTimestamp(t *testing.T) {
 
 func TestDate(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewDate(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewDate(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -501,7 +502,7 @@ func TestDate(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), sql.Date.Zero().(time.Time).Format("2006-01-02"), false},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), types.Date.Zero().(time.Time).Format("2006-01-02"), false},
 		{"date as string", sql.NewRow(stringDate), "2007-01-02", false},
 		{"date as time", sql.NewRow(time.Now().UTC()), time.Now().UTC().Format("2006-01-02"), false},
 	}
@@ -521,7 +522,7 @@ func TestDate(t *testing.T) {
 }
 
 func TestCurrentTimestamp(t *testing.T) {
-	f, _ := NewCurrTimestamp(expression.NewGetField(0, sql.LongText, "foo", false))
+	f, _ := NewCurrTimestamp(expression.NewGetField(0, types.LongText, "foo", false))
 	date := time.Date(
 		2021,     // year
 		1,        // month
@@ -575,7 +576,7 @@ func TestCurrentTimestamp(t *testing.T) {
 
 func TestTime(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	f := NewTime(expression.NewGetField(0, sql.LongText, "foo", false))
+	f := NewTime(expression.NewGetField(0, types.LongText, "foo", false))
 
 	testCases := []struct {
 		name     string
@@ -596,7 +597,7 @@ func TestTime(t *testing.T) {
 				require.Error(err)
 			} else {
 				require.NoError(err)
-				if v, ok := val.(sql.Timespan); ok {
+				if v, ok := val.(types.Timespan); ok {
 					require.Equal(tt.expected, v.String())
 				} else {
 					require.Equal(tt.expected, val)

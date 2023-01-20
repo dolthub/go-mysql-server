@@ -84,6 +84,11 @@ var JoinOpTests = []struct {
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}},
 			},
 			{
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s and y = r order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+				exp:   []sql.Row{{0, 0, 1, 0}},
+			},
+			{
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+10 = s order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{},

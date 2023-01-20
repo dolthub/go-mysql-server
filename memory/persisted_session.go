@@ -14,7 +14,9 @@
 
 package memory
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 type GlobalsMap = map[string]interface{}
 type InMemoryPersistedSession struct {

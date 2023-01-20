@@ -25,6 +25,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrIntDivDataOutOfRange = errors.NewKind("BIGINT value is out of range (%s DIV %s)")
@@ -94,16 +95,16 @@ func (d *Div) IsNullable() bool {
 func (d *Div) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := d.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := d.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
-		return sql.Float64
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		return types.Float64
 	}
 
 	// for division operation, it's either float or decimal.Decimal type
@@ -149,8 +150,8 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if isOutermostDiv(d, 0, d.divScale) {
 		if res, ok := result.(decimal.Decimal); ok {
 			finalScale := d.divScale*int32(divPrecisionIncrement) + d.leftmostScale
-			if finalScale > sql.DecimalTypeMaxScale {
-				finalScale = sql.DecimalTypeMaxScale
+			if finalScale > types.DecimalTypeMaxScale {
+				finalScale = types.DecimalTypeMaxScale
 			}
 			if isOutermostArithmeticOp(d, 0, d.ops) {
 				return res.Round(finalScale), nil
@@ -189,16 +190,16 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // should be preserved.
 func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := d.Type()
-	lIsTimeType := sql.IsTime(d.Left.Type())
-	rIsTimeType := sql.IsTime(d.Right.Type())
+	lIsTimeType := types.IsTime(d.Left.Type())
+	rIsTimeType := types.IsTime(d.Right.Type())
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
 		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
 		right = convertToDecimalValue(right, rIsTimeType)
@@ -281,15 +282,15 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
-			if sql.IsFloat(c.Type()) {
-				resType = sql.Float64
+			if types.IsFloat(c.Type()) {
+				resType = types.Float64
 				return false
 			}
-			if sql.IsDecimal(c.Type()) {
+			if types.IsDecimal(c.Type()) {
 				decType = c.Type()
 			}
 		case *Literal:
-			if sql.IsNumber(c.Type()) {
+			if types.IsNumber(c.Type()) {
 				l, err := c.Eval(nil, nil)
 				if err == nil {
 					p, s := GetPrecisionAndScale(l)
@@ -305,7 +306,7 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 		return true
 	})
 
-	if resType == sql.Float64 {
+	if resType == types.Float64 {
 		return resType
 	}
 
@@ -314,9 +315,9 @@ func floatOrDecimalType(e sql.Expression) sql.Type {
 	}
 
 	// defType is defined by evaluating all number literals available
-	defType, derr := sql.CreateDecimalType(maxWhole+maxFrac, maxFrac)
+	defType, derr := types.CreateDecimalType(maxWhole+maxFrac, maxFrac)
 	if derr != nil {
-		return sql.MustCreateDecimalType(65, 10)
+		return types.MustCreateDecimalType(65, 10)
 	}
 
 	return defType
@@ -333,7 +334,7 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 
 	if _, ok := val.(decimal.Decimal); !ok {
 		p, s := GetPrecisionAndScale(val)
-		dtyp, err := sql.CreateDecimalType(p, s)
+		dtyp, err := types.CreateDecimalType(p, s)
 		if err != nil {
 			val = decimal.Zero
 		}
@@ -581,30 +582,30 @@ func (i *IntDiv) IsNullable() bool {
 func (i *IntDiv) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := i.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := i.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
-	if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
-		return sql.Int64
+	if types.IsTime(lTyp) && types.IsTime(rTyp) {
+		return types.Int64
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
-		return sql.Float64
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		return types.Float64
 	}
 
-	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
-		return sql.Uint64
-	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
-		return sql.Int64
+	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+		return types.Uint64
+	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
+		return types.Int64
 	}
 
 	// using max precision which is 65.
-	defType := sql.MustCreateDecimalType(65, 0)
+	defType := types.MustCreateDecimalType(65, 0)
 	return defType
 }
 
@@ -658,16 +659,16 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 // should be preserved.
 func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := i.Type()
-	lIsTimeType := sql.IsTime(i.Left.Type())
-	rIsTimeType := sql.IsTime(i.Right.Type())
+	lIsTimeType := types.IsTime(i.Left.Type())
+	rIsTimeType := types.IsTime(i.Right.Type())
 
-	if sql.IsInteger(typ) || sql.IsFloat(typ) {
+	if types.IsInteger(typ) || types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
 		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if sql.IsInteger(typ) || sql.IsFloat(typ) {
+	if types.IsInteger(typ) || types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
 		right = convertToDecimalValue(right, rIsTimeType)

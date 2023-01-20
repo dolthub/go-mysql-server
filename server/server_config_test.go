@@ -22,6 +22,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestConfigWithDefaults(t *testing.T) {
@@ -36,7 +38,7 @@ func TestConfigWithDefaults(t *testing.T) {
 		{
 			Name:        "max_connections",
 			Scope:       sql.SystemVariableScope_Global,
-			Type:        sql.NewSystemIntType("max_connections", 1, 100000, false),
+			Type:        types.NewSystemIntType("max_connections", 1, 100000, false),
 			ConfigField: "MaxConnections",
 			Default:     int64(1000),
 			ExpectedCmp: uint64(1000),
@@ -44,14 +46,14 @@ func TestConfigWithDefaults(t *testing.T) {
 		{
 			Name:        "net_write_timeout",
 			Scope:       sql.SystemVariableScope_Both,
-			Type:        sql.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
+			Type:        types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 			ConfigField: "ConnWriteTimeout",
 			Default:     int64(76),
 			ExpectedCmp: int64(76000000),
 		}, {
 			Name:        "net_read_timeout",
 			Scope:       sql.SystemVariableScope_Both,
-			Type:        sql.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
+			Type:        types.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
 			ConfigField: "ConnReadTimeout",
 			Default:     int64(67),
 			ExpectedCmp: int64(67000000),
@@ -60,7 +62,7 @@ func TestConfigWithDefaults(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("server config var: %s", test.Name), func(t *testing.T) {
-			sql.InitSystemVariables()
+			variables.InitSystemVariables()
 			sql.SystemVariables.AddSystemVariables([]sql.SystemVariable{{
 				Name:    test.Name,
 				Scope:   test.Scope,

@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TimeDiff subtracts the second argument from the first expressed as a time value.
@@ -54,7 +55,7 @@ func (td *TimeDiff) Description() string {
 }
 
 // Type implements the Expression interface.
-func (td *TimeDiff) Type() sql.Type { return sql.Time }
+func (td *TimeDiff) Type() sql.Type { return types.Time }
 
 func (td *TimeDiff) String() string {
 	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.Left, td.Right)
@@ -69,11 +70,11 @@ func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 func convToDateOrTime(val interface{}) (interface{}, error) {
-	date, err := sql.Datetime.Convert(val)
+	date, err := types.Datetime.Convert(val)
 	if err == nil {
 		return date, nil
 	}
-	tim, err := sql.Time.Convert(val)
+	tim, err := types.Time.Convert(val)
 	if err == nil {
 		return tim, err
 	}
@@ -125,12 +126,12 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if leftDatetime.Location() != rightDatetime.Location() {
 			rightDatetime = rightDatetime.In(leftDatetime.Location())
 		}
-		return sql.Time.Convert(leftDatetime.Sub(rightDatetime))
+		return types.Time.Convert(leftDatetime.Sub(rightDatetime))
 	}
 
 	// handle as time
-	if leftTime, ok := left.(sql.Timespan); ok {
-		rightTime, ok := right.(sql.Timespan)
+	if leftTime, ok := left.(types.Timespan); ok {
+		rightTime, ok := right.(types.Timespan)
 		if !ok {
 			return nil, nil
 		}
@@ -167,7 +168,7 @@ func (d *DateDiff) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (d *DateDiff) Type() sql.Type { return sql.Int64 }
+func (d *DateDiff) Type() sql.Type { return types.Int64 }
 
 // WithChildren implements the Expression interface.
 func (d *DateDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -191,13 +192,13 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr1, err = sql.Datetime.Convert(expr1)
+	expr1, err = types.Datetime.Convert(expr1)
 	if err != nil {
 		return nil, err
 	}
 
 	expr1str := expr1.(time.Time).String()[:10]
-	expr1, _ = sql.Datetime.Convert(expr1str)
+	expr1, _ = types.Datetime.Convert(expr1str)
 
 	expr2, err := d.Right.Eval(ctx, row)
 	if err != nil {
@@ -207,13 +208,13 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr2, err = sql.Datetime.Convert(expr2)
+	expr2, err = types.Datetime.Convert(expr2)
 	if err != nil {
 		return nil, err
 	}
 
 	expr2str := expr2.(time.Time).String()[:10]
-	expr2, _ = sql.Datetime.Convert(expr2str)
+	expr2, _ = types.Datetime.Convert(expr2str)
 
 	date1 := expr1.(time.Time)
 	date2 := expr2.(time.Time)
@@ -267,7 +268,7 @@ func (t *TimestampDiff) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (t *TimestampDiff) Type() sql.Type { return sql.Int64 }
+func (t *TimestampDiff) Type() sql.Type { return types.Int64 }
 
 // WithChildren implements the Expression interface.
 func (t *TimestampDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -302,12 +303,12 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	expr1, err = sql.Datetime.Convert(expr1)
+	expr1, err = types.Datetime.Convert(expr1)
 	if err != nil {
 		return nil, err
 	}
 
-	expr2, err = sql.Datetime.Convert(expr2)
+	expr2, err = types.Datetime.Convert(expr2)
 	if err != nil {
 		return nil, err
 	}
