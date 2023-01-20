@@ -372,13 +372,14 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 				return nil, sql.ErrTooManyKeyParts.New(1)
 			}
 			schCol := sch[sch.IndexOfColName(ai.Columns[0].Name)]
-			if !schCol.Type.Equals(types.GeometryType{}) {
+			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
+			if !ok {
 				return nil, sql.ErrBadSpatialIdxCol.New()
 			}
 			if schCol.Nullable {
 				return nil, sql.ErrNullableSpatialIdx.New()
 			}
-			if !schCol.Type.(types.GeometryType).DefinedSRID {
+			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
 				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
 			}
 			return nil, sql.ErrUnsupportedSpatialIdx.New()
@@ -585,13 +586,14 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 				return sql.ErrTooManyKeyParts.New(1)
 			}
 			schCol, _ := lwrNames[strings.ToLower(idx.Columns[0].Name)]
-			if !schCol.Type.Equals(types.GeometryType{}) {
+			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
+			if !ok {
 				return sql.ErrBadSpatialIdxCol.New()
 			}
 			if schCol.Nullable {
 				return sql.ErrNullableSpatialIdx.New()
 			}
-			if !schCol.Type.(types.GeometryType).DefinedSRID {
+			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
 				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
 			}
 			return sql.ErrUnsupportedSpatialIdx.New()
