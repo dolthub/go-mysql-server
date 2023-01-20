@@ -220,6 +220,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "st_geometryfromwkb", Fn: spatial.NewGeomFromWKB},
 	sql.FunctionN{Name: "st_geomfromwkb", Fn: spatial.NewGeomFromWKB},
 	sql.Function1{Name: "st_isclosed", Fn: spatial.NewIsClosed},
+	sql.Function2{Name: "st_intersects", Fn: spatial.NewIntersects},
 	sql.FunctionN{Name: "st_length", Fn: spatial.NewSTLength},
 	sql.FunctionN{Name: "st_longitude", Fn: spatial.NewLongitude},
 	sql.FunctionN{Name: "st_linefromtext", Fn: spatial.NewLineFromText},
