@@ -64,7 +64,7 @@ func (i *Intersects) WithChildren(children ...sql.Expression) (sql.Expression, e
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
 	}
-	return NewWithin(children[0], children[1]), nil
+	return NewIntersects(children[0], children[1]), nil
 }
 
 // isPointIntersectLine checks if Point p intersects the LineString l
