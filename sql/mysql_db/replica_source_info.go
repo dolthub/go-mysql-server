@@ -25,14 +25,25 @@ import (
 // in the mysql database.
 // For more details, see: https://dev.mysql.com/doc/refman/8.0/en/replica-logs-status.html
 type ReplicaSourceInfo struct {
-	Host     string
-	User     string
-	Password string
-	Port     uint16
-	Uuid     string
+	Host                 string
+	User                 string
+	Password             string
+	Port                 uint16
+	Uuid                 string
+	ConnectRetryInterval uint32
+	ConnectRetryCount    uint64
 }
 
 var _ in_mem_table.Entry = (*ReplicaSourceInfo)(nil)
+
+// NewReplicaSourceInfo constructs a new ReplicaSourceInfo instance, with defaults applied.
+func NewReplicaSourceInfo() *ReplicaSourceInfo {
+	return &ReplicaSourceInfo{
+		Port:                 3306,
+		ConnectRetryInterval: 60,
+		ConnectRetryCount:    86400,
+	}
+}
 
 // NewFromRow implements the interface in_mem_table.Entry.
 func (r *ReplicaSourceInfo) NewFromRow(_ *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
@@ -41,11 +52,13 @@ func (r *ReplicaSourceInfo) NewFromRow(_ *sql.Context, row sql.Row) (in_mem_tabl
 	}
 
 	return &ReplicaSourceInfo{
-		Host:     row[replicaSourceInfoTblColIndex_Host].(string),
-		User:     row[replicaSourceInfoTblColIndex_User_name].(string),
-		Password: row[replicaSourceInfoTblColIndex_User_password].(string),
-		Port:     row[replicaSourceInfoTblColIndex_Port].(uint16),
-		Uuid:     row[replicaSourceInfoTblColIndex_Uuid].(string),
+		Host:                 row[replicaSourceInfoTblColIndex_Host].(string),
+		User:                 row[replicaSourceInfoTblColIndex_User_name].(string),
+		Password:             row[replicaSourceInfoTblColIndex_User_password].(string),
+		Port:                 row[replicaSourceInfoTblColIndex_Port].(uint16),
+		Uuid:                 row[replicaSourceInfoTblColIndex_Uuid].(string),
+		ConnectRetryInterval: row[replicaSourceInfoTblColIndex_Connect_retry].(uint32),
+		ConnectRetryCount:    row[replicaSourceInfoTblColIndex_Retry_count].(uint64),
 	}, nil
 }
 
@@ -80,6 +93,8 @@ func (r *ReplicaSourceInfo) ToRow(ctx *sql.Context) sql.Row {
 	}
 	row[replicaSourceInfoTblColIndex_User_password] = r.Password
 	row[replicaSourceInfoTblColIndex_Port] = r.Port
+	row[replicaSourceInfoTblColIndex_Connect_retry] = r.ConnectRetryInterval
+	row[replicaSourceInfoTblColIndex_Retry_count] = r.ConnectRetryCount
 
 	return row
 }
@@ -96,7 +111,9 @@ func (r *ReplicaSourceInfo) Equals(_ *sql.Context, otherEntry in_mem_table.Entry
 		r.Host != other.Host ||
 		r.Port != other.Port ||
 		r.Password != other.Password ||
-		r.Uuid != other.Uuid {
+		r.Uuid != other.Uuid ||
+		r.ConnectRetryInterval != other.ConnectRetryInterval ||
+		r.ConnectRetryCount != other.ConnectRetryCount {
 		return false
 	}
 

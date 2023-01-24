@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -279,6 +280,9 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
+	// BinlogReplicaController holds an optional controller that receives forwarded binlog
+	// replication messages (e.g. "start replica").
+	BinlogReplicaController binlogreplication.BinlogReplicaController
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

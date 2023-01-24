@@ -31,6 +31,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -203,6 +204,16 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewRollbackSavepoint(n.Identifier), nil
 	case *sqlparser.ReleaseSavepoint:
 		return plan.NewReleaseSavepoint(n.Identifier), nil
+	case *sqlparser.ChangeReplicationSource:
+		return convertChangeReplicationSource(n)
+	case *sqlparser.ChangeReplicationFilter:
+		return convertChangeReplicationFilter(n)
+	case *sqlparser.StartReplica:
+		return plan.NewStartReplica(), nil
+	case *sqlparser.StopReplica:
+		return plan.NewStopReplica(), nil
+	case *sqlparser.ResetReplica:
+		return plan.NewResetReplica(n.All), nil
 	case *sqlparser.BeginEndBlock:
 		return convertBeginEndBlock(ctx, n, query)
 	case *sqlparser.IfStatement:
@@ -515,6 +526,50 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 	}
 
 	return plan.NewSet(exprs), nil
+}
+
+func convertChangeReplicationSource(n *sqlparser.ChangeReplicationSource) (sql.Node, error) {
+	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
+	for _, option := range n.Options {
+		convertedOption, err := convertReplicationOption(option)
+		if err != nil {
+			return nil, err
+		}
+		convertedOptions = append(convertedOptions, *convertedOption)
+	}
+	return plan.NewChangeReplicationSource(convertedOptions), nil
+}
+
+func convertReplicationOption(option *sqlparser.ReplicationOption) (*binlogreplication.ReplicationOption, error) {
+	if option.Value == nil {
+		return nil, fmt.Errorf("nil replication option specified for option %q", option.Name)
+	}
+	switch vv := option.Value.(type) {
+	case string:
+		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.StringReplicationOptionValue{Value: vv}), nil
+	case int:
+		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.IntegerReplicationOptionValue{Value: vv}), nil
+	case sqlparser.TableNames:
+		urts := make([]sql.UnresolvedTable, len(vv))
+		for i, tableName := range vv {
+			urts[i] = tableNameToUnresolvedTable(tableName)
+		}
+		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.TableNamesReplicationOptionValue{Value: urts}), nil
+	default:
+		return nil, fmt.Errorf("unsupported option value type '%T' specified for option %q", option.Value, option.Name)
+	}
+}
+
+func convertChangeReplicationFilter(n *sqlparser.ChangeReplicationFilter) (sql.Node, error) {
+	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
+	for _, option := range n.Options {
+		convertedOption, err := convertReplicationOption(option)
+		if err != nil {
+			return nil, err
+		}
+		convertedOptions = append(convertedOptions, *convertedOption)
+	}
+	return plan.NewChangeReplicationFilter(convertedOptions), nil
 }
 
 func isSetNames(exprs sqlparser.SetVarExprs) bool {
@@ -927,6 +982,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
+	case "replica status":
+		return plan.NewShowReplicaStatus(), nil
+
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)

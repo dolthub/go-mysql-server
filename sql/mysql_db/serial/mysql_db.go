@@ -728,8 +728,32 @@ func (rcv *ReplicaSourceInfo) Uuid() []byte {
 	return nil
 }
 
+func (rcv *ReplicaSourceInfo) ConnectRetryInterval() uint32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
+	if o != 0 {
+		return rcv._tab.GetUint32(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ReplicaSourceInfo) MutateConnectRetryInterval(n uint32) bool {
+	return rcv._tab.MutateUint32Slot(14, n)
+}
+
+func (rcv *ReplicaSourceInfo) ConnectRetryCount() uint64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+	if o != 0 {
+		return rcv._tab.GetUint64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ReplicaSourceInfo) MutateConnectRetryCount(n uint64) bool {
+	return rcv._tab.MutateUint64Slot(16, n)
+}
+
 func ReplicaSourceInfoStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(7)
 }
 func ReplicaSourceInfoAddHost(builder *flatbuffers.Builder, host flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(host), 0)
@@ -745,6 +769,12 @@ func ReplicaSourceInfoAddPort(builder *flatbuffers.Builder, port uint16) {
 }
 func ReplicaSourceInfoAddUuid(builder *flatbuffers.Builder, uuid flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(uuid), 0)
+}
+func ReplicaSourceInfoAddConnectRetryInterval(builder *flatbuffers.Builder, connectRetryInterval uint32) {
+	builder.PrependUint32Slot(5, connectRetryInterval, 0)
+}
+func ReplicaSourceInfoAddConnectRetryCount(builder *flatbuffers.Builder, connectRetryCount uint64) {
+	builder.PrependUint64Slot(6, connectRetryCount, 0)
 }
 func ReplicaSourceInfoEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

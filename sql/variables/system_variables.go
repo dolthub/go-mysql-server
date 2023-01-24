@@ -2040,6 +2040,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("select_into_disk_sync_delay", 0, 31536000, false),
 		Default:           int64(0),
 	},
+	"server_id": {
+		Name:              "server_id",
+		Scope:             sql.SystemVariableScope_Persist,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.Uint32,
+		Default:           0,
+	},
 	"session_track_gtids": {
 		Name:              "session_track_gtids",
 		Scope:             sql.SystemVariableScope_Both,

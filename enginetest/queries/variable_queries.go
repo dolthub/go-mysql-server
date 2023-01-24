@@ -49,6 +49,23 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "@@server_id",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@server_id;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "set @@server_id=123;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "set @@GLOBAL.server_id=123;",
+				Expected: []sql.Row{{}},
+			},
+		},
+	},
+	{
 		Name: "set system variables and user variables",
 		SetUpScript: []string{
 			"SET @myvar = @@autocommit",
