@@ -294,6 +294,13 @@ func (t *TriggerRollback) String() string {
 	return pr.String()
 }
 
+func (t *TriggerRollback) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TriggerRollback")
+	_ = pr.WriteChildren(sql.DebugString(t.Child))
+	return pr.String()
+}
+
 type triggerRollbackIter struct {
 	child        sql.RowIter
 	hasSavepoint bool
@@ -335,4 +342,45 @@ func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
 		t.hasSavepoint = false
 	}
 	return t.child.Close(ctx)
+}
+
+type NoopTriggerRollback struct {
+	UnaryNode
+}
+
+func NewNoopTriggerRollback(child sql.Node) *NoopTriggerRollback {
+	return &NoopTriggerRollback{
+		UnaryNode: UnaryNode{Child: child},
+	}
+}
+
+func (t *NoopTriggerRollback) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+
+	return NewNoopTriggerRollback(children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (t *NoopTriggerRollback) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return t.Child.CheckPrivileges(ctx, opChecker)
+}
+
+func (t *NoopTriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return t.Child.RowIter(ctx, row)
+}
+
+func (t *NoopTriggerRollback) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TriggerRollback()")
+	_ = pr.WriteChildren(t.Child.String())
+	return pr.String()
+}
+
+func (t *NoopTriggerRollback) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("TriggerRollback")
+	_ = pr.WriteChildren(sql.DebugString(t.Child))
+	return pr.String()
 }
