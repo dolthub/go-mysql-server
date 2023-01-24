@@ -101,12 +101,13 @@ func (f *fileSetup) Next() (bool, error) {
 				separator = true
 				break
 			}
-			buf.WriteString(line)
+			buf.WriteString(line + "\n")
 		}
 
 		f.data.Sql = strings.TrimSpace(buf.String())
 		stmt, err := ast.Parse(f.data.Sql)
 		if err != nil {
+			fmt.Printf("errored at %s: \n%s", f.data.pos, f.data.Sql)
 			return false, err
 		}
 		f.data.stmt = stmt

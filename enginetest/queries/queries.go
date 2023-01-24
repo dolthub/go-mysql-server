@@ -719,6 +719,25 @@ var SpatialQueryTests = []QueryTest{
 			{nil},
 		},
 	},
+	{
+		Query: `SELECT st_intersects(st_srid(g, 0), point(1,2)) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{true},
+			{true},
+			{false},
+			{true},
+			{true},
+			{true},
+			{false},
+			{true},
+			{true},
+			{false},
+			{true},
+			{true},
+			{true},
+			{false},
+		},
+	},
 }
 
 var QueryTests = []QueryTest{

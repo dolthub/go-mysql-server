@@ -187,42 +187,17 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 // database name, table name, column key and column privileges information through privileges set for the table.
 func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
 	var (
-		charName          interface{}
-		collName          interface{}
-		charMaxLen        interface{}
-		charOctetLen      interface{}
-		nullable          = "NO"
 		ordinalPos        = uint32(curOrdPos + 1)
-		colType           = strings.Split(col.Type.String(), " COLLATE")[0]
-		dataType          = colType
+		nullable          = "NO"
 		datetimePrecision interface{}
 		srsId             interface{}
 	)
 
+	colType, dataType := getDtdIdAndDataType(col.Type)
+
 	if col.Nullable {
 		nullable = "YES"
 	}
-
-	if types.IsText(col.Type) {
-		if types.IsTextOnly(col.Type) {
-			charName = sql.Collation_Default.CharacterSet().String()
-			collName = sql.Collation_Default.String()
-		}
-
-		if st, ok := col.Type.(types.StringType); ok {
-			charMaxLen = st.MaxCharacterLength()
-			charOctetLen = st.MaxByteLength()
-		}
-	} else if types.IsEnum(col.Type) || types.IsSet(col.Type) {
-		charName = sql.Collation_Default.CharacterSet().String()
-		collName = sql.Collation_Default.String()
-		charOctetLen = int64(col.Type.MaxTextResponseByteLength())
-		charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / sql.Collation_Default.CharacterSet().MaxLength()
-	}
-
-	// The DATA_TYPE value is the type name only with no other information
-	dataType = strings.Split(dataType, "(")[0]
-	dataType = strings.Split(dataType, " ")[0]
 
 	if s, ok := col.Type.(sql.SpatialColumnType); ok {
 		if srid, d := s.GetSpatialTypeSRID(); d {
@@ -230,7 +205,9 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 		}
 	}
 
-	numericPrecision, numericScale := getColumnPrecisionAndScale(col)
+	charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(col.Type)
+
+	numericPrecision, numericScale := getColumnPrecisionAndScale(col.Type)
 	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
 		datetimePrecision = 0
 	} else if types.IsTimespan(col.Type) {
@@ -523,24 +500,61 @@ func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Sc
 	return allColsWithDefaultValue[start:end]
 }
 
+// get DtdIdAndDataType returns data types for given sql.Type but in two different ways.
+// The DTD_IDENTIFIER value contains the type name and possibly other information such as the precision or length.
+// The DATA_TYPE value is the type name only with no other information.
+func getDtdIdAndDataType(colType sql.Type) (string, string) {
+	dtdId := strings.Split(strings.Split(colType.String(), " COLLATE")[0], " CHARACTER SET")[0]
+
+	// The DATA_TYPE value is the type name only with no other information
+	dataType := strings.Split(dtdId, "(")[0]
+	dataType = strings.Split(dataType, " ")[0]
+
+	return dtdId, dataType
+}
+
 // getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
 // function should return nil,nil.
-func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
+func getColumnPrecisionAndScale(colType sql.Type) (interface{}, interface{}) {
 	var numericScale interface{}
-	switch t := col.Type.(type) {
+	switch t := colType.(type) {
 	case types.BitType:
 		return int(t.NumberOfBits()), numericScale
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())
 	case sql.NumberType:
-		switch col.Type.Type() {
+		switch colType.Type() {
 		case sqltypes.Float32, sqltypes.Float64:
 			numericScale = nil
 		default:
 			numericScale = 0
 		}
-		return typeToNumericPrecision[col.Type.Type()], numericScale
+		return typeToNumericPrecision[colType.Type()], numericScale
 	default:
 		return nil, nil
 	}
+}
+
+func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {
+	var (
+		charName     interface{}
+		collName     interface{}
+		charMaxLen   interface{}
+		charOctetLen interface{}
+	)
+	if twc, ok := colType.(sql.TypeWithCollation); ok && !types.IsBinaryType(colType) {
+		colColl := twc.Collation()
+		collName = colColl.Name()
+		charName = colColl.CharacterSet().String()
+		if types.IsEnum(colType) || types.IsSet(colType) {
+			charOctetLen = int64(colType.MaxTextResponseByteLength())
+			charMaxLen = int64(colType.MaxTextResponseByteLength()) / colColl.CharacterSet().MaxLength()
+		}
+	}
+	if st, ok := colType.(types.StringType); ok {
+		charMaxLen = st.MaxCharacterLength()
+		charOctetLen = st.MaxByteLength()
+	}
+
+	return charName, collName, charMaxLen, charOctetLen
 }

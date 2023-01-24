@@ -401,6 +401,7 @@ var parametersSchema = Schema{
 	{Name: "CHARACTER_OCTET_LENGTH", Type: types.Int64, Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "NUMERIC_PRECISION", Type: types.Uint32, Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "NUMERIC_SCALE", Type: types.Int64, Default: nil, Nullable: true, Source: ParametersTableName},
+	{Name: "DATETIME_PRECISION", Type: types.Uint32, Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "CHARACTER_SET_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "COLLATION_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "DTD_IDENTIFIER", Type: types.MediumText, Default: nil, Nullable: false, Source: ParametersTableName},
@@ -1291,11 +1292,11 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					continue
 				}
 				var (
-					colName  = col.Name
-					srsName  interface{}
-					srsId    interface{}
-					typeName = col.Type.String()
+					colName = col.Name
+					srsName interface{}
+					srsId   interface{}
 				)
+				typeName, _ := getDtdIdAndDataType(col.Type)
 
 				if srid, d := s.GetSpatialTypeSRID(); d {
 					srsName = spatial.SupportedSRIDs[srid].Name
@@ -1706,11 +1707,11 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			tableType = "BASE TABLE"
 			engine = "InnoDB"
 			rowFormat = "Dynamic"
-			tableCollation = Collation_Default.String()
 		}
 
 		y2k, _ := types.Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
+			tableCollation = t.Collation().String()
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
 					tableRows, err = st.RowCount(ctx)
@@ -2068,8 +2069,9 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			return nil, err
 		}
 
-		charset := Collation_Default.CharacterSet().String()
-		collation := Collation_Default.String()
+		dbCollation := plan.GetDatabaseCollation(ctx, db)
+		charset := dbCollation.CharacterSet().String()
+		collation := dbCollation.String()
 
 		for _, view := range views {
 			privTblSet := privDbSet.Table(view.Name)
@@ -2224,10 +2226,10 @@ func NewInformationSchemaDatabase() Database {
 				schema: optimizerTraceSchema,
 				reader: emptyRowIter,
 			},
-			ParametersTableName: &informationSchemaTable{
-				name:   ParametersTableName,
-				schema: parametersSchema,
-				reader: emptyRowIter,
+			ParametersTableName: &routineTable{
+				name:    ParametersTableName,
+				schema:  parametersSchema,
+				rowIter: parametersRowIter,
 			},
 			PartitionsTableName: &informationSchemaTable{
 				name:   PartitionsTableName,

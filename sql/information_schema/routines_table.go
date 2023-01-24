@@ -21,6 +21,7 @@ import (
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type routineTable struct {
@@ -100,6 +101,7 @@ func (r *routineTable) PartitionRows(context *Context, partition Partition) (Row
 	return r.rowIter(context, r.catalog, r.procedures)
 }
 
+// routinesRowIter implements the sql.RowIter for the information_schema.ROUTINES table.
 func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (RowIter, error) {
 	var rows []Row
 	var (
@@ -220,6 +222,82 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	}
 
 	// TODO: need to add FUNCTIONS routine_type
+
+	return RowsToRowIter(rows...), nil
+}
+
+// parametersRowIter implements the sql.RowIter for the information_schema.PARAMETERS table.
+func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (RowIter, error) {
+	var rows []Row
+
+	showExternalProcedures, err := ctx.GetSessionVariable(ctx, "show_external_procedures")
+	if err != nil {
+		return nil, err
+	}
+	for db, procedures := range p {
+		for _, procedure := range procedures {
+			// Skip dolt procedure aliases to show in this table
+			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
+				continue
+			}
+			// We skip external procedures if the variable to show them is set to false
+			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
+				continue
+			}
+
+			for i, param := range procedure.Params {
+				var (
+					ordinalPos        = uint64(i + 1)
+					datetimePrecision interface{}
+					parameterMode     interface{}
+				)
+
+				dtdId, dataType := getDtdIdAndDataType(param.Type)
+
+				if param.Direction == plan.ProcedureParamDirection_In {
+					parameterMode = "IN"
+				} else if param.Direction == plan.ProcedureParamDirection_Inout {
+					parameterMode = "INOUT"
+				} else if param.Direction == plan.ProcedureParamDirection_Out {
+					parameterMode = "OUT"
+				}
+
+				charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(param.Type)
+				numericPrecision, numericScale := getColumnPrecisionAndScale(param.Type)
+				// float types get nil for numericScale, but it gets 0 for this table
+				if _, ok := param.Type.(NumberType); ok {
+					numericScale = 0
+				}
+
+				if types.IsDatetimeType(param.Type) || types.IsTimestampType(param.Type) {
+					datetimePrecision = 0
+				} else if types.IsTimespan(param.Type) {
+					// TODO: TIME length not yet supported
+					datetimePrecision = 6
+				}
+
+				rows = append(rows, Row{
+					"def",             // specific_catalog
+					db,                // specific_schema
+					procedure.Name,    // specific_name
+					ordinalPos,        // ordinal_position - 0 for FUNCTIONS
+					parameterMode,     // parameter_mode   - NULL for FUNCTIONS
+					param.Name,        // parameter_name   - NULL for FUNCTIONS
+					dataType,          // data_type
+					charMaxLen,        // character_maximum_length
+					charOctetLen,      // character_octet_length
+					numericPrecision,  // numeric_precision
+					numericScale,      // numeric_scale
+					datetimePrecision, // datetime_precision
+					charName,          // character_set_name
+					collName,          // collation_name
+					dtdId,             // dtd_identifier
+					"PROCEDURE",       // resource_group_type
+				})
+			}
+		}
+	}
+	// TODO: need to add FUNCTIONS resource_group_type
 
 	return RowsToRowIter(rows...), nil
 }

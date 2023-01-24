@@ -649,6 +649,27 @@ var SkippedInfoSchemaQueries = []QueryTest{
 
 var InfoSchemaScripts = []ScriptTest{
 	{
+		Name: "test databases created with non default collation and charset",
+		SetUpScript: []string{
+			"CREATE DATABASE test_db CHARACTER SET utf8mb3 COLLATE utf8mb3_bin;",
+			"USE test_db",
+			"CREATE TABLE small_table (a binary, b VARCHAR(50));",
+			"CREATE TABLE test_table (id INT PRIMARY KEY, col1 TEXT, col2 CHAR(20) CHARACTER SET latin1 COLLATE latin1_german1_ci) CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT table_schema, table_name, column_name, character_set_name, collation_name, column_type FROM information_schema.columns where table_schema = 'test_db' order by column_name",
+				Expected: []sql.Row{
+					{"test_db", "small_table", "a", nil, nil, "binary(1)"},
+					{"test_db", "small_table", "b", "utf8mb3", "utf8mb3_bin", "varchar(50)"},
+					{"test_db", "test_table", "col1", "utf8mb4", "utf8mb4_0900_bin", "text"},
+					{"test_db", "test_table", "col2", "latin1", "latin1_german1_ci", "char(20)"},
+					{"test_db", "test_table", "id", nil, nil, "int"},
+				},
+			},
+		},
+	},
+	{
 		Name: "information_schema.table_constraints ignores non-unique indexes",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int primary key, test_score int, height int)",
@@ -1389,6 +1410,22 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 					{"def", "mydb", "spatial_table", "g", "", uint32(0), "geometry"},
 					{"def", "mydb", "spatial_table", "m", nil, nil, "multipoint"},
 					{"def", "mydb", "spatial_table", "p", "WGS 84", uint32(4326), "polygon"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.parameters shows all column values",
+		SetUpScript: []string{
+			"CREATE PROCEDURE testabc(IN x DOUBLE, IN y FLOAT, OUT abc DECIMAL(5,1)) SELECT x*y INTO abc",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.parameters where specific_name = 'testabc'",
+				Expected: []sql.Row{
+					{"def", "mydb", "testabc", uint64(1), "IN", "x", "double", nil, nil, 22, 0, nil, nil, nil, "double", "PROCEDURE"},
+					{"def", "mydb", "testabc", uint64(2), "IN", "y", "float", nil, nil, 12, 0, nil, nil, nil, "float", "PROCEDURE"},
+					{"def", "mydb", "testabc", uint64(3), "OUT", "abc", "decimal", nil, nil, 5, 1, nil, nil, nil, "decimal(5,1)", "PROCEDURE"},
 				},
 			},
 		},

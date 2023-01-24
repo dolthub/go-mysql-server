@@ -97,37 +97,6 @@ func isTerminalPoint(p types.Point, l types.LineString) bool {
 	return !isClosed(l) && (isPointEqual(p, startPoint(l)) || isPointEqual(p, endPoint(l)))
 }
 
-// linesIntersect checks if line ab intersects line cd
-// Edge case for collinear points is to check if they are within the bounding box
-// Reference: https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-func linesIntersect(a, b, c, d types.Point) bool {
-	abc := orientation(a, b, c)
-	abd := orientation(a, b, d)
-	cda := orientation(c, d, a)
-	cdb := orientation(c, d, b)
-
-	// different orientations mean they intersect
-	if (abc != abd) && (cda != cdb) {
-		return true
-	}
-
-	// if orientation is collinear, check if point is inside segment
-	if abc == 0 && isInBBox(a, b, c) {
-		return true
-	}
-	if abd == 0 && isInBBox(a, b, d) {
-		return true
-	}
-	if cda == 0 && isInBBox(c, d, a) {
-		return true
-	}
-	if cdb == 0 && isInBBox(c, d, b) {
-		return true
-	}
-
-	return false
-}
-
 // isPointWithinClosedLineString checks if a point lies inside a Closed LineString
 // Assume p is not Within l, and l is a Closed LineString.
 // Cast a horizontal ray from p to the right, and count the number of line segment intersections
@@ -182,35 +151,13 @@ func isPointWithin(p types.Point, g types.GeometryValue) bool {
 		if isTerminalPoint(p, g) {
 			return false
 		}
-		// Alternatively, we could calculate if dist(ap) + dist(ab) == dist(ap)
-		for i := 1; i < len(g.Points); i++ {
-			a, b := g.Points[i-1], g.Points[i]
-			if !isInBBox(a, b, p) {
-				continue
-			}
-			if orientation(a, b, p) != 0 {
-				continue
-			}
-			return true
-		}
+		return isPointIntersectLine(p, g)
 	case types.Polygon:
 		// Points on the Polygon Boundary are not considered part of the Polygon
-		for _, line := range g.Lines {
-			if isPointWithin(p, line) {
-				return false
-			}
-		}
-		outerLine := g.Lines[0]
-		if !isPointWithinClosedLineString(p, outerLine) {
+		if isPointIntersectPolyBoundary(p, g) {
 			return false
 		}
-		// Points in the holes of Polygon are outside of Polygon
-		for i := 1; i < len(g.Lines); i++ {
-			if isPointWithinClosedLineString(p, g.Lines[i]) {
-				return false
-			}
-		}
-		return true
+		return isPointIntersectPolyInterior(p, g)
 	case types.MultiPoint:
 		// Point is considered within MultiPoint if it's equal to at least one Point
 		for _, pp := range g.Points {
@@ -274,40 +221,19 @@ func isWithin(g1, g2 types.GeometryValue) bool {
 
 // Eval implements the sql.Expression interface.
 func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	g1, err := w.Left.Eval(ctx, row)
+	geom1, err := w.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	g2, err := w.Right.Eval(ctx, row)
+	geom2, err := w.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
+	g1, g2, err := validateGeomComp(geom1, geom2, w.FunctionName())
+	if err != nil {
+		return nil, err
+	}
 	if g1 == nil || g2 == nil {
-		return nil, nil
-	}
-
-	// TODO: convert this to helper method validateGeometryValue
-	var geom1, geom2 types.GeometryValue
-	var ok bool
-	geom1, ok = g1.(types.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(w.FunctionName())
-	}
-	geom2, ok = g2.(types.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(w.FunctionName())
-	}
-
-	if geom1.GetSRID() != geom2.GetSRID() {
-		return nil, sql.ErrDiffSRIDs.New(w.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
-	}
-
-	// Empty GeomColls return nil
-	if gc, ok := geom1.(types.GeomColl); ok && countConcreteGeoms(gc) == 0 {
-		return nil, nil
-	}
-	if gc, ok := geom2.(types.GeomColl); ok && countConcreteGeoms(gc) == 0 {
 		return nil, nil
 	}
 
@@ -327,5 +253,5 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", w.FunctionName())
 	}
 
-	return isWithin(geom1, geom2), nil
+	return isWithin(g1, g2), nil
 }

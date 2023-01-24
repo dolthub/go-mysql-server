@@ -41,6 +41,21 @@ const (
 	SignalConditionItemName_CursorName        SignalConditionItemName = "cursor_name"
 )
 
+var SignalItems = []SignalConditionItemName{
+	SignalConditionItemName_ClassOrigin,
+	SignalConditionItemName_SubclassOrigin,
+	SignalConditionItemName_MessageText,
+	SignalConditionItemName_MysqlErrno,
+	SignalConditionItemName_ConstraintCatalog,
+	SignalConditionItemName_ConstraintSchema,
+	SignalConditionItemName_ConstraintName,
+	SignalConditionItemName_CatalogName,
+	SignalConditionItemName_SchemaName,
+	SignalConditionItemName_TableName,
+	SignalConditionItemName_ColumnName,
+	SignalConditionItemName_CursorName,
+}
+
 // SignalInfo represents a piece of information for a SIGNAL statement.
 type SignalInfo struct {
 	ConditionItemName SignalConditionItemName
@@ -123,12 +138,15 @@ func (s *Signal) String() string {
 	if len(s.Info) > 0 {
 		infoStr = " SET"
 		i := 0
-		for _, info := range s.Info {
-			if i > 0 {
-				infoStr += ","
+		for _, k := range SignalItems {
+			// enforce deterministic ordering
+			if info, ok := s.Info[k]; ok {
+				if i > 0 {
+					infoStr += ","
+				}
+				infoStr += " " + info.String()
+				i++
 			}
-			infoStr += " " + info.String()
-			i++
 		}
 	}
 	return fmt.Sprintf("SIGNAL SQLSTATE '%s'%s", s.SqlStateValue, infoStr)
