@@ -903,7 +903,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				if privSetCount == 0 && privSetDb.Count() == 0 && privSetTbl.Count() == 0 && privSetCol.Count() == 0 {
 					continue
 				}
-				if _, ok := col.Type.(types.StringType); ok {
+				if _, ok := col.Type.(StringType); ok {
 					continue
 				}
 

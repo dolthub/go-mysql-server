@@ -25,7 +25,7 @@ func TestIsGeometry(t *testing.T) {
 	assert.True(t, IsGeometry(PointType{}))
 	assert.True(t, IsGeometry(LineStringType{}))
 	assert.True(t, IsGeometry(PolygonType{}))
-	assert.False(t, IsGeometry(StringType_{}))
+	assert.False(t, IsGeometry(StringType{}))
 	assert.False(t, IsGeometry(JSON))
 	assert.False(t, IsGeometry(Blob))
 }
@@ -34,5 +34,5 @@ func TestIsJSON(t *testing.T) {
 	assert.True(t, IsJSON(JSON))
 	assert.False(t, IsJSON(Blob))
 	assert.False(t, IsJSON(NumberTypeImpl_{}))
-	assert.False(t, IsJSON(StringType_{}))
+	assert.False(t, IsJSON(StringType{}))
 }

@@ -1262,8 +1262,8 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 				if tblSch[idx].Type.Type() == i.m.column.Type.Type() {
 					switch i.m.column.Type.Type() {
 					case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
-						oldType := tblSch[idx].Type.(types.StringType)
-						newType := i.m.column.Type.(types.StringType)
+						oldType := tblSch[idx].Type.(sql.StringType)
+						newType := i.m.column.Type.(sql.StringType)
 						if oldType.Collation() != newType.Collation() || oldType.MaxCharacterLength() > newType.MaxCharacterLength() {
 							return nil, sql.ErrForeignKeyTypeChange.New(i.m.columnName)
 						}

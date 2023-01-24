@@ -64,7 +64,7 @@ func IsInteger(t sql.Type) bool {
 
 // IsJSON returns true if the specified type is a JSON type.
 func IsJSON(t sql.Type) bool {
-	_, ok := t.(JsonType_)
+	_, ok := t.(JsonType)
 	return ok
 }
 
@@ -104,7 +104,7 @@ func IsSigned(t sql.Type) bool {
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
 func IsText(t sql.Type) bool {
-	_, ok := t.(StringType_)
+	_, ok := t.(StringType)
 	return ok
 }
 
@@ -163,13 +163,13 @@ func IsTimestampType(t sql.Type) bool {
 
 // IsEnum checks if t is a enum
 func IsEnum(t sql.Type) bool {
-	_, ok := t.(EnumType_)
+	_, ok := t.(EnumType)
 	return ok
 }
 
-// IsEnum checks if t is a set
+// IsSet checks if t is a set
 func IsSet(t sql.Type) bool {
-	_, ok := t.(SetType_)
+	_, ok := t.(SetType)
 	return ok
 }
 
