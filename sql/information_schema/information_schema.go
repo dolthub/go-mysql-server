@@ -2806,7 +2806,7 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	return views, nil
 }
 
-func remoteBackTicks(s string) string {
+func removeBackticks(s string) string {
 	return strings.Replace(s, "`", "", -1)
 }
 
