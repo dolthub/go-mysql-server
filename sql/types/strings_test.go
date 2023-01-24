@@ -31,8 +31,8 @@ import (
 
 func TestStringCompare(t *testing.T) {
 	tests := []struct {
-		typ  sql.StringType
-		val1 interface{}
+		typ         sql.StringType
+		val1        interface{}
 		val2        interface{}
 		expectedCmp int
 	}{
@@ -279,8 +279,8 @@ func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
 
 func TestStringConvert(t *testing.T) {
 	tests := []struct {
-		typ sql.StringType
-		val interface{}
+		typ         sql.StringType
+		val         interface{}
 		expectedVal interface{}
 		expectedErr bool
 	}{
