@@ -134,8 +134,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	}
 	privSet, _ := ctx.GetPrivilegeSet()
 	for dbName, procedures := range p {
-		if !(privSet.Has(PrivilegeType_CreateRoutine) || privSet.Has(PrivilegeType_AlterRoutine) || privSet.Has(PrivilegeType_Execute) ||
-			privSet.Database(dbName).Has(PrivilegeType_CreateRoutine) || privSet.Database(dbName).Has(PrivilegeType_AlterRoutine) || privSet.Database(dbName).Has(PrivilegeType_Execute)) {
+		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue
 		}
 		db, err := c.Database(ctx, dbName)
@@ -243,8 +242,7 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 	}
 	privSet, _ := ctx.GetPrivilegeSet()
 	for dbName, procedures := range p {
-		if !(privSet.Has(PrivilegeType_CreateRoutine) || privSet.Has(PrivilegeType_AlterRoutine) || privSet.Has(PrivilegeType_Execute) ||
-			privSet.Database(dbName).Has(PrivilegeType_CreateRoutine) || privSet.Database(dbName).Has(PrivilegeType_AlterRoutine) || privSet.Database(dbName).Has(PrivilegeType_Execute)) {
+		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue
 		}
 		for _, procedure := range procedures {
@@ -312,4 +310,10 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 	// TODO: need to add FUNCTIONS resource_group_type
 
 	return RowsToRowIter(rows...), nil
+}
+
+// hasRoutinePrivsOnDB returns bool value whether privilegeSet has either global or database level `CREATE ROUTINE` or `ALTER ROUTINE` or `EXECUTE` privileges.
+func hasRoutinePrivsOnDB(privSet PrivilegeSet, dbName string) bool {
+	return privSet.Has(PrivilegeType_CreateRoutine) || privSet.Has(PrivilegeType_AlterRoutine) || privSet.Has(PrivilegeType_Execute) ||
+		privSet.Database(dbName).Has(PrivilegeType_CreateRoutine) || privSet.Database(dbName).Has(PrivilegeType_AlterRoutine) || privSet.Database(dbName).Has(PrivilegeType_Execute)
 }
