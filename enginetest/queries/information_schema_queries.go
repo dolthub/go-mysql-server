@@ -638,14 +638,13 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,
 		Expected: []sql.Row{{"def", "mydb", "mytable", nil, nil}},
 	},
-}
-
-var SkippedInfoSchemaQueries = []QueryTest{
 	{
 		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.Row{{uint64(3)}},
 	},
 }
+
+var SkippedInfoSchemaQueries = []QueryTest{}
 
 var InfoSchemaScripts = []ScriptTest{
 	{
