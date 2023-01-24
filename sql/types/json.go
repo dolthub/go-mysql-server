@@ -30,7 +30,7 @@ var (
 	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
 )
 
-var JSON sql.JsonType = JsonType{}
+var JSON sql.Type = JsonType{}
 
 type JsonType struct{}
 

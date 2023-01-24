@@ -200,13 +200,6 @@ type DecimalType interface {
 	Scale() uint8
 }
 
-// JsonType represents the JSON type.
-// https://dev.mysql.com/doc/refman/8.0/en/json.html
-// The type of the returned value is JSONValue.
-type JsonType interface {
-	Type
-}
-
 type Type2 interface {
 	Type
 

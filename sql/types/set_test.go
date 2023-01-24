@@ -114,7 +114,7 @@ func TestSetCreate(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				concreteType, ok := typ.(SetType_)
+				concreteType, ok := typ.(SetType)
 				require.True(t, ok)
 				assert.True(t, test.collation.Equals(typ.Collation()))
 				for val, bit := range test.expectedVals {

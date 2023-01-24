@@ -263,7 +263,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 			numBytesPerRow += uint64(n.MaximumScale())
 		case sql.EnumType:
 			numBytesPerRow += 2
-		case sql.JsonType:
+		case types.JsonType:
 			numBytesPerRow += 20
 		case sql.NullType:
 			numBytesPerRow += 1
