@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
@@ -117,16 +116,15 @@ func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Analyzer                *analyzer.Analyzer
-	LS                      *sql.LockSubsystem
-	ProcessList             sql.ProcessList
-	MemoryManager           *sql.MemoryManager
-	BackgroundThreads       *sql.BackgroundThreads
-	IsReadOnly              bool
-	IsServerLocked          bool
-	PreparedDataCache       *PreparedDataCache
-	BinlogReplicaController binlogreplication.BinlogReplicaController
-	mu                      *sync.Mutex
+	Analyzer          *analyzer.Analyzer
+	LS                *sql.LockSubsystem
+	ProcessList       sql.ProcessList
+	MemoryManager     *sql.MemoryManager
+	BackgroundThreads *sql.BackgroundThreads
+	IsReadOnly        bool
+	IsServerLocked    bool
+	PreparedDataCache *PreparedDataCache
+	mu                *sync.Mutex
 }
 
 type ColumnWithRawDefault struct {
@@ -235,12 +233,6 @@ func (e *Engine) QueryNodeWithBindings(
 		if err != nil {
 			return nil, nil, err
 		}
-	}
-
-	// The replica controller reference is held by |Engine|, so for any BinlogReplicaControllerCommands,
-	// we supply their replica controller here, before the command gets to the analyzer.
-	if nn, ok := parsed.(plan.BinlogReplicaControllerCommand); ok {
-		nn.SetBinlogReplicaController(e.BinlogReplicaController)
 	}
 
 	// Before we begin a transaction, we need to know if the database being operated on is not the one

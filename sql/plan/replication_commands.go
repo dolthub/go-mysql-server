@@ -25,28 +25,18 @@ import (
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
 // (e.g. Start Replica, Show Replica Status).
 type BinlogReplicaControllerCommand interface {
-	// SetBinlogReplicaController sets the BinlogReplicaController for this replication command to use.
-	SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController)
-}
+	sql.Node
 
-// binlogReplicaControllerCommand is a package-internal type embedded into
-// BinlogReplicaControllerCommand types to provide the SetBinlogReplicaController function.
-type binlogReplicaControllerCommand struct {
-	replicaController binlogreplication.BinlogReplicaController
-}
-
-var _ BinlogReplicaControllerCommand = (*binlogReplicaControllerCommand)(nil)
-
-// SetBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
-func (c *binlogReplicaControllerCommand) SetBinlogReplicaController(controller binlogreplication.BinlogReplicaController) {
-	c.replicaController = controller
+	// WithBinlogReplicaController returns a new instance of this BinlogReplicaController, with the binlog replica
+	// controller configured.
+	WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node
 }
 
 // ChangeReplicationSource is the plan node for the "CHANGE REPLICATION SOURCE TO" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ChangeReplicationSource struct {
-	binlogReplicaControllerCommand
-	Options []binlogreplication.ReplicationOption
+	replicaController binlogreplication.BinlogReplicaController
+	Options           []binlogreplication.ReplicationOption
 }
 
 var _ sql.Node = (*ChangeReplicationSource)(nil)
@@ -56,6 +46,13 @@ func NewChangeReplicationSource(options []binlogreplication.ReplicationOption) *
 	return &ChangeReplicationSource{
 		Options: options,
 	}
+}
+
+// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
+func (c *ChangeReplicationSource) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+	nc := *c
+	nc.replicaController = controller
+	return &nc
 }
 
 func (c *ChangeReplicationSource) Resolved() bool {
@@ -108,8 +105,8 @@ func (c *ChangeReplicationSource) CheckPrivileges(_ *sql.Context, _ sql.Privileg
 // ChangeReplicationFilter is a plan node for the "CHANGE REPLICATION FILTER" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-filter.html
 type ChangeReplicationFilter struct {
-	binlogReplicaControllerCommand
-	Options []binlogreplication.ReplicationOption
+	replicaController binlogreplication.BinlogReplicaController
+	Options           []binlogreplication.ReplicationOption
 }
 
 var _ sql.Node = (*ChangeReplicationFilter)(nil)
@@ -119,6 +116,13 @@ func NewChangeReplicationFilter(options []binlogreplication.ReplicationOption) *
 	return &ChangeReplicationFilter{
 		Options: options,
 	}
+}
+
+// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
+func (c *ChangeReplicationFilter) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+	nc := *c
+	nc.replicaController = controller
+	return &nc
 }
 
 func (c *ChangeReplicationFilter) Resolved() bool {
@@ -174,7 +178,7 @@ func (c *ChangeReplicationFilter) CheckPrivileges(ctx *sql.Context, opChecker sq
 // StartReplica is a plan node for the "START REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/start-replica.html
 type StartReplica struct {
-	binlogReplicaControllerCommand
+	replicaController binlogreplication.BinlogReplicaController
 }
 
 var _ sql.Node = (*StartReplica)(nil)
@@ -182,6 +186,13 @@ var _ BinlogReplicaControllerCommand = (*StartReplica)(nil)
 
 func NewStartReplica() *StartReplica {
 	return &StartReplica{}
+}
+
+// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
+func (s *StartReplica) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+	nc := *s
+	nc.replicaController = controller
+	return &nc
 }
 
 func (s *StartReplica) Resolved() bool {
@@ -226,7 +237,7 @@ func (s *StartReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperation
 // StopReplica is the plan node for the "STOP REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/stop-replica.html
 type StopReplica struct {
-	binlogReplicaControllerCommand
+	replicaController binlogreplication.BinlogReplicaController
 }
 
 var _ sql.Node = (*StopReplica)(nil)
@@ -234,6 +245,13 @@ var _ BinlogReplicaControllerCommand = (*StopReplica)(nil)
 
 func NewStopReplica() *StopReplica {
 	return &StopReplica{}
+}
+
+// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
+func (s *StopReplica) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+	nc := *s
+	nc.replicaController = controller
+	return &nc
 }
 
 func (s *StopReplica) Resolved() bool {
@@ -278,8 +296,8 @@ func (s *StopReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationC
 // ResetReplica is a plan node for the "RESET REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/reset-replica.html
 type ResetReplica struct {
-	binlogReplicaControllerCommand
-	All bool
+	replicaController binlogreplication.BinlogReplicaController
+	All               bool
 }
 
 var _ sql.Node = (*ResetReplica)(nil)
@@ -289,6 +307,13 @@ func NewResetReplica(all bool) *ResetReplica {
 	return &ResetReplica{
 		All: all,
 	}
+}
+
+// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
+func (r *ResetReplica) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+	nc := *r
+	nc.replicaController = controller
+	return &nc
 }
 
 func (r *ResetReplica) Resolved() bool {

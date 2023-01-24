@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -27,7 +28,7 @@ import (
 // ShowReplicaStatus is the plan node for the "SHOW REPLICA STATUS" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
-	binlogReplicaControllerCommand
+	replicaController binlogreplication.BinlogReplicaController
 }
 
 var _ sql.Node = (*ShowReplicaStatus)(nil)
@@ -35,6 +36,13 @@ var _ BinlogReplicaControllerCommand = (*ShowReplicaStatus)(nil)
 
 func NewShowReplicaStatus() *ShowReplicaStatus {
 	return &ShowReplicaStatus{}
+}
+
+// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
+func (s *ShowReplicaStatus) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+	nc := *s
+	nc.replicaController = controller
+	return &nc
 }
 
 func (s *ShowReplicaStatus) Resolved() bool {
