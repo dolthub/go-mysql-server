@@ -123,7 +123,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		childType := h.Child.Type()
 		if types.IsTextOnly(childType) {
 			// For string types we need to re-encode the internal string so that we get the correct hex output
-			encoder := childType.(types.StringType).Collation().CharacterSet().Encoder()
+			encoder := childType.(sql.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(encodings.StringToBytes(val))
 			if !ok {
 				return nil, fmt.Errorf("unable to re-encode string for HEX function")

@@ -220,13 +220,13 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
 	if types.IsTextOnly(t) {
 		if str, ok := i.(string); ok {
-			return t.(types.StringType).Collation().HashToUint(str)
+			return t.(sql.StringType).Collation().HashToUint(str)
 		} else {
 			converted, err := convertOrTruncate(ctx, i, t)
 			if err != nil {
 				return 0, err
 			}
-			return t.(types.StringType).Collation().HashToUint(converted.(string))
+			return t.(sql.StringType).Collation().HashToUint(converted.(string))
 		}
 	} else {
 		hash := xxhash.New()

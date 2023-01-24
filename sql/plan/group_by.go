@@ -27,7 +27,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrGroupBy is returned when the aggregation is not supported.
@@ -434,7 +433,7 @@ func groupingKey(
 			}
 		}
 
-		t, isStringType := expr.Type().(types.StringType)
+		t, isStringType := expr.Type().(sql.StringType)
 		if isStringType && v != nil {
 			err = t.Collation().WriteWeightString(hash, v.(string))
 		} else {

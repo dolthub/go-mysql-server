@@ -551,7 +551,7 @@ func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, i
 			charMaxLen = int64(colType.MaxTextResponseByteLength()) / colColl.CharacterSet().MaxLength()
 		}
 	}
-	if st, ok := colType.(types.StringType); ok {
+	if st, ok := colType.(sql.StringType); ok {
 		charMaxLen = st.MaxCharacterLength()
 		charOctetLen = st.MaxByteLength()
 	}
