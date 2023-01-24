@@ -244,7 +244,7 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 	privSet, _ := ctx.GetPrivilegeSet()
 	for dbName, procedures := range p {
 		if !(privSet.Has(PrivilegeType_CreateRoutine) || privSet.Has(PrivilegeType_AlterRoutine) || privSet.Has(PrivilegeType_Execute) ||
-		privSet.Database(dbName).Has(PrivilegeType_CreateRoutine) || privSet.Database(dbName).Has(PrivilegeType_AlterRoutine) || privSet.Database(dbName).Has(PrivilegeType_Execute)) {
+			privSet.Database(dbName).Has(PrivilegeType_CreateRoutine) || privSet.Database(dbName).Has(PrivilegeType_AlterRoutine) || privSet.Database(dbName).Has(PrivilegeType_Execute)) {
 			continue
 		}
 		for _, procedure := range procedures {
