@@ -14906,8 +14906,9 @@ INNER JOIN XOAOP pa
 			"",
 	},
 	{
-		Query: `DELETE FROM QYWQD
-WHERE id IN ('1','2','3');`,
+		Query: `-- deletes
+DELETE FROM QYWQD
+WHERE id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -14922,10 +14923,11 @@ WHERE id IN ('1','2','3');`,
 			"",
 	},
 	{
-		Query: `DELETE FROM HDDVB
+		Query: `
+DELETE FROM HDDVB
 WHERE
     FV24E IN ('1', '2', '3') OR
-    UJ6XY IN ('1', '2', '3');`,
+    UJ6XY IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -14941,8 +14943,9 @@ WHERE
 			"",
 	},
 	{
-		Query: `DELETE FROM QYWQD
-WHERE id IN ('1', '2', '3');`,
+		Query: `
+DELETE FROM QYWQD
+WHERE id IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -14957,8 +14960,9 @@ WHERE id IN ('1', '2', '3');`,
 			"",
 	},
 	{
-		Query: `DELETE FROM AMYXQ
-WHERE LUEVY IN ('1', '2', '3');`,
+		Query: `
+DELETE FROM AMYXQ
+WHERE LUEVY IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -14973,8 +14977,9 @@ WHERE LUEVY IN ('1', '2', '3');`,
 			"",
 	},
 	{
-		Query: `DELETE FROM HGMQ6
-WHERE id IN ('1', '2', '3');`,
+		Query: `
+DELETE FROM HGMQ6
+WHERE id IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -14987,8 +14992,9 @@ WHERE id IN ('1', '2', '3');`,
 			"",
 	},
 	{
-		Query: `DELETE FROM HDDVB
-WHERE id IN ('1', '2', '3');`,
+		Query: `
+DELETE FROM HDDVB
+WHERE id IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -15003,8 +15009,9 @@ WHERE id IN ('1', '2', '3');`,
 			"",
 	},
 	{
-		Query: `DELETE FROM FLQLP
-WHERE LUEVY IN ('1', '2', '3');`,
+		Query: `
+DELETE FROM FLQLP
+WHERE LUEVY IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -15019,8 +15026,9 @@ WHERE LUEVY IN ('1', '2', '3');`,
 			"",
 	},
 	{
-		Query: `DELETE FROM FLQLP
-WHERE id IN ('1', '2', '3');`,
+		Query: `
+DELETE FROM FLQLP
+WHERE id IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -15035,8 +15043,9 @@ WHERE id IN ('1', '2', '3');`,
 			"",
 	},
 	{
-		Query: `DELETE FROM FLQLP
-WHERE id IN ('1', '2', '3');`,
+		Query: `
+DELETE FROM FLQLP
+WHERE id IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
@@ -15051,9 +15060,11 @@ WHERE id IN ('1', '2', '3');`,
 			"",
 	},
 	{
-		Query: `UPDATE E2I7U nd
-SET nd.KNG7T = (SELECT gn.id FROM WE72E gn INNER JOIN TDRVG S5KBM ON S5KBM.SSHPJ = gn.SSHPJ WHERE S5KBM.FGG57 = nd.FGG57)
-WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL;`,
+		Query: `
+-- updates
+UPDATE E2I7U nd
+SET nd.KNG7T = (SELECT gn.id FROM WE72E gn INNER JOIN TDRVG ltnm ON ltnm.SSHPJ = gn.SSHPJ WHERE ltnm.FGG57 = nd.FGG57)
+WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET nd.KNG7T = Subquery\n" +
@@ -15061,13 +15072,13 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL;`,
 			"         └─ Project\n" +
 			"             ├─ columns: [gn.id]\n" +
 			"             └─ Filter\n" +
-			"                 ├─ (S5KBM.FGG57 = nd.FGG57)\n" +
+			"                 ├─ (ltnm.FGG57 = nd.FGG57)\n" +
 			"                 └─ LookupJoin\n" +
-			"                     ├─ (S5KBM.SSHPJ = gn.SSHPJ)\n" +
+			"                     ├─ (ltnm.SSHPJ = gn.SSHPJ)\n" +
 			"                     ├─ TableAlias(gn)\n" +
 			"                     │   └─ Table\n" +
 			"                     │       └─ name: WE72E\n" +
-			"                     └─ TableAlias(S5KBM)\n" +
+			"                     └─ TableAlias(ltnm)\n" +
 			"                         └─ IndexedTableAccess(TDRVG)\n" +
 			"                             └─ index: [TDRVG.SSHPJ]\n" +
 			"        )\n" +
@@ -15080,7 +15091,9 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL;`,
 			"",
 	},
 	{
-		Query: `UPDATE S3FQX SET ADWYM = 0, FPUYA = 0;`,
+		Query: `
+
+UPDATE S3FQX SET ADWYM = 0, FPUYA = 0`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ Trigger(CREATE TRIGGER S3FQX_on_update BEFORE UPDATE ON S3FQX\n" +
@@ -15120,7 +15133,9 @@ WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL;`,
 			"",
 	},
 	{
-		Query: `INSERT INTO THNTS
+		Query: `
+-- inserts
+INSERT INTO THNTS
     (id, NFRYN, IXUXU, FHCYT)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -15130,7 +15145,7 @@ SELECT
 FROM
     YK2GW
 WHERE
-    id IN ('1','2','3');`,
+    id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, NFRYN, IXUXU, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -15180,12 +15195,13 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO QYWQD
+		Query: `
+INSERT INTO QYWQD
     (id, WNUNU, HHVLX, HVHRZ, YKSSU, FHCYT)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
-    search_query.DRIWM AS WNUNU,
-    search_query.JIEVY AS HHVLX,
+    ITWML.DRIWM AS WNUNU,
+    ITWML.JIEVY AS HHVLX,
     1.0 AS HVHRZ,
     NULL AS YKSSU,
     NULL AS FHCYT
@@ -15211,7 +15227,7 @@ FROM
             sn.NUMK2 = 1 -- Potential upstream edge is activity TAFAX
         AND
             rn.WNUNU IS NULL AND rn.HHVLX IS NULL -- Keep only where no corresponding is found
-    ) search_query;`,
+    ) ITWML`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, WNUNU, HHVLX, HVHRZ, YKSSU, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -15230,9 +15246,9 @@ FROM
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [id:0!null, WNUNU:1!null, HHVLX:2!null, HVHRZ:3!null, YKSSU:4, FHCYT:5]\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, search_query.DRIWM:0!null as WNUNU, search_query.JIEVY:1!null as HHVLX, 1 (decimal(2,1)) as HVHRZ, NULL (null) as YKSSU, NULL (null) as FHCYT]\n" +
+			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, ITWML.DRIWM:0!null as WNUNU, ITWML.JIEVY:1!null as HHVLX, 1 (decimal(2,1)) as HVHRZ, NULL (null) as YKSSU, NULL (null) as FHCYT]\n" +
 			"         │       └─ SubqueryAlias\n" +
-			"         │           ├─ name: search_query\n" +
+			"         │           ├─ name: ITWML\n" +
 			"         │           ├─ outerVisibility: false\n" +
 			"         │           ├─ cacheable: true\n" +
 			"         │           └─ Project\n" +
@@ -15301,7 +15317,8 @@ FROM
 			"",
 	},
 	{
-		Query: `INSERT INTO WE72E
+		Query: `
+INSERT INTO WE72E
     (id, QZ7E7, SSHPJ, FHCYT)
 SELECT
     id,
@@ -15311,7 +15328,7 @@ SELECT
 FROM
     TDRVG
 WHERE
-    id IN ('1','2','3');`,
+    id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, QZ7E7, SSHPJ, FHCYT)\n" +
 			"     ├─ InsertDestination\n" +
@@ -15368,7 +15385,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO AMYXQ
+		Query: `
+INSERT INTO AMYXQ
     (id, GXLUB, LUEVY, XQDYT, AMYXQ, OZTQF, Z35GY, KKGN5)
 SELECT /*+ JOIN_ORDER(ufc, nd, YBBG5) */
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -15407,7 +15425,7 @@ INNER JOIN
 ON
     YBBG5.id = nd.XQDYT
 WHERE
-    ufc.id IN ('1','2','3');`,
+    ufc.id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, GXLUB, LUEVY, XQDYT, AMYXQ, OZTQF, Z35GY, KKGN5)\n" +
 			"     ├─ Table\n" +
@@ -15535,7 +15553,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO SZQWJ
+		Query: `
+INSERT INTO SZQWJ
     (id, GXLUB, CH3FR, D237E, JOGI6)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -15550,7 +15569,7 @@ SELECT
 FROM
     FG26Y ums
 WHERE
-    ums.id IN ('1','2','3');`,
+    ums.id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"     ├─ Table\n" +
@@ -15656,7 +15675,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO SZQWJ
+		Query: `
+INSERT INTO SZQWJ
     (id, GXLUB, CH3FR, D237E, JOGI6)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -15671,7 +15691,7 @@ SELECT
 FROM
     FG26Y ums
 WHERE
-    ums.id IN ('1','2','3');`,
+    ums.id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"     ├─ Table\n" +
@@ -15777,7 +15797,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO SZQWJ
+		Query: `
+INSERT INTO SZQWJ
     (id, GXLUB, CH3FR, D237E, JOGI6)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -15792,7 +15813,7 @@ SELECT
 FROM
     FG26Y ums
 WHERE
-    ums.id IN ('1','2','3');`,
+    ums.id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"     ├─ Table\n" +
@@ -15898,7 +15919,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO SZQWJ
+		Query: `
+INSERT INTO SZQWJ
     (id, GXLUB, CH3FR, D237E, JOGI6)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -15913,7 +15935,7 @@ SELECT
 FROM
     FG26Y ums
 WHERE
-    ums.id IN ('1','2','3');`,
+    ums.id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, GXLUB, CH3FR, D237E, JOGI6)\n" +
 			"     ├─ Table\n" +
@@ -16019,11 +16041,12 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO TPXBU
+		Query: `
+INSERT INTO TPXBU
     (id, BTXC5, FHCYT)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
-    new_BTXC5s.BTXC5 AS BTXC5,
+    NCVD2.BTXC5 AS BTXC5,
     NULL AS FHCYT
 FROM
 (
@@ -16039,7 +16062,7 @@ WHERE
         umf.SYPKF <> 'N/A'
     AND
         umf.id IN ('1','2','3')
-) new_BTXC5s;`,
+) NCVD2`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, BTXC5, FHCYT)\n" +
 			"     ├─ InsertDestination\n" +
@@ -16059,9 +16082,9 @@ WHERE
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [id:0!null, BTXC5:1, FHCYT:2]\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, new_BTXC5s.BTXC5:0 as BTXC5, NULL (null) as FHCYT]\n" +
+			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, NCVD2.BTXC5:0 as BTXC5, NULL (null) as FHCYT]\n" +
 			"         │       └─ SubqueryAlias\n" +
-			"         │           ├─ name: new_BTXC5s\n" +
+			"         │           ├─ name: NCVD2\n" +
 			"         │           ├─ outerVisibility: false\n" +
 			"         │           ├─ cacheable: true\n" +
 			"         │           └─ Distinct\n" +
@@ -16114,7 +16137,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO HGMQ6
+		Query: `
+INSERT INTO HGMQ6
     (id, GXLUB, LUEVY, M22QN, TJPT7, ARN5P, XOSD4, IDE43, HMW4H, ZBT6R, FSDY2, LT7K6, SPPYD, QCGTS, TEUJA, QQV4M, FHCYT)
 SELECT
     umf.id AS id,
@@ -16180,7 +16204,7 @@ ON
     AND
         TJ5D2.SYPKF = umf.SYPKF
 INNER JOIN YK2GW cla ON umf.T4IBQ = cla.FTQLQ
-INNER JOIN THNTS bs ON cla.id = bs.IXUXU;`,
+INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, GXLUB, LUEVY, M22QN, TJPT7, ARN5P, XOSD4, IDE43, HMW4H, ZBT6R, FSDY2, LT7K6, SPPYD, QCGTS, TEUJA, QQV4M, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -16455,11 +16479,12 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU;`,
 			"",
 	},
 	{
-		Query: `INSERT INTO SEQS3
+		Query: `
+INSERT INTO SEQS3
     (id, Z7CP5, YH4XB)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
-    mf_with_mt.id AS Z7CP5,
+    C6PUD.id AS Z7CP5,
     vc.id AS YH4XB
 FROM (
     SELECT
@@ -16470,8 +16495,8 @@ FROM (
     INNER JOIN NZKPM umf ON umf.id = mf.TEUJA
     WHERE
         umf.id IN ('1','2','3')
-) mf_with_mt
-INNER JOIN D34QP vc ON mf_with_mt.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%');`,
+) C6PUD
+INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, Z7CP5, YH4XB)\n" +
 			"     ├─ Table\n" +
@@ -16479,11 +16504,11 @@ INNER JOIN D34QP vc ON mf_with_mt.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%');
 			"     └─ Project\n" +
 			"         ├─ columns: [id:0!null, Z7CP5:1!null, YH4XB:2!null]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, mf_with_mt.id:0!null as Z7CP5, vc.id:2!null as YH4XB]\n" +
+			"             ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, C6PUD.id:0!null as Z7CP5, vc.id:2!null as YH4XB]\n" +
 			"             └─ InnerJoin\n" +
-			"                 ├─ mf_with_mt.AZ6SP LIKE concat(concat('%',vc.TWMSR),'%')\n" +
+			"                 ├─ C6PUD.AZ6SP LIKE concat(concat('%',vc.TWMSR),'%')\n" +
 			"                 ├─ SubqueryAlias\n" +
-			"                 │   ├─ name: mf_with_mt\n" +
+			"                 │   ├─ name: C6PUD\n" +
 			"                 │   ├─ outerVisibility: false\n" +
 			"                 │   ├─ cacheable: true\n" +
 			"                 │   └─ Project\n" +
@@ -16510,22 +16535,23 @@ INNER JOIN D34QP vc ON mf_with_mt.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%');
 			"",
 	},
 	{
-		Query: `INSERT INTO HDDVB(id, FV24E, UJ6XY, M22QN, NZ4MQ, ETPQV, PRUV2, YKSSU, FHCYT)
+		Query: `
+INSERT INTO HDDVB(id, FV24E, UJ6XY, M22QN, NZ4MQ, ETPQV, PRUV2, YKSSU, FHCYT)
 -- The ones without overrides - mutfunc check is necessary
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
-    result_with_duplicate_original_ids.FV24E AS FV24E,
-    result_with_duplicate_original_ids.UJ6XY AS UJ6XY,
-    result_with_duplicate_original_ids.M22QN AS M22QN,
-    result_with_duplicate_original_ids.NZ4MQ AS NZ4MQ,
-    result_with_duplicate_original_ids.original_id AS ETPQV,
+    BPNW2.FV24E AS FV24E,
+    BPNW2.UJ6XY AS UJ6XY,
+    BPNW2.M22QN AS M22QN,
+    BPNW2.NZ4MQ AS NZ4MQ,
+    BPNW2.MU3KG AS ETPQV,
     NULL AS PRUV2,
-    result_with_duplicate_original_ids.YKSSU AS YKSSU,
-    result_with_duplicate_original_ids.FHCYT AS FHCYT
+    BPNW2.YKSSU AS YKSSU,
+    BPNW2.FHCYT AS FHCYT
 FROM
     (
     SELECT DISTINCT
-        TIZHK.id AS original_id,
+        TIZHK.id AS MU3KG,
         J4JYP.id AS FV24E,
         RHUZN.id AS UJ6XY,
         aac.id AS M22QN,
@@ -16560,23 +16586,23 @@ FROM
             aac.BTXC5 = TIZHK.SYPKF
         AND
             NHMXW.id IS NULL -- No overrides here
-    ) result_with_duplicate_original_ids
+    ) BPNW2
 UNION
 -- The ones with overrides - no mutfunc check is necessary
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
-    result_with_duplicate_original_ids.FV24E AS FV24E,
-    result_with_duplicate_original_ids.UJ6XY AS UJ6XY,
-    (SELECT aac.id FROM TPXBU aac WHERE aac.BTXC5 = result_with_duplicate_original_ids.SYPKF) AS M22QN,
-    result_with_duplicate_original_ids.NZ4MQ AS NZ4MQ,
-    result_with_duplicate_original_ids.original_id AS ETPQV,
-    result_with_duplicate_original_ids.NHMXW_id AS PRUV2,
-    result_with_duplicate_original_ids.YKSSU AS YKSSU,
-    result_with_duplicate_original_ids.FHCYT AS FHCYT
+    BPNW2.FV24E AS FV24E,
+    BPNW2.UJ6XY AS UJ6XY,
+    (SELECT aac.id FROM TPXBU aac WHERE aac.BTXC5 = BPNW2.SYPKF) AS M22QN,
+    BPNW2.NZ4MQ AS NZ4MQ,
+    BPNW2.MU3KG AS ETPQV,
+    BPNW2.I4NDZ AS PRUV2,
+    BPNW2.YKSSU AS YKSSU,
+    BPNW2.FHCYT AS FHCYT
 FROM
     (
     SELECT DISTINCT
-        TIZHK.id AS original_id,
+        TIZHK.id AS MU3KG,
         CASE
             WHEN NHMXW.FZXV5 IS NOT NULL
                 THEN (SELECT overridden_nd_mutant.id FROM E2I7U overridden_nd_mutant WHERE overridden_nd_mutant.TW55N = NHMXW.FZXV5)
@@ -16591,7 +16617,7 @@ FROM
         (SELECT G3YXS.id FROM YYBCX G3YXS WHERE CONCAT(G3YXS.ESFVY, '(MI:', G3YXS.SL76B, ')') = TIZHK.IDUT2) AS NZ4MQ,
         NULL AS FHCYT,
         NULL AS YKSSU,
-        NHMXW.id AS NHMXW_id
+        NHMXW.id AS I4NDZ
     FROM
         WRZVO TIZHK
     LEFT JOIN
@@ -16614,7 +16640,7 @@ FROM
             TIZHK.id IN ('1','2','3')
         AND
             NHMXW.id IS NOT NULL -- Only overrides here
-    ) result_with_duplicate_original_ids;`,
+    ) BPNW2`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, FV24E, UJ6XY, M22QN, NZ4MQ, ETPQV, PRUV2, YKSSU, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -16634,14 +16660,14 @@ FROM
 			"             │   │   └─ PRUV2:6\n" +
 			"             │   │   as PRUV2, YKSSU:7, FHCYT:8]\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, result_with_duplicate_original_ids.FV24E:1!null as FV24E, result_with_duplicate_original_ids.UJ6XY:2!null as UJ6XY, result_with_duplicate_original_ids.M22QN:3!null as M22QN, result_with_duplicate_original_ids.NZ4MQ:4 as NZ4MQ, result_with_duplicate_original_ids.original_id:0!null as ETPQV, NULL (null) as PRUV2, result_with_duplicate_original_ids.YKSSU:6 as YKSSU, result_with_duplicate_original_ids.FHCYT:5 as FHCYT]\n" +
+			"             │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, BPNW2.FV24E:1!null as FV24E, BPNW2.UJ6XY:2!null as UJ6XY, BPNW2.M22QN:3!null as M22QN, BPNW2.NZ4MQ:4 as NZ4MQ, BPNW2.MU3KG:0!null as ETPQV, NULL (null) as PRUV2, BPNW2.YKSSU:6 as YKSSU, BPNW2.FHCYT:5 as FHCYT]\n" +
 			"             │       └─ SubqueryAlias\n" +
-			"             │           ├─ name: result_with_duplicate_original_ids\n" +
+			"             │           ├─ name: BPNW2\n" +
 			"             │           ├─ outerVisibility: false\n" +
 			"             │           ├─ cacheable: true\n" +
 			"             │           └─ Distinct\n" +
 			"             │               └─ Project\n" +
-			"             │                   ├─ columns: [TIZHK.id:17!null as original_id, J4JYP.id:37!null as FV24E, RHUZN.id:0!null as UJ6XY, aac.id:71!null as M22QN, Subquery\n" +
+			"             │                   ├─ columns: [TIZHK.id:17!null as MU3KG, J4JYP.id:37!null as FV24E, RHUZN.id:0!null as UJ6XY, aac.id:71!null as M22QN, Subquery\n" +
 			"             │                   │   ├─ cacheable: false\n" +
 			"             │                   │   └─ Project\n" +
 			"             │                   │       ├─ columns: [G3YXS.id:74!null]\n" +
@@ -16737,27 +16763,27 @@ FROM
 			"                 │   └─ PRUV2:6\n" +
 			"                 │   as PRUV2, YKSSU:7, FHCYT:8]\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, result_with_duplicate_original_ids.FV24E:1 as FV24E, result_with_duplicate_original_ids.UJ6XY:2 as UJ6XY, Subquery\n" +
+			"                     ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, BPNW2.FV24E:1 as FV24E, BPNW2.UJ6XY:2 as UJ6XY, Subquery\n" +
 			"                     │   ├─ cacheable: false\n" +
 			"                     │   └─ Project\n" +
 			"                     │       ├─ columns: [aac.id:8!null]\n" +
 			"                     │       └─ Filter\n" +
 			"                     │           ├─ Eq\n" +
 			"                     │           │   ├─ aac.BTXC5:9\n" +
-			"                     │           │   └─ result_with_duplicate_original_ids.SYPKF:3\n" +
+			"                     │           │   └─ BPNW2.SYPKF:3\n" +
 			"                     │           └─ TableAlias(aac)\n" +
 			"                     │               └─ IndexedTableAccess\n" +
 			"                     │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"                     │                   └─ Table\n" +
 			"                     │                       └─ name: TPXBU\n" +
-			"                     │   as M22QN, result_with_duplicate_original_ids.NZ4MQ:4 as NZ4MQ, result_with_duplicate_original_ids.original_id:0!null as ETPQV, result_with_duplicate_original_ids.NHMXW_id:7 as PRUV2, result_with_duplicate_original_ids.YKSSU:6 as YKSSU, result_with_duplicate_original_ids.FHCYT:5 as FHCYT]\n" +
+			"                     │   as M22QN, BPNW2.NZ4MQ:4 as NZ4MQ, BPNW2.MU3KG:0!null as ETPQV, BPNW2.I4NDZ:7 as PRUV2, BPNW2.YKSSU:6 as YKSSU, BPNW2.FHCYT:5 as FHCYT]\n" +
 			"                     └─ SubqueryAlias\n" +
-			"                         ├─ name: result_with_duplicate_original_ids\n" +
+			"                         ├─ name: BPNW2\n" +
 			"                         ├─ outerVisibility: false\n" +
 			"                         ├─ cacheable: true\n" +
 			"                         └─ Distinct\n" +
 			"                             └─ Project\n" +
-			"                                 ├─ columns: [TIZHK.id:0!null as original_id, CASE  WHEN (NOT(NHMXW.FZXV5:15 IS NULL)) THEN Subquery\n" +
+			"                                 ├─ columns: [TIZHK.id:0!null as MU3KG, CASE  WHEN (NOT(NHMXW.FZXV5:15 IS NULL)) THEN Subquery\n" +
 			"                                 │   ├─ cacheable: false\n" +
 			"                                 │   └─ Project\n" +
 			"                                 │       ├─ columns: [overridden_nd_mutant.id:54!null]\n" +
@@ -16792,7 +16818,7 @@ FROM
 			"                                 │           └─ TableAlias(G3YXS)\n" +
 			"                                 │               └─ Table\n" +
 			"                                 │                   └─ name: YYBCX\n" +
-			"                                 │   as NZ4MQ, NULL (null) as FHCYT, NULL (null) as YKSSU, NHMXW.id:10 as NHMXW_id]\n" +
+			"                                 │   as NZ4MQ, NULL (null) as FHCYT, NULL (null) as YKSSU, NHMXW.id:10 as I4NDZ]\n" +
 			"                                 └─ Filter\n" +
 			"                                     ├─ (NOT(NHMXW.id:10 IS NULL))\n" +
 			"                                     └─ LeftOuterHashJoin\n" +
@@ -16856,7 +16882,8 @@ FROM
 			"",
 	},
 	{
-		Query: `INSERT INTO
+		Query: `
+INSERT INTO
     SFEGG(id, NO52D, VYO5E, DKCAJ, ADURZ, FHCYT)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -16864,8 +16891,8 @@ SELECT
     rs.VYO5E AS VYO5E,
     rs.DKCAJ AS DKCAJ,
     CASE
-        WHEN rs.NO52D = 'Activation' AND rs.F35MI = 'SUZTA' THEN 1
-        WHEN rs.NO52D = 'Activation' AND rs.F35MI <> 'SUZTA' THEN 3
+        WHEN rs.NO52D = 'FZB3D' AND rs.F35MI = 'SUZTA' THEN 1
+        WHEN rs.NO52D = 'FZB3D' AND rs.F35MI <> 'SUZTA' THEN 3
         WHEN rs.NO52D LIKE 'AC%' OR rs.NO52D LIKE 'EC%' THEN 3
         WHEN rs.NO52D LIKE 'IC%' AND rs.VYO5E IS NULL THEN 2
         WHEN rs.NO52D LIKE 'IC%' AND rs.VYO5E = 'CF' THEN 1
@@ -16878,10 +16905,10 @@ SELECT
 FROM
     (
     SELECT DISTINCT
-        uct_insig_unip_and_overr.NO52D AS NO52D,
+        NK7FP.NO52D AS NO52D,
         CASE
-            WHEN uct_insig_unip_and_overr.VYO5E = 'N/A' THEN NULL
-            ELSE uct_insig_unip_and_overr.VYO5E
+            WHEN NK7FP.VYO5E = 'N/A' THEN NULL
+            ELSE NK7FP.VYO5E
         END AS VYO5E,
         nt.id AS DKCAJ,
         nt.DZLIM AS F35MI
@@ -16906,20 +16933,20 @@ FROM
                 I7HCR.BTXC5 = uct.LJLUM
         WHERE
             uct.id IN ('1','2','3')
-        ) uct_insig_unip_and_overr
+        ) NK7FP
     INNER JOIN
         E2I7U nd
     ON
             (
-                uct_insig_unip_and_overr.FVUCX IS NULL
+                NK7FP.FVUCX IS NULL
             AND
-                nd.ZH72S = uct_insig_unip_and_overr.ZH72S
+                nd.ZH72S = NK7FP.ZH72S
             )
         OR
             (
-                uct_insig_unip_and_overr.FVUCX IS NOT NULL
+                NK7FP.FVUCX IS NOT NULL
             AND
-                nd.TW55N = uct_insig_unip_and_overr.FVUCX
+                nd.TW55N = NK7FP.FVUCX
             )
     INNER JOIN
         F35MI nt ON nt.id = nd.DKCAJ
@@ -16935,7 +16962,7 @@ WHERE
             rs.VYO5E IS NULL
         AND
             (rs.NO52D, rs.DKCAJ) NOT IN (SELECT DISTINCT NO52D, DKCAJ FROM SFEGG WHERE VYO5E IS NULL)
-        );`,
+        )`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, NO52D, VYO5E, DKCAJ, ADURZ, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -16965,14 +16992,14 @@ WHERE
 			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, rs.NO52D:0 as NO52D, rs.VYO5E:1 as VYO5E, rs.DKCAJ:2!null as DKCAJ, CASE  WHEN AND\n" +
 			"         │       │   ├─ Eq\n" +
 			"         │       │   │   ├─ rs.NO52D:0\n" +
-			"         │       │   │   └─ Activation (longtext)\n" +
+			"         │       │   │   └─ FZB3D (longtext)\n" +
 			"         │       │   └─ Eq\n" +
 			"         │       │       ├─ rs.F35MI:3!null\n" +
 			"         │       │       └─ SUZTA (longtext)\n" +
 			"         │       │   THEN 1 (tinyint) WHEN AND\n" +
 			"         │       │   ├─ Eq\n" +
 			"         │       │   │   ├─ rs.NO52D:0\n" +
-			"         │       │   │   └─ Activation (longtext)\n" +
+			"         │       │   │   └─ FZB3D (longtext)\n" +
 			"         │       │   └─ (NOT(Eq\n" +
 			"         │       │       ├─ rs.F35MI:3!null\n" +
 			"         │       │       └─ SUZTA (longtext)\n" +
@@ -17039,24 +17066,24 @@ WHERE
 			"         │               ├─ cacheable: true\n" +
 			"         │               └─ Distinct\n" +
 			"         │                   └─ Project\n" +
-			"         │                       ├─ columns: [uct_insig_unip_and_overr.NO52D:0 as NO52D, CASE  WHEN Eq\n" +
-			"         │                       │   ├─ uct_insig_unip_and_overr.VYO5E:1\n" +
+			"         │                       ├─ columns: [NK7FP.NO52D:0 as NO52D, CASE  WHEN Eq\n" +
+			"         │                       │   ├─ NK7FP.VYO5E:1\n" +
 			"         │                       │   └─ N/A (longtext)\n" +
-			"         │                       │   THEN NULL (null) ELSE uct_insig_unip_and_overr.VYO5E:1 END as VYO5E, nt.id:4!null as DKCAJ, nt.DZLIM:5!null as F35MI]\n" +
+			"         │                       │   THEN NULL (null) ELSE NK7FP.VYO5E:1 END as VYO5E, nt.id:4!null as DKCAJ, nt.DZLIM:5!null as F35MI]\n" +
 			"         │                       └─ InnerJoin\n" +
 			"         │                           ├─ Or\n" +
 			"         │                           │   ├─ AND\n" +
-			"         │                           │   │   ├─ uct_insig_unip_and_overr.FVUCX:3 IS NULL\n" +
+			"         │                           │   │   ├─ NK7FP.FVUCX:3 IS NULL\n" +
 			"         │                           │   │   └─ Eq\n" +
 			"         │                           │   │       ├─ nd.ZH72S:14\n" +
-			"         │                           │   │       └─ uct_insig_unip_and_overr.ZH72S:2\n" +
+			"         │                           │   │       └─ NK7FP.ZH72S:2\n" +
 			"         │                           │   └─ AND\n" +
-			"         │                           │       ├─ (NOT(uct_insig_unip_and_overr.FVUCX:3 IS NULL))\n" +
+			"         │                           │       ├─ (NOT(NK7FP.FVUCX:3 IS NULL))\n" +
 			"         │                           │       └─ Eq\n" +
 			"         │                           │           ├─ nd.TW55N:10!null\n" +
-			"         │                           │           └─ uct_insig_unip_and_overr.FVUCX:3\n" +
+			"         │                           │           └─ NK7FP.FVUCX:3\n" +
 			"         │                           ├─ SubqueryAlias\n" +
-			"         │                           │   ├─ name: uct_insig_unip_and_overr\n" +
+			"         │                           │   ├─ name: NK7FP\n" +
 			"         │                           │   ├─ outerVisibility: false\n" +
 			"         │                           │   ├─ cacheable: true\n" +
 			"         │                           │   └─ Distinct\n" +
@@ -17136,21 +17163,22 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO FLQLP
+		Query: `
+INSERT INTO FLQLP
     (id, FZ2R5, LUEVY, M22QN, OVE3E, NRURT, OCA7E, XMM6Q, V5DPX, S3Q3Y, ZRV3B, FHCYT)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
-    with_null_evidence_classes.FZ2R5 AS FZ2R5,
+    PQSXB.FZ2R5 AS FZ2R5,
     nd.id AS LUEVY,
-    (SELECT aac.id FROM TPXBU aac WHERE aac.BTXC5 = with_null_evidence_classes.BTXC5) AS M22QN,
-    with_null_evidence_classes.OVE3E AS OVE3E,
-    with_null_evidence_classes.NRURT AS NRURT,
-    with_null_evidence_classes.OCA7E AS OCA7E,
-    with_null_evidence_classes.XMM6Q AS XMM6Q,
-    with_null_evidence_classes.V5DPX AS V5DPX,
-    with_null_evidence_classes.S3Q3Y AS S3Q3Y,
-    with_null_evidence_classes.ZRV3B AS ZRV3B,
-    with_null_evidence_classes.FHCYT AS FHCYT
+    (SELECT aac.id FROM TPXBU aac WHERE aac.BTXC5 = PQSXB.BTXC5) AS M22QN,
+    PQSXB.OVE3E AS OVE3E,
+    PQSXB.NRURT AS NRURT,
+    PQSXB.OCA7E AS OCA7E,
+    PQSXB.XMM6Q AS XMM6Q,
+    PQSXB.V5DPX AS V5DPX,
+    PQSXB.S3Q3Y AS S3Q3Y,
+    PQSXB.ZRV3B AS ZRV3B,
+    PQSXB.FHCYT AS FHCYT
 FROM
     (
     SELECT
@@ -17183,7 +17211,7 @@ FROM
             ELSE NULL
         END AS FHCYT,
         -- Extra fields to use
-        uct.ZH72S AS original_ZH72S,
+        uct.ZH72S AS K3B6V,
         uct.LJLUM AS BTXC5,
         I7HCR.FVUCX AS H4DMT
     FROM
@@ -17200,24 +17228,24 @@ FROM
             I7HCR.BTXC5 = uct.LJLUM
     WHERE
         uct.id IN ('1','2','3')
-    ) with_null_evidence_classes
+    ) PQSXB
 INNER JOIN
     E2I7U nd
 ON
     (
-            with_null_evidence_classes.H4DMT IS NOT NULL
+            PQSXB.H4DMT IS NOT NULL
         AND
-            nd.TW55N = with_null_evidence_classes.H4DMT
+            nd.TW55N = PQSXB.H4DMT
     )
     OR
     (
-            with_null_evidence_classes.H4DMT IS NULL
+            PQSXB.H4DMT IS NULL
         AND
-            nd.ZH72S = with_null_evidence_classes.original_ZH72S
+            nd.ZH72S = PQSXB.K3B6V
     )
 WHERE
         -- In the case we could not build-in evidence class for some
-        with_null_evidence_classes.OVE3E IS NOT NULL;`,
+        PQSXB.OVE3E IS NOT NULL`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, FZ2R5, LUEVY, M22QN, OVE3E, NRURT, OCA7E, XMM6Q, V5DPX, S3Q3Y, ZRV3B, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -17243,34 +17271,34 @@ WHERE
 			"         ├─ Project\n" +
 			"         │   ├─ columns: [id:0!null, FZ2R5:1!null, LUEVY:2!null, M22QN:3!null, OVE3E:4!null, NRURT:5, OCA7E:6, XMM6Q:7, V5DPX:8!null, S3Q3Y:9!null, ZRV3B:10!null, FHCYT:11]\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, with_null_evidence_classes.FZ2R5:0 as FZ2R5, nd.id:12!null as LUEVY, Subquery\n" +
+			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, PQSXB.FZ2R5:0 as FZ2R5, nd.id:12!null as LUEVY, Subquery\n" +
 			"         │       │   ├─ cacheable: false\n" +
 			"         │       │   └─ Project\n" +
 			"         │       │       ├─ columns: [aac.id:29!null]\n" +
 			"         │       │       └─ Filter\n" +
 			"         │       │           ├─ Eq\n" +
 			"         │       │           │   ├─ aac.BTXC5:30\n" +
-			"         │       │           │   └─ with_null_evidence_classes.BTXC5:10\n" +
+			"         │       │           │   └─ PQSXB.BTXC5:10\n" +
 			"         │       │           └─ TableAlias(aac)\n" +
 			"         │       │               └─ IndexedTableAccess\n" +
 			"         │       │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"         │       │                   └─ Table\n" +
 			"         │       │                       └─ name: TPXBU\n" +
-			"         │       │   as M22QN, with_null_evidence_classes.OVE3E:1 as OVE3E, with_null_evidence_classes.NRURT:2!null as NRURT, with_null_evidence_classes.OCA7E:3 as OCA7E, with_null_evidence_classes.XMM6Q:4 as XMM6Q, with_null_evidence_classes.V5DPX:5 as V5DPX, with_null_evidence_classes.S3Q3Y:6 as S3Q3Y, with_null_evidence_classes.ZRV3B:7 as ZRV3B, with_null_evidence_classes.FHCYT:8 as FHCYT]\n" +
+			"         │       │   as M22QN, PQSXB.OVE3E:1 as OVE3E, PQSXB.NRURT:2!null as NRURT, PQSXB.OCA7E:3 as OCA7E, PQSXB.XMM6Q:4 as XMM6Q, PQSXB.V5DPX:5 as V5DPX, PQSXB.S3Q3Y:6 as S3Q3Y, PQSXB.ZRV3B:7 as ZRV3B, PQSXB.FHCYT:8 as FHCYT]\n" +
 			"         │       └─ InnerJoin\n" +
 			"         │           ├─ Or\n" +
 			"         │           │   ├─ AND\n" +
-			"         │           │   │   ├─ (NOT(with_null_evidence_classes.H4DMT:11 IS NULL))\n" +
+			"         │           │   │   ├─ (NOT(PQSXB.H4DMT:11 IS NULL))\n" +
 			"         │           │   │   └─ Eq\n" +
 			"         │           │   │       ├─ nd.TW55N:15!null\n" +
-			"         │           │   │       └─ with_null_evidence_classes.H4DMT:11\n" +
+			"         │           │   │       └─ PQSXB.H4DMT:11\n" +
 			"         │           │   └─ AND\n" +
-			"         │           │       ├─ with_null_evidence_classes.H4DMT:11 IS NULL\n" +
+			"         │           │       ├─ PQSXB.H4DMT:11 IS NULL\n" +
 			"         │           │       └─ Eq\n" +
 			"         │           │           ├─ nd.ZH72S:19\n" +
-			"         │           │           └─ with_null_evidence_classes.original_ZH72S:9\n" +
+			"         │           │           └─ PQSXB.K3B6V:9\n" +
 			"         │           ├─ SubqueryAlias\n" +
-			"         │           │   ├─ name: with_null_evidence_classes\n" +
+			"         │           │   ├─ name: PQSXB\n" +
 			"         │           │   ├─ outerVisibility: false\n" +
 			"         │           │   ├─ cacheable: true\n" +
 			"         │           │   └─ Filter\n" +
@@ -17352,7 +17380,7 @@ WHERE
 			"         │           │           │   as OVE3E, uct.id:0!null as NRURT, I7HCR.id:13 as OCA7E, NULL (null) as XMM6Q, uct.V5DPX:4 as V5DPX, (uct.IDPK7:6 + 0 (decimal(2,1))) as S3Q3Y, uct.ZRV3B:8 as ZRV3B, CASE  WHEN (NOT(Eq\n" +
 			"         │           │           │   ├─ uct.FHCYT:11\n" +
 			"         │           │           │   └─ N/A (longtext)\n" +
-			"         │           │           │  )) THEN uct.FHCYT:11 ELSE NULL (null) END as FHCYT, uct.ZH72S:2 as original_ZH72S, uct.LJLUM:5 as BTXC5, I7HCR.FVUCX:17 as H4DMT]\n" +
+			"         │           │           │  )) THEN uct.FHCYT:11 ELSE NULL (null) END as FHCYT, uct.ZH72S:2 as K3B6V, uct.LJLUM:5 as BTXC5, I7HCR.FVUCX:17 as H4DMT]\n" +
 			"         │           │           └─ LeftOuterMergeJoin\n" +
 			"         │           │               ├─ AND\n" +
 			"         │           │               │   ├─ AND\n" +
@@ -17410,7 +17438,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO
+		Query: `
+INSERT INTO
     SFEGG(id, NO52D, VYO5E, DKCAJ, ADURZ, FHCYT)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -17418,8 +17447,8 @@ SELECT
     rs.VYO5E AS VYO5E,
     rs.DKCAJ AS DKCAJ,
     CASE
-        WHEN rs.NO52D = 'Activation' AND rs.F35MI = 'SUZTA' THEN 1
-        WHEN rs.NO52D = 'Activation' AND rs.F35MI <> 'SUZTA' THEN 3
+        WHEN rs.NO52D = 'FZB3D' AND rs.F35MI = 'SUZTA' THEN 1
+        WHEN rs.NO52D = 'FZB3D' AND rs.F35MI <> 'SUZTA' THEN 3
         WHEN rs.NO52D LIKE 'AC%' OR rs.NO52D LIKE 'EC%' THEN 3
         WHEN rs.NO52D LIKE 'IC%' AND rs.VYO5E IS NULL THEN 2
         WHEN rs.NO52D LIKE 'IC%' AND rs.VYO5E = 'CF' THEN 1
@@ -17456,7 +17485,7 @@ WHERE
             rs.VYO5E IS NULL
         AND
             (rs.NO52D, rs.DKCAJ) NOT IN (SELECT DISTINCT NO52D, DKCAJ FROM SFEGG WHERE VYO5E IS NULL)
-        );`,
+        )`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, NO52D, VYO5E, DKCAJ, ADURZ, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -17486,14 +17515,14 @@ WHERE
 			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, rs.NO52D:0!null as NO52D, rs.VYO5E:1 as VYO5E, rs.DKCAJ:2!null as DKCAJ, CASE  WHEN AND\n" +
 			"         │       │   ├─ Eq\n" +
 			"         │       │   │   ├─ rs.NO52D:0!null\n" +
-			"         │       │   │   └─ Activation (longtext)\n" +
+			"         │       │   │   └─ FZB3D (longtext)\n" +
 			"         │       │   └─ Eq\n" +
 			"         │       │       ├─ rs.F35MI:3!null\n" +
 			"         │       │       └─ SUZTA (longtext)\n" +
 			"         │       │   THEN 1 (tinyint) WHEN AND\n" +
 			"         │       │   ├─ Eq\n" +
 			"         │       │   │   ├─ rs.NO52D:0!null\n" +
-			"         │       │   │   └─ Activation (longtext)\n" +
+			"         │       │   │   └─ FZB3D (longtext)\n" +
 			"         │       │   └─ (NOT(Eq\n" +
 			"         │       │       ├─ rs.F35MI:3!null\n" +
 			"         │       │       └─ SUZTA (longtext)\n" +
@@ -17621,7 +17650,8 @@ WHERE
 			"",
 	},
 	{
-		Query: `INSERT INTO FLQLP
+		Query: `
+INSERT INTO FLQLP
     (id, FZ2R5, LUEVY, M22QN, OVE3E, NRURT, OCA7E, XMM6Q, V5DPX, S3Q3Y, ZRV3B, FHCYT)
 SELECT
     LPAD(LOWER(CONCAT(CONCAT(HEX(RAND()*4294967296),LOWER(HEX(RAND()*4294967296)),LOWER(HEX(RAND()*4294967296))))), 24, '0') AS id,
@@ -17648,7 +17678,7 @@ SELECT
 FROM
     HU5A5 TVTJS
 WHERE
-    TVTJS.id IN ('1','2','3');`,
+    TVTJS.id IN ('1','2','3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, FZ2R5, LUEVY, M22QN, OVE3E, NRURT, OCA7E, XMM6Q, V5DPX, S3Q3Y, ZRV3B, FHCYT)\n" +
 			"     ├─ Table\n" +
@@ -17781,4 +17811,8 @@ WHERE
 			"                         └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = The ZRV3B must be on of the following: '=', '<=', '>=', '<', '>'., MYSQL_ERRNO = 1644\n" +
 			"",
 	},
+	{
+		Query: `
+`,
+		ExpectedPlan: "NOTHING\n"},
 }
