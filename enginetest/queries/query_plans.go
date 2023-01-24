@@ -17811,8 +17811,4 @@ WHERE
 			"                         └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = The ZRV3B must be on of the following: '=', '<=', '>=', '<', '>'., MYSQL_ERRNO = 1644\n" +
 			"",
 	},
-	{
-		Query: `
-`,
-		ExpectedPlan: "NOTHING\n"},
 }
