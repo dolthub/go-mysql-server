@@ -680,7 +680,7 @@ func findSortedIndexScanForRel(
 }
 
 // attrsRefSingleRel returns false if there are
-// getFields sourced from more than one table.
+// getFields sourced from zero or more than one table.
 func attrsRefSingleRel(e sql.Expression) (string, bool) {
 	var name string
 	var invalid bool
@@ -697,7 +697,7 @@ func attrsRefSingleRel(e sql.Expression) (string, bool) {
 		}
 		return invalid
 	})
-	return name, !invalid
+	return name, !invalid && name != ""
 }
 
 func extractJoinHint(n *plan.JoinNode) JoinOrderHint {
