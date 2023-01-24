@@ -1679,15 +1679,15 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 		Assertions: []UserPrivilegeTestAssertion{
 			{
-				User:  "tester",
-				Host:  "localhost",
-				Query: "select count(*) from information_schema.routines where routine_name = 'testabc'/*tester1*/;",
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.routines where routine_name = 'testabc'/*tester1*/;",
 				Expected: []sql.Row{{0}},
 			},
 			{
-				User:  "tester",
-				Host:  "localhost",
-				Query: "select count(*) from information_schema.parameters where specific_name = 'testabc'/*tester1*/;",
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.parameters where specific_name = 'testabc'/*tester1*/;",
 				Expected: []sql.Row{{0}},
 			},
 			{
@@ -1697,15 +1697,15 @@ var UserPrivTests = []UserPrivilegeTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				User:  "tester",
-				Host:  "localhost",
-				Query: "select count(*) from information_schema.routines where routine_name = 'testabc';",
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.routines where routine_name = 'testabc';",
 				Expected: []sql.Row{{1}},
 			},
 			{
-				User:  "tester",
-				Host:  "localhost",
-				Query: "select count(*) from information_schema.parameters where specific_name = 'testabc';",
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.parameters where specific_name = 'testabc';",
 				Expected: []sql.Row{{3}},
 			},
 		},
