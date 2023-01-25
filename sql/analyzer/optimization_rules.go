@@ -87,7 +87,16 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	var topJoin sql.Node
 	node, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		join, ok := n.(*plan.JoinNode)
-		if !ok || !join.JoinType().IsInner() || join.JoinType().IsDegenerate() {
+		if !ok {
+			// no join
+			return n, transform.SameTree, nil
+		}
+
+		// update top join to be current join
+		topJoin = n
+
+		// no filter or left join: nothing to do to the tree
+		if join.JoinType().IsDegenerate() || !join.JoinType().IsInner() {
 			return n, transform.SameTree, nil
 		}
 
@@ -110,7 +119,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		if filtersMoved == 0 {
-			topJoin = n
 			return topJoin, transform.SameTree, nil
 		}
 
