@@ -4165,10 +4165,10 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "INSERT INTO t5 VALUES (0,0), (0,1), (1,0), (1,1)")
 
 	TestQueryWithContext(t, ctx, e, harness, `SELECT a, b, row_number() over (partition by a, b) FROM t5 order by a, b`, []sql.Row{
-		{0,0,1},
-		{0,1,1},
-		{1,0,1},
-		{1,1,1},
+		{0, 0, 1},
+		{0, 1, 1},
+		{1, 0, 1},
+		{1, 1, 1},
 	}, nil, nil)
 }
 
