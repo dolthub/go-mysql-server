@@ -41,10 +41,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-const (
-	maxLoggedQueryLen = 512
-)
-
 var errConnectionNotFound = errors.NewKind("connection not found: %c")
 
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
@@ -72,18 +68,20 @@ type Handler struct {
 	sm                *SessionManager
 	readTimeout       time.Duration
 	disableMultiStmts bool
+	maxLoggedQueryLen int
 	sel               ServerEventListener
 }
 
 var _ mysql.Handler = (*Handler)(nil)
 
 // NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, listener ServerEventListener) *Handler {
+func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, maxLoggedQueryLen int, listener ServerEventListener) *Handler {
 	return &Handler{
 		e:                 e,
 		sm:                sm,
 		readTimeout:       rt,
 		disableMultiStmts: disableMultiStmts,
+		maxLoggedQueryLen: maxLoggedQueryLen,
 		sel:               listener,
 	}
 }
@@ -316,10 +314,13 @@ func (h *Handler) doQuery(
 	more := remainder != ""
 
 	queryStr := string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
-	if len(queryStr) > maxLoggedQueryLen {
-		queryStr = queryStr[:maxLoggedQueryLen-3] + "..."
+	if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
+		queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
 	}
-	ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
+
+	if h.maxLoggedQueryLen >= 0 {
+		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
+	}
 	ctx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(ctx, query)
