@@ -318,7 +318,9 @@ func (h *Handler) doQuery(
 		queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
 	}
 
-	ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
+	if h.maxLoggedQueryLen >= 0 {
+		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
+	}
 	ctx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(ctx, query)
