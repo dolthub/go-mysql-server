@@ -369,7 +369,7 @@ type mockIndex struct {
 	id      string
 	exprs   []sql.Expression
 	unique  bool
-	spatial  bool
+	spatial bool
 	comment string
 }
 
