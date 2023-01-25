@@ -1490,7 +1490,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                   // action_reference_new_row
 					date,                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1514,7 +1514,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                   // action_reference_new_row
 					date,                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1538,7 +1538,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                   // action_reference_new_row
 					date,                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1562,7 +1562,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                   // action_reference_new_row
 					date,                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1586,7 +1586,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1610,7 +1610,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1634,7 +1634,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -1658,7 +1658,7 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 					"NEW",                                   // action_reference_new_row
 					date,                                    // created
 					"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", // sql_mode
-					"`root`@`localhost`",                          // definer
+					"root@localhost", // definer
 					sql.Collation_Default.CharacterSet().String(), // character_set_client
 					sql.Collation_Default.String(),                // collation_connection
 					sql.Collation_Default.String(),                // database_collation
@@ -4159,6 +4159,16 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t4`, []sql.Row{
 		{uint64(0)},
+	}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE t5 (a INTEGER, b INTEGER)")
+	RunQuery(t, e, harness, "INSERT INTO t5 VALUES (0,0), (0,1), (1,0), (1,1)")
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, b, row_number() over (partition by a, b) FROM t5 order by a, b`, []sql.Row{
+		{0, 0, 1},
+		{0, 1, 1},
+		{1, 0, 1},
+		{1, 1, 1},
 	}, nil, nil)
 }
 

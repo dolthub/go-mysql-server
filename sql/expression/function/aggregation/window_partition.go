@@ -373,7 +373,9 @@ func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row
 		if err != nil {
 			return false, err
 		}
-		return cmp != 0, nil
+		if cmp != 0 {
+			return true, nil
+		}
 	}
 
 	return false, nil
