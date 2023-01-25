@@ -4160,6 +4160,16 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t4`, []sql.Row{
 		{uint64(0)},
 	}, nil, nil)
+
+	RunQuery(t, e, harness, "CREATE TABLE t5 (a INTEGER, b INTEGER)")
+	RunQuery(t, e, harness, "INSERT INTO t5 VALUES (0,0), (0,1), (1,0), (1,1)")
+
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, b, row_number() over (partition by a, b) FROM t5 order by a, b`, []sql.Row{
+		{0, 0, 1},
+		{0, 1, 1},
+		{1, 0, 1},
+		{1, 1, 1},
+	}, nil, nil)
 }
 
 func TestWindowRowFrames(t *testing.T, harness Harness) {
