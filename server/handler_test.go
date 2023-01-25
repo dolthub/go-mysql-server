@@ -252,6 +252,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 		),
 		0,
 		false,
+		0,
 		nil,
 	)
 	handler.NewConnection(dummyConn)
