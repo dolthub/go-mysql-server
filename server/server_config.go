@@ -67,6 +67,9 @@ type Config struct {
 	// Socket is a path to unix socket file
 	Socket                   string
 	AllowClearTextWithoutTLS bool
+	// MaxLoggedQueryLen sets the length at which queries written to the logs are truncated.  A value of 0 will
+	// result in no truncation.
+	MaxLoggedQueryLen int
 }
 
 func (c Config) NewConfig() (Config, error) {

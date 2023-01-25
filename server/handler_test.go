@@ -55,6 +55,7 @@ func TestHandlerOutput(t *testing.T) {
 		),
 		time.Second,
 		false,
+		0,
 		nil,
 	)
 	handler.NewConnection(dummyConn)
@@ -177,6 +178,7 @@ func TestHandlerComPrepare(t *testing.T) {
 		),
 		0,
 		false,
+		0,
 		nil,
 	)
 	handler.NewConnection(dummyConn)
@@ -326,6 +328,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 		),
 		0,
 		false,
+		0,
 		nil,
 	)
 	handler.NewConnection(dummyConn)
@@ -436,6 +439,7 @@ func TestServerEventListener(t *testing.T) {
 		),
 		0,
 		false,
+		0,
 		listener,
 	)
 
@@ -518,6 +522,7 @@ func TestHandlerKill(t *testing.T) {
 		),
 		0,
 		false,
+		0,
 		nil,
 	)
 
@@ -703,6 +708,7 @@ func TestHandlerTimeout(t *testing.T) {
 			"foo"),
 		1*time.Second,
 		false,
+		0,
 		nil,
 	)
 
@@ -715,6 +721,7 @@ func TestHandlerTimeout(t *testing.T) {
 			"foo"),
 		0,
 		false,
+		0,
 		nil,
 	)
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
@@ -771,6 +778,7 @@ func TestOkClosedConnection(t *testing.T) {
 		),
 		0,
 		false,
+		0,
 		nil,
 	)
 	c := newConn(1)
@@ -925,6 +933,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		),
 		0,
 		false,
+		0,
 		nil,
 	)
 
