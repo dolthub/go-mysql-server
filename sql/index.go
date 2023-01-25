@@ -65,6 +65,8 @@ type Index interface {
 	Expressions() []string
 	// IsUnique returns whether this index is unique
 	IsUnique() bool
+	// IsSpatial returns whether this index is unique
+	IsSpatial() bool
 	// Comment returns the comment for this index
 	Comment() string
 	// IndexType returns the type of this index, e.g. BTREE

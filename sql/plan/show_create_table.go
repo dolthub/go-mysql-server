@@ -336,7 +336,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			unique = "UNIQUE "
 		}
 
-		key := fmt.Sprintf("  %sKEY %s (%s)", unique, quoteIdentifier(index.ID()), strings.Join(indexCols, ","))
+		spatial := ""
+		if index.IsSpatial() {
+			unique = "SPATIAL "
+		}
+
+		key := fmt.Sprintf("  %s%sKEY %s (%s)", unique, spatial, quoteIdentifier(index.ID()), strings.Join(indexCols, ","))
 		if index.Comment() != "" {
 			key = fmt.Sprintf("%s COMMENT '%s'", key, index.Comment())
 		}
