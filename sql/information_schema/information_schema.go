@@ -1877,7 +1877,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
 					triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
 					tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
-					definer := remoteBackTicks(triggerPlan.Definer)
+					definer := removeBackticks(triggerPlan.Definer)
 
 					// triggers cannot be created on table that is not in current schema, so the trigger_name = event_object_schema
 					privTblSet := privDbSet.Table(tableName)
@@ -2039,7 +2039,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			}
 
 			viewDef := view.TextDefinition
-			definer := remoteBackTicks(viewPlan.Definer)
+			definer := removeBackticks(viewPlan.Definer)
 
 			// TODO: WITH CHECK OPTION is not supported yet.
 			checkOpt := viewPlan.CheckOpt

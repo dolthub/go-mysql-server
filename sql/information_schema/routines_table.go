@@ -161,7 +161,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				return nil, ErrProcedureCreateStatementInvalid.New(procedure.CreateProcedureString)
 			}
 			routineDef := procedurePlan.BodyString
-			definer := remoteBackTicks(procedure.Definer)
+			definer := removeBackticks(procedure.Definer)
 
 			securityType = "DEFINER"
 			isDeterministic = "NO" // YES or NO
