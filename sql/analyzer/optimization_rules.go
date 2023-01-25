@@ -119,7 +119,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		if filtersMoved == 0 {
-			topJoin = n
 			return topJoin, transform.SameTree, nil
 		}
 
