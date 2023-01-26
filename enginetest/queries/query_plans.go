@@ -14984,11 +14984,13 @@ WHERE id IN ('1', '2', '3')`,
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
 			"         ├─ HashIn\n" +
-			"         │   ├─ HGMQ6.id\n" +
-			"         │   └─ ('1', '2', '3')\n" +
-			"         └─ IndexedTableAccess(HGMQ6)\n" +
+			"         │   ├─ HGMQ6.id:0!null\n" +
+			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
+			"         └─ IndexedTableAccess\n" +
 			"             ├─ index: [HGMQ6.id]\n" +
-			"             └─ filters: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             └─ Table\n" +
+			"                 └─ name: HGMQ6\n" +
 			"",
 	},
 	{

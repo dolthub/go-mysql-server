@@ -129,11 +129,8 @@ func (in *InTuple) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 func (in *InTuple) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("IN")
-	children := []string{fmt.Sprintf("left: %s", in.Left()), fmt.Sprintf("right: %s", in.Right())}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	// scalar expression must round-trip
+	return fmt.Sprintf("(%s IN %s)", in.Left(), in.Right())
 }
 
 func (in *InTuple) DebugString() string {
@@ -310,11 +307,7 @@ func convertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 }
 
 func (hit *HashInTuple) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("HashIn")
-	children := []string{hit.Left().String(), hit.Right().String()}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	return fmt.Sprintf("(%s HASH IN %s)", hit.Left(), hit.Right())
 }
 
 func (hit *HashInTuple) DebugString() string {

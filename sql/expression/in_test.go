@@ -15,6 +15,7 @@
 package expression_test
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 
@@ -31,6 +32,20 @@ import (
 var testEnumType = types.MustCreateEnumType([]string{"", "one", "two"}, sql.Collation_Default)
 
 var testSetType = types.MustCreateSetType([]string{"", "one", "two"}, sql.Collation_Default)
+
+func TestRoundTripNames(t *testing.T) {
+	assert.Equal(t, "(foo IN (foo, 2))", expression.NewInTuple(expression.NewGetField(0, types.Int64, "foo", false),
+		expression.NewTuple(
+			expression.NewGetField(0, types.Int64, "foo", false),
+			expression.NewLiteral(int64(2), types.Int64),
+		)).String())
+	hit, err := expression.NewHashInTuple(nil, expression.NewGetField(0, types.Int64, "foo", false),
+		expression.NewTuple(
+			expression.NewLiteral(int64(2), types.Int64),
+		))
+	assert.NoError(t, err)
+	assert.Equal(t, "(foo HASH IN (2))", hit.String())
+}
 
 func TestInTuple(t *testing.T) {
 	testCases := []struct {
