@@ -218,19 +218,19 @@ func TestSingleScript(t *testing.T) {
 					Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
 				},
 				{
-					Query:    "select * from t where p = point(0,0)",
+					Query: "select * from t where p = point(0,0)",
 					Expected: []sql.Row{
 						{types.Point{}},
 					},
 				},
 				{
-					Query:    "select * from t where st_intersects(p, point(0,0))",
+					Query: "select * from t where st_intersects(p, point(0,0))",
 					Expected: []sql.Row{
 						{types.Point{}},
 					},
 				},
 				{
-					Query:    "explain select * from t where st_intersects(p, point(0,0))",
+					Query: "explain select * from t where st_intersects(p, point(0,0))",
 					Expected: []sql.Row{
 						{types.Point{}},
 					},

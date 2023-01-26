@@ -262,7 +262,6 @@ func getIndexes(
 		return result, nil
 	}
 
-
 	// TOOD: maybe this block can just go into previous switch
 	// TODO: return indexes for specific functions
 	switch e := e.(type) {
