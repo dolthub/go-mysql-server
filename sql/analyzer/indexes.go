@@ -262,13 +262,11 @@ func getIndexes(
 		return result, nil
 	}
 
-	// TOOD: maybe this block can just go into previous switch
-	// TODO: return indexes for specific functions
+	// TODO: maybe this block can just go into previous switch
+	// TODO (james): add all other spatial index supported functions here
+	// TODO: make generalizable to all functions?
 	switch e := e.(type) {
 	case *spatial.Intersects:
-		// TODO: make a getFunctionIndexLookup()
-		// TODO: make generalizable to all functions?
-
 		// Will be non-nil only when there is exactly one *expression.GetField
 		getField := expression.ExtractGetField(e)
 		if getField == nil {
@@ -288,10 +286,9 @@ func getIndexes(
 		normalizedExpressions := normalizeExpressions(tableAliases, left)
 		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getField.Table(), normalizedExpressions...)
 
-		// TODO: add this function to sql.Index interface
-		//if !idx.IsSpatial() {
-		//	return nil, nil
-		//}
+		if !idx.IsSpatial() {
+			return nil, nil
+		}
 
 		// TODO: later on, convert the literal in the range to be a bbox of the type
 		lookup, err := sql.NewIndexBuilder(idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
