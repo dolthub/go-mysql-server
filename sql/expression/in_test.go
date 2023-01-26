@@ -15,11 +15,11 @@
 package expression_test
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
