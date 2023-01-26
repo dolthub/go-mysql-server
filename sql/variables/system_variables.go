@@ -2264,6 +2264,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_buffer_result"),
 		Default:           int8(0),
 	},
+	"sql_log_bin": {
+		Name:              "sql_log_bin",
+		Scope:             sql.SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("sql_log_bin"),
+		Default:           int8(0),
+	},
 	"sql_log_off": {
 		Name:              "sql_log_off",
 		Scope:             sql.SystemVariableScope_Both,
