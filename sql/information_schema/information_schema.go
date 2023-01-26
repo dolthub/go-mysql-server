@@ -405,7 +405,7 @@ var parametersSchema = Schema{
 	{Name: "CHARACTER_SET_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "COLLATION_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "DTD_IDENTIFIER", Type: types.MediumText, Default: nil, Nullable: false, Source: ParametersTableName},
-	{Name: "RESOURCE_GROUP_TYPE", Type: types.MustCreateEnumType([]string{"FUNCTION", "PROCEDURE"}, Collation_Default), Default: nil, Nullable: false, Source: ParametersTableName},
+	{Name: "ROUTINE_TYPE", Type: types.MustCreateEnumType([]string{"FUNCTION", "PROCEDURE"}, Collation_Default), Default: nil, Nullable: false, Source: ParametersTableName},
 }
 
 var partitionsSchema = Schema{

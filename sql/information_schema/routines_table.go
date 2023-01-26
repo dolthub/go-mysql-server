@@ -302,12 +302,12 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 					charName,          // character_set_name
 					collName,          // collation_name
 					dtdId,             // dtd_identifier
-					"PROCEDURE",       // resource_group_type
+					"PROCEDURE",       // routine_type
 				})
 			}
 		}
 	}
-	// TODO: need to add FUNCTIONS resource_group_type
+	// TODO: need to add FUNCTIONS routine_type
 
 	return RowsToRowIter(rows...), nil
 }
