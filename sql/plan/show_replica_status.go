@@ -74,7 +74,7 @@ func (s *ShowReplicaStatus) Schema() sql.Schema {
 		{Name: "Replicate_Wild_Do_Table", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
 		{Name: "Replicate_Wild_Ignore_Table", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: false},
 		{Name: "Last_Errno", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Last_Error", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Last_Error", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: false},
 		{Name: "Skip_Counter", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Exec_Source_Log_Pos", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Relay_Log_Space", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
