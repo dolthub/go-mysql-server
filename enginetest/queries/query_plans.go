@@ -14984,11 +14984,13 @@ WHERE id IN ('1', '2', '3')`,
 			" └─ Delete\n" +
 			"     └─ Filter\n" +
 			"         ├─ HashIn\n" +
-			"         │   ├─ HGMQ6.id\n" +
-			"         │   └─ ('1', '2', '3')\n" +
-			"         └─ IndexedTableAccess(HGMQ6)\n" +
+			"         │   ├─ HGMQ6.id:0!null\n" +
+			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
+			"         └─ IndexedTableAccess\n" +
 			"             ├─ index: [HGMQ6.id]\n" +
-			"             └─ filters: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             └─ Table\n" +
+			"                 └─ name: HGMQ6\n" +
 			"",
 	},
 	{
@@ -15067,27 +15069,37 @@ SET nd.KNG7T = (SELECT gn.id FROM WE72E gn INNER JOIN TDRVG ltnm ON ltnm.SSHPJ =
 WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
-			"     └─ UpdateSource(SET nd.KNG7T = Subquery\n" +
+			"     └─ UpdateSource(SET nd.KNG7T:2 = Subquery\n" +
 			"         ├─ cacheable: false\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [gn.id]\n" +
+			"             ├─ columns: [gn.id:17!null]\n" +
 			"             └─ Filter\n" +
-			"                 ├─ (ltnm.FGG57 = nd.FGG57)\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ ltnm.FGG57:22!null\n" +
+			"                 │   └─ nd.FGG57:6\n" +
 			"                 └─ LookupJoin\n" +
-			"                     ├─ (ltnm.SSHPJ = gn.SSHPJ)\n" +
+			"                     ├─ Eq\n" +
+			"                     │   ├─ ltnm.SSHPJ:23!null\n" +
+			"                     │   └─ gn.SSHPJ:19!null\n" +
 			"                     ├─ TableAlias(gn)\n" +
 			"                     │   └─ Table\n" +
 			"                     │       └─ name: WE72E\n" +
 			"                     └─ TableAlias(ltnm)\n" +
-			"                         └─ IndexedTableAccess(TDRVG)\n" +
-			"                             └─ index: [TDRVG.SSHPJ]\n" +
+			"                         └─ IndexedTableAccess\n" +
+			"                             ├─ index: [TDRVG.SSHPJ]\n" +
+			"                             └─ Table\n" +
+			"                                 └─ name: TDRVG\n" +
 			"        )\n" +
 			"         └─ Filter\n" +
-			"             ├─ ((NOT(nd.FGG57 IS NULL)) AND nd.KNG7T IS NULL)\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ (NOT(nd.FGG57:6 IS NULL))\n" +
+			"             │   └─ nd.KNG7T:2 IS NULL\n" +
 			"             └─ TableAlias(nd)\n" +
-			"                 └─ IndexedTableAccess(E2I7U)\n" +
+			"                 └─ IndexedTableAccess\n" +
 			"                     ├─ index: [E2I7U.FGG57]\n" +
-			"                     └─ filters: [{(NULL, ∞)}]\n" +
+			"                     ├─ static: [{(NULL, ∞)}]\n" +
+			"                     └─ Table\n" +
+			"                         └─ name: E2I7U\n" +
 			"",
 	},
 	{
@@ -16518,8 +16530,9 @@ FROM (
 INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, Z7CP5, YH4XB)\n" +
-			"     ├─ Table\n" +
-			"     │   └─ name: SEQS3\n" +
+			"     ├─ InsertDestination\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: SEQS3\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [id:0!null, Z7CP5:1!null, YH4XB:2!null]\n" +
 			"         └─ Project\n" +
@@ -16662,8 +16675,9 @@ FROM
     ) BPNW2`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Insert(id, FV24E, UJ6XY, M22QN, NZ4MQ, ETPQV, PRUV2, YKSSU, FHCYT)\n" +
-			"     ├─ Table\n" +
-			"     │   └─ name: HDDVB\n" +
+			"     ├─ InsertDestination\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: HDDVB\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [id:0!null, FV24E:1!null, UJ6XY:2!null, M22QN:3!null, NZ4MQ:4!null, ETPQV:5, PRUV2:6, YKSSU:7, FHCYT:8]\n" +
 			"         └─ Union distinct\n" +
