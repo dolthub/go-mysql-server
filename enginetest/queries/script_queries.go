@@ -3221,7 +3221,7 @@ var SpatialIndexScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "show table with spatial indexes",
+		Name: "show table with spatial indexes",
 		SetUpScript: []string{
 			"create table geom(" +
 				"p point not null srid 0," +
@@ -3248,23 +3248,23 @@ var SpatialIndexScriptTests = []ScriptTest{
 					{
 						"geom",
 						"CREATE TABLE `geom` (\n" +
-						"  `p` point NOT NULL SRID 0,\n" +
-						"  `l` linestring NOT NULL SRID 0,\n" +
-						"  `py` polygon NOT NULL SRID 0,\n" +
-						"  `mp` multipoint NOT NULL SRID 0,\n" +
-						"  `ml` multilinestring NOT NULL SRID 0,\n" +
-						"  `mpy` multipolygon NOT NULL SRID 0,\n" +
-						"  `gc` geometrycollection NOT NULL SRID 0,\n" +
-						"  `g` geometry NOT NULL SRID 0,\n" +
-						"  SPATIAL KEY `g` (`g`),\n" +
-						"  SPATIAL KEY `gc` (`gc`),\n" +
-						"  SPATIAL KEY `l` (`l`),\n" +
-						"  SPATIAL KEY `ml` (`ml`),\n" +
-						"  SPATIAL KEY `mp` (`mp`),\n" +
-						"  SPATIAL KEY `mpy` (`mpy`),\n" +
-						"  SPATIAL KEY `p` (`p`),\n" +
-						"  SPATIAL KEY `py` (`py`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+							"  `p` point NOT NULL SRID 0,\n" +
+							"  `l` linestring NOT NULL SRID 0,\n" +
+							"  `py` polygon NOT NULL SRID 0,\n" +
+							"  `mp` multipoint NOT NULL SRID 0,\n" +
+							"  `ml` multilinestring NOT NULL SRID 0,\n" +
+							"  `mpy` multipolygon NOT NULL SRID 0,\n" +
+							"  `gc` geometrycollection NOT NULL SRID 0,\n" +
+							"  `g` geometry NOT NULL SRID 0,\n" +
+							"  SPATIAL KEY `g` (`g`),\n" +
+							"  SPATIAL KEY `gc` (`gc`),\n" +
+							"  SPATIAL KEY `l` (`l`),\n" +
+							"  SPATIAL KEY `ml` (`ml`),\n" +
+							"  SPATIAL KEY `mp` (`mp`),\n" +
+							"  SPATIAL KEY `mpy` (`mpy`),\n" +
+							"  SPATIAL KEY `p` (`p`),\n" +
+							"  SPATIAL KEY `py` (`py`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
 			},
