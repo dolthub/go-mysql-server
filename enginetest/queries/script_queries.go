@@ -3175,6 +3175,27 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+}
+
+var SpatialIndexScriptTests = []ScriptTest{
+	{
+		Name:        "create spatial index errors",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table geom(g geometry, SPATIAL INDEX(g))",
+				ExpectedErr: sql.ErrNullableSpatialIdx,
+			},
+			{
+				Query:       "create table geom(g geometry SRID 4326, SPATIAL INDEX(g))",
+				ExpectedErr: sql.ErrNullableSpatialIdx,
+			},
+			{
+				Query:       "create table geom(g1 geometry NOT NULL SRID 0, g2 geometry NOT NULL SRID 4326, SPATIAL INDEX(g1, g2))",
+				ExpectedErr: sql.ErrTooManyKeyParts,
+			},
+		},
+	},
 	{
 		Name: "alter table spatial index nullable",
 		SetUpScript: []string{
@@ -3196,6 +3217,56 @@ var SpatialScriptTests = []ScriptTest{
 			{
 				Query:       "alter table geom add spatial index (g)",
 				ExpectedErr: sql.ErrNullableSpatialIdx,
+			},
+		},
+	},
+	{
+		Name:        "show table with spatial indexes",
+		SetUpScript: []string{
+			"create table geom(" +
+				"p point not null srid 0," +
+				"l linestring not null srid 0," +
+				"py polygon not null srid 0," +
+				"mp multipoint not null srid 0," +
+				"ml multilinestring not null srid 0," +
+				"mpy multipolygon not null srid 0," +
+				"gc geometrycollection not null srid 0," +
+				"g geometry not null srid 0)",
+			"alter table geom add spatial index (p)",
+			"alter table geom add spatial index (l)",
+			"alter table geom add spatial index (py)",
+			"alter table geom add spatial index (mp)",
+			"alter table geom add spatial index (ml)",
+			"alter table geom add spatial index (mpy)",
+			"alter table geom add spatial index (gc)",
+			"alter table geom add spatial index (g)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table geom",
+				Expected: []sql.Row{
+					{
+						"geom",
+						"CREATE TABLE `geom` (\n" +
+						"  `p` point NOT NULL SRID 0,\n" +
+						"  `l` linestring NOT NULL SRID 0,\n" +
+						"  `py` polygon NOT NULL SRID 0,\n" +
+						"  `mp` multipoint NOT NULL SRID 0,\n" +
+						"  `ml` multilinestring NOT NULL SRID 0,\n" +
+						"  `mpy` multipolygon NOT NULL SRID 0,\n" +
+						"  `gc` geometrycollection NOT NULL SRID 0,\n" +
+						"  `g` geometry NOT NULL SRID 0,\n" +
+						"  SPATIAL KEY `g` (`g`),\n" +
+						"  SPATIAL KEY `gc` (`gc`),\n" +
+						"  SPATIAL KEY `l` (`l`),\n" +
+						"  SPATIAL KEY `ml` (`ml`),\n" +
+						"  SPATIAL KEY `mp` (`mp`),\n" +
+						"  SPATIAL KEY `mpy` (`mpy`),\n" +
+						"  SPATIAL KEY `p` (`p`),\n" +
+						"  SPATIAL KEY `py` (`py`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+					},
+				},
 			},
 		},
 	},
