@@ -302,7 +302,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 // JSON values can be compared using the =, <, <=, >, >=, <>, !=, and <=> operators. BETWEEN IN() GREATEST() LEAST() are
 // not yet supported with JSON values.
 //
-// For comparison of JSON and non-JSON values, the non-JSON value is first converted to JSON (see JsonType_.Convert()).
+// For comparison of JSON and non-JSON values, the non-JSON value is first converted to JSON (see JsonType.Convert()).
 // Comparison of JSON values takes place at two levels. The first level of comparison is based on the JSON types of the
 // compared values. If the types differ, the comparison result is determined solely by which type has higher precedence.
 // If the two values have the same JSON type, a second level of comparison occurs using type-specific rules. The

@@ -253,7 +253,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 		switch n := col.Type.(type) {
 		case sql.NumberType:
 			numBytesPerRow += 8
-		case types.StringType:
+		case sql.StringType:
 			numBytesPerRow += uint64(n.MaxByteLength())
 		case types.BitType:
 			numBytesPerRow += 1
@@ -263,7 +263,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 			numBytesPerRow += uint64(n.MaximumScale())
 		case sql.EnumType:
 			numBytesPerRow += 2
-		case sql.JsonType:
+		case types.JsonType:
 			numBytesPerRow += 20
 		case sql.NullType:
 			numBytesPerRow += 1

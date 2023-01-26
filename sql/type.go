@@ -107,6 +107,24 @@ type NumberType interface {
 	IsFloat() bool
 }
 
+// StringType represents all string types, including VARCHAR and BLOB.
+// https://dev.mysql.com/doc/refman/8.0/en/char.html
+// https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html
+// https://dev.mysql.com/doc/refman/8.0/en/blob.html
+// The type of the returned value is string.
+type StringType interface {
+	Type
+	CharacterSet() CharacterSetID
+	Collation() CollationID
+	// MaxCharacterLength returns the maximum number of chars that can safely be stored in this type, based on
+	// the current character set.
+	MaxCharacterLength() int64
+	// MaxByteLength returns the maximum number of bytes that may be consumed by a value stored in this type.
+	MaxByteLength() int64
+	// Length returns the maximum length, in characters, allowed for this string type.
+	Length() int64
+}
+
 // DatetimeType represents DATE, DATETIME, and TIMESTAMP.
 // https://dev.mysql.com/doc/refman/8.0/en/datetime.html
 // The type of the returned value is time.Time.
@@ -180,13 +198,6 @@ type DecimalType interface {
 	// Scale returns the scale, or number of digits after the decimal, that may be held.
 	// This will always be less than or equal to the precision.
 	Scale() uint8
-}
-
-// JsonType represents the JSON type.
-// https://dev.mysql.com/doc/refman/8.0/en/json.html
-// The type of the returned value is JSONValue.
-type JsonType interface {
-	Type
 }
 
 type Type2 interface {

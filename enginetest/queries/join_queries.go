@@ -620,6 +620,19 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		Query:    "with recursive a(x,y) as (select i,i from mytable where i < 4 union select a.x, mytable.i from a join mytable on a.x+1 = mytable.i limit 2) select * from a;",
 		Expected: []sql.Row{{1, 1}, {2, 2}},
 	},
+	{
+		Query: `
+select * from (
+    (ab JOIN pq ON (1 = p))
+	LEFT OUTER JOIN uv on (2 = u)
+);`,
+		Expected: []sql.Row{
+			{0, 2, 1, 1, 2, 2},
+			{1, 2, 1, 1, 2, 2},
+			{2, 2, 1, 1, 2, 2},
+			{3, 1, 1, 1, 2, 2},
+		},
+	},
 }
 
 var JoinScriptTests = []ScriptTest{

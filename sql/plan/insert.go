@@ -577,7 +577,7 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
 	if types.ErrLengthBeyondLimit.Is(err) {
-		maxLength := tableSchema[columnIdx].Type.(types.StringType).MaxCharacterLength()
+		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
 	} else {
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()

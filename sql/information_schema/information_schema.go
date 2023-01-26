@@ -405,7 +405,7 @@ var parametersSchema = Schema{
 	{Name: "CHARACTER_SET_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "COLLATION_NAME", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "DTD_IDENTIFIER", Type: types.MediumText, Default: nil, Nullable: false, Source: ParametersTableName},
-	{Name: "RESOURCE_GROUP_TYPE", Type: types.MustCreateEnumType([]string{"FUNCTION", "PROCEDURE"}, Collation_Default), Default: nil, Nullable: false, Source: ParametersTableName},
+	{Name: "ROUTINE_TYPE", Type: types.MustCreateEnumType([]string{"FUNCTION", "PROCEDURE"}, Collation_Default), Default: nil, Nullable: false, Source: ParametersTableName},
 }
 
 var partitionsSchema = Schema{
@@ -903,7 +903,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				if privSetCount == 0 && privSetDb.Count() == 0 && privSetTbl.Count() == 0 && privSetCol.Count() == 0 {
 					continue
 				}
-				if _, ok := col.Type.(types.StringType); ok {
+				if _, ok := col.Type.(StringType); ok {
 					continue
 				}
 
@@ -1554,26 +1554,6 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 			}
 			tblName := tbl.Name()
 
-			// Get all the CHECKs
-			checkTbl, ok := tbl.(CheckTable)
-			if ok {
-				checkDefinitions, err := checkTbl.GetChecks(ctx)
-				if err != nil {
-					return nil, err
-				}
-
-				for _, checkDefinition := range checkDefinitions {
-					rows = append(rows, Row{
-						"def",                // constraint_catalog
-						dbName,               // constraint_schema
-						checkDefinition.Name, // constraint_name
-						tblName,              // table_name
-						nil,                  // engine_attribute
-						nil,                  // second_engine_attribute
-					})
-				}
-			}
-
 			// Get UNIQUEs, PRIMARY KEYs
 			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
 			indexTable, ok := tbl.(IndexAddressable)
@@ -1584,37 +1564,10 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 				}
 
 				for _, index := range indexes {
-					if index.ID() != "PRIMARY" {
-						if !index.IsUnique() {
-							// In this case we have a multi-index which is not represented in this table
-							continue
-						}
-					}
-
 					rows = append(rows, Row{
 						"def",
 						dbName,
 						index.ID(),
-						tblName,
-						nil,
-						nil,
-					})
-				}
-			}
-
-			// Get FKs
-			fkTable, ok := tbl.(ForeignKeyTable)
-			if ok {
-				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
-				if err != nil {
-					return nil, err
-				}
-
-				for _, fk := range fks {
-					rows = append(rows, Row{
-						"def",
-						dbName,
-						fk.Name,
 						tblName,
 						nil,
 						nil,
@@ -1847,10 +1800,6 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-	if err != nil {
-		return nil, err
-	}
 	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
 	if err != nil {
 		return nil, err
@@ -1865,6 +1814,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	}
 	hasGlobalTriggerPriv := privSet.Has(PrivilegeType_Trigger)
 	for _, db := range c.AllDatabases(ctx) {
+		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		triggerDb, ok := db.(TriggerDatabase)
 		if ok {
 			privDbSet := privSet.Database(db.Name())
@@ -1927,6 +1877,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
 					triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
 					tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
+					definer := removeBackticks(triggerPlan.Definer)
 
 					// triggers cannot be created on table that is not in current schema, so the trigger_name = event_object_schema
 					privTblSet := privDbSet.Table(tableName)
@@ -1952,10 +1903,10 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							"NEW",                   // action_reference_new_row
 							triggerPlan.CreatedAt,   // created
 							sqlMode,                 // sql_mode
-							triggerPlan.Definer,     // definer
+							definer,                 // definer
 							characterSetClient,      // character_set_client
 							collationConnection,     // collation_connection
-							collationServer,         // database_collation
+							dbCollation.String(),    // database_collation
 						})
 					}
 				}
@@ -2088,7 +2039,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			}
 
 			viewDef := view.TextDefinition
-			definer := viewPlan.Definer
+			definer := removeBackticks(viewPlan.Definer)
 
 			// TODO: WITH CHECK OPTION is not supported yet.
 			checkOpt := viewPlan.CheckOpt
@@ -2853,6 +2804,10 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	}
 
 	return views, nil
+}
+
+func removeBackticks(s string) string {
+	return strings.Replace(s, "`", "", -1)
 }
 
 // getGlobalPrivsRowsFromPrivSet returns USER_PRIVILEGES rows using given global privilege set and grantee name string.

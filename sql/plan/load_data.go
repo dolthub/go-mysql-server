@@ -356,7 +356,7 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 		destCol := destSch[l.fieldToColumnMap[i]]
 		// Replace the empty string with defaults
 		if field == "" {
-			_, ok := destCol.Type.(types.StringType)
+			_, ok := destCol.Type.(sql.StringType)
 			if !ok {
 				if destCol.Default != nil {
 					exprs[i] = destCol.Default

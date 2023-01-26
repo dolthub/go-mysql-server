@@ -1671,6 +1671,45 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "basic privilege tests on information_schema.ROUTINES and PARAMETERS tables",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"CREATE PROCEDURE testabc(IN x DOUBLE, IN y FLOAT, OUT abc DECIMAL(5,1)) SELECT x*y INTO abc",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.routines where routine_name = 'testabc'/*tester1*/;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.parameters where specific_name = 'testabc'/*tester1*/;",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT CREATE ROUTINE ON mydb.* TO tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.routines where routine_name = 'testabc';",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "select count(*) from information_schema.parameters where specific_name = 'testabc';",
+				Expected: []sql.Row{{3}},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins

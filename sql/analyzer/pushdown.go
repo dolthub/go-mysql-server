@@ -42,6 +42,17 @@ func filterHasBindVar(filter sql.Node) bool {
 	return hasBindVar
 }
 
+func concatFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if f, ok := n.(*plan.Filter); ok {
+			if c, ok := f.Child.(*plan.Filter); ok {
+				return plan.NewFilter(expression.JoinAnd(f.Expression, c.Expression), c.Child), transform.NewTree, nil
+			}
+		}
+		return n, transform.SameTree, nil
+	})
+}
+
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
 // sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
 // sql.IndexAddressableTable will get an appropriate index lookup applied.

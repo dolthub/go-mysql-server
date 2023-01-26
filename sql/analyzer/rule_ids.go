@@ -88,6 +88,7 @@ const (
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
 	hoistSelectExistsId          // hoistSelectExists
 	optimizeJoinsId              // optimizeJoins
+	concatFiltersId              // concatFilters
 	pushdownFiltersId            // pushdownFilters
 	subqueryIndexesId            // subqueryIndexes
 	pruneTablesId                // pruneTables

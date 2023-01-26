@@ -133,7 +133,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 			return 0, err
 		}
 
-		stringCompareType := compareType.(types.StringType)
+		stringCompareType := compareType.(sql.StringType)
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 

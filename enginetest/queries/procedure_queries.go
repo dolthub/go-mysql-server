@@ -2138,7 +2138,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2169,7 +2169,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2217,7 +2217,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2279,7 +2279,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type

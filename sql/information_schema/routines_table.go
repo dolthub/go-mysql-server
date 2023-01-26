@@ -118,10 +118,6 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	if err != nil {
 		return nil, err
 	}
-	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-	if err != nil {
-		return nil, err
-	}
 
 	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
 	if err != nil {
@@ -136,7 +132,16 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	if err != nil {
 		return nil, err
 	}
-	for db, procedures := range p {
+	privSet, _ := ctx.GetPrivilegeSet()
+	for dbName, procedures := range p {
+		if !hasRoutinePrivsOnDB(privSet, dbName) {
+			continue
+		}
+		db, err := c.Database(ctx, dbName)
+		if err != nil {
+			return nil, err
+		}
+		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		for _, procedure := range procedures {
 			// Skip dolt procedure aliases to show in this table
 			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
@@ -156,6 +161,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				return nil, ErrProcedureCreateStatementInvalid.New(procedure.CreateProcedureString)
 			}
 			routineDef := procedurePlan.BodyString
+			definer := removeBackticks(procedure.Definer)
 
 			securityType = "DEFINER"
 			isDeterministic = "NO" // YES or NO
@@ -188,7 +194,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 			rows = append(rows, Row{
 				procedure.Name,             // specific_name NOT NULL
 				"def",                      // routine_catalog
-				db,                         // routine_schema
+				dbName,                     // routine_schema
 				procedure.Name,             // routine_name NOT NULL
 				"PROCEDURE",                // routine_type NOT NULL
 				"",                         // data_type
@@ -199,7 +205,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				nil,                        // datetime_precision
 				nil,                        // character_set_name
 				nil,                        // collation_name
-				"",                         // dtd_identifier
+				nil,                        // dtd_identifier
 				"SQL",                      // routine_body NOT NULL
 				routineDef,                 // routine_definition
 				nil,                        // external_name
@@ -213,10 +219,10 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 				procedure.ModifiedAt.UTC(), // last_altered NOT NULL
 				sqlMode,                    // sql_mode NOT NULL
 				procedure.Comment,          // routine_comment NOT NULL
-				procedure.Definer,          // definer NOT NULL
+				definer,                    // definer NOT NULL
 				characterSetClient,         // character_set_client NOT NULL
 				collationConnection,        // collation_connection NOT NULL
-				collationServer,            // database_collation NOT NULL
+				dbCollation.String(),       // database_collation NOT NULL
 			})
 		}
 	}
@@ -234,7 +240,11 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 	if err != nil {
 		return nil, err
 	}
-	for db, procedures := range p {
+	privSet, _ := ctx.GetPrivilegeSet()
+	for dbName, procedures := range p {
+		if !hasRoutinePrivsOnDB(privSet, dbName) {
+			continue
+		}
 		for _, procedure := range procedures {
 			// Skip dolt procedure aliases to show in this table
 			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
@@ -278,7 +288,7 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 
 				rows = append(rows, Row{
 					"def",             // specific_catalog
-					db,                // specific_schema
+					dbName,            // specific_schema
 					procedure.Name,    // specific_name
 					ordinalPos,        // ordinal_position - 0 for FUNCTIONS
 					parameterMode,     // parameter_mode   - NULL for FUNCTIONS
@@ -292,12 +302,18 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 					charName,          // character_set_name
 					collName,          // collation_name
 					dtdId,             // dtd_identifier
-					"PROCEDURE",       // resource_group_type
+					"PROCEDURE",       // routine_type
 				})
 			}
 		}
 	}
-	// TODO: need to add FUNCTIONS resource_group_type
+	// TODO: need to add FUNCTIONS routine_type
 
 	return RowsToRowIter(rows...), nil
+}
+
+// hasRoutinePrivsOnDB returns bool value whether privilegeSet has either global or database level `CREATE ROUTINE` or `ALTER ROUTINE` or `EXECUTE` privileges.
+func hasRoutinePrivsOnDB(privSet PrivilegeSet, dbName string) bool {
+	return privSet.Has(PrivilegeType_CreateRoutine) || privSet.Has(PrivilegeType_AlterRoutine) || privSet.Has(PrivilegeType_Execute) ||
+		privSet.Database(dbName).Has(PrivilegeType_CreateRoutine) || privSet.Database(dbName).Has(PrivilegeType_AlterRoutine) || privSet.Database(dbName).Has(PrivilegeType_Execute)
 }

@@ -408,7 +408,7 @@ func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	// If we don't have a transaction session we can't do rollbacks
 	_, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
-		return n, transform.SameTree, nil
+		return plan.NewNoopTriggerRollback(n), transform.NewTree, nil
 	}
 
 	// Wrap tree with new node

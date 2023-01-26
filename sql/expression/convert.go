@@ -172,7 +172,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		if types.IsTextOnly(originType) {
 			// For string types we need to re-encode the string as we want the binary representation of the character set
-			encoder := originType.(types.StringType).Collation().CharacterSet().Encoder()
+			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(b.([]byte))
 			if !ok {
 				return nil, fmt.Errorf("unable to re-encode string to convert to binary")

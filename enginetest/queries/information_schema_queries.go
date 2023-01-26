@@ -632,20 +632,19 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	},
 	{
 		Query:    `SELECT * FROM information_schema.table_constraints_extensions where table_name = 'fk_tbl'`,
-		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
+		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "ab", "fk_tbl", nil, nil}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,
 		Expected: []sql.Row{{"def", "mydb", "mytable", nil, nil}},
 	},
-}
-
-var SkippedInfoSchemaQueries = []QueryTest{
 	{
 		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.Row{{uint64(3)}},
 	},
 }
+
+var SkippedInfoSchemaQueries = []QueryTest{}
 
 var InfoSchemaScripts = []ScriptTest{
 	{
@@ -759,7 +758,7 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT trigger_name, event_object_table, definer FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_name = 'trigger1'",
 				Expected: []sql.Row{
-					{"trigger1", "aa", "`dolt`@`localhost`"},
+					{"trigger1", "aa", "dolt@localhost"},
 				},
 			},
 			{
@@ -770,9 +769,9 @@ character_set_client, collation_connection, database_collation
 FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"def", "mydb", "trigger1", "INSERT", "def", "mydb", "aa", 1, nil, "SET NEW.x = NEW.x + 1", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
-						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "`dolt`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "dolt@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"def", "mydb", "trigger2", "INSERT", "def", "mydb", "aa", 2, nil, "SET NEW.y = NEW.y + 2", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
-						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "`root`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -895,16 +894,16 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
 					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
 				Expected: []sql.Row{
-					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
 						"hi", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
-					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
-						"", "`user`@`%`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
-					{"p12", "def", "foo", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						"", "user@%", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"p12", "def", "foo", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
 						"hello", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
-					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
 						"", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
@@ -1321,7 +1320,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 				Expected: []sql.Row{
 					{"count_i_from_mytable", "def", "mydb", "count_i_from_mytable", "PROCEDURE", "", "SQL", "SQL", "SQL", "NO",
 						"READS SQL DATA", "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
-						"", "`root`@`localhost`", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+						"", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -1374,9 +1373,9 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			{
 				Query: "select * from information_schema.views where table_schema = 'mydb' order by table_name",
 				Expected: []sql.Row{
-					{"def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
-					{"def", "mydb", "myview1", "select count(*) from mytable", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
-					{"def", "mydb", "myview2", "SELECT * FROM myview WHERE i > 1", "NONE", "NO", "`UserName`@`localhost`", "INVOKER", "utf8mb4", "utf8mb4_0900_bin"},
+					{"def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+					{"def", "mydb", "myview1", "select count(*) from mytable", "NONE", "NO", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+					{"def", "mydb", "myview2", "SELECT * FROM myview WHERE i > 1", "NONE", "NO", "UserName@localhost", "INVOKER", "utf8mb4", "utf8mb4_0900_bin"},
 				},
 			},
 		},
