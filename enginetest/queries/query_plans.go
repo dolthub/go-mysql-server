@@ -16848,17 +16848,17 @@ FROM
 			"                                         │   ├─ Eq\n" +
 			"                                         │   │   ├─ J4JYP.ZH72S:27\n" +
 			"                                         │   │   └─ TIZHK.TVNW2:1\n" +
-			"                                         │   ├─ LeftOuterHashJoin\n" +
+			"                                         │   ├─ LeftOuterMergeJoin\n" +
 			"                                         │   │   ├─ AND\n" +
 			"                                         │   │   │   ├─ AND\n" +
 			"                                         │   │   │   │   ├─ AND\n" +
 			"                                         │   │   │   │   │   ├─ AND\n" +
 			"                                         │   │   │   │   │   │   ├─ Eq\n" +
-			"                                         │   │   │   │   │   │   │   ├─ NHMXW.SWCQV:17!null\n" +
-			"                                         │   │   │   │   │   │   │   └─ 0 (tinyint)\n" +
+			"                                         │   │   │   │   │   │   │   ├─ TIZHK.TVNW2:1\n" +
+			"                                         │   │   │   │   │   │   │   └─ NHMXW.NOHHR:11!null\n" +
 			"                                         │   │   │   │   │   │   └─ Eq\n" +
-			"                                         │   │   │   │   │   │       ├─ NHMXW.NOHHR:11!null\n" +
-			"                                         │   │   │   │   │   │       └─ TIZHK.TVNW2:1\n" +
+			"                                         │   │   │   │   │   │       ├─ NHMXW.SWCQV:17!null\n" +
+			"                                         │   │   │   │   │   │       └─ 0 (tinyint)\n" +
 			"                                         │   │   │   │   │   └─ Eq\n" +
 			"                                         │   │   │   │   │       ├─ NHMXW.AVPYF:12!null\n" +
 			"                                         │   │   │   │   │       └─ TIZHK.ZHITY:2\n" +
@@ -16874,17 +16874,16 @@ FROM
 			"                                         │   │   │   │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"                                         │   │   │   └─ TableAlias(TIZHK)\n" +
 			"                                         │   │   │       └─ IndexedTableAccess\n" +
-			"                                         │   │   │           ├─ index: [WRZVO.id]\n" +
-			"                                         │   │   │           ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"                                         │   │   │           ├─ index: [WRZVO.TVNW2]\n" +
+			"                                         │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
 			"                                         │   │   │           └─ Table\n" +
 			"                                         │   │   │               └─ name: WRZVO\n" +
-			"                                         │   │   └─ HashLookup\n" +
-			"                                         │   │       ├─ source: TUPLE(0 (tinyint), TIZHK.TVNW2:1, TIZHK.ZHITY:2, TIZHK.SYPKF:3, TIZHK.IDUT2:4)\n" +
-			"                                         │   │       ├─ target: TUPLE(NHMXW.SWCQV:7!null, NHMXW.NOHHR:1!null, NHMXW.AVPYF:2!null, NHMXW.SYPKF:3!null, NHMXW.IDUT2:4!null)\n" +
-			"                                         │   │       └─ CachedResults\n" +
-			"                                         │   │           └─ TableAlias(NHMXW)\n" +
-			"                                         │   │               └─ Table\n" +
-			"                                         │   │                   └─ name: WGSDC\n" +
+			"                                         │   │   └─ TableAlias(NHMXW)\n" +
+			"                                         │   │       └─ IndexedTableAccess\n" +
+			"                                         │   │           ├─ index: [WGSDC.NOHHR]\n" +
+			"                                         │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"                                         │   │           └─ Table\n" +
+			"                                         │   │               └─ name: WGSDC\n" +
 			"                                         │   └─ HashLookup\n" +
 			"                                         │       ├─ source: TUPLE(TIZHK.TVNW2:1)\n" +
 			"                                         │       ├─ target: TUPLE(J4JYP.ZH72S:7)\n" +
@@ -17111,16 +17110,16 @@ WHERE
 			"             │                           │   └─ Distinct\n" +
 			"             │                           │       └─ Project\n" +
 			"             │                           │           ├─ columns: [uct.NO52D:7, uct.VYO5E:9, uct.ZH72S:2, I7HCR.FVUCX:17]\n" +
-			"             │                           │           └─ LeftOuterHashJoin\n" +
+			"             │                           │           └─ LeftOuterMergeJoin\n" +
 			"             │                           │               ├─ AND\n" +
 			"             │                           │               │   ├─ AND\n" +
 			"             │                           │               │   │   ├─ AND\n" +
 			"             │                           │               │   │   │   ├─ Eq\n" +
-			"             │                           │               │   │   │   │   ├─ I7HCR.SWCQV:18!null\n" +
-			"             │                           │               │   │   │   │   └─ 0 (tinyint)\n" +
+			"             │                           │               │   │   │   │   ├─ uct.FTQLQ:1\n" +
+			"             │                           │               │   │   │   │   └─ I7HCR.TOFPN:14!null\n" +
 			"             │                           │               │   │   │   └─ Eq\n" +
-			"             │                           │               │   │   │       ├─ I7HCR.TOFPN:14!null\n" +
-			"             │                           │               │   │   │       └─ uct.FTQLQ:1\n" +
+			"             │                           │               │   │   │       ├─ I7HCR.SWCQV:18!null\n" +
+			"             │                           │               │   │   │       └─ 0 (tinyint)\n" +
 			"             │                           │               │   │   └─ Eq\n" +
 			"             │                           │               │   │       ├─ I7HCR.SJYN2:15!null\n" +
 			"             │                           │               │   │       └─ uct.ZH72S:2\n" +
@@ -17133,17 +17132,16 @@ WHERE
 			"             │                           │               │   │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"             │                           │               │   └─ TableAlias(uct)\n" +
 			"             │                           │               │       └─ IndexedTableAccess\n" +
-			"             │                           │               │           ├─ index: [OUBDL.id]\n" +
-			"             │                           │               │           ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                           │               │           ├─ index: [OUBDL.FTQLQ]\n" +
+			"             │                           │               │           ├─ static: [{[NULL, ∞)}]\n" +
 			"             │                           │               │           └─ Table\n" +
 			"             │                           │               │               └─ name: OUBDL\n" +
-			"             │                           │               └─ HashLookup\n" +
-			"             │                           │                   ├─ source: TUPLE(0 (tinyint), uct.FTQLQ:1, uct.ZH72S:2, uct.LJLUM:5)\n" +
-			"             │                           │                   ├─ target: TUPLE(I7HCR.SWCQV:5!null, I7HCR.TOFPN:1!null, I7HCR.SJYN2:2!null, I7HCR.BTXC5:3!null)\n" +
-			"             │                           │                   └─ CachedResults\n" +
-			"             │                           │                       └─ TableAlias(I7HCR)\n" +
-			"             │                           │                           └─ Table\n" +
-			"             │                           │                               └─ name: EPZU6\n" +
+			"             │                           │               └─ TableAlias(I7HCR)\n" +
+			"             │                           │                   └─ IndexedTableAccess\n" +
+			"             │                           │                       ├─ index: [EPZU6.TOFPN]\n" +
+			"             │                           │                       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │                           │                       └─ Table\n" +
+			"             │                           │                           └─ name: EPZU6\n" +
 			"             │                           └─ LookupJoin\n" +
 			"             │                               ├─ Eq\n" +
 			"             │                               │   ├─ nt.id:4!null\n" +
@@ -17406,16 +17404,16 @@ WHERE
 			"             │           │           │   ├─ uct.FHCYT:11\n" +
 			"             │           │           │   └─ N/A (longtext)\n" +
 			"             │           │           │  )) THEN uct.FHCYT:11 ELSE NULL (null) END as FHCYT, uct.ZH72S:2 as K3B6V, uct.LJLUM:5 as BTXC5, I7HCR.FVUCX:17 as H4DMT]\n" +
-			"             │           │           └─ LeftOuterHashJoin\n" +
+			"             │           │           └─ LeftOuterMergeJoin\n" +
 			"             │           │               ├─ AND\n" +
 			"             │           │               │   ├─ AND\n" +
 			"             │           │               │   │   ├─ AND\n" +
 			"             │           │               │   │   │   ├─ Eq\n" +
-			"             │           │               │   │   │   │   ├─ I7HCR.SWCQV:18!null\n" +
-			"             │           │               │   │   │   │   └─ 0 (tinyint)\n" +
+			"             │           │               │   │   │   │   ├─ uct.FTQLQ:1\n" +
+			"             │           │               │   │   │   │   └─ I7HCR.TOFPN:14!null\n" +
 			"             │           │               │   │   │   └─ Eq\n" +
-			"             │           │               │   │   │       ├─ I7HCR.TOFPN:14!null\n" +
-			"             │           │               │   │   │       └─ uct.FTQLQ:1\n" +
+			"             │           │               │   │   │       ├─ I7HCR.SWCQV:18!null\n" +
+			"             │           │               │   │   │       └─ 0 (tinyint)\n" +
 			"             │           │               │   │   └─ Eq\n" +
 			"             │           │               │   │       ├─ I7HCR.SJYN2:15!null\n" +
 			"             │           │               │   │       └─ uct.ZH72S:2\n" +
@@ -17428,17 +17426,16 @@ WHERE
 			"             │           │               │   │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"             │           │               │   └─ TableAlias(uct)\n" +
 			"             │           │               │       └─ IndexedTableAccess\n" +
-			"             │           │               │           ├─ index: [OUBDL.id]\n" +
-			"             │           │               │           ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │           │               │           ├─ index: [OUBDL.FTQLQ]\n" +
+			"             │           │               │           ├─ static: [{[NULL, ∞)}]\n" +
 			"             │           │               │           └─ Table\n" +
 			"             │           │               │               └─ name: OUBDL\n" +
-			"             │           │               └─ HashLookup\n" +
-			"             │           │                   ├─ source: TUPLE(0 (tinyint), uct.FTQLQ:1, uct.ZH72S:2, uct.LJLUM:5)\n" +
-			"             │           │                   ├─ target: TUPLE(I7HCR.SWCQV:5!null, I7HCR.TOFPN:1!null, I7HCR.SJYN2:2!null, I7HCR.BTXC5:3!null)\n" +
-			"             │           │                   └─ CachedResults\n" +
-			"             │           │                       └─ TableAlias(I7HCR)\n" +
-			"             │           │                           └─ Table\n" +
-			"             │           │                               └─ name: EPZU6\n" +
+			"             │           │               └─ TableAlias(I7HCR)\n" +
+			"             │           │                   └─ IndexedTableAccess\n" +
+			"             │           │                       ├─ index: [EPZU6.TOFPN]\n" +
+			"             │           │                       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │           │                       └─ Table\n" +
+			"             │           │                           └─ name: EPZU6\n" +
 			"             │           └─ TableAlias(nd)\n" +
 			"             │               └─ Table\n" +
 			"             │                   └─ name: E2I7U\n" +

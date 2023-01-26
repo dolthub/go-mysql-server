@@ -272,6 +272,7 @@ func (b *ExecBuilder) buildMergeJoin(j *mergeJoin, input sql.Schema, children ..
 	default:
 		return nil, fmt.Errorf("can only apply merge join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
 	}
+
 	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 

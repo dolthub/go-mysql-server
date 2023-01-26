@@ -247,7 +247,7 @@ func addLookupJoins(m *Memo) error {
 
 		conds := collectJoinConds(attrSource, join.filter...)
 		for _, idx := range indexes {
-			keyExprs, nullmask, _ := indexMatchesKeyExprs(idx, conds, aliases)
+			keyExprs, nullmask := indexMatchesKeyExprs(idx, conds, aliases)
 			if len(keyExprs) == 0 {
 				continue
 			}
@@ -292,7 +292,7 @@ func addRightSemiJoins(m *Memo) error {
 			if !idx.IsUnique() {
 				continue
 			}
-			keyExprs, nullmask, _ := indexMatchesKeyExprs(idx, conds, aliases)
+			keyExprs, nullmask := indexMatchesKeyExprs(idx, conds, aliases)
 			if len(keyExprs) == 0 {
 				continue
 			}
@@ -434,48 +434,13 @@ func collectJoinConds(attributeSource string, filters ...sql.Expression) []*join
 	return conds
 }
 
-func collectMergeJoinConds(la, ra string, filters ...sql.Expression) ([]*joinColExpr, []*joinColExpr) {
-	var lConds []*joinColExpr
-	var rConds []*joinColExpr
-	var outer []sql.Expression
-	for i := range filters {
-		l, r := extractJoinColumnExpr(filters[i])
-		if l == nil || r == nil {
-			// unusable as lookup
-			outer = append(outer, filters[i])
-			continue
-		}
-
-		lgf, ok := l.colExpr.(*expression.GetField)
-		if !ok {
-			continue
-		}
-		rgf, ok := r.colExpr.(*expression.GetField)
-		if !ok {
-			continue
-		}
-
-		lt := strings.ToLower(lgf.Table())
-		rt := strings.ToLower(rgf.Table())
-
-		if lt == la && rt == ra {
-			lConds = append(lConds, l)
-			rConds = append(rConds, r)
-		} else if lt == ra && rt == la {
-			lConds = append(lConds, r)
-			rConds = append(rConds, l)
-		}
-	}
-	return lConds, rConds
-}
-
 // indexMatchesKeyExprs returns keyExprs and nullmask for a parametrized
 // lookup from the outer scope (row) into the given index for a join condition.
 // For example, the filters: [(ab.a + 1 = xy.y), (ab.b <=> xy.x)] will cover
 // the the index xy(x,y). The second filter is not null rejecting, so the nullmask
 // will be [0,1]. The keyExprs will be [(ab.a + 1), (ab.b)], which project into
 // the table lookup (xy.x, xy.y).
-func indexMatchesKeyExprs(i sql.Index, joinColExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, []bool, sql.Expression) {
+func indexMatchesKeyExprs(i sql.Index, joinColExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, []bool) {
 	idxExprs := i.Expressions()
 	count := len(idxExprs)
 	if count > len(joinColExprs) {
@@ -483,7 +448,6 @@ func indexMatchesKeyExprs(i sql.Index, joinColExprs []*joinColExpr, tableAliases
 	}
 	keyExprs := make([]sql.Expression, count)
 	nullmask := make([]bool, count)
-	var f sql.Expression
 
 IndexExpressions:
 	for i := 0; i < count; i++ {
@@ -493,24 +457,23 @@ IndexExpressions:
 				// get field into left table
 				keyExprs[i] = joinColExprs[j].comparand
 				nullmask[i] = joinColExprs[j].matchnull
-				f = joinColExprs[j].comparison
 				continue IndexExpressions
 			}
 		}
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// TODO: better way of validating that we can apply an index lookup
 	lb := plan.NewLookupBuilder(i, keyExprs, nullmask)
 	look, err := lb.GetLookup(lb.GetZeroKey())
 	if err != nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 	if !i.CanSupport(look.Ranges...) {
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	return keyExprs, nullmask, f
+	return keyExprs, nullmask
 }
 
 // splitIndexableOr attempts to build a list of index lookups for a disjoint
@@ -536,7 +499,7 @@ func splitIndexableOr(filters []sql.Expression, indexes []sql.Index, attributeSo
 func firstMatchingIndex(e *expression.Equals, indexes []sql.Index, attributeSource string, aliases TableAliases) *lookup {
 	for _, lIdx := range indexes {
 		lConds := collectJoinConds(attributeSource, e)
-		lKeyExprs, lNullmask, _ := indexMatchesKeyExprs(lIdx, lConds, aliases)
+		lKeyExprs, lNullmask := indexMatchesKeyExprs(lIdx, lConds, aliases)
 		if len(lKeyExprs) == 0 {
 			continue
 		}
@@ -657,42 +620,42 @@ func addMergeJoins(m *Memo) error {
 				continue
 			}
 
-			lt, lCols, ok := attrsRefSingleRelWithCols(l)
+			ltc, ok := attrsRefSingleTableCol(l)
 			if !ok {
 				continue
 			}
-			rt, rCols, ok := attrsRefSingleRelWithCols(r)
+			rtc, ok := attrsRefSingleTableCol(r)
 			if !ok {
 				continue
 			}
 
 			switch {
-			case lt == lAttrSource && rt == rAttrSource:
-			case rt == lAttrSource && lt == rAttrSource:
+			case ltc.table == lAttrSource && rtc.table == rAttrSource:
+			case rtc.table == lAttrSource && ltc.table == rAttrSource:
 				l, r = r, l
-				lCols, rCols = rCols, lCols
-				lt, rt = rt, lt
+				ltc, rtc = rtc, ltc
 			default:
 				continue
 			}
 
-			// check that comparer only goes in one direction
-			if !isMonotonic(l) || !isMonotonic(r) {
+			// check that comparer is not non-decreasing
+			if !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
 				continue
 			}
 
-			if tab, ok := aliases[lt]; ok {
-				lt = tab.Name()
+			if tab, ok := aliases[ltc.table]; ok {
+				ltc = tableCol{table: strings.ToLower(tab.Name()), col: ltc.col}
 			}
-			if tab, ok := aliases[rt]; ok {
-				rt = tab.Name()
+			if tab, ok := aliases[rtc.table]; ok {
+				rtc = tableCol{table: strings.ToLower(tab.Name()), col: rtc.col}
+
 			}
 
-			lIdx := sortedIndexScanForCols(lIndexes, lt, lCols)
+			lIdx := sortedIndexScanForTableCol(lIndexes, ltc)
 			if lIdx == nil {
 				continue
 			}
-			rIdx := sortedIndexScanForCols(rIndexes, rt, rCols)
+			rIdx := sortedIndexScanForTableCol(rIndexes, rtc)
 			if rIdx == nil {
 				continue
 			}
@@ -718,78 +681,74 @@ func addMergeJoins(m *Memo) error {
 	})
 }
 
-// sortedIndexScanForCols returns the first indexScan found for a relation
-// that provide a prefix for the joinFilters rel free attributes. I.e. the
-// indexScan will return the same rows as the rel, but sorted for every expression
-// for the table referenced in the join condition.
-func sortedIndexScanForCols(is []sql.Index, source string, cols []string) *indexScan {
+// sortedIndexScanForTableCol returns the first indexScan found for a relation
+// that provide a prefix for the joinFilters rel free attribute. I.e. the
+// indexScan will return the same rows as the rel, but sorted by |col|.
+func sortedIndexScanForTableCol(is []sql.Index, tc tableCol) *indexScan {
 	for _, idx := range is {
-		idxExprs := idx.Expressions()
-		if len(cols) > len(idxExprs) {
-			// index can't be sorted on all |cols|
-			continue
-		}
-		valid := true
-		for i, c := range cols {
-			if strings.ToLower(idxExprs[i]) != source+"."+c {
-				valid = false
-				break
-			}
-		}
-		if !valid {
+		if strings.ToLower(idx.Expressions()[0]) != tc.String() {
 			continue
 		}
 		return &indexScan{
-			source: source,
+			source: tc.table,
 			idx:    idx,
 		}
 	}
 	return nil
 }
 
-func isMonotonic(e sql.Expression) bool {
+// isWeaklyMonotonic is a weak test of whether an expression
+// will be strictly increasing as the value of column attribute
+// inputs increases.
+//
+// The simplest example is `x`, which will increase
+// as `x` increases, and decrease as `x` decreases.
+//
+// An example of a non-monotonic expression is `mod(x, 4)`,
+// which is strictly non-increasing from x=3 -> x=4.
+//
+// A non-obvious non-monotonic function is `x+y`. The index `(x,y)`
+// will be non-increasing on (y), and so `x+y` can decrease.
+// TODO: stricter monotonic check
+func isWeaklyMonotonic(e sql.Expression) bool {
 	switch e := e.(type) {
 	case *expression.Arithmetic:
 		if e.Op == sqlparser.MinusStr {
 			// TODO minus can be OK if it's not on the GetField
 			return false
 		}
-	case expression.Comparer, *expression.Literal, *expression.GetField, *expression.And,
+	case *expression.Equals, *expression.NullSafeEquals, *expression.Literal, *expression.GetField,
 		*expression.Tuple, *expression.IsNull, *expression.BindVar:
 	default:
 		return false
 	}
 	for _, c := range e.Children() {
-		if !isMonotonic(c) {
+		if !isWeaklyMonotonic(c) {
 			return false
 		}
 	}
 	return true
 }
 
-// attrsRefSingleRelWithCols returns false if there are
+// attrsRefSingleTableCol returns false if there are
 // getFields sourced from zero or more than one table.
-func attrsRefSingleRelWithCols(e sql.Expression) (string, []string, bool) {
-	var name string
+func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
+	var tc tableCol
 	var invalid bool
-	var cols []string
 	transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			newName := strings.ToLower(e.Table())
-			if name == "" && !invalid {
-				name = newName
-			} else if name != newName {
+			newTc := tableCol{col: strings.ToLower(e.Name()), table: strings.ToLower(e.Table())}
+			if tc.table == "" && !invalid {
+				tc = newTc
+			} else if tc != newTc {
 				invalid = true
-			}
-			if !invalid {
-				cols = append(cols, strings.ToLower(e.Name()))
 			}
 		default:
 		}
 		return invalid
 	})
-	return name, cols, !invalid && name != ""
+	return tc, !invalid && tc.table != ""
 }
 
 func extractJoinHint(n *plan.JoinNode) JoinOrderHint {
