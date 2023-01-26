@@ -3270,6 +3270,82 @@ var SpatialIndexScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// TODO (james): make these into QueryPlanTests
+	{
+		Name:        "test st_intersects with spatial indexes with points",
+		SetUpScript: []string{
+			"create table point_tbl(p point not null srid 0, spatial index (p))",
+			"insert into point_tbl values (point(0,0)), (point(1,1)), (point(2,2))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select p from point_tbl where st_intersects(p, point(0,0))",
+				Expected: []sql.Row{
+					{types.Point{}},
+				},
+			},
+			{
+				Query: "explain select p from point_tbl where st_intersects(p, point(0,0))",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ st_intersects(point_tbl.p,{0 0 0})"},
+					{" └─ IndexedTableAccess(point_tbl)"},
+					{"     ├─ index: [point_tbl.p]"},
+					{"     ├─ filters: [{[{0 0 0}, {0 0 0}]}]"},
+					{"     └─ columns: [p]"},
+				},
+			},
+			{
+				Query: "select p from point_tbl where st_intersects(p, point(0,0)) = true",
+				Expected: []sql.Row{
+					{types.Point{}},
+				},
+			},
+			// TODO: This should take advantage of spatial indexes
+			{
+				Skip: true,
+				Query: "explain select p from point_tbl where st_intersects(p, point(0,0)) = true",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ st_intersects(point_tbl.p,{0 0 0})"},
+					{" └─ IndexedTableAccess(point_tbl)"},
+					{"     ├─ index: [point_tbl.p]"},
+					{"     ├─ filters: [{[{0 0 0}, {0 0 0}]}]"},
+					{"     └─ columns: [p]"},
+				},
+			},
+		},
+	},
+	// TODO: fix gms spatial indexes to search over a bounding box rather than an exact match
+	{
+		Name: "test st_intersects with spatial indexes geometries",
+		SetUpScript: []string{
+			"create table geom_tbl(g geometry not null srid 0, spatial index (g))",
+			"insert into geom_tbl values (point(0,0)), (linestring(point(-1,-1), point(1,1)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			// TODO: this should contain linestring too
+			{
+				Skip:  true,
+				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0))",
+				Expected: []sql.Row{
+					{"POINT(0 0)"},
+					{"LINESTRING(-1 -1, 1 1)"},
+				},
+			},
+			{
+				Query: "explain select g from geom_tbl where st_intersects(g, point(0,0))",
+				Expected: []sql.Row{
+					{"Filter"},
+					{" ├─ st_intersects(geom_tbl.g,{0 0 0})"},
+					{" └─ IndexedTableAccess(geom_tbl)"},
+					{"     ├─ index: [geom_tbl.g]"},
+					{"     ├─ filters: [{[{0 0 0}, {0 0 0}]}]"},
+					{"     └─ columns: [g]"},
+				},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
