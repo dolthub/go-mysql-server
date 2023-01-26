@@ -1256,7 +1256,6 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		for i, column := range columns {
 			prefixLengths[i] = uint16(column.Length)
 		}
-
 	}
 
 	if constraint == sql.IndexConstraint_Unique {
@@ -1274,6 +1273,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Exprs:      exprs,
 		Name:       name,
 		Unique:     constraint == sql.IndexConstraint_Unique,
+		Spatial:    constraint == sql.IndexConstraint_Spatial,
 		CommentStr: comment,
 		PrefixLens: prefixLengths,
 	}, nil

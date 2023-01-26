@@ -17,6 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -259,6 +260,48 @@ func getIndexes(
 		}
 
 		return result, nil
+	}
+
+
+	// TOOD: maybe this block can just go into previous switch
+	// TODO: return indexes for specific functions
+	switch e := e.(type) {
+	case *spatial.Intersects:
+		// TODO: make a getFunctionIndexLookup()
+		// TODO: make generalizable to all functions?
+
+		// Will be non-nil only when there is exactly one *expression.GetField
+		getField := expression.ExtractGetField(e)
+		if getField == nil {
+			return nil, nil
+		}
+
+		left, right := e.BinaryExpression.Left, e.BinaryExpression.Right
+		if _, ok := right.(*expression.GetField); ok {
+			left, right = right, left
+		}
+
+		value, err := right.Eval(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		normalizedExpressions := normalizeExpressions(tableAliases, left)
+		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getField.Table(), normalizedExpressions...)
+
+		// TODO: add this function to sql.Index interface
+		//if !idx.IsSpatial() {
+		//	return nil, nil
+		//}
+
+		// TODO: later on, convert the literal in the range to be a bbox of the type
+		lookup, err := sql.NewIndexBuilder(idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+		result[getField.Table()] = &indexLookup{
+			fields:  []sql.Expression{getField},
+			indexes: []sql.Index{idx},
+			lookup:  lookup,
+			expr:    e,
+		}
 	}
 
 	return result, nil

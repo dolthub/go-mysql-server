@@ -198,6 +198,9 @@ func (idx *Index) Table() string { return idx.TableName }
 
 func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
+	if idx.Spatial {
+		return handled
+	}
 	for _, expr := range filters {
 		if expression.ContainsImpreciseComparison(expr) {
 			continue

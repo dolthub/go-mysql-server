@@ -1081,7 +1081,6 @@ func TestScripts(t *testing.T, harness Harness) {
 func TestSpatialScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SpatialScriptTests {
-
 		TestScript(t, harness, script)
 	}
 }
