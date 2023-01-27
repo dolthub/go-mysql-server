@@ -213,8 +213,7 @@ type rangePartition struct {
 type spatialRangePartitionIter struct {
 	child *partitionIter
 	ord   int
-	lower types.Point
-	upper types.Point
+	minX, minY, maxX, maxY float64
 }
 
 var _ sql.PartitionIter = (*spatialRangePartitionIter)(nil)
@@ -231,16 +230,17 @@ func (i spatialRangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error)
 	return &spatialRangePartition{
 		Partition: part.(*Partition),
 		ord:       i.ord,
-		lower:     i.lower,
-		upper:     i.upper,
+		minX:      i.minX,
+		minY:      i.minY,
+		maxX:      i.maxX,
+		maxY:      i.maxY,
 	}, nil
 }
 
 type spatialRangePartition struct {
 	*Partition
 	ord   int
-	lower types.Point
-	upper types.Point
+	minX, minY, maxX, maxY float64
 }
 
 // PartitionCount implements the sql.PartitionCounter interface.
@@ -269,8 +269,10 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		return &spatialTableIter{
 			columns: t.columns,
 			ord:     r.ord,
-			lower:   r.lower,
-			upper:   r.upper,
+			minX:    r.minX,
+			minY:    r.minY,
+			maxX:    r.maxX,
+			maxY:    r.maxY,
 			rows:    rowsCopy,
 		}, nil
 	}
@@ -496,11 +498,10 @@ func (i *tableIter) getFromIndex(ctx *sql.Context) (sql.Row, error) {
 
 type spatialTableIter struct {
 	columns []int
-	ord     int
-	lower   types.Point
-	upper   types.Point
 	rows    []sql.Row
 	pos     int
+	ord     int
+	minX, minY, maxX, maxY float64
 }
 
 var _ sql.RowIter = (*spatialTableIter)(nil)
@@ -511,19 +512,17 @@ func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	g := row[i.ord].(types.GeometryValue)
-	aMinX, aMinY, aMaxX, aMaxY := g.BBox()
-	bMinX, bMinY, bMaxX, bMaxY := i.lower.X, i.lower.Y, i.upper.X, i.upper.Y
-	xInt := (aMinX <= bMinX && bMinX <= aMaxX) ||
-		(aMinX <= bMaxX && bMaxX <= aMaxX) ||
-		(bMinX <= aMinX && aMinX <= bMaxX) ||
-		(bMinX <= aMaxX && aMaxX <= bMaxX)
-
-	yInt := (aMinY <= bMinY && bMinY <= aMaxY) ||
-		(aMinY <= bMaxY && bMaxY <= aMaxY) ||
-		(bMinY <= aMinY && aMinY <= bMaxY) ||
-		(bMinY <= aMaxY && aMaxY <= bMaxY)
-
+	gMinX, gMinY, gMaxX, gMaxY := g.BBox()
+	xInt := (gMinX <= i.minX && i.minX <= gMaxX) ||
+		(gMinX <= i.maxX && i.maxX <= gMaxX) ||
+		(i.minX <= gMinX && gMinX <= i.maxX) ||
+		(i.minX <= gMaxX && gMaxX <= i.maxX)
+	yInt := (gMinY <= i.minY && i.minY <= gMaxY) ||
+		(gMinY <= i.maxY && i.maxY <= gMaxY) ||
+		(i.minY <= gMinY && gMinY <= i.maxY) ||
+		(i.minY <= gMaxY && gMaxY <= i.maxY)
 	if !(xInt && yInt) {
 		return i.Next(ctx)
 	}
@@ -1122,10 +1121,17 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	}
 
 	if lookup.Index.IsSpatial() {
-		minPoint := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
-		maxPoint := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
+		g := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
+		minX, minY, maxX, maxY := g.(types.GeometryValue).BBox()
 		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
-		return spatialRangePartitionIter{child: child.(*partitionIter), ord: ord, lower: minPoint.(types.Point), upper: maxPoint.(types.Point)}, nil
+		return spatialRangePartitionIter{
+			child: child.(*partitionIter),
+			ord: ord,
+			minX: minX,
+			minY: minY,
+			maxX: maxX,
+			maxY: maxY,
+		}, nil
 	}
 
 	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil

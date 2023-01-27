@@ -215,7 +215,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0))",
+					Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(0,0), point(0,0)))",
 					Expected: []sql.Row{
 						{"POINT(0 0)"},
 						{"LINESTRING(-1 -1,1 1)"},

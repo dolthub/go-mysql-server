@@ -283,13 +283,10 @@ func getIndexes(
 			return nil, err
 		}
 
-		g, ok := value.(types.GeometryValue)
+		_, ok := value.(types.GeometryValue)
 		if !ok {
 			return nil, sql.ErrInvalidGISData.New()
 		}
-
-		// duplicate of find bbox
-		lower, upper := GetBBox(g)
 
 		normalizedExpressions := normalizeExpressions(tableAliases, left)
 		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getField.Table(), normalizedExpressions...)
@@ -297,9 +294,13 @@ func getIndexes(
 			return nil, nil
 		}
 
+		// duplicate of find bbox
+		//lower, upper := GetBBox(g)
+
 		bld := sql.NewIndexBuilder(idx)
-		bld.GreaterOrEqual(ctx, normalizedExpressions[0].String(), lower)
-		bld.LessOrEqual(ctx, normalizedExpressions[0].String(), upper)
+		bld.Equals(ctx, normalizedExpressions[0].String(), value)
+		//bld.GreaterOrEqual(ctx, normalizedExpressions[0].String(), lower)
+		//bld.LessOrEqual(ctx, normalizedExpressions[0].String(), upper)
 		lookup, err := bld.Build(ctx)
 		if err != nil || lookup.IsEmpty() {
 			return nil, err
