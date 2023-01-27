@@ -634,6 +634,10 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
 		Expected: []sql.Row{{uint64(3)}},
 	},
+	{
+		Query:    "select table_name from information_schema.tables where table_schema collate utf8_general_ci = 'information_schema' and table_name collate utf8_general_ci = 'parameters'",
+		Expected: []sql.Row{{"parameters"}},
+	},
 }
 
 var SkippedInfoSchemaQueries = []QueryTest{
