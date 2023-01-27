@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
+	errors "gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"reflect"
@@ -25,9 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/dolthub/vitess/go/sqltypes"
-	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -209,6 +208,40 @@ type rangePartition struct {
 	rang sql.Expression
 }
 
+// spatialRangePartitionIter returns a partition that has range and table data access
+type spatialRangePartitionIter struct {
+	child  *partitionIter
+	ord int
+	lower types.Point
+	upper types.Point
+}
+
+var _ sql.PartitionIter = (*spatialRangePartitionIter)(nil)
+
+func (i spatialRangePartitionIter) Close(ctx *sql.Context) error {
+	return i.child.Close(ctx)
+}
+
+func (i spatialRangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
+	part, err := i.child.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &spatialRangePartition{
+		Partition: part.(*Partition),
+		ord:       i.ord,
+		lower:     i.lower,
+		upper:     i.upper,
+	}, nil
+}
+
+type spatialRangePartition struct {
+	*Partition
+	ord int
+	lower types.Point
+	upper types.Point
+}
+
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(t.partitions)), nil
@@ -230,6 +263,17 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	// make a copy of the values as they exist when execution begins.
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
+
+
+	if r, ok := partition.(*spatialRangePartition); ok {
+		return &spatialTableIter{
+			columns: t.columns,
+			ord: r.ord,
+			lower: r.lower,
+			upper: r.upper,
+			rows: rowsCopy,
+		}, nil
+	}
 
 	return &tableIter{
 		rows:    rowsCopy,
@@ -354,7 +398,6 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	// TODO (james): I think I can safely assume that all filters over a spatial type are a result of indexes
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
 		if err != nil {
@@ -449,6 +492,81 @@ func (i *tableIter) getFromIndex(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return i.rows[value.Pos], nil
+}
+
+type spatialTableIter struct {
+	columns []int
+	ord     int
+	lower   types.Point
+	upper   types.Point
+	rows    []sql.Row
+	pos     int
+}
+
+var _ sql.RowIter = (*spatialTableIter)(nil)
+var _ sql.RowIter2 = (*spatialTableIter)(nil)
+
+func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.getRow(ctx)
+	if err != nil {
+		return nil, err
+	}
+	g := row[i.ord].(types.GeometryValue)
+	aMinX, aMinY, aMaxX, aMaxY := g.BBox()
+	bMinX, bMinY, bMaxX, bMaxY := i.lower.X, i.lower.Y, i.upper.X, i.upper.Y
+	xInt := (aMinX <= bMinX && bMinX <= aMaxX) ||
+		(aMinX <= bMaxX && bMaxX <= aMaxX) ||
+		(bMinX <= aMinX && aMinX <= bMaxX) ||
+		(bMinX <= aMaxX && aMaxX <= bMaxX)
+
+	yInt := (aMinY <= bMinY && bMinY <= aMaxY) ||
+		(aMinY <= bMaxY && bMaxY <= aMaxY) ||
+		(bMinY <= aMinY && aMinY <= bMaxY) ||
+		(bMinY <= aMaxY && aMaxY <= bMaxY)
+
+	if !(xInt && yInt) {
+		return i.Next(ctx)
+	}
+
+	if len(i.columns) > 0 {
+		resultRow := make(sql.Row, len(i.columns))
+		for i, j := range i.columns {
+			resultRow[i] = row[j]
+		}
+		return resultRow, nil
+	}
+	return row, nil
+}
+
+func (i *spatialTableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	r, err := i.Next(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range r {
+		x, err := sql.ConvertToValue(v)
+		if err != nil {
+			return err
+		}
+		frame.Append(x)
+	}
+
+	return nil
+}
+
+func (i *spatialTableIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+func (i *spatialTableIter) getRow(ctx *sql.Context) (sql.Row, error) {
+	if i.pos >= len(i.rows) {
+		return nil, io.EOF
+	}
+
+	row := i.rows[i.pos]
+	i.pos++
+	return row, nil
 }
 
 type IndexValue struct {
@@ -994,7 +1112,6 @@ type IndexedTable struct {
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	// TODO: maybe here I need to convert the range filters into bounding boxes
 	filter, err := lookup.Index.(*Index).rangeFilterExpr(lookup.Ranges...)
 	if err != nil {
 		return nil, err
@@ -1002,6 +1119,13 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	child, err := t.Table.Partitions(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	if lookup.Index.IsSpatial() {
+		minPoint := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
+		maxPoint := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
+		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
+		return spatialRangePartitionIter{child: child.(*partitionIter), ord: ord, lower: minPoint.(types.Point), upper: maxPoint.(types.Point)}, nil
 	}
 
 	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
@@ -1018,12 +1142,23 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		for i, e := range t.Idx.Exprs {
 			sf[i] = sql.SortField{Column: e}
 		}
-		sorter := &expression.Sorter{
-			SortFields: sf,
-			Rows:       iter.(*tableIter).rows,
-			LastError:  nil,
-			Ctx:        ctx,
+		var sorter *expression.Sorter
+		if i, ok := iter.(*tableIter); ok {
+			sorter = &expression.Sorter{
+				SortFields: sf,
+				Rows:       i.rows,
+				LastError:  nil,
+				Ctx:        ctx,
+			}
+		} else if i, ok := iter.(*spatialTableIter); ok {
+			sorter = &expression.Sorter{
+				SortFields: sf,
+				Rows:       i.rows,
+				LastError:  nil,
+				Ctx:        ctx,
+			}
 		}
+
 		sort.Stable(sorter)
 	}
 	return iter, nil
