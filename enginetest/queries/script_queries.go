@@ -3316,7 +3316,6 @@ var SpatialIndexScriptTests = []ScriptTest{
 			},
 		},
 	},
-	// TODO: fix gms spatial indexes to search over a bounding box rather than an exact match
 	{
 		Name: "test st_intersects with spatial indexes geometries",
 		SetUpScript: []string{
@@ -3324,9 +3323,7 @@ var SpatialIndexScriptTests = []ScriptTest{
 			"insert into geom_tbl values (point(0,0)), (linestring(point(-1,-1), point(1,1)))",
 		},
 		Assertions: []ScriptTestAssertion{
-			// TODO: this should contain linestring too
 			{
-				//Skip:  true,
 				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0))",
 				Expected: []sql.Row{
 					{"POINT(0 0)"},
