@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -29,13 +31,16 @@ import (
 
 func TestInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
+
+	varChar3 := types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Default)
+	varChar6 := types.MustCreateString(sqltypes.VarChar, 6, sql.Collation_Default)
+
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: types.Text},
+		{Name: "t", Source: "foo", Type: varChar3},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
-	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
 
 	project := func(expr sql.Expression) sql.Node {
 		return plan.NewProject([]sql.Expression{
@@ -91,6 +96,26 @@ func TestInSubquery(t *testing.T) {
 				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("four"),
+			false,
+			nil,
+		},
+		{
+			"big varchar successful cast to smaller varchar",
+			expression.NewGetField(0, varChar6, "foo", false),
+			project(
+				expression.NewGetField(1, varChar3, "foo", false),
+			),
+			sql.NewRow("one"),
+			true,
+			nil,
+		},
+		{
+			"big varchar unsuccessful cast to smaller varchar does not error",
+			expression.NewGetField(0, varChar6, "foo", false),
+			project(
+				expression.NewGetField(1, varChar3, "foo", false),
+			),
+			sql.NewRow("oneone"),
 			false,
 			nil,
 		},
