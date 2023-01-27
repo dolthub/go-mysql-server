@@ -215,7 +215,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "explain select st_aswkt(p) from t where st_intersects(p, point(1,1))",
+					Query:    "select st_aswkt(p) from t where st_intersects(p, linestring(point(0,0), point(1,1)))",
 					Expected: []sql.Row{
 						{},
 					},

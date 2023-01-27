@@ -15,6 +15,7 @@
 package types
 
 import (
+	"math"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -209,4 +210,17 @@ func (p MultiPoint) Swap() GeometryValue {
 		SRID:   p.SRID,
 		Points: points,
 	}
+}
+
+// BBox implements GeometryValue interface.
+func (p MultiPoint) BBox() (float64, float64, float64, float64) {
+	minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
+	for _, p := range p.Points {
+		pMinX, pMinY, pMaxX, pMaxY := p.BBox()
+		minX = math.Min(minX, pMinX)
+		minY = math.Min(minY, pMinY)
+		maxX = math.Max(maxX, pMaxX)
+		maxY = math.Max(maxY, pMaxY)
+	}
+	return minX, minY, maxX, maxY
 }
