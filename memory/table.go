@@ -211,8 +211,8 @@ type rangePartition struct {
 
 // spatialRangePartitionIter returns a partition that has range and table data access
 type spatialRangePartitionIter struct {
-	child *partitionIter
-	ord   int
+	child                  *partitionIter
+	ord                    int
 	minX, minY, maxX, maxY float64
 }
 
@@ -239,7 +239,7 @@ func (i spatialRangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error)
 
 type spatialRangePartition struct {
 	*Partition
-	ord   int
+	ord                    int
 	minX, minY, maxX, maxY float64
 }
 
@@ -497,10 +497,10 @@ func (i *tableIter) getFromIndex(ctx *sql.Context) (sql.Row, error) {
 }
 
 type spatialTableIter struct {
-	columns []int
-	rows    []sql.Row
-	pos     int
-	ord     int
+	columns                []int
+	rows                   []sql.Row
+	pos                    int
+	ord                    int
 	minX, minY, maxX, maxY float64
 }
 
@@ -1126,11 +1126,11 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
 		return spatialRangePartitionIter{
 			child: child.(*partitionIter),
-			ord: ord,
-			minX: minX,
-			minY: minY,
-			maxX: maxX,
-			maxY: maxY,
+			ord:   ord,
+			minX:  minX,
+			minY:  minY,
+			maxX:  maxX,
+			maxY:  maxY,
 		}, nil
 	}
 
