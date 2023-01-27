@@ -171,6 +171,9 @@ func TestSetConvert(t *testing.T) {
 		{[]string{"a", "b", "c"}, sql.Collation_Default, "b,c  ,a", "a,b,c", false},
 		{[]string{"one", "two"}, sql.Collation_utf8mb4_general_ci, "ONE", "one", false},
 		{[]string{"ONE", "two"}, sql.Collation_utf8mb4_general_ci, "one", "ONE", false},
+		{[]string{"", "one", "two"}, sql.Collation_Default, "", "", false},
+		{[]string{"", "one", "two"}, sql.Collation_Default, ",one,two", ",one,two", false},
+		{[]string{"", "one", "two"}, sql.Collation_Default, "one,,two", ",one,two", false},
 
 		{[]string{"one", "two"}, sql.Collation_Default, ",one,two", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, 4, nil, true},
@@ -262,13 +265,11 @@ func TestSetConvertToString(t *testing.T) {
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
-		val         string
 		bit         uint64
 		expectedStr string
 	}{
-		{[]string{"", "a", "b", "c"}, sql.Collation_Default, ",a,b,c", 15, "a,b,c"},
-		{[]string{"", "a", "b", "c"}, sql.Collation_Default, "a,,b,c", 15, "a,b,c"},
-		{[]string{"", "a", "b", "c"}, sql.Collation_Default, "a,b,c", 14, "a,b,c"},
+		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 15, "a,b,c"},
+		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 14, "a,b,c"},
 	}
 
 	for _, test := range tests {
