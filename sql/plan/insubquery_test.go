@@ -17,10 +17,9 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
