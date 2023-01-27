@@ -101,7 +101,7 @@ var JoinOpTests = []struct {
 			//{
 			// TODO: cannot hash join on compound expressions
 			//	q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = mod(s,2) order by 1, 3",
-			//	types: []plan.JoinType{plan.JoinTypeHash},
+			//	types: []plan.JoinType{plan.JoinTypeInner},
 			//	exp:   []sql.Row{{0,0,1,0},{0, 0, 1, 0},{2,0,1,0},{4,4,1,0}},
 			//},
 			{
