@@ -848,7 +848,7 @@ var systemVars = map[string]sql.SystemVariable{
 	"gtid_executed": {
 		Name:              "gtid_executed",
 		Scope:             sql.SystemVariableScope_Global,
-		Dynamic:           true,
+		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("gtid_executed"),
 		Default:           "",
