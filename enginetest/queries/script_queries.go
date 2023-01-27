@@ -3326,7 +3326,7 @@ var SpatialIndexScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			// TODO: this should contain linestring too
 			{
-				Skip:  true,
+				//Skip:  true,
 				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0))",
 				Expected: []sql.Row{
 					{"POINT(0 0)"},

@@ -283,15 +283,25 @@ func getIndexes(
 			return nil, err
 		}
 
+		g, ok := value.(types.GeometryValue)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+
+		// duplicate of find bbox
+		lower, upper := GetBBox(g)
+
 		normalizedExpressions := normalizeExpressions(tableAliases, left)
 		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getField.Table(), normalizedExpressions...)
-
 		if !idx.IsSpatial() {
 			return nil, nil
 		}
 
-		// TODO: later on, convert the literal in the range to be a bbox of the type
-		lookup, err := sql.NewIndexBuilder(idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+		lookup, err := sql.NewIndexBuilder(idx).GreaterOrEqual(ctx, normalizedExpressions[0].String(), lower).
+			LessOrEqual(ctx, normalizedExpressions[0].String(), upper).Build(ctx)
+		if err != nil || lookup.IsEmpty() {
+			return nil, err
+		}
 		result[getField.Table()] = &indexLookup{
 			fields:  []sql.Expression{getField},
 			indexes: []sql.Index{idx},
@@ -301,6 +311,11 @@ func getIndexes(
 	}
 
 	return result, nil
+}
+
+func GetBBox(g types.GeometryValue) (types.Point, types.Point) {
+	res := spatial.FindBBox(g)
+	return types.Point{X: res[0], Y: res[1]}, types.Point{X: res[2], Y: res[3]}
 }
 
 // getComparisonIndexLookup returns the index and index lookup for the given

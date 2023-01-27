@@ -354,6 +354,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	// TODO (james): I think I can safely assume that all filters over a spatial type are a result of indexes
 	for _, f := range i.filters {
 		result, err := f.Eval(ctx, row)
 		if err != nil {
@@ -993,6 +994,7 @@ type IndexedTable struct {
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+	// TODO: maybe here I need to convert the range filters into bounding boxes
 	filter, err := lookup.Index.(*Index).rangeFilterExpr(lookup.Ranges...)
 	if err != nil {
 		return nil, err
