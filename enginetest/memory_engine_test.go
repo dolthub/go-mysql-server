@@ -210,14 +210,15 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "delete me",
 			SetUpScript: []string{
-				"create table t (p point srid 0 not null, spatial index (p));",
-				"insert into t values (point(1,1));",
+				"create table geom_tbl(g geometry not null srid 0, spatial index (g))",
+				"insert into geom_tbl values (point(0,0)), (linestring(point(-1,-1), point(1,1)))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select st_aswkt(p) from t where st_intersects(p, linestring(point(0,0), point(1,1)))",
+					Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0))",
 					Expected: []sql.Row{
-						{},
+						{"POINT(0 0)"},
+						{"LINESTRING(-1 -1, 1 1)"},
 					},
 				},
 			},

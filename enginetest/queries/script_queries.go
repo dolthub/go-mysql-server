@@ -3330,7 +3330,7 @@ var SpatialIndexScriptTests = []ScriptTest{
 				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0))",
 				Expected: []sql.Row{
 					{"POINT(0 0)"},
-					{"LINESTRING(-1 -1, 1 1)"},
+					{"LINESTRING(-1 -1,1 1)"},
 				},
 			},
 			{
