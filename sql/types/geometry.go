@@ -15,7 +15,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/binary"
 	"math"
 	"reflect"
@@ -401,7 +400,23 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 		return 0, ErrNotGeometry.New(b)
 	}
 
-	return bytes.Compare(aa.Serialize(), bb.Serialize()), nil
+	aMinX, aMinY, aMaxX, aMaxY := aa.BBox()
+	bMinX, bMinY, bMaxX, bMaxY := bb.BBox()
+
+	xInt := (aMinX <= bMinX && bMinX <= aMaxX) ||
+		(aMinX <= bMaxX && bMaxX <= aMaxX) ||
+		(bMinX <= aMinX && aMinX <= bMaxX) ||
+		(bMinX <= aMaxX && aMaxX <= bMaxX)
+
+	yInt := (aMinY <= bMinY && bMinY <= aMaxY) ||
+		(aMinY <= bMaxY && bMaxY <= aMaxY) ||
+		(bMinY <= aMinY && aMinY <= bMaxY) ||
+		(bMinY <= aMaxY && aMaxY <= bMaxY)
+
+	if xInt && yInt {
+		return 0, nil
+	}
+	return 1, nil
 }
 
 // Convert implements Type interface.
