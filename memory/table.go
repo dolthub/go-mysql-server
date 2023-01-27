@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
-	errors "gopkg.in/src-d/go-errors.v1"
 	"io"
 	"math"
 	"reflect"
@@ -27,6 +25,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -210,8 +211,8 @@ type rangePartition struct {
 
 // spatialRangePartitionIter returns a partition that has range and table data access
 type spatialRangePartitionIter struct {
-	child  *partitionIter
-	ord int
+	child *partitionIter
+	ord   int
 	lower types.Point
 	upper types.Point
 }
@@ -237,7 +238,7 @@ func (i spatialRangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error)
 
 type spatialRangePartition struct {
 	*Partition
-	ord int
+	ord   int
 	lower types.Point
 	upper types.Point
 }
@@ -264,14 +265,13 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
 
-
 	if r, ok := partition.(*spatialRangePartition); ok {
 		return &spatialTableIter{
 			columns: t.columns,
-			ord: r.ord,
-			lower: r.lower,
-			upper: r.upper,
-			rows: rowsCopy,
+			ord:     r.ord,
+			lower:   r.lower,
+			upper:   r.upper,
+			rows:    rowsCopy,
 		}, nil
 	}
 
