@@ -3341,6 +3341,13 @@ var SpatialIndexScriptTests = []ScriptTest{
 					{"     └─ columns: [g]"},
 				},
 			},
+			{
+				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1)))",
+				Expected: []sql.Row{
+					{"POINT(0 0)"},
+					{"LINESTRING(-1 -1,1 1)"},
+				},
+			},
 		},
 	},
 }
