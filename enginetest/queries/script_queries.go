@@ -3321,6 +3321,7 @@ var SpatialIndexScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"create table geom_tbl(g geometry not null srid 0, spatial index (g))",
 			"insert into geom_tbl values (point(0,0)), (linestring(point(-1,-1), point(1,1)))",
+			"insert into geom_tbl values ()",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -3350,6 +3351,8 @@ var SpatialIndexScriptTests = []ScriptTest{
 			},
 		},
 	},
+
+	// TODO: I have a feeling these won't handle negations really well
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{

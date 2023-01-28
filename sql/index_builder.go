@@ -317,33 +317,3 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 	}
 	b.ranges[colExpr] = newRanges
 }
-
-// Spatial represents colExpr within bounding box of keys. For IN expressions, pass all of them in the same Equals call.
-func (b *IndexBuilder) Spatial(ctx *Context, colExpr string, keys ...interface{}) *IndexBuilder {
-	if b.isInvalid {
-		return b
-	}
-
-	typ, ok := b.colExprTypes[colExpr]
-	if !ok {
-		b.isInvalid = true
-		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
-		return b
-	}
-	// Spatial indexes are compared against exactly one geometry
-	if len(keys) != 1 {
-		b.isInvalid = true
-		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
-		return b
-	}
-	potentialRanges := make([]RangeColumnExpr, 2)
-	//spatial.FindBBox(keys[0])
-
-	//potentialRanges[0] = GreaterOrEqualRangeColumnExpr()
-
-	for i, key := range keys {
-		potentialRanges[i] = ClosedRangeColumnExpr(key, key, typ)
-	}
-	b.updateCol(ctx, colExpr, potentialRanges...)
-	return b
-}
