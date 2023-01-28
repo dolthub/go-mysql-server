@@ -3320,8 +3320,9 @@ var SpatialIndexScriptTests = []ScriptTest{
 		Name: "test st_intersects with spatial indexes geometries",
 		SetUpScript: []string{
 			"create table geom_tbl(g geometry not null srid 0, spatial index (g))",
-			"insert into geom_tbl values (point(0,0)), (linestring(point(-1,-1), point(1,1)))",
-			"insert into geom_tbl values ()",
+			"insert into geom_tbl values (point(0,0))",
+			"insert into geom_tbl values (st_geomfromtext('linestring(-1 -1,1 1)'))",
+			"insert into geom_tbl values (st_geomfromtext('polygon((2 2,2 -2,-2 -2,-2 2,2 2),(1 1,1 -1,-1 -1,-1 1,1 1))'))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -3347,12 +3348,93 @@ var SpatialIndexScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"POINT(0 0)"},
 					{"LINESTRING(-1 -1,1 1)"},
+					{"POLYGON((2 2,2 -2,-2 -2,-2 2,2 2),(1 1,1 -1,-1 -1,-1 1,1 1))"},
 				},
 			},
 		},
 	},
-
-	// TODO: I have a feeling these won't handle negations really well
+	{
+		Name: "st_intersects and joins",
+		SetUpScript: []string{
+			"create table t1(g geometry not null srid 0, spatial index (g))",
+			"create table t2(g geometry not null srid 0, spatial index (g))",
+			"insert into t1 values (point(0,0))",
+			"insert into t2 values (point(0,0))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
+				Expected: []sql.Row{
+					{"POINT(0 0)", "POINT(0 0)"},
+				},
+			},
+			{
+				Query: "explain select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
+				Expected: []sql.Row{
+					{"Project"},
+					{" ├─ columns: [st_aswkb(t1.g), st_aswkb(t2.g)]"},
+					{" └─ CrossJoin"},
+					{"     ├─ Filter"},
+					{"     │   ├─ st_intersects(t1.g,{0 0 0})"},
+					{"     │   └─ IndexedTableAccess(t1)"},
+					{"     │       ├─ index: [t1.g]"},
+					{"     │       ├─ filters: [{[{0 0 0}, {0 0 0}]}]"},
+					{"     │       └─ columns: [g]"},
+					{"     └─ Table"},
+					{"         ├─ name: t2"},
+					{"         └─ columns: [g]"},
+				},
+			},
+			{
+				Query: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0)) and st_intersects(t2.g, point(0,0))",
+				Expected: []sql.Row{
+					{"POINT(0 0)", "POINT(0 0)"},
+				},
+			},
+			{
+				Query: "explain select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0)) and st_intersects(t2.g, point(0,0))",
+				Expected: []sql.Row{
+					{"Project"},
+					{" ├─ columns: [st_aswkb(t1.g), st_aswkb(t2.g)]"},
+					{" └─ CrossJoin"},
+					{"     ├─ Filter"},
+					{"     │   ├─ st_intersects(t1.g,{0 0 0})"},
+					{"     │   └─ IndexedTableAccess(t1)"},
+					{"     │       ├─ index: [t1.g]"},
+					{"     │       ├─ filters: [{[{0 0 0}, {0 0 0}]}]"},
+					{"     │       └─ columns: [g]"},
+					{"     └─ Filter"},
+					{"         ├─ st_intersects(t2.g,{0 0 0})"},
+					{"         └─ IndexedTableAccess(t2)"},
+					{"             ├─ index: [t2.g]"},
+					{"             ├─ filters: [{[{0 0 0}, {0 0 0}]}]"},
+					{"             └─ columns: [g]"},
+				},
+			},
+			{
+				Query: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
+				Expected: []sql.Row{
+					{"POINT(0 0)", "POINT(0 0)"},
+				},
+			},
+			{
+				Query: "explain select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
+				Expected: []sql.Row{
+					{"Project"},
+					{" ├─ columns: [st_aswkb(t1.g), st_aswkb(t2.g)]"},
+					{" └─ Filter"},
+					{"     ├─ st_intersects(t1.g,t2.g)"},
+					{"     └─ CrossJoin"},
+					{"         ├─ Table"},
+					{"         │   ├─ name: t1"},
+					{"         │   └─ columns: [g]"},
+					{"         └─ Table"},
+					{"             ├─ name: t2"},
+					{"             └─ columns: [g]"},
+				},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
