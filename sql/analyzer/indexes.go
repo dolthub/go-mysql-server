@@ -294,13 +294,8 @@ func getIndexes(
 			return nil, nil
 		}
 
-		// duplicate of find bbox
-		//lower, upper := GetBBox(g)
-
 		bld := sql.NewIndexBuilder(idx)
 		bld.Equals(ctx, normalizedExpressions[0].String(), value)
-		//bld.GreaterOrEqual(ctx, normalizedExpressions[0].String(), lower)
-		//bld.LessOrEqual(ctx, normalizedExpressions[0].String(), upper)
 		lookup, err := bld.Build(ctx)
 		if err != nil || lookup.IsEmpty() {
 			return nil, err
@@ -315,11 +310,6 @@ func getIndexes(
 	}
 
 	return result, nil
-}
-
-func GetBBox(g types.GeometryValue) (types.Point, types.Point) {
-	res := spatial.FindBBox(g)
-	return types.Point{X: res[0], Y: res[1]}, types.Point{X: res[2], Y: res[3]}
 }
 
 // getComparisonIndexLookup returns the index and index lookup for the given
