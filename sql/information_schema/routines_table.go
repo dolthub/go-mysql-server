@@ -42,13 +42,18 @@ var doltProcedureAliasSet = map[string]interface{}{
 	"dbranch":                 nil,
 	"dcheckout":               nil,
 	"dclean":                  nil,
+	"dcherry_pick":            nil,
+	"dclone":                  nil,
 	"dcommit":                 nil,
 	"dfetch":                  nil,
+	"dgc":                     nil,
 	"dmerge":                  nil,
 	"dpull":                   nil,
 	"dpush":                   nil,
+	"dremote":                 nil,
 	"dreset":                  nil,
 	"drevert":                 nil,
+	"dtag":                    nil,
 	"dverify_constraints":     nil,
 	"dverify_all_constraints": nil,
 }
@@ -76,7 +81,7 @@ func (r *routineTable) Schema() Schema {
 
 // Collation implements the sql.Table interface.
 func (r *routineTable) Collation() CollationID {
-	return Collation_Default
+	return Collation_Information_Schema_Default
 }
 
 func (r *routineTable) String() string {
@@ -302,12 +307,12 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 					charName,          // character_set_name
 					collName,          // collation_name
 					dtdId,             // dtd_identifier
-					"PROCEDURE",       // resource_group_type
+					"PROCEDURE",       // routine_type
 				})
 			}
 		}
 	}
-	// TODO: need to add FUNCTIONS resource_group_type
+	// TODO: need to add FUNCTIONS routine_type
 
 	return RowsToRowIter(rows...), nil
 }

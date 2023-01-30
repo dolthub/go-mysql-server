@@ -329,6 +329,9 @@ func (t SetType) convertBitFieldToString(bitField uint64) (string, error) {
 			if !ok {
 				return "", sql.ErrInvalidSetValue.New(bitField)
 			}
+			if len(val) == 0 {
+				continue
+			}
 			if writeCommas {
 				strBuilder.WriteByte(',')
 			} else {
@@ -348,9 +351,6 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 	var bitField uint64
 	vals := strings.Split(str, ",")
 	for _, val := range vals {
-		if len(val) == 0 {
-			continue
-		}
 		compareVal := val
 		if t.collation != sql.Collation_binary {
 			compareVal = strings.TrimRight(compareVal, " ")

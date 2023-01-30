@@ -19,6 +19,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -438,11 +440,7 @@ func collectJoinConds(attributeSource string, filters ...sql.Expression) []*join
 // the the index xy(x,y). The second filter is not null rejecting, so the nullmask
 // will be [0,1]. The keyExprs will be [(ab.a + 1), (ab.b)], which project into
 // the table lookup (xy.x, xy.y).
-func indexMatchesKeyExprs(
-	i sql.Index,
-	joinColExprs []*joinColExpr,
-	tableAliases TableAliases,
-) ([]sql.Expression, []bool) {
+func indexMatchesKeyExprs(i sql.Index, joinColExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, []bool) {
 	idxExprs := i.Expressions()
 	count := len(idxExprs)
 	if count > len(joinColExprs) {
@@ -577,7 +575,8 @@ func exprMapsToSource(e sql.Expression, grp *exprGroup, tProps *tableProps) bool
 }
 
 // addMergeJoins will add merge join operators to join relations
-// with native indexes providing sort enforcement.
+// with native indexes providing sort enforcement on an equality
+// filter.
 // TODO: sort-merge joins
 func addMergeJoins(m *Memo) error {
 	var aliases = make(TableAliases)
@@ -598,106 +597,158 @@ func addMergeJoins(m *Memo) error {
 			return nil
 		}
 
-		lIScan, err := findSortedIndexScanForRel(m.ctx, join.left.first, join.filter, aliases)
+		lAttrSource, lIndexes, err := lookupCandidates(m.ctx, join.left.first, aliases)
 		if err != nil {
 			return err
-		} else if lIScan == nil {
+		} else if lAttrSource == "" {
+			return nil
+		}
+		rAttrSource, rIndexes, err := lookupCandidates(m.ctx, join.right.first, aliases)
+		if err != nil {
+			return err
+		} else if rAttrSource == "" {
 			return nil
 		}
 
-		rIScan, err := findSortedIndexScanForRel(m.ctx, join.right.first, join.filter, aliases)
-		if err != nil {
-			return err
-		} else if rIScan == nil {
-			return nil
-		}
-
-		var newFilters []sql.Expression
-		for _, f := range join.filter {
-			if e, ok := f.(*expression.Equals); ok {
-				// filter must bisect the rel attributes the merge comparison
-				// result to be monotonic
-				lTab, ok := attrsRefSingleRel(e.Left())
-				if !ok {
-					return nil
-				}
-				rTab, ok := attrsRefSingleRel(e.Right())
-				if !ok {
-					return nil
-				}
-				if lTab == rIScan.source && rTab == lIScan.source {
-					// comparison direction determines next iterator increment
-					newFilters = append(newFilters, expression.NewEquals(e.Right(), e.Left()))
-				} else {
-					newFilters = append(newFilters, f)
-				}
-			} else {
-				return nil
+		for i, f := range join.filter {
+			var l, r sql.Expression
+			switch f := f.(type) {
+			case *expression.Equals:
+				l = f.Left()
+				r = f.Right()
+			default:
+				continue
 			}
-		}
 
-		jb := join.copy()
-		jb.filter = newFilters
-		rel := &mergeJoin{
-			joinBase:  jb,
-			innerScan: lIScan,
-			outerScan: rIScan,
+			ltc, ok := attrsRefSingleTableCol(l)
+			if !ok {
+				continue
+			}
+			rtc, ok := attrsRefSingleTableCol(r)
+			if !ok {
+				continue
+			}
+
+			switch {
+			case ltc.table == lAttrSource && rtc.table == rAttrSource:
+			case rtc.table == lAttrSource && ltc.table == rAttrSource:
+				l, r = r, l
+				ltc, rtc = rtc, ltc
+			default:
+				continue
+			}
+
+			// check that comparer is not non-decreasing
+			if !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
+				continue
+			}
+
+			if tab, ok := aliases[ltc.table]; ok {
+				ltc = tableCol{table: strings.ToLower(tab.Name()), col: ltc.col}
+			}
+			if tab, ok := aliases[rtc.table]; ok {
+				rtc = tableCol{table: strings.ToLower(tab.Name()), col: rtc.col}
+
+			}
+
+			lIdx := sortedIndexScanForTableCol(lIndexes, ltc)
+			if lIdx == nil {
+				continue
+			}
+			rIdx := sortedIndexScanForTableCol(rIndexes, rtc)
+			if rIdx == nil {
+				continue
+			}
+
+			newFilters := make([]sql.Expression, len(join.filter))
+			copy(newFilters, join.filter)
+			newFilters[i], _ = f.WithChildren(l, r)
+			// merge cond first
+			newFilters[0], newFilters[i] = newFilters[i], newFilters[0]
+
+			jb := join.copy()
+			jb.filter = newFilters
+			rel := &mergeJoin{
+				joinBase:  jb,
+				innerScan: lIdx,
+				outerScan: rIdx,
+			}
+			rel.innerScan.parent = rel.joinBase
+			rel.outerScan.parent = rel.joinBase
+			e.group().prepend(rel)
 		}
-		rel.innerScan.parent = rel.joinBase
-		rel.outerScan.parent = rel.joinBase
-		e.group().prepend(rel)
 		return nil
 	})
 }
 
-// findSortedIndexScanForRel returns the first indexScan found for a relation
-// that provide a prefix for the joinFilters rel free attributes. I.e. the
-// indexScan will return the same rows as the rel, but sorted for every expression
-// for the table referenced in the join condition.
-func findSortedIndexScanForRel(
-	ctx *sql.Context,
-	rel relExpr,
-	joinFilters []sql.Expression,
-	aliases TableAliases,
-) (*indexScan, error) {
-	attrSource, indexes, err := lookupCandidates(ctx, rel, aliases)
-	if err != nil {
-		return nil, err
-	}
-
-	conds := collectJoinConds(attrSource, joinFilters...)
-	for _, idx := range indexes {
-		keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
-		if len(keyExprs) == 0 {
+// sortedIndexScanForTableCol returns the first indexScan found for a relation
+// that provide a prefix for the joinFilters rel free attribute. I.e. the
+// indexScan will return the same rows as the rel, but sorted by |col|.
+func sortedIndexScanForTableCol(is []sql.Index, tc tableCol) *indexScan {
+	for _, idx := range is {
+		if strings.ToLower(idx.Expressions()[0]) != tc.String() {
 			continue
 		}
 		return &indexScan{
-			source: attrSource,
+			source: tc.table,
 			idx:    idx,
-		}, nil
+		}
 	}
-	return nil, nil
+	return nil
 }
 
-// attrsRefSingleRel returns false if there are
-// getFields sourced from more than one table.
-func attrsRefSingleRel(e sql.Expression) (string, bool) {
-	var name string
+// isWeaklyMonotonic is a weak test of whether an expression
+// will be strictly increasing as the value of column attribute
+// inputs increases.
+//
+// The simplest example is `x`, which will increase
+// as `x` increases, and decrease as `x` decreases.
+//
+// An example of a non-monotonic expression is `mod(x, 4)`,
+// which is strictly non-increasing from x=3 -> x=4.
+//
+// A non-obvious non-monotonic function is `x+y`. The index `(x,y)`
+// will be non-increasing on (y), and so `x+y` can decrease.
+// TODO: stricter monotonic check
+func isWeaklyMonotonic(e sql.Expression) bool {
+	switch e := e.(type) {
+	case *expression.Arithmetic:
+		if e.Op == sqlparser.MinusStr {
+			// TODO minus can be OK if it's not on the GetField
+			return false
+		}
+	case *expression.Equals, *expression.NullSafeEquals, *expression.Literal, *expression.GetField,
+		*expression.Tuple, *expression.IsNull, *expression.BindVar:
+	default:
+		return false
+	}
+	for _, c := range e.Children() {
+		if !isWeaklyMonotonic(c) {
+			return false
+		}
+	}
+	return true
+}
+
+// attrsRefSingleTableCol returns false if there are
+// getFields sourced from zero or more than one table.
+func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
+	var tc tableCol
 	var invalid bool
 	transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			newName := strings.ToLower(e.Table())
-			if name == "" && !invalid {
-				name = newName
-			} else if name != newName {
+			newTc := tableCol{col: strings.ToLower(e.Name()), table: strings.ToLower(e.Table())}
+			if tc.table == "" && !invalid {
+				tc = newTc
+			} else if tc != newTc {
 				invalid = true
 			}
 		default:
 		}
 		return invalid
 	})
-	return name, !invalid
+	return tc, !invalid && tc.table != ""
 }
 
 func extractJoinHint(n *plan.JoinNode) JoinOrderHint {

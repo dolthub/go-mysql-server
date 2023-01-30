@@ -51,6 +51,10 @@ func (n *ForeignKeyHandler) String() string {
 	return n.OriginalNode.String()
 }
 
+func (n *ForeignKeyHandler) DebugString() string {
+	return sql.DebugString(n.OriginalNode)
+}
+
 // Schema implements the interface sql.Node.
 func (n *ForeignKeyHandler) Schema() sql.Schema {
 	return n.OriginalNode.Schema()

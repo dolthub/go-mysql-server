@@ -89,14 +89,30 @@ var JoinOpTests = []struct {
 				exp:   []sql.Row{{0, 0, 1, 0}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+10 = s order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeHash},
-				exp:   []sql.Row{},
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+2 = s order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+				exp:   []sql.Row{{4, 4, 0, 2}, {5, 4, 0, 2}},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on 10 = s+y order by 1, 3",
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s-1 order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeHash},
+				exp:   []sql.Row{{4, 4, 3, 3}, {5, 4, 3, 3}},
+			},
+			//{
+			// TODO: cannot hash join on compound expressions
+			//	q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = mod(s,2) order by 1, 3",
+			//	types: []plan.JoinType{plan.JoinTypeInner},
+			//	exp:   []sql.Row{{0,0,1,0},{0, 0, 1, 0},{2,0,1,0},{4,4,1,0}},
+			//},
+			{
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on 2 = s+y order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeInner},
-				exp:   []sql.Row{},
+				exp:   []sql.Row{{0, 0, 0, 2}, {1, 0, 0, 2}, {2, 0, 0, 2}},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y > s+2 order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeInner},
+				exp:   []sql.Row{{0, 0, 3, 3}, {1, 0, 3, 3}, {2, 0, 3, 3}},
 			},
 		},
 	},
