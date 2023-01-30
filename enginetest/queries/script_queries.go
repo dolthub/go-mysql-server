@@ -3435,6 +3435,57 @@ var SpatialIndexScriptTests = []ScriptTest{
 					{"POINT(2 2)"},
 				},
 			},
+			{
+				Query: "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
+				Expected: []sql.Row{
+					{"POINT(-2 -2)"},
+					{"POINT(-2 -1)"},
+					{"POINT(-2 0)"},
+					{"POINT(-2 1)"},
+					{"POINT(-2 2)"},
+
+					{"POINT(-1 -2)"},
+					{"POINT(-1 -1)"},
+					{"POINT(-1 0)"},
+					{"POINT(-1 1)"},
+					{"POINT(-1 2)"},
+
+					{"POINT(0 -2)"},
+					{"POINT(0 -1)"},
+					{"POINT(0 1)"},
+					{"POINT(0 2)"},
+
+					{"POINT(1 -2)"},
+					{"POINT(1 -1)"},
+					{"POINT(1 0)"},
+					{"POINT(1 1)"},
+					{"POINT(1 2)"},
+
+					{"POINT(2 -2)"},
+					{"POINT(2 -1)"},
+					{"POINT(2 0)"},
+					{"POINT(2 1)"},
+					{"POINT(2 2)"},
+				},
+			},
+			// TODO: this probably should be able to take advantage of spatial indexes, but for correctness, don't
+			{
+				Query: "explain select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
+				Expected: []sql.Row{
+					{
+						[]sql.Row{
+							{"Project"},
+							{" ├─ columns: [st_aswkb(geom_tbl.g)]"},
+							{" └─ Sort(ST_X(geom_tbl.g) ASC, ST_Y(geom_tbl.g) ASC)"},
+							{"     └─ Filter"},
+							{"         ├─ (NOT(st_intersects(geom_tbl.g,{0 [{0 0 0}]})))"},
+							{"         └─ Table"},
+							{"             ├─ name: geom_tbl"},
+							{"             └─ columns: [g]"},
+						},
+					},
+				},
+			},
 		},
 	},
 	{
