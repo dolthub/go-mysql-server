@@ -149,11 +149,17 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		h.sm.CloseConn(c)
 		return
 	}
+
+	_, err = h.e.LS.ReleaseAll(ctx)
+	if err != nil {
+		logrus.Errorf("unable to release all locks on session close: %s", err)
+	}
+
 	h.sm.CloseConn(c)
 
 	// If connection was closed, kill its associated queries.
 	ctx.ProcessList.Kill(c.ConnectionID)
-	if err := h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
+	if err = h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
 
