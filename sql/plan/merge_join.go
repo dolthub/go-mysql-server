@@ -52,17 +52,12 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		copy(fullRow[0:], row[:])
 	}
 
-	var first expression.Comparer
-	var filters []sql.Expression
-	for i, f := range expression.SplitConjunction(j.Filter) {
-		c, ok := f.(expression.Comparer)
-		if !ok {
-			return nil, sql.ErrMergeJoinExpectsComparerFilters.New(f)
-		}
-		if i == 0 {
-			first = c
-		}
-		filters = append(filters, c)
+	// a merge join's first filter provides direction information
+	// for which iter to update next
+	filters := expression.SplitConjunction(j.Filter)
+	cmp, ok := filters[0].(expression.Comparer)
+	if !ok {
+		return nil, sql.ErrMergeJoinExpectsComparerFilters.New(filters[0])
 	}
 
 	if len(filters) == 0 {
@@ -73,7 +68,7 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		left:        l,
 		right:       r,
 		filters:     filters[1:],
-		expr:        first,
+		cmp:         cmp,
 		typ:         j.Op,
 		fullRow:     fullRow,
 		scopeLen:    j.ScopeLen,
@@ -85,12 +80,11 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 
 // mergeJoinIter alternates incrementing two RowIters, assuming
 // rows will be provided in a sorted order given the join |expr|
-// (see findSortedIndexScanForRel).
-// TODO: my first iteration of this saves the future row state in Next(),
-// but it might be more appropriate to save the historical state for
-// future iterators to switch on
+// (see sortedIndexScanForTableCol). Extra join |filters| that do
+// not provide a directional ordering signal for index iteration
+// are evaluated separately.
 type mergeJoinIter struct {
-	expr    expression.Comparer
+	cmp     expression.Comparer
 	filters []sql.Expression
 	left    sql.RowIter
 	right   sql.RowIter
@@ -130,73 +124,94 @@ func (i *mergeJoinIter) sel(ctx *sql.Context, row sql.Row) (bool, error) {
 	return true, nil
 }
 
+type mergeState uint8
+
+const (
+	msInit mergeState = iota
+	msExhaustCheck
+	msCompare
+	msIncLeft
+	msIncRight
+	msSelect
+	msRet
+	msRetLeft
+)
+
 func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var err error
 	var ret sql.Row
 	var res int
-	goto INIT
-INIT:
-	if !i.init {
-		err = i.initIters(ctx)
-		if err != nil {
-			return nil, err
+
+	nextState := msInit
+	for {
+		switch nextState {
+		case msInit:
+			if !i.init {
+				err = i.initIters(ctx)
+				if err != nil {
+					return nil, err
+				}
+			}
+			nextState = msExhaustCheck
+		case msExhaustCheck:
+			if i.lojFinalize() {
+				nextState = msRetLeft
+			} else if i.exhausted() {
+				return nil, io.EOF
+			} else {
+				nextState = msCompare
+			}
+		case msCompare:
+			res, err = i.cmp.Compare(ctx, i.fullRow)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case res < 0:
+				if i.typ.IsLeftOuter() {
+					nextState = msRetLeft
+				}
+				nextState = msIncLeft
+			case res > 0:
+				nextState = msIncRight
+			case res == 0:
+				nextState = msSelect
+			}
+		case msIncLeft:
+			err = i.incLeft(ctx)
+			nextState = msExhaustCheck
+		case msIncRight:
+			err = i.incRight(ctx)
+			nextState = msExhaustCheck
+		case msSelect:
+			ret = i.copyReturnRow()
+			if ok, err := i.sel(ctx, ret); err != nil {
+				return nil, err
+			} else if !ok {
+				if i.typ.IsLeftOuter() {
+					nextState = msRetLeft
+				} else {
+					nextState = msIncLeft
+				}
+			} else {
+				nextState = msRet
+			}
+		case msRet:
+			err = i.incMatch(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return i.removeParentRow(ret), nil
+			return ret, nil
+		case msRetLeft:
+			ret = i.removeParentRow(i.nullifyRightRow(i.copyReturnRow()))
+			err = i.incLeft(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return ret, nil
 		}
 	}
-	goto EXHAUST_CHECK
-EXHAUST_CHECK:
-	if i.lojFinalize() {
-		goto RET_LEFT
-	} else if i.exhausted() {
-		return nil, io.EOF
-	}
-	goto COMPARE
-COMPARE:
-	res, err = i.expr.Compare(ctx, i.fullRow)
-	if err != nil {
-		return nil, err
-	}
-	switch {
-	case res < 0:
-		if i.typ.IsLeftOuter() {
-			goto RET_LEFT
-		}
-		goto INC_LEFT
-	case res > 0:
-		goto INC_RIGHT
-	case res == 0:
-		goto SELECT
-	}
-INC_LEFT:
-	err = i.incLeft(ctx)
-	goto EXHAUST_CHECK
-INC_RIGHT:
-	err = i.incRight(ctx)
-	goto EXHAUST_CHECK
-SELECT:
-	ret = i.copyReturnRow()
-	if ok, err := i.sel(ctx, ret); err != nil {
-		return nil, err
-	} else if !ok {
-		if i.typ.IsLeftOuter() {
-			goto RET_LEFT
-		}
-		goto INC_LEFT
-	}
-	goto RET
-RET:
-	err = i.incMatch(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return i.removeParentRow(ret), nil
-	return ret, nil
-RET_LEFT:
-	ret = i.removeParentRow(i.nullifyRightRow(i.copyReturnRow()))
-	err = i.incLeft(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
 }
 
 func (i *mergeJoinIter) copyReturnRow() sql.Row {
@@ -357,7 +372,7 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 
 	// check if lookahead valid
 	copySubslice(i.fullRow, peek, off)
-	res, err := i.expr.Compare(ctx, i.fullRow)
+	res, err := i.cmp.Compare(ctx, i.fullRow)
 	if err != nil {
 		return false, nil, err
 	}
