@@ -72,15 +72,13 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 	var iter sql.RowIter = &mergeJoinIter{
 		left:        l,
 		right:       r,
+		filters:     filters[1:],
 		expr:        first,
 		typ:         j.Op,
 		fullRow:     fullRow,
 		scopeLen:    j.ScopeLen,
 		leftRowLen:  len(j.left.Schema()),
 		rightRowLen: len(j.right.Schema()),
-	}
-	if len(filters) > 1 {
-		iter = NewFilterIter(expression.JoinAnd(filters...), iter)
 	}
 	return iter, nil
 }
@@ -93,6 +91,7 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 // future iterators to switch on
 type mergeJoinIter struct {
 	expr    expression.Comparer
+	filters []sql.Expression
 	left    sql.RowIter
 	right   sql.RowIter
 	fullRow sql.Row
@@ -117,53 +116,87 @@ type mergeJoinIter struct {
 	parentLen   int
 }
 
+func (i *mergeJoinIter) sel(ctx *sql.Context, row sql.Row) (bool, error) {
+	for _, f := range i.filters {
+		res, err := sql.EvaluateCondition(ctx, f, row)
+		if err != nil {
+			return false, err
+		}
+
+		if !sql.IsTrue(res) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
+	var err error
+	var ret sql.Row
+	var res int
+	goto INIT
+INIT:
 	if !i.init {
-		err := i.initIters(ctx)
+		err = i.initIters(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	for {
-		if i.lojFinalize() {
-			ret := i.copyReturnRow()
-			err := i.incLeft(ctx)
-			if err != nil {
-				return nil, err
-			}
-			return i.removeParentRow(i.nullifyRightRow(ret)), nil
-		} else if i.exhausted() {
-			return nil, io.EOF
-		}
-
-		res, err := i.expr.Compare(ctx, i.fullRow)
-		if err != nil {
-			return nil, err
-		}
-
-		switch {
-		case res < 0:
-			if i.typ.IsLeftOuter() {
-				ret := i.copyReturnRow()
-				err = i.incLeft(ctx)
-				return i.removeParentRow(i.nullifyRightRow(ret)), nil
-			}
-			err = i.incLeft(ctx)
-		case res > 0:
-			err = i.incRight(ctx)
-		case res == 0:
-			ret := i.copyReturnRow()
-			err = i.incMatch(ctx)
-			if err != nil {
-				return nil, err
-			}
-			return i.removeParentRow(ret), nil
-		}
-		if err != nil {
-			return nil, err
-		}
-
+	goto EXHAUST_CHECK
+EXHAUST_CHECK:
+	if i.lojFinalize() {
+		goto RET_LEFT
+	} else if i.exhausted() {
+		return nil, io.EOF
 	}
+	goto COMPARE
+COMPARE:
+	res, err = i.expr.Compare(ctx, i.fullRow)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case res < 0:
+		if i.typ.IsLeftOuter() {
+			goto RET_LEFT
+		}
+		goto INC_LEFT
+	case res > 0:
+		goto INC_RIGHT
+	case res == 0:
+		goto SELECT
+	}
+INC_LEFT:
+	err = i.incLeft(ctx)
+	goto EXHAUST_CHECK
+INC_RIGHT:
+	err = i.incRight(ctx)
+	goto EXHAUST_CHECK
+SELECT:
+	ret = i.copyReturnRow()
+	if ok, err := i.sel(ctx, ret); err != nil {
+		return nil, err
+	} else if !ok {
+		if i.typ.IsLeftOuter() {
+			goto RET_LEFT
+		}
+		goto INC_LEFT
+	}
+	goto RET
+RET:
+	err = i.incMatch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return i.removeParentRow(ret), nil
+	return ret, nil
+RET_LEFT:
+	ret = i.removeParentRow(i.nullifyRightRow(i.copyReturnRow()))
+	err = i.incLeft(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (i *mergeJoinIter) copyReturnRow() sql.Row {

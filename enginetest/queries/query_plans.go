@@ -71,7 +71,7 @@ var PlanTests = []QueryPlanTest{
 		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y = s order by 1, 3`,
 		ExpectedPlan: "Sort(rs.r:0!null ASC nullsFirst, xy.x:2 ASC nullsFirst)\n" +
 			" └─ LeftOuterMergeJoin\n" +
-			"     ├─ Eq\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ rs.s:1\n" +
 			"     │   └─ xy.y:3\n" +
 			"     ├─ IndexedTableAccess\n" +
@@ -103,7 +103,7 @@ var PlanTests = []QueryPlanTest{
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ MergeJoin\n" +
-			"     │       ├─ Eq\n" +
+			"     │       ├─ cmp: Eq\n" +
 			"     │       │   ├─ ab.a:0!null\n" +
 			"     │       │   └─ xy.y:3\n" +
 			"     │       ├─ IndexedTableAccess\n" +
@@ -131,7 +131,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a`,
 		ExpectedPlan: "MergeJoin\n" +
-			" ├─ Eq\n" +
+			" ├─ cmp: Eq\n" +
 			" │   ├─ ab.a:0!null\n" +
 			" │   └─ xy.y:3\n" +
 			" ├─ IndexedTableAccess\n" +
@@ -154,7 +154,7 @@ var PlanTests = []QueryPlanTest{
 		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1, 3`,
 		ExpectedPlan: "Sort(rs.r:0!null ASC nullsFirst, xy.x:2!null ASC nullsFirst)\n" +
 			" └─ MergeJoin\n" +
-			"     ├─ Eq\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ rs.s:1\n" +
 			"     │   └─ xy.y:3\n" +
 			"     ├─ IndexedTableAccess\n" +
@@ -176,7 +176,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s`,
 		ExpectedPlan: "MergeJoin\n" +
-			" ├─ Eq\n" +
+			" ├─ cmp: Eq\n" +
 			" │   ├─ rs.s:1\n" +
 			" │   └─ xy.y:3\n" +
 			" ├─ IndexedTableAccess\n" +
@@ -198,7 +198,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+10 = s`,
 		ExpectedPlan: "MergeJoin\n" +
-			" ├─ Eq\n" +
+			" ├─ cmp: Eq\n" +
 			" │   ├─ rs.s:1\n" +
 			" │   └─ (xy.y:3 + 10 (tinyint))\n" +
 			" ├─ IndexedTableAccess\n" +
@@ -1465,7 +1465,7 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [t1.i:0!null]\n" +
 			" └─ MergeJoin\n" +
-			"     ├─ Eq\n" +
+			"     ├─ cmp: Eq\n" +
 			"     │   ├─ t1.i:0!null\n" +
 			"     │   └─ (t2.i:1!null + 1 (tinyint))\n" +
 			"     ├─ Filter\n" +
@@ -16863,16 +16863,15 @@ FROM
 			"                                         │   │   ├─ J4JYP.ZH72S:27\n" +
 			"                                         │   │   └─ TIZHK.TVNW2:1\n" +
 			"                                         │   ├─ LeftOuterMergeJoin\n" +
-			"                                         │   │   ├─ AND\n" +
+			"                                         │   │   ├─ cmp: Eq\n" +
+			"                                         │   │   │   ├─ TIZHK.TVNW2:1\n" +
+			"                                         │   │   │   └─ NHMXW.NOHHR:11!null\n" +
+			"                                         │   │   ├─ sel: AND\n" +
 			"                                         │   │   │   ├─ AND\n" +
 			"                                         │   │   │   │   ├─ AND\n" +
-			"                                         │   │   │   │   │   ├─ AND\n" +
-			"                                         │   │   │   │   │   │   ├─ Eq\n" +
-			"                                         │   │   │   │   │   │   │   ├─ TIZHK.TVNW2:1\n" +
-			"                                         │   │   │   │   │   │   │   └─ NHMXW.NOHHR:11!null\n" +
-			"                                         │   │   │   │   │   │   └─ Eq\n" +
-			"                                         │   │   │   │   │   │       ├─ NHMXW.SWCQV:17!null\n" +
-			"                                         │   │   │   │   │   │       └─ 0 (tinyint)\n" +
+			"                                         │   │   │   │   │   ├─ Eq\n" +
+			"                                         │   │   │   │   │   │   ├─ NHMXW.SWCQV:17!null\n" +
+			"                                         │   │   │   │   │   │   └─ 0 (tinyint)\n" +
 			"                                         │   │   │   │   │   └─ Eq\n" +
 			"                                         │   │   │   │   │       ├─ NHMXW.AVPYF:12!null\n" +
 			"                                         │   │   │   │   │       └─ TIZHK.ZHITY:2\n" +
@@ -17125,15 +17124,14 @@ WHERE
 			"             │                           │       └─ Project\n" +
 			"             │                           │           ├─ columns: [uct.NO52D:7, uct.VYO5E:9, uct.ZH72S:2, I7HCR.FVUCX:17]\n" +
 			"             │                           │           └─ LeftOuterMergeJoin\n" +
-			"             │                           │               ├─ AND\n" +
+			"             │                           │               ├─ cmp: Eq\n" +
+			"             │                           │               │   ├─ uct.FTQLQ:1\n" +
+			"             │                           │               │   └─ I7HCR.TOFPN:14!null\n" +
+			"             │                           │               ├─ sel: AND\n" +
 			"             │                           │               │   ├─ AND\n" +
-			"             │                           │               │   │   ├─ AND\n" +
-			"             │                           │               │   │   │   ├─ Eq\n" +
-			"             │                           │               │   │   │   │   ├─ uct.FTQLQ:1\n" +
-			"             │                           │               │   │   │   │   └─ I7HCR.TOFPN:14!null\n" +
-			"             │                           │               │   │   │   └─ Eq\n" +
-			"             │                           │               │   │   │       ├─ I7HCR.SWCQV:18!null\n" +
-			"             │                           │               │   │   │       └─ 0 (tinyint)\n" +
+			"             │                           │               │   │   ├─ Eq\n" +
+			"             │                           │               │   │   │   ├─ I7HCR.SWCQV:18!null\n" +
+			"             │                           │               │   │   │   └─ 0 (tinyint)\n" +
 			"             │                           │               │   │   └─ Eq\n" +
 			"             │                           │               │   │       ├─ I7HCR.SJYN2:15!null\n" +
 			"             │                           │               │   │       └─ uct.ZH72S:2\n" +
@@ -17419,15 +17417,14 @@ WHERE
 			"             │           │           │   └─ N/A (longtext)\n" +
 			"             │           │           │  )) THEN uct.FHCYT:11 ELSE NULL (null) END as FHCYT, uct.ZH72S:2 as K3B6V, uct.LJLUM:5 as BTXC5, I7HCR.FVUCX:17 as H4DMT]\n" +
 			"             │           │           └─ LeftOuterMergeJoin\n" +
-			"             │           │               ├─ AND\n" +
+			"             │           │               ├─ cmp: Eq\n" +
+			"             │           │               │   ├─ uct.FTQLQ:1\n" +
+			"             │           │               │   └─ I7HCR.TOFPN:14!null\n" +
+			"             │           │               ├─ sel: AND\n" +
 			"             │           │               │   ├─ AND\n" +
-			"             │           │               │   │   ├─ AND\n" +
-			"             │           │               │   │   │   ├─ Eq\n" +
-			"             │           │               │   │   │   │   ├─ uct.FTQLQ:1\n" +
-			"             │           │               │   │   │   │   └─ I7HCR.TOFPN:14!null\n" +
-			"             │           │               │   │   │   └─ Eq\n" +
-			"             │           │               │   │   │       ├─ I7HCR.SWCQV:18!null\n" +
-			"             │           │               │   │   │       └─ 0 (tinyint)\n" +
+			"             │           │               │   │   ├─ Eq\n" +
+			"             │           │               │   │   │   ├─ I7HCR.SWCQV:18!null\n" +
+			"             │           │               │   │   │   └─ 0 (tinyint)\n" +
 			"             │           │               │   │   └─ Eq\n" +
 			"             │           │               │   │       ├─ I7HCR.SJYN2:15!null\n" +
 			"             │           │               │   │       └─ uct.ZH72S:2\n" +
