@@ -3354,6 +3354,90 @@ var SpatialIndexScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "st_intersects with more complicated geometries",
+		SetUpScript: []string{
+			"create table geom_tbl(g geometry not null srid 0, spatial index (g))",
+
+			"insert into geom_tbl values (point(-2,-2))",
+			"insert into geom_tbl values (point(-2,-1))",
+			"insert into geom_tbl values (point(-2,0))",
+			"insert into geom_tbl values (point(-2,1))",
+			"insert into geom_tbl values (point(-2,2))",
+
+			"insert into geom_tbl values (point(-1,-2))",
+			"insert into geom_tbl values (point(-1,-1))",
+			"insert into geom_tbl values (point(-1,0))",
+			"insert into geom_tbl values (point(-1,1))",
+			"insert into geom_tbl values (point(-1,2))",
+
+			"insert into geom_tbl values (point(0,-2))",
+			"insert into geom_tbl values (point(0,-1))",
+			"insert into geom_tbl values (point(0,0))",
+			"insert into geom_tbl values (point(0,1))",
+			"insert into geom_tbl values (point(0,2))",
+
+			"insert into geom_tbl values (point(1,-2))",
+			"insert into geom_tbl values (point(1,-1))",
+			"insert into geom_tbl values (point(1,0))",
+			"insert into geom_tbl values (point(1,1))",
+			"insert into geom_tbl values (point(1,2))",
+
+			"insert into geom_tbl values (point(2,-2))",
+			"insert into geom_tbl values (point(2,-1))",
+			"insert into geom_tbl values (point(2,0))",
+			"insert into geom_tbl values (point(2,1))",
+			"insert into geom_tbl values (point(2,2))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
+				Expected: []sql.Row{
+					{"POINT(0 0)"},
+				},
+			},
+			{
+				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by st_x(g), st_y(g)",
+				Expected: []sql.Row{
+					{"POINT(-1 1)"},
+					{"POINT(0 0)"},
+					{"POINT(1 -1)"},
+				},
+			},
+			{
+				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((1 1,1 -1,-1 -1,-1 1,1 1))')) order by st_x(g), st_y(g)",
+				Expected: []sql.Row{
+					{"POINT(-1 -1)"},
+					{"POINT(-1 0)"},
+					{"POINT(-1 1)"},
+					{"POINT(0 -1)"},
+					{"POINT(0 0)"},
+					{"POINT(0 1)"},
+					{"POINT(1 -1)"},
+					{"POINT(1 0)"},
+					{"POINT(1 1)"},
+				},
+			},
+			{
+				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('linestring(-2 -2,2 2)')) order by st_x(g), st_y(g)",
+				Expected: []sql.Row{
+					{"POINT(-2 -2)"},
+					{"POINT(-1 -1)"},
+					{"POINT(0 0)"},
+					{"POINT(1 1)"},
+					{"POINT(2 2)"},
+				},
+			},
+			{
+				Query: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('multipoint(-2 -2,0 0,2 2)')) order by st_x(g), st_y(g)",
+				Expected: []sql.Row{
+					{"POINT(-2 -2)"},
+					{"POINT(0 0)"},
+					{"POINT(2 2)"},
+				},
+			},
+		},
+	},
+	{
 		Name: "st_intersects and joins",
 		SetUpScript: []string{
 			"create table t1(g geometry not null srid 0, spatial index (g))",
