@@ -170,8 +170,9 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			case res < 0:
 				if i.typ.IsLeftOuter() {
 					nextState = msRetLeft
+				} else {
+					nextState = msIncLeft
 				}
-				nextState = msIncLeft
 			case res > 0:
 				nextState = msIncRight
 			case res == 0:
