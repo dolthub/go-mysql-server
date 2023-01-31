@@ -149,21 +149,42 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return node, transform.SameTree, nil
 	}
 
-	return transform.NodeWithCtx(node, func(transform.Context) bool { return true }, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if c.Node != topJoin {
-			return c.Node, transform.SameTree, nil
+	isTopJoinParentUpdated := false
+	resultNode, resultIdentity, err := transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		children := n.Children()
+		if children == nil || len(children) == 0 {
+			return n, transform.SameTree, nil
 		}
-		switch n := c.Parent.(type) {
+		isParentOfTopJoin := false
+		for _, child := range children {
+			if child == topJoin {
+				isParentOfTopJoin = true
+				break
+			}
+		}
+		if !isParentOfTopJoin {
+			return n, transform.SameTree, nil
+		}
+
+		isTopJoinParentUpdated = true
+		switch imp := n.(type) {
 		case *plan.Filter:
-			return plan.NewFilter(
-				expression.JoinAnd(append([]sql.Expression{n.Expression}, nonJoinFilters...)...),
-				n.Child), transform.NewTree, nil
+			newExpression := expression.JoinAnd(append([]sql.Expression{imp.Expression}, nonJoinFilters...)...)
+			newFilter := plan.NewFilter(newExpression, imp.Child)
+			return newFilter, transform.NewTree, nil
+		case *plan.UpdateSource:
+			newExpression := expression.JoinAnd(nonJoinFilters...)
+			newFilter := plan.NewFilter(newExpression, imp.Child)
+			imp.Child = newFilter
+			return imp, transform.NewTree, nil
 		default:
-			return plan.NewFilter(
-				expression.JoinAnd(nonJoinFilters...),
-				c.Node), transform.NewTree, nil
+			newExpression := expression.JoinAnd(nonJoinFilters...)
+			newFilter := plan.NewFilter(newExpression, imp)
+			return newFilter, transform.NewTree, nil
 		}
 	})
+	
+	return resultNode, resultIdentity, err
 }
 
 // removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
