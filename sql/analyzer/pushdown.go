@@ -460,6 +460,9 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *p
 	if !ok {
 		return nil, nil
 	}
+	if filteredIdx.IsSpatial() {
+		return nil, nil
+	}
 
 	idxFilters := splitConjunction(lookup.expr)
 	if len(idxFilters) == 0 {
