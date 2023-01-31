@@ -183,7 +183,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return newFilter, transform.NewTree, nil
 		}
 	})
-	
+
 	return resultNode, resultIdentity, err
 }
 
