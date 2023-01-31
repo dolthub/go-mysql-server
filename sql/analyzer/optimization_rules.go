@@ -149,7 +149,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return node, transform.SameTree, nil
 	}
 
-	isTopJoinParentUpdated := false
 	resultNode, resultIdentity, err := transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		children := n.Children()
 		if children == nil || len(children) == 0 {
@@ -166,7 +165,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return n, transform.SameTree, nil
 		}
 
-		isTopJoinParentUpdated = true
 		switch imp := n.(type) {
 		case *plan.Filter:
 			newExpression := expression.JoinAnd(append([]sql.Expression{imp.Expression}, nonJoinFilters...)...)
