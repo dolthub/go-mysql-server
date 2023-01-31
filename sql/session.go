@@ -78,6 +78,8 @@ type Session interface {
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
+	// GetAllGlobalVariables returns a copy of all global variable values.
+	GetAllGlobalVariables() map[string]interface{}
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session

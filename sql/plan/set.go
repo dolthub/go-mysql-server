@@ -141,20 +141,6 @@ func setUserVar(ctx *sql.Context, userVar *expression.UserVar, right sql.Express
 	return nil
 }
 
-// setGlobal sets both GLOBAL and SESSION variables if the system variable's scope is of both.
-func setGlobal(ctx *sql.Context, sysVar *expression.SystemVar, val interface{}) error {
-	err := sql.SystemVariables.SetGlobal(sysVar.Name, val)
-	if err != nil {
-		return err
-	}
-
-	globalSysVar, _, ok := sql.SystemVariables.GetGlobal(sysVar.Name)
-	if ok && globalSysVar.Scope == sql.SystemVariableScope_Both {
-		return ctx.SetSessionVariable(ctx, sysVar.Name, val)
-	}
-	return nil
-}
-
 func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expression, row sql.Row) error {
 	val, err := right.Eval(ctx, row)
 	if err != nil {
@@ -162,7 +148,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	}
 	switch sysVar.Scope {
 	case sql.SystemVariableScope_Global:
-		err = setGlobal(ctx, sysVar, val)
+		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
@@ -180,7 +166,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-		err = setGlobal(ctx, sysVar, val)
+		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
