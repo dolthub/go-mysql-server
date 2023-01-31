@@ -97,6 +97,7 @@ type IndexLookup struct {
 	// exact equality.
 	IsPointLookup bool
 	IsEmptyRange  bool
+	IsSpatialLookup bool
 }
 
 var emptyLookup = IndexLookup{}

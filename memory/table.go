@@ -1121,16 +1121,25 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 	}
 
 	if lookup.Index.IsSpatial() {
-		g := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
-		minX, minY, maxX, maxY := g.(types.GeometryValue).BBox()
+		lower := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
+		upper := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
+		minPoint, ok := lower.(types.Point)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+		maxPoint, ok := upper.(types.Point)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+
 		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
 		return spatialRangePartitionIter{
 			child: child.(*partitionIter),
 			ord:   ord,
-			minX:  minX,
-			minY:  minY,
-			maxX:  maxX,
-			maxY:  maxY,
+			minX:  minPoint.X,
+			minY:  minPoint.Y,
+			maxX:  maxPoint.X,
+			maxY:  maxPoint.Y,
 		}, nil
 	}
 

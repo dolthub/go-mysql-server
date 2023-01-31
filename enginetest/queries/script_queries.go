@@ -3472,18 +3472,14 @@ var SpatialIndexScriptTests = []ScriptTest{
 			{
 				Query: "explain select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
 				Expected: []sql.Row{
-					{
-						[]sql.Row{
-							{"Project"},
-							{" ├─ columns: [st_aswkb(geom_tbl.g)]"},
-							{" └─ Sort(ST_X(geom_tbl.g) ASC, ST_Y(geom_tbl.g) ASC)"},
-							{"     └─ Filter"},
-							{"         ├─ (NOT(st_intersects(geom_tbl.g,{0 [{0 0 0}]})))"},
-							{"         └─ Table"},
-							{"             ├─ name: geom_tbl"},
-							{"             └─ columns: [g]"},
-						},
-					},
+					{"Project"},
+					{" ├─ columns: [st_aswkb(geom_tbl.g)]"},
+					{" └─ Sort(ST_X(geom_tbl.g) ASC, ST_Y(geom_tbl.g) ASC)"},
+					{"     └─ Filter"},
+					{"         ├─ (NOT(st_intersects(geom_tbl.g,{0 [{0 0 0}]})))"},
+					{"         └─ Table"},
+					{"             ├─ name: geom_tbl"},
+					{"             └─ columns: [g]"},
 				},
 			},
 		},

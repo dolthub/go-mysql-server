@@ -243,7 +243,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 			b.err = err
 			return nil
 		}
-		if !isempty {
+		if !isempty || b.idx.IsSpatial() {
 			ranges = append(ranges, currentRange)
 		}
 	}
@@ -285,9 +285,19 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 		return
 	}
 
+	if b.idx.IsSpatial() {
+		if _, ok := currentRanges[0].LowerBound.(BelowNull); ok {
+			b.ranges[colExpr] = []RangeColumnExpr{potentialRanges[0]}
+		} else {
+			b.ranges[colExpr] = []RangeColumnExpr{{currentRanges[0].LowerBound, potentialRanges[0].UpperBound, currentRanges[0].Typ}}
+		}
+		return
+	}
+
 	var newRanges []RangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
+
 			newRange, ok, err := currentRange.TryIntersect(potentialRange)
 			if err != nil {
 				b.isInvalid = true
