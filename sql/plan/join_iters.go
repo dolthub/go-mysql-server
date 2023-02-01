@@ -251,24 +251,6 @@ type existsIter struct {
 	nullRej   bool
 }
 
-func (i *existsIter) loadPrimary(ctx *sql.Context) error {
-	if i.primaryRow == nil {
-		r, err := i.primary.Next(ctx)
-		if err != nil {
-			return err
-		}
-
-		i.primaryRow = i.parentRow.Append(r)
-	}
-
-	return nil
-}
-
-func (i *existsIter) loadSecondary(ctx *sql.Context, left sql.Row) (row sql.Row, err error) {
-	iter, err := i.secondaryProvider.RowIter(ctx, left)
-	return iter.Next(ctx)
-}
-
 type existsState uint8
 
 const (

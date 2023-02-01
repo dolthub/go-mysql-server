@@ -8916,7 +8916,7 @@ WHERE
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [Subquery\n" +
-			"     │       │   ├─ cacheable: true\n" +
+			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   └─ Limit(1)\n" +
 			"     │       │       └─ TopN(Limit: [1 (tinyint)]; TDRVG.id:2!null ASC nullsFirst)\n" +
 			"     │       │           └─ Project\n" +
