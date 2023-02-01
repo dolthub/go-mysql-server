@@ -25,6 +25,48 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select x from xy where x in (
+	select (select u from uv where u = sq.p)
+    from (select p from pq) sq);
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:0!null]\n" +
+			" └─ RightSemiLookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ xy.x:1!null\n" +
+			"     │   └─ applySubq0.(select u from uv where u = sq.p):0\n" +
+			"     ├─ SubqueryAlias\n" +
+			"     │   ├─ name: applySubq0\n" +
+			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [Subquery\n" +
+			"     │       │   ├─ cacheable: false\n" +
+			"     │       │   └─ Filter\n" +
+			"     │       │       ├─ Eq\n" +
+			"     │       │       │   ├─ uv.u:1!null\n" +
+			"     │       │       │   └─ sq.p:0!null\n" +
+			"     │       │       └─ IndexedTableAccess\n" +
+			"     │       │           ├─ index: [uv.u]\n" +
+			"     │       │           ├─ columns: [u]\n" +
+			"     │       │           └─ Table\n" +
+			"     │       │               ├─ name: uv\n" +
+			"     │       │               └─ projections: [0]\n" +
+			"     │       │   as (select u from uv where u = sq.p)]\n" +
+			"     │       └─ SubqueryAlias\n" +
+			"     │           ├─ name: sq\n" +
+			"     │           ├─ outerVisibility: true\n" +
+			"     │           ├─ cacheable: true\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: pq\n" +
+			"     │               └─ columns: [p]\n" +
+			"     └─ IndexedTableAccess\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         └─ Table\n" +
+			"             └─ name: xy\n" +
+			"",
+	},
+	{
 		Query: `SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second')`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.s:1!null]\n" +
@@ -8900,7 +8942,7 @@ WHERE
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [Subquery\n" +
-			"     │       │   ├─ cacheable: true\n" +
+			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   └─ Limit(1)\n" +
 			"     │       │       └─ TopN(Limit: [1 (tinyint)]; TDRVG.id:2!null ASC nullsFirst)\n" +
 			"     │       │           └─ Project\n" +
