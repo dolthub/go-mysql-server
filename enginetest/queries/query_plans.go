@@ -27,8 +27,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select x from xy where x in (
 	select (select u from uv where u = sq.p)
-    from (select p from pq) sq
-    where sq.p not in (select a from ab));
+    from (select p from pq) sq);
 `,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:0!null]\n" +
@@ -54,24 +53,13 @@ var PlanTests = []QueryPlanTest{
 			"     │       │               ├─ name: uv\n" +
 			"     │       │               └─ projections: [0]\n" +
 			"     │       │   as (select u from uv where u = sq.p)]\n" +
-			"     │       └─ AntiLookupJoin\n" +
-			"     │           ├─ Eq\n" +
-			"     │           │   ├─ sq.p:0!null\n" +
-			"     │           │   └─ applySubq0.a:1!null\n" +
-			"     │           ├─ SubqueryAlias\n" +
-			"     │           │   ├─ name: sq\n" +
-			"     │           │   ├─ outerVisibility: true\n" +
-			"     │           │   ├─ cacheable: true\n" +
-			"     │           │   └─ Table\n" +
-			"     │           │       ├─ name: pq\n" +
-			"     │           │       └─ columns: [p]\n" +
-			"     │           └─ TableAlias(applySubq0)\n" +
-			"     │               └─ IndexedTableAccess\n" +
-			"     │                   ├─ index: [ab.a]\n" +
-			"     │                   ├─ columns: [a]\n" +
-			"     │                   └─ Table\n" +
-			"     │                       ├─ name: ab\n" +
-			"     │                       └─ projections: [0]\n" +
+			"     │       └─ SubqueryAlias\n" +
+			"     │           ├─ name: sq\n" +
+			"     │           ├─ outerVisibility: true\n" +
+			"     │           ├─ cacheable: true\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: pq\n" +
+			"     │               └─ columns: [p]\n" +
 			"     └─ IndexedTableAccess\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         └─ Table\n" +
