@@ -165,23 +165,31 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return n, transform.SameTree, nil
 		}
 
-		switch imp := n.(type) {
+		switch n := n.(type) {
 		case *plan.Filter:
-			newExpression := expression.JoinAnd(append([]sql.Expression{imp.Expression}, nonJoinFilters...)...)
-			newFilter := plan.NewFilter(newExpression, imp.Child)
+			nonJoinFilters = append(nonJoinFilters, n.Expression)
+			newExpression := expression.JoinAnd(nonJoinFilters...)
+			newFilter := plan.NewFilter(newExpression, n.Child)
+			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
 			return newFilter, transform.NewTree, nil
 		case *plan.UpdateSource:
 			newExpression := expression.JoinAnd(nonJoinFilters...)
-			newFilter := plan.NewFilter(newExpression, imp.Child)
-			imp.Child = newFilter
-			return imp, transform.NewTree, nil
+			newFilter := plan.NewFilter(newExpression, n.Child)
+			n.Child = newFilter
+			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
+			return n, transform.NewTree, nil
 		default:
 			newExpression := expression.JoinAnd(nonJoinFilters...)
-			newFilter := plan.NewFilter(newExpression, imp)
+			newFilter := plan.NewFilter(newExpression, n)
+			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
 			return newFilter, transform.NewTree, nil
 		}
 	})
 
+	if len(nonJoinFilters) > 0 {
+		panic("nonJoinFilters should have been used and cleared out")
+	}
+	
 	return resultNode, resultIdentity, err
 }
 
