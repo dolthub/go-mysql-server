@@ -481,6 +481,17 @@ func (r Right) String() string {
 	return fmt.Sprintf("RIGHT(%s, %s)", r.str, r.len)
 }
 
+func (r Right) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("RIGHT")
+	children := []string{
+		fmt.Sprintf("str: %s", sql.DebugString(r.str)),
+		fmt.Sprintf("len: %s", sql.DebugString(r.len)),
+	}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
 // Resolved implements the Expression interface.
 func (r Right) Resolved() bool {
 	return r.str.Resolved() && r.len.Resolved()

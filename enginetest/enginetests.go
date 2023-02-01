@@ -5938,9 +5938,12 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 			if tt.ExpectedGlobal != nil {
 				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
 				require.Equal(t, tt.ExpectedGlobal, res)
+
+				showGlobalVarsQuery := fmt.Sprintf("SHOW GLOBAL VARIABLES LIKE 'max_connections'")
+				TestQueryWithContext(t, ctx, e, harness, showGlobalVarsQuery, []sql.Row{{"max_connections", tt.ExpectedGlobal}}, nil, nil)
 			}
 
-			if tt.ExpectedGlobal != nil {
+			if tt.ExpectedPersist != nil {
 				res, err := ctx.Session.(sql.PersistableSession).GetPersistedValue("max_connections")
 				require.NoError(t, err)
 				assert.Equal(t,

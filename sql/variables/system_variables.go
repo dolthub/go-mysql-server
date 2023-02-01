@@ -146,6 +146,19 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	return nil
 }
 
+// GetAllGlobalVariables returns map of global system variables with their values.
+func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} {
+	sv.mutex.RLock()
+	defer sv.mutex.RUnlock()
+
+	m := make(map[string]interface{})
+	for k, varVal := range sv.sysVarVals {
+		m[k] = varVal.Val
+	}
+
+	return m
+}
+
 // InitSystemVariables resets the systemVars singleton in the sql package
 func InitSystemVariables() {
 	vars := &globalSystemVariables{
