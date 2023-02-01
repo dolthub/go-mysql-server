@@ -189,7 +189,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	if len(nonJoinFilters) > 0 {
 		panic("nonJoinFilters should have been used and cleared out")
 	}
-	
+
 	return resultNode, resultIdentity, err
 }
 
