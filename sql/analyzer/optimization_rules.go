@@ -149,6 +149,10 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return node, transform.SameTree, nil
 	}
 
+	if node == topJoin {
+		return plan.NewFilter(expression.JoinAnd(nonJoinFilters...), node), transform.NewTree, nil
+	}
+
 	resultNode, resultIdentity, err := transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		children := n.Children()
 		if children == nil || len(children) == 0 {
@@ -186,8 +190,9 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 	})
 
+	// if there are still nonJoinFilters left, it means we removed them but failed to re-insert them
 	if len(nonJoinFilters) > 0 {
-		panic("nonJoinFilters should have been used and cleared out")
+		return nil, transform.SameTree, sql.ErrDroppedJoinFilters.New()
 	}
 
 	return resultNode, resultIdentity, err
