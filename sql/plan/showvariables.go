@@ -23,14 +23,12 @@ import (
 )
 
 // ShowVariables is a node that shows the global and session variables
-// TODO: implement the GLOBAL and SESSION distinction
 type ShowVariables struct {
 	filter sql.Expression
 	global bool
 }
 
 // NewShowVariables returns a new ShowVariables reference.
-// like is a "like pattern". If like is an empty string it will return all variables.
 func NewShowVariables(filter sql.Expression, isGlobal bool) *ShowVariables {
 	return &ShowVariables{
 		filter: filter,
@@ -88,7 +86,7 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 	var sysVars map[string]interface{}
 
 	if sv.global {
-		sysVars = ctx.GetAllGlobalVariables()
+		sysVars = sql.SystemVariables.GetAllGlobalVariables()
 	} else {
 		sysVars = ctx.GetAllSessionVariables()
 	}

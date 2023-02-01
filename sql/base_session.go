@@ -123,21 +123,6 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	return m
 }
 
-// GetAllGlobalVariables implements the Session interface.
-func (s *BaseSession) GetAllGlobalVariables() map[string]interface{} {
-	m := make(map[string]interface{})
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for k, _ := range s.systemVars {
-		_, val, ok := SystemVariables.GetGlobal(k)
-		if ok {
-			m[k] = val
-		}
-	}
-	return m
-}
-
 // SetSessionVariable implements the Session interface.
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
 	sysVarName = strings.ToLower(sysVarName)

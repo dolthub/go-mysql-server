@@ -78,8 +78,6 @@ type Session interface {
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
-	// GetAllGlobalVariables returns a copy of all global variable values.
-	GetAllGlobalVariables() map[string]interface{}
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
@@ -340,7 +338,7 @@ func NewContext(
 	return c
 }
 
-// Applys the options given to the context. Mostly for tests, not safe for use after construction of the context.
+// ApplyOpts the options given to the context. Mostly for tests, not safe for use after construction of the context.
 func (c *Context) ApplyOpts(opts ...ContextOption) {
 	for _, opt := range opts {
 		opt(c)
