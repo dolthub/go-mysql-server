@@ -83,7 +83,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 		expression.NewLiteral("%t_into_buffer_size", types.LongText),
 		nil,
 	), true)
-	require.True(t, sv.Resolved())
+	require.True(t, sv2.Resolved())
 
 	it2, err := sv2.RowIter(context, nil)
 	require.NoError(t, err)
