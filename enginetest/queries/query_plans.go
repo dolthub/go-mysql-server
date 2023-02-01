@@ -25,6 +25,60 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select x from xy where x in (
+	select (select u from uv where u = sq.p)
+    from (select p from pq) sq
+    where sq.p not in (select a from ab));
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:0!null]\n" +
+			" └─ RightSemiLookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ xy.x:1!null\n" +
+			"     │   └─ applySubq0.(select u from uv where u = sq.p):0\n" +
+			"     ├─ SubqueryAlias\n" +
+			"     │   ├─ name: applySubq0\n" +
+			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [Subquery\n" +
+			"     │       │   ├─ cacheable: false\n" +
+			"     │       │   └─ Filter\n" +
+			"     │       │       ├─ Eq\n" +
+			"     │       │       │   ├─ uv.u:1!null\n" +
+			"     │       │       │   └─ sq.p:0!null\n" +
+			"     │       │       └─ IndexedTableAccess\n" +
+			"     │       │           ├─ index: [uv.u]\n" +
+			"     │       │           ├─ columns: [u]\n" +
+			"     │       │           └─ Table\n" +
+			"     │       │               ├─ name: uv\n" +
+			"     │       │               └─ projections: [0]\n" +
+			"     │       │   as (select u from uv where u = sq.p)]\n" +
+			"     │       └─ AntiLookupJoin\n" +
+			"     │           ├─ Eq\n" +
+			"     │           │   ├─ sq.p:0!null\n" +
+			"     │           │   └─ applySubq0.a:1!null\n" +
+			"     │           ├─ SubqueryAlias\n" +
+			"     │           │   ├─ name: sq\n" +
+			"     │           │   ├─ outerVisibility: true\n" +
+			"     │           │   ├─ cacheable: true\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       ├─ name: pq\n" +
+			"     │           │       └─ columns: [p]\n" +
+			"     │           └─ TableAlias(applySubq0)\n" +
+			"     │               └─ IndexedTableAccess\n" +
+			"     │                   ├─ index: [ab.a]\n" +
+			"     │                   ├─ columns: [a]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: ab\n" +
+			"     │                       └─ projections: [0]\n" +
+			"     └─ IndexedTableAccess\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         └─ Table\n" +
+			"             └─ name: xy\n" +
+			"",
+	},
+	{
 		Query: `SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second')`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.s:1!null]\n" +
