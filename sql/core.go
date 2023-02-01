@@ -330,6 +330,8 @@ type SystemVariableRegistry interface {
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
 	SetGlobal(name string, val interface{}) error
+	// GetAllGlobalVariables returns a copy of all global variable values.
+	GetAllGlobalVariables() map[string]interface{}
 }
 
 // SystemVariable represents a system variable.

@@ -3190,15 +3190,15 @@ CREATE TABLE t2
 		},
 		{
 			input: `SHOW VARIABLES`,
-			plan:  plan.NewShowVariables(nil),
+			plan:  plan.NewShowVariables(nil, false),
 		},
 		{
 			input: `SHOW GLOBAL VARIABLES`,
-			plan:  plan.NewShowVariables(nil),
+			plan:  plan.NewShowVariables(nil, true),
 		},
 		{
 			input: `SHOW SESSION VARIABLES`,
-			plan:  plan.NewShowVariables(nil),
+			plan:  plan.NewShowVariables(nil, false),
 		},
 		{
 			input: `SHOW VARIABLES LIKE 'gtid_mode'`,
@@ -3206,7 +3206,7 @@ CREATE TABLE t2
 				expression.NewGetField(0, types.LongText, "variable_name", false),
 				expression.NewLiteral("gtid_mode", types.LongText),
 				nil,
-			)),
+			), false),
 		},
 		{
 			input: `SHOW SESSION VARIABLES LIKE 'autocommit'`,
@@ -3214,7 +3214,7 @@ CREATE TABLE t2
 				expression.NewGetField(0, types.LongText, "variable_name", false),
 				expression.NewLiteral("autocommit", types.LongText),
 				nil,
-			)),
+			), false),
 		},
 		{
 			input: `UNLOCK TABLES`,
