@@ -80,6 +80,7 @@ var DefaultRules = []Rule{
 	{resolveColumnsId, resolveColumns},
 	{validateCheckConstraintId, validateCheckConstraints},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables},
+	{replaceCountStarId, replaceCountStar},
 	{expandStarsId, expandStars},
 	{transposeRightJoinsId, transposeRightJoins},
 	{resolveHavingId, resolveHaving},
