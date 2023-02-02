@@ -4364,8 +4364,10 @@ func TestVariables(t *testing.T, harness Harness) {
 		TestScript(t, harness, query)
 	}
 	// Test session pulling from global
-	engine := sqle.NewDefault(harness.NewDatabaseProvider())
-	ctx1 := sql.NewEmptyContext()
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+	
+	ctx := sql.NewEmptyContext()
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@select_into_buffer_size",
@@ -4396,7 +4398,7 @@ func TestVariables(t *testing.T, harness Harness) {
 			Expected: []sql.Row{{9002}},
 		},
 	} {
-		TestQueryWithContext(t, ctx1, engine, harness, assertion.Query, assertion.Expected, nil, nil)
+		TestQueryWithContext(t, ctx, engine, harness, assertion.Query, assertion.Expected, nil, nil)
 	}
 	ctx2 := sql.NewEmptyContext()
 	for _, assertion := range []queries.ScriptTestAssertion{

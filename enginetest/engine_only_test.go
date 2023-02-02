@@ -659,7 +659,7 @@ func TestTableFunctions(t *testing.T) {
 	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
-	engine, err := enginetest.RunEngineScripts(harness.NewContext(), engine, setup.MydbData, true)
+	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
 
 	for _, test := range tableFunctionScriptTests {

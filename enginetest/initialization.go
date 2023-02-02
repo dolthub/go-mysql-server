@@ -139,14 +139,14 @@ func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup
 	if len(setupData) == 0 {
 		setupData = setup.MydbData
 	}
-	return RunEngineScripts(ctx, e, setupData, supportsIndexes)
+	return RunSetupScripts(ctx, e, setupData, supportsIndexes)
 }
 
-// TODO: rename to RunSetupScripts
-func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, supportsIndexes bool) (*sqle.Engine, error) {
+// RunSetupScripts runs the given setup scripts on the given engine, returning any error
+func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) (*sqle.Engine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
-			if !supportsIndexes {
+			if !createIndexes {
 				if strings.Contains("create index", s) {
 					continue
 				}
