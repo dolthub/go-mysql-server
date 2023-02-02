@@ -79,7 +79,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, se
 		return nil, transform.SameTree, err
 	}
 
-	n, sameFi, err := FixFieldIndexesForNode(a, scope, n)
+	n, sameFi, err := fixRemainingFieldsIndexes(ctx, a, n, scope)
 	return n, sameC && sameSq && sameFi, err
 }
 
@@ -334,4 +334,68 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	}
 
 	return !cols.has(gf.Table(), gf.Name())
+}
+
+// TODO: figure out why FixFieldIndexes cannot be used instead of this,
+// otherwise SystemDiff tests break.
+func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(node, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		switch n := c.Node.(type) {
+		case sql.SchemaTarget:
+			// do nothing, column defaults have already been resolved
+			return node, transform.SameTree, nil
+		case *plan.SubqueryAlias:
+			if !n.OuterScopeVisibility {
+				return n, transform.SameTree, nil
+			}
+			child, same, err := fixRemainingFieldsIndexes(ctx, a, n.Child, scope)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+
+			node, err := n.WithChildren(child)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return node, transform.NewTree, nil
+		default:
+			if _, ok := n.(sql.Expressioner); !ok {
+				return n, transform.SameTree, nil
+			}
+
+			indexedCols, err := indexColumns(ctx, a, n, scope)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			if len(indexedCols) == 0 {
+				return n, transform.SameTree, nil
+			}
+
+			// IndexedTableAccess contains expressions in its lookupBuilder that we don't need to fix up, so skip them
+			if _, ok := n.(*plan.IndexedTableAccess); ok {
+				return n, transform.SameTree, nil
+			}
+
+			return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				gf, ok := e.(*expression.GetField)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				idx, ok := indexedCols[newTableCol(gf.Table(), gf.Name())]
+				if !ok {
+					return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
+				}
+
+				if idx.index == gf.Index() {
+					return e, transform.SameTree, nil
+				}
+				return gf.WithIndex(idx.index), transform.NewTree, nil
+			})
+		}
+	})
 }
