@@ -759,9 +759,6 @@ var (
 
 	// ErrNoJoinFilters is returned when we attempt to build a filtered join without filters
 	ErrNoJoinFilters = errors.NewKind("join expected non-nil filters")
-
-	// ErrDroppedJoinFilters is returned when we removed filters from a join, but failed to re-insert them
-	ErrDroppedJoinFilters = errors.NewKind("dropped filters from join, but failed to re-insert them")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
