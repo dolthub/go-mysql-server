@@ -4363,11 +4363,16 @@ func TestVariables(t *testing.T, harness Harness) {
 	for _, query := range queries.VariableQueries {
 		TestScript(t, harness, query)
 	}
+	
 	// Test session pulling from global
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
 	
-	ctx := sql.NewEmptyContext()
+	// Since we are using empty contexts below, rather than ones provided by the harness, make sure that the engine has
+	// no permissions established.
+	engine.Analyzer.Catalog.MySQLDb = mysql_db.CreateEmptyMySQLDb()
+	
+	ctx1 := sql.NewEmptyContext()
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@select_into_buffer_size",
@@ -4398,8 +4403,11 @@ func TestVariables(t *testing.T, harness Harness) {
 			Expected: []sql.Row{{9002}},
 		},
 	} {
-		TestQueryWithContext(t, ctx, engine, harness, assertion.Query, assertion.Expected, nil, nil)
+		t.Run(assertion.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx1, engine, harness, assertion.Query, assertion.Expected, nil, nil)
+		})
 	}
+	
 	ctx2 := sql.NewEmptyContext()
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
@@ -4411,7 +4419,9 @@ func TestVariables(t *testing.T, harness Harness) {
 			Expected: []sql.Row{{9002}},
 		},
 	} {
-		TestQueryWithContext(t, ctx2, engine, harness, assertion.Query, assertion.Expected, nil, nil)
+		t.Run(assertion.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx2, engine, harness, assertion.Query, assertion.Expected, nil, nil)
+		})
 	}
 }
 
