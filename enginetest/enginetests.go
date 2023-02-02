@@ -72,7 +72,7 @@ func TestQueries(t *testing.T, harness Harness) {
 		for _, tt := range queries.KeylessQueries {
 			TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
 		}
-	}
+	} 
 }
 
 // TestStatistics tests the statistics from ANALYZE TABLE
