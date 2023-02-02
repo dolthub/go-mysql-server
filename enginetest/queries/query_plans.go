@@ -25,6 +25,63 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select * from sequence_table('x', 5)`,
+		ExpectedPlan: "sequence\n" +
+			" ├─ name: x\n" +
+			" └─ len: 5\n" +
+			"",
+	},
+	{
+		Query: `select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ x:0!null\n" +
+			" │   └─ y:1!null\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ sequence\n" +
+			"     │   ├─ name: x\n" +
+			"     │   └─ len: 5\n" +
+			"     └─ sequence\n" +
+			"         ├─ name: y\n" +
+			"         └─ len: 5\n" +
+			"",
+	},
+	{
+		Query: `select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ x:0!null\n" +
+			" │   └─ 0 (tinyint)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ sequence\n" +
+			"     │   ├─ name: x\n" +
+			"     │   └─ len: 5\n" +
+			"     └─ sequence\n" +
+			"         ├─ name: y\n" +
+			"         └─ len: 5\n" +
+			"",
+	},
+	{
+		Query: `select count(*) from sequence_table('x', 5) join sequence_table('y', 5) on x = 0`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(*):0!null as count(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(*)\n" +
+			"     ├─ group: \n" +
+			"     └─ Filter\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ x:0!null\n" +
+			"         │   └─ 0 (tinyint)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ sequence\n" +
+			"             │   ├─ name: x\n" +
+			"             │   └─ len: 5\n" +
+			"             └─ sequence\n" +
+			"                 ├─ name: y\n" +
+			"                 └─ len: 5\n" +
+			"",
+	},
+	{
 		Query: `select x from xy where x in (
 	select (select u from uv where u = sq.p)
     from (select p from pq) sq);

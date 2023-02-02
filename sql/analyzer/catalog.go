@@ -307,6 +307,14 @@ func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunctio
 	return nil, sql.ErrTableFunctionNotFound.New(name)
 }
 
+// WithTableFunction implements the TableFunctionProvider interface
+func (c *Catalog) WithTableFunction(name string, fn sql.TableFunction) error {
+	if fp, ok := c.Provider.(sql.TableFunctionProvider); ok {
+		return fp.WithTableFunction(name, fn)
+	}
+	return sql.ErrTableFunctionsNotSupported.New()
+}
+
 func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
 	t, _, err := c.Table(ctx, sql.InformationSchemaDatabaseName, information_schema.StatisticsTableName)
 	if err != nil {

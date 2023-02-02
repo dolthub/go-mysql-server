@@ -495,6 +495,9 @@ var (
 	// ErrTableFunctionNotFound is thrown when a table function is not found
 	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
 
+	// ErrTableFunctionsNotSupported is returned when a provider does not accept setting table functions
+	ErrTableFunctionsNotSupported = errors.NewKind("table functions not supported")
+
 	// ErrNonAggregatedColumnWithoutGroupBy is thrown when an aggregate function is used with the implicit, all-rows
 	// grouping and another projected expression contains a non-aggregated column.
 	// MySQL error code: 1140, SQL state: 42000
