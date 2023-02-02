@@ -633,6 +633,30 @@ select * from (
 			{3, 1, 1, 1, 2, 2},
 		},
 	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (1,2,3)",
+		Expected: []sql.Row{
+			{1, 2, 0, 0},
+			{1, 2, 1, 1},
+			{1, 2, 2, 2},
+			{1, 2, 3, 3}},
+	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = p)) where a in (select a from ab)",
+		Expected: []sql.Row{
+			{0, 2, 0, 0},
+			{1, 2, 1, 1},
+			{2, 2, 2, 2},
+			{3, 1, 3, 3}},
+	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (select a from ab)",
+		Expected: []sql.Row{
+			{1, 2, 0, 0},
+			{1, 2, 1, 1},
+			{1, 2, 2, 2},
+			{1, 2, 3, 3}},
+	},
 }
 
 var JoinScriptTests = []ScriptTest{
