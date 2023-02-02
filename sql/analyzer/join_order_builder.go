@@ -79,7 +79,7 @@ import (
 //
 // Applicability rules:
 //
-// We build applicability rules before exhaustive enumeration to filter valid
+// We build applicibility rules before exhaustive enumeration to filter valid
 // plans. We consider a reordering valid by checking:
 //
 // 1) Transform compatibility: a lookup table between two join operator types
