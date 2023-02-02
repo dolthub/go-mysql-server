@@ -124,10 +124,9 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	return engine
 }
 
-// NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
-// TODO: rename
-func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness, harness.NewDatabaseProvider())
+// NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given. 
+func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
+	e := NewEngineWithProvider(t, harness, provider)
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool
