@@ -328,7 +328,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				return e, transform.SameTree, nil
 			case *expression.Like:
 				// if the charset is not utf8mb4, the last character used in optimization rule does not work
-				charset := getCollation(ctx, e.Left)
+				charset := getCharsetInUse(ctx, e.Left)
 				if charset != sql.CharacterSet_utf8mb4 {
 					return e, transform.SameTree, nil
 				}
@@ -413,7 +413,8 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 	})
 }
 
-func getCollation(ctx *sql.Context, expr sql.Expression) sql.CharacterSetID {
+// getCharsetInUse returns charset used in given expression.
+func getCharsetInUse(ctx *sql.Context, expr sql.Expression) sql.CharacterSetID {
 	var charset = sql.CharacterSet_Unspecified
 
 	_ = transform.InspectExpr(expr, func(e sql.Expression) bool {
