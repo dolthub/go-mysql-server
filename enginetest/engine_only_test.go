@@ -656,8 +656,8 @@ func TestTableFunctions(t *testing.T) {
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	databaseProvider.(sql.TableFunctionProvider).WithTableFunction("simple_table_function", SimpleTableFunction{})
-	databaseProvider.(sql.TableFunctionProvider).WithTableFunction("simple_TABLE_function", SimpleTableFunction{})
+	databaseProvider.(sql.TableFunctionProvider).SetTableFunction("simple_table_function", SimpleTableFunction{})
+	databaseProvider.(sql.TableFunctionProvider).SetTableFunction("simple_TABLE_function", SimpleTableFunction{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, databaseProvider)
 	engine, err := enginetest.RunEngineScripts(harness.NewContext(), engine, setup.MydbData, true)

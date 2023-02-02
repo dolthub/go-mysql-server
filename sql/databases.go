@@ -59,7 +59,7 @@ type CollatedDatabaseProvider interface {
 type TableFunctionProvider interface {
 	// TableFunction returns the table function with the name provided, case-insensitive
 	TableFunction(ctx *Context, name string) (TableFunction, error)
-	WithTableFunction(string, TableFunction) error
+	SetTableFunction(string, TableFunction) error
 }
 
 // Database represents the database. Its primary job is to provide access to all tables.

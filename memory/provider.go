@@ -193,7 +193,7 @@ func (pro *DbProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunc
 }
 
 // WithTableFunction implements sql.TableFunctionProvider
-func (pro *DbProvider) WithTableFunction(name string, fn sql.TableFunction) error {
+func (pro *DbProvider) SetTableFunction(name string, fn sql.TableFunction) error {
 	pro.tableFunctions[name] = fn
 	return nil
 }

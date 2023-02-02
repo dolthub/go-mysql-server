@@ -226,7 +226,7 @@ func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
 // HistoryProvider returns a ProviderOption to construct a memoryDBProvider that uses history databases
 func TableFunctionProvider(name string, fn sql.TableFunction) memory.ProviderOption {
 	return func(pro *memory.DbProvider) {
-		pro.WithTableFunction(name, fn)
+		pro.SetTableFunction(name, fn)
 	}
 }
 

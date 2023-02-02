@@ -308,9 +308,9 @@ func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunctio
 }
 
 // WithTableFunction implements the TableFunctionProvider interface
-func (c *Catalog) WithTableFunction(name string, fn sql.TableFunction) error {
+func (c *Catalog) SetTableFunction(name string, fn sql.TableFunction) error {
 	if fp, ok := c.Provider.(sql.TableFunctionProvider); ok {
-		return fp.WithTableFunction(name, fn)
+		return fp.SetTableFunction(name, fn)
 	}
 	return sql.ErrTableFunctionsNotSupported.New()
 }
