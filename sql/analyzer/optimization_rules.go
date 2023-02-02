@@ -190,12 +190,16 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 	})
 
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	// if there are still nonJoinFilters left, it means we removed them but failed to re-insert them
 	if len(nonJoinFilters) > 0 {
 		return nil, transform.SameTree, sql.ErrDroppedJoinFilters.New()
 	}
 
-	return resultNode, resultIdentity, err
+	return resultNode, resultIdentity, nil
 }
 
 // removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
