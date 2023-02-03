@@ -105,7 +105,7 @@ func (s IntSequenceTable) WithDatabase(_ sql.Database) (sql.Node, error) {
 }
 
 func (s IntSequenceTable) Name() string {
-	return "sequence"
+	return "sequence_table"
 }
 
 func (s IntSequenceTable) Description() string {

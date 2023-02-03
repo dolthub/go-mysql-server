@@ -211,13 +211,6 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return nil
 }
 
-// HistoryProvider returns a ProviderOption to construct a memoryDBProvider that uses history databases
-func TableFunctionProvider(name string, fn sql.TableFunction) memory.ProviderOption {
-	return func(pro *memory.DbProvider) {
-		pro.SetTableFunction(name, fn)
-	}
-}
-
 func (m *MemoryHarness) newDatabase(name string) sql.Database {
 	ctx := m.NewContext()
 
@@ -239,14 +232,9 @@ func (m *MemoryHarness) getProvider() sql.MutableDatabaseProvider {
 }
 
 func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
-	if m.provider != nil {
-		return m.provider
-	}
-
 	return memory.NewDBProviderWithOpts(
 		memory.NativeIndexProvider(m.nativeIndexSupport),
-		memory.HistoryProvider(true),
-		TableFunctionProvider("sequence_table", &memory.IntSequenceTable{}))
+		memory.HistoryProvider(true))
 }
 
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
