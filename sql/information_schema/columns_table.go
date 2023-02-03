@@ -73,7 +73,7 @@ func (c *ColumnsTable) Schema() sql.Schema {
 
 // Collation implements the sql.Table interface.
 func (c *ColumnsTable) Collation() sql.CollationID {
-	return sql.Collation_Default
+	return sql.Collation_Information_Schema_Default
 }
 
 // Name implements the sql.Table interface.

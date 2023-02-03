@@ -146,6 +146,19 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	return nil
 }
 
+// GetAllGlobalVariables returns map of global system variables with their values.
+func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} {
+	sv.mutex.RLock()
+	defer sv.mutex.RUnlock()
+
+	m := make(map[string]interface{})
+	for k, varVal := range sv.sysVarVals {
+		m[k] = varVal.Val
+	}
+
+	return m
+}
+
 // InitSystemVariables resets the systemVars singleton in the sql package
 func InitSystemVariables() {
 	vars := &globalSystemVariables{
@@ -2262,6 +2275,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("sql_buffer_result"),
+		Default:           int8(0),
+	},
+	"sql_log_bin": {
+		Name:              "sql_log_bin",
+		Scope:             sql.SystemVariableScope_Both,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("sql_log_bin"),
 		Default:           int8(0),
 	},
 	"sql_log_off": {

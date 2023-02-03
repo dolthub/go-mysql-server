@@ -62,7 +62,7 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok {
 		versionedDb, ok := myDb.(sql.VersionedDatabase)
 		if !ok {
-			panic("VersionedDbTestHarness must provide a VersionedDatabase implementation")
+			require.Failf(t, "expected a sql.VersionedDatabase", "%T is not a sql.VersionedDatabase", myDb)
 		}
 
 		wrapInTransaction(t, myDb, harness, func() {

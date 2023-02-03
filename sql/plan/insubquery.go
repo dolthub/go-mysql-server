@@ -87,7 +87,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		// convert left to right's type
 		nLeft, err := typ.Convert(left)
 		if err != nil {
-			return nil, err
+			return false, nil
 		}
 
 		key, err := sql.HashOf(sql.NewRow(nLeft))
@@ -105,7 +105,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		val, err = typ.Convert(val)
 		if err != nil {
-			return nil, err
+			return false, nil
 		}
 
 		cmp, err := typ.Compare(left, val)

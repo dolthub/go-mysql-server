@@ -338,7 +338,7 @@ func NewContext(
 	return c
 }
 
-// Applys the options given to the context. Mostly for tests, not safe for use after construction of the context.
+// ApplyOpts the options given to the context. Mostly for tests, not safe for use after construction of the context.
 func (c *Context) ApplyOpts(opts ...ContextOption) {
 	for _, opt := range opts {
 		opt(c)
@@ -362,6 +362,11 @@ func (c Context) WithQuery(q string) *Context {
 // QueryTime returns the time.Time when the context associated with this query was created
 func (c *Context) QueryTime() time.Time {
 	return c.queryTime
+}
+
+// SetQueryTime updates the queryTime to the given time
+func (c *Context) SetQueryTime(t time.Time) {
+	c.queryTime = t
 }
 
 // Span creates a new tracing span with the given context.

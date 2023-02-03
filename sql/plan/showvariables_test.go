@@ -30,7 +30,7 @@ func TestShowVariables(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	sv := NewShowVariables(nil)
+	sv := NewShowVariables(nil, false)
 	require.True(sv.Resolved())
 
 	it, err := sv.RowIter(ctx, nil)
@@ -58,7 +58,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 		expression.NewGetField(0, types.LongText, "", false),
 		expression.NewLiteral("%t_into_buffer_size", types.LongText),
 		nil,
-	))
+	), false)
 	require.True(t, sv.Resolved())
 
 	context := sql.NewEmptyContext()
@@ -76,11 +76,31 @@ func TestShowVariablesWithLike(t *testing.T) {
 	}
 
 	assert.Equal(t, expectedRows, rows)
+
+	// GLOBAL variable should not change
+	sv2 := NewShowVariables(expression.NewLike(
+		expression.NewGetField(0, types.LongText, "", false),
+		expression.NewLiteral("%t_into_buffer_size", types.LongText),
+		nil,
+	), true)
+	require.True(t, sv2.Resolved())
+
+	it2, err := sv2.RowIter(context, nil)
+	require.NoError(t, err)
+
+	rows2, err := sql.RowIterToRows(context, nil, it2)
+	require.NoError(t, err)
+
+	expectedRows2 := []sql.Row{
+		{"select_into_buffer_size", int64(131072)},
+	}
+
+	assert.Equal(t, expectedRows2, rows2)
 }
 
 func TestShowVariablesWithWhere(t *testing.T) {
 	filter := expression.NewEquals(expression.NewGetField(0, types.Text, "variable_name", true), expression.NewLiteral("select_into_buffer_size", types.Text))
-	sv := NewShowVariables(filter)
+	sv := NewShowVariables(filter, false)
 	require.True(t, sv.Resolved())
 
 	context := sql.NewEmptyContext()

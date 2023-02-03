@@ -336,6 +336,8 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	return !cols.has(gf.Table(), gf.Name())
 }
 
+// TODO: figure out why FixFieldIndexes cannot be used instead of this,
+// otherwise SystemDiff tests break.
 func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithCtx(node, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {

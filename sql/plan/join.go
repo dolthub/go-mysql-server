@@ -19,6 +19,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -100,6 +102,15 @@ func (i JoinType) IsDegenerate() bool {
 		i == JoinTypeCross
 }
 
+func (i JoinType) IsMerge() bool {
+	switch i {
+	case JoinTypeMerge, JoinTypeSemiMerge, JoinTypeAntiMerge, JoinTypeLeftOuterMerge:
+		return true
+	default:
+		return false
+	}
+}
+
 func (i JoinType) IsRightPartial() bool {
 	switch i {
 	case JoinTypeRightSemi, JoinTypeRightSemiLookup:
@@ -148,11 +159,6 @@ func (i JoinType) IsPlaceholder() bool {
 func (i JoinType) IsLookup() bool {
 	return i == JoinTypeLookup ||
 		i == JoinTypeLeftOuterLookup
-}
-
-func (i JoinType) IsMerge() bool {
-	return i == JoinTypeMerge ||
-		i == JoinTypeLeftOuterMerge
 }
 
 func (i JoinType) IsCross() bool {
@@ -311,7 +317,15 @@ func (j *JoinNode) String() string {
 	pr := sql.NewTreePrinter()
 	var children []string
 	if j.Filter != nil {
-		children = append(children, j.Filter.String())
+		if j.Op.IsMerge() {
+			filters := expression.SplitConjunction(j.Filter)
+			children = append(children, fmt.Sprintf("cmp: %s", filters[0]))
+			if len(filters) > 1 {
+				children = append(children, fmt.Sprintf("sel: %s", expression.JoinAnd(filters[1:]...)))
+			}
+		} else {
+			children = append(children, j.Filter.String())
+		}
 	}
 	children = append(children, j.left.String(), j.right.String())
 	pr.WriteNode("%s", j.Op)
@@ -323,7 +337,15 @@ func (j *JoinNode) DebugString() string {
 	pr := sql.NewTreePrinter()
 	var children []string
 	if j.Filter != nil {
-		children = append(children, sql.DebugString(j.Filter))
+		if j.Op.IsMerge() {
+			filters := expression.SplitConjunction(j.Filter)
+			children = append(children, fmt.Sprintf("cmp: %s", sql.DebugString(filters[0])))
+			if len(filters) > 1 {
+				children = append(children, fmt.Sprintf("sel: %s", sql.DebugString(expression.JoinAnd(filters[1:]...))))
+			}
+		} else {
+			children = append(children, sql.DebugString(j.Filter))
+		}
 	}
 	children = append(children, sql.DebugString(j.left), sql.DebugString(j.right))
 	pr.WriteNode("%s", j.Op)

@@ -171,7 +171,11 @@ func TestSetConvert(t *testing.T) {
 		{[]string{"a", "b", "c"}, sql.Collation_Default, "b,c  ,a", "a,b,c", false},
 		{[]string{"one", "two"}, sql.Collation_utf8mb4_general_ci, "ONE", "one", false},
 		{[]string{"ONE", "two"}, sql.Collation_utf8mb4_general_ci, "one", "ONE", false},
+		{[]string{"", "one", "two"}, sql.Collation_Default, "", "", false},
+		{[]string{"", "one", "two"}, sql.Collation_Default, ",one,two", ",one,two", false},
+		{[]string{"", "one", "two"}, sql.Collation_Default, "one,,two", ",one,two", false},
 
+		{[]string{"one", "two"}, sql.Collation_Default, ",one,two", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, 4, nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, "three", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, "one,two,three", nil, true},
@@ -255,4 +259,30 @@ func TestSetString(t *testing.T) {
 func TestSetZero(t *testing.T) {
 	setType := MustCreateSetType([]string{"a", "b"}, sql.Collation_Default)
 	require.Equal(t, uint64(0), setType.Zero())
+}
+
+func TestSetConvertToString(t *testing.T) {
+	tests := []struct {
+		vals        []string
+		collation   sql.CollationID
+		bit         uint64
+		expectedStr string
+	}{
+		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 15, "a,b,c"},
+		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 14, "a,b,c"},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v", test.vals, test.collation), func(t *testing.T) {
+			typ, err := CreateSetType(test.vals, test.collation)
+			require.NoError(t, err)
+			concreteType, ok := typ.(SetType)
+			require.True(t, ok)
+			assert.True(t, test.collation.Equals(typ.Collation()))
+			str, err := concreteType.convertBitFieldToString(test.bit)
+			if assert.NoError(t, err) {
+				assert.Equal(t, test.expectedStr, str)
+			}
+		})
+	}
 }

@@ -758,7 +758,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 		}
 
-		return plan.NewShowVariables(filter), nil
+		return plan.NewShowVariables(filter, strings.ToLower(s.Scope) == "global"), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression

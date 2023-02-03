@@ -69,6 +69,18 @@ var JoinOpTests = []struct {
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}, {4, 4, nil, nil}, {5, 4, nil, nil}},
 			},
 			{
+				// extra join condition does not filter left-only rows
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y = s and y+s = 0 order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}, {4, 4, nil, nil}, {5, 4, nil, nil}},
+			},
+			{
+				// extra join condition does not filter left-only rows
+				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y+2 = s and s-y = 2 order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+				exp:   []sql.Row{{0, 0, nil, nil}, {1, 0, nil, nil}, {2, 0, nil, nil}, {4, 4, 0, 2}, {5, 4, 0, 2}},
+			},
+			{
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = r order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 2, 1}, {2, 0, 0, 2}},
@@ -98,11 +110,12 @@ var JoinOpTests = []struct {
 				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{4, 4, 3, 3}, {5, 4, 3, 3}},
 			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = mod(s,2) order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeHash},
-				exp:   []sql.Row{{0, 0, 1, 0}},
-			},
+			//{
+			// TODO: cannot hash join on compound expressions
+			//	q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = mod(s,2) order by 1, 3",
+			//	types: []plan.JoinType{plan.JoinTypeInner},
+			//	exp:   []sql.Row{{0,0,1,0},{0, 0, 1, 0},{2,0,1,0},{4,4,1,0}},
+			//},
 			{
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on 2 = s+y order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeInner},

@@ -633,6 +633,83 @@ select * from (
 			{3, 1, 1, 1, 2, 2},
 		},
 	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (1,2,3)",
+		Expected: []sql.Row{
+			{1, 2, 0, 0},
+			{1, 2, 1, 1},
+			{1, 2, 2, 2},
+			{1, 2, 3, 3}},
+	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = p)) where a in (select a from ab)",
+		Expected: []sql.Row{
+			{0, 2, 0, 0},
+			{1, 2, 1, 1},
+			{2, 2, 2, 2},
+			{3, 1, 3, 3}},
+	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (select a from ab)",
+		Expected: []sql.Row{
+			{1, 2, 0, 0},
+			{1, 2, 1, 1},
+			{1, 2, 2, 2},
+			{1, 2, 3, 3}},
+	},
+	{
+		Query: "select * from (ab JOIN pq) where a in (select a from ab)",
+		Expected: []sql.Row{
+			{0, 2, 0, 0},
+			{0, 2, 1, 1},
+			{0, 2, 2, 2},
+			{0, 2, 3, 3},
+			{1, 2, 0, 0},
+			{1, 2, 1, 1},
+			{1, 2, 2, 2},
+			{1, 2, 3, 3},
+			{2, 2, 0, 0},
+			{2, 2, 1, 1},
+			{2, 2, 2, 2},
+			{2, 2, 3, 3},
+			{3, 1, 0, 0},
+			{3, 1, 1, 1},
+			{3, 1, 2, 2},
+			{3, 1, 3, 3}},
+	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (1,2,3)",
+		Expected: []sql.Row{
+			{1, 2, 0, 0},
+			{1, 2, 1, 1},
+			{1, 2, 2, 2},
+			{1, 2, 3, 3}},
+	},
+	{
+		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (select a from ab)",
+		Expected: []sql.Row{
+			{1, 2, 0, 0},
+			{1, 2, 1, 1},
+			{1, 2, 2, 2},
+			{1, 2, 3, 3}},
+	},
+	{
+		// verify this troublesome query from dolt with a syntactically similar query:
+		// SELECT count(*) from dolt_log('main') join dolt_diff(@Commit1, @Commit2, 't') where commit_hash = to_commit;
+		Query: `SELECT count(*)
+FROM
+JSON_TABLE(
+	'[{"a":1.5, "b":2.25},{"a":3.125, "b":4.0625}]',
+	'$[*]' COLUMNS(x float path '$.a', y float path '$.b')
+) as t1
+join
+JSON_TABLE(
+	'[{"c":2, "d":3},{"c":4, "d":5}]',
+	'$[*]' COLUMNS(z float path '$.c', w float path '$.d')
+) as t2
+on w = 0;`,
+		Expected: []sql.Row{{0}},
+	},
 }
 
 var JoinScriptTests = []ScriptTest{
