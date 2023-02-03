@@ -43,7 +43,7 @@ type Harness interface {
 	// Setup supplies a test suite's setup scripts, which must be stored and used to create a new Engine on demand via
 	// calls to the NewEngine method.
 	Setup(...[]setup.SetupScript)
-	// NewEngine creates a new sqle.Engine. The state of the engine returned must match what was previous specified 
+	// NewEngine creates a new sqle.Engine. The state of the engine returned must match what was previous specified
 	// by Setup, with no other data. See enginetest.NewEngine for help creating an engine suitable in tests.
 	NewEngine(*testing.T) (*sqle.Engine, error)
 }

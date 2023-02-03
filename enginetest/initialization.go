@@ -124,7 +124,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	return engine
 }
 
-// NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given. 
+// NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given.
 func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
 	e := NewEngineWithProvider(t, harness, provider)
 	ctx := NewContext(harness)
