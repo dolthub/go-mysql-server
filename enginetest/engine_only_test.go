@@ -650,14 +650,31 @@ func TestTableFunctions(t *testing.T) {
 			Query:    "SELECT * from (select * from simple_TABLE_function(123)) as tf;",
 			Expected: []sql.Row{{"foo", 123}},
 		},
+		{
+			Query:    "select * from sequence_table('x', 5)",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
+			Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0",
+			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 2) where x is not null",
+			Expected: []sql.Row{{0}, {1}},
+		},
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	databaseProvider.(sql.TableFunctionProvider).SetTableFunction("simple_table_function", SimpleTableFunction{})
-	databaseProvider.(sql.TableFunctionProvider).SetTableFunction("simple_TABLE_function", SimpleTableFunction{})
+	databaseProvider.(*memory.DbProvider).SetTableFunction("simple_table_function", SimpleTableFunction{})
+	databaseProvider.(*memory.DbProvider).SetTableFunction("simple_TABLE_function", SimpleTableFunction{})
+	databaseProvider.(*memory.DbProvider).SetTableFunction("sequence_table", memory.IntSequenceTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, databaseProvider)
 	engine, err := enginetest.RunEngineScripts(harness.NewContext(), engine, setup.MydbData, true)

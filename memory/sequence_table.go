@@ -1,4 +1,4 @@
-package plan
+package memory
 
 import (
 	"fmt"
@@ -9,16 +9,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var _ sql.TableFunction = (*SequenceTableFn)(nil)
+var _ sql.TableFunction = (*IntSequenceTable)(nil)
 
-// SequenceTableFn an extremely simple implementation of TableFunction for testing.
-// When evaluated, returns a single row: {"foo", 123}
-type SequenceTableFn struct {
+// IntSequenceTable a simple table function that returns a sequence
+// of integers.
+type IntSequenceTable struct {
 	name string
 	len  int
 }
 
-func (s SequenceTableFn) NewInstance(_ *sql.Context, _ sql.Database, args []sql.Expression) (sql.Node, error) {
+func (s IntSequenceTable) NewInstance(_ *sql.Context, _ sql.Database, args []sql.Expression) (sql.Node, error) {
 	if len(args) != 2 {
 		return nil, fmt.Errorf("sequence table expects 2 arguments: (name, len)")
 	}
@@ -38,18 +38,18 @@ func (s SequenceTableFn) NewInstance(_ *sql.Context, _ sql.Database, args []sql.
 	if !ok {
 		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
 	}
-	return SequenceTableFn{name: name, len: int(length.(int64))}, nil
+	return IntSequenceTable{name: name, len: int(length.(int64))}, nil
 }
 
-func (s SequenceTableFn) Resolved() bool {
+func (s IntSequenceTable) Resolved() bool {
 	return true
 }
 
-func (s SequenceTableFn) String() string {
+func (s IntSequenceTable) String() string {
 	return fmt.Sprintf("sequence(%s, %d)", s.name, s.len)
 }
 
-func (s SequenceTableFn) DebugString() string {
+func (s IntSequenceTable) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("sequence")
 	children := []string{
@@ -60,7 +60,7 @@ func (s SequenceTableFn) DebugString() string {
 	return pr.String()
 }
 
-func (s SequenceTableFn) Schema() sql.Schema {
+func (s IntSequenceTable) Schema() sql.Schema {
 	schema := []*sql.Column{
 		&sql.Column{
 			Name: s.name,
@@ -71,44 +71,44 @@ func (s SequenceTableFn) Schema() sql.Schema {
 	return schema
 }
 
-func (s SequenceTableFn) Children() []sql.Node {
+func (s IntSequenceTable) Children() []sql.Node {
 	return []sql.Node{}
 }
 
-func (s SequenceTableFn) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
+func (s IntSequenceTable) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	rowIter := &SequenceTableFnRowIter{i: 0, n: s.len}
 	return rowIter, nil
 }
 
-func (s SequenceTableFn) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s IntSequenceTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
-func (s SequenceTableFn) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
+func (s IntSequenceTable) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
 	return true
 }
 
-func (s SequenceTableFn) Expressions() []sql.Expression {
+func (s IntSequenceTable) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }
 
-func (s SequenceTableFn) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+func (s IntSequenceTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	return s, nil
 }
 
-func (s SequenceTableFn) Database() sql.Database {
+func (s IntSequenceTable) Database() sql.Database {
 	return nil
 }
 
-func (s SequenceTableFn) WithDatabase(_ sql.Database) (sql.Node, error) {
+func (s IntSequenceTable) WithDatabase(_ sql.Database) (sql.Node, error) {
 	return s, nil
 }
 
-func (s SequenceTableFn) Name() string {
+func (s IntSequenceTable) Name() string {
 	return "sequence"
 }
 
-func (s SequenceTableFn) Description() string {
+func (s IntSequenceTable) Description() string {
 	return "sequence"
 }
 

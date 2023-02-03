@@ -20,8 +20,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/plan"
-
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -221,7 +219,7 @@ func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
 	return memory.NewDBProviderWithOpts(
 		memory.NativeIndexProvider(m.nativeIndexSupport),
 		memory.HistoryProvider(true),
-		TableFunctionProvider("sequence_table", &plan.SequenceTableFn{}))
+		TableFunctionProvider("sequence_table", &memory.IntSequenceTable{}))
 }
 
 // HistoryProvider returns a ProviderOption to construct a memoryDBProvider that uses history databases
@@ -268,7 +266,7 @@ func (m *MemoryHarness) NewReadOnlyEngine(provider sql.DatabaseProvider) (*sqle.
 		dbs = append(dbs, memory.ReadOnlyDatabase{db.(*memory.HistoryDatabase)})
 	}
 
-	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs), TableFunctionProvider("sequence_table", &plan.SequenceTableFn{}))
+	readOnlyProvider := memory.NewDBProviderWithOpts(memory.WithDbsOption(dbs))
 	m.provider = readOnlyProvider
 
 	return NewEngineWithProvider(nil, m, readOnlyProvider), nil
