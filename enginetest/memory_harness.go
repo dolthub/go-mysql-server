@@ -232,11 +232,9 @@ func (m *MemoryHarness) getProvider() sql.MutableDatabaseProvider {
 }
 
 func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
-	opts := []memory.ProviderOption{
+	return memory.NewDBProviderWithOpts(
 		memory.NativeIndexProvider(m.nativeIndexSupport),
-		memory.HistoryProvider(true),
-	}
-	return memory.NewDBProviderWithOpts(opts...)
+		memory.HistoryProvider(true))
 }
 
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
