@@ -364,6 +364,11 @@ func (c *Context) QueryTime() time.Time {
 	return c.queryTime
 }
 
+// SetQueryTime updates the queryTime to the given time
+func (c *Context) SetQueryTime(t time.Time) {
+	c.queryTime = t
+}
+
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all
 // children of this span.
