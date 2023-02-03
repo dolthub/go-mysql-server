@@ -890,9 +890,9 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select count(*) cnt from ab where exists (select * from xy where x = a) group by a`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [COUNT(*):0!null as cnt]\n" +
+			" ├─ columns: [COUNT(1):0!null as cnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(*)\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: ab.a:0!null\n" +
 			"     └─ RightSemiLookupJoin\n" +
 			"         ├─ Eq\n" +
@@ -7254,9 +7254,9 @@ inner join pq on true
 	{
 		Query: `With recursive a(x) as (select 1 union select 4 union select * from (select 2 union select 3) b union select x+1 from a where x < 10) select count(*) from a;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [COUNT(*):0!null as count(*)]\n" +
+			" ├─ columns: [COUNT(1):0!null as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(*)\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: \n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
@@ -7761,16 +7761,18 @@ WHERE
 			"     │                           └─ Project\n" +
 			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
 			"     │                               │   ├─ cacheable: false\n" +
-			"     │                               │   └─ GroupBy\n" +
-			"     │                               │       ├─ select: COUNT(*)\n" +
-			"     │                               │       ├─ group: \n" +
-			"     │                               │       └─ Filter\n" +
-			"     │                               │           ├─ Eq\n" +
-			"     │                               │           │   ├─ HDDVB.UJ6XY:19!null\n" +
-			"     │                               │           │   └─ nd.id:0!null\n" +
-			"     │                               │           └─ Table\n" +
-			"     │                               │               ├─ name: HDDVB\n" +
-			"     │                               │               └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
+			"     │                               │   └─ Project\n" +
+			"     │                               │       ├─ columns: [COUNT(1):17!null as COUNT(*)]\n" +
+			"     │                               │       └─ GroupBy\n" +
+			"     │                               │           ├─ select: COUNT(1 (bigint))\n" +
+			"     │                               │           ├─ group: \n" +
+			"     │                               │           └─ Filter\n" +
+			"     │                               │               ├─ Eq\n" +
+			"     │                               │               │   ├─ HDDVB.UJ6XY:17!null\n" +
+			"     │                               │               │   └─ nd.id:0!null\n" +
+			"     │                               │               └─ Table\n" +
+			"     │                               │                   ├─ name: HDDVB\n" +
+			"     │                               │                   └─ columns: [uj6xy]\n" +
 			"     │                               │   as WGBRL]\n" +
 			"     │                               └─ Filter\n" +
 			"     │                                   ├─ (NOT(nd.ZH72S:7 IS NULL))\n" +
@@ -8254,16 +8256,18 @@ WHERE
 			"     │                           └─ Project\n" +
 			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
 			"     │                               │   ├─ cacheable: false\n" +
-			"     │                               │   └─ GroupBy\n" +
-			"     │                               │       ├─ select: COUNT(*)\n" +
-			"     │                               │       ├─ group: \n" +
-			"     │                               │       └─ Filter\n" +
-			"     │                               │           ├─ Eq\n" +
-			"     │                               │           │   ├─ FLQLP.LUEVY:19!null\n" +
-			"     │                               │           │   └─ nd.id:0!null\n" +
-			"     │                               │           └─ Table\n" +
-			"     │                               │               ├─ name: FLQLP\n" +
-			"     │                               │               └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
+			"     │                               │   └─ Project\n" +
+			"     │                               │       ├─ columns: [COUNT(1):17!null as COUNT(*)]\n" +
+			"     │                               │       └─ GroupBy\n" +
+			"     │                               │           ├─ select: COUNT(1 (bigint))\n" +
+			"     │                               │           ├─ group: \n" +
+			"     │                               │           └─ Filter\n" +
+			"     │                               │               ├─ Eq\n" +
+			"     │                               │               │   ├─ FLQLP.LUEVY:17!null\n" +
+			"     │                               │               │   └─ nd.id:0!null\n" +
+			"     │                               │               └─ Table\n" +
+			"     │                               │                   ├─ name: FLQLP\n" +
+			"     │                               │                   └─ columns: [luevy]\n" +
 			"     │                               │   as LEA4J]\n" +
 			"     │                               └─ Filter\n" +
 			"     │                                   ├─ (NOT(nd.ZH72S:7 IS NULL))\n" +
@@ -9068,16 +9072,18 @@ WHERE
 			"     │                           └─ Project\n" +
 			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
 			"     │                               │   ├─ cacheable: false\n" +
-			"     │                               │   └─ GroupBy\n" +
-			"     │                               │       ├─ select: COUNT(*)\n" +
-			"     │                               │       ├─ group: \n" +
-			"     │                               │       └─ Filter\n" +
-			"     │                               │           ├─ Eq\n" +
-			"     │                               │           │   ├─ AMYXQ.LUEVY:19!null\n" +
-			"     │                               │           │   └─ nd.id:0!null\n" +
-			"     │                               │           └─ Table\n" +
-			"     │                               │               ├─ name: AMYXQ\n" +
-			"     │                               │               └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
+			"     │                               │   └─ Project\n" +
+			"     │                               │       ├─ columns: [COUNT(1):17!null as COUNT(*)]\n" +
+			"     │                               │       └─ GroupBy\n" +
+			"     │                               │           ├─ select: COUNT(1 (bigint))\n" +
+			"     │                               │           ├─ group: \n" +
+			"     │                               │           └─ Filter\n" +
+			"     │                               │               ├─ Eq\n" +
+			"     │                               │               │   ├─ AMYXQ.LUEVY:17!null\n" +
+			"     │                               │               │   └─ nd.id:0!null\n" +
+			"     │                               │               └─ Table\n" +
+			"     │                               │                   ├─ name: AMYXQ\n" +
+			"     │                               │                   └─ columns: [luevy]\n" +
 			"     │                               │   as TJ66D]\n" +
 			"     │                               └─ Filter\n" +
 			"     │                                   ├─ (NOT(nd.ZH72S:7 IS NULL))\n" +
@@ -10223,12 +10229,13 @@ WHERE
 	{
 		Query: `
 	SELECT COUNT(*) FROM NOXN3`,
-		ExpectedPlan: "GroupBy\n" +
-			" ├─ select: COUNT(*)\n" +
-			" ├─ group: \n" +
-			" └─ Table\n" +
-			"     ├─ name: NOXN3\n" +
-			"     └─ columns: [id brqp2 fftbj a7xo2 kbo7r ecdkm numk2 letoe ykssu fhcyt]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as COUNT(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Table\n" +
+			"         └─ name: NOXN3\n" +
 			"",
 	},
 	{
@@ -14087,12 +14094,13 @@ ORDER BY id ASC`,
 	{
 		Query: `
 SELECT COUNT(*) FROM E2I7U`,
-		ExpectedPlan: "GroupBy\n" +
-			" ├─ select: COUNT(*)\n" +
-			" ├─ group: \n" +
-			" └─ Table\n" +
-			"     ├─ name: E2I7U\n" +
-			"     └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as COUNT(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Table\n" +
+			"         └─ name: E2I7U\n" +
 			"",
 	},
 	{

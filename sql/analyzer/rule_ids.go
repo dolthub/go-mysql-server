@@ -64,6 +64,7 @@ const (
 	resolveColumnsId               // resolveColumns
 	validateCheckConstraintId      // validateCheckConstraint
 	resolveBarewordSetVariablesId  // resolveBarewordSetVariables
+	replaceCountStarId             // replaceCountStar
 	expandStarsId                  // expandStars
 	transposeRightJoinsId          // transposeRightJoins
 	resolveHavingId                // resolveHaving
