@@ -662,6 +662,10 @@ func TestTableFunctions(t *testing.T) {
 			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0",
 			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
 		},
+		{
+			Query:    "select * from sequence_table('x', 2) where x is not null",
+			Expected: []sql.Row{{0}, {1}},
+		},
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
