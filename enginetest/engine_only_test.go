@@ -650,13 +650,25 @@ func TestTableFunctions(t *testing.T) {
 			Query:    "SELECT * from (select * from simple_TABLE_function(123)) as tf;",
 			Expected: []sql.Row{{"foo", 123}},
 		},
+		{
+			Query:    "select * from sequence_table('x', 5)",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
+			Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0",
+			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+		},
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
+	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
@@ -899,10 +911,14 @@ type TestProvider struct {
 	tableFunctions map[string]sql.TableFunction
 }
 
-func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf sql.TableFunction) *TestProvider {
+func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf ...sql.TableFunction) *TestProvider {
+	tfs := make(map[string]sql.TableFunction)
+	for _, tf := range tf {
+		tfs[strings.ToLower(tf.Name())] = tf
+	}
 	return &TestProvider{
 		*dbProvider,
-		map[string]sql.TableFunction{strings.ToLower(tf.Name()): tf},
+		tfs,
 	}
 }
 
