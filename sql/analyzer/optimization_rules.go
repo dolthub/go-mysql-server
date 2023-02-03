@@ -327,9 +327,10 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 
 				return e, transform.SameTree, nil
 			case *expression.Like:
-				// if the charset is utf8mb3, the last character used in optimization rule does not work
-				charset := getCharsetInUse(ctx, e.Left)
-				if charset == sql.CharacterSet_utf8mb3 {
+				// if the charset is not utf8mb4, the last character used in optimization rule does not work
+				coll, _ := expression.GetCollationViaCoercion(e.Left)
+				charset := coll.CharacterSet()
+				if charset != sql.CharacterSet_utf8mb4 {
 					return e, transform.SameTree, nil
 				}
 				// TODO: maybe more cases to simplify
