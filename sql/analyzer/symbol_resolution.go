@@ -191,7 +191,7 @@ func pruneTableCols(
 	cols := make([]string, 0)
 	source := strings.ToLower(t.Name())
 	for _, col := range t.Schema() {
-		c := tableCol{table: source, col: strings.ToLower(col.Name)}
+		c := tableCol{table: strings.ToLower(source), col: strings.ToLower(col.Name)}
 		if selectStar || parentCols[c] > 0 {
 			cols = append(cols, c.col)
 		}
@@ -276,8 +276,8 @@ func gatherTableAlias(
 			starred = true
 		}
 		for _, col := range n.Schema() {
-			baseCol := tableCol{table: base, col: col.Name}
-			aliasCol := tableCol{table: alias, col: col.Name}
+			baseCol := tableCol{table: strings.ToLower(base), col: strings.ToLower(col.Name)}
+			aliasCol := tableCol{table: strings.ToLower(alias), col: strings.ToLower(col.Name)}
 			if starred || parentCols[aliasCol] > 0 {
 				// if the outer scope requests an aliased column
 				// a table lower in the tree must provide the source

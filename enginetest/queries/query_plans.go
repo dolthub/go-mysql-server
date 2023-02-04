@@ -3194,20 +3194,33 @@ inner join pq on true
 			"",
 	},
 	{
+		Query: "select a.S, b.S from mytable A, mytable B",
+		ExpectedPlan: "CrossJoin\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [s]\n" +
+			"",
+	},
+	{
 		Query: `SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [t1.Timestamp:0!null]\n" +
-			" └─ InnerJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ t1.Timestamp:0!null\n" +
-			"     │   └─ t2.Timestamp:4!null\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ Table\n" +
-			"     │       └─ name: reservedWordsTable\n" +
-			"     └─ TableAlias(t2)\n" +
-			"         └─ Table\n" +
-			"             └─ name: reservedWordsTable\n" +
-			"",
+				" ├─ columns: [t1.Timestamp:0!null]\n" +
+				" └─ InnerJoin\n" +
+				"     ├─ Eq\n" +
+				"     │   ├─ t1.Timestamp:0!null\n" +
+				"     │   └─ t2.Timestamp:4!null\n" +
+				"     ├─ TableAlias(t1)\n" +
+				"     │   └─ Table\n" +
+				"     │       └─ name: reservedWordsTable\n" +
+				"     └─ TableAlias(t2)\n" +
+				"         └─ Table\n" +
+				"             └─ name: reservedWordsTable\n" +
+				"",
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2`,
