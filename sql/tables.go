@@ -70,15 +70,15 @@ type FilteredTable interface {
 }
 
 // ProjectedTable is a table that can return only a subset of its columns from RowIter. This provides a very large
-// efficiency gain during table scans. Tables that implement this interface must return only the projected columns 
+// efficiency gain during table scans. Tables that implement this interface must return only the projected columns
 // in future calls to Schema.
 type ProjectedTable interface {
 	Table
 	// WithProjections returns a version of this table with only the subset of columns named. Calls to Schema must
-	// only include these columns. A zero-length slice of column names is valid and indicates that rows from this table 
+	// only include these columns. A zero-length slice of column names is valid and indicates that rows from this table
 	// should be spooled, but no columns should be returned. A nil slice will never be provided.
 	WithProjections(colNames []string) Table
-	// Projections returns the names of the column projections applied to this table, or nil if no projection is applied 
+	// Projections returns the names of the column projections applied to this table, or nil if no projection is applied
 	// and all columns of the schema will be returned.
 	Projections() []string
 }

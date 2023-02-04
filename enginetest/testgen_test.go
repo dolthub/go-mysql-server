@@ -26,12 +26,12 @@ func TestWriteQueryPlans(t *testing.T) {
 }
 
 func TestWriteIndexQueryPlans(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests", 1, true)
 }
 
 func TestWriteIntegrationQueryPlans(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests", 1, true)
 }
 
