@@ -26,7 +26,7 @@ func TestWriteQueryPlans(t *testing.T) {
 }
 
 func TestWriteIndexQueryPlans(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests", 1, true)
 }
 

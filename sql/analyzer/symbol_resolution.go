@@ -197,14 +197,11 @@ func pruneTableCols(
 		}
 	}
 
-	if len(cols) == 0 {
-		return n, transform.SameTree, nil
-	}
-
 	ret, err := n.WithTable(ptab.WithProjections(cols))
 	if err != nil {
 		return n, transform.SameTree, nil
 	}
+
 	return ret, transform.NewTree, nil
 }
 
