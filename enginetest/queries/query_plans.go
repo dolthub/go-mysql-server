@@ -2108,6 +2108,30 @@ inner join pq on true
 			"",
 	},
 	{
+		Query: `SELECT 1 FROM mytable a WHERE a.s is not null`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [1 (tinyint)]\n" +
+			" └─ Filter\n" +
+			"     ├─ (NOT(a.s:0!null IS NULL))\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
+			"             ├─ static: [{(NULL, ∞)}]\n" +
+			"             └─ columns: [s]\n",
+	},
+	{
+		Query: `SELECT 1 FROM mytable`,
+		ExpectedPlan: "Project\n" +
+				" ├─ columns: [1 (tinyint)]\n" +
+				" └─ Filter\n" +
+				"     ├─ (NOT(a.s:0!null IS NULL))\n" +
+				"     └─ TableAlias(a)\n" +
+				"         └─ IndexedTableAccess(mytable)\n" +
+				"             ├─ index: [mytable.s]\n" +
+				"             ├─ static: [{(NULL, ∞)}]\n" +
+				"             └─ columns: [s]\n",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.s is not null`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +

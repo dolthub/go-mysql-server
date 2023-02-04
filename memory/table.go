@@ -1033,10 +1033,6 @@ func (t *Table) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 
 // WithProjections implements sql.ProjectedTable
 func (t *Table) WithProjections(cols []string) sql.Table {
-	if len(cols) == 0 {
-		return t
-	}
-
 	nt := *t
 	columns, err := nt.columnIndexes(cols)
 	if err != nil {

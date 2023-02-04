@@ -188,7 +188,7 @@ func pruneTableCols(
 		return n, transform.SameTree, nil
 	}
 
-	var cols []string
+	cols := make([]string, 0)
 	source := strings.ToLower(t.Name())
 	for _, col := range t.Schema() {
 		c := tableCol{table: source, col: strings.ToLower(col.Name)}
