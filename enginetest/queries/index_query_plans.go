@@ -94,7 +94,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"             │   └─ a (longtext)\n" +
 			"             └─ IndexedTableAccess(pref_index_t4)\n" +
 			"                 ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			"                 └─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -107,7 +108,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │   └─ a (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t4)\n" +
 			"             ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			"             └─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"             ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -189,7 +191,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"             │   └─ a (longtext)\n" +
 			"             └─ IndexedTableAccess(pref_index_t3)\n" +
 			"                 ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			"                 └─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
@@ -202,7 +205,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │   └─ a (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t3)\n" +
 			"             ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			"             └─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"             ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
@@ -284,7 +288,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"             │   └─ A (longtext)\n" +
 			"             └─ IndexedTableAccess(pref_index_t2)\n" +
 			"                 ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			"                 └─ static: [{[A, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ static: [{[A, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -297,7 +302,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │   └─ A (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t2)\n" +
 			"             ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			"             └─ static: [{[A, ∞), [NULL, ∞)}]\n" +
+			"             ├─ static: [{[A, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -378,7 +384,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"         │   └─ a (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t1)\n" +
 			"             ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			"             └─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"             ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -392,7 +399,8 @@ var IndexPlanTests = []QueryPlanTest{
 			"             │   └─ a (longtext)\n" +
 			"             └─ IndexedTableAccess(pref_index_t1)\n" +
 			"                 ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			"                 └─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{

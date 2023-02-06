@@ -88,16 +88,20 @@ func (t *ResolvedTable) DebugString() string {
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 
-	if pt, ok := table.(sql.ProjectedTable); ok {
+	var columns []string
+	if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() != nil {
 		projections := pt.Projections()
-		if projections != nil {
-			columns := make([]string, len(projections))
-			for i, c := range projections {
-				columns[i] = strings.ToLower(c)
-			}
-			children = append(children, fmt.Sprintf("columns: %v", columns))
+		columns = make([]string, len(projections))
+		for i, c := range projections {
+			columns[i] = strings.ToLower(c)
+		}
+	} else {
+		columns = make([]string, len(table.Schema()))
+		for i, c := range table.Schema() {
+			columns[i] = strings.ToLower(c.Name)
 		}
 	}
+	children = append(children, fmt.Sprintf("columns: %v", columns))
 
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string

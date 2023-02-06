@@ -280,16 +280,20 @@ func (i *IndexedTableAccess) DebugString() string {
 		children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
 	}
 
-	if pt, ok := i.Table.(sql.ProjectedTable); ok {
+	var columns []string
+	if pt, ok := i.Table.(sql.ProjectedTable); ok && pt.Projections() != nil {
 		projections := pt.Projections()
-		if projections != nil {
-			columns := make([]string, len(projections))
-			for i, c := range projections {
-				columns[i] = strings.ToLower(c)
-			}
-			children = append(children, fmt.Sprintf("columns: %v", columns))
+		columns = make([]string, len(projections))
+		for i, c := range projections {
+			columns[i] = strings.ToLower(c)
+		}
+	} else {
+		columns = make([]string, len(i.Table.Schema()))
+		for i, c := range i.Table.Schema() {
+			columns[i] = strings.ToLower(c.Name)
 		}
 	}
+	children = append(children, fmt.Sprintf("columns: %v", columns))
 
 	if ft, ok := i.Table.(sql.FilteredTable); ok {
 		var filters []string
