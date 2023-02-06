@@ -372,7 +372,7 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		return resultRow, nil
 	}
-	
+
 	return row, nil
 }
 
