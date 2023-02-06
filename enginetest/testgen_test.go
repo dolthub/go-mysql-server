@@ -21,14 +21,17 @@ import (
 // query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
 // how query plans have changed without a lot of manual copying and pasting.
 func TestWriteQueryPlans(t *testing.T) {
+	t.Skip()
 	writePlans(t, setup.PlanSetup, queries.PlanTests, "PlanTests", 1, true)
 }
 
 func TestWriteIndexQueryPlans(t *testing.T) {
+	t.Skip()
 	writePlans(t, setup.ComplexIndexSetup, queries.IndexPlanTests, "IndexPlanTests", 1, true)
 }
 
 func TestWriteIntegrationQueryPlans(t *testing.T) {
+	t.Skip()
 	writePlans(t, [][]setup.SetupScript{setup.MydbData, setup.Integration_testData}, queries.IntegrationPlanTests, "IntegrationPlanTests", 1, true)
 }
 
