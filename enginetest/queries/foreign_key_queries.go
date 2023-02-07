@@ -304,6 +304,28 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "RENAME TABLE with primary key indexes",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE child1 (pk BIGINT PRIMARY KEY, CONSTRAINT `fk` FOREIGN KEY (pk) REFERENCES parent1(pk))",
+			"RENAME TABLE parent1 TO new_parent1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE child1;",
+				Expected: []sql.Row{{"child1", "CREATE TABLE `child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "RENAME TABLE child1 TO new_child1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE new_child1;",
+				Expected: []sql.Row{{"new_child1", "CREATE TABLE `new_child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
 		Name: "DROP TABLE",
 		SetUpScript: []string{
 			"ALTER TABLE child ADD CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent(v1);",
