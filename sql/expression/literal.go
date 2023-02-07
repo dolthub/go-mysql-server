@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -67,6 +68,11 @@ func (lit *Literal) String() string {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v)
 	case string:
+		switch lit.fieldType.Type() {
+		// utf8 charset cannot encode binary string
+		case query.Type_VARBINARY, query.Type_BINARY:
+			return fmt.Sprintf("'0x%X'", v)
+		}
 		return fmt.Sprintf("'%s'", v)
 	case decimal.Decimal:
 		return v.StringFixed(v.Exponent() * -1)
