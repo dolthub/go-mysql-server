@@ -3242,13 +3242,12 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Skip: true, // This should create the secondary index over child(i)
+				Skip:  true, // This should create the secondary index over child(i)
 				Query: "SHOW CREATE TABLE child4",
 				Expected: []sql.Row{
 					{"child4", "CREATE TABLE `child4` (\n  `i` int,\n  KEY `i` (`i`),\n  CONSTRAINT `fk_child4` FOREIGN KEY (`i`) REFERENCES `delayed_parent4` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
-
 		},
 	})
 }
