@@ -16279,20 +16279,10 @@ var IndexPlanTests = []QueryPlanTest{
 	{
 		Query: `select * from comp_index_t3 where v1 like 'a%'`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ AND\n" +
-			" │   ├─ GreaterThanOrEqual\n" +
-			" │   │   ├─ comp_index_t3.v1:1\n" +
-			" │   │   └─ a (longtext)\n" +
-			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ comp_index_t3.v1:1\n" +
-			" │       └─ aÿ (longtext)\n" +
-			" └─ IndexedTableAccess\n" +
-			"     ├─ index: [comp_index_t3.v1]\n" +
-			"     ├─ static: [{[a, aÿ]}]\n" +
-			"     ├─ columns: [pk v1 v2]\n" +
-			"     └─ Table\n" +
-			"         ├─ name: comp_index_t3\n" +
-			"         └─ projections: [0 1 2]\n" +
+			" ├─ comp_index_t3.v1 LIKE 'a%'\n" +
+			" └─ Table\n" +
+			"     ├─ name: comp_index_t3\n" +
+			"     └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
@@ -16309,13 +16299,7 @@ var IndexPlanTests = []QueryPlanTest{
 	{
 		Query: `select * from comp_index_t3 where v2 like 'a%'`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ AND\n" +
-			" │   ├─ GreaterThanOrEqual\n" +
-			" │   │   ├─ comp_index_t3.v2:2\n" +
-			" │   │   └─ a (longtext)\n" +
-			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ comp_index_t3.v2:2\n" +
-			" │       └─ aÿ (longtext)\n" +
+			" ├─ comp_index_t3.v2 LIKE 'a%'\n" +
 			" └─ Table\n" +
 			"     ├─ name: comp_index_t3\n" +
 			"     └─ columns: [pk v1 v2]\n" +

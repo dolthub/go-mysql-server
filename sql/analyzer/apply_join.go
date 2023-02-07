@@ -76,7 +76,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					// which aren't possible when values are projected
 					// above join filter
 					rt := getResolvedTable(n)
-					if plan.IsDualTable(rt.Table) {
+					if rt == nil || plan.IsDualTable(rt.Table) {
 						newFilters = append(newFilters, e)
 						continue
 					}
