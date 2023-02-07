@@ -414,25 +414,6 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 	})
 }
 
-// getCharsetInUse returns charset used in given expression.
-func getCharsetInUse(ctx *sql.Context, expr sql.Expression) sql.CharacterSetID {
-	var charset = sql.CharacterSet_Unspecified
-
-	_ = transform.InspectExpr(expr, func(e sql.Expression) bool {
-		switch et := e.Type().(type) {
-		case sql.TypeWithCollation:
-			charset = et.Collation().CharacterSet()
-		}
-		return true
-	})
-
-	if charset == sql.CharacterSet_Unspecified {
-		charset = ctx.GetCharacterSetResults()
-	}
-
-	return charset
-}
-
 func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
 	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
