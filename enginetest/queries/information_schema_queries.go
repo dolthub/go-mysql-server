@@ -654,6 +654,22 @@ var SkippedInfoSchemaQueries = []QueryTest{
 
 var InfoSchemaScripts = []ScriptTest{
 	{
+		Name: "query does not use optimization rule on LIKE clause because info_schema db charset is utf8mb3",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (a int, condition_choose varchar(10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select column_name from information_schema.columns where column_name like 'condition%';",
+				Expected: []sql.Row{{"condition_choose"}},
+			},
+			{
+				Query:    "select column_name from information_schema.columns where column_name like '%condition%';",
+				Expected: []sql.Row{{"ACTION_CONDITION"}, {"condition_choose"}},
+			},
+		},
+	},
+	{
 		Name: "test databases created with non default collation and charset",
 		SetUpScript: []string{
 			"CREATE DATABASE test_db CHARACTER SET utf8mb3 COLLATE utf8mb3_bin;",
