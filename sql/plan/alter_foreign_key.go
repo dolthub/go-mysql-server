@@ -170,6 +170,104 @@ func (p *CreateForeignKey) String() string {
 	return pr.String()
 }
 
+// PartialResolveForeignKey is just like ResolveForeignKey except it doesn't care about refTbl or parentColumns
+// TODO: there is a lot of repeated code figure out how to write helper methods to reduce this
+func PartialResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint) error {
+	if t, ok := tbl.(sql.TemporaryTable); ok && t.IsTemporary() {
+		return sql.ErrTemporaryTablesForeignKeySupport.New()
+	}
+	if len(fkDef.Columns) == 0 {
+		return sql.ErrForeignKeyMissingColumns.New()
+	}
+	if len(fkDef.Columns) != len(fkDef.ParentColumns) {
+		return sql.ErrForeignKeyColumnCountMismatch.New()
+	}
+
+	// Make sure that all columns are valid, in the table, and there are no duplicates
+	cols := make(map[string]*sql.Column)
+	seenCols := make(map[string]bool)
+	actualColNames := make(map[string]string)
+	for _, col := range tbl.Schema() {
+		lowerColName := strings.ToLower(col.Name)
+		cols[lowerColName] = col
+		seenCols[lowerColName] = false
+		actualColNames[lowerColName] = col.Name
+	}
+	for i, fkCol := range fkDef.Columns {
+		lowerFkCol := strings.ToLower(fkCol)
+		if seen, ok := seenCols[lowerFkCol]; ok {
+			if !seen {
+				seenCols[lowerFkCol] = true
+				fkDef.Columns[i] = actualColNames[lowerFkCol]
+			} else {
+				return sql.ErrAddForeignKeyDuplicateColumn.New(fkCol)
+			}
+			// Non-nullable columns may not have SET NULL as a reference option
+			if !cols[lowerFkCol].Nullable && (fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetNull ||
+				fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetNull) {
+				return sql.ErrForeignKeySetNullNonNullable.New(cols[lowerFkCol].Name)
+			}
+		} else {
+			return sql.ErrTableColumnNotFound.New(tbl.Name(), fkCol)
+		}
+	}
+
+	_, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		indexColumns := make([]sql.IndexColumn, len(fkDef.Columns))
+		for i, col := range fkDef.Columns {
+			indexColumns[i] = sql.IndexColumn{
+				Name:   col,
+				Length: 0,
+			}
+		}
+		indexMap := make(map[string]struct{})
+		indexes, err := tbl.GetIndexes(ctx)
+		if err != nil {
+			return err
+		}
+		for _, index := range indexes {
+			indexMap[strings.ToLower(index.ID())] = struct{}{}
+		}
+		indexName := strings.Join(fkDef.Columns, "")
+		if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+			for i := 0; true; i++ {
+				newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+				if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
+					indexName = newIndexName
+					break
+				}
+			}
+		}
+		err = tbl.CreateIndexForForeignKey(ctx, sql.IndexDef{
+			Name:       indexName,
+			Columns:    indexColumns,
+			Constraint: sql.IndexConstraint_None,
+			Storage:    sql.IndexUsing_Default,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	existingFks, err := tbl.GetDeclaredForeignKeys(ctx)
+	if err != nil {
+		return err
+	}
+
+	fkLowerName := strings.ToLower(fkDef.Name)
+	for _, existingFk := range existingFks {
+		if fkLowerName == strings.ToLower(existingFk.Name) {
+			return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+		}
+	}
+
+	return tbl.AddForeignKey(ctx, fkDef)
+}
+
 // ResolveForeignKey verifies the foreign key definition and resolves the foreign key, creating indexes and validating
 // data as necessary.
 func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd bool) error {

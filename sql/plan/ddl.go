@@ -453,7 +453,7 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 				return err
 			}
 		} else {
-			err = fkTbl.AddForeignKey(ctx, *fkDef)
+			err = PartialResolveForeignKey(ctx, fkTbl, *fkDef)
 			if err != nil {
 				return err
 			}
