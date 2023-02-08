@@ -1227,7 +1227,7 @@ var ForeignKeyTests = []ScriptTest{
 				ExpectedErr: sql.ErrAddForeignKeyDuplicateColumn,
 			},
 			{
-				Query: "ALTER TABLE valid_delayed_child drop index i",
+				Query:       "ALTER TABLE valid_delayed_child drop index i",
 				ExpectedErr: sql.ErrForeignKeyDropIndex,
 			},
 		},
