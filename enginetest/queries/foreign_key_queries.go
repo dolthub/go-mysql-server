@@ -1226,6 +1226,10 @@ var ForeignKeyTests = []ScriptTest{
 				Query:    "CREATE TABLE delayed_child4(i int, CONSTRAINT fk_delayed4 FOREIGN KEY (i,i,i) REFERENCES delayed_parent(c1, c2, c3));",
 				ExpectedErr: sql.ErrAddForeignKeyDuplicateColumn,
 			},
+			{
+				Query: "ALTER TABLE valid_delayed_child drop index i",
+				ExpectedErr: sql.ErrForeignKeyDropIndex,
+			},
 		},
 	},
 	{
