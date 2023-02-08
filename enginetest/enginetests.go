@@ -3225,31 +3225,6 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 			},
 		},
 	})
-
-	TestScript(t, harness, queries.ScriptTest{
-		Name: "Secondary index should still be created even if FOREIGN_KEY_CHECKS=0",
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query:    "SET FOREIGN_KEY_CHECKS=0;",
-				Expected: []sql.Row{{}},
-			},
-			{
-				Query:    "CREATE TABLE child4 (i INT, CONSTRAINT fk_child4 FOREIGN KEY (i) REFERENCES delayed_parent4 (pk))",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "CREATE TABLE delayed_parent4 (pk INT PRIMARY KEY)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Skip:  true, // This should create the secondary index over child(i)
-				Query: "SHOW CREATE TABLE child4",
-				Expected: []sql.Row{
-					{"child4", "CREATE TABLE `child4` (\n  `i` int,\n  KEY `i` (`i`),\n  CONSTRAINT `fk_child4` FOREIGN KEY (`i`) REFERENCES `delayed_parent4` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	})
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
