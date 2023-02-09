@@ -164,10 +164,22 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)
 
-	addRightSemiJoins(m)
-	addLookupJoins(m)
-	addHashJoins(m)
-	addMergeJoins(m)
+	err = addRightSemiJoins(m)
+	if err != nil {
+		return nil, err
+	}
+	err = addLookupJoins(m)
+	if err != nil {
+		return nil, err
+	}
+	err = addHashJoins(m)
+	if err != nil {
+		return nil, err
+	}
+	err = addMergeJoins(m)
+	if err != nil {
+		return nil, err
+	}
 
 	if a.Verbose && a.Debug {
 		a.Log(m.String())
@@ -179,7 +191,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		m.WithJoinOrder(hint)
 	}
 
-	m.optimizeRoot()
+	err = m.optimizeRoot()
+	if err != nil {
+		return nil, err
+	}
 	return m.bestRootPlan()
 }
 

@@ -318,13 +318,13 @@ order by 1;`,
 			{
 				// group by doesn't transform
 				q:     "select * from xy where y-1 in (select u from uv group by v having v = 2 order by 1) order by 1;",
-				types: nil,
+				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
 				// window doesn't transform
 				q:     "select * from xy where y-1 in (select row_number() over (order by v) from uv) order by 1;",
-				types: nil,
+				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{0, 2}, {3, 3}},
 			},
 		},
@@ -351,7 +351,7 @@ order by 1;`,
 		},
 	},
 	{
-		name: "decorrelate with scope filters",
+		name: "unnest with scope filters",
 		setup: []string{
 			"CREATE table xy (x int primary key, y int);",
 			"CREATE table uv (u int primary key, v int);",
@@ -379,10 +379,15 @@ order by 1;`,
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{2, 1}},
 			},
+			{
+				q:     "select * from xy where x in (select cnt from (select count(u) as cnt from uv group by v having cnt > 0) sq) order by 1,2;",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{2, 1}},
+			},
 		},
 	},
 	{
-		name: "decorrelate non-equality comparisons",
+		name: "unnest non-equality comparisons",
 		setup: []string{
 			"CREATE table xy (x int primary key, y int);",
 			"CREATE table uv (u int primary key, v int);",

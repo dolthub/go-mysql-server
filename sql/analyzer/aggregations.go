@@ -43,21 +43,21 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 				return n, transform.SameTree, nil
 			}
 
-			return flattenedWindow(ctx, n.SelectExprs, n.Child)
+			return flattenedWindow(ctx, scope, n.SelectExprs, n.Child)
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs) {
 				return n, transform.SameTree, nil
 			}
 
-			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child)
+			return flattenedGroupBy(ctx, scope, n.SelectedExprs, n.GroupByExprs, n.Child)
 		default:
 			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
+func flattenedGroupBy(ctx *sql.Context, scope *Scope, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, scope, projection)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -84,9 +84,10 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 // There are two basic kinds of aggregation expressions:
 // 1) Passthrough columns from scope input relation.
 // 2) Synthesized columns from in-scope aggregation relation.
-func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
+func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *Scope, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
+	scopeLen := len(scope.Schema())
 	aggPassthrough := make(map[string]struct{})
 	/* every aggregation creates one pass-through reference into parent */
 	for i, p := range projection {
@@ -96,7 +97,7 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 				newAggregates = append(newAggregates, e)
 				aggPassthrough[e.String()] = struct{}{}
 				return expression.NewGetField(
-					len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
+					scopeLen+len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
 				), transform.NewTree, nil
 			default:
 				return e, transform.SameTree, nil
@@ -110,7 +111,7 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 			newAggregates = append(newAggregates, e)
 			name, source := getNameAndSource(e)
 			newProjection[i] = expression.NewGetFieldWithTable(
-				len(newAggregates)-1, e.Type(), source, name, e.IsNullable(),
+				scopeLen+len(newAggregates)-1, e.Type(), source, name, e.IsNullable(),
 			)
 		} else {
 			newProjection[i] = e
@@ -137,8 +138,8 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, projection []sql.E
 	return newProjection, newAggregates, transform.NewTree, nil
 }
 
-func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
+func flattenedWindow(ctx *sql.Context, scope *Scope, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, scope, projection)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
