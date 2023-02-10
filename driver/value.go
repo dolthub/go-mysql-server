@@ -93,7 +93,7 @@ func namedValuesToBindings(v []driver.NamedValue) (map[string]sql.Expression, er
 	for _, v := range v {
 		name := v.Name
 		if name == "" {
-			name = strconv.FormatInt(int64(v.Ordinal), 10)
+			name = "v" + strconv.FormatInt(int64(v.Ordinal), 10)
 		}
 
 		b[name], err = valueToExpr(v.Value)
