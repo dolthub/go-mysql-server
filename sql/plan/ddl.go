@@ -436,24 +436,26 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 	if err != nil {
 		return err
 	}
+
 	for i, fkDef := range c.fkDefs {
 		if fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
 			return sql.ErrForeignKeySetDefault.New()
 		}
+
 		if fkChecks.(int8) == 1 {
-			// TODO this is panic-prone
 			fkParentTbl := c.fkParentTbls[i]
 			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist
 			if fkParentTbl == nil {
 				fkParentTbl = fkTbl
 			}
 			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true)
+			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true, true)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = PartialResolveForeignKey(ctx, fkTbl, *fkDef)
+			// If foreign_key_checks are true, then the referenced tables will be populated
+			err = ResolveForeignKey(ctx, fkTbl, nil, *fkDef, true, false)
 			if err != nil {
 				return err
 			}

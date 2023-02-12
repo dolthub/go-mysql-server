@@ -141,16 +141,10 @@ func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 	if err != nil {
 		return nil, err
 	}
-	if fkChecks.(int8) == 0 {
-		err = fkTbl.AddForeignKey(ctx, *p.FkDef)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err = ResolveForeignKey(ctx, fkTbl, refFkTbl, *p.FkDef, true)
-		if err != nil {
-			return nil, err
-		}
+
+	err = ResolveForeignKey(ctx, fkTbl, refFkTbl, *p.FkDef, true, fkChecks.(int8) == 1)
+	if err != nil {
+		return nil, err
 	}
 
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
@@ -212,6 +206,18 @@ func PartialResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, fkDef s
 		}
 	}
 
+	existingFks, err := tbl.GetDeclaredForeignKeys(ctx)
+	if err != nil {
+		return err
+	}
+
+	fkLowerName := strings.ToLower(fkDef.Name)
+	for _, existingFk := range existingFks {
+		if fkLowerName == strings.ToLower(existingFk.Name) {
+			return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+		}
+	}
+
 	_, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
 	if err != nil {
 		return err
@@ -253,28 +259,15 @@ func PartialResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, fkDef s
 		}
 	}
 
-	existingFks, err := tbl.GetDeclaredForeignKeys(ctx)
-	if err != nil {
-		return err
-	}
-
-	fkLowerName := strings.ToLower(fkDef.Name)
-	for _, existingFk := range existingFks {
-		if fkLowerName == strings.ToLower(existingFk.Name) {
-			return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
-		}
-	}
-
 	return tbl.AddForeignKey(ctx, fkDef)
 }
 
 // ResolveForeignKey verifies the foreign key definition and resolves the foreign key, creating indexes and validating
 // data as necessary.
-func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd bool) error {
+func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd, fkChecks bool) error {
 	if t, ok := tbl.(sql.TemporaryTable); ok && t.IsTemporary() {
 		return sql.ErrTemporaryTablesForeignKeySupport.New()
 	}
-
 	if fkDef.IsResolved {
 		return fmt.Errorf("cannot resolve foreign key `%s` as it has already been resolved", fkDef.Name)
 	}
@@ -315,51 +308,97 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	}
 
 	// Do the same for the referenced columns
-	parentCols := make(map[string]*sql.Column)
-	seenCols = make(map[string]bool)
-	actualColNames = make(map[string]string)
-	for _, col := range refTbl.Schema() {
-		lowerColName := strings.ToLower(col.Name)
-		parentCols[lowerColName] = col
-		seenCols[lowerColName] = false
-		actualColNames[lowerColName] = col.Name
-	}
-	for i, fkParentCol := range fkDef.ParentColumns {
-		lowerFkParentCol := strings.ToLower(fkParentCol)
-		if seen, ok := seenCols[lowerFkParentCol]; ok {
-			if !seen {
-				seenCols[lowerFkParentCol] = true
-				fkDef.ParentColumns[i] = actualColNames[lowerFkParentCol]
+	if fkChecks {
+		parentCols := make(map[string]*sql.Column)
+		seenCols = make(map[string]bool)
+		actualColNames = make(map[string]string)
+		for _, col := range refTbl.Schema() {
+			lowerColName := strings.ToLower(col.Name)
+			parentCols[lowerColName] = col
+			seenCols[lowerColName] = false
+			actualColNames[lowerColName] = col.Name
+		}
+		for i, fkParentCol := range fkDef.ParentColumns {
+			lowerFkParentCol := strings.ToLower(fkParentCol)
+			if seen, ok := seenCols[lowerFkParentCol]; ok {
+				if !seen {
+					seenCols[lowerFkParentCol] = true
+					fkDef.ParentColumns[i] = actualColNames[lowerFkParentCol]
+				} else {
+					return sql.ErrAddForeignKeyDuplicateColumn.New(fkParentCol)
+				}
 			} else {
-				return sql.ErrAddForeignKeyDuplicateColumn.New(fkParentCol)
+				return sql.ErrTableColumnNotFound.New(fkDef.ParentTable, fkParentCol)
+			}
+		}
+
+		// Check that the types align and are valid
+		for i := range fkDef.Columns {
+			col := cols[strings.ToLower(fkDef.Columns[i])]
+			parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
+			if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
+				return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
+			}
+			sqlParserType := col.Type.Type()
+			if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
+				return sql.ErrForeignKeyTextBlob.New()
+			}
+		}
+
+		// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
+		refTblIndex, ok, err := FindIndexWithPrefix(ctx, refTbl, fkDef.ParentColumns)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return sql.ErrForeignKeyMissingReferenceIndex.New(fkDef.Name, fkDef.ParentTable)
+		}
+
+		indexPositions, appendTypes, err := FindForeignKeyColMapping(ctx, fkDef.Name, tbl, fkDef.Columns, fkDef.ParentColumns, refTblIndex)
+		if err != nil {
+			return err
+		}
+		var selfCols map[string]int
+		if fkDef.IsSelfReferential() {
+			selfCols = make(map[string]int)
+			for i, col := range tbl.Schema() {
+				selfCols[strings.ToLower(col.Name)] = i
+			}
+		}
+		reference := &ForeignKeyReferenceHandler{
+			ForeignKey: fkDef,
+			SelfCols:   selfCols,
+			RowMapper: ForeignKeyRowMapper{
+				Index:          refTblIndex,
+				Updater:        refTbl.GetForeignKeyEditor(ctx),
+				SourceSch:      tbl.Schema(),
+				IndexPositions: indexPositions,
+				AppendTypes:    appendTypes,
+			},
+		}
+
+		if err := reference.CheckTable(ctx, tbl); err != nil {
+			return err
+		}
+	}
+
+	// Check if the current foreign key name has already been used. Rather than checking the table first (which is the
+	// highest cost part of creating a foreign key), we'll check the name if it needs to be checked. If the foreign key
+	// was previously added, we don't need to check the name.
+	if shouldAdd {
+		if existingFks, err := tbl.GetDeclaredForeignKeys(ctx); err == nil {
+			fkLowerName := strings.ToLower(fkDef.Name)
+			for _, existingFk := range existingFks {
+				if fkLowerName == strings.ToLower(existingFk.Name) {
+					return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+				}
 			}
 		} else {
-			return sql.ErrTableColumnNotFound.New(fkDef.ParentTable, fkParentCol)
+			return err
 		}
 	}
 
-	// Check that the types align and are valid
-	for i := range fkDef.Columns {
-		col := cols[strings.ToLower(fkDef.Columns[i])]
-		parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
-		if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
-			return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
-		}
-		sqlParserType := col.Type.Type()
-		if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
-			return sql.ErrForeignKeyTextBlob.New()
-		}
-	}
-
-	// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
-	refTblIndex, ok, err := FindIndexWithPrefix(ctx, refTbl, fkDef.ParentColumns)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return sql.ErrForeignKeyMissingReferenceIndex.New(fkDef.Name, fkDef.ParentTable)
-	}
-	_, ok, err = FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
+	_, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
 	if err != nil {
 		return err
 	}
@@ -400,52 +439,11 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 
-	indexPositions, appendTypes, err := FindForeignKeyColMapping(ctx, fkDef.Name, tbl, fkDef.Columns, fkDef.ParentColumns, refTblIndex)
-	if err != nil {
-		return err
-	}
-	var selfCols map[string]int
-	if fkDef.IsSelfReferential() {
-		selfCols = make(map[string]int)
-		for i, col := range tbl.Schema() {
-			selfCols[strings.ToLower(col.Name)] = i
-		}
-	}
-	reference := &ForeignKeyReferenceHandler{
-		ForeignKey: fkDef,
-		SelfCols:   selfCols,
-		RowMapper: ForeignKeyRowMapper{
-			Index:          refTblIndex,
-			Updater:        refTbl.GetForeignKeyEditor(ctx),
-			SourceSch:      tbl.Schema(),
-			IndexPositions: indexPositions,
-			AppendTypes:    appendTypes,
-		},
-	}
-
-	// Check if the current foreign key name has already been used. Rather than checking the table first (which is the
-	// highest cost part of creating a foreign key), we'll check the name if it needs to be checked. If the foreign key
-	// was previously added, we don't need to check the name.
 	if shouldAdd {
-		if existingFks, err := tbl.GetDeclaredForeignKeys(ctx); err == nil {
-			fkLowerName := strings.ToLower(fkDef.Name)
-			for _, existingFk := range existingFks {
-				if fkLowerName == strings.ToLower(existingFk.Name) {
-					return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
-				}
-			}
-		} else {
-			return err
-		}
-	}
-	if err := reference.CheckTable(ctx, tbl); err != nil {
-		return err
-	}
-	if shouldAdd {
-		fkDef.IsResolved = true
+		fkDef.IsResolved = fkChecks
 		return tbl.AddForeignKey(ctx, fkDef)
 	} else {
-		fkDef.IsResolved = true
+		fkDef.IsResolved = fkChecks
 		return tbl.UpdateForeignKey(ctx, fkDef.Name, fkDef)
 	}
 }
