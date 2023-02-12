@@ -197,8 +197,13 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		if ok {
 			return sql.ErrAddForeignKeyDuplicateColumn.New(fkCol)
 		}
+		// Non-nullable columns may not have SET NULL as a reference option
+		if !col.Nullable && (fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetNull) {
+			return sql.ErrForeignKeySetNullNonNullable.New(col.Name)
+		}
 		seenCols[lowerFkCol] = struct{}{}
 		fkDef.Columns[i] = col.Name
+
 	}
 
 	// Do the same for the referenced columns
@@ -211,7 +216,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 		for i, fkParentCol := range fkDef.ParentColumns {
 			lowerFkParentCol := strings.ToLower(fkParentCol)
-			col, ok := cols[lowerFkParentCol]
+			parentCol, ok := parentCols[lowerFkParentCol]
 			if !ok {
 				return sql.ErrTableColumnNotFound.New(fkDef.ParentTable, fkParentCol)
 			}
@@ -220,7 +225,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 				return sql.ErrAddForeignKeyDuplicateColumn.New(fkParentCol)
 			}
 			seenCols[lowerFkParentCol] = struct{}{}
-			fkDef.ParentColumns[i] = col.Name
+			fkDef.ParentColumns[i] = parentCol.Name
 		}
 
 		// Check that the types align and are valid
