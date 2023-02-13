@@ -28,6 +28,7 @@ import (
 )
 
 func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	scopeLen := len(scope.Schema())
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		having, ok := node.(*plan.Having)
 		if !ok {
@@ -45,7 +46,7 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, s
 		if containsAggregation(having.Cond) {
 			//same = sql.NewTree
 			var err error
-			having, requiresProjection, err = replaceAggregations(ctx, having)
+			having, requiresProjection, err = replaceAggregations(ctx, having, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -57,7 +58,7 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, s
 			var err error
 			// TODO: this should be an error for most queries. having expressions must appear in the group-by clause (even
 			//  in non-strict mode)
-			having, err = pullMissingColumnsUp(having, missingCols)
+			having, err = pullMissingColumnsUp(having, missingCols, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -69,7 +70,7 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, s
 			return having, transform.NewTree, nil
 		}
 
-		return projectOriginalAggregation(having, originalSchema), transform.NewTree, nil
+		return projectOriginalAggregation(having, originalSchema, scopeLen), transform.NewTree, nil
 	})
 }
 
@@ -93,12 +94,12 @@ func findMissingColumns(node sql.Node, scope *Scope, expr sql.Expression) map[st
 	return missingCols
 }
 
-func projectOriginalAggregation(having *plan.Having, schema sql.Schema) *plan.Project {
+func projectOriginalAggregation(having *plan.Having, schema sql.Schema, scopeLen int) *plan.Project {
 	var projection []sql.Expression
 	for i, col := range schema {
 		projection = append(
 			projection,
-			expression.NewGetFieldWithTable(i, col.Type, col.Source, col.Name, col.Nullable),
+			expression.NewGetFieldWithTable(scopeLen+i, col.Type, col.Source, col.Name, col.Nullable),
 		)
 	}
 
@@ -110,7 +111,7 @@ var errHavingChildMissingRef = errors.NewKind("cannot find column %s referenced 
 // pullMissingColumnsUp will attempt to find given missing columns. It will traverse on plan.Having node and scan
 // its children's schema to find the missing columns. The columns that are found will be added in Projections of
 // underlying plan.Project node and SelectExprs of underlying plan.GroupBy node.
-func pullMissingColumnsUp(having *plan.Having, missingCols map[string]bool) (*plan.Having, error) {
+func pullMissingColumnsUp(having *plan.Having, missingCols map[string]bool, scopeLen int) (*plan.Having, error) {
 	var newAggregate []sql.Expression
 	loopSchema := func(schema sql.Schema) {
 		for i, c := range schema {
@@ -119,7 +120,7 @@ func pullMissingColumnsUp(having *plan.Having, missingCols map[string]bool) (*pl
 				delete(missingCols, c.Name)
 				newAggregate = append(
 					newAggregate,
-					expression.NewGetFieldWithTable(i, col.Type, col.Source, col.Name, col.Nullable),
+					expression.NewGetFieldWithTable(scopeLen+i, col.Type, col.Source, col.Name, col.Nullable),
 				)
 			}
 		}
@@ -141,7 +142,7 @@ func pullMissingColumnsUp(having *plan.Having, missingCols map[string]bool) (*pl
 		return nil, errHavingChildMissingRef.New(strings.Join(cs, ", "))
 	}
 
-	node, err := addColumnsToGroupByAndProjectNodes(having, newAggregate)
+	node, err := addColumnsToGroupByAndProjectNodes(having, newAggregate, scopeLen)
 	if err != nil {
 		return nil, err
 	}
@@ -164,10 +165,10 @@ func findGroupBy(n sql.Node) (*plan.GroupBy, error) {
 // addColumnsToGroupByAndProjectNodes will add the given columns to Projections of every plan.Project and
 // SelectExprs of plan.GroupBy nodes to expose these columns to schema of plan.Having node for its condition
 // expressions to refer to.
-func addColumnsToGroupByAndProjectNodes(node sql.Node, columns []sql.Expression) (sql.Node, error) {
+func addColumnsToGroupByAndProjectNodes(node sql.Node, columns []sql.Expression, scopeLen int) (sql.Node, error) {
 	switch node := node.(type) {
 	case *plan.Project:
-		child, err := addColumnsToGroupByAndProjectNodes(node.Child, columns)
+		child, err := addColumnsToGroupByAndProjectNodes(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +186,7 @@ func addColumnsToGroupByAndProjectNodes(node sql.Node, columns []sql.Expression)
 			}
 
 			newProjections[i] = expression.NewGetFieldWithTable(
-				len(child.Schema())-len(columns)+i,
+				scopeLen+len(child.Schema())-len(columns)+i,
 				col.Type(),
 				table,
 				name,
@@ -200,7 +201,7 @@ func addColumnsToGroupByAndProjectNodes(node sql.Node, columns []sql.Expression)
 		*plan.Offset,
 		*plan.Distinct,
 		*plan.Having:
-		child, err := addColumnsToGroupByAndProjectNodes(node.Children()[0], columns)
+		child, err := addColumnsToGroupByAndProjectNodes(node.Children()[0], columns, scopeLen)
 		if err != nil {
 			return nil, err
 		}
@@ -215,10 +216,10 @@ func addColumnsToGroupByAndProjectNodes(node sql.Node, columns []sql.Expression)
 // pushColumnsUp pushes up the group by columns with the given indexes.
 // It returns the resultant node, the indexes of those pushed up columns in the
 // resultant node and an error, if any.
-func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
+func pushColumnsUp(node sql.Node, columns []int, scopeLen int) (sql.Node, []int, error) {
 	switch node := node.(type) {
 	case *plan.Project:
-		child, columns, err := pushColumnsUp(node.Child, columns)
+		child, columns, err := pushColumnsUp(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -249,7 +250,7 @@ func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
 			col := schema[idx]
 			newIdx := len(newProjections)
 			newProjections = append(newProjections, expression.NewGetFieldWithTable(
-				newIdx,
+				scopeLen+newIdx,
 				col.Type,
 				col.Source,
 				col.Name,
@@ -260,19 +261,19 @@ func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
 
 		return plan.NewProject(newProjections, child), newColumns, nil
 	case *plan.Filter:
-		child, columns, err := pushColumnsUp(node.Child, columns)
+		child, columns, err := pushColumnsUp(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, nil, err
 		}
 		return plan.NewFilter(node.Expression, child), columns, nil
 	case *plan.Sort:
-		child, columns, err := pushColumnsUp(node.Child, columns)
+		child, columns, err := pushColumnsUp(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, nil, err
 		}
 		return plan.NewSort(node.SortFields, child), columns, nil
 	case *plan.Limit:
-		child, columns, err := pushColumnsUp(node.Child, columns)
+		child, columns, err := pushColumnsUp(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -283,13 +284,13 @@ func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
 		}
 		return n, columns, nil
 	case *plan.Offset:
-		child, columns, err := pushColumnsUp(node.Child, columns)
+		child, columns, err := pushColumnsUp(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, nil, err
 		}
 		return plan.NewOffset(node.Offset, child), columns, nil
 	case *plan.Distinct:
-		child, columns, err := pushColumnsUp(node.Child, columns)
+		child, columns, err := pushColumnsUp(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -297,7 +298,7 @@ func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
 	case *plan.GroupBy:
 		return node, columns, nil
 	case *plan.Having:
-		child, columns, err := pushColumnsUp(node.Child, columns)
+		child, columns, err := pushColumnsUp(node.Child, columns, scopeLen)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -307,7 +308,7 @@ func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
 	}
 }
 
-func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, bool, error) {
+func replaceAggregations(ctx *sql.Context, having *plan.Having, scopeLen int) (*plan.Having, bool, error) {
 	groupBy, err := findGroupBy(having)
 	if err != nil {
 		return nil, false, err
@@ -341,7 +342,7 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 				pushUp = append(pushUp, i)
 				tokenToIdx[token] = len(pushUp) - 1
 				return expression.NewGetField(
-					token,
+					scopeLen+token,
 					expr.Type(),
 					expr.String(),
 					expr.IsNullable(),
@@ -351,7 +352,7 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 
 		newAggregate = append(newAggregate, agg)
 		return expression.NewGetField(
-			len(having.Child.Schema())+len(newAggregate)-1,
+			scopeLen+len(having.Child.Schema())+len(newAggregate)-1,
 			agg.Type(),
 			agg.String(),
 			agg.IsNullable(),
@@ -364,14 +365,14 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 	// The new aggregations will be added to the group by and pushed up until
 	// the topmost node.
 	having = plan.NewHaving(cond, having.Child)
-	node, err := addColumnsToGroupByAndProjectNodes(having, newAggregate)
+	node, err := addColumnsToGroupByAndProjectNodes(having, newAggregate, scopeLen)
 	if err != nil {
 		return nil, false, err
 	}
 
 	// Then, the ones that already existed are pushed up and we get the final
 	// indexes at the topmost node (the having) in the same order.
-	node, pushedUpColumns, err := pushColumnsUp(node, pushUp)
+	node, pushedUpColumns, err := pushColumnsUp(node, pushUp, scopeLen)
 	if err != nil {
 		return nil, false, err
 	}

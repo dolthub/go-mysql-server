@@ -437,7 +437,6 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	parsed, err := uuid.FromBytes(asBytes)
 	if err != nil {
 		return nil, sql.ErrUuidUnableToParse.New(asBytes, err.Error())
-		return nil, err
 	}
 
 	// If no swap flag is passed we can return uuid's string format as is.
