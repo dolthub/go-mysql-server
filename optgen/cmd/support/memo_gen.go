@@ -11,8 +11,8 @@ type MemoDef struct {
 
 	SourceType string
 
-	IsJoin    bool
-	JoinAttrs [][2]string
+	IsJoin bool
+	Attrs  [][2]string
 
 	IsUnary bool
 }
@@ -65,11 +65,12 @@ func (g *MemoGen) genType(define MemoDef) {
 		fmt.Fprintf(g.w, "  table %s\n", define.SourceType)
 	} else if define.IsJoin {
 		fmt.Fprintf(g.w, "  *joinBase\n")
-		for _, attr := range define.JoinAttrs {
-			fmt.Fprintf(g.w, "  %s %s\n", attr[0], attr[1])
-		}
 	} else if define.IsUnary {
+		fmt.Fprintf(g.w, "  *relBase\n")
 		fmt.Fprintf(g.w, "  child *exprGroup\n")
+	}
+	for _, attr := range define.Attrs {
+		fmt.Fprintf(g.w, "  %s %s\n", attr[0], attr[1])
 	}
 
 	fmt.Fprintf(g.w, "}\n\n")
@@ -123,9 +124,24 @@ func (g *MemoGen) genJoinRelInterface(define MemoDef) {
 }
 
 func (g *MemoGen) genUnaryRelInterface(define MemoDef) {
-	fmt.Fprintf(g.w, "func (r *%s) children() sql.Schema {\n", define.Name)
+	fmt.Fprintf(g.w, "func (r *%s) children() []*exprGroup {\n", define.Name)
 	fmt.Fprintf(g.w, "  return []*exprGroup{r.child}\n")
 	fmt.Fprintf(g.w, "}\n\n")
+
+	fmt.Fprintf(g.w, "func (r *%s) outputCols() sql.Schema {\n", define.Name)
+	switch define.Name {
+	case "project":
+		fmt.Fprintf(g.w, "  var s = make(sql.Schema, len(r.projections))\n")
+		fmt.Fprintf(g.w, "  for i, e := range r.projections {\n")
+		fmt.Fprintf(g.w, "    s[i] = transform.ExpressionToColumn(e)\n")
+		fmt.Fprintf(g.w, "  }\n")
+		fmt.Fprintf(g.w, "  return s\n")
+
+	default:
+		fmt.Fprintf(g.w, "  return r.child.relProps.OutputCols()\n")
+	}
+	fmt.Fprintf(g.w, "}\n\n")
+
 }
 
 func (g *MemoGen) genFormatters(defines []MemoDef) {
@@ -138,7 +154,7 @@ func (g *MemoGen) genFormatters(defines []MemoDef) {
 		} else if d.IsJoin {
 			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s %%d %%d\", r.left.id, r.right.id)\n", d.Name)
 		} else if d.IsUnary {
-			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", formatRelExpr(r.child))\n", d.Name)
+			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%d\", r.child.id)\n", d.Name)
 		} else {
 			panic("unreachable")
 		}

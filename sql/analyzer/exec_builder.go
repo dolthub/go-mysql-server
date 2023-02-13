@@ -101,8 +101,17 @@ func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.N
 			ret = plan.NewTableAlias(n.Name(), ret)
 		}
 		ret = plan.NewSelectSingleRel(n.Select, ret.(sql.NameableNode))
+	case *plan.Distinct:
+		switch n := n.Child.(type) {
+		case *plan.ResolvedTable:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+		case *plan.TableAlias:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+			ret = plan.NewTableAlias(n.Name(), ret)
+		}
+		ret = plan.NewDistinct(ret)
 	default:
-		panic("unexpected lookup child")
+		panic(fmt.Sprintf("unexpected lookup child %T", n))
 	}
 	if err != nil {
 		return nil, err
@@ -241,6 +250,17 @@ func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ..
 	case *plan.TableAlias:
 		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
+	case *plan.Distinct:
+		switch n := n.Child.(type) {
+		case *plan.ResolvedTable:
+			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
+		case *plan.TableAlias:
+			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
+			ret = plan.NewTableAlias(n.Name(), ret)
+		default:
+			return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
+		}
+		ret = plan.NewDistinct(ret)
 	default:
 		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
 	}
@@ -314,4 +334,12 @@ func (b *ExecBuilder) buildTableScan(r *tableScan, _ sql.Schema, _ ...sql.Node) 
 
 func (b *ExecBuilder) buildSelectSingleRel(r *selectSingleRel, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.table, nil
+}
+
+func (b *ExecBuilder) buildProject(r *project, _ sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return plan.NewProject(r.projections, children[0]), nil
+}
+
+func (b *ExecBuilder) buildDistinct(r *distinct, _ sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return plan.NewDistinct(children[0]), nil
 }

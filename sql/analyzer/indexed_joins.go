@@ -159,11 +159,15 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		return nil, err
 	}
 
-	m := NewMemo(ctx, stats, scope)
+	m := NewMemo(ctx, stats, scope, a.Coster, a.Carder)
 
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)
 
+	err = convertSemiToInnerJoin(m)
+	if err != nil {
+		return nil, err
+	}
 	err = addRightSemiJoins(m)
 	if err != nil {
 		return nil, err
@@ -282,6 +286,74 @@ func addLookupJoins(m *Memo) error {
 	})
 }
 
+// convertSemiToInnerJoin adds inner join alternatives for semi joins.
+// The inner join plans can be explored further.
+// TODO: need more elegant way to extend the number of groups, interner
+func convertSemiToInnerJoin(m *Memo) error {
+	seen := make(map[GroupId]struct{})
+	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+		semi, ok := e.(*semiJoin)
+		if !ok {
+			return nil
+		}
+
+		onlyEquality := true
+		for _, f := range semi.filter {
+			transform.InspectExpr(f, func(e sql.Expression) bool {
+				cmp, ok := e.(expression.Comparer)
+				if !ok {
+					return false
+				}
+				_, onlyEquality = cmp.(*expression.Equals)
+				return !onlyEquality
+			})
+			if !onlyEquality {
+				return nil
+			}
+		}
+
+		// distinct is a new group
+		newRight := &distinct{
+			relBase: &relBase{},
+			child:   semi.right,
+		}
+		rightGrp := m.memoize(newRight)
+
+		// join and its commute are a new group
+		newJoin := &innerJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{},
+				left:    semi.left,
+				right:   rightGrp,
+				op:      plan.JoinTypeInner,
+				filter:  semi.filter,
+			},
+		}
+		joinGrp := m.memoize(newJoin)
+
+		newJoinCommuted := &innerJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{g: joinGrp},
+				left:    rightGrp,
+				right:   semi.left,
+				op:      plan.JoinTypeInner,
+				filter:  semi.filter,
+			},
+		}
+		joinGrp.prepend(newJoinCommuted)
+
+		// project belongs to the original group
+		rel := &project{
+			relBase:     &relBase{g: e.group()},
+			child:       joinGrp,
+			projections: expression.SchemaToGetFields(semi.left.relProps.outputColsForRel(semi.left.first)),
+		}
+		e.group().prepend(rel)
+
+		return nil
+	})
+}
+
 // addRightSemiJoins allows for a reversed semiJoin operator when
 // the join attributes of the left side are provably unique.
 func addRightSemiJoins(m *Memo) error {
@@ -349,6 +421,16 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 		case *plan.ResolvedTable:
 			return tableScanLookupCand(ctx, t)
 		default:
+		}
+	case *distinct:
+		if s, ok := n.child.first.(sourceRel); ok {
+			switch n := s.(type) {
+			case *tableAlias:
+				return tableAliasLookupCand(ctx, n.table, aliases)
+			case *tableScan:
+				return tableScanLookupCand(ctx, n.table)
+			default:
+			}
 		}
 	default:
 	}
@@ -682,6 +764,13 @@ func addMergeJoins(m *Memo) error {
 			newFilters[0], newFilters[i] = newFilters[i], newFilters[0]
 
 			jb := join.copy()
+			if d, ok := jb.left.first.(*distinct); ok && lIdx.idx.IsUnique() {
+				jb.left = d.child
+			}
+			if d, ok := jb.right.first.(*distinct); ok && rIdx.idx.IsUnique() {
+				jb.right = d.child
+			}
+
 			jb.filter = newFilters
 			rel := &mergeJoin{
 				joinBase:  jb,

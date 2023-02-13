@@ -1221,13 +1221,13 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2)
-	               FROM (values
+	              FROM (values
 						 row('{ "a": 1, "b": 2 }','null'),
-	                    row('{ "a": 1, "b": 2 }','"row one"'),
-	                    row('{ "a": 3, "c": 4 }','4'),
-	                    row('{ "a": 5, "d": 6 }','[true, true]'),
-	                    row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
-	               test (val1, val2)`,
+	                   row('{ "a": 1, "b": 2 }','"row one"'),
+	                   row('{ "a": 3, "c": 4 }','4'),
+	                   row('{ "a": 5, "d": 6 }','[true, true]'),
+	                   row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
+	              test (val1, val2)`,
 		Expected: []sql.Row{
 			{types.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
 			{types.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
@@ -1389,9 +1389,9 @@ var QueryTests = []QueryTest{
 		Query: `select mt.i,
 			((
 				select count(*) from mytable
-	      	where i in (
-	         		select mt2.i from mytable mt2 where mt2.i > mt.i
-	      	)
+	     	where i in (
+	        		select mt2.i from mytable mt2 where mt2.i > mt.i
+	     	)
 			)) as greater_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
@@ -1400,9 +1400,9 @@ var QueryTests = []QueryTest{
 		Query: `select mt.i,
 			((
 				select count(*) from mytable
-	      	where i in (
-	         		select mt2.i from mytable mt2 where mt2.i = mt.i
-	      	)
+	     	where i in (
+	        		select mt2.i from mytable mt2 where mt2.i = mt.i
+	     	)
 			)) as eq_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
@@ -3865,118 +3865,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
-		Expected: []sql.Row{
-			{"third"},
-			{"secon"},
-			{"first"},
-		},
-	},
-	{
-		Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1,t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t2,t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1, not_exist) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ NOTHING(abc) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER( */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "select mytable.i as i2, othertable.i2 as i from mytable join othertable on i = i2 order by 1",
-		Expected: []sql.Row{
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR s = s2 order by 1",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR i = i2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2 order by 1`,
 		Expected: []sql.Row{
@@ -4012,9 +3900,9 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `select pk,
-                       percent_rank() over(partition by v2 order by pk),
-                       dense_rank() over(partition by v2 order by pk),
-                       rank() over(partition by v2 order by pk)
+	                  percent_rank() over(partition by v2 order by pk),
+	                  dense_rank() over(partition by v2 order by pk),
+	                  rank() over(partition by v2 order by pk)
 				from one_pk_three_idx order by pk`,
 		Expected: []sql.Row{
 			{0, float64(0), uint64(1), uint64(1)},
@@ -4048,26 +3936,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 3",
-		Expected: []sql.Row{},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{int64(1), int64(1), "third"},
-			{int64(2), int64(2), "second"},
-			{int64(3), int64(3), "first"},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable as OTHERTABLE INNER JOIN othertable as MYTABLE ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{int64(1), int64(1), "third"},
-			{int64(2), int64(2), "second"},
-			{int64(3), int64(3), "first"},
-		},
-	},
-	{
 		Query: `SELECT s2, i2 FROM othertable WHERE s2 >= "first" AND i2 >= 2 ORDER BY 1`,
 		Expected: []sql.Row{
 			{"first", int64(3)},
@@ -4091,30 +3959,6 @@ var QueryTests = []QueryTest{
 		Query: `SELECT s2, i2 FROM othertable WHERE "second" >= s2 AND 2 >= i2 ORDER BY 1`,
 		Expected: []sql.Row{
 			{"second", int64(2)},
-		},
-	},
-	{
-		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{"third", int64(1), int64(1)},
-			{"second", int64(2), int64(2)},
-			{"first", int64(3), int64(3)},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM othertable JOIN mytable  ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{int64(1), int64(1), "third"},
-			{int64(2), int64(2), "second"},
-			{int64(3), int64(3), "first"},
-		},
-	},
-	{
-		Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{"third", int64(1), int64(1)},
-			{"second", int64(2), int64(2)},
-			{"first", int64(3), int64(3)},
 		},
 	},
 	{
@@ -4143,39 +3987,6 @@ var QueryTests = []QueryTest{
 		Query: `SELECT substring("first", -1), substring("second", -2), substring("third", -3)`,
 		Expected: []sql.Row{
 			{"t", "nd", "ird"},
-		},
-	},
-	{
-		Query: "SELECT s FROM mytable INNER JOIN othertable " +
-			"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
-		Expected: []sql.Row{
-			{"first row"},
-			{"second row"},
-			{"third row"},
-		},
-	},
-	{
-		Query: `SELECT i FROM mytable NATURAL JOIN tabletest`,
-		Expected: []sql.Row{
-			{int64(1)},
-			{int64(2)},
-			{int64(3)},
-		},
-	},
-	{
-		Query: `SELECT i FROM mytable AS t NATURAL JOIN tabletest AS test`,
-		Expected: []sql.Row{
-			{int64(1)},
-			{int64(2)},
-			{int64(3)},
-		},
-	},
-	{
-		Query: `SELECT t.i, test.s FROM mytable AS t NATURAL JOIN tabletest AS test`,
-		Expected: []sql.Row{
-			{int64(1), "first row"},
-			{int64(2), "second row"},
-			{int64(3), "third row"},
 		},
 	},
 	{
@@ -4318,48 +4129,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
-		Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
-		Expected: []sql.Row{
-			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
-			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
-			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
-			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
-			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
-			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
-			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
-			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
-			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
-		},
-	},
-	{
-		Query: `SELECT * FROM tabletest join mytable mt INNER JOIN othertable ot ON tabletest.i = ot.i2 order by 1,3,6`,
-		Expected: []sql.Row{
-			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
-			{int64(1), "first row", int64(2), "second row", "third", int64(1)},
-			{int64(1), "first row", int64(3), "third row", "third", int64(1)},
-			{int64(2), "second row", int64(1), "first row", "second", int64(2)},
-			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
-			{int64(2), "second row", int64(3), "third row", "second", int64(2)},
-			{int64(3), "third row", int64(1), "first row", "first", int64(3)},
-			{int64(3), "third row", int64(2), "second row", "first", int64(3)},
-			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
-		},
-	},
-	{
 		Query:    `SELECT SUM(i) FROM mytable`,
 		Expected: []sql.Row{{float64(6)}},
-	},
-	{
-		Query: `SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
-		Expected: []sql.Row{
-			{int64(3), "third row", "first", int64(3)},
-		},
-	},
-	{
-		Query: `SELECT * FROM othertable ot INNER JOIN mytable mt ON mt.i = ot.i2 AND mt.i > 2`,
-		Expected: []sql.Row{
-			{"first", int64(3), int64(3), "third row"},
-		},
 	},
 	{
 		Query: `SELECT i AS foo FROM mytable ORDER BY i DESC`,
@@ -5720,60 +5491,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
 	},
 	{
-		Query: "SELECT i, i2, s2 FROM mytable LEFT JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-			{int64(3), nil, nil},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{nil, int64(1), "third"},
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable LEFT OUTER JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-			{int64(3), nil, nil},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable RIGHT OUTER JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{nil, int64(1), "third"},
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-		},
-	},
-	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
-				FROM othertable ot INNER JOIN
-					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
-				ON sub.i = ot.i2 order by 1`,
-		Expected: []sql.Row{
-			{1, 1, "third", 1, "third"},
-			{2, 2, "second", 2, "second"},
-			{3, 3, "first", 3, "first"},
-		},
-	},
-	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
-				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
-				INNER JOIN othertable ot
-				ON sub.i = ot.i2 order by 1`,
-		Expected: []sql.Row{
-			{1, 1, "third", 1, "third"},
-			{2, 2, "second", 2, "second"},
-			{3, 3, "first", 3, "first"},
-		},
-	},
-	{
 		Query:    `SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
 		Expected: []sql.Row{{int32(2), int32(4)}},
 	},
@@ -6674,285 +6391,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{4, 0, 0},
-			{4, 0, 1},
-			{14, 1, 0},
-			{14, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{4, 0, 0},
-			{4, 0, 1},
-			{14, 1, 0},
-			{14, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{4, 0, 0},
-			{4, 0, 1},
-			{14, 1, 0},
-			{14, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{1, 0, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=tpk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2
-						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
-						ORDER BY 1`,
-		Expected: []sql.Row{
-			{0, nil, nil, nil, nil},
-			{1, 1, 0, 0, 1},
-			{2, nil, nil, nil, nil},
-			{3, nil, nil, nil, nil},
-		},
-	},
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
-						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
-						ORDER BY 1`,
-		Expected: []sql.Row{
-			{1, 1, 0, 0, 1},
-		},
-	},
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
-						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
-						ORDER BY 1`,
-		Expected: []sql.Row{
-			{1, 1, 0, 0, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-			{2, nil, nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{nil, 0, 1},
-			{nil, 1, 0},
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{int64(2), 1, 0},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 1, 0},
-			{1, 0, 0, 1},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 0, 1},
-			{1, 0, 1, 0},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 0, 1},
-			{1, 0, 1, 0},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 0, 1},
-			{1, 0, 1, 0},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{1, 1, 0},
-			{1, 1, 1},
-			{2, nil, nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 ORDER BY 1",
-		Expected: []sql.Row{
-			{0, nil, nil},
-			{1, nil, nil},
-			{2, int64(2), nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 ORDER BY 2,3",
-		Expected: []sql.Row{
-			{nil, nil, nil},
-			{nil, nil, nil},
-			{nil, nil, 5.0},
-			{2, int64(2), nil},
-			{nil, int64(4), 4.0},
-			{nil, int64(6), 6.0},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 AND f IS NOT NULL ORDER BY 1", // AND clause causes right table join miss
-		Expected: []sql.Row{
-			{0, nil, nil},
-			{1, nil, nil},
-			{2, nil, nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
-		Expected: []sql.Row{
-			{nil, nil, nil},
-			{nil, nil, nil},
-			{nil, nil, 5.0},
-			{2, int64(2), nil},
-			{nil, int64(4), 4.0},
-			{nil, int64(6), 6.0},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NULL AND pk < 2 ORDER BY 1",
-		Expected: []sql.Row{
-			{0, nil, nil},
-			{1, 1, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
-		Expected: []sql.Row{
-			{nil, nil, 5.0},
-			{nil, int64(4), 4.0},
-			{nil, int64(6), 6.0},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
-		Expected: []sql.Row{
-			{nil, 4, 4.0},
-			{nil, 5, 5.0},
-			{nil, 6, 6.0},
-		},
-	},
-	{
-		Query: "SELECT t1.i,t1.i2 FROM niltable t1 LEFT JOIN niltable t2 ON t1.i=t2.i2 WHERE t2.f IS NULL ORDER BY 1,2",
-		Expected: []sql.Row{
-			{1, nil},
-			{2, 2},
-			{3, nil},
-			{5, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 WHERE pk > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 WHERE pk > 0 ORDER BY 2,3",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-		},
-	},
-	{
 		Query: "SELECT GREATEST(CAST(i AS CHAR), CAST(b AS CHAR)) FROM niltable order by i",
 		Expected: []sql.Row{
 			{nil},
@@ -6961,92 +6399,6 @@ var QueryTests = []QueryTest{
 			{nil},
 			{"5"},
 			{"6"},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0, 0},
-			{1, 0, 1, 10, 10},
-			{2, 1, 0, 20, 20},
-			{3, 1, 1, 30, 30},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
-		Expected: []sql.Row{
-			{1, 0, 1, 10, 10},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1",
-		Expected: []sql.Row{
-			{0, 1, 0},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{0, 1, 0},
-			{0, 1, 1},
-			{1, 0, 0},
-			{1, 0, 1},
-			{1, 1, 0},
-			{1, 1, 1},
-			{2, 0, 0},
-			{2, 0, 1},
-			{2, 1, 0},
-			{2, 1, 1},
-			{3, 0, 0},
-			{3, 0, 1},
-			{3, 1, 0},
-			{3, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk,b.pk FROM one_pk a JOIN one_pk b ON a.pk = b.pk order by a.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT a.pk,b.pk FROM one_pk a, one_pk b WHERE a.pk = b.pk order by a.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT one_pk.pk,b.pk FROM one_pk JOIN one_pk b ON one_pk.pk = b.pk order by one_pk.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT one_pk.pk,b.pk FROM one_pk, one_pk b WHERE one_pk.pk = b.pk order by one_pk.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
-		Expected: []sql.Row{
-			{int64(2)},
-			{int64(4)},
-			{int64(6)},
 		},
 	},
 	{
@@ -7331,67 +6683,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
-						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		Expected: []sql.Row{
-			{0, 0, 0, 0, 0},
-			{1, 1, 1, 1, 1},
-		},
-	},
-	{
-		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		Expected: []sql.Row{
-			{nil, nil, 1},
-			{1, 1, 2},
-			{2, 2, 3},
-			{3, 3, 4},
-			{nil, nil, 5},
-			{nil, nil, 6},
-		},
-	},
-	{
-		Query: `SELECT pk,pk2,
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1)
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	{
-		Query: `SELECT pk,pk2,
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1)
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	{
-		Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
-		Expected: []sql.Row{
-			{"third", 1, 1},
-			{"second", 2, 2},
-			{"first", 3, 3},
-		},
-	},
-	{
-		Query: `SELECT lefttable.i, righttable.s
-			FROM (SELECT * FROM mytable) lefttable
-			JOIN (SELECT * FROM mytable) righttable
-			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
-			ORDER BY lefttable.i ASC`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
 		Query: "SELECT BINARY 'hi'",
 		Expected: []sql.Row{
 			{[]byte("hi")},
@@ -7613,185 +6904,6 @@ var QueryTests = []QueryTest{
 		Query: `SHOW SESSION STATUS WHERE Value < 0`,
 		Expected: []sql.Row{
 			{"optimizer_trace_offset", -1},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i OR a.i = 1`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where NOT(a.i = b.i OR a.s = b.i)`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where NOT(a.i = b.i OR a.s = b.i)`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i >= b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query:    `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
-		Expected: []sql.Row{
-			{2, "second row"},
-			{2, "second row"},
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
-		Expected: []sql.Row{
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
-		Expected: []sql.Row{
-			{2, "second row"},
-			{2, "second row"},
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.s = c.s`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i OR a.i = 1`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i >= b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query:    `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.s`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
-		Expected: []sql.Row{
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
-		Expected: []sql.Row{
-			{2, "second row"},
-			{2, "second row"},
-			{2, "second row"}},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
 		},
 	},
 	{

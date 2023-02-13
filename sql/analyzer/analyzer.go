@@ -263,6 +263,8 @@ func (ab *Builder) Build() *Analyzer {
 		Batches:      batches,
 		Catalog:      NewCatalog(ab.provider),
 		Parallelism:  ab.parallelism,
+		Coster:       NewDefaultCoster(),
+		Carder:       NewDefaultCarder(),
 	}
 }
 
@@ -283,6 +285,9 @@ type Analyzer struct {
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
 	// replication messages (e.g. "start replica").
 	BinlogReplicaController binlogreplication.BinlogReplicaController
+
+	Coster Coster
+	Carder Carder
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
@@ -444,6 +449,8 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	//a.Verbose = true
+	//a.Debug = true
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
 }

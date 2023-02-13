@@ -38,7 +38,9 @@ type Memo struct {
 	root *exprGroup
 
 	orderHint *joinOrderDeps
-	c         *coster
+	c         Coster
+	s         Carder
+	statsRw   sql.StatsReadWriter
 	ctx       *sql.Context
 	scope     *Scope
 	scopeLen  int
@@ -46,10 +48,12 @@ type Memo struct {
 	tableProps *tableProps
 }
 
-func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope) *Memo {
+func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope, cost Coster, card Carder) *Memo {
 	return &Memo{
 		ctx:        ctx,
-		c:          &coster{ctx: ctx, s: stats},
+		c:          cost,
+		s:          card,
+		statsRw:    stats,
 		scope:      s,
 		scopeLen:   len(s.Schema()),
 		tableProps: newTableProps(),
@@ -101,7 +105,7 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 			}
 			cost += g.cost
 		}
-		relCost, err := m.c.costRel(n)
+		relCost, err := m.c.EstimateCost(m.ctx, n, m.statsRw)
 		if err != nil {
 			return err
 		}
@@ -109,7 +113,13 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 		m.updateBest(grp, n, cost)
 		n = n.next()
 	}
+
 	grp.done = true
+	var err error
+	grp.relProps.card, err = m.s.EstimateCard(m.ctx, grp.best, m.statsRw)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -219,6 +229,8 @@ type relProps struct {
 
 	outputCols   sql.Schema
 	outputTables sql.FastIntSet
+
+	card float64
 }
 
 func newRelProps(rel relExpr) *relProps {
@@ -248,25 +260,35 @@ func (p *relProps) populateOutputTables() {
 }
 
 func (p *relProps) populateOutputCols() {
-	if !p.grp.done {
-		panic("expression group not fixed")
-	}
-	switch r := p.grp.best.(type) {
+	p.outputCols = p.outputColsForRel(p.grp.best)
+}
+
+func (p *relProps) outputColsForRel(r relExpr) sql.Schema {
+	switch r := r.(type) {
 	case *semiJoin:
-		p.outputCols = r.left.relProps.OutputCols()
+		return r.left.relProps.OutputCols()
 	case *antiJoin:
-		p.outputCols = r.left.relProps.OutputCols()
+		return r.left.relProps.OutputCols()
 	case *lookupJoin:
 		if r.op.IsRightPartial() {
-			p.outputCols = r.right.relProps.OutputCols()
+			return r.right.relProps.OutputCols()
 		} else if r.op.IsPartial() {
-			p.outputCols = r.left.relProps.OutputCols()
+			return r.left.relProps.OutputCols()
 		} else {
-			p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+			return append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
 		}
 	case joinRel:
-		p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+		return append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+	case *distinct:
+		return r.child.relProps.OutputCols()
+	case *project:
+		return r.child.relProps.OutputCols()
+	case sourceRel:
+		return r.outputCols()
+	default:
+		panic("unknown type")
 	}
+	return nil
 }
 
 // OutputCols returns the output schema of a node
@@ -342,6 +364,10 @@ func (e *exprGroup) obeysOpHint(n relExpr) bool {
 	switch n := n.(type) {
 	case joinRel:
 		return n.joinPrivate().op == e.opHint
+	case *distinct:
+		return e.obeysOpHint(n.child.best)
+	case *project:
+		return e.obeysOpHint(n.child.best)
 	default:
 		return true
 	}
@@ -367,6 +393,7 @@ func (e *exprGroup) children() []*exprGroup {
 
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
 	if e.best == nil || grpCost <= e.cost || (!e.obeysOpHint(e.best) && e.obeysOpHint(n)) {
+		//log.Printf("chose: %s\n", n)
 		e.best = n
 		e.cost = grpCost
 	}
@@ -385,6 +412,14 @@ func (e *exprGroup) String() string {
 	return b.String()
 }
 
+type Coster interface {
+	EstimateCost(*sql.Context, relExpr, sql.StatsReadWriter) (float64, error)
+}
+
+type Carder interface {
+	EstimateCard(*sql.Context, relExpr, sql.StatsReadWriter) (float64, error)
+}
+
 // relExpr wraps a sql.Node for use as a exprGroup linked list node.
 // TODO: we need relExprs for every sql.Node and sql.Expression
 type relExpr interface {
@@ -393,7 +428,8 @@ type relExpr interface {
 	setNext(relExpr)
 	children() []*exprGroup
 	setGroup(g *exprGroup)
-	//constructTree(input sql.Schema, children ...sql.Node) (sql.Node, error)
+	card() float64
+	setCard(float64)
 }
 
 type relBase struct {
@@ -403,6 +439,8 @@ type relBase struct {
 	n relExpr
 	// c is this relation's cost while costing and plan reify are separate
 	c float64
+	// cnt is this relations output row count
+	cnt float64
 }
 
 // relKEy is a quick identifier for avoiding duplicate work on the same
@@ -435,12 +473,16 @@ func (r *relBase) setNext(rel relExpr) {
 	r.n = rel
 }
 
-func (r *relBase) cost(rel relExpr) float64 {
-	return r.c
-}
-
 func (r *relBase) setCost(c float64) {
 	r.c = c
+}
+
+func (r *relBase) card() float64 {
+	return r.cnt
+}
+
+func (r *relBase) setCard(c float64) {
+	r.cnt = c
 }
 
 func tableIdForSource(id GroupId) TableId {
@@ -450,6 +492,7 @@ func tableIdForSource(id GroupId) TableId {
 // sourceRel represents a data source, like a tableScan, subqueryAlias,
 // or list of values.
 type sourceRel interface {
+	relExpr
 	// outputCols retuns the output schema of this data source.
 	// TODO: this is more useful as a relExpr property, but we need
 	// this to fix up expression indexes currently
@@ -550,21 +593,21 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
 		Name:   "lookupJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"lookup", "*lookup"},
 		},
 	},
 	{
 		Name:   "concatJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"concat", "[]*lookup"},
 		},
 	},
 	{
 		Name:   "hashJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"innerAttrs", "[]sql.Expression"},
 			{"outerAttrs", "[]sql.Expression"},
 		},
@@ -572,7 +615,7 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
 		Name:   "mergeJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"innerScan", "*indexScan"},
 			{"outerScan", "*indexScan"},
 		},
@@ -616,5 +659,16 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
 		Name:       "selectSingleRel",
 		SourceType: "*plan.SelectSingleRel",
+	},
+	{
+		Name:    "project",
+		IsUnary: true,
+		Attrs: [][2]string{
+			{"projections", "[]sql.Expression"},
+		},
+	},
+	{
+		Name:    "distinct",
+		IsUnary: true,
 	},
 }
