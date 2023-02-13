@@ -203,7 +203,6 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 		seenCols[lowerFkCol] = struct{}{}
 		fkDef.Columns[i] = col.Name
-
 	}
 
 	// Do the same for the referenced columns
