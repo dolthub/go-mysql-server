@@ -474,6 +474,23 @@ order by 1;`,
 			},
 		},
 	},
+	{
+		name: "join concat tests",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+			"CREATE table uv (u int primary key, v int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+			"update information_schema.statistics set cardinality = 100 where table_name in ('xy', 'uv');",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select x, u from xy inner join uv on u+1 = x OR u+2 = x OR u+3 = x;",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+				exp:   []sql.Row{{3, 0}, {2, 0}, {1, 0}, {3, 1}, {2, 1}, {3, 2}},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {

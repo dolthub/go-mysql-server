@@ -696,20 +696,15 @@ var PlanTests = []QueryPlanTest{
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy.x:2!null, pq.q:1]\n" +
-			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: Eq\n" +
-			"     │           │   ├─ pq.p:0!null\n" +
-			"     │           │   └─ xy.x:2!null\n" +
-			"     │           ├─ IndexedTableAccess\n" +
-			"     │           │   ├─ index: [pq.p]\n" +
-			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   ├─ columns: [p q]\n" +
-			"     │           │   └─ Table\n" +
-			"     │           │       ├─ name: pq\n" +
-			"     │           │       └─ projections: [0 1]\n" +
+			"     │       └─ LookupJoin\n" +
+			"     │           ├─ Eq\n" +
+			"     │           │   ├─ xy.x:2!null\n" +
+			"     │           │   └─ pq.p:0!null\n" +
+			"     │           ├─ Table\n" +
+			"     │           │   ├─ name: pq\n" +
+			"     │           │   └─ columns: [p q]\n" +
 			"     │           └─ IndexedTableAccess\n" +
 			"     │               ├─ index: [xy.x]\n" +
-			"     │               ├─ static: [{[NULL, ∞)}]\n" +
 			"     │               ├─ columns: [x]\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: xy\n" +
@@ -771,24 +766,43 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select x, a from xy inner join ab on a+1 = x OR a+2 = x OR a+3 = x `,
-		ExpectedPlan: "InnerJoin\n" +
-			" ├─ Or\n" +
-			" │   ├─ Or\n" +
-			" │   │   ├─ Eq\n" +
-			" │   │   │   ├─ (ab.a:1!null + 1 (tinyint))\n" +
-			" │   │   │   └─ xy.x:0!null\n" +
-			" │   │   └─ Eq\n" +
-			" │   │       ├─ (ab.a:1!null + 2 (tinyint))\n" +
-			" │   │       └─ xy.x:0!null\n" +
-			" │   └─ Eq\n" +
-			" │       ├─ (ab.a:1!null + 3 (tinyint))\n" +
-			" │       └─ xy.x:0!null\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: xy\n" +
-			" │   └─ columns: [x]\n" +
-			" └─ Table\n" +
-			"     ├─ name: ab\n" +
-			"     └─ columns: [a]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.x:1!null, ab.a:0!null]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Or\n" +
+			"     │   ├─ Or\n" +
+			"     │   │   ├─ Eq\n" +
+			"     │   │   │   ├─ (ab.a:0!null + 1 (tinyint))\n" +
+			"     │   │   │   └─ xy.x:1!null\n" +
+			"     │   │   └─ Eq\n" +
+			"     │   │       ├─ (ab.a:0!null + 2 (tinyint))\n" +
+			"     │   │       └─ xy.x:1!null\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ (ab.a:0!null + 3 (tinyint))\n" +
+			"     │       └─ xy.x:1!null\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: ab\n" +
+			"     │   └─ columns: [a]\n" +
+			"     └─ Concat\n" +
+			"         ├─ IndexedTableAccess\n" +
+			"         │   ├─ index: [xy.x]\n" +
+			"         │   ├─ columns: [x]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ projections: [0]\n" +
+			"         └─ Concat\n" +
+			"             ├─ IndexedTableAccess\n" +
+			"             │   ├─ index: [xy.x]\n" +
+			"             │   ├─ columns: [x]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: xy\n" +
+			"             │       └─ projections: [0]\n" +
+			"             └─ IndexedTableAccess\n" +
+			"                 ├─ index: [xy.x]\n" +
+			"                 ├─ columns: [x]\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: xy\n" +
+			"                     └─ projections: [0]\n" +
 			"",
 	},
 	{
@@ -902,18 +916,24 @@ var PlanTests = []QueryPlanTest{
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: ab.a:0!null\n" +
-			"     └─ RightSemiLookupJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ xy.x:0!null\n" +
-			"         │   └─ ab.a:2!null\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: xy\n" +
-			"         │       └─ columns: [x y]\n" +
-			"         └─ IndexedTableAccess\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             └─ Table\n" +
-			"                 └─ name: ab\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ab.a:2!null, ab.b:3]\n" +
+			"         └─ MergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
+			"             │   ├─ xy.x:0!null\n" +
+			"             │   └─ ab.a:2!null\n" +
+			"             ├─ IndexedTableAccess\n" +
+			"             │   ├─ index: [xy.x]\n" +
+			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ columns: [x y]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: xy\n" +
+			"             │       └─ projections: [0 1]\n" +
+			"             └─ IndexedTableAccess\n" +
+			"                 ├─ index: [ab.a]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 └─ Table\n" +
+			"                     └─ name: ab\n" +
 			"",
 	},
 	{
@@ -939,36 +959,48 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select * from xy where exists (select * from ab where a = x) order by x`,
 		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
-			" └─ SemiLookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ ab.a:2!null\n" +
-			"     │   └─ xy.x:0!null\n" +
-			"     ├─ Table\n" +
-			"     │   └─ name: xy\n" +
-			"     └─ IndexedTableAccess\n" +
-			"         ├─ index: [ab.a]\n" +
-			"         ├─ columns: [a b]\n" +
-			"         └─ Table\n" +
-			"             ├─ name: ab\n" +
-			"             └─ projections: [0 1]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:2!null, xy.y:3]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ ab.a:0!null\n" +
+			"         │   └─ xy.x:2!null\n" +
+			"         ├─ IndexedTableAccess\n" +
+			"         │   ├─ index: [ab.a]\n" +
+			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ columns: [a b]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: ab\n" +
+			"         │       └─ projections: [0 1]\n" +
+			"         └─ IndexedTableAccess\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             └─ Table\n" +
+			"                 └─ name: xy\n" +
 			"",
 	},
 	{
 		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ TopN(Limit: [5 (tinyint)]; xy.x:0!null ASC nullsFirst)\n" +
-			"     └─ SemiLookupJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ ab.a:2!null\n" +
-			"         │   └─ xy.x:0!null\n" +
-			"         ├─ Table\n" +
-			"         │   └─ name: xy\n" +
-			"         └─ IndexedTableAccess\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             ├─ columns: [a b]\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: ab\n" +
-			"                 └─ projections: [0 1]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [xy.x:2!null, xy.y:3]\n" +
+			"         └─ MergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
+			"             │   ├─ ab.a:0!null\n" +
+			"             │   └─ xy.x:2!null\n" +
+			"             ├─ IndexedTableAccess\n" +
+			"             │   ├─ index: [ab.a]\n" +
+			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ columns: [a b]\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: ab\n" +
+			"             │       └─ projections: [0 1]\n" +
+			"             └─ IndexedTableAccess\n" +
+			"                 ├─ index: [xy.x]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 └─ Table\n" +
+			"                     └─ name: xy\n" +
 			"",
 	},
 	{
@@ -980,7 +1012,7 @@ select * from
   where exists (select * from pq where u = p)
 ) alias2
 inner join xy on a = x;`,
-		ExpectedPlan: "HashJoin\n" +
+		ExpectedPlan: "LookupJoin\n" +
 			" ├─ Eq\n" +
 			" │   ├─ alias2.a:0!null\n" +
 			" │   └─ xy.x:4!null\n" +
@@ -1012,13 +1044,12 @@ inner join xy on a = x;`,
 			" │           └─ Table\n" +
 			" │               ├─ name: pq\n" +
 			" │               └─ projections: [0 1]\n" +
-			" └─ HashLookup\n" +
-			"     ├─ source: TUPLE(alias2.a:0!null)\n" +
-			"     ├─ target: TUPLE(xy.x:0!null)\n" +
-			"     └─ CachedResults\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x y]\n" +
+			" └─ IndexedTableAccess\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     ├─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ projections: [0 1]\n" +
 			"",
 	},
 	{
