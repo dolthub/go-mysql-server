@@ -294,7 +294,7 @@ func getIndexes(
 
 		normalizedExpressions := normalizeExpressions(tableAliases, left)
 		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getField.Table(), normalizedExpressions...)
-		if !idx.IsSpatial() {
+		if idx == nil || !idx.IsSpatial() {
 			return nil, nil
 		}
 
