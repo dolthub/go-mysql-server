@@ -41,14 +41,14 @@ type coster struct{}
 
 var _ Coster = (*coster)(nil)
 
-func (c *coster) EstimateCost(ctx *sql.Context, n relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *coster) EstimateCost(ctx *sql.Context, n relExpr, s sql.StatsReader) (float64, error) {
 	return c.costRel(ctx, n, s)
 }
 
 // costRel returns the estimated compute cost for a given physical
 // operator. Two physical operators in the same expression group will have
 // the same input and output cardinalities, but different evaluation costs.
-func (c *coster) costRel(ctx *sql.Context, n relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *coster) costRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float64, error) {
 	switch n := n.(type) {
 	case *tableScan:
 		return c.costScan(ctx, n, s)
@@ -95,7 +95,7 @@ func (c *coster) costRel(ctx *sql.Context, n relExpr, s sql.StatsReadWriter) (fl
 	}
 }
 
-func (c *coster) costTableAlias(ctx *sql.Context, n *tableAlias, s sql.StatsReadWriter) (float64, error) {
+func (c *coster) costTableAlias(ctx *sql.Context, n *tableAlias, s sql.StatsReader) (float64, error) {
 	switch n := n.table.Child.(type) {
 	case *plan.ResolvedTable:
 		return c.costRead(ctx, n.Table, s)
@@ -104,11 +104,11 @@ func (c *coster) costTableAlias(ctx *sql.Context, n *tableAlias, s sql.StatsRead
 	}
 }
 
-func (c *coster) costScan(ctx *sql.Context, t *tableScan, s sql.StatsReadWriter) (float64, error) {
+func (c *coster) costScan(ctx *sql.Context, t *tableScan, s sql.StatsReader) (float64, error) {
 	return c.costRead(ctx, t.table.Table, s)
 }
 
-func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReadWriter) (float64, error) {
+func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
 	if w, ok := t.(sql.TableWrapper); ok {
 		t = w.Underlying()
 	}
@@ -122,38 +122,38 @@ func (c *coster) costRead(ctx *sql.Context, t sql.Table, s sql.StatsReadWriter) 
 	return float64(card) * seqIOCostFactor, nil
 }
 
-func (c *coster) costValues(ctx *sql.Context, v *values, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costValues(ctx *sql.Context, v *values, _ sql.StatsReader) (float64, error) {
 	return float64(len(v.table.ExpressionTuples)) * cpuCostFactor, nil
 }
 
-func (c *coster) costRecursiveTable(ctx *sql.Context, t *recursiveTable, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costRecursiveTable(ctx *sql.Context, t *recursiveTable, _ sql.StatsReader) (float64, error) {
 	return float64(100) * seqIOCostFactor, nil
 }
 
-func (c *coster) costInnerJoin(ctx *sql.Context, n *innerJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costInnerJoin(ctx *sql.Context, n *innerJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
 	r := n.right.relProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
 }
 
-func (c *coster) costCrossJoin(ctx *sql.Context, n *crossJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costCrossJoin(ctx *sql.Context, n *crossJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
 	r := n.right.relProps.card
 	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
 }
 
-func (c *coster) costLeftJoin(ctx *sql.Context, n *leftJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costLeftJoin(ctx *sql.Context, n *leftJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
 	r := n.right.relProps.card
 	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
 }
-func (c *coster) costFullOuterJoin(ctx *sql.Context, n *fullOuterJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costFullOuterJoin(ctx *sql.Context, n *fullOuterJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
 	r := n.right.relProps.card
 	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
 }
 
-func (c *coster) costHashJoin(ctx *sql.Context, n *hashJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costHashJoin(ctx *sql.Context, n *hashJoin, _ sql.StatsReader) (float64, error) {
 	if n.op.IsPartial() {
 		l, err := c.costPartial(n.left, n.right)
 		return l * 0.5, err
@@ -163,18 +163,18 @@ func (c *coster) costHashJoin(ctx *sql.Context, n *hashJoin, _ sql.StatsReadWrit
 	return l*cpuCostFactor + r*(seqIOCostFactor+memCostFactor), nil
 }
 
-func (c *coster) costMergeJoin(_ *sql.Context, n *mergeJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costMergeJoin(_ *sql.Context, n *mergeJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
 	return l * cpuCostFactor, nil
 }
 
-func (c *coster) costLookupJoin(_ *sql.Context, n *lookupJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costLookupJoin(_ *sql.Context, n *lookupJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
 	m := lookupMultiplier(n.lookup, len(n.filter))
 	return l*randIOCostFactor + l*m*cpuCostFactor - n.right.relProps.card*seqIOCostFactor, nil
 }
 
-func (c *coster) costConcatJoin(_ *sql.Context, n *concatJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costConcatJoin(_ *sql.Context, n *concatJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
 	var mult float64
 	for _, l := range n.concat {
@@ -183,7 +183,7 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *concatJoin, _ sql.StatsReadWr
 	return l*mult*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.right.relProps.card*seqIOCostFactor, nil
 }
 
-func (c *coster) costSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sql.StatsReadWriter) (float64, error) {
+func (c *coster) costSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sql.StatsReader) (float64, error) {
 	switch t := n.table.Rel.(type) {
 	case *plan.TableAlias:
 		return c.costTableAlias(ctx, &tableAlias{relBase: n.relBase, table: t}, s)
@@ -194,11 +194,11 @@ func (c *coster) costSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sql
 	}
 }
 
-func (c *coster) costProject(_ *sql.Context, n *project, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costProject(_ *sql.Context, n *project, _ sql.StatsReader) (float64, error) {
 	return n.child.relProps.card * cpuCostFactor, nil
 }
 
-func (c *coster) costDistinct(_ *sql.Context, n *distinct, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costDistinct(_ *sql.Context, n *distinct, _ sql.StatsReader) (float64, error) {
 	return n.child.cost * (cpuCostFactor + memCostFactor), nil
 }
 
@@ -221,11 +221,11 @@ func lookupMultiplier(l *lookup, filterCnt int) float64 {
 	return mult
 }
 
-func (c *coster) costAntiJoin(_ *sql.Context, n *antiJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costAntiJoin(_ *sql.Context, n *antiJoin, _ sql.StatsReader) (float64, error) {
 	return c.costPartial(n.left, n.right)
 }
 
-func (c *coster) costSemiJoin(_ *sql.Context, n *semiJoin, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costSemiJoin(_ *sql.Context, n *semiJoin, _ sql.StatsReader) (float64, error) {
 	return c.costPartial(n.left, n.right)
 }
 
@@ -235,16 +235,16 @@ func (c *coster) costPartial(left, right *exprGroup) (float64, error) {
 	return l * (r / 2.0) * (seqIOCostFactor + cpuCostFactor), nil
 }
 
-func (c *coster) costSubqueryAlias(_ *sql.Context, _ *subqueryAlias, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costSubqueryAlias(_ *sql.Context, _ *subqueryAlias, _ sql.StatsReader) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 1000 * seqIOCostFactor, nil
 }
 
-func (c *coster) costMax1RowSubquery(_ *sql.Context, _ *max1Row, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costMax1RowSubquery(_ *sql.Context, _ *max1Row, _ sql.StatsReader) (float64, error) {
 	return 1 * seqIOCostFactor, nil
 }
 
-func (c *coster) costTableFunc(_ *sql.Context, _ *tableFunc, _ sql.StatsReadWriter) (float64, error) {
+func (c *coster) costTableFunc(_ *sql.Context, _ *tableFunc, _ sql.StatsReader) (float64, error) {
 	// TODO: sql.TableFunction should expose RowCount()
 	return 10 * seqIOCostFactor, nil
 }
@@ -257,14 +257,14 @@ var _ Carder = (*carder)(nil)
 
 type carder struct{}
 
-func (c *carder) EstimateCard(ctx *sql.Context, n relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *carder) EstimateCard(ctx *sql.Context, n relExpr, s sql.StatsReader) (float64, error) {
 	return c.cardRel(ctx, n, s)
 }
 
 // relStatistics provides estimates of operator cardinality. This
 // value is approximate for joins or filtered table scans, and
 // identical for all operators in the same expression group.
-func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float64, error) {
 	switch n := n.(type) {
 	case *tableScan:
 		return c.statsScan(ctx, n, s)
@@ -308,7 +308,7 @@ func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReadWriter) (fl
 	}
 }
 
-func (c *carder) statsTableAlias(ctx *sql.Context, n *tableAlias, s sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsTableAlias(ctx *sql.Context, n *tableAlias, s sql.StatsReader) (float64, error) {
 	switch n := n.table.Child.(type) {
 	case *plan.ResolvedTable:
 		return c.statsRead(ctx, n.Table, s)
@@ -317,11 +317,11 @@ func (c *carder) statsTableAlias(ctx *sql.Context, n *tableAlias, s sql.StatsRea
 	}
 }
 
-func (c *carder) statsScan(ctx *sql.Context, t *tableScan, s sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsScan(ctx *sql.Context, t *tableScan, s sql.StatsReader) (float64, error) {
 	return c.statsRead(ctx, t.table.Table, s)
 }
 
-func (c *carder) statsRead(ctx *sql.Context, t sql.Table, s sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
 	if w, ok := t.(sql.TableWrapper); ok {
 		t = w.Underlying()
 	}
@@ -335,15 +335,15 @@ func (c *carder) statsRead(ctx *sql.Context, t sql.Table, s sql.StatsReadWriter)
 	return float64(card) * seqIOCostFactor, nil
 }
 
-func (c *carder) statsValues(_ *sql.Context, v *values, _ sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsValues(_ *sql.Context, v *values, _ sql.StatsReader) (float64, error) {
 	return float64(len(v.table.ExpressionTuples)) * cpuCostFactor, nil
 }
 
-func (c *carder) statsRecursiveTable(_ *sql.Context, t *recursiveTable, _ sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsRecursiveTable(_ *sql.Context, t *recursiveTable, _ sql.StatsReader) (float64, error) {
 	return float64(100) * seqIOCostFactor, nil
 }
 
-func (c *carder) statsSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sql.StatsReader) (float64, error) {
 	switch t := n.table.Rel.(type) {
 	case *plan.TableAlias:
 		return c.statsTableAlias(ctx, &tableAlias{relBase: n.relBase, table: t}, s)
@@ -354,16 +354,16 @@ func (c *carder) statsSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sq
 	}
 }
 
-func (c *carder) statsSubqueryAlias(_ *sql.Context, _ *subqueryAlias, _ sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsSubqueryAlias(_ *sql.Context, _ *subqueryAlias, _ sql.StatsReader) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 1000, nil
 }
 
-func (c *carder) statsMax1RowSubquery(_ *sql.Context, _ *max1Row, _ sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsMax1RowSubquery(_ *sql.Context, _ *max1Row, _ sql.StatsReader) (float64, error) {
 	return 1, nil
 }
 
-func (c *carder) statsTableFunc(_ *sql.Context, _ *tableFunc, _ sql.StatsReadWriter) (float64, error) {
+func (c *carder) statsTableFunc(_ *sql.Context, _ *tableFunc, _ sql.StatsReader) (float64, error) {
 	// TODO: sql.TableFunction should expose RowCount()
 	return 10, nil
 }
@@ -376,7 +376,7 @@ type innerBiasedCoster struct {
 	*coster
 }
 
-func (c *innerBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *innerBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
 	case *innerJoin:
 		return -biasFactor, nil
@@ -393,7 +393,7 @@ type hashBiasedCoster struct {
 	*coster
 }
 
-func (c *hashBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *hashBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
 	case *hashJoin:
 		return -biasFactor, nil
@@ -410,7 +410,7 @@ type lookupBiasedCoster struct {
 	*coster
 }
 
-func (c *lookupBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *lookupBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
 	case *lookupJoin, *concatJoin:
 		return -biasFactor, nil
@@ -427,7 +427,7 @@ type mergeBiasedCoster struct {
 	*coster
 }
 
-func (c *mergeBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReadWriter) (float64, error) {
+func (c *mergeBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
 	case *mergeJoin:
 		return -biasFactor, nil
