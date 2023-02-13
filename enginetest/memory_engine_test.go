@@ -153,25 +153,22 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `
-			WITH RECURSIVE bus_dst as (
-				SELECT origin as dst FROM bus_routes WHERE origin='New York'
-				UNION
-				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON bus_dst.dst= bus_routes.origin
-			)
-			SELECT * FROM bus_dst
-			ORDER BY dst`,
+		Query: "SELECT pk, count(*) over (order by v2) FROM one_pk_three_idx ORDER BY pk",
 		Expected: []sql.Row{
-			{"Boston"},
-			{"New York"},
-			{"Raleigh"},
-			{"Washington"},
+			{0, 4},
+			{1, 4},
+			{2, 5},
+			{3, 6},
+			{4, 4},
+			{5, 4},
+			{6, 7},
+			{7, 8},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
-	harness.Setup(setup.GraphSetup...)
+	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)

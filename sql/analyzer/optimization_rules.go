@@ -155,17 +155,18 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	resultNode, resultIdentity, err := transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		children := n.Children()
-		if children == nil || len(children) == 0 {
+		if len(children) == 0 {
 			return n, transform.SameTree, nil
 		}
-		isParentOfTopJoin := false
-		for _, child := range children {
+
+		indexOfTopJoin := -1
+		for idx, child := range children {
 			if child == topJoin {
-				isParentOfTopJoin = true
+				indexOfTopJoin = idx
 				break
 			}
 		}
-		if !isParentOfTopJoin {
+		if indexOfTopJoin == -1 {
 			return n, transform.SameTree, nil
 		}
 
@@ -173,29 +174,32 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		case *plan.Filter:
 			nonJoinFilters = append(nonJoinFilters, n.Expression)
 			newExpression := expression.JoinAnd(nonJoinFilters...)
-			newFilter := plan.NewFilter(newExpression, n.Child)
+			newFilter := plan.NewFilter(newExpression, topJoin)
 			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
 			return newFilter, transform.NewTree, nil
-		case *plan.UpdateSource:
-			newExpression := expression.JoinAnd(nonJoinFilters...)
-			newFilter := plan.NewFilter(newExpression, n.Child)
-			n.Child = newFilter
-			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
-			return n, transform.NewTree, nil
 		default:
 			newExpression := expression.JoinAnd(nonJoinFilters...)
-			newFilter := plan.NewFilter(newExpression, n)
+			newFilter := plan.NewFilter(newExpression, topJoin)
+			children[indexOfTopJoin] = newFilter
+			updatedNode, err := n.WithChildren(children...)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
-			return newFilter, transform.NewTree, nil
+			return updatedNode, transform.NewTree, nil
 		}
 	})
+
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
 
 	// if there are still nonJoinFilters left, it means we removed them but failed to re-insert them
 	if len(nonJoinFilters) > 0 {
 		return nil, transform.SameTree, sql.ErrDroppedJoinFilters.New()
 	}
 
-	return resultNode, resultIdentity, err
+	return resultNode, resultIdentity, nil
 }
 
 // removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
@@ -323,6 +327,12 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 
 				return e, transform.SameTree, nil
 			case *expression.Like:
+				// if the charset is not utf8mb4, the last character used in optimization rule does not work
+				coll, _ := expression.GetCollationViaCoercion(e.Left)
+				charset := coll.CharacterSet()
+				if charset != sql.CharacterSet_utf8mb4 {
+					return e, transform.SameTree, nil
+				}
 				// TODO: maybe more cases to simplify
 				r, ok := e.Right.(*expression.Literal)
 				if !ok {
