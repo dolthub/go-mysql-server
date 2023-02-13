@@ -412,12 +412,21 @@ func (e *exprGroup) String() string {
 	return b.String()
 }
 
+// Coster types can estimate the CPU and memory cost of physical execution
+// operators.
 type Coster interface {
-	EstimateCost(*sql.Context, relExpr, sql.StatsReadWriter) (float64, error)
+	// EstimateCost cost returns the incremental CPU and memory cost for an
+	// operator, or an error. Cost is dependent on physical operator type,
+	// and the cardinality of inputs.
+	EstimateCost(*sql.Context, relExpr, sql.StatsReader) (float64, error)
 }
 
+// Carder types can estimate the cardinality (row count) of relational
+// expressions.
 type Carder interface {
-	EstimateCard(*sql.Context, relExpr, sql.StatsReadWriter) (float64, error)
+	// EstimateCard returns the estimate row count outputs for a relational
+	// expression. Cardinality is an expression group property.
+	EstimateCard(*sql.Context, relExpr, sql.StatsReader) (float64, error)
 }
 
 // relExpr wraps a sql.Node for use as a exprGroup linked list node.
@@ -428,8 +437,6 @@ type relExpr interface {
 	setNext(relExpr)
 	children() []*exprGroup
 	setGroup(g *exprGroup)
-	card() float64
-	setCard(float64)
 }
 
 type relBase struct {
@@ -475,14 +482,6 @@ func (r *relBase) setNext(rel relExpr) {
 
 func (r *relBase) setCost(c float64) {
 	r.c = c
-}
-
-func (r *relBase) card() float64 {
-	return r.cnt
-}
-
-func (r *relBase) setCard(c float64) {
-	r.cnt = c
 }
 
 func tableIdForSource(id GroupId) TableId {

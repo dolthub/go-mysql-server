@@ -155,27 +155,27 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var ret sql.Row
 	var res int
 
-	//  inner join match flow:
-	//  - check for io.EOF
-	//  - evaluate compare filter
-	//  - evaluate select filters
-	//  - initialize match state
-	//  - drain match state
-	//  - repeat
+	//  The common inner join match flow:
+	//  1) check for io.EOF
+	//  2) evaluate compare filter
+	//  3) evaluate select filters
+	//  4) initialize match state
+	//  5) drain match state
+	//  6) repeat
 	//
-	// left-join matching is unique. at any given time we need to know whether
-	// the unique left row: 1) has already matched, 2) has more right rows
+	// Left-join matching is unique. At any given time, we need to know whether
+	// a unique left row: 1) has already matched, 2) has more right rows
 	// available for matching before we can return a nullified-row. Otherwise
-	// we may accidentally return nullfied rows that have matches (before or
+	// we may accidentally return nullified rows that have matches (before or
 	// after the current row), or fail to return a nullified row that has no
 	// matches.
 	//
-	// we use two variables to manage the lookahead state management.
+	// We use two variables to manage the lookahead state management.
 	// |matchedleft| is a forward-looking indicator of whether the current left
-	// row has satisfied a join condition.  it is reset to false when we
+	// row has satisfied a join condition. It is reset to false when we
 	// increment left. |matchincleft| is true when the most recent call to
-	// |incmatch| incremented the left row. the two vars combined let us
-	// lookahead during msselect to 1) identify proper nullified row matches,
+	// |incmatch| incremented the left row. The two vars combined let us
+	// lookahead during msSelect to 1) identify proper nullified row matches,
 	// and 2) maintain forward-looking state for the next |i.fullrow|.
 	//
 	nextState := msInit
@@ -261,7 +261,8 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			if ok {
 				if !i.matchIncLeft {
-					// |leftMatched| is forward-looking, sets state for current (next) i.fullRow
+					// |leftMatched| is forward-looking, sets state for
+					// current |i.fullRow| (next |ret|)
 					i.leftMatched = true
 				}
 
