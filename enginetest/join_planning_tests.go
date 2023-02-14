@@ -509,7 +509,6 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 			}
 			for _, tt := range tt.tests {
 				evalJoinTypeTest(t, harness, e, tt)
-				//evalJoinCorrectnessTest(t, harness, e, tt)
 				evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
 			}
 		})
