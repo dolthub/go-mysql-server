@@ -263,6 +263,8 @@ func (ab *Builder) Build() *Analyzer {
 		Batches:      batches,
 		Catalog:      NewCatalog(ab.provider),
 		Parallelism:  ab.parallelism,
+		Coster:       NewDefaultCoster(),
+		Carder:       NewDefaultCarder(),
 	}
 }
 
@@ -283,6 +285,10 @@ type Analyzer struct {
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
 	// replication messages (e.g. "start replica").
 	BinlogReplicaController binlogreplication.BinlogReplicaController
+	// Carder estimates the number of rows returned by a relational expression.
+	Carder Carder
+	// Coster estimates the incremental CPU+memory cost for execution operators.
+	Coster Coster
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

@@ -72,6 +72,7 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		typ:         j.Op,
 		fullRow:     fullRow,
 		scopeLen:    j.ScopeLen,
+		parentLen:   len(row) - j.ScopeLen,
 		leftRowLen:  len(j.left.Schema()),
 		rightRowLen: len(j.right.Schema()),
 	}
@@ -84,19 +85,28 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 // not provide a directional ordering signal for index iteration
 // are evaluated separately.
 type mergeJoinIter struct {
-	cmp     expression.Comparer
+	// cmp is a directional indicator for row iter increments
+	cmp expression.Comparer
+	// filters is the remaining set of join conditions
 	filters []sql.Expression
 	left    sql.RowIter
 	right   sql.RowIter
 	fullRow sql.Row
 
-	// match lookahead buffers and state tracking
+	// match lookahead buffers and state tracking (private to match)
 	rightBuf  []sql.Row
 	bufI      int
 	rightPeek sql.Row
 	leftPeek  sql.Row
 	rightDone bool
 	leftDone  bool
+
+	// matchIncLeft indicates whether the most recent |i.incMatch|
+	// call incremented the left row.
+	matchIncLeft bool
+	// leftMatched indicates whether the current left in |i.fullRow|
+	// has satisfied the join condition.
+	leftMatched bool
 
 	// lifecycle maintenance
 	init           bool
@@ -109,6 +119,8 @@ type mergeJoinIter struct {
 	rightRowLen int
 	parentLen   int
 }
+
+var _ sql.RowIter = (*mergeJoinIter)(nil)
 
 func (i *mergeJoinIter) sel(ctx *sql.Context, row sql.Row) (bool, error) {
 	for _, f := range i.filters {
@@ -135,6 +147,7 @@ const (
 	msSelect
 	msRet
 	msRetLeft
+	msRejectNull
 )
 
 func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -142,6 +155,29 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var ret sql.Row
 	var res int
 
+	//  The common inner join match flow:
+	//  1) check for io.EOF
+	//  2) evaluate compare filter
+	//  3) evaluate select filters
+	//  4) initialize match state
+	//  5) drain match state
+	//  6) repeat
+	//
+	// Left-join matching is unique. At any given time, we need to know whether
+	// a unique left row: 1) has already matched, 2) has more right rows
+	// available for matching before we can return a nullified-row. Otherwise
+	// we may accidentally return nullified rows that have matches (before or
+	// after the current row), or fail to return a nullified row that has no
+	// matches.
+	//
+	// We use two variables to manage the lookahead state management.
+	// |matchedleft| is a forward-looking indicator of whether the current left
+	// row has satisfied a join condition. It is reset to false when we
+	// increment left. |matchincleft| is true when the most recent call to
+	// |incmatch| incremented the left row. The two vars combined let us
+	// lookahead during msSelect to 1) identify proper nullified row matches,
+	// and 2) maintain forward-looking state for the next |i.fullrow|.
+	//
 	nextState := msInit
 	for {
 		switch nextState {
@@ -155,6 +191,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			nextState = msExhaustCheck
 		case msExhaustCheck:
 			if i.lojFinalize() {
+				ret = i.copyReturnRow()
 				nextState = msRetLeft
 			} else if i.exhausted() {
 				return nil, io.EOF
@@ -163,13 +200,21 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		case msCompare:
 			res, err = i.cmp.Compare(ctx, i.fullRow)
-			if err != nil {
+			if expression.ErrNilOperand.Is(err) {
+				nextState = msRejectNull
+				break
+			} else if err != nil {
 				return nil, err
 			}
 			switch {
 			case res < 0:
 				if i.typ.IsLeftOuter() {
-					nextState = msRetLeft
+					if i.leftMatched {
+						nextState = msIncLeft
+					} else {
+						ret = i.copyReturnRow()
+						nextState = msRetLeft
+					}
 				} else {
 					nextState = msIncLeft
 				}
@@ -177,6 +222,25 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				nextState = msIncRight
 			case res == 0:
 				nextState = msSelect
+			}
+		case msRejectNull:
+			j := i.scopeLen + i.parentLen
+			for j < len(i.fullRow) {
+				if i.fullRow[j] == nil {
+					if j < i.scopeLen+i.parentLen+i.leftRowLen {
+						// this range corresponds to left-row fields
+						if i.typ.IsLeftOuter() && !i.leftMatched {
+							ret = i.copyReturnRow()
+							nextState = msRetLeft
+						} else {
+							nextState = msIncLeft
+						}
+					} else {
+						nextState = msIncRight
+					}
+					break
+				}
+				j++
 			}
 		case msIncLeft:
 			err = i.incLeft(ctx)
@@ -186,26 +250,47 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			nextState = msExhaustCheck
 		case msSelect:
 			ret = i.copyReturnRow()
-			if ok, err := i.sel(ctx, ret); err != nil {
+			currLeftMatched := i.leftMatched
+
+			ok, err := i.sel(ctx, ret)
+			if err != nil {
 				return nil, err
-			} else if !ok {
-				if i.typ.IsLeftOuter() {
-					nextState = msRetLeft
-				} else {
-					nextState = msIncLeft
-				}
-			} else {
-				nextState = msRet
 			}
-		case msRet:
 			err = i.incMatch(ctx)
 			if err != nil {
 				return nil, err
 			}
+			if ok {
+				if !i.matchIncLeft {
+					// |leftMatched| is forward-looking, sets state for
+					// current |i.fullRow| (next |ret|)
+					i.leftMatched = true
+				}
+
+				nextState = msRet
+				break
+			}
+
+			if !i.typ.IsLeftOuter() {
+				nextState = msExhaustCheck
+				break
+			}
+
+			if i.matchIncLeft && !currLeftMatched {
+				// |i.matchIncLeft| indicates whether the most recent
+				// |i.incMatch| call incremented the left row.
+				// |currLeftMatched| indicates whether |ret| has already
+				// successfully met a join condition.
+				return i.removeParentRow(i.nullifyRightRow(ret)), nil
+			} else {
+				nextState = msExhaustCheck
+			}
+
+		case msRet:
 			return i.removeParentRow(ret), nil
 			return ret, nil
 		case msRetLeft:
-			ret = i.removeParentRow(i.nullifyRightRow(i.copyReturnRow()))
+			ret = i.removeParentRow(i.nullifyRightRow(ret))
 			err = i.incLeft(ctx)
 			if err != nil {
 				return nil, err
@@ -222,7 +307,7 @@ func (i *mergeJoinIter) copyReturnRow() sql.Row {
 }
 
 // incMatch uses two phases to find all left and right rows that match their
-// companion rows for the given match stats. We accomplish this in 2 phases:
+// companion rows for the given match stats:
 //  1. collect all right rows that match the current left row into a buffer;
 //  2. for every left row that matches the original right row, match every
 //     right row.
@@ -231,8 +316,10 @@ func (i *mergeJoinIter) copyReturnRow() sql.Row {
 // there is no next non-matching row (io.EOF), we trigger |i.exhausted| at
 // the appropriate time depending on whether we are left-joining.
 func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
+	i.matchIncLeft = false
+
 	if !i.rightDone {
-		// drain right matches into buffer
+		// initialize right matches buffer
 		right := make(sql.Row, i.rightRowLen)
 		copy(right, i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:])
 		i.rightBuf = append(i.rightBuf, right)
@@ -257,10 +344,12 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 		if err != nil {
 			return err
 		}
+
 	}
 
 	if i.bufI > len(i.rightBuf)-1 {
 		// matched entire right buffer to the current left row, reset
+		i.matchIncLeft = true
 		i.bufI = 0
 		match, peek, err := i.peekMatch(ctx, i.left)
 		if err != nil {
@@ -268,11 +357,13 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 		} else if !match {
 			i.leftPeek = peek
 			i.leftDone = true
+		} else {
+			i.leftMatched = false
 		}
 	}
 
 	if !i.leftDone {
-		// rightBuf is safe, we don't need compare
+		// rightBuf has already been validated, we don't need compare
 		copySubslice(i.fullRow, i.rightBuf[i.bufI], i.scopeLen+i.parentLen+i.leftRowLen)
 		i.bufI++
 		return nil
@@ -298,6 +389,7 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 
 	// both lookaheads fail the join condition. Drain
 	// lookahead rows / increment both iterators.
+	i.matchIncLeft = true
 	copySubslice(i.fullRow, i.leftPeek, i.scopeLen+i.parentLen)
 	copySubslice(i.fullRow, i.rightPeek, i.scopeLen+i.parentLen+i.leftRowLen)
 
@@ -398,22 +490,52 @@ func copySubslice(dst, src sql.Row, off int) {
 
 // incLeft updates |i.fullRow|'s left row
 func (i *mergeJoinIter) incLeft(ctx *sql.Context) error {
-	err := i.incIter(ctx, i.left, i.scopeLen+i.parentLen)
-	if errors.Is(err, io.EOF) {
-		i.leftExhausted = true
-		return nil
+	i.leftMatched = false
+	var row sql.Row
+	var err error
+	if i.leftPeek != nil {
+		row = i.leftPeek
+		i.leftPeek = nil
+	} else {
+		row, err = i.left.Next(ctx)
+		if errors.Is(err, io.EOF) {
+			i.leftExhausted = true
+			return nil
+		} else if err != nil {
+			return err
+		}
 	}
-	return err
+
+	off := i.scopeLen + i.parentLen
+	for j, v := range row {
+		i.fullRow[off+j] = v
+	}
+
+	return nil
 }
 
 // incRight updates |i.fullRow|'s right row
 func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
-	err := i.incIter(ctx, i.right, i.scopeLen+i.parentLen+i.leftRowLen)
-	if errors.Is(err, io.EOF) {
-		i.rightExhausted = true
-		return nil
+	var row sql.Row
+	var err error
+	if i.rightPeek != nil {
+		row = i.rightPeek
+		i.rightPeek = nil
+	} else {
+		row, err = i.right.Next(ctx)
+		if errors.Is(err, io.EOF) {
+			i.rightExhausted = true
+			return nil
+		} else if err != nil {
+			return err
+		}
 	}
-	return err
+
+	off := i.scopeLen + i.parentLen + i.leftRowLen
+	for j, v := range row {
+		i.fullRow[off+j] = v
+	}
+	return nil
 }
 
 // incLeft updates |i.fullRow|'s |inRow|
@@ -429,8 +551,8 @@ func (i *mergeJoinIter) incIter(ctx *sql.Context, iter sql.RowIter, off int) err
 }
 
 func (i *mergeJoinIter) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[i.parentLen:])
-	r = r[:len(r)-i.parentLen+i.scopeLen]
+	copy(r[i.scopeLen:], r[i.scopeLen+i.parentLen:])
+	r = r[:len(r)-i.parentLen]
 	return r
 }
 

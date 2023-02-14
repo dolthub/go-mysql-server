@@ -92,7 +92,7 @@ func TestMemoGen(t *testing.T) {
 		{
 			Name:   "hashJoin",
 			IsJoin: true,
-			JoinAttrs: [][2]string{
+			Attrs: [][2]string{
 				{"innerAttrs", "[]sql.Expression"},
 				{"outerAttrs", "[]sql.Expression"},
 			},

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type crossJoin struct {
@@ -418,6 +419,49 @@ func (r *selectSingleRel) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
+type project struct {
+	*relBase
+	child       *exprGroup
+	projections []sql.Expression
+}
+
+var _ relExpr = (*project)(nil)
+
+func (r *project) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *project) children() []*exprGroup {
+	return []*exprGroup{r.child}
+}
+
+func (r *project) outputCols() sql.Schema {
+	var s = make(sql.Schema, len(r.projections))
+	for i, e := range r.projections {
+		s[i] = transform.ExpressionToColumn(e)
+	}
+	return s
+}
+
+type distinct struct {
+	*relBase
+	child *exprGroup
+}
+
+var _ relExpr = (*distinct)(nil)
+
+func (r *distinct) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *distinct) children() []*exprGroup {
+	return []*exprGroup{r.child}
+}
+
+func (r *distinct) outputCols() sql.Schema {
+	return r.child.relProps.OutputCols()
+}
+
 func formatRelExpr(r relExpr) string {
 	switch r := r.(type) {
 	case *crossJoin:
@@ -458,6 +502,10 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("tableFunc: %s", r.name())
 	case *selectSingleRel:
 		return fmt.Sprintf("selectSingleRel: %s", r.name())
+	case *project:
+		return fmt.Sprintf("project: %d", r.child.id)
+	case *distinct:
+		return fmt.Sprintf("distinct: %d", r.child.id)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
@@ -503,6 +551,10 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		return b.buildTableFunc(r, input, children...)
 	case *selectSingleRel:
 		return b.buildSelectSingleRel(r, input, children...)
+	case *project:
+		return b.buildProject(r, input, children...)
+	case *distinct:
+		return b.buildDistinct(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}

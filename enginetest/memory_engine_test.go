@@ -122,6 +122,16 @@ func TestJoinQueriesPrepared(t *testing.T) {
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJoinPlanning runs join-specific tests for merge
+func TestJoinPlanning(t *testing.T) {
+	enginetest.TestJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJoinPlanningPrepared runs prepared join-specific tests for merge
+func TestJoinPlanningPrepared(t *testing.T) {
+	enginetest.TestJoinPlanningPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestJoinOps runs join-specific tests for merge
 func TestJoinOps(t *testing.T) {
 	enginetest.TestJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))

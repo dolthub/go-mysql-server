@@ -1,4 +1,4 @@
-// Copyright 2022 Dolthub, Inc.
+// Copyright 2023 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,580 +18,1069 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
-type JoinOpTest struct {
-	q     string
-	types []plan.JoinType
-	exp   []sql.Row
-	skip  bool
+type JoinOpTests struct {
+	Query    string
+	Expected []sql.Row
+	Skip     bool
 }
 
-var JoinOpTests = []struct {
-	name  string
-	setup []string
-	tests []JoinOpTest
-}{
-	{
-		name: "merge join unary index",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int, index y_idx(y));",
-			"create table rs (r int primary key, s int, index s_idx(s));",
-			"CREATE table uv (u int primary key, v int);",
-			"CREATE table ab (a int primary key, b int);",
-			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
-			"insert into rs values (0,0), (1,0), (2,0), (4,4), (5,4);",
-			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-			"update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs';",
-			"update information_schema.statistics set cardinality = 1000000000 where table_name = 'ab'",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select u,a,y from uv join (select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a) r on u = r.a order by 1",
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(ab, xy) */ * from ab join xy on y = a order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y = s order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}, {4, 4, nil, nil}, {5, 4, nil, nil}},
-			},
-			{
-				// extra join condition does not filter left-only rows
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y = s and y+s = 0 order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}, {4, 4, nil, nil}, {5, 4, nil, nil}},
-			},
-			{
-				// extra join condition does not filter left-only rows
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs left join xy on y+2 = s and s-y = 2 order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
-				exp:   []sql.Row{{0, 0, nil, nil}, {1, 0, nil, nil}, {2, 0, nil, nil}, {4, 4, 0, 2}, {5, 4, 0, 2}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = r order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 2, 1}, {2, 0, 0, 2}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on r = y order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 2, 1}, {2, 0, 0, 2}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {1, 0, 1, 0}, {2, 0, 1, 0}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s and y = r order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y+2 = s order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{4, 4, 0, 2}, {5, 4, 0, 2}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s-1 order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeHash},
-				exp:   []sql.Row{{4, 4, 3, 3}, {5, 4, 3, 3}},
-			},
-			//{
-			// TODO: cannot hash join on compound expressions
-			//	q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = mod(s,2) order by 1, 3",
-			//	types: []plan.JoinType{plan.JoinTypeInner},
-			//	exp:   []sql.Row{{0,0,1,0},{0, 0, 1, 0},{2,0,1,0},{4,4,1,0}},
-			//},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on 2 = s+y order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeInner},
-				exp:   []sql.Row{{0, 0, 0, 2}, {1, 0, 0, 2}, {2, 0, 0, 2}},
-			},
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y > s+2 order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeInner},
-				exp:   []sql.Row{{0, 0, 3, 3}, {1, 0, 3, 3}, {2, 0, 3, 3}},
-			},
-		},
-	},
-	{
-		name: "merge join multi match",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int, index y_idx(y));",
-			"create table rs (r int primary key, s int, index s_idx(s));",
-			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
-			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
-			"update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs';",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {0, 0, 4, 0}, {3, 0, 1, 0}, {3, 0, 4, 0}, {4, 8, 0, 8}, {5, 4, 5, 4}},
-			},
-		},
-	},
-	{
-		name: "merge join zero rows",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int, index y_idx(y));",
-			"create table rs (r int primary key, s int, index s_idx(s));",
-			"insert into xy values (1,0);",
-			"update information_schema.statistics set cardinality = 10 where table_name = 'xy';",
-			"update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs';",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{},
-			},
-		},
-	},
-	{
-		name: "merge join multi arity",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int, index yx_idx(y,x));",
-			"create table rs (r int primary key, s int, index s_idx(s));",
-			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
-			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
-			"update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs';",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {0, 0, 4, 0}, {3, 0, 1, 0}, {3, 0, 4, 0}, {4, 8, 0, 8}, {5, 4, 5, 4}},
-			},
-		},
-	},
-	{
-		name: "merge join keyless index",
-		setup: []string{
-			"CREATE table xy (x int, y int, index yx_idx(y,x));",
-			"create table rs (r int, s int, index s_idx(s));",
-			"insert into xy values (1,0), (2,1), (0,8), (3,7), (5,4), (4,0);",
-			"insert into rs values (0,0),(2,3),(3,0), (4,8), (5,4);",
-			"update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs';",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s order by 1,3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
-				exp:   []sql.Row{{0, 0, 1, 0}, {0, 0, 4, 0}, {3, 0, 1, 0}, {3, 0, 4, 0}, {4, 8, 0, 8}, {5, 4, 5, 4}},
-			},
-		},
-	},
-	{
-		name: "partial [lookup] join tests",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int);",
-			"create table rs (r int primary key, s int);",
-			"CREATE table uv (u int primary key, v int);",
-			"CREATE table ab (a int primary key, b int);",
-			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
-			"insert into rs values (0,0), (1,0), (2,0), (4,4);",
-			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select * from xy where y+1 not in (select u from uv);",
-				types: []plan.JoinType{plan.JoinTypeAntiLookup},
-				exp:   []sql.Row{{3, 3}},
-			},
-			{
-				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti, plan.JoinTypeAnti, plan.JoinTypeAntiLookup},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				q:     "select * from xy where x != (select r from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				// anti join will be cross-join-right, be passed non-nil parent row
-				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeAnti},
-				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
-			},
-			{
-				// scope and parent row are non-nil
-				q: `
-select * from uv where u > (
-  select x from ab, (
-    select x from xy where x != (
-      select r from rs where r = 1
-    ) order by 1
-  ) sq
-  order by 1 limit 1
-)
-order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCross, plan.JoinTypeAnti},
-				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
-			},
-			{
-				// cast prevents scope merging
-				q:     "select * from xy where x != (select cast(r as signed) from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				// order by will be discarded
-				q:     "select * from xy where x != (select r from rs where r = 1 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				// limit prevents scope merging
-				q:     "select * from xy where x != (select r from rs where r = 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				q:     "select * from xy where y-1 in (select u from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemiLookup},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				// semi join will be right-side, be passed non-nil parent row
-				q:     "select x,a from ab, (select * from xy where x = (select r from rs where r = 1) order by 1) sq order by 1,2",
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeRightSemiLookup},
-				exp:   []sql.Row{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
-			},
-			//{
-			// scope and parent row are non-nil
-			// TODO: subquery alias unable to track parent row from a different scope
-			//				q: `
-			//select * from uv where u > (
-			//  select x from ab, (
-			//    select x from xy where x = (
-			//      select r from rs where r = 1
-			//    ) order by 1
-			//  ) sq
-			//  order by 1 limit 1
-			//)
-			//order by 1;`,
-			//types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeRightSemiLookup},
-			//exp:   []sql.Row{{2, 2}, {3, 2}},
-			//},
-			{
-				q:     "select * from xy where y-1 in (select cast(u as signed) from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				q:     "select * from xy where y-1 in (select u from uv order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemiLookup},
-				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
-			},
-			{
-				q:     "select * from xy where y-1 in (select u from uv order by 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{2, 1}},
-			},
-			{
-				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeLookup},
-				exp:   []sql.Row{{2, 1}},
-			},
-			{
-				q:     "select * from xy where x = (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeLookup},
-				exp:   []sql.Row{{2, 1}},
-			},
-			{
-				// group by doesn't transform
-				q:     "select * from xy where y-1 in (select u from uv group by v having v = 2 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{3, 3}},
-			},
-			{
-				// window doesn't transform
-				q:     "select * from xy where y-1 in (select row_number() over (order by v) from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{0, 2}, {3, 3}},
-			},
-		},
-	},
-	{
-		name: "empty join tests",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int);",
-			"CREATE table uv (u int primary key, v int);",
-			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
-			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select * from xy where y-1 = (select u from uv limit 1 offset 5);",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{},
-			},
-			{
-				q:     "select * from xy where x != (select u from uv limit 1 offset 5);",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{},
-			},
-		},
-	},
-	{
-		name: "unnest with scope filters",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int);",
-			"CREATE table uv (u int primary key, v int);",
-			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
-			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{3, 3}},
-			},
-			{
-				q:     "select * from xy where x != (select u from uv where v = 2 order by 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{{0, 2}, {1, 0}, {3, 3}},
-			},
-			{
-				q:     "select * from xy where x != (select distinct u from uv where v = 2 order by 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{{0, 2}, {1, 0}, {3, 3}},
-			},
-			{
-				q:     "select * from xy where (x,y+1) = (select u,v from uv where v = 2 order by 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{2, 1}},
-			},
-			{
-				q:     "select * from xy where x in (select cnt from (select count(u) as cnt from uv group by v having cnt > 0) sq) order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
-				exp:   []sql.Row{{2, 1}},
-			},
-		},
-	},
-	{
-		name: "unnest non-equality comparisons",
-		setup: []string{
-			"CREATE table xy (x int primary key, y int);",
-			"CREATE table uv (u int primary key, v int);",
-			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
-			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-		},
-		tests: []JoinOpTest{
-			{
-				q:     "select * from xy where y >= (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{0, 2}, {3, 3}},
-			},
-			{
-				q:     "select * from xy where x <= (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}},
-			},
-			{
-				q:     "select * from xy where x < (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{0, 2}, {1, 0}},
-			},
-			{
-				q:     "select * from xy where x > (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{3, 3}},
-			},
-			{
-				q:     "select * from uv where v <=> (select u from uv where u = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
-				exp:   []sql.Row{{2, 2}, {3, 2}},
-			},
-		},
-	},
+var biasedCosters = []analyzer.Coster{
+	analyzer.NewInnerBiasedCoster(),
+	analyzer.NewLookupBiasedCoster(),
+	analyzer.NewHashBiasedCoster(),
+	analyzer.NewMergeBiasedCoster(),
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
-	for _, tt := range JoinOpTests {
+	for _, tt := range joinCostTests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
-			for _, statement := range tt.setup {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
+			for _, setup := range tt.setup {
+				for _, statement := range setup {
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(statement) {
+							t.Skip()
+						}
 					}
+					ctx := NewContext(harness)
+					RunQueryWithContext(t, e, harness, ctx, statement)
 				}
-				ctx := NewContext(harness)
-				RunQueryWithContext(t, e, harness, ctx, statement)
 			}
-			for _, tt := range tt.tests {
-				evalJoinTypeTest(t, harness, e, tt)
-				evalJoinCorrectnessTest(t, harness, e, tt)
+			for i, c := range []string{"inner", "lookup", "hash", "merge"} {
+				e.Analyzer.Coster = biasedCosters[i]
+				for _, tt := range tt.tests {
+					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", c, tt.Query), tt.Query, tt.Expected, tt.Skip)
+				}
 			}
 		})
 	}
-}
-
-func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinOpTest) {
-	t.Run(tt.q+" join types", func(t *testing.T) {
-		if tt.skip {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
-
-		a, err := e.AnalyzeQuery(ctx, tt.q)
-		require.NoError(t, err)
-
-		jts := collectJoinTypes(a)
-		require.Equal(t, tt.types, jts, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
-	})
-}
-
-func evalJoinCorrectnessTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinOpTest) {
-	t.Run(tt.q, func(t *testing.T) {
-		if tt.skip {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
-
-		sch, iter, err := e.QueryWithBindings(ctx, tt.q, nil)
-		require.NoError(t, err, "Unexpected error for query %s: %s", tt.q, err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(t, err, "Unexpected error for query %s: %s", tt.q, err)
-
-		if tt.exp != nil {
-			checkResults(t, tt.exp, nil, sch, rows, tt.q)
-		}
-
-		require.Equal(t, 0, ctx.Memory.NumCaches())
-		validateEngine(t, ctx, harness, e)
-	})
-}
-
-func collectJoinTypes(n sql.Node) []plan.JoinType {
-	var types []plan.JoinType
-	transform.Inspect(n, func(n sql.Node) bool {
-		if n == nil {
-			return true
-		}
-		j, ok := n.(*plan.JoinNode)
-		if ok {
-			types = append(types, j.Op)
-		}
-
-		if ex, ok := n.(sql.Expressioner); ok {
-			for _, e := range ex.Expressions() {
-				transform.InspectExpr(e, func(e sql.Expression) bool {
-					sq, ok := e.(*plan.Subquery)
-					if !ok {
-						return false
-					}
-					types = append(types, collectJoinTypes(sq.Query)...)
-					return false
-				})
-			}
-		}
-		return true
-	})
-	return types
 }
 
 func TestJoinOpsPrepared(t *testing.T, harness Harness) {
-	for _, tt := range JoinOpTests {
+	for _, tt := range joinCostTests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
-			for _, statement := range tt.setup {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
+			for _, setup := range tt.setup {
+				for _, statement := range setup {
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(statement) {
+							t.Skip()
+						}
 					}
+					ctx := NewContext(harness)
+					RunQueryWithContext(t, e, harness, ctx, statement)
 				}
-				ctx := NewContext(harness)
-				RunQueryWithContext(t, e, harness, ctx, statement)
 			}
-			for _, tt := range tt.tests {
-				evalJoinTypeTestPrepared(t, harness, e, tt)
-				evalJoinCorrectnessTestPrepared(t, harness, e, tt)
+			for i, c := range []string{"inner", "lookup", "hash", "merge"} {
+				e.Analyzer.Coster = biasedCosters[i]
+				for _, tt := range tt.tests {
+					evalJoinCorrectnessPrepared(t, harness, e, fmt.Sprintf("%s join: %s", c, tt.Query), tt.Query, tt.Expected, tt.Skip)
+				}
 			}
 		})
 	}
 }
 
-func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinOpTest) {
-	t.Run(tt.q+" join types", func(t *testing.T) {
-		if tt.skip {
-			t.Skip()
-		}
+var joinCostTests = []struct {
+	name  string
+	setup [][]string
+	tests []JoinOpTests
+}{
+	{
+		name: "4-way join tests",
+		setup: [][]string{
+			setup.MydbData[0],
+			setup.MytableData[0],
+			setup.OthertableData[0],
+			setup.Pk_tablesData[0],
+			setup.NiltableData[0],
+			setup.TabletestData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
+				Expected: []sql.Row{
+					{2, "second row", "second", 2, 2, "second row"},
+				},
+			},
+			{
+				Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 = r.i2 ORDER BY 1",
+				Expected: []sql.Row{{2, 2}, {4, 4}, {6, 6}},
+			},
+			{
+				Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 != r.i2 ORDER BY 1, 2",
+				Expected: []sql.Row{{2, 4}, {2, 6}, {4, 2}, {4, 6}, {6, 2}, {6, 4}},
+			},
+			{
+				Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 <=> r.i2 ORDER BY 1 ASC",
+				Expected: []sql.Row{{1, nil}, {1, nil}, {1, nil}, {2, 2}, {3, nil}, {3, nil}, {3, nil}, {4, 4}, {5, nil}, {5, nil}, {5, nil}, {6, 6}},
+			},
+			{
+				// TODO: ORDER BY should apply to the union. The parser is wrong.
+				Query: `SELECT s2, i2, i
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+			ON i2 = i`,
+				Expected: []sql.Row{
+					{"third", 1, 1},
+					{"second", 2, 2},
+					{"first", 3, 3},
+					{"not found", 4, nil},
+				},
+			},
+			{
+				Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+				Expected: []sql.Row{
+					{"testing", 3},
+				},
+			},
+			{
+				Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i2)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+				Expected: []sql.Row{
+					{"testing", 4},
+				},
+			},
 
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
-
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, tt.q)
-		require.NoError(t, err)
-
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), tt.q)
-		require.True(t, ok, "prepared statement not found")
-
-		if len(bindings) > 0 {
-			var usedBindings map[string]bool
-			p, usedBindings, err = plan.ApplyBindings(p, bindings)
-			require.NoError(t, err)
-			for binding := range bindings {
-				require.True(t, usedBindings[binding], "unused binding %s", binding)
-			}
-		}
-
-		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
-		require.NoError(t, err)
-
-		jts := collectJoinTypes(a)
-		require.Equal(t, tt.types, jts)
-	})
-}
-
-func evalJoinCorrectnessTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinOpTest) {
-	t.Run(tt.q, func(t *testing.T) {
-		if tt.skip {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(tt.q)
-
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, tt.q)
-		require.NoError(t, err)
-
-		sch, iter, err := e.QueryWithBindings(ctx, tt.q, bindings)
-		require.NoError(t, err, "Unexpected error for query %s: %s", tt.q, err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(t, err, "Unexpected error for query %s: %s", tt.q, err)
-
-		if tt.exp != nil {
-			checkResults(t, tt.exp, nil, sch, rows, tt.q)
-		}
-
-		require.Equal(t, 0, ctx.Memory.NumCaches())
-		validateEngine(t, ctx, harness, e)
-	})
+			{
+				Query: "SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
+				Expected: []sql.Row{
+					{"third"},
+					{"secon"},
+					{"first"},
+				},
+			},
+			{
+				Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "SELECT /*+ JOIN_ORDER(t1,t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "SELECT /*+ JOIN_ORDER(t2,t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "SELECT /*+ JOIN_ORDER(t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "SELECT /*+ JOIN_ORDER(t1, not_exist) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "SELECT /*+ NOTHING(abc) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "SELECT /*+ JOIN_ORDER( */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "select mytable.i as i2, othertable.i2 as i from mytable join othertable on i = i2 order by 1",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR s = s2 order by 1",
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 order by 1, 3",
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{1, "first row", 3, "first"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 1, "third"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 order by 1, 3",
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{1, "first row", 3, "first"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 1, "third"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 order by 1, 3",
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{1, "first row", 3, "first"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 1, "third"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR i = i2 order by 1, 3",
+				Expected: []sql.Row{
+					{1, "first row", 1, "third"},
+					{1, "first row", 3, "first"},
+					{2, "second row", 2, "second"},
+					{3, "third row", 1, "third"},
+					{3, "third row", 3, "first"},
+				},
+			},
+			{
+				Query:    "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 3",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
+				Expected: []sql.Row{
+					{int64(1), int64(1), "third"},
+					{int64(2), int64(2), "second"},
+					{int64(3), int64(3), "first"},
+				},
+			},
+			{
+				Query: "SELECT i, i2, s2 FROM mytable as OTHERTABLE INNER JOIN othertable as MYTABLE ON i = i2 ORDER BY i",
+				Expected: []sql.Row{
+					{int64(1), int64(1), "third"},
+					{int64(2), int64(2), "second"},
+					{int64(3), int64(3), "first"},
+				},
+			},
+			{
+				Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
+				Expected: []sql.Row{
+					{"third", int64(1), int64(1)},
+					{"second", int64(2), int64(2)},
+					{"first", int64(3), int64(3)},
+				},
+			},
+			{
+				Query: "SELECT i, i2, s2 FROM othertable JOIN mytable  ON i = i2 ORDER BY i",
+				Expected: []sql.Row{
+					{int64(1), int64(1), "third"},
+					{int64(2), int64(2), "second"},
+					{int64(3), int64(3), "first"},
+				},
+			},
+			{
+				Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 ORDER BY i",
+				Expected: []sql.Row{
+					{"third", int64(1), int64(1)},
+					{"second", int64(2), int64(2)},
+					{"first", int64(3), int64(3)},
+				},
+			},
+			{
+				Query: "SELECT s FROM mytable INNER JOIN othertable " +
+					"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
+				Expected: []sql.Row{
+					{"first row"},
+					{"second row"},
+					{"third row"},
+				},
+			},
+			{
+				Query: `SELECT i FROM mytable NATURAL JOIN tabletest`,
+				Expected: []sql.Row{
+					{int64(1)},
+					{int64(2)},
+					{int64(3)},
+				},
+			},
+			{
+				Query: `SELECT i FROM mytable AS t NATURAL JOIN tabletest AS test`,
+				Expected: []sql.Row{
+					{int64(1)},
+					{int64(2)},
+					{int64(3)},
+				},
+			},
+			{
+				Query: `SELECT t.i, test.s FROM mytable AS t NATURAL JOIN tabletest AS test`,
+				Expected: []sql.Row{
+					{int64(1), "first row"},
+					{int64(2), "second row"},
+					{int64(3), "third row"},
+				},
+			},
+			{
+				Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
+				Expected: []sql.Row{
+					{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+					{int64(1), "first row", int64(2), "second row", "second", int64(2)},
+					{int64(1), "first row", int64(3), "third row", "first", int64(3)},
+					{int64(2), "second row", int64(1), "first row", "third", int64(1)},
+					{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+					{int64(2), "second row", int64(3), "third row", "first", int64(3)},
+					{int64(3), "third row", int64(1), "first row", "third", int64(1)},
+					{int64(3), "third row", int64(2), "second row", "second", int64(2)},
+					{int64(3), "third row", int64(3), "third row", "first", int64(3)},
+				},
+			},
+			{
+				Query: `SELECT * FROM tabletest join mytable mt INNER JOIN othertable ot ON tabletest.i = ot.i2 order by 1,3,6`,
+				Expected: []sql.Row{
+					{int64(1), "first row", int64(1), "first row", "third", int64(1)},
+					{int64(1), "first row", int64(2), "second row", "third", int64(1)},
+					{int64(1), "first row", int64(3), "third row", "third", int64(1)},
+					{int64(2), "second row", int64(1), "first row", "second", int64(2)},
+					{int64(2), "second row", int64(2), "second row", "second", int64(2)},
+					{int64(2), "second row", int64(3), "third row", "second", int64(2)},
+					{int64(3), "third row", int64(1), "first row", "first", int64(3)},
+					{int64(3), "third row", int64(2), "second row", "first", int64(3)},
+					{int64(3), "third row", int64(3), "third row", "first", int64(3)},
+				},
+			},
+			{
+				Query: `SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
+				Expected: []sql.Row{
+					{int64(3), "third row", "first", int64(3)},
+				},
+			},
+			{
+				Query: `SELECT * FROM othertable ot INNER JOIN mytable mt ON mt.i = ot.i2 AND mt.i > 2`,
+				Expected: []sql.Row{
+					{"first", int64(3), int64(3), "third row"},
+				},
+			},
+			{
+				Query: "SELECT i, i2, s2 FROM mytable LEFT JOIN othertable ON i = i2 - 1",
+				Expected: []sql.Row{
+					{int64(1), int64(2), "second"},
+					{int64(2), int64(3), "first"},
+					{int64(3), nil, nil},
+				},
+			},
+			{
+				Query: "SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
+				Expected: []sql.Row{
+					{nil, int64(1), "third"},
+					{int64(1), int64(2), "second"},
+					{int64(2), int64(3), "first"},
+				},
+			},
+			{
+				Query: "SELECT i, i2, s2 FROM mytable LEFT OUTER JOIN othertable ON i = i2 - 1",
+				Expected: []sql.Row{
+					{int64(1), int64(2), "second"},
+					{int64(2), int64(3), "first"},
+					{int64(3), nil, nil},
+				},
+			},
+			{
+				Query: "SELECT i, i2, s2 FROM mytable RIGHT OUTER JOIN othertable ON i = i2 - 1",
+				Expected: []sql.Row{
+					{nil, int64(1), "third"},
+					{int64(1), int64(2), "second"},
+					{int64(2), int64(3), "first"},
+				},
+			},
+			{
+				Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
+				FROM othertable ot INNER JOIN
+					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
+				ON sub.i = ot.i2 order by 1`,
+				Expected: []sql.Row{
+					{1, 1, "third", 1, "third"},
+					{2, 2, "second", 2, "second"},
+					{3, 3, "first", 3, "first"},
+				},
+			},
+			{
+				Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
+				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
+				INNER JOIN othertable ot
+				ON sub.i = ot.i2 order by 1`,
+				Expected: []sql.Row{
+					{1, 1, "third", 1, "third"},
+					{2, 2, "second", 2, "second"},
+					{3, 3, "first", 3, "first"},
+				},
+			},
+			{
+				Query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{4, 0, 0},
+					{4, 0, 1},
+					{14, 1, 0},
+					{14, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{4, 0, 0},
+					{4, 0, 1},
+					{14, 1, 0},
+					{14, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{4, 0, 0},
+					{4, 0, 1},
+					{14, 1, 0},
+					{14, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{1, 0, 1},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0},
+					{1, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0},
+					{1, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=tpk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0},
+					{1, 1, 1},
+				},
+			},
+			{
+				Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2
+						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
+						ORDER BY 1`,
+				Expected: []sql.Row{
+					{0, nil, nil, nil, nil},
+					{1, 1, 0, 0, 1},
+					{2, nil, nil, nil, nil},
+					{3, nil, nil, nil, nil},
+				},
+			},
+			{
+				Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
+						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
+						ORDER BY 1`,
+				Expected: []sql.Row{
+					{1, 1, 0, 0, 1},
+				},
+			},
+			{
+				Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
+						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
+						ORDER BY 1`,
+				Expected: []sql.Row{
+					{1, 1, 0, 0, 1},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0},
+					{1, 1, 1},
+					{2, nil, nil},
+					{3, nil, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{nil, 0, 1},
+					{nil, 1, 0},
+					{0, 0, 0},
+					{1, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{int64(2), 1, 0},
+				},
+			},
+			{
+				Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0, 0},
+					{0, 1, 1, 0},
+					{1, 0, 0, 1},
+					{1, 1, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0, 0},
+					{0, 1, 0, 1},
+					{1, 0, 1, 0},
+					{1, 1, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0, 0},
+					{0, 1, 0, 1},
+					{1, 0, 1, 0},
+					{1, 1, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0, 0},
+					{0, 1, 0, 1},
+					{1, 0, 1, 0},
+					{1, 1, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0},
+					{0, 0, 1},
+					{1, 1, 0},
+					{1, 1, 1},
+					{2, nil, nil},
+					{3, nil, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 ORDER BY 1",
+				Expected: []sql.Row{
+					{0, nil, nil},
+					{1, nil, nil},
+					{2, int64(2), nil},
+					{3, nil, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 ORDER BY 2,3",
+				Expected: []sql.Row{
+					{nil, nil, nil},
+					{nil, nil, nil},
+					{nil, nil, 5.0},
+					{2, int64(2), nil},
+					{nil, int64(4), 4.0},
+					{nil, int64(6), 6.0},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 AND f IS NOT NULL ORDER BY 1", // AND clause causes right table join miss
+				Expected: []sql.Row{
+					{0, nil, nil},
+					{1, nil, nil},
+					{2, nil, nil},
+					{3, nil, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
+				Expected: []sql.Row{
+					{nil, nil, nil},
+					{nil, nil, nil},
+					{nil, nil, 5.0},
+					{2, int64(2), nil},
+					{nil, int64(4), 4.0},
+					{nil, int64(6), 6.0},
+				},
+			},
+			{
+				Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NULL AND pk < 2 ORDER BY 1",
+				Expected: []sql.Row{
+					{0, nil, nil},
+					{1, 1, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+				Expected: []sql.Row{
+					{nil, nil, 5.0},
+					{nil, int64(4), 4.0},
+					{nil, int64(6), 6.0},
+				},
+			},
+			{
+				Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
+				Expected: []sql.Row{
+					{2, 2, nil},
+					{3, 3, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10 ORDER BY 1",
+				Expected: []sql.Row{
+					{2, 2, nil},
+					{3, 3, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
+				Expected: []sql.Row{
+					{nil, 4, 4.0},
+					{nil, 5, 5.0},
+					{nil, 6, 6.0},
+				},
+			},
+			{
+				Query: "SELECT t1.i,t1.i2 FROM niltable t1 LEFT JOIN niltable t2 ON t1.i=t2.i2 WHERE t2.f IS NULL ORDER BY 1,2",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, 2},
+					{3, nil},
+					{5, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
+				Expected: []sql.Row{
+					{2, 2, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
+				Expected: []sql.Row{
+					{2, 2, nil},
+					{3, 3, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
+				Expected: []sql.Row{
+					{2, int64(2), nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 WHERE pk > 1 ORDER BY 1",
+				Expected: []sql.Row{
+					{2, int64(2), nil},
+					{3, nil, nil},
+				},
+			},
+			{
+				Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 WHERE pk > 0 ORDER BY 2,3",
+				Expected: []sql.Row{
+					{2, int64(2), nil},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0, 0, 0},
+					{1, 0, 1, 10, 10},
+					{2, 1, 0, 20, 20},
+					{3, 1, 1, 30, 30},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
+				Expected: []sql.Row{
+					{1, 0, 1, 10, 10},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1",
+				Expected: []sql.Row{
+					{0, 1, 0},
+				},
+			},
+			{
+				Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3",
+				Expected: []sql.Row{
+					{0, 0, 0},
+					{0, 0, 1},
+					{0, 1, 0},
+					{0, 1, 1},
+					{1, 0, 0},
+					{1, 0, 1},
+					{1, 1, 0},
+					{1, 1, 1},
+					{2, 0, 0},
+					{2, 0, 1},
+					{2, 1, 0},
+					{2, 1, 1},
+					{3, 0, 0},
+					{3, 0, 1},
+					{3, 1, 0},
+					{3, 1, 1},
+				},
+			},
+			{
+				Query: "SELECT a.pk,b.pk FROM one_pk a JOIN one_pk b ON a.pk = b.pk order by a.pk",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "SELECT a.pk,b.pk FROM one_pk a, one_pk b WHERE a.pk = b.pk order by a.pk",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "SELECT one_pk.pk,b.pk FROM one_pk JOIN one_pk b ON one_pk.pk = b.pk order by one_pk.pk",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "SELECT one_pk.pk,b.pk FROM one_pk, one_pk b WHERE one_pk.pk = b.pk order by one_pk.pk",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
+				Expected: []sql.Row{
+					{int64(2)},
+					{int64(4)},
+					{int64(6)},
+				},
+			},
+			{
+				Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+				Expected: []sql.Row{
+					{0, 0, 0, 0, 0},
+					{1, 1, 1, 1, 1},
+				},
+			},
+			{
+				Query: `SELECT pk,nt.i,nt2.i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+				Expected: []sql.Row{
+					{nil, nil, 1},
+					{1, 1, 2},
+					{2, 2, 3},
+					{3, 3, 4},
+					{nil, nil, 5},
+					{nil, nil, 6},
+				},
+			},
+			{
+				Query: `SELECT pk,pk2,
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1)
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+				Expected: []sql.Row{
+					{1, 1, 4},
+					{1, 1, 4},
+				},
+			},
+			{
+				Query: `SELECT pk,pk2,
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1)
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+				Expected: []sql.Row{
+					{1, 1, 4},
+					{1, 1, 4},
+				},
+			},
+			{
+				Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
+				Expected: []sql.Row{
+					{"third", 1, 1},
+					{"second", 2, 2},
+					{"first", 3, 3},
+				},
+			},
+			{
+				Query: `SELECT lefttable.i, righttable.s
+			FROM (SELECT * FROM mytable) lefttable
+			JOIN (SELECT * FROM mytable) righttable
+			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
+			ORDER BY lefttable.i ASC`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i OR a.i = 1`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{1, "first row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b where NOT(a.i = b.i OR a.s = b.i)`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{1, "first row"},
+					{2, "second row"},
+					{2, "second row"},
+					{3, "third row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where NOT(a.i = b.i OR a.s = b.i)`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{1, "first row"},
+					{2, "second row"},
+					{2, "second row"},
+					{3, "third row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b where a.i >= b.i`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{2, "second row"},
+					{3, "third row"},
+					{3, "third row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query:    `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
+				Expected: []sql.Row{
+					{2, "second row"},
+					{2, "second row"},
+					{2, "second row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
+				Expected: []sql.Row{
+					{2, "second row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
+				Expected: []sql.Row{
+					{2, "second row"},
+					{2, "second row"},
+					{2, "second row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.s = c.s`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i OR a.i = 1`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{1, "first row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i >= b.i`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{2, "second row"},
+					{3, "third row"},
+					{3, "third row"},
+					{3, "third row"},
+				},
+			},
+			{
+				Query:    `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.s`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
+				Expected: []sql.Row{
+					{2, "second row"},
+				},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
+				Expected: []sql.Row{
+					{2, "second row"},
+					{2, "second row"},
+					{2, "second row"}},
+			},
+			{
+				Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+		},
+	},
 }
