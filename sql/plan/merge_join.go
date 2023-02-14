@@ -228,6 +228,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			for j < len(i.fullRow) {
 				if i.fullRow[j] == nil {
 					if j < i.scopeLen+i.parentLen+i.leftRowLen {
+						// this range corresponds to left-row fields
 						if i.typ.IsLeftOuter() && !i.leftMatched {
 							ret = i.copyReturnRow()
 							nextState = msRetLeft

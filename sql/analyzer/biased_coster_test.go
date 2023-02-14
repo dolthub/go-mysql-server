@@ -14,13 +14,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var biasedCosters = []Coster{
-	NewInnerBiasedCoster(),
-	NewLookupBiasedCoster(),
-	NewHashBiasedCoster(),
-	NewMergeBiasedCoster(),
-}
-
 func TestBiasedCoster(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 

@@ -170,7 +170,7 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *mergeJoin, _ sql.StatsReader) 
 
 func (c *coster) costLookupJoin(_ *sql.Context, n *lookupJoin, _ sql.StatsReader) (float64, error) {
 	l := n.left.relProps.card
-	m := lookupMultiplier(n.lookup, len(n.filter))
+	m := lookupJoinSelectivityMultiplier(n.lookup, len(n.filter))
 	return l*randIOCostFactor + l*m*cpuCostFactor - n.right.relProps.card*seqIOCostFactor, nil
 }
 
@@ -178,7 +178,7 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *concatJoin, _ sql.StatsReader
 	l := n.left.relProps.card
 	var mult float64
 	for _, l := range n.concat {
-		mult += lookupMultiplier(l, len(n.filter))
+		mult += lookupJoinSelectivityMultiplier(l, len(n.filter))
 	}
 	return l*mult*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.right.relProps.card*seqIOCostFactor, nil
 }
@@ -202,7 +202,11 @@ func (c *coster) costDistinct(_ *sql.Context, n *distinct, _ sql.StatsReader) (f
 	return n.child.cost * (cpuCostFactor + memCostFactor), nil
 }
 
-func lookupMultiplier(l *lookup, filterCnt int) float64 {
+// lookupJoinSelectivityMultiplier estimates the selectivity of a join condition.
+// A join with no selectivity will return n x m rows. A join with a selectivity
+// of 1 will return n rows. It is possible for join selectivity to be below 1
+// if source table filters limit the number of rows returned by the left table.
+func lookupJoinSelectivityMultiplier(l *lookup, filterCnt int) float64 {
 	var mult float64 = 1
 	if !l.index.IsUnique() {
 		mult += .1
@@ -261,9 +265,11 @@ func (c *carder) EstimateCard(ctx *sql.Context, n relExpr, s sql.StatsReader) (f
 	return c.cardRel(ctx, n, s)
 }
 
-// relStatistics provides estimates of operator cardinality. This
+// cardRel provides estimates of operator cardinality. This
 // value is approximate for joins or filtered table scans, and
 // identical for all operators in the same expression group.
+// TODO: this should intersect index statistic histograms to
+// get more accurate values
 func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float64, error) {
 	switch n := n.(type) {
 	case *tableScan:
@@ -286,11 +292,11 @@ func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float6
 		jp := n.joinPrivate()
 		switch n := n.(type) {
 		case *lookupJoin:
-			return n.left.relProps.card * optimisticJoinSel * lookupMultiplier(n.lookup, len(jp.filter)), nil
+			return n.left.relProps.card * optimisticJoinSel * lookupJoinSelectivityMultiplier(n.lookup, len(jp.filter)), nil
 		case *concatJoin:
 			m := 0.0
 			for _, l := range n.concat {
-				m += lookupMultiplier(l, len(n.filter))
+				m += lookupJoinSelectivityMultiplier(l, len(n.filter))
 			}
 			return n.left.relProps.card * optimisticJoinSel * m, nil
 		default:
@@ -311,22 +317,25 @@ func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float6
 func (c *carder) statsTableAlias(ctx *sql.Context, n *tableAlias, s sql.StatsReader) (float64, error) {
 	switch n := n.table.Child.(type) {
 	case *plan.ResolvedTable:
-		return c.statsRead(ctx, n.Table, s)
+		return c.statsRead(ctx, n.Table, n.Database.Name(), s)
 	default:
 		return 1000, nil
 	}
 }
 
 func (c *carder) statsScan(ctx *sql.Context, t *tableScan, s sql.StatsReader) (float64, error) {
-	return c.statsRead(ctx, t.table.Table, s)
+	return c.statsRead(ctx, t.table.Table, t.table.Database.Name(), s)
 }
 
-func (c *carder) statsRead(ctx *sql.Context, t sql.Table, s sql.StatsReader) (float64, error) {
+func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.StatsReader) (float64, error) {
 	if w, ok := t.(sql.TableWrapper); ok {
 		t = w.Underlying()
 	}
 
-	db := ctx.GetCurrentDatabase()
+	if db == "" {
+		db = ctx.GetCurrentDatabase()
+	}
+
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
 		// TODO: better estimates for derived tables
