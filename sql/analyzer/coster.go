@@ -332,10 +332,6 @@ func (c *carder) statsRead(ctx *sql.Context, t sql.Table, db string, s sql.Stats
 		t = w.Underlying()
 	}
 
-	if db == "" {
-		db = ctx.GetCurrentDatabase()
-	}
-
 	card, ok, err := s.RowCount(ctx, db, t.Name())
 	if err != nil || !ok {
 		// TODO: better estimates for derived tables
