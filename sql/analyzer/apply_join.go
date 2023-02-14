@@ -160,7 +160,11 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				if err != nil {
 					return n, transform.SameTree, err
 				}
-				ret = plan.NewJoin(ret, newSubq, m.op, filter)
+				var comment string
+				if c, ok := ret.(sql.CommentedNode); ok {
+					comment = c.Comment()
+				}
+				ret = plan.NewJoin(ret, newSubq, m.op, filter).WithComment(comment)
 			}
 
 			if len(newFilters) == 0 {

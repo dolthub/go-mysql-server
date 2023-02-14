@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,7 @@ type JoinPlanTest struct {
 	q     string
 	types []plan.JoinType
 	exp   []sql.Row
+	order []string
 	skip  bool
 }
 
@@ -292,7 +294,7 @@ order by 1;`,
 			//},
 			{
 				q:     "select * from xy where y-1 in (select cast(u as signed) from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -302,7 +304,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where y-1 in (select u from uv order by 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -318,13 +320,13 @@ order by 1;`,
 			{
 				// group by doesn't transform
 				q:     "select * from xy where y-1 in (select u from uv group by v having v = 2 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
 				// window doesn't transform
 				q:     "select * from xy where y-1 in (select row_number() over (order by v) from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{0, 2}, {3, 3}},
 			},
 		},
@@ -423,7 +425,7 @@ order by 1;`,
 		},
 	},
 	{
-		name: "convert semi to lookup join",
+		name: "convert semi to inner join",
 		setup: []string{
 			"CREATE table xy (x int, y int, primary key(x,y));",
 			"CREATE table uv (u int primary key, v int);",
@@ -431,20 +433,19 @@ order by 1;`,
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-			"update information_schema.statistics set cardinality = 100 where table_name = 'xy' and table_schema = 'mydb';",
-			"update information_schema.statistics set cardinality = 100 where table_name = 'ab' and table_schema = 'mydb';",
+			"update information_schema.statistics set cardinality = 100 where table_name in ('xy', 'ab', 'uv') and table_schema = 'mydb';",
 		},
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
 				q: `select x from xy where x in (
 	select (select u from uv where u = sq.a)
     from (select a from ab) sq);`,
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{0}, {1}, {2}, {3}},
 			},
 			{
@@ -491,6 +492,38 @@ order by 1;`,
 			},
 		},
 	},
+	{
+		name: "join order hint",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+			"CREATE table uv (u int primary key, v int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+			"update information_schema.statistics set cardinality = 100 where table_name in ('xy', 'uv');",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select /*+ JOIN_ORDER(b, c, a) */ 1 from xy a join xy b on a.x+3 = b.x join xy c on a.x+3 = c.x and a.x+3 = b.x",
+				order: []string{"b", "c", "a"},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(a, c, b) */ 1 from xy a join xy b on a.x+3 = b.x join xy c on a.x+3 = c.x and a.x+3 = b.x",
+				order: []string{"a", "c", "b"},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(a,c,b) */ 1 from xy a join xy b on a.x+3 = b.x WHERE EXISTS (select 1 from uv c where c.u = a.x+2)",
+				order: []string{"a", "c", "b"},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(b,c,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE EXISTS (select 1 from uv c where c.u = a.x+2)",
+				order: []string{"b", "c", "a"},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(b,applySubq0,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
+				order: []string{"b", "applySubq0", "a"},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {
@@ -508,8 +541,15 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 				RunQueryWithContext(t, e, harness, ctx, statement)
 			}
 			for _, tt := range tt.tests {
-				evalJoinTypeTest(t, harness, e, tt)
-				evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
+				if tt.types != nil {
+					evalJoinTypeTest(t, harness, e, tt)
+				}
+				if tt.exp != nil {
+					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
+				}
+				if tt.order != nil {
+					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
+				}
 			}
 		})
 	}
@@ -592,6 +632,77 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 	return types
 }
 
+func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skip bool) {
+	t.Run(q+" join order", func(t *testing.T) {
+		if skip {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(q)
+
+		a, err := e.AnalyzeQuery(ctx, q)
+		require.NoError(t, err)
+
+		cmp := collectJoinOrder(a)
+		require.Equal(t, exp, cmp, fmt.Sprintf("expected order '%s' found '%s'\ndetail:\n%s", strings.Join(exp, ","), strings.Join(cmp, ","), sql.DebugString(a)))
+	})
+}
+
+func collectJoinOrder(n sql.Node) []string {
+	var order []string
+
+	j, ok := n.(*plan.JoinNode)
+	if ok {
+		if n, ok := j.Left().(sql.NameableNode); ok {
+			order = append(order, n.Name())
+		}
+	}
+	for _, n := range n.Children() {
+		order = append(order, collectJoinOrder(n)...)
+	}
+	if ok {
+		switch n := j.Right().(type) {
+		case sql.NameableNode:
+			order = append(order, n.Name())
+		case *plan.HashLookup:
+			ok = false
+			r := n.Child
+			for !ok {
+				switch n := r.(type) {
+				case sql.NameableNode:
+					order = append(order, n.Name())
+					ok = true
+				case *plan.JoinNode:
+					ok = true
+				case *plan.Distinct:
+					r = n.Child
+				case *plan.Project:
+					r = n.Child
+				case *plan.CachedResults:
+					r = n.Child
+				default:
+					ok = true
+				}
+			}
+		}
+	}
+
+	if ex, ok := n.(sql.Expressioner); ok {
+		for _, e := range ex.Expressions() {
+			transform.InspectExpr(e, func(e sql.Expression) bool {
+				sq, ok := e.(*plan.Subquery)
+				if !ok {
+					return false
+				}
+				order = append(order, collectJoinOrder(sq.Query)...)
+				return false
+			})
+		}
+	}
+	return order
+}
+
 func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
 	for _, tt := range JoinPlanningTests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -607,8 +718,15 @@ func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
 				RunQueryWithContext(t, e, harness, ctx, statement)
 			}
 			for _, tt := range tt.tests {
-				evalJoinTypeTestPrepared(t, harness, e, tt)
-				evalJoinCorrectnessPrepared(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
+				if tt.types != nil {
+					evalJoinTypeTest(t, harness, e, tt)
+				}
+				if tt.exp != nil {
+					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
+				}
+				if tt.order != nil {
+					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
+				}
 			}
 		})
 	}
