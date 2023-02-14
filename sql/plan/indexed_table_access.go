@@ -237,15 +237,18 @@ func (i *IndexedTableAccess) String() string {
 	if !i.lookup.IsEmpty() {
 		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
 	}
+
 	if pt, ok := i.Table.(sql.ProjectedTable); ok {
-		var columns []string
-		for _, c := range pt.Projections() {
-			columns = append(columns, strings.ToLower(c))
-		}
-		if len(pt.Projections()) > 0 {
+		projections := pt.Projections()
+		if projections != nil {
+			columns := make([]string, len(projections))
+			for i, c := range projections {
+				columns[i] = strings.ToLower(c)
+			}
 			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
+
 	if ft, ok := i.Table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
@@ -255,6 +258,7 @@ func (i *IndexedTableAccess) String() string {
 			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
+
 	pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -269,21 +273,28 @@ func formatIndexDecoratorString(idx sql.Index) string {
 
 func (i *IndexedTableAccess) DebugString() string {
 	pr := sql.NewTreePrinter()
-	pr.WriteNode("IndexedTableAccess")
+	pr.WriteNode("IndexedTableAccess(%s)", i.ResolvedTable.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
 		children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
 	}
-	if pt, ok := i.Table.(sql.ProjectedTable); ok {
-		if len(pt.Projections()) > 0 {
-			var columns []string
-			for _, c := range pt.Projections() {
-				columns = append(columns, strings.ToLower(c))
-			}
-			children = append(children, fmt.Sprintf("columns: %v", columns))
+
+	var columns []string
+	if pt, ok := i.Table.(sql.ProjectedTable); ok && pt.Projections() != nil {
+		projections := pt.Projections()
+		columns = make([]string, len(projections))
+		for i, c := range projections {
+			columns[i] = strings.ToLower(c)
+		}
+	} else {
+		columns = make([]string, len(i.Table.Schema()))
+		for i, c := range i.Table.Schema() {
+			columns[i] = strings.ToLower(c.Name)
 		}
 	}
+	children = append(children, fmt.Sprintf("columns: %v", columns))
+
 	if ft, ok := i.Table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
@@ -293,7 +304,7 @@ func (i *IndexedTableAccess) DebugString() string {
 			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
 	}
-	children = append(children, sql.DebugString(i.Table))
+
 	pr.WriteChildren(children...)
 	return pr.String()
 }
