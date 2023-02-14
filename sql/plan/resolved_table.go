@@ -56,15 +56,18 @@ func (t *ResolvedTable) String() string {
 	pr.WriteNode("Table")
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
+
 	if pt, ok := table.(sql.ProjectedTable); ok {
-		var columns []string
-		for _, c := range pt.Projections() {
-			columns = append(columns, strings.ToLower(c))
-		}
-		if len(columns) > 0 {
+		projections := pt.Projections()
+		if projections != nil {
+			columns := make([]string, len(projections))
+			for i, c := range projections {
+				columns[i] = strings.ToLower(c)
+			}
 			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
+
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
@@ -74,6 +77,7 @@ func (t *ResolvedTable) String() string {
 			children = append(children, fmt.Sprintf("filters: %v", filters))
 		}
 	}
+
 	pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -83,15 +87,22 @@ func (t *ResolvedTable) DebugString() string {
 	pr.WriteNode("Table")
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
-	if pt, ok := table.(sql.ProjectedTable); ok {
-		var columns []string
-		for _, c := range pt.Projections() {
-			columns = append(columns, strings.ToLower(c))
+
+	var columns []string
+	if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() != nil {
+		projections := pt.Projections()
+		columns = make([]string, len(projections))
+		for i, c := range projections {
+			columns[i] = strings.ToLower(c)
 		}
-		if len(columns) > 0 {
-			children = append(children, fmt.Sprintf("columns: %v", columns))
+	} else {
+		columns = make([]string, len(table.Schema()))
+		for i, c := range table.Schema() {
+			columns[i] = strings.ToLower(c.Name)
 		}
 	}
+	children = append(children, fmt.Sprintf("columns: %v", columns))
+
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
@@ -101,8 +112,8 @@ func (t *ResolvedTable) DebugString() string {
 			children = append(children, fmt.Sprintf("filters: %v", filters))
 		}
 	}
-	pr.WriteChildren(children...)
 
+	pr.WriteChildren(children...)
 	return pr.String()
 }
 

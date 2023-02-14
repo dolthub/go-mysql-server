@@ -153,17 +153,8 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: "SELECT pk, count(*) over (order by v2) FROM one_pk_three_idx ORDER BY pk",
-		Expected: []sql.Row{
-			{0, 4},
-			{1, 4},
-			{2, 5},
-			{3, 6},
-			{4, 4},
-			{5, 4},
-			{6, 7},
-			{7, 8},
-		},
+		Query:    `SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp`,
+		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
