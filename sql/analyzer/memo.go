@@ -393,7 +393,6 @@ func (e *exprGroup) children() []*exprGroup {
 
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
 	if e.best == nil || grpCost <= e.cost || (!e.obeysOpHint(e.best) && e.obeysOpHint(n)) {
-		//log.Printf("chose: %s\n", n)
 		e.best = n
 		e.cost = grpCost
 	}
