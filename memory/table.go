@@ -411,13 +411,14 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	if len(i.columns) > 0 {
+	if i.columns != nil {
 		resultRow := make(sql.Row, len(i.columns))
 		for i, j := range i.columns {
 			resultRow[i] = row[j]
 		}
 		return resultRow, nil
 	}
+
 	return row, nil
 }
 
@@ -1185,10 +1186,6 @@ func (t *Table) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 
 // WithProjections implements sql.ProjectedTable
 func (t *Table) WithProjections(cols []string) sql.Table {
-	if len(cols) == 0 {
-		return t
-	}
-
 	nt := *t
 	columns, err := nt.columnIndexes(cols)
 	if err != nil {
@@ -1213,7 +1210,7 @@ func (t *Table) Projections() []string {
 }
 
 func (t *Table) columnIndexes(colNames []string) ([]int, error) {
-	var columns []int
+	columns := make([]int, 0, len(colNames))
 
 	for _, name := range colNames {
 		i := t.schema.IndexOf(name, t.name)

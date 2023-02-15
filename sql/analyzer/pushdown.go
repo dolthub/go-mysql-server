@@ -228,7 +228,11 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 					return nil, transform.SameTree, err
 				}
 				filters.markFiltersHandled(handled...)
-				return node, len(handled) == 0, nil
+				ret, err := plan.NewStaticIndexedAccessForResolvedTable(node.ResolvedTable, lookup.lookup)
+				if err != nil {
+					return node, transform.SameTree, err
+				}
+				return ret, len(handled) == 0, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(sql.NameableNode), scope, filters, tableAliases)
 				if plan.ErrInvalidLookupForIndexedTable.Is(err) {
