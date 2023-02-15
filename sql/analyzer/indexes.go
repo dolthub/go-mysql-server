@@ -273,6 +273,7 @@ func getIndexes(
 			return nil, nil
 		}
 
+		// Put GetField on the left
 		left, right := e.BinaryExpression.Left, e.BinaryExpression.Right
 		if _, ok := right.(*expression.GetField); ok {
 			left, right = right, left
@@ -298,11 +299,9 @@ func getIndexes(
 			return nil, nil
 		}
 
-		bld := sql.NewIndexBuilder(idx)
-		bld.GreaterOrEqual(ctx, normalizedExpressions[0].String(), lower)
-		bld.LessOrEqual(ctx, normalizedExpressions[0].String(), upper)
-
-		lookup, err := bld.Build(ctx)
+		bld := sql.NewSpatialIndexBuilder(idx)
+		bld.AddRange(lower, upper)
+		lookup, err := bld.Build()
 		if err != nil || lookup.IsEmpty() {
 			return nil, err
 		}
