@@ -97,9 +97,9 @@ func (c *ChangeReplicationSource) WithChildren(children ...sql.Node) (sql.Node, 
 	return &newNode, nil
 }
 
-func (c *ChangeReplicationSource) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
-	// TODO: implement privilege checks
-	return true
+func (c *ChangeReplicationSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
 }
 
 // ChangeReplicationFilter is a plan node for the "CHANGE REPLICATION FILTER" statement.
@@ -171,8 +171,8 @@ func (c *ChangeReplicationFilter) WithChildren(children ...sql.Node) (sql.Node, 
 }
 
 func (c *ChangeReplicationFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// TODO: implement privilege checks
-	return true
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
 }
 
 // StartReplica is a plan node for the "START REPLICA" statement.
@@ -229,9 +229,9 @@ func (s *StartReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newNode, nil
 }
 
-func (s *StartReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
-	// TODO: implement privilege checks
-	return true
+func (s *StartReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
 }
 
 // StopReplica is the plan node for the "STOP REPLICA" statement.
@@ -288,9 +288,9 @@ func (s *StopReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newNode, nil
 }
 
-func (s *StopReplica) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
-	// TODO: implement privilege checks
-	return true
+func (s *StopReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
 }
 
 // ResetReplica is a plan node for the "RESET REPLICA" statement.
@@ -356,6 +356,6 @@ func (r *ResetReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func (r *ResetReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// TODO: implement privilege checks
-	return true
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
 }

@@ -215,7 +215,6 @@ func (s *ShowReplicaStatus) WithChildren(children ...sql.Node) (sql.Node, error)
 }
 
 func (s *ShowReplicaStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// TODO: Implement privilege support
-	//       CHANGE REPLICATION SOURCE TO requires the REPLICATION_SLAVE_ADMIN privilege (or the deprecated SUPER privilege).
-	return true
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationClient))
 }
