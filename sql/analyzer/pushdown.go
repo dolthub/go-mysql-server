@@ -464,6 +464,7 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *p
 	if !ok {
 		return nil, nil
 	}
+	// Spatial Indexes are lossy, so do not remove filter node above the lookup
 	if filteredIdx.IsSpatial() {
 		return nil, nil
 	}

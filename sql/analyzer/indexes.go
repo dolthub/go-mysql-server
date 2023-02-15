@@ -422,7 +422,6 @@ func getNegatedIndexes(
 	not *expression.Not,
 	tableAliases TableAliases,
 ) (indexLookupsByTable, error) {
-
 	switch e := not.Child.(type) {
 	case *expression.Not:
 		return getIndexes(ctx, ia, e.Child, tableAliases)
