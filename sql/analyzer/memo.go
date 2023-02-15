@@ -268,8 +268,9 @@ func (p *relProps) populateOutputTables() {
 	}
 }
 
-// populateInputTables initializes the bitmap indicating which tables'
-// attributes are available outputs from the exprGroup
+// populateInputTables initializes the bitmap indicating which tables
+// are input into this exprGroup. This is used to enforce join order
+// hinting for semi joins.
 func (p *relProps) populateInputTables() {
 	switch n := p.grp.first.(type) {
 	case sourceRel:
