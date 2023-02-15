@@ -334,7 +334,7 @@ func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBu
 	b.rng = RangeColumnExpr{
 		LowerBound: Below{Key: lower},
 		UpperBound: Above{Key: upper},
-		Typ: b.typ,
+		Typ:        b.typ,
 	}
 	return b
 }
@@ -342,5 +342,3 @@ func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBu
 func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
 	return IndexLookup{Index: b.idx, Ranges: RangeCollection{{b.rng}}}, nil
 }
-
-
