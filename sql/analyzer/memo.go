@@ -326,12 +326,12 @@ func (p *relProps) OutputCols() sql.Schema {
 	return p.outputCols
 }
 
-// OutputTables returns tables in the output schema of this node.
+// OutputTables returns a bitmap of tables in the output schema of this node.
 func (p *relProps) OutputTables() sql.FastIntSet {
 	return p.outputTables
 }
 
-// InputTables returns tables input into this node.
+// InputTables returns a bitmap of tables input into this node.
 func (p *relProps) InputTables() sql.FastIntSet {
 	return p.inputTables
 }
