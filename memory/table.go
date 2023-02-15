@@ -514,6 +514,14 @@ func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if len(i.columns) == 0 {
+		return row, nil
+	}
+
+	// check if bounding boxes of geometry and range intersect
+	// if the range [i.minX, i.maxX] and [gMinX, gMaxX] overlap and
+	// if the range [i.minY, i.maxY] and [gMinY, gMaxY] overlap
+	// then, the bounding boxes intersect
 	g := row[i.ord].(types.GeometryValue)
 	gMinX, gMinY, gMaxX, gMaxY := g.BBox()
 	xInt := (gMinX <= i.minX && i.minX <= gMaxX) ||
@@ -528,14 +536,11 @@ func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return i.Next(ctx)
 	}
 
-	if len(i.columns) > 0 {
-		resultRow := make(sql.Row, len(i.columns))
-		for i, j := range i.columns {
-			resultRow[i] = row[j]
-		}
-		return resultRow, nil
+	resultRow := make(sql.Row, len(i.columns))
+	for i, j := range i.columns {
+		resultRow[i] = row[j]
 	}
-	return row, nil
+	return resultRow, nil
 }
 
 func (i *spatialTableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
