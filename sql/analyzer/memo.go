@@ -462,6 +462,7 @@ type Carder interface {
 // relExpr wraps a sql.Node for use as a exprGroup linked list node.
 // TODO: we need relExprs for every sql.Node and sql.Expression
 type relExpr interface {
+	fmt.Stringer
 	group() *exprGroup
 	next() relExpr
 	setNext(relExpr)

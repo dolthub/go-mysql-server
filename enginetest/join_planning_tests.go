@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"strings"
 	"testing"
 
@@ -529,17 +530,9 @@ order by 1;`,
 func TestJoinPlanning(t *testing.T, harness Harness) {
 	for _, tt := range JoinPlanningTests {
 		t.Run(tt.name, func(t *testing.T) {
+			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
 			e := mustNewEngine(t, harness)
 			defer e.Close()
-			for _, statement := range tt.setup {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				ctx := NewContext(harness)
-				RunQueryWithContext(t, e, harness, ctx, statement)
-			}
 			for _, tt := range tt.tests {
 				if tt.types != nil {
 					evalJoinTypeTest(t, harness, e, tt)
@@ -641,8 +634,6 @@ func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp 
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		e.Analyzer.Verbose = true
-		e.Analyzer.Debug = true
 		a, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(t, err)
 
@@ -708,26 +699,18 @@ func collectJoinOrder(n sql.Node) []string {
 func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
 	for _, tt := range JoinPlanningTests {
 		t.Run(tt.name, func(t *testing.T) {
+			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
 			e := mustNewEngine(t, harness)
 			defer e.Close()
-			for _, statement := range tt.setup {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				ctx := NewContext(harness)
-				RunQueryWithContext(t, e, harness, ctx, statement)
-			}
 			for _, tt := range tt.tests {
 				if tt.types != nil {
-					evalJoinTypeTest(t, harness, e, tt)
+					evalJoinTypeTestPrepared(t, harness, e, tt)
 				}
 				if tt.exp != nil {
-					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
+					evalJoinCorrectnessPrepared(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
 				}
 				if tt.order != nil {
-					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
+					evalJoinOrderPrepared(t, harness, e, tt.q, tt.order, tt.skip)
 				}
 			}
 		})
@@ -790,5 +773,37 @@ func evalJoinCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, 
 
 		require.Equal(t, 0, ctx.Memory.NumCaches())
 		validateEngine(t, ctx, harness, e)
+	})
+}
+
+func evalJoinOrderPrepared(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skip bool) {
+	t.Run(q+" join order", func(t *testing.T) {
+		if skip {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(q)
+
+		bindings, err := injectBindVarsAndPrepare(t, ctx, e, q)
+		require.NoError(t, err)
+
+		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
+		require.True(t, ok, "prepared statement not found")
+
+		if len(bindings) > 0 {
+			var usedBindings map[string]bool
+			p, usedBindings, err = plan.ApplyBindings(p, bindings)
+			require.NoError(t, err)
+			for binding := range bindings {
+				require.True(t, usedBindings[binding], "unused binding %s", binding)
+			}
+		}
+
+		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
+		require.NoError(t, err)
+
+		cmp := collectJoinOrder(a)
+		require.Equal(t, exp, cmp, fmt.Sprintf("expected order '%s' found '%s'\ndetail:\n%s", strings.Join(exp, ","), strings.Join(cmp, ","), sql.DebugString(a)))
 	})
 }
