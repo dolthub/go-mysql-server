@@ -239,7 +239,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 		// Resolve the foreign key if it has not been resolved yet
 		if !fk.IsResolved {
-			err = plan.ResolveForeignKey(ctx, tbl, parentTbl, fk, false)
+			err = plan.ResolveForeignKey(ctx, tbl, parentTbl, fk, false, true)
 			if err != nil {
 				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
@@ -336,7 +336,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 		// Resolve the foreign key if it has not been resolved yet
 		if !fk.IsResolved {
-			err = plan.ResolveForeignKey(ctx, childTbl, tbl, fk, false)
+			err = plan.ResolveForeignKey(ctx, childTbl, tbl, fk, false, true)
 			if err != nil {
 				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))

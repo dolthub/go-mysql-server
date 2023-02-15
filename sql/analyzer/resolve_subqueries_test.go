@@ -50,7 +50,7 @@ func TestResolveSubqueries(t *testing.T) {
 	testCases := []analyzerFnTestCase{
 		{
 			// Test with a query containing a subquery alias that has outer scope visibility
-			name: `SELECT (select MAX(a) from (select a) sqa1) FROM foo`,
+			name: `SELECT (select MAX(a) from (select a from bar) sqa1) FROM foo`,
 			node: plan.NewProject(
 				[]sql.Expression{
 					plan.NewSubquery(
@@ -73,7 +73,7 @@ func TestResolveSubqueries(t *testing.T) {
 							newSubqueryAlias("sqa1", "select a from bar", true, false,
 								plan.NewProject(
 									[]sql.Expression{expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)},
-									plan.NewResolvedTable(bar, db, nil)),
+									plan.NewResolvedTable(bar.WithProjections(make([]string, 0)), db, nil)),
 							),
 						), "select MAX(a) from (select a from bar) sqa1",
 					),
@@ -303,7 +303,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 									gf(1, "mytable", "x"),
 									gf(0, "mytable", "i"),
 								),
-								plan.NewResolvedTable(table2, db, nil),
+								plan.NewResolvedTable(table2.WithProjections(make([]string, 0)), db, nil),
 							),
 						),
 						""),

@@ -304,6 +304,28 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "RENAME TABLE with primary key indexes",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE child1 (pk BIGINT PRIMARY KEY, CONSTRAINT `fk` FOREIGN KEY (pk) REFERENCES parent1(pk))",
+			"RENAME TABLE parent1 TO new_parent1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE child1;",
+				Expected: []sql.Row{{"child1", "CREATE TABLE `child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "RENAME TABLE child1 TO new_child1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SHOW CREATE TABLE new_child1;",
+				Expected: []sql.Row{{"new_child1", "CREATE TABLE `new_child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
 		Name: "DROP TABLE",
 		SetUpScript: []string{
 			"ALTER TABLE child ADD CONSTRAINT fk_name FOREIGN KEY (v1) REFERENCES parent(v1);",
@@ -1153,7 +1175,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE delayed_child;",
-				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_parent;",
@@ -1182,6 +1204,35 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Delayed foreign key still does some validation",
+		SetUpScript: []string{
+			"SET FOREIGN_KEY_CHECKS=0;",
+			"CREATE TABLE valid_delayed_child (i INT, CONSTRAINT valid_fk FOREIGN KEY (i) REFERENCES delayed_parent(i))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE delayed_child1(i int, CONSTRAINT fk_delayed1 FOREIGN KEY (badcolumn) REFERENCES delayed_parent(i));",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "CREATE TABLE delayed_child2(i int, CONSTRAINT fk_delayed2 FOREIGN KEY (i) REFERENCES delayed_parent(c1, c2, c3));",
+				ExpectedErr: sql.ErrForeignKeyColumnCountMismatch,
+			},
+			{
+				Query:       "CREATE TABLE delayed_child3(i int, j int, CONSTRAINT fk_i FOREIGN KEY (i) REFERENCES delayed_parent(i), CONSTRAINT fk_i FOREIGN KEY (j) REFERENCES delayed_parent(j));",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
+			},
+			{
+				Query:       "CREATE TABLE delayed_child4(i int, CONSTRAINT fk_delayed4 FOREIGN KEY (i,i,i) REFERENCES delayed_parent(c1, c2, c3));",
+				ExpectedErr: sql.ErrAddForeignKeyDuplicateColumn,
+			},
+			{
+				Query:       "ALTER TABLE valid_delayed_child drop index i",
+				ExpectedErr: sql.ErrForeignKeyDropIndex,
+			},
+		},
+	},
+	{
 		Name: "Delayed foreign key resolution resetting FOREIGN_KEY_CHECKS",
 		SetUpScript: []string{
 			"SET FOREIGN_KEY_CHECKS=0;",
@@ -1192,7 +1243,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE delayed_child;",
-				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_child;",

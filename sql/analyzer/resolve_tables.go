@@ -293,12 +293,20 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 		return to
 	}
 
-	if _, ok := toTable.(sql.FilteredTable); ok {
+	changed := false
+
+	if _, ok := toTable.(sql.FilteredTable); ok && filters != nil {
 		toTable = toTable.(sql.FilteredTable).WithFilters(ctx, filters)
+		changed = true
 	}
 
-	if _, ok := toTable.(sql.ProjectedTable); ok {
+	if _, ok := toTable.(sql.ProjectedTable); ok && projections != nil {
 		toTable = toTable.(sql.ProjectedTable).WithProjections(projections)
+		changed = true
+	}
+
+	if !changed {
+		return to
 	}
 
 	return plan.NewResolvedTable(toTable, to.Database, to.AsOf)

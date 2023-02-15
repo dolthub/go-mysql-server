@@ -641,6 +641,8 @@ func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp 
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
+		e.Analyzer.Verbose = true
+		e.Analyzer.Debug = true
 		a, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(t, err)
 

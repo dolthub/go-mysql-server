@@ -287,7 +287,10 @@ func addLookupJoins(m *Memo) error {
 }
 
 // convertSemiToInnerJoin adds inner join alternatives for semi joins.
-// The inner join plans can be explored further.
+// The inner join plans can be explored (optimized) further.
+// Example: semiJoin(xy ab) => project(ab) -> innerJoin(xy, distinct(ab))
+// Ref sction 2.1.1 of:
+// https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner
 func convertSemiToInnerJoin(m *Memo) error {
 	seen := make(map[GroupId]struct{})
@@ -300,11 +303,12 @@ func convertSemiToInnerJoin(m *Memo) error {
 		onlyEquality := true
 		for _, f := range semi.filter {
 			transform.InspectExpr(f, func(e sql.Expression) bool {
-				cmp, ok := e.(expression.Comparer)
-				if !ok {
-					return false
+				switch e.(type) {
+				case *expression.GetField, *expression.Literal, *expression.BindVar,
+					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+				default:
+					onlyEquality = false
 				}
-				_, onlyEquality = cmp.(*expression.Equals)
 				return !onlyEquality
 			})
 			if !onlyEquality {
