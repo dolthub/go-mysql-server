@@ -305,7 +305,7 @@ func convertSemiToInnerJoin(m *Memo) error {
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				switch e.(type) {
 				case *expression.GetField, *expression.Literal, *expression.BindVar,
-					*expression.And, *expression.Or, *expression.Equals:
+					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
 				default:
 					onlyEquality = false
 				}
@@ -944,7 +944,7 @@ func newJoinOrderDeps(order map[GroupId]uint64) *joinOrderDeps {
 func (o joinOrderDeps) build(grp *exprGroup) {
 	s := vertexSet(0)
 	// convert global table order to hint order
-	inputs := grp.relProps.OutputTables()
+	inputs := grp.relProps.InputTables()
 	for idx, ok := inputs.Next(0); ok; idx, ok = inputs.Next(idx + 1) {
 		if i, ok := o.order[GroupId(idx+1)]; ok {
 			// If group |idx+1| is a dependency of this table, record the
@@ -988,8 +988,14 @@ func (o joinOrderDeps) obeysOrder(n relExpr) bool {
 		valid := o.ordered(l, r) && o.compact(l, r)
 		o.cache[key] = valid
 		return valid
-	default:
+	case *project:
+		return o.obeysOrder(n.child.best)
+	case *distinct:
+		return o.obeysOrder(n.child.best)
+	case sourceRel:
 		return true
+	default:
+		panic(fmt.Sprintf("missed type: %T", n))
 	}
 }
 
