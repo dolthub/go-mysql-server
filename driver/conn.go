@@ -23,6 +23,7 @@ import (
 
 // Conn is a connection to a database.
 type Conn struct {
+	dsn      string
 	options  *Options
 	dbConn   *dbConn
 	session  sql.Session
@@ -30,6 +31,9 @@ type Conn struct {
 	indexes  *sql.IndexRegistry
 	views    *sql.ViewRegistry
 }
+
+// DSN returns the driver connection string.
+func (c *Conn) DSN() string { return c.dsn }
 
 // Session returns the SQL session.
 func (c *Conn) Session() sql.Session { return c.session }
@@ -130,6 +134,7 @@ func (c *Conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 }
 
 func (c *Conn) newContextWithQuery(ctx context.Context, query string) (*sql.Context, error) {
+	// TODO(cjs): parse the dsn at c.dsn and set sql.WithInitialDatabase(parseDbName(c.dsn)) ?
 	return c.contexts.NewContext(ctx, c,
 		sql.WithSession(c.session),
 		sql.WithQuery(query),
