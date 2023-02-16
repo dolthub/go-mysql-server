@@ -16,14 +16,15 @@ package enginetest
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/stretchr/testify/require"
-	"testing"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type SpatialIndexPlanTestAssertion struct {
@@ -55,7 +56,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				noIdx: true, // TODO: this should take advantage of indexes
-				q: "select p from point_tbl where st_intersects(p, point(0,0)) = true",
+				q:     "select p from point_tbl where st_intersects(p, point(0,0)) = true",
 				exp: []sql.Row{
 					{types.Point{}},
 				},
@@ -172,7 +173,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				noIdx: true,
-				q: "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
+				q:     "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-2 -2)"},
 					{"POINT(-2 -1)"},
@@ -211,7 +212,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				noIdx: true,
-				q: "select st_aswkt(p) from point_tbl where not st_intersects(p, point(0,0)) order by p",
+				q:     "select st_aswkt(p) from point_tbl where not st_intersects(p, point(0,0)) order by p",
 				exp: []sql.Row{
 					{"POINT(2 2)"},
 					{"POINT(1 1)"},
@@ -242,12 +243,11 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				noIdx: true, // TODO: this should be able to take advantage of indexes
-				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
+				q:     "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
 			},
-
 		},
 	},
 }
