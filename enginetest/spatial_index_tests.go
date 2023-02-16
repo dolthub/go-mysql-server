@@ -51,15 +51,15 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				skipPrep: true,
-				q: "select p from point_tbl where st_intersects(p, point(0,0))",
+				q:        "select p from point_tbl where st_intersects(p, point(0,0))",
 				exp: []sql.Row{
 					{types.Point{}},
 				},
 			},
 			{
 				skipPrep: true,
-				noIdx: true, // TODO: this should take advantage of indexes
-				q:     "select p from point_tbl where st_intersects(p, point(0,0)) = true",
+				noIdx:    true, // TODO: this should take advantage of indexes
+				q:        "select p from point_tbl where st_intersects(p, point(0,0)) = true",
 				exp: []sql.Row{
 					{types.Point{}},
 				},
@@ -77,7 +77,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				skipPrep: true,
-				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
+				q:        "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
 				exp: []sql.Row{
 					{"POINT(0 0)"},
 					{"LINESTRING(-1 -1,1 1)"},
@@ -85,7 +85,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				skipPrep: true,
-				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by g",
+				q:        "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by g",
 				exp: []sql.Row{
 					{"POINT(0 0)"},
 					{"LINESTRING(-1 -1,1 1)"},
@@ -132,14 +132,14 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				skipPrep: true,
-				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
+				q:        "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
 				exp: []sql.Row{
 					{"POINT(0 0)"},
 				},
 			},
 			{
 				skipPrep: true,
-				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by st_x(g), st_y(g)",
+				q:        "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-1 1)"},
 					{"POINT(0 0)"},
@@ -148,7 +148,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				skipPrep: true,
-				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((1 1,1 -1,-1 -1,-1 1,1 1))')) order by st_x(g), st_y(g)",
+				q:        "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((1 1,1 -1,-1 -1,-1 1,1 1))')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-1 -1)"},
 					{"POINT(-1 0)"},
@@ -163,7 +163,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				skipPrep: true,
-				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('linestring(-2 -2,2 2)')) order by st_x(g), st_y(g)",
+				q:        "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('linestring(-2 -2,2 2)')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-2 -2)"},
 					{"POINT(-1 -1)"},
@@ -174,7 +174,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				skipPrep: true,
-				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('multipoint(-2 -2,0 0,2 2)')) order by st_x(g), st_y(g)",
+				q:        "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('multipoint(-2 -2,0 0,2 2)')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-2 -2)"},
 					{"POINT(0 0)"},
@@ -183,8 +183,8 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				skipPrep: true,
-				noIdx: true,
-				q:     "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
+				noIdx:    true,
+				q:        "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-2 -2)"},
 					{"POINT(-2 -1)"},
@@ -223,8 +223,8 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				skipPrep: true,
-				noIdx: true,
-				q:     "select st_aswkt(p) from point_tbl where not st_intersects(p, point(0,0)) order by p",
+				noIdx:    true,
+				q:        "select st_aswkt(p) from point_tbl where not st_intersects(p, point(0,0)) order by p",
 				exp: []sql.Row{
 					{"POINT(2 2)"},
 					{"POINT(1 1)"},
@@ -243,22 +243,22 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				skipPrep: true,
-				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
+				q:        "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
 			},
 			{
 				skipPrep: true,
-				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0)) and st_intersects(t2.g, point(0,0))",
+				q:        "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0)) and st_intersects(t2.g, point(0,0))",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
 			},
 			{
 				skipPrep: true,
-				noIdx: true, // TODO: this should be able to take advantage of indexes
-				q:     "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
+				noIdx:    true, // TODO: this should be able to take advantage of indexes
+				q:        "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
