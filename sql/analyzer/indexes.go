@@ -262,7 +262,6 @@ func getIndexes(
 		return result, nil
 	}
 
-	// TODO: maybe this block can just go into previous switch
 	// TODO (james): add all other spatial index supported functions here
 	// TODO: make generalizable to all functions?
 	switch e := e.(type) {
