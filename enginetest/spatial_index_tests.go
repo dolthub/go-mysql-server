@@ -28,10 +28,11 @@ import (
 )
 
 type SpatialIndexPlanTestAssertion struct {
-	q     string
-	skip  bool
-	noIdx bool
-	exp   []sql.Row
+	q        string
+	skip     bool
+	skipPrep bool
+	noIdx    bool
+	exp      []sql.Row
 }
 
 type SpatialIndexPlanTest struct {
@@ -49,12 +50,14 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
+				skipPrep: true,
 				q: "select p from point_tbl where st_intersects(p, point(0,0))",
 				exp: []sql.Row{
 					{types.Point{}},
 				},
 			},
 			{
+				skipPrep: true,
 				noIdx: true, // TODO: this should take advantage of indexes
 				q:     "select p from point_tbl where st_intersects(p, point(0,0)) = true",
 				exp: []sql.Row{
@@ -73,6 +76,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
+				skipPrep: true,
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
 				exp: []sql.Row{
 					{"POINT(0 0)"},
@@ -80,6 +84,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
+				skipPrep: true,
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by g",
 				exp: []sql.Row{
 					{"POINT(0 0)"},
@@ -126,12 +131,14 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
+				skipPrep: true,
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
 				exp: []sql.Row{
 					{"POINT(0 0)"},
 				},
 			},
 			{
+				skipPrep: true,
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-1 1)"},
@@ -140,6 +147,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
+				skipPrep: true,
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((1 1,1 -1,-1 -1,-1 1,1 1))')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-1 -1)"},
@@ -154,6 +162,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
+				skipPrep: true,
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('linestring(-2 -2,2 2)')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-2 -2)"},
@@ -164,6 +173,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
+				skipPrep: true,
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('multipoint(-2 -2,0 0,2 2)')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
 					{"POINT(-2 -2)"},
@@ -172,6 +182,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
+				skipPrep: true,
 				noIdx: true,
 				q:     "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
 				exp: []sql.Row{
@@ -211,6 +222,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
+				skipPrep: true,
 				noIdx: true,
 				q:     "select st_aswkt(p) from point_tbl where not st_intersects(p, point(0,0)) order by p",
 				exp: []sql.Row{
@@ -230,18 +242,21 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
+				skipPrep: true,
 				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
 			},
 			{
+				skipPrep: true,
 				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0)) and st_intersects(t2.g, point(0,0))",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
 			},
 			{
+				skipPrep: true,
 				noIdx: true, // TODO: this should be able to take advantage of indexes
 				q:     "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
 				exp: []sql.Row{
@@ -331,5 +346,108 @@ func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e *sqle.Engi
 
 		require.Equal(t, 0, ctx.Memory.NumCaches())
 		validateEngine(t, ctx, harness, e)
+	})
+}
+
+func TestSpatialIndexPlansPrepared(t *testing.T, harness Harness) {
+	for _, tt := range SpatialIndexTests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := mustNewEngine(t, harness)
+			defer e.Close()
+			for _, statement := range tt.setup {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				ctx := NewContext(harness)
+				RunQueryWithContext(t, e, harness, ctx, statement)
+			}
+			for _, ttt := range tt.tests {
+				if !ttt.skipPrep {
+					panic(ttt)
+				}
+				evalSpatialIndexPlanCorrectnessPrepared(t, harness, e, ttt.q, ttt.q, ttt.exp, ttt.skip, ttt.skipPrep)
+				evalSpatialIndexPlanTestPrepared(t, harness, e, ttt.q, ttt.skip, ttt.skipPrep, ttt.noIdx)
+			}
+		})
+	}
+}
+
+func evalSpatialIndexPlanCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skip, skipPrep bool) {
+	t.Run(name, func(t *testing.T) {
+		if skip || skipPrep {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(q)
+
+		bindings, err := injectBindVarsAndPrepare(t, ctx, e, q)
+		require.NoError(t, err)
+
+		sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
+
+		rows, err := sql.RowIterToRows(ctx, sch, iter)
+		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
+
+		if exp != nil {
+			checkResults(t, exp, nil, sch, rows, q)
+		}
+
+		require.Equal(t, 0, ctx.Memory.NumCaches())
+		validateEngine(t, ctx, harness, e)
+	})
+}
+
+func evalSpatialIndexPlanTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, query string, skip, skipPrep, noIdx bool) {
+	t.Run(query+" index plan", func(t *testing.T) {
+		if skip || skipPrep {
+			t.Skip()
+		}
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(query)
+
+		bindings, err := injectBindVarsAndPrepare(t, ctx, e, query)
+		require.NoError(t, err)
+
+		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		require.True(t, ok, "prepared statement not found")
+
+		if len(bindings) > 0 {
+			var usedBindings map[string]bool
+			p, usedBindings, err = plan.ApplyBindings(p, bindings)
+			require.NoError(t, err)
+			for binding := range bindings {
+				require.True(t, usedBindings[binding], "unused binding %s", binding)
+			}
+		}
+
+		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
+		require.NoError(t, err)
+
+		hasFilter, hasIndex, hasRightOrder := false, false, false
+		transform.Inspect(a, func(n sql.Node) bool {
+			if n == nil {
+				return false
+			}
+			if _, ok := n.(*plan.Filter); ok {
+				hasFilter = true
+			}
+			if _, ok := n.(*plan.IndexedTableAccess); ok {
+				hasRightOrder = hasFilter
+				hasIndex = true
+			}
+			return true
+		})
+
+		require.True(t, hasFilter, fmt.Sprintf("filter node was missing from plan"))
+		if noIdx {
+			require.False(t, hasIndex, fmt.Sprintf("indextableaccess should not be in plan"))
+		} else {
+			require.True(t, hasIndex, fmt.Sprintf("indextableaccess node was missing from plan"))
+			require.True(t, hasRightOrder, fmt.Sprintf("filter node was not above indextableaccess"))
+		}
 	})
 }
