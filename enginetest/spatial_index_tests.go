@@ -54,7 +54,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
-				skip: true,
+				noIdx: true, // TODO: this should take advantage of indexes
 				q: "select p from point_tbl where st_intersects(p, point(0,0)) = true",
 				exp: []sql.Row{
 					{types.Point{}},
@@ -170,10 +170,57 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 					{"POINT(2 2)"},
 				},
 			},
+			{
+				noIdx: true,
+				q: "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
+				exp: []sql.Row{
+					{"POINT(-2 -2)"},
+					{"POINT(-2 -1)"},
+					{"POINT(-2 0)"},
+					{"POINT(-2 1)"},
+					{"POINT(-2 2)"},
+					{"POINT(-1 -2)"},
+					{"POINT(-1 -1)"},
+					{"POINT(-1 0)"},
+					{"POINT(-1 1)"},
+					{"POINT(-1 2)"},
+					{"POINT(0 -2)"},
+					{"POINT(0 -1)"},
+					{"POINT(0 1)"},
+					{"POINT(0 2)"},
+					{"POINT(1 -2)"},
+					{"POINT(1 -1)"},
+					{"POINT(1 0)"},
+					{"POINT(1 1)"},
+					{"POINT(1 2)"},
+					{"POINT(2 -2)"},
+					{"POINT(2 -1)"},
+					{"POINT(2 0)"},
+					{"POINT(2 1)"},
+					{"POINT(2 2)"},
+				},
+			},
 		},
 	},
 	{
-		name: "st_intersects and joins",
+		name: "negated filter point table with st_intersects does not use index",
+		setup: []string{
+			"create table point_tbl(p point not null srid 0, spatial index (p))",
+			"insert into point_tbl values (point(0,0)), (point(1,1)), (point(2,2))",
+		},
+		tests: []SpatialIndexPlanTestAssertion{
+			{
+				noIdx: true,
+				q: "select st_aswkt(p) from point_tbl where not st_intersects(p, point(0,0)) order by p",
+				exp: []sql.Row{
+					{"POINT(2 2)"},
+					{"POINT(1 1)"},
+				},
+			},
+		},
+	},
+	{
+		name: "filter join with st_intersects",
 		setup: []string{
 			"create table t1(g geometry not null srid 0, spatial index (g))",
 			"create table t2(g geometry not null srid 0, spatial index (g))",
@@ -193,6 +240,14 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
 			},
+			{
+				noIdx: true, // TODO: this should be able to take advantage of indexes
+				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
+				exp: []sql.Row{
+					{"POINT(0 0)", "POINT(0 0)"},
+				},
+			},
+
 		},
 	},
 }
@@ -213,13 +268,13 @@ func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 			}
 			for _, tt := range tt.tests {
 				evalSpatialIndexPlanCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
-				evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip)
+				evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
 			}
 		})
 	}
 }
 
-func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, query string, skip bool) {
+func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, query string, skip, noIdx bool) {
 	t.Run(query+" index plan", func(t *testing.T) {
 		if skip {
 			t.Skip()
@@ -246,8 +301,12 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, que
 		})
 
 		require.True(t, hasFilter, fmt.Sprintf("filter node was missing from plan"))
-		require.True(t, hasIndex, fmt.Sprintf("indextableaccess node was missing from plan"))
-		require.True(t, hasRightOrder, fmt.Sprintf("filter node was not above indextableaccess"))
+		if noIdx {
+			require.False(t, hasIndex, fmt.Sprintf("indextableaccess should not be in plan"))
+		} else {
+			require.True(t, hasIndex, fmt.Sprintf("indextableaccess node was missing from plan"))
+			require.True(t, hasRightOrder, fmt.Sprintf("filter node was not above indextableaccess"))
+		}
 	})
 }
 
