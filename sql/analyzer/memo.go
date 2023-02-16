@@ -228,6 +228,7 @@ type relProps struct {
 	grp *exprGroup
 
 	outputCols   sql.Schema
+	inputTables  sql.FastIntSet
 	outputTables sql.FastIntSet
 
 	card float64
@@ -241,6 +242,8 @@ func newRelProps(rel relExpr) *relProps {
 		p.outputCols = r.outputCols()
 	}
 	p.populateOutputTables()
+	p.populateInputTables()
+
 	return p
 }
 
@@ -254,8 +257,32 @@ func (p *relProps) populateOutputTables() {
 		p.outputTables = n.left.relProps.OutputTables()
 	case *semiJoin:
 		p.outputTables = n.left.relProps.OutputTables()
+	case *distinct:
+		p.outputTables = n.child.relProps.OutputTables()
+	case *project:
+		p.outputTables = n.child.relProps.OutputTables()
 	case joinRel:
 		p.outputTables = n.joinPrivate().left.relProps.OutputTables().Union(n.joinPrivate().right.relProps.OutputTables())
+	default:
+		panic(fmt.Sprintf("unhandled type: %T", n))
+	}
+}
+
+// populateInputTables initializes the bitmap indicating which tables
+// are input into this exprGroup. This is used to enforce join order
+// hinting for semi joins.
+func (p *relProps) populateInputTables() {
+	switch n := p.grp.first.(type) {
+	case sourceRel:
+		p.inputTables = sql.NewFastIntSet(int(n.tableId()))
+	case *distinct:
+		p.inputTables = n.child.relProps.InputTables()
+	case *project:
+		p.inputTables = n.child.relProps.InputTables()
+	case joinRel:
+		p.inputTables = n.joinPrivate().left.relProps.InputTables().Union(n.joinPrivate().right.relProps.InputTables())
+	default:
+		panic(fmt.Sprintf("unhandled type: %T", n))
 	}
 }
 
@@ -299,9 +326,14 @@ func (p *relProps) OutputCols() sql.Schema {
 	return p.outputCols
 }
 
-// OutputTables returns tables in the output schema of this node.
+// OutputTables returns a bitmap of tables in the output schema of this node.
 func (p *relProps) OutputTables() sql.FastIntSet {
 	return p.outputTables
+}
+
+// InputTables returns a bitmap of tables input into this node.
+func (p *relProps) InputTables() sql.FastIntSet {
+	return p.inputTables
 }
 
 type tableProps struct {
@@ -431,6 +463,7 @@ type Carder interface {
 // relExpr wraps a sql.Node for use as a exprGroup linked list node.
 // TODO: we need relExprs for every sql.Node and sql.Expression
 type relExpr interface {
+	fmt.Stringer
 	group() *exprGroup
 	next() relExpr
 	setNext(relExpr)

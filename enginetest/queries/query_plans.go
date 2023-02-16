@@ -940,25 +940,34 @@ inner join xy on a = x;`,
 			" │   ├─ name: alias2\n" +
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ cacheable: true\n" +
-			" │   └─ SemiLookupJoin\n" +
-			" │       ├─ Eq\n" +
-			" │       │   ├─ uv.u:2\n" +
-			" │       │   └─ pq.p:4!null\n" +
-			" │       ├─ LeftOuterMergeJoin\n" +
-			" │       │   ├─ cmp: Eq\n" +
-			" │       │   │   ├─ ab.a:0!null\n" +
-			" │       │   │   └─ uv.u:2!null\n" +
-			" │       │   ├─ IndexedTableAccess(ab)\n" +
-			" │       │   │   ├─ index: [ab.a]\n" +
-			" │       │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │       │   │   └─ columns: [a b]\n" +
-			" │       │   └─ IndexedTableAccess(uv)\n" +
-			" │       │       ├─ index: [uv.u]\n" +
-			" │       │       ├─ static: [{[NULL, ∞)}]\n" +
-			" │       │       └─ columns: [u v]\n" +
-			" │       └─ IndexedTableAccess(pq)\n" +
-			" │           ├─ index: [pq.p]\n" +
-			" │           └─ columns: [p q]\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [ab.a:0!null, ab.b:1, uv.u:2, uv.v:3]\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [ab.a:0!null, ab.b:1, uv.u:2!null, uv.v:3]\n" +
+			" │           └─ HashJoin\n" +
+			" │               ├─ Eq\n" +
+			" │               │   ├─ uv.u:2\n" +
+			" │               │   └─ pq.p:4!null\n" +
+			" │               ├─ LeftOuterMergeJoin\n" +
+			" │               │   ├─ cmp: Eq\n" +
+			" │               │   │   ├─ ab.a:0!null\n" +
+			" │               │   │   └─ uv.u:2!null\n" +
+			" │               │   ├─ IndexedTableAccess(ab)\n" +
+			" │               │   │   ├─ index: [ab.a]\n" +
+			" │               │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │               │   │   └─ columns: [a b]\n" +
+			" │               │   └─ IndexedTableAccess(uv)\n" +
+			" │               │       ├─ index: [uv.u]\n" +
+			" │               │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │               │       └─ columns: [u v]\n" +
+			" │               └─ HashLookup\n" +
+			" │                   ├─ source: TUPLE(uv.u:2)\n" +
+			" │                   ├─ target: TUPLE(pq.p:0!null)\n" +
+			" │                   └─ CachedResults\n" +
+			" │                       └─ Distinct\n" +
+			" │                           └─ Table\n" +
+			" │                               ├─ name: pq\n" +
+			" │                               └─ columns: [p q]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     └─ columns: [x y]\n" +
@@ -1004,27 +1013,34 @@ select * from
 ) alias1
 where exists (select * from pq where a = p)
 `,
-		ExpectedPlan: "SemiLookupJoin\n" +
-			" ├─ Eq\n" +
-			" │   ├─ alias1.a:0!null\n" +
-			" │   └─ pq.p:2!null\n" +
-			" ├─ SubqueryAlias\n" +
-			" │   ├─ name: alias1\n" +
-			" │   ├─ outerVisibility: false\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ AntiLookupJoin\n" +
-			" │       ├─ Eq\n" +
-			" │       │   ├─ ab.a:0!null\n" +
-			" │       │   └─ uv.u:2!null\n" +
-			" │       ├─ Table\n" +
-			" │       │   ├─ name: ab\n" +
-			" │       │   └─ columns: [a b]\n" +
-			" │       └─ IndexedTableAccess(uv)\n" +
-			" │           ├─ index: [uv.u]\n" +
-			" │           └─ columns: [u v]\n" +
-			" └─ IndexedTableAccess(pq)\n" +
-			"     ├─ index: [pq.p]\n" +
-			"     └─ columns: [p q]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [alias1.a:0!null, alias1.b:1]\n" +
+			" └─ HashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ alias1.a:0!null\n" +
+			"     │   └─ pq.p:2!null\n" +
+			"     ├─ SubqueryAlias\n" +
+			"     │   ├─ name: alias1\n" +
+			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ AntiLookupJoin\n" +
+			"     │       ├─ Eq\n" +
+			"     │       │   ├─ ab.a:0!null\n" +
+			"     │       │   └─ uv.u:2!null\n" +
+			"     │       ├─ Table\n" +
+			"     │       │   ├─ name: ab\n" +
+			"     │       │   └─ columns: [a b]\n" +
+			"     │       └─ IndexedTableAccess(uv)\n" +
+			"     │           ├─ index: [uv.u]\n" +
+			"     │           └─ columns: [u v]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ source: TUPLE(alias1.a:0!null)\n" +
+			"         ├─ target: TUPLE(pq.p:0!null)\n" +
+			"         └─ CachedResults\n" +
+			"             └─ Distinct\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: pq\n" +
+			"                     └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -1095,38 +1111,47 @@ inner join pq on true
 	left join pq on alias1.a = p
 	where exists (select * from uv where a = u)
 	`,
-		ExpectedPlan: "SemiLookupJoin\n" +
-			" ├─ Eq\n" +
-			" │   ├─ alias1.a:0!null\n" +
-			" │   └─ uv.u:4!null\n" +
-			" ├─ LeftOuterHashJoin\n" +
-			" │   ├─ Eq\n" +
-			" │   │   ├─ alias1.a:0!null\n" +
-			" │   │   └─ pq.p:2!null\n" +
-			" │   ├─ SubqueryAlias\n" +
-			" │   │   ├─ name: alias1\n" +
-			" │   │   ├─ outerVisibility: false\n" +
-			" │   │   ├─ cacheable: true\n" +
-			" │   │   └─ AntiLookupJoin\n" +
-			" │   │       ├─ Eq\n" +
-			" │   │       │   ├─ ab.a:0!null\n" +
-			" │   │       │   └─ xy.x:2!null\n" +
-			" │   │       ├─ Table\n" +
-			" │   │       │   ├─ name: ab\n" +
-			" │   │       │   └─ columns: [a b]\n" +
-			" │   │       └─ IndexedTableAccess(xy)\n" +
-			" │   │           ├─ index: [xy.x]\n" +
-			" │   │           └─ columns: [x y]\n" +
-			" │   └─ HashLookup\n" +
-			" │       ├─ source: TUPLE(alias1.a:0!null)\n" +
-			" │       ├─ target: TUPLE(pq.p:0!null)\n" +
-			" │       └─ CachedResults\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: pq\n" +
-			" │               └─ columns: [p q]\n" +
-			" └─ IndexedTableAccess(uv)\n" +
-			"     ├─ index: [uv.u]\n" +
-			"     └─ columns: [u v]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [alias1.a:0!null, alias1.b:1, pq.p:2, pq.q:3]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [alias1.a:0!null, alias1.b:1, pq.p:2!null, pq.q:3]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ alias1.a:0!null\n" +
+			"         │   └─ uv.u:4!null\n" +
+			"         ├─ LeftOuterHashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ alias1.a:0!null\n" +
+			"         │   │   └─ pq.p:2!null\n" +
+			"         │   ├─ SubqueryAlias\n" +
+			"         │   │   ├─ name: alias1\n" +
+			"         │   │   ├─ outerVisibility: false\n" +
+			"         │   │   ├─ cacheable: true\n" +
+			"         │   │   └─ AntiLookupJoin\n" +
+			"         │   │       ├─ Eq\n" +
+			"         │   │       │   ├─ ab.a:0!null\n" +
+			"         │   │       │   └─ xy.x:2!null\n" +
+			"         │   │       ├─ Table\n" +
+			"         │   │       │   ├─ name: ab\n" +
+			"         │   │       │   └─ columns: [a b]\n" +
+			"         │   │       └─ IndexedTableAccess(xy)\n" +
+			"         │   │           ├─ index: [xy.x]\n" +
+			"         │   │           └─ columns: [x y]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ source: TUPLE(alias1.a:0!null)\n" +
+			"         │       ├─ target: TUPLE(pq.p:0!null)\n" +
+			"         │       └─ CachedResults\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: pq\n" +
+			"         │               └─ columns: [p q]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ source: TUPLE(alias1.a:0!null)\n" +
+			"             ├─ target: TUPLE(uv.u:0!null)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ Distinct\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: uv\n" +
+			"                         └─ columns: [u v]\n" +
 			"",
 	},
 	{
