@@ -2035,7 +2035,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	}()
 
 	t.Run("no database selected", func(t *testing.T) {
-                e := mustNewEngine(t, harness)
+		e := mustNewEngine(t, harness)
 		defer e.Close()
 
 		ctx := NewContext(harness)
@@ -2094,7 +2094,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("cur database selected, drop tables in other db", func(t *testing.T) {
-                e := mustNewEngine(t, harness)
+		e := mustNewEngine(t, harness)
 		defer e.Close()
 
 		ctx := NewContext(harness)
