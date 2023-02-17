@@ -569,7 +569,11 @@ func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.Filtere
 	handledNormalizedFilters := ft.HandledFilters(normalizedFilters)
 	handledDenormalizedFilters := make([]sql.Expression, len(handledNormalizedFilters))
 	for i, handledFilter := range handledNormalizedFilters {
-		handledDenormalizedFilters[i] = normalizedToDenormalizedFilterMap[handledFilter]
+		if val, ok := normalizedToDenormalizedFilterMap[handledFilter]; ok {
+			handledDenormalizedFilters[i] = val
+		} else {
+			handledDenormalizedFilters[i] = handledFilter
+		}
 	}
 
 	return handledDenormalizedFilters
