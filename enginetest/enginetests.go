@@ -1992,55 +1992,64 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData, setup.TabletestData, setup.Pk_tablesData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
-	require.NoError(err)
 
-	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
-	require.True(ok)
+	func() {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		ctx := NewContext(harness)
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(err)
 
-	TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS mytable, not_exist", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		_, ok, err := db.GetTableInsensitive(ctx, "mytable")
+		require.True(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.False(ok)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS mytable, not_exist", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
-	require.NoError(err)
-	require.True(ok)
+		_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+		require.NoError(err)
+		require.False(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
-	require.NoError(err)
-	require.True(ok)
+		_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+		require.NoError(err)
+		require.True(ok)
 
-	TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS othertable, tabletest", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+		require.NoError(err)
+		require.True(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
-	require.NoError(err)
-	require.False(ok)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS othertable, tabletest", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
-	require.NoError(err)
-	require.False(ok)
+		_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+		require.NoError(err)
+		require.False(ok)
 
-	_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
-	require.Error(err)
+		_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+		require.NoError(err)
+		require.False(ok)
 
-	_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
-	require.NoError(err)
+		_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
+		require.Error(err)
+
+		_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
+		require.NoError(err)
+	}()
 
 	t.Run("no database selected", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(err)
 
 		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
 		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE mydb.one_pk", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-		_, ok, err = db.GetTableInsensitive(ctx, "mydb.one_pk")
+		_, ok, err := db.GetTableInsensitive(ctx, "mydb.one_pk")
 		require.NoError(err)
 		require.False(ok)
 
@@ -2085,8 +2094,14 @@ func TestDropTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("cur database selected, drop tables in other db", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("mydb")
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(err)
 
 		RunQuery(t, e, harness, "DROP DATABASE IF EXISTS otherdb")
 		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
@@ -2099,7 +2114,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
 		require.NoError(err)
 
-		_, ok, err = db.GetTableInsensitive(ctx, "tab1")
+		_, ok, err := db.GetTableInsensitive(ctx, "tab1")
 		require.NoError(err)
 		require.True(ok)
 
@@ -3006,10 +3021,11 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 
 func TestDropDatabase(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
 	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		ctx := NewContext(harness)
+
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE mydb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
@@ -3022,6 +3038,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP DATABASE works on newly created databases.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
+		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")
@@ -3034,6 +3051,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP DATABASE works on current database and sets current database to empty.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
+		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 		RunQueryWithContext(t, e, harness, ctx, "USE TESTdb")
 
@@ -3048,6 +3066,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
+		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE SCHEMA testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")

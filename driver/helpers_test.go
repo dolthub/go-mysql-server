@@ -6,8 +6,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/driver"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/driver"
 )
 
 var driverMu sync.Mutex
