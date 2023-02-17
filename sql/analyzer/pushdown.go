@@ -28,16 +28,26 @@ func filterHasBindVar(filter sql.Node) bool {
 	transform.Inspect(filter, func(node sql.Node) bool {
 		if fn, ok := node.(*plan.Filter); ok {
 			for _, expr := range fn.Expressions() {
-				transform.InspectExpr(expr, func(e sql.Expression) bool {
-					if _, ok := e.(*expression.BindVar); ok {
-						hasBindVar = true
-						return true
-					}
+				if exprHasBindVar(expr) {
+					hasBindVar = true
 					return false
-				})
+				}
 			}
 		}
 		return !hasBindVar // stop recursing if bindvar already found
+	})
+	return hasBindVar
+}
+
+// exprHasBindVar looks for any BindVars found in expressions
+func exprHasBindVar(expr sql.Expression) bool {
+	var hasBindVar bool
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.BindVar); ok {
+			hasBindVar = true
+			return true
+		}
+		return false
 	})
 	return hasBindVar
 }
@@ -70,6 +80,9 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	}
 
 	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
 
 	if !filterHasBindVar(n) {
 		return node, same, err

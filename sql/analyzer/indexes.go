@@ -270,6 +270,11 @@ func getIndexes(
 	// TODO: make generalizable to all functions?
 	switch e := e.(type) {
 	case *spatial.Intersects:
+		// don't pushdown functions with bindvars
+		if exprHasBindVar(e) {
+			return nil, nil
+		}
+
 		// Will be non-nil only when there is exactly one *expression.GetField
 		getField := expression.ExtractGetField(e)
 		if getField == nil {
