@@ -495,6 +495,7 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 			Ranges:        []sql.Range{lb.rang},
 			IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 			IsEmptyRange:  lb.emptyRange,
+			IsSpatialLookup: false,
 		}, nil
 	}
 
@@ -523,6 +524,7 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 		Ranges:        []sql.Range{lb.rang},
 		IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 		IsEmptyRange:  lb.emptyRange,
+		IsSpatialLookup: false,
 	}, nil
 }
 

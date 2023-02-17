@@ -340,5 +340,9 @@ func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBu
 }
 
 func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
-	return IndexLookup{Index: b.idx, Ranges: RangeCollection{{b.rng}}}, nil
+	return IndexLookup{
+		Index: b.idx,
+		Ranges: RangeCollection{{b.rng}},
+		IsSpatialLookup: true,
+	}, nil
 }

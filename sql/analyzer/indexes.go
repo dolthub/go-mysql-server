@@ -1117,5 +1117,11 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 			return false
 		}
 	}
+	// TODO (james): if a bbox complete contains the other, always better to merge
+	// TODO (james): if AND over two bboxes that don't strictly intersect, empty set
+	// TODO (james): if OR over two bboxes; unsure if better to merge or not
+	if a.IsSpatialLookup || b.IsSpatialLookup {
+		return false
+	}
 	return true
 }
