@@ -491,10 +491,10 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 	if lb.rang == nil {
 		lb.initializeRange(key)
 		return sql.IndexLookup{
-			Index:         lb.index,
-			Ranges:        []sql.Range{lb.rang},
-			IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
-			IsEmptyRange:  lb.emptyRange,
+			Index:           lb.index,
+			Ranges:          []sql.Range{lb.rang},
+			IsPointLookup:   lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
+			IsEmptyRange:    lb.emptyRange,
 			IsSpatialLookup: false,
 		}, nil
 	}
@@ -520,10 +520,10 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 	}
 
 	return sql.IndexLookup{
-		Index:         lb.index,
-		Ranges:        []sql.Range{lb.rang},
-		IsPointLookup: lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
-		IsEmptyRange:  lb.emptyRange,
+		Index:           lb.index,
+		Ranges:          []sql.Range{lb.rang},
+		IsPointLookup:   lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
+		IsEmptyRange:    lb.emptyRange,
 		IsSpatialLookup: false,
 	}, nil
 }
