@@ -241,6 +241,10 @@ func getIndexes(
 		result := multiColumnIndexes
 		// Next try to match the remaining expressions individually
 		for _, e := range unusedExprs {
+			// TODO: eventually support merging spatial lookups
+			if _, ok := e.(*spatial.Intersects); ok {
+				continue
+			}
 			indexes, err := getIndexes(ctx, ia, e, tableAliases)
 			if err != nil {
 				return nil, err

@@ -67,6 +67,49 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		},
 	},
 	{
+		name: "filter point table with st_intersects with ANDs and ORs",
+		setup: []string{
+			"create table point_tbl(p point not null srid 0, spatial index (p))",
+			"insert into point_tbl values (point(0,0)), (point(1,1)), (point(2,2))",
+			"create table point_tbl_pk(pk int primary key, p point not null srid 0, spatial index (p))",
+			"insert into point_tbl_pk values (0, point(0,0)), (1, point(1,1)), (2, point(2,2))",
+		},
+		tests: []SpatialIndexPlanTestAssertion{
+			{
+				skipPrep: true,
+				noIdx: true,
+				q:        "select p from point_tbl where st_intersects(p, point(0,0)) and st_intersects(p, point(1,1))",
+				exp: []sql.Row{},
+			},
+			{
+				skipPrep: true,
+				noIdx: true,
+				q:        "select st_aswkt(p) from point_tbl where st_intersects(p, point(0,0)) or st_intersects(p, point(1,1)) order by st_x(p), st_y(p)",
+				exp: []sql.Row{
+					{"POINT(0 0)"},
+					{"POINT(1 1)"},
+				},
+			},
+			{
+				skipPrep: true,
+				noIdx: false, // still expect index access using primary key
+				q:        "select pk, st_aswkt(p) from point_tbl_pk where pk = 0 and st_intersects(p, point(0,0)) order by pk",
+				exp: []sql.Row{
+					{0, "POINT(0 0)"},
+				},
+			},
+			{
+				skipPrep: true,
+				noIdx: true,
+				q:        "select pk, st_aswkt(p) from point_tbl_pk where pk = 0 or st_intersects(p, point(1,1)) order by pk",
+				exp: []sql.Row{
+					{0, "POINT(0 0)"},
+					{1, "POINT(1 1)"},
+				},
+			},
+		},
+	},
+	{
 		name: "filter geom table with st_intersects",
 		setup: []string{
 			"create table geom_tbl(g geometry not null srid 0, spatial index (g))",
@@ -244,13 +287,6 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				skipPrep: true,
 				q:        "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
-				exp: []sql.Row{
-					{"POINT(0 0)", "POINT(0 0)"},
-				},
-			},
-			{
-				skipPrep: true,
-				q:        "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0)) and st_intersects(t2.g, point(0,0))",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
 				},
