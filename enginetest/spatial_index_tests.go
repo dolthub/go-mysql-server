@@ -56,12 +56,30 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 					{types.Point{}},
 				},
 			},
+		},
+	},
+	{
+		name: "filter point table with st_intersects with Equals",
+		setup: []string{
+			"create table point_tbl(p point not null srid 0, spatial index (p))",
+			"insert into point_tbl values (point(0,0)), (point(1,1)), (point(2,2))",
+		},
+		tests: []SpatialIndexPlanTestAssertion{
 			{
 				skipPrep: true,
-				noIdx:    true, // TODO: this should take advantage of indexes
+				noIdx: true, // this should take advantage of indexes
 				q:        "select p from point_tbl where st_intersects(p, point(0,0)) = true",
 				exp: []sql.Row{
 					{types.Point{}},
+				},
+			},
+			{
+				skipPrep: true,
+				noIdx: true,
+				q:        "select st_aswkt(p) from point_tbl where st_intersects(p, point(0,0)) = false order by st_x(p), st_y(p)",
+				exp: []sql.Row{
+					{"POINT(1 1)"},
+					{"POINT(2 2)"},
 				},
 			},
 		},
@@ -105,6 +123,22 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				exp: []sql.Row{
 					{0, "POINT(0 0)"},
 					{1, "POINT(1 1)"},
+				},
+			},
+		},
+	},
+	{
+		name: "filter subquery with st_intersects",
+		setup: []string{
+			"create table point_tbl(p point not null srid 0, spatial index (p))",
+			"insert into point_tbl values (point(0,0)), (point(1,1)), (point(2,2))",
+		},
+		tests: []SpatialIndexPlanTestAssertion{
+			{
+				skipPrep: true,
+				q:        "select st_aswkt(p) from (select * from point_tbl) t where st_intersects(p, point(0,0))",
+				exp: []sql.Row{
+					{"POINT(0 0)"},
 				},
 			},
 		},
