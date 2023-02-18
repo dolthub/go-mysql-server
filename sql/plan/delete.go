@@ -96,6 +96,30 @@ func deleteDatabaseHelper(node sql.Node) string {
 	return ""
 }
 
+// WithTargets returns a new instance of this DeleteFrom, with the specified |targets|.
+func (p *DeleteFrom) WithTargets(targets []sql.Node) sql.Node {
+	newDeleteFrom := *p
+	newDeleteFrom.Targets = targets
+	return &newDeleteFrom
+}
+
+// Resolved implements the sql.Resolvable interface.
+func (p *DeleteFrom) Resolved() bool {
+	if p.Child.Resolved() == false {
+		return false
+	}
+
+	if len(p.Targets) > 0 {
+		for _, target := range p.Targets {
+			if target.Resolved() == false {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 func (p *DeleteFrom) Database() string {
 	return deleteDatabaseHelper(p.Child)
 }
@@ -108,23 +132,68 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return sql.RowsToRowIter(), nil
 	}
 
-	deletable, err := GetDeletable(p.Child)
-	if err != nil {
-		return nil, err
-	}
-
 	iter, err := p.Child.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	deleter := deletable.Deleter(ctx)
+	if len(p.Targets) == 0 {
+		deletable, err := GetDeletable(p.Child)
+		if err != nil {
+			return nil, err
+		}
+		return newDeleteIter(iter, deletable.Schema(), deleterStruct{deletable.Deleter(ctx), 0, len(deletable.Schema())}), nil
+	} else {
+		// TODO: Validate table wasn't specified twice? validate no multi-db?
+		deleterStructs := make([]deleterStruct, len(p.Targets))
+		for i, target := range p.Targets {
+			deletable, err := GetDeletable(target)
+			if err != nil {
+				return nil, err
+			}
+			deleter := deletable.Deleter(ctx)
+			start, end := findPosition(p.Child.Schema(), deletable.Name())
+			deleterStructs[i] = deleterStruct{deleter, int(start), int(end)}
+		}
+		return newDeleteIter(iter, p.Child.Schema(), deleterStructs...), nil
 
-	return newDeleteIter(iter, deleter, deletable.Schema()), nil
+	}
+
+}
+
+// TODO: Rename and document
+type deleterStruct struct {
+	deleter     sql.RowDeleter
+	schemaStart int
+	schemaEnd   int
+}
+
+func findPosition(schema sql.Schema, name string) (uint, uint) {
+	foundStart := false
+	var start uint
+	for i, col := range schema {
+		// casing?
+		if col.Source == name {
+			if !foundStart {
+				start = uint(i)
+				foundStart = true
+			}
+		} else {
+			if foundStart {
+				return start, uint(i)
+			}
+		}
+	}
+	if foundStart {
+		return start, uint(len(schema))
+	}
+
+	// TODO: Turn this into an error
+	panic(fmt.Sprintf("didn't find table %s", name))
 }
 
 type deleteIter struct {
-	deleter   sql.RowDeleter
+	deleters  []deleterStruct
 	schema    sql.Schema
 	childIter sql.RowIter
 	closed    bool
@@ -141,30 +210,64 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	default:
 	}
 
+	// Delete iterator receives rows from its source, which could be a table, a
+	// subquery(?), a join statement, etc. Any filtering is done as a layer between the source
+	// and the delete node. The delete node simply reads in all of it's source and calls delete
+	// on the deletable interface. (If no explicit target is given... the delete is limited to
+	// having a single table as it's source and that is implicitly the target.) The delete interface
+	// accepts the full row to delete, so it is critical that the delete node extract the
+	// correct columns from the context row!
+
+	// Now that we are supporting multiple targets (actually... multiple sources even more, since
+	// they generate the extra columns in the child row!) we need to give the delete iterator
+	// a set of: DeletableTable and the position in the row from where to pull the PK to delete
+	// from that table.
+
+	// TODO: Add subquery test cases
+	// TODO: re-read MySQL docs for any other edge cases
+	//       https://dev.mysql.com/doc/refman/8.0/en/delete.html
+
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
 	// scope, which will be the first N values in the row.
 	// TODO: handle this in the analyzer instead?
-	if len(d.schema) < len(row) {
-		row = row[len(row)-len(d.schema):]
+	fullSchemaLength := len(d.schema)
+	rowLength := len(row)
+	for _, deleter := range d.deleters {
+		schemaLength := deleter.schemaEnd - deleter.schemaStart
+		subSlice := row
+		if schemaLength < rowLength {
+			subSlice = row[(rowLength - fullSchemaLength + deleter.schemaStart):(rowLength - fullSchemaLength + deleter.schemaEnd)]
+		}
+		err = deleter.deleter.Delete(ctx, subSlice)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return row, d.deleter.Delete(ctx, row)
+	return row, nil
 }
 
 func (d *deleteIter) Close(ctx *sql.Context) error {
 	if !d.closed {
 		d.closed = true
-		if err := d.deleter.Close(ctx); err != nil {
-			return err
+		for _, deleter := range d.deleters {
+			// TODO: collect errs?
+			if err := deleter.deleter.Close(ctx); err != nil {
+				return err
+			}
 		}
 		return d.childIter.Close(ctx)
 	}
 	return nil
 }
 
-func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema) sql.RowIter {
-	return NewTableEditorIter(deleter, &deleteIter{
-		deleter:   deleter,
+func newDeleteIter(childIter sql.RowIter, schema sql.Schema, deleters ...deleterStruct) sql.RowIter {
+	closers := make([]sql.EditOpenerCloser, len(deleters))
+	for i, ds := range deleters {
+		closers[i] = ds.deleter
+	}
+	return NewMultiTableEditorIter(closers, &deleteIter{
+		deleters:  deleters,
 		childIter: childIter,
 		schema:    schema,
 	})

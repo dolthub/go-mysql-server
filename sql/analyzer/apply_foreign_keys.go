@@ -141,24 +141,18 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 
-		// TODO:
-		//   - Understand the rest of this case block
-		//   - Clean up this code
-		//   - Add support for multiple DeletableTable targets
-
 		var deleteDest sql.DeletableTable
 		if len(n.Targets) == 0 {
 			deleteDest, err = plan.GetDeletable(n.Child)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-		} else if len(n.Targets) == 1 {
+		} else {
 			deleteDest, err = plan.GetDeletable(n.Targets[0])
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-		} else {
-			return nil, transform.SameTree, fmt.Errorf("unable to delete join from multiple target tables!")
+			// TODO: Add support for multiple DeletableTable targets
 		}
 
 		tbl, ok := deleteDest.(sql.ForeignKeyTable)

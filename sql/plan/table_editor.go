@@ -25,7 +25,7 @@ import (
 type tableEditorIter struct {
 	once             *sync.Once
 	onceCtx          *sql.Context
-	editIter         sql.EditOpenerCloser
+	editIter         []sql.EditOpenerCloser
 	inner            sql.RowIter
 	errorEncountered error
 }
@@ -37,7 +37,16 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 func NewTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
 	return &tableEditorIter{
 		once:             &sync.Once{},
-		editIter:         table,
+		editIter:         []sql.EditOpenerCloser{table},
+		inner:            wrappedIter,
+		errorEncountered: nil,
+	}
+}
+
+func NewMultiTableEditorIter(tables []sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
+	return &tableEditorIter{
+		once:             &sync.Once{},
+		editIter:         tables,
 		inner:            wrappedIter,
 		errorEncountered: nil,
 	}
@@ -46,7 +55,9 @@ func NewTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql
 // Next implements the interface sql.RowIter.
 func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	s.once.Do(func() {
-		s.editIter.StatementBegin(ctx)
+		for _, editIter := range s.editIter {
+			editIter.StatementBegin(ctx)
+		}
 	})
 	row, err := s.inner.Next(ctx)
 	if err != nil && err != io.EOF {
@@ -68,9 +79,15 @@ func (s *tableEditorIter) Close(ctx *sql.Context) error {
 	_, ok := err.(sql.IgnorableError)
 
 	if err != nil && !ok {
-		err = s.editIter.DiscardChanges(ctx, s.errorEncountered)
+		// TODO: collect and check errors!
+		for _, editIter := range s.editIter {
+			err = editIter.DiscardChanges(ctx, s.errorEncountered)
+		}
 	} else {
-		err = s.editIter.StatementComplete(ctx)
+		// TODO: collect and check errors!
+		for _, editIter := range s.editIter {
+			err = editIter.StatementComplete(ctx)
+		}
 	}
 	if err != nil {
 		_ = s.inner.Close(ctx)

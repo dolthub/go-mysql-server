@@ -20,6 +20,36 @@ import (
 )
 
 var DeleteTests = []WriteQueryTest{
+	// TODO: Consider a separate var for delete join tests
+	// TODO: Add tests with filters
+	// DELETE FROM JOIN SOURCE
+	{
+		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{3, 0}},
+	},
+	{
+		// TODO: This test is failing – we aren't able to see the alias name yet for some reason...
+		WriteQuery:          "DELETE t1 FROM mytable as t1 join tabletest where t1.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 0}},
+	},
+
+	// DELETE FROM SINGLE SOURCE
 	{
 		WriteQuery:          "DELETE FROM mytable;",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
@@ -168,6 +198,9 @@ var SpatialDeleteTests = []WriteQueryTest{
 	},
 }
 
+// TODO: Add tests for delete from join errors:
+//   - targeting tables that don't exist
+//   - targeting tables not in the join
 var DeleteErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "invalid table",
