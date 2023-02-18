@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,13 +26,17 @@ var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FRO
 // DeleteFrom is a node describing a deletion from some table.
 type DeleteFrom struct {
 	UnaryNode
+	Targets []sql.Node
 }
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)
 
 // NewDeleteFrom creates a DeleteFrom node.
-func NewDeleteFrom(n sql.Node) *DeleteFrom {
-	return &DeleteFrom{UnaryNode{n}}
+func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
+	return &DeleteFrom{
+		UnaryNode: UnaryNode{n},
+		Targets:   targets,
+	}
 }
 
 func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
@@ -170,7 +175,7 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewDeleteFrom(children[0]), nil
+	return NewDeleteFrom(children[0], p.Targets), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

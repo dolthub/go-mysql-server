@@ -4413,8 +4413,7 @@ CREATE TABLE t2
 							), "select * from cte1"),
 						),
 						plan.NewUnresolvedTable("c", ""),
-					),
-				),
+					), nil),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
 						plan.NewSubqueryAlias("cte1", "select a from b",
@@ -4965,8 +4964,7 @@ func TestParseCreateTrigger(t *testing.T) {
 						plan.NewFilter(
 							expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
 							plan.NewUnresolvedTable("baz", ""),
-						),
-					),
+						), nil),
 					plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
 						expression.NewUnresolvedQualifiedColumn("old", "a"),
 						expression.NewUnresolvedQualifiedColumn("old", "b"),
