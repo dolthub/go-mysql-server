@@ -205,7 +205,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "create table as select distinct",
@@ -540,6 +539,26 @@ func TestScripts(t *testing.T) {
 
 func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialScriptsPrepared(t *testing.T) {
+	enginetest.TestSpatialScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexScripts(t *testing.T) {
+	enginetest.TestSpatialIndexScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexScriptsPrepared(t *testing.T) {
+	enginetest.TestSpatialIndexScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexPlans(t *testing.T) {
+	enginetest.TestSpatialIndexPlans(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexPlansPrepared(t *testing.T) {
+	enginetest.TestSpatialIndexPlansPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestLoadDataPrepared(t *testing.T) {

@@ -1081,8 +1081,28 @@ func TestScripts(t *testing.T, harness Harness) {
 func TestSpatialScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SpatialScriptTests {
-
 		TestScript(t, harness, script)
+	}
+}
+
+func TestSpatialScriptsPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SpatialScriptTests {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
+func TestSpatialIndexScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SpatialIndexScriptTests {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestSpatialIndexScriptsPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SpatialIndexScriptTests {
+		TestScriptPrepared(t, harness, script)
 	}
 }
 

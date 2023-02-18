@@ -209,3 +209,8 @@ func (p Point) Swap() GeometryValue {
 		Y:    p.X,
 	}
 }
+
+// BBox implements GeometryValue interface.
+func (p Point) BBox() (float64, float64, float64, float64) {
+	return p.X, p.Y, p.X, p.Y
+}

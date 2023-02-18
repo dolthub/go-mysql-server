@@ -44,6 +44,7 @@ type GeometryValue interface {
 	Serialize() []byte
 	WriteData(buf []byte) int
 	Swap() GeometryValue
+	BBox() (float64, float64, float64, float64)
 }
 
 var _ sql.Type = GeometryType{}

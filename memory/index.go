@@ -34,6 +34,7 @@ type Index struct {
 	Exprs      []sql.Expression
 	Name       string
 	Unique     bool
+	Spatial    bool
 	CommentStr string
 	PrefixLens []uint16
 }
@@ -62,6 +63,10 @@ func (idx *Index) CanSupport(...sql.Range) bool {
 
 func (idx *Index) IsUnique() bool {
 	return idx.Unique
+}
+
+func (idx *Index) IsSpatial() bool {
+	return idx.Spatial
 }
 
 func (idx *Index) Comment() string {
@@ -193,6 +198,9 @@ func (idx *Index) Table() string { return idx.TableName }
 
 func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
+	if idx.Spatial {
+		return handled
+	}
 	for _, expr := range filters {
 		if expression.ContainsImpreciseComparison(expr) {
 			continue

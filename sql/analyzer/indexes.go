@@ -17,6 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -240,6 +241,10 @@ func getIndexes(
 		result := multiColumnIndexes
 		// Next try to match the remaining expressions individually
 		for _, e := range unusedExprs {
+			// TODO: eventually support merging spatial lookups
+			if _, ok := e.(*spatial.Intersects); ok {
+				continue
+			}
 			indexes, err := getIndexes(ctx, ia, e, tableAliases)
 			if err != nil {
 				return nil, err
@@ -259,6 +264,62 @@ func getIndexes(
 		}
 
 		return result, nil
+	}
+
+	// TODO (james): add all other spatial index supported functions here
+	// TODO: make generalizable to all functions?
+	switch e := e.(type) {
+	case *spatial.Intersects:
+		// don't pushdown functions with bindvars
+		if exprHasBindVar(e) {
+			return nil, nil
+		}
+
+		// Will be non-nil only when there is exactly one *expression.GetField
+		getField := expression.ExtractGetField(e)
+		if getField == nil {
+			return nil, nil
+		}
+
+		// Put GetField on the left
+		left, right := e.BinaryExpression.Left, e.BinaryExpression.Right
+		if _, ok := right.(*expression.GetField); ok {
+			left, right = right, left
+		}
+
+		value, err := right.Eval(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		g, ok := value.(types.GeometryValue)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+
+		minX, minY, maxX, maxY := g.BBox()
+		lower := types.Point{X: minX, Y: minY}
+		upper := types.Point{X: maxX, Y: maxY}
+
+		normalizedExpressions := normalizeExpressions(tableAliases, left)
+		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getField.Table(), normalizedExpressions...)
+		if idx == nil || !idx.IsSpatial() {
+			return nil, nil
+		}
+
+		bld := sql.NewSpatialIndexBuilder(idx)
+		bld.AddRange(lower, upper)
+		lookup, err := bld.Build()
+		if err != nil || lookup.IsEmpty() {
+			return nil, err
+		}
+
+		result[getField.Table()] = &indexLookup{
+			fields:  []sql.Expression{getField},
+			indexes: []sql.Index{idx},
+			lookup:  lookup,
+			expr:    e,
+		}
 	}
 
 	return result, nil
@@ -369,7 +430,6 @@ func getNegatedIndexes(
 	not *expression.Not,
 	tableAliases TableAliases,
 ) (indexLookupsByTable, error) {
-
 	switch e := not.Child.(type) {
 	case *expression.Not:
 		return getIndexes(ctx, ia, e.Child, tableAliases)
@@ -1065,6 +1125,12 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 		if aiExprs[i] != biExprs[i] {
 			return false
 		}
+	}
+	// TODO (james): if a bbox complete contains the other, always better to merge
+	// TODO (james): if AND over two bboxes that don't strictly intersect, empty set
+	// TODO (james): if OR over two bboxes; unsure if better to merge or not
+	if a.IsSpatialLookup || b.IsSpatialLookup {
+		return false
 	}
 	return true
 }

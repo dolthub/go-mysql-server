@@ -146,6 +146,7 @@ func (i *dummyIdx) ID() string              { return i.id }
 func (i *dummyIdx) Database() string        { return i.database }
 func (i *dummyIdx) Table() string           { return i.table }
 func (i *dummyIdx) IsUnique() bool          { return false }
+func (i *dummyIdx) IsSpatial() bool         { return false }
 func (i *dummyIdx) Comment() string         { return "" }
 func (i *dummyIdx) IsGenerated() bool       { return false }
 func (i *dummyIdx) IndexType() string       { return "BTREE" }

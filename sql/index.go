@@ -65,6 +65,8 @@ type Index interface {
 	Expressions() []string
 	// IsUnique returns whether this index is unique
 	IsUnique() bool
+	// IsSpatial returns whether this index is a spatial index
+	IsSpatial() bool
 	// Comment returns the comment for this index
 	Comment() string
 	// IndexType returns the type of this index, e.g. BTREE
@@ -93,8 +95,9 @@ type IndexLookup struct {
 	// values; the range is null safe, the index is unique, every index
 	// column has a range expression, and every range expression is an
 	// exact equality.
-	IsPointLookup bool
-	IsEmptyRange  bool
+	IsPointLookup   bool
+	IsEmptyRange    bool
+	IsSpatialLookup bool
 }
 
 var emptyLookup = IndexLookup{}

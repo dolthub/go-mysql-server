@@ -382,7 +382,6 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
 				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
 			}
-			return nil, sql.ErrUnsupportedSpatialIdx.New()
 		}
 
 		return append(indexes, ai.IndexName), nil
@@ -596,7 +595,6 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
 				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
 			}
-			return sql.ErrUnsupportedSpatialIdx.New()
 		}
 	}
 
