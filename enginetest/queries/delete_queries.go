@@ -19,90 +19,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// DeleteJoinTests contains tests for deletes that explicitly list the table from which
-// to delete, and whose source may contain joined table relations.
-var DeleteJoinTests = []WriteQueryTest{
-	{
-		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{0, 3}},
-	},
-	{
-		WriteQuery:          "DELETE MYTABLE FROM mytAble join tAbletest where mytable.i=tabletest.i;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{0, 3}},
-	},
-	{
-		WriteQuery:          "DELETE tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{3, 0}},
-	},
-	{
-		// TODO: This test is failing – we aren't able to see the alias name yet for some reason...
-		WriteQuery:          "DELETE t1 FROM mytable as t1 join tabletest where t1.i=tabletest.i;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{0, 3}},
-	},
-	{
-		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{0, 0}},
-	},
-	{
-		WriteQuery:          "DELETE MYTABLE, TABLETEST FROM mytable join tabletest where mytable.i=tabletest.i;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{0, 0}},
-	},
-	{
-		WriteQuery:          "DELETE mytable FROM mytable;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
-		SelectQuery:         "SELECT count(*) FROM mytable;",
-		ExpectedSelect:      []sql.Row{{0}},
-	},
-	{
-		WriteQuery:          "DELETE mytable FROM mytable WHERE i > 9999;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
-		SelectQuery:         "SELECT count(*) FROM mytable;",
-		ExpectedSelect:      []sql.Row{{3}},
-	},
-	{
-		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{2, 3}},
-	},
-	{
-		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{2, 2}},
-	},
-	{
-		WriteQuery:          "DELETE tabletest, mytable FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{2, 2}},
-	},
-	{
-		WriteQuery:          "with t (n) as (select (1) from dual) delete mytable from mytable join tabletest where mytable.i=tabletest.i and mytable.i in (select n from t)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{2, 3}},
-	},
-	{
-		WriteQuery:          "with t (n) as (select (1) from dual) delete mytable, tabletest from mytable join tabletest where mytable.i=tabletest.i and mytable.i in (select n from t)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
-		ExpectedSelect:      []sql.Row{{2, 2}},
-	},
-}
-
 // DeleteTests contains tests for deletes that implicitly target the single table mentioned
 // in the from clause.
 var DeleteTests = []WriteQueryTest{
@@ -230,6 +146,90 @@ var DeleteTests = []WriteQueryTest{
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(3, "third row"),
 		},
+	},
+}
+
+// DeleteJoinTests contains tests for deletes that explicitly list the table from which
+// to delete, and whose source may contain joined table relations.
+var DeleteJoinTests = []WriteQueryTest{
+	{
+		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE MYTABLE FROM mytAble join tAbletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{3, 0}},
+	},
+	{
+		// TODO: This test is failing – we aren't able to see the alias name yet for some reason...
+		WriteQuery:          "DELETE t1 FROM mytable as t1 join tabletest where t1.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 0}},
+	},
+	{
+		WriteQuery:          "DELETE MYTABLE, TABLETEST FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 0}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT count(*) FROM mytable;",
+		ExpectedSelect:      []sql.Row{{0}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable WHERE i > 9999;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SELECT count(*) FROM mytable;",
+		ExpectedSelect:      []sql.Row{{3}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 3}},
+	},
+	{
+		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 2}},
+	},
+	{
+		WriteQuery:          "DELETE tabletest, mytable FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 2}},
+	},
+	{
+		WriteQuery:          "with t (n) as (select (1) from dual) delete mytable from mytable join tabletest where mytable.i=tabletest.i and mytable.i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 3}},
+	},
+	{
+		WriteQuery:          "with t (n) as (select (1) from dual) delete mytable, tabletest from mytable join tabletest where mytable.i=tabletest.i and mytable.i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 2}},
 	},
 }
 
