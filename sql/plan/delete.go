@@ -142,10 +142,11 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		if err != nil {
 			return nil, err
 		}
-		return newDeleteIter(iter, deletable.Schema(), deleterStruct{deletable.Deleter(ctx), 0, len(deletable.Schema())}), nil
+		return newDeleteIter(iter, deletable.Schema(),
+			schemaPositionDeleter{deletable.Deleter(ctx), 0, len(deletable.Schema())}), nil
 	} else {
 		// TODO: Validate table wasn't specified twice? validate no multi-db?
-		deleterStructs := make([]deleterStruct, len(p.Targets))
+		schemaPositionDeleters := make([]schemaPositionDeleter, len(p.Targets))
 		for i, target := range p.Targets {
 			deletable, err := GetDeletable(target)
 			if err != nil {
@@ -153,16 +154,17 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 			deleter := deletable.Deleter(ctx)
 			start, end := findPosition(p.Child.Schema(), deletable.Name())
-			deleterStructs[i] = deleterStruct{deleter, int(start), int(end)}
+			schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
 		}
-		return newDeleteIter(iter, p.Child.Schema(), deleterStructs...), nil
+		return newDeleteIter(iter, p.Child.Schema(), schemaPositionDeleters...), nil
 
 	}
 
 }
 
-// TODO: Rename and document
-type deleterStruct struct {
+// schemaPositionDeleter contains a sql.RowDeleter and the start (inclusive) and end (exclusive) position
+// within a schema that indicate the portion of the schema that is associated with this specific deleter.
+type schemaPositionDeleter struct {
 	deleter     sql.RowDeleter
 	schemaStart int
 	schemaEnd   int
@@ -193,7 +195,7 @@ func findPosition(schema sql.Schema, name string) (uint, uint) {
 }
 
 type deleteIter struct {
-	deleters  []deleterStruct
+	deleters  []schemaPositionDeleter
 	schema    sql.Schema
 	childIter sql.RowIter
 	closed    bool
@@ -261,7 +263,7 @@ func (d *deleteIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func newDeleteIter(childIter sql.RowIter, schema sql.Schema, deleters ...deleterStruct) sql.RowIter {
+func newDeleteIter(childIter sql.RowIter, schema sql.Schema, deleters ...schemaPositionDeleter) sql.RowIter {
 	openerClosers := make([]sql.EditOpenerCloser, len(deleters))
 	for i, ds := range deleters {
 		openerClosers[i] = ds.deleter
