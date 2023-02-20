@@ -254,13 +254,22 @@ var SpatialDeleteTests = []WriteQueryTest{
 	},
 }
 
-// TODO: Add tests for delete from join errors:
-//   - targeting tables that don't exist
-//   - targeting tables not in the join
 var DeleteErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "invalid table",
 		Query: "DELETE FROM invalidtable WHERE x < 1;",
+	},
+	{
+		Name:  "unknown table in delete join",
+		Query: "DELETE unknowntable FROM mytable WHERE x < 1;",
+	},
+	{
+		Name:  "invalid table in delete join",
+		Query: "DELETE tabletest FROM mytable WHERE x < 1;",
+	},
+	{
+		Name:  "repeated table in delete join",
+		Query: "DELETE mytable, mytable FROM mytable WHERE x < 1;",
 	},
 	{
 		Name:  "invalid column",
