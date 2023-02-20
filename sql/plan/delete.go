@@ -262,15 +262,15 @@ func (d *deleteIter) Close(ctx *sql.Context) error {
 }
 
 func newDeleteIter(childIter sql.RowIter, schema sql.Schema, deleters ...deleterStruct) sql.RowIter {
-	closers := make([]sql.EditOpenerCloser, len(deleters))
+	openerClosers := make([]sql.EditOpenerCloser, len(deleters))
 	for i, ds := range deleters {
-		closers[i] = ds.deleter
+		openerClosers[i] = ds.deleter
 	}
-	return NewMultiTableEditorIter(closers, &deleteIter{
+	return NewTableEditorIter(&deleteIter{
 		deleters:  deleters,
 		childIter: childIter,
 		schema:    schema,
-	})
+	}, openerClosers...)
 }
 
 // WithChildren implements the Node interface.

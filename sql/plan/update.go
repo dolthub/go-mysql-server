@@ -272,12 +272,12 @@ func newUpdateIter(
 			ignore:    true,
 		})
 	} else {
-		return NewTableEditorIter(updater, &updateIter{
+		return NewTableEditorIter(&updateIter{
 			childIter: childIter,
 			updater:   updater,
 			schema:    schema,
 			checks:    checks,
-		})
+		}, updater)
 	}
 }
 

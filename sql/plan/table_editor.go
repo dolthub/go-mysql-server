@@ -25,7 +25,7 @@ import (
 type tableEditorIter struct {
 	once             *sync.Once
 	onceCtx          *sql.Context
-	editIter         []sql.EditOpenerCloser
+	openerClosers    []sql.EditOpenerCloser
 	inner            sql.RowIter
 	errorEncountered error
 }
@@ -34,19 +34,12 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 
 // NewTableEditorIter returns a new *tableEditorIter by wrapping the given iterator. If the
 // "statement_boundaries" session variable is set to false, then the original iterator is returned.
-func NewTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
+// Each of the |openerClosers| specified will be called to begin, complete, and discard statements as
+// needed as the |wrappedIter| is processed.
+func NewTableEditorIter(wrappedIter sql.RowIter, openerClosers ...sql.EditOpenerCloser) sql.RowIter {
 	return &tableEditorIter{
 		once:             &sync.Once{},
-		editIter:         []sql.EditOpenerCloser{table},
-		inner:            wrappedIter,
-		errorEncountered: nil,
-	}
-}
-
-func NewMultiTableEditorIter(tables []sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
-	return &tableEditorIter{
-		once:             &sync.Once{},
-		editIter:         tables,
+		openerClosers:    openerClosers,
 		inner:            wrappedIter,
 		errorEncountered: nil,
 	}
@@ -55,8 +48,8 @@ func NewMultiTableEditorIter(tables []sql.EditOpenerCloser, wrappedIter sql.RowI
 // Next implements the interface sql.RowIter.
 func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	s.once.Do(func() {
-		for _, editIter := range s.editIter {
-			editIter.StatementBegin(ctx)
+		for _, openerCloser := range s.openerClosers {
+			openerCloser.StatementBegin(ctx)
 		}
 	})
 	row, err := s.inner.Next(ctx)
@@ -74,19 +67,18 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Close implements the interface sql.RowIter.
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
-
 	err := s.errorEncountered
 	_, ok := err.(sql.IgnorableError)
 
 	if err != nil && !ok {
 		// TODO: collect and check errors!
-		for _, editIter := range s.editIter {
-			err = editIter.DiscardChanges(ctx, s.errorEncountered)
+		for _, openerCloser := range s.openerClosers {
+			err = openerCloser.DiscardChanges(ctx, s.errorEncountered)
 		}
 	} else {
 		// TODO: collect and check errors!
-		for _, editIter := range s.editIter {
-			err = editIter.StatementComplete(ctx)
+		for _, openerCloser := range s.openerClosers {
+			err = openerCloser.StatementComplete(ctx)
 		}
 	}
 	if err != nil {
