@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"gopkg.in/src-d/go-errors.v1"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -153,13 +154,14 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 				return nil, err
 			}
 			deleter := deletable.Deleter(ctx)
-			start, end := findPosition(p.Child.Schema(), deletable.Name())
+			start, end, err := findSourcePosition(p.Child.Schema(), deletable.Name())
+			if err != nil {
+				return nil, err
+			}
 			schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
 		}
 		return newDeleteIter(iter, p.Child.Schema(), schemaPositionDeleters...), nil
-
 	}
-
 }
 
 // schemaPositionDeleter contains a sql.RowDeleter and the start (inclusive) and end (exclusive) position
@@ -170,28 +172,32 @@ type schemaPositionDeleter struct {
 	schemaEnd   int
 }
 
-func findPosition(schema sql.Schema, name string) (uint, uint) {
+// findSourcePosition searches the specified |schema| for the first group of columns whose source is |name|,
+// and returns the start position of that source in the schema (inclusive) and the end position (exclusive).
+// If any problems were an encountered, such as not finding any columns from the specified source name,
+// an error is returned.
+// TODO: Should this be a function on schema?
+func findSourcePosition(schema sql.Schema, name string) (uint, uint, error) {
 	foundStart := false
+	name = strings.ToLower(name)
 	var start uint
 	for i, col := range schema {
-		// casing?
-		if col.Source == name {
+		if strings.ToLower(col.Source) == name {
 			if !foundStart {
 				start = uint(i)
 				foundStart = true
 			}
 		} else {
 			if foundStart {
-				return start, uint(i)
+				return start, uint(i), nil
 			}
 		}
 	}
 	if foundStart {
-		return start, uint(len(schema))
+		return start, uint(len(schema)), nil
 	}
 
-	// TODO: Turn this into an error
-	panic(fmt.Sprintf("didn't find table %s", name))
+	return 0, 0, fmt.Errorf("unable to find any columns in schema from source %q", name)
 }
 
 type deleteIter struct {
