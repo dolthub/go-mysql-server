@@ -178,10 +178,10 @@ func (p *DeleteFrom) Validate() error {
 			// Check for multiple databases
 			if dber, ok := target.(sql.Databaseable); ok {
 				databases[dber.Database()] = struct{}{}
+			} else if db, ok := target.(sql.Databaser); ok {
+				databases[db.Database().Name()] = struct{}{}
 			} else if rt, ok := target.(*ResolvedTable); ok {
 				databases[rt.Database.Name()] = struct{}{}
-			} else {
-				return fmt.Errorf("could not determine database for node of type: %T", target)
 			}
 			if len(databases) > 1 {
 				return fmt.Errorf("multiple databases specified as delete from targets")

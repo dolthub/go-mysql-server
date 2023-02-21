@@ -594,7 +594,7 @@ var ForeignKeyTests = []ScriptTest{
 			"INSERT INTO two VALUES (2, 1, 1), (3, 2, 2), (4, 3, 3), (5, 4, 4);",
 			"INSERT INTO three VALUES (3, 1, 1), (4, 2, 2), (5, 3, 3), (6, 4, 4);",
 			"UPDATE one SET v1 = v1 + v2;",
-			"DELETE FROM one WHERE pk = 3;",
+			"DELETE one FROM one WHERE pk = 3;",
 			"UPDATE two SET v2 = v1 - 2;",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -633,6 +633,14 @@ var ForeignKeyTests = []ScriptTest{
 				Query:    "SELECT * FROM two;",
 				Expected: []sql.Row{{1, 1, 1}, {2, nil, 2}, {3, nil, 3}, {4, 4, 4}},
 			},
+			{
+				Query:    "DELETE one FROM one inner join two on one.pk=two.pk;",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query:    "select * from two;",
+				Expected: []sql.Row{{1, nil, 1}, {2, nil, 2}, {3, nil, 3}, {4, nil, 4}},
+			},
 		},
 	},
 	{
@@ -655,6 +663,58 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				Query:       "DELETE FROM one;",
 				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query:       "DELETE one FROM one inner join two on one.pk=two.pk;",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query:       "DELETE one, two FROM one inner join two on one.pk=two.pk;",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+		},
+	},
+	{
+		Name: "Multi-table DELETE FROM JOIN with multiple foreign keys",
+		SetUpScript: []string{
+			"CREATE TABLE one (pk int PRIMARY KEY);",
+			"CREATE TABLE two (pk int PRIMARY KEY);",
+			"CREATE TABLE three (pk int PRIMARY KEY, fk3 int, CONSTRAINT fk_3 FOREIGN KEY (fk3) REFERENCES one(pk) ON DELETE CASCADE);",
+			"CREATE TABLE four (pk int PRIMARY KEY, fk4 int, CONSTRAINT fk_4 FOREIGN KEY (fk4) REFERENCES two(pk) ON DELETE CASCADE);",
+			"INSERT INTO one VALUES (1), (2), (3);",
+			"INSERT INTO two VALUES (1), (2), (3);",
+			"INSERT INTO three VALUES (1, 1), (2, 2), (3, 3);",
+			"INSERT INTO four VALUES (1, 1), (2, 2), (3, 3);",
+			"DELETE one, two FROM one inner join two on one.pk=two.pk",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from three union all select * from four;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "Single-table DELETE FROM JOIN with multiple foreign keys",
+		SetUpScript: []string{
+			"CREATE TABLE one (pk int PRIMARY KEY);",
+			"CREATE TABLE two (pk int PRIMARY KEY);",
+			"CREATE TABLE three (pk int PRIMARY KEY, fk3 int, CONSTRAINT fk_3 FOREIGN KEY (fk3) REFERENCES one(pk) ON DELETE CASCADE);",
+			"CREATE TABLE four (pk int PRIMARY KEY, fk4 int, CONSTRAINT fk_4 FOREIGN KEY (fk4) REFERENCES two(pk) ON DELETE CASCADE);",
+			"INSERT INTO one VALUES (1), (2), (3);",
+			"INSERT INTO two VALUES (1), (2), (3);",
+			"INSERT INTO three VALUES (1, 1), (2, 2), (3, 3);",
+			"INSERT INTO four VALUES (1, 1), (2, 2), (3, 3);",
+			"DELETE one FROM one inner join two on one.pk=two.pk",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from three;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from four;",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
 	},

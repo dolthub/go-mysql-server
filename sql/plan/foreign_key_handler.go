@@ -96,7 +96,7 @@ func (n *ForeignKeyHandler) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 
 // Name implements the interface sql.Table.
 func (n *ForeignKeyHandler) Name() string {
-	return n.Name()
+	return n.Table.Name()
 }
 
 // Partitions implements the interface sql.Table.
