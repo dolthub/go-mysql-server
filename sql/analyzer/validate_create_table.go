@@ -319,7 +319,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
 	}
 
-	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
+	err := validateColumnSafeToDropWithCheckConstraint(dc.Column, dc.Checks)
 	if err != nil {
 		return nil, err
 	}
@@ -343,6 +343,41 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 			}
 			return false
 		})
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateColumnSafeToDropWithCheckConstraint validates that the specified column name is safe to drop, even if
+// referenced in a check constraint. Columns referenced in check constraints can be dropped if they are the only
+// column referenced in the check constraint.
+func validateColumnSafeToDropWithCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	var err error
+	hasOtherCol := false
+	hasMatchingCol := false
+	for _, check := range checks {
+		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
+			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
+				if columnName == unresolvedColumn.Name() {
+					if hasOtherCol {
+						err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+						return true
+					} else {
+						hasMatchingCol = true
+					}
+				} else {
+					hasOtherCol = true
+				}
+			}
+			return false
+		})
+
+		if hasOtherCol && hasMatchingCol {
+			err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+		}
 
 		if err != nil {
 			return err
