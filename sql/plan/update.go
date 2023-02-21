@@ -264,13 +264,13 @@ func newUpdateIter(
 	ignore bool,
 ) sql.RowIter {
 	if ignore {
-		return NewCheckpointingTableEditorIter(updater, &updateIter{
+		return NewCheckpointingTableEditorIter(&updateIter{
 			childIter: childIter,
 			updater:   updater,
 			schema:    schema,
 			checks:    checks,
 			ignore:    true,
-		})
+		}, updater)
 	} else {
 		return NewTableEditorIter(&updateIter{
 			childIter: childIter,

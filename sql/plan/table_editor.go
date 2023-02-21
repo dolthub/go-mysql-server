@@ -101,7 +101,7 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 // after every iter of |wrappedIter|. While SLOW, this functionality ensures
 // correctness for statements that need to rollback individual statements that
 // error such as INSERT IGNORE INTO.
-func NewCheckpointingTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
+func NewCheckpointingTableEditorIter(wrappedIter sql.RowIter, table sql.EditOpenerCloser) sql.RowIter {
 	return &checkpointingTableEditorIter{
 		editIter: table,
 		inner:    wrappedIter,
