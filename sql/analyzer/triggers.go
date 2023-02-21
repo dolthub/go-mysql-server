@@ -153,7 +153,9 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				db = n.Database()
 			}
 		case *plan.DeleteFrom:
-			affectedTables = append(affectedTables, getTableName(n))
+			for _, target := range n.GetDeleteTargets() {
+				affectedTables = append(affectedTables, getTableName(target))
+			}
 			triggerEvent = plan.DeleteTrigger
 			if n.Database() != "" {
 				db = n.Database()

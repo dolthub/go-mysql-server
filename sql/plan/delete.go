@@ -151,6 +151,24 @@ func (p *DeleteFrom) Database() string {
 // multiple times, or using a DELETE FROM JOIN without specifying any explicit delete target tables, and returns an
 // error if any validation issues were detected.
 func (p *DeleteFrom) Validate() error {
+	// Check that delete from join only targets tables that exist in the join
+	if p.HasExplicitTargets() {
+		sourceTables := make(map[string]struct{})
+		transform.Inspect(p.Child, func(node sql.Node) bool {
+			if rt, ok := node.(*ResolvedTable); ok {
+				sourceTables[rt.Name()] = struct{}{}
+			}
+			return true
+		})
+
+		for _, target := range p.GetDeleteTargets() {
+			tableName := getTableName(target)
+			if _, ok := sourceTables[tableName]; !ok {
+				return fmt.Errorf("table %q not found in DELETE FROM sources", tableName)
+			}
+		}
+	}
+
 	// Duplicate explicit target tables or from explicit target tables from multiple databases
 	databases := make(map[string]struct{})
 	tables := make(map[string]struct{})

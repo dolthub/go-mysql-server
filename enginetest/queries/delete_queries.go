@@ -272,6 +272,10 @@ var DeleteErrorTests = []GenericErrorQueryTest{
 		Query: "DELETE mytable, mytable FROM mytable WHERE x < 1;",
 	},
 	{
+		Name:  "no explicit target specified in delete join",
+		Query: "DELETE FROM mytable join testtable WHERE mytable.i = testtable.i and x < 1;",
+	},
+	{
 		Name:  "invalid column",
 		Query: "DELETE FROM mytable WHERE z = 'dne';",
 	},

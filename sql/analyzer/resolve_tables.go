@@ -60,9 +60,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			if p.HasExplicitTargets() {
 				targets := p.GetDeleteTargets()
 				resolvedTargets := make([]sql.Node, len(targets))
-				// TODO: Where should we validate that delete from join only targets tables that exist in the join?
-				// TODO: Add a test for this case
-
 				for i, target := range targets {
 					new, same, err := resolveTables(ctx, a, target, scope, sel)
 					if err != nil {
