@@ -37,11 +37,19 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 	case 0:
 		return nil
 	case 1:
+		if exprs[0] == nil {
+			return nil
+		}
 		return exprs[0]
 	default:
+		if exprs[0] == nil {
+			return JoinAnd(exprs[1:]...)
+		}
 		result := NewAnd(exprs[0], exprs[1])
 		for _, e := range exprs[2:] {
-			result = NewAnd(result, e)
+			if e != nil {
+				result = NewAnd(result, e)
+			}
 		}
 		return result
 	}
@@ -127,6 +135,30 @@ type Or struct {
 // NewOr creates a new Or expression.
 func NewOr(left, right sql.Expression) sql.Expression {
 	return &Or{BinaryExpression{Left: left, Right: right}}
+}
+
+// JoinOr joins several expressions with Or.
+func JoinOr(exprs ...sql.Expression) sql.Expression {
+	switch len(exprs) {
+	case 0:
+		return nil
+	case 1:
+		if exprs[0] == nil {
+			return nil
+		}
+		return exprs[0]
+	default:
+		if exprs[0] == nil {
+			return JoinOr(exprs[1:]...)
+		}
+		result := NewOr(exprs[0], exprs[1])
+		for _, e := range exprs[2:] {
+			if e != nil {
+				result = NewOr(result, e)
+			}
+		}
+		return result
+	}
 }
 
 func (o *Or) String() string {
