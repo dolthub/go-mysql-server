@@ -71,14 +71,18 @@ func (s *tableEditorIter) Close(ctx *sql.Context) error {
 	_, ok := err.(sql.IgnorableError)
 
 	if err != nil && !ok {
-		// TODO: collect and check errors!
 		for _, openerCloser := range s.openerClosers {
-			err = openerCloser.DiscardChanges(ctx, s.errorEncountered)
+			tempErr := openerCloser.DiscardChanges(ctx, s.errorEncountered)
+			if tempErr != nil {
+				err = tempErr
+			}
 		}
 	} else {
-		// TODO: collect and check errors!
 		for _, openerCloser := range s.openerClosers {
-			err = openerCloser.StatementComplete(ctx)
+			tempErr := openerCloser.StatementComplete(ctx)
+			if tempErr != nil {
+				err = tempErr
+			}
 		}
 	}
 	if err != nil {

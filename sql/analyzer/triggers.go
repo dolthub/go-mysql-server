@@ -275,6 +275,12 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.DeleteFrom:
+			// TODO: This should work correctly when there is only one table that
+			//       has a trigger on it, but it won't work if a DELETE FROM JOIN
+			//       is deleting from two tables that both have triggers. Seems
+			//       like we need something like a MultipleTriggerExecutor node
+			//       that could execute multiple triggers, and we'd need to find
+			//       all the triggers ahead of time and pass them in together.
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,

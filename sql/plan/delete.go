@@ -262,7 +262,6 @@ type schemaPositionDeleter struct {
 // and returns the start position of that source in the schema (inclusive) and the end position (exclusive).
 // If any problems were an encountered, such as not finding any columns from the specified source name,
 // an error is returned.
-// TODO: Should this be a function on schema?
 func findSourcePosition(schema sql.Schema, name string) (uint, uint, error) {
 	foundStart := false
 	name = strings.ToLower(name)
@@ -286,6 +285,12 @@ func findSourcePosition(schema sql.Schema, name string) (uint, uint, error) {
 	return 0, 0, fmt.Errorf("unable to find any columns in schema from source %q", name)
 }
 
+// deleteIter executes the DELETE FROM logic to delete rows from tables as they flow through the iterator. For every
+// table the deleteIter needs to delete rows from, it needs a schemaPositionDeleter that provides the RowDeleter
+// interface as well as start and end position for that table's full row in the row this iterator consumes from its
+// child. For simple DELETE FROM statements deleting from a single table, this will likely be the full row contents,
+// but in more complex scenarios when there are columns contributed by outer scopes and for DELETE FROM JOIN statements
+// the child iterator will return a row that is composed of rows from multiple table sources.
 type deleteIter struct {
 	deleters  []schemaPositionDeleter
 	schema    sql.Schema
@@ -304,26 +309,9 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	default:
 	}
 
-	// Delete iterator receives rows from its source, which could be a table, a
-	// subquery(?), a join statement, etc. Any filtering is done as a layer between the source
-	// and the delete node. The delete node simply reads in all of it's source and calls delete
-	// on the deletable interface. (If no explicit target is given... the delete is limited to
-	// having a single table as it's source and that is implicitly the target.) The delete interface
-	// accepts the full row to delete, so it is critical that the delete node extract the
-	// correct columns from the context row!
-
-	// Now that we are supporting multiple targets (actually... multiple sources even more, since
-	// they generate the extra columns in the child row!) we need to give the delete iterator
-	// a set of: DeletableTable and the position in the row from where to pull the PK to delete
-	// from that table.
-
-	// TODO: Add subquery test cases
-	// TODO: re-read MySQL docs for any other edge cases
-	//       https://dev.mysql.com/doc/refman/8.0/en/delete.html
-
-	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
-	// scope, which will be the first N values in the row.
-	// TODO: handle this in the analyzer instead?
+	// For each target table from which we are deleting rows, reduce the row from our child iterator to just
+	// the columns that are part of that target table. This means looking at the position in the schema for
+	// the target table and also removing any prepended columns contributed by outer scopes.
 	fullSchemaLength := len(d.schema)
 	rowLength := len(row)
 	for _, deleter := range d.deleters {
@@ -345,7 +333,6 @@ func (d *deleteIter) Close(ctx *sql.Context) error {
 	if !d.closed {
 		d.closed = true
 		for _, deleter := range d.deleters {
-			// TODO: collect errs?
 			if err := deleter.deleter.Close(ctx); err != nil {
 				return err
 			}
