@@ -307,19 +307,9 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	// For example: "DELETE FROM table WHERE z > 0"
 	// We would need SELECT privileges on the "z" column as it's retrieving values
 
-	targetNames := make([]string, 0)
-	if p.HasExplicitTargets() {
-		for _, target := range p.explicitTargets {
-			if nameable, ok := target.(sql.Nameable); ok {
-				targetNames = append(targetNames, nameable.Name())
-			}
-		}
-	} else {
-		targetNames = append(targetNames, getTableName(p.Child))
-	}
-
-	for _, targetName := range targetNames {
-		op := sql.NewPrivilegedOperation(p.Database(), targetName, "", sql.PrivilegeType_Delete)
+	for _, target := range p.GetDeleteTargets() {
+		tableName := getTableName(target)
+		op := sql.NewPrivilegedOperation(p.Database(), tableName, "", sql.PrivilegeType_Delete)
 		if opChecker.UserHasPrivileges(ctx, op) == false {
 			return false
 		}
