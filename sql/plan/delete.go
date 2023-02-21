@@ -27,7 +27,10 @@ var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FRO
 // DeleteFrom is a node describing a deletion from some table.
 type DeleteFrom struct {
 	UnaryNode
-	Targets []sql.Node
+	// targets are the explicitly specified table nodes from which rows should be deleted. For simple DELETES against a
+	// single source table, targets do NOT need to be explicitly specified and will not be set here. For DELETE FROM JOIN
+	// statements, targets MUST be explicitly specified by the user and will be populated here.
+	explicitTargets []sql.Node
 }
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)
@@ -36,56 +39,49 @@ var _ sql.Node = (*DeleteFrom)(nil)
 // NewDeleteFrom creates a DeleteFrom node.
 func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
 	return &DeleteFrom{
-		UnaryNode: UnaryNode{n},
-		Targets:   targets,
+		UnaryNode:       UnaryNode{n},
+		explicitTargets: targets,
 	}
 }
 
-// TODO: Remove duplicate Wither
-func (p *DeleteFrom) WithDeleteTargets(targets []sql.Node) *DeleteFrom {
+// HasExplicitTargets returns true if the target delete tables were explicitly specified. This can only happen with
+// DELETE FROM JOIN statements – for DELETE FROM statements using a single source table, the target is NOT explicitly
+// specified and is assumed to be the single source table.
+func (p *DeleteFrom) HasExplicitTargets() bool {
+	return len(p.explicitTargets) > 0
+}
+
+// WithExplicitTargets returns a new DeleteFrom node instance with the specified |targets| set as the explicitly
+// specified targets of the delete operation.
+func (p *DeleteFrom) WithExplicitTargets(targets []sql.Node) *DeleteFrom {
 	copy := *p
-	copy.Targets = targets
+	copy.explicitTargets = targets
 	return &copy
 }
 
-// GetDeleteTargets returns the DeletableTables modified by this DeleteFrom node. When target tables are explicitly
-// specified in the DELETE SQL statement, those are returned here. If no target tables are explicitly specified, only
-// a single table is allowed to be specified in the DELETE source and it is implicitly the target table. If any
-// problems are encountered, an error is returned.
-// TODO: Update docs to mention nodes (or break into two functions)
-func (p *DeleteFrom) GetDeleteTargets() ([]sql.DeletableTable, []sql.Node, error) {
-	if len(p.Targets) == 0 {
-		deletableTable, err := getDeletable(p.Child)
-		if err != nil {
-			return nil, nil, err
-		} else {
-			return []sql.DeletableTable{deletableTable}, []sql.Node{p.Child}, nil
-		}
+// GetDeleteTargets returns the sql.Nodes representing the tables from which rows should be deleted. For a DELETE FROM
+// JOIN statement, this will return the tables explicitly specified by the caller. For a DELETE FROM statement this will
+// return the single table in the DELETE FROM source that is implicitly assumed to be the target of the delete operation.
+func (p *DeleteFrom) GetDeleteTargets() []sql.Node {
+	if len(p.explicitTargets) == 0 {
+		return []sql.Node{p.Child}
 	} else {
-		deletableTables := make([]sql.DeletableTable, len(p.Targets))
-		for i, target := range p.Targets {
-			deletableTable, err := getDeletable(target)
-			if err != nil {
-				return nil, nil, err
-			}
-			deletableTables[i] = deletableTable
-		}
-		return deletableTables, p.Targets, nil
+		return p.explicitTargets
 	}
 }
 
-func getDeletable(node sql.Node) (sql.DeletableTable, error) {
+func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 	switch node := node.(type) {
 	case sql.DeletableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return getDeletable(node.ResolvedTable)
+		return GetDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
 	case *SubqueryAlias:
 		return nil, ErrDeleteFromNotSupported.New()
 	case *TriggerExecutor:
-		return getDeletable(node.Left())
+		return GetDeletable(node.Left())
 	case sql.TableWrapper:
 		return getDeletableTable(node.Underlying())
 	}
@@ -93,7 +89,7 @@ func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return nil, ErrDeleteFromNotSupported.New()
 	}
 	for _, child := range node.Children() {
-		deleter, _ := getDeletable(child)
+		deleter, _ := GetDeletable(child)
 		if deleter != nil {
 			return deleter, nil
 		}
@@ -131,24 +127,15 @@ func deleteDatabaseHelper(node sql.Node) string {
 	return ""
 }
 
-// WithTargets returns a new instance of this DeleteFrom, with the specified |targets|.
-func (p *DeleteFrom) WithTargets(targets []sql.Node) sql.Node {
-	newDeleteFrom := *p
-	newDeleteFrom.Targets = targets
-	return &newDeleteFrom
-}
-
 // Resolved implements the sql.Resolvable interface.
 func (p *DeleteFrom) Resolved() bool {
 	if p.Child.Resolved() == false {
 		return false
 	}
 
-	if len(p.Targets) > 0 {
-		for _, target := range p.Targets {
-			if target.Resolved() == false {
-				return false
-			}
+	for _, target := range p.explicitTargets {
+		if target.Resolved() == false {
+			return false
 		}
 	}
 
@@ -172,30 +159,21 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, err
 	}
 
-	if len(p.Targets) == 0 {
-		deletable, err := getDeletable(p.Child)
+	targets := p.GetDeleteTargets()
+	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
+	for i, target := range targets {
+		deletable, err := GetDeletable(target)
 		if err != nil {
 			return nil, err
 		}
-		return newDeleteIter(iter, deletable.Schema(),
-			schemaPositionDeleter{deletable.Deleter(ctx), 0, len(deletable.Schema())}), nil
-	} else {
-		// TODO: Validate table wasn't specified twice? validate no multi-db?
-		schemaPositionDeleters := make([]schemaPositionDeleter, len(p.Targets))
-		for i, target := range p.Targets {
-			deletable, err := getDeletable(target)
-			if err != nil {
-				return nil, err
-			}
-			deleter := deletable.Deleter(ctx)
-			start, end, err := findSourcePosition(p.Child.Schema(), deletable.Name())
-			if err != nil {
-				return nil, err
-			}
-			schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
+		deleter := deletable.Deleter(ctx)
+		start, end, err := findSourcePosition(p.Child.Schema(), deletable.Name())
+		if err != nil {
+			return nil, err
 		}
-		return newDeleteIter(iter, p.Child.Schema(), schemaPositionDeleters...), nil
+		schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
 	}
+	return newDeleteIter(iter, p.Child.Schema(), schemaPositionDeleters...), nil
 }
 
 // schemaPositionDeleter contains a sql.RowDeleter and the start (inclusive) and end (exclusive) position
@@ -320,7 +298,7 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewDeleteFrom(children[0], p.Targets), nil
+	return NewDeleteFrom(children[0], p.explicitTargets), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -330,8 +308,8 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	// We would need SELECT privileges on the "z" column as it's retrieving values
 
 	targetNames := make([]string, 0)
-	if len(p.Targets) > 0 {
-		for _, target := range p.Targets {
+	if p.HasExplicitTargets() {
+		for _, target := range p.explicitTargets {
 			if nameable, ok := target.(sql.Nameable); ok {
 				targetNames = append(targetNames, nameable.Name())
 			}
@@ -350,14 +328,14 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	return true
 }
 
-func (p DeleteFrom) String() string {
+func (p *DeleteFrom) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
 	_ = pr.WriteChildren(p.Child.String())
 	return pr.String()
 }
 
-func (p DeleteFrom) DebugString() string {
+func (p *DeleteFrom) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
 	_ = pr.WriteChildren(sql.DebugString(p.Child))

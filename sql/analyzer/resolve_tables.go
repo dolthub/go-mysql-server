@@ -56,14 +56,14 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 			return r, transform.NewTree, err
 		case *plan.DeleteFrom:
-			// Because DeleteFrom can contain tables that are not modeled as children, we need to special
-			// case it to ensure those Targets get resolved.
-			if len(p.Targets) > 0 {
-				resolvedTargets := make([]sql.Node, len(p.Targets))
+			// DeleteFrom may contain explicitly specified target tables that are not modeled as child nodes
+			if p.HasExplicitTargets() {
+				targets := p.GetDeleteTargets()
+				resolvedTargets := make([]sql.Node, len(targets))
 				// TODO: Where should we validate that delete from join only targets tables that exist in the join?
 				// TODO: Add a test for this case
 
-				for i, target := range p.Targets {
+				for i, target := range targets {
 					new, same, err := resolveTables(ctx, a, target, scope, sel)
 					if err != nil {
 						return nil, transform.SameTree, err
@@ -73,7 +73,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 					}
 					resolvedTargets[i] = new
 				}
-				return p.WithTargets(resolvedTargets), transform.NewTree, nil
+				return p.WithExplicitTargets(resolvedTargets), transform.NewTree, nil
 			} else {
 				return p, transform.SameTree, nil
 			}

@@ -141,15 +141,16 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 
-		deleteTargets, nodes, err := n.GetDeleteTargets()
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
+		targets := n.GetDeleteTargets()
+		foreignKeyHandlers := make([]sql.Node, len(targets))
+		copy(foreignKeyHandlers, targets)
 
-		foreignKeyHandlers := make([]sql.Node, len(nodes))
-		copy(foreignKeyHandlers, nodes)
+		for i, node := range targets {
+			deleteDest, err := plan.GetDeletable(node)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 
-		for i, deleteDest := range deleteTargets {
 			tbl, ok := deleteDest.(sql.ForeignKeyTable)
 			// If foreign keys aren't supported then check the next node
 			if !ok {
@@ -166,12 +167,20 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			foreignKeyHandlers[i] = &plan.ForeignKeyHandler{
 				Table:        tbl,
 				Sch:          deleteDest.Schema(),
-				OriginalNode: nodes[i],
+				OriginalNode: targets[i],
 				Editor:       fkEditor,
 				AllUpdaters:  fkChain.GetUpdaters(),
 			}
 		}
-		return n.WithDeleteTargets(foreignKeyHandlers), transform.NewTree, nil
+		if n.HasExplicitTargets() {
+			return n.WithExplicitTargets(foreignKeyHandlers), transform.NewTree, nil
+		} else {
+			newNode, err := n.WithChildren(foreignKeyHandlers...)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
+		}
 	case *plan.RowUpdateAccumulator:
 		children := n.Children()
 		newChildren := make([]sql.Node, len(children))
