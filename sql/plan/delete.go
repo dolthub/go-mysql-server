@@ -156,8 +156,8 @@ func (p *DeleteFrom) Validate() error {
 	if p.HasExplicitTargets() {
 		sourceTables := make(map[string]struct{})
 		transform.Inspect(p.Child, func(node sql.Node) bool {
-			if rt, ok := node.(*ResolvedTable); ok {
-				sourceTables[rt.Name()] = struct{}{}
+			if t, ok := node.(sql.Table); ok {
+				sourceTables[t.Name()] = struct{}{}
 			}
 			return true
 		})
