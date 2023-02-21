@@ -294,8 +294,26 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	//TODO: If column values are retrieved then the SELECT privilege is required
 	// For example: "DELETE FROM table WHERE z > 0"
 	// We would need SELECT privileges on the "z" column as it's retrieving values
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.Database(), getTableName(p.Child), "", sql.PrivilegeType_Delete))
+
+	targetNames := make([]string, 0)
+	if len(p.Targets) > 0 {
+		for _, target := range p.Targets {
+			if nameable, ok := target.(sql.Nameable); ok {
+				targetNames = append(targetNames, nameable.Name())
+			}
+		}
+	} else {
+		targetNames = append(targetNames, getTableName(p.Child))
+	}
+
+	for _, targetName := range targetNames {
+		op := sql.NewPrivilegedOperation(p.Database(), targetName, "", sql.PrivilegeType_Delete)
+		if opChecker.UserHasPrivileges(ctx, op) == false {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (p DeleteFrom) String() string {
