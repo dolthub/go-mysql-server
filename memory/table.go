@@ -1517,11 +1517,12 @@ func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
 
 // RenameIndex implements sql.IndexAlterableTable
 func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName string) error {
-	for name, index := range t.indexes {
-		if name == fromIndexName {
-			delete(t.indexes, name)
-			t.indexes[toIndexName] = index
-		}
+	if fromIndexName == toIndexName {
+		return nil
+	}
+	if idx, ok := t.indexes[fromIndexName]; ok {
+		delete(t.indexes, fromIndexName)
+		t.indexes[toIndexName] = idx
 	}
 	return nil
 }
