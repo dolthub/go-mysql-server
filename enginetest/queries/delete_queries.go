@@ -202,6 +202,24 @@ var DeleteJoinTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{3}},
 	},
 	{
+		WriteQuery:          "DELETE FROM mytable USING mytable inner join tabletest on mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE FROM tabletest USING mytable inner join tabletest on mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{3, 0}},
+	},
+	{
+		WriteQuery:          "DELETE FROM mytable, tabletest USING mytable inner join tabletest on mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 0}},
+	},
+	{
 		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
@@ -218,6 +236,12 @@ var DeleteJoinTests = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
 		ExpectedSelect:      []sql.Row{{2, 2}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable join (select 1 as i union all select 2 as i) dt where mytable.i=dt.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{1, 3}},
 	},
 	{
 		WriteQuery:          "with t (n) as (select (1) from dual) delete mytable from mytable join tabletest where mytable.i=tabletest.i and mytable.i in (select n from t)",
