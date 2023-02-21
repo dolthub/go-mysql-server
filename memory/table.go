@@ -1941,7 +1941,7 @@ func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, 
 	// add buckets to histogram in sorted order
 	for colName, freqs := range freqMap {
 		keys := make([]float64, 0)
-		for k, _ := range freqs {
+		for k := range freqs {
 			keys = append(keys, k)
 		}
 		sort.Float64s(keys)
