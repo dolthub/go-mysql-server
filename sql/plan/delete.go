@@ -31,6 +31,7 @@ type DeleteFrom struct {
 }
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)
+var _ sql.Node = (*DeleteFrom)(nil)
 
 // NewDeleteFrom creates a DeleteFrom node.
 func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
@@ -40,18 +41,51 @@ func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
 	}
 }
 
-func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
+// TODO: Remove duplicate Wither
+func (p *DeleteFrom) WithDeleteTargets(targets []sql.Node) *DeleteFrom {
+	copy := *p
+	copy.Targets = targets
+	return &copy
+}
+
+// GetDeleteTargets returns the DeletableTables modified by this DeleteFrom node. When target tables are explicitly
+// specified in the DELETE SQL statement, those are returned here. If no target tables are explicitly specified, only
+// a single table is allowed to be specified in the DELETE source and it is implicitly the target table. If any
+// problems are encountered, an error is returned.
+// TODO: Update docs to mention nodes (or break into two functions)
+func (p *DeleteFrom) GetDeleteTargets() ([]sql.DeletableTable, []sql.Node, error) {
+	if len(p.Targets) == 0 {
+		deletableTable, err := getDeletable(p.Child)
+		if err != nil {
+			return nil, nil, err
+		} else {
+			return []sql.DeletableTable{deletableTable}, []sql.Node{p.Child}, nil
+		}
+	} else {
+		deletableTables := make([]sql.DeletableTable, len(p.Targets))
+		for i, target := range p.Targets {
+			deletableTable, err := getDeletable(target)
+			if err != nil {
+				return nil, nil, err
+			}
+			deletableTables[i] = deletableTable
+		}
+		return deletableTables, p.Targets, nil
+	}
+}
+
+func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 	switch node := node.(type) {
 	case sql.DeletableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetDeletable(node.ResolvedTable)
+		return getDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
 	case *SubqueryAlias:
 		return nil, ErrDeleteFromNotSupported.New()
 	case *TriggerExecutor:
-		return GetDeletable(node.Left())
+		return getDeletable(node.Left())
 	case sql.TableWrapper:
 		return getDeletableTable(node.Underlying())
 	}
@@ -59,7 +93,7 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return nil, ErrDeleteFromNotSupported.New()
 	}
 	for _, child := range node.Children() {
-		deleter, _ := GetDeletable(child)
+		deleter, _ := getDeletable(child)
 		if deleter != nil {
 			return deleter, nil
 		}
@@ -139,7 +173,7 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	if len(p.Targets) == 0 {
-		deletable, err := GetDeletable(p.Child)
+		deletable, err := getDeletable(p.Child)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +183,7 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		// TODO: Validate table wasn't specified twice? validate no multi-db?
 		schemaPositionDeleters := make([]schemaPositionDeleter, len(p.Targets))
 		for i, target := range p.Targets {
-			deletable, err := GetDeletable(target)
+			deletable, err := getDeletable(target)
 			if err != nil {
 				return nil, err
 			}
