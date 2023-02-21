@@ -60,17 +60,17 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			if p.HasExplicitTargets() {
 				targets := p.GetDeleteTargets()
 				resolvedTargets := make([]sql.Node, len(targets))
+				allSame := transform.SameTree
+
 				for i, target := range targets {
 					new, same, err := resolveTables(ctx, a, target, scope, sel)
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
-					if same {
-						// TODO: handle same/different identity!
-					}
+					allSame = same && allSame
 					resolvedTargets[i] = new
 				}
-				return p.WithExplicitTargets(resolvedTargets), transform.NewTree, nil
+				return p.WithExplicitTargets(resolvedTargets), allSame, nil
 			} else {
 				return p, transform.SameTree, nil
 			}
