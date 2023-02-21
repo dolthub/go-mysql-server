@@ -146,19 +146,21 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return nil, transform.SameTree, err
 		}
 
-		foreignKeyHandlers := make([]sql.Node, len(deleteTargets))
+		foreignKeyHandlers := make([]sql.Node, len(nodes))
+		copy(foreignKeyHandlers, nodes)
+
 		for i, deleteDest := range deleteTargets {
 			tbl, ok := deleteDest.(sql.ForeignKeyTable)
-			// If foreign keys aren't supported then we return
+			// If foreign keys aren't supported then check the next node
 			if !ok {
-				return n, transform.SameTree, nil
+				continue
 			}
 			fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			if fkEditor == nil {
-				return n, transform.SameTree, nil
+				continue
 			}
 
 			foreignKeyHandlers[i] = &plan.ForeignKeyHandler{
