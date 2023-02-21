@@ -752,11 +752,11 @@ func addMergeJoins(m *Memo) error {
 
 			}
 
-			lIdx := sortedIndexScanForTableCol(lIndexes, ltc)
+			lIdx := sortedIndexScanForTableCol(lIndexes, ltc, l)
 			if lIdx == nil {
 				continue
 			}
-			rIdx := sortedIndexScanForTableCol(rIndexes, rtc)
+			rIdx := sortedIndexScanForTableCol(rIndexes, rtc, r)
 			if rIdx == nil {
 				continue
 			}
@@ -792,10 +792,14 @@ func addMergeJoins(m *Memo) error {
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
-func sortedIndexScanForTableCol(is []sql.Index, tc tableCol) *indexScan {
+func sortedIndexScanForTableCol(is []sql.Index, tc tableCol, e sql.Expression) *indexScan {
 	for _, idx := range is {
 		if strings.ToLower(idx.Expressions()[0]) != tc.String() {
 			continue
+		}
+		rang := sql.Range{sql.AllRangeColumnExpr(e.Type())}
+		if !idx.CanSupport(rang) {
+			return nil
 		}
 		return &indexScan{
 			source: tc.table,
