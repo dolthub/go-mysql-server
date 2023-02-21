@@ -49,17 +49,14 @@ type Result struct {
 	result types.OkResult
 }
 
-// LastInsertId returns the database's auto-generated ID
-// after, for example, an INSERT into a table with primary
-// key.
+// LastInsertId returns the row auto-generated ID.
 //
-// NOT IMPLEMENTED
+// For example: after an INSERT into a table with primary key.
 func (r *Result) LastInsertId() (int64, error) {
-	return 0, errors.New("sql.Result.LastInsertId is not implemented")
+	return int64(r.result.InsertID), nil
 }
 
-// RowsAffected returns the number of rows affected by the
-// query.
+// RowsAffected returns the number of rows affected by the query.
 func (r *Result) RowsAffected() (int64, error) {
 	return int64(r.result.RowsAffected), nil
 }
