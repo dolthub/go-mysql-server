@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FROM")
@@ -146,8 +147,63 @@ func (p *DeleteFrom) Database() string {
 	return deleteDatabaseHelper(p.Child)
 }
 
+// Validate checks for invalid settings, such as deleting from multiple databases, specifying a delete target table
+// multiple times, or using a DELETE FROM JOIN without specifying any explicit delete target tables, and returns an
+// error if any validation issues were detected.
+func (p *DeleteFrom) Validate() error {
+	// Duplicate explicit target tables or from explicit target tables from multiple databases
+	databases := make(map[string]struct{})
+	tables := make(map[string]struct{})
+	if p.HasExplicitTargets() {
+		for _, target := range p.GetDeleteTargets() {
+			// Check for multiple databases
+			if dber, ok := target.(sql.Databaseable); ok {
+				databases[dber.Database()] = struct{}{}
+			} else if rt, ok := target.(*ResolvedTable); ok {
+				databases[rt.Database.Name()] = struct{}{}
+			} else {
+				return fmt.Errorf("could not determine database for node of type: %T", target)
+			}
+			if len(databases) > 1 {
+				return fmt.Errorf("multiple databases specified as delete from targets")
+			}
+
+			// Check for duplicate targets
+			if nameable, ok := target.(sql.Nameable); ok {
+				if _, ok := tables[nameable.Name()]; ok {
+					return fmt.Errorf("duplicate tables specified as delete from targets")
+				}
+			} else {
+				return fmt.Errorf("target node does not implement sql.Nameable: %T", target)
+			}
+		}
+	}
+
+	// DELETE FROM JOIN with no target tables specified
+	deleteFromJoin := false
+	transform.Inspect(p.Child, func(node sql.Node) bool {
+		if _, ok := node.(*JoinNode); ok {
+			deleteFromJoin = true
+			return false
+		}
+		return true
+	})
+	if deleteFromJoin {
+		if len(p.explicitTargets) == 0 {
+			return fmt.Errorf("delete from statement with join requires specifying explicit delete target tables")
+		}
+	}
+
+	return nil
+}
+
 // RowIter implements the Node interface.
 func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	err := p.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	// If an empty table is passed in (potentially from a bad filter) return an empty row iter.
 	// Note: emptyTable could also implement sql.DetetableTable
 	if _, ok := p.Child.(*emptyTable); ok {
