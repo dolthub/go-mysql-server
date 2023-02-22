@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -62,7 +63,22 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				resolvedTargets := make([]sql.Node, len(targets))
 				allSame := transform.SameTree
 
+				aliases, err := getTableAliases(p.Child, scope)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
 				for i, target := range targets {
+					aliasedName := getTableName(target)
+					if aliasedTarget, ok := aliases[aliasedName]; ok {
+						if aliasedNode, ok := aliasedTarget.(sql.Node); ok {
+							target = plan.NewTableAlias(aliasedName, aliasedNode)
+						} else {
+							return nil, transform.SameTree, fmt.Errorf("unexpected target type "+
+								"doesn't implement sql.Node: %T", aliasedTarget)
+						}
+					}
+
 					new, same, err := resolveTables(ctx, a, target, scope, sel)
 					if err != nil {
 						return nil, transform.SameTree, err

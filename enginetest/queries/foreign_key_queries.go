@@ -705,7 +705,7 @@ var ForeignKeyTests = []ScriptTest{
 			"INSERT INTO two VALUES (1), (2), (3);",
 			"INSERT INTO three VALUES (1, 1), (2, 2), (3, 3);",
 			"INSERT INTO four VALUES (1, 1), (2, 2), (3, 3);",
-			"DELETE one FROM one inner join two on one.pk=two.pk",
+			"DELETE t1 FROM one t1 inner join two t2 on t1.pk=t2.pk",
 		},
 		Assertions: []ScriptTestAssertion{
 			{

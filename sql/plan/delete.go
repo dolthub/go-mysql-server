@@ -242,7 +242,19 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, err
 		}
 		deleter := deletable.Deleter(ctx)
-		start, end, err := findSourcePosition(p.Child.Schema(), deletable.Name())
+
+		// By default the sourceName in the schema is the table name, but if there is a
+		// table alias applied, then use that instead.
+		sourceName := getTableName(target)
+		transform.Inspect(target, func(node sql.Node) bool {
+			if tableAlias, ok := node.(*TableAlias); ok {
+				sourceName = tableAlias.Name()
+				return false
+			}
+			return true
+		})
+
+		start, end, err := findSourcePosition(p.Child.Schema(), sourceName)
 		if err != nil {
 			return nil, err
 		}
