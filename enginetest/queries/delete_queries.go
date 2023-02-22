@@ -171,7 +171,6 @@ var DeleteJoinTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{3, 0}},
 	},
 	{
-		// TODO: This test is failing – we aren't able to see the alias name yet for some reason...
 		WriteQuery:          "DELETE t1 FROM mytable as t1 join tabletest where t1.i=tabletest.i;",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
