@@ -788,9 +788,9 @@ func TestReplaceQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 func TestDeleteErrors(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData)
-	for _, expectedFailure := range queries.DeleteErrorTests {
-		runGenericErrorTest(t, harness, expectedFailure)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData, setup.TestdbData, []setup.SetupScript{{"create table test.other (pk int primary key);"}})
+	for _, tt := range queries.DeleteErrorTests {
+		TestScript(t, harness, tt)
 	}
 }
 

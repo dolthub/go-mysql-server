@@ -277,53 +277,75 @@ var SpatialDeleteTests = []WriteQueryTest{
 	},
 }
 
-var DeleteErrorTests = []GenericErrorQueryTest{
+var DeleteErrorTests = []ScriptTest{
 	{
-		Name:  "invalid table",
-		Query: "DELETE FROM invalidtable WHERE x < 1;",
+		Name: "DELETE FROM error cases",
+		Assertions: []ScriptTestAssertion{
+			{
+				// unknown table
+				Query:          "DELETE FROM invalidtable WHERE x < 1;",
+				ExpectedErrStr: "table not found: invalidtable",
+			},
+			{
+				// invalid column
+				Query:          "DELETE FROM mytable WHERE z = 'dne';",
+				ExpectedErrStr: "column \"z\" could not be found in any table in scope",
+			},
+			{
+				// missing binding
+				Query:          "DELETE FROM mytable WHERE i = ?;",
+				ExpectedErrStr: "unbound variable \"v1\" in query",
+			},
+			{
+				// negative limit
+				Query:          "DELETE FROM mytable LIMIT -1;",
+				ExpectedErrStr: "syntax error at position 28 near 'LIMIT'",
+			},
+			{
+				// negative offset
+				Query:          "DELETE FROM mytable LIMIT 1 OFFSET -1;",
+				ExpectedErrStr: "syntax error at position 37 near 'OFFSET'",
+			},
+			{
+				// missing keyword from
+				Query:          "DELETE mytable WHERE i = 1;",
+				ExpectedErrStr: "syntax error at position 21 near 'WHERE'",
+			},
+			{
+				// targets subquery alias
+				Query:          "DELETE FROM (SELECT * FROM mytable) mytable WHERE i = 1;",
+				ExpectedErrStr: "syntax error at position 14 near 'FROM'",
+			},
+		},
 	},
 	{
-		Name:  "unknown table in delete join",
-		Query: "DELETE unknowntable FROM mytable WHERE x < 1;",
-	},
-	{
-		Name:  "invalid table in delete join",
-		Query: "DELETE tabletest FROM mytable WHERE x < 1;",
-	},
-	{
-		Name:  "repeated table in delete join",
-		Query: "DELETE mytable, mytable FROM mytable WHERE x < 1;",
-	},
-	{
-		Name:  "no explicit target specified in delete join",
-		Query: "DELETE FROM mytable join testtable WHERE mytable.i = testtable.i and x < 1;",
-	},
-	{
-		Name:  "invalid column",
-		Query: "DELETE FROM mytable WHERE z = 'dne';",
-	},
-	{
-		Name:  "missing binding",
-		Query: "DELETE FROM mytable WHERE i = ?;",
-	},
-	{
-		Name:  "negative limit",
-		Query: "DELETE FROM mytable LIMIT -1;",
-	},
-	{
-		Name:  "negative offset",
-		Query: "DELETE FROM mytable LIMIT 1 OFFSET -1;",
-	},
-	{
-		Name:  "missing keyword from",
-		Query: "DELETE mytable WHERE id = 1;",
-	},
-	{
-		Name:  "targets join",
-		Query: "DELETE FROM mytable one, mytable two WHERE id = 1;",
-	},
-	{
-		Name:  "targets subquery alias",
-		Query: "DELETE FROM (SELECT * FROM mytable) mytable WHERE id = 1;",
+		Name: "DELETE FROM JOIN error cases",
+		Assertions: []ScriptTestAssertion{
+			{
+				// targeting tables in multiple databases
+				Query:          "DELETE mydb.mytable, test.other FROM mydb.mytable inner join test.other on mydb.mytable.i=test.other.pk;",
+				ExpectedErrStr: "multiple databases specified as delete from targets",
+			},
+			{
+				// unknown table in delete join
+				Query:          "DELETE unknowntable FROM mytable WHERE i < 1;",
+				ExpectedErrStr: "table not found: unknowntable",
+			},
+			{
+				// invalid table in delete join
+				Query:          "DELETE tabletest FROM mytable WHERE i < 1;",
+				ExpectedErrStr: "table \"tabletest\" not found in DELETE FROM sources",
+			},
+			{
+				// repeated table in delete join
+				Query:          "DELETE mytable, mytable FROM mytable WHERE i < 1;",
+				ExpectedErrStr: "duplicate tables specified as delete from targets",
+			},
+			{
+				// targets join with no explicit target tables
+				Query:          "DELETE FROM mytable one, mytable two WHERE one.i = 1;",
+				ExpectedErrStr: "syntax error at position 24 near 'one'",
+			},
+		},
 	},
 }

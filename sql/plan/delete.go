@@ -176,13 +176,7 @@ func (p *DeleteFrom) Validate() error {
 	if p.HasExplicitTargets() {
 		for _, target := range p.GetDeleteTargets() {
 			// Check for multiple databases
-			if dber, ok := target.(sql.Databaseable); ok {
-				databases[dber.Database()] = struct{}{}
-			} else if db, ok := target.(sql.Databaser); ok {
-				databases[db.Database().Name()] = struct{}{}
-			} else if rt, ok := target.(*ResolvedTable); ok {
-				databases[rt.Database.Name()] = struct{}{}
-			}
+			databases[getDatabaseName(target)] = struct{}{}
 			if len(databases) > 1 {
 				return fmt.Errorf("multiple databases specified as delete from targets")
 			}
@@ -192,6 +186,7 @@ func (p *DeleteFrom) Validate() error {
 				if _, ok := tables[nameable.Name()]; ok {
 					return fmt.Errorf("duplicate tables specified as delete from targets")
 				}
+				tables[nameable.Name()] = struct{}{}
 			} else {
 				return fmt.Errorf("target node does not implement sql.Nameable: %T", target)
 			}
