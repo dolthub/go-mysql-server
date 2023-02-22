@@ -2281,8 +2281,6 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"DELETE test, test2 FROM mydb.test join mydb.test2 where test.pk=test2.pk",
 		},
 	},
-
-	// // // // // // // // // //
 	{
 		Queries: []string{
 			"CREATE DATABASE new_db4;",
