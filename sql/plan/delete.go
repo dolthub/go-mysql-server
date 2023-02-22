@@ -163,7 +163,11 @@ func (p *DeleteFrom) Validate() error {
 		})
 
 		for _, target := range p.GetDeleteTargets() {
-			tableName := getTableName(target)
+			deletable, err := GetDeletable(target)
+			if err != nil {
+				return err
+			}
+			tableName := deletable.Name()
 			if _, ok := sourceTables[tableName]; !ok {
 				return fmt.Errorf("table %q not found in DELETE FROM sources", tableName)
 			}
@@ -240,7 +244,7 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 		// By default the sourceName in the schema is the table name, but if there is a
 		// table alias applied, then use that instead.
-		sourceName := getTableName(target)
+		sourceName := deletable.Name()
 		transform.Inspect(target, func(node sql.Node) bool {
 			if tableAlias, ok := node.(*TableAlias); ok {
 				sourceName = tableAlias.Name()
@@ -372,13 +376,17 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: If column values are retrieved then the SELECT privilege is required
-	// For example: "DELETE FROM table WHERE z > 0"
-	// We would need SELECT privileges on the "z" column as it's retrieving values
+	// TODO: If column values are retrieved then the SELECT privilege is required
+	//       For example: "DELETE FROM table WHERE z > 0"
+	//       We would need SELECT privileges on the "z" column as it's retrieving values
 
 	for _, target := range p.GetDeleteTargets() {
-		tableName := getTableName(target)
-		op := sql.NewPrivilegedOperation(p.Database(), tableName, "", sql.PrivilegeType_Delete)
+		deletable, err := GetDeletable(target)
+		if err != nil {
+			ctx.GetLogger().Warnf("unable to determine deletable table from delete target: %v", target)
+			return false
+		}
+		op := sql.NewPrivilegedOperation(p.Database(), deletable.Name(), "", sql.PrivilegeType_Delete)
 		if opChecker.UserHasPrivileges(ctx, op) == false {
 			return false
 		}

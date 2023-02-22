@@ -960,6 +960,62 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "single trigger before single target table delete from join",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create table b (i int primary key)",
+			"insert into b values (1), (3), (5)",
+			"create table c (x int)",
+			"insert into c values (0)",
+			"create trigger trig before delete on a for each row begin update c set x = x + 1; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "delete a from a inner join b on a.j=b.i;",
+				ExpectedErrStr: "delete from with explicit target tables does not support triggers; retry with single table deletes",
+			},
+		},
+	},
+	{
+		Name: "multiple trigger before single target table delete from join",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create table b (i int primary key)",
+			"insert into b values (1), (3), (5)",
+			"create table c (x int)",
+			"insert into c values (0)",
+			"create trigger trig1 before delete on a for each row begin update c set x = x + 1; end;",
+			"create trigger trig2 before delete on b for each row begin update c set x = x + 1; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "delete a from a inner join b on a.j=b.i where a.i >= 0;",
+				ExpectedErrStr: "delete from with explicit target tables does not support triggers; retry with single table deletes",
+			},
+		},
+	},
+	{
+		Name: "multiple trigger before multiple target table delete from join",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create table b (i int primary key)",
+			"insert into b values (1), (3), (5)",
+			"create table c (x int)",
+			"insert into c values (0)",
+			"create trigger trig1 before delete on a for each row begin update c set x = x + 1; end;",
+			"create trigger trig2 before delete on b for each row begin update c set x = x + 1; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "delete a, b from a inner join b on a.j=b.i where a.i >= 0;",
+				ExpectedErrStr: "delete from with explicit target tables does not support triggers; retry with single table deletes",
+			},
+		},
+	},
 	// Multiple triggers defined
 	{
 		Name: "triggers before and after insert",
