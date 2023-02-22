@@ -3717,6 +3717,22 @@ var PreparedScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Drop column with check constraint, multiple constraints",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT ok_check CHECK (col2 LIKE '%myregex%');",
+			"ALTER TABLE mytable ADD CONSTRAINT bad_check CHECK (col2 LIKE col3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{

@@ -356,9 +356,9 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 // column referenced in the check constraint.
 func validateColumnSafeToDropWithCheckConstraint(columnName string, checks sql.CheckConstraints) error {
 	var err error
-	hasOtherCol := false
-	hasMatchingCol := false
 	for _, check := range checks {
+		hasOtherCol := false
+		hasMatchingCol := false
 		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
