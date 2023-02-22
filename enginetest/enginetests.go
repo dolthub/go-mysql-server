@@ -5454,6 +5454,26 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		TestQueryWithEngine(t, harness, e, tt)
 	})
 
+	t.Run("drop column does not drop when referenced in constraint with other column", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t43 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN j int")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD CONSTRAINT test_check CHECK (j < k)")
+		AssertErr(t, e, harness, "ALTER TABLE t43 DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
+		tt := queries.QueryTest{
+			Query: "show create table t43",
+			Expected: []sql.Row{{"t43", "CREATE TABLE `t43` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  `j` int,\n" +
+				"  `k` int,\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  CONSTRAINT `test_check` CHECK ((`j` < `k`))\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+	})
+
 	t.Run("drop column preserves indexes", func(t *testing.T) {
 		ctx := NewContext(harness)
 		RunQuery(t, e, harness, "create table t35 (i bigint primary key, s varchar(20), s2 varchar(20))")

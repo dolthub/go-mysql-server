@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -725,23 +724,22 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// drop constraints that only reference the dropped column
 	cat, ok := i.alterable.(sql.CheckAlterableTable)
-	if !ok {
-		return nil, errors.New("failed to cast to CheckAlterableTable")
-	}
-
-	for _, check := range i.d.Checks {
-		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
-			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				if i.d.Column == unresolvedColumn.Name() {
-					err = cat.DropCheck(ctx, check.Name)
-					return true
+	if ok {
+		for _, check := range i.d.Checks {
+			_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
+				if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
+					if i.d.Column == unresolvedColumn.Name() {
+						// note: validations done earlier ensure safety of dropping any constraint referencing the column
+						err = cat.DropCheck(ctx, check.Name)
+						return true
+					}
 				}
-			}
-			return false
-		})
+				return false
+			})
 
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
