@@ -32,6 +32,9 @@ func IsBlobType(t sql.Type) bool {
 
 // IsBinaryType checks if t is BINARY, VARBINARY, or BLOB
 func IsBinaryType(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
 	switch t.Type() {
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
 		return true
