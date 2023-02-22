@@ -387,6 +387,14 @@ order by 1;`,
 				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
+			{
+				q: `
+SELECT COUNT(*) FROM xy WHERE (
+      EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				exp:   []sql.Row{{1}},
+			},
 		},
 	},
 	{
