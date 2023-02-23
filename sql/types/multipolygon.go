@@ -15,6 +15,7 @@
 package types
 
 import (
+	"math"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -215,4 +216,17 @@ func (p MultiPolygon) Swap() GeometryValue {
 		SRID:     p.SRID,
 		Polygons: polys,
 	}
+}
+
+// BBox implements GeometryValue interface.
+func (p MultiPolygon) BBox() (float64, float64, float64, float64) {
+	minX, minY, maxX, maxY := math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64
+	for _, p := range p.Polygons {
+		pMinX, pMinY, pMaxX, pMaxY := p.BBox()
+		minX = math.Min(minX, pMinX)
+		minY = math.Min(minY, pMinY)
+		maxX = math.Max(maxX, pMaxX)
+		maxY = math.Max(maxY, pMaxY)
+	}
+	return minX, minY, maxX, maxY
 }

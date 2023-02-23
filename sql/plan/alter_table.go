@@ -722,6 +722,27 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	// drop constraints that only reference the dropped column
+	cat, ok := i.alterable.(sql.CheckAlterableTable)
+	if ok {
+		for _, check := range i.d.Checks {
+			_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
+				if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
+					if i.d.Column == unresolvedColumn.Name() {
+						// note: validations done earlier ensure safety of dropping any constraint referencing the column
+						err = cat.DropCheck(ctx, check.Name)
+						return true
+					}
+				}
+				return false
+			})
+
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 

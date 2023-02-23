@@ -159,11 +159,15 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		return nil, err
 	}
 
-	m := NewMemo(ctx, stats, scope)
+	m := NewMemo(ctx, stats, scope, a.Coster, a.Carder)
 
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)
 
+	err = convertSemiToInnerJoin(m)
+	if err != nil {
+		return nil, err
+	}
 	err = addRightSemiJoins(m)
 	if err != nil {
 		return nil, err
@@ -282,6 +286,78 @@ func addLookupJoins(m *Memo) error {
 	})
 }
 
+// convertSemiToInnerJoin adds inner join alternatives for semi joins.
+// The inner join plans can be explored (optimized) further.
+// Example: semiJoin(xy ab) => project(ab) -> innerJoin(xy, distinct(ab))
+// Ref sction 2.1.1 of:
+// https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
+// TODO: need more elegant way to extend the number of groups, interner
+func convertSemiToInnerJoin(m *Memo) error {
+	seen := make(map[GroupId]struct{})
+	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+		semi, ok := e.(*semiJoin)
+		if !ok {
+			return nil
+		}
+
+		onlyEquality := true
+		for _, f := range semi.filter {
+			transform.InspectExpr(f, func(e sql.Expression) bool {
+				switch e.(type) {
+				case *expression.GetField, *expression.Literal, *expression.BindVar,
+					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+				default:
+					onlyEquality = false
+				}
+				return !onlyEquality
+			})
+			if !onlyEquality {
+				return nil
+			}
+		}
+
+		// distinct is a new group
+		newRight := &distinct{
+			relBase: &relBase{},
+			child:   semi.right,
+		}
+		rightGrp := m.memoize(newRight)
+
+		// join and its commute are a new group
+		newJoin := &innerJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{},
+				left:    semi.left,
+				right:   rightGrp,
+				op:      plan.JoinTypeInner,
+				filter:  semi.filter,
+			},
+		}
+		joinGrp := m.memoize(newJoin)
+
+		newJoinCommuted := &innerJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{g: joinGrp},
+				left:    rightGrp,
+				right:   semi.left,
+				op:      plan.JoinTypeInner,
+				filter:  semi.filter,
+			},
+		}
+		joinGrp.prepend(newJoinCommuted)
+
+		// project belongs to the original group
+		rel := &project{
+			relBase:     &relBase{g: e.group()},
+			child:       joinGrp,
+			projections: expression.SchemaToGetFields(semi.left.relProps.outputColsForRel(semi.left.first)),
+		}
+		e.group().prepend(rel)
+
+		return nil
+	})
+}
+
 // addRightSemiJoins allows for a reversed semiJoin operator when
 // the join attributes of the left side are provably unique.
 func addRightSemiJoins(m *Memo) error {
@@ -349,6 +425,16 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 		case *plan.ResolvedTable:
 			return tableScanLookupCand(ctx, t)
 		default:
+		}
+	case *distinct:
+		if s, ok := n.child.first.(sourceRel); ok {
+			switch n := s.(type) {
+			case *tableAlias:
+				return tableAliasLookupCand(ctx, n.table, aliases)
+			case *tableScan:
+				return tableScanLookupCand(ctx, n.table)
+			default:
+			}
 		}
 	default:
 	}
@@ -666,11 +752,11 @@ func addMergeJoins(m *Memo) error {
 
 			}
 
-			lIdx := sortedIndexScanForTableCol(lIndexes, ltc)
+			lIdx := sortedIndexScanForTableCol(lIndexes, ltc, l)
 			if lIdx == nil {
 				continue
 			}
-			rIdx := sortedIndexScanForTableCol(rIndexes, rtc)
+			rIdx := sortedIndexScanForTableCol(rIndexes, rtc, r)
 			if rIdx == nil {
 				continue
 			}
@@ -682,6 +768,13 @@ func addMergeJoins(m *Memo) error {
 			newFilters[0], newFilters[i] = newFilters[i], newFilters[0]
 
 			jb := join.copy()
+			if d, ok := jb.left.first.(*distinct); ok && lIdx.idx.IsUnique() {
+				jb.left = d.child
+			}
+			if d, ok := jb.right.first.(*distinct); ok && rIdx.idx.IsUnique() {
+				jb.right = d.child
+			}
+
 			jb.filter = newFilters
 			rel := &mergeJoin{
 				joinBase:  jb,
@@ -699,10 +792,14 @@ func addMergeJoins(m *Memo) error {
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
-func sortedIndexScanForTableCol(is []sql.Index, tc tableCol) *indexScan {
+func sortedIndexScanForTableCol(is []sql.Index, tc tableCol, e sql.Expression) *indexScan {
 	for _, idx := range is {
 		if strings.ToLower(idx.Expressions()[0]) != tc.String() {
 			continue
+		}
+		rang := sql.Range{sql.AllRangeColumnExpr(e.Type())}
+		if !idx.CanSupport(rang) {
+			return nil
 		}
 		return &indexScan{
 			source: tc.table,
@@ -851,7 +948,7 @@ func newJoinOrderDeps(order map[GroupId]uint64) *joinOrderDeps {
 func (o joinOrderDeps) build(grp *exprGroup) {
 	s := vertexSet(0)
 	// convert global table order to hint order
-	inputs := grp.relProps.OutputTables()
+	inputs := grp.relProps.InputTables()
 	for idx, ok := inputs.Next(0); ok; idx, ok = inputs.Next(idx + 1) {
 		if i, ok := o.order[GroupId(idx+1)]; ok {
 			// If group |idx+1| is a dependency of this table, record the
@@ -895,8 +992,14 @@ func (o joinOrderDeps) obeysOrder(n relExpr) bool {
 		valid := o.ordered(l, r) && o.compact(l, r)
 		o.cache[key] = valid
 		return valid
-	default:
+	case *project:
+		return o.obeysOrder(n.child.best)
+	case *distinct:
+		return o.obeysOrder(n.child.best)
+	case sourceRel:
 		return true
+	default:
+		panic(fmt.Sprintf("missed type: %T", n))
 	}
 }
 

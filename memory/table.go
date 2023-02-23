@@ -209,6 +209,40 @@ type rangePartition struct {
 	rang sql.Expression
 }
 
+// spatialRangePartitionIter returns a partition that has range and table data access
+type spatialRangePartitionIter struct {
+	child                  *partitionIter
+	ord                    int
+	minX, minY, maxX, maxY float64
+}
+
+var _ sql.PartitionIter = (*spatialRangePartitionIter)(nil)
+
+func (i spatialRangePartitionIter) Close(ctx *sql.Context) error {
+	return i.child.Close(ctx)
+}
+
+func (i spatialRangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
+	part, err := i.child.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &spatialRangePartition{
+		Partition: part.(*Partition),
+		ord:       i.ord,
+		minX:      i.minX,
+		minY:      i.minY,
+		maxX:      i.maxX,
+		maxY:      i.maxY,
+	}, nil
+}
+
+type spatialRangePartition struct {
+	*Partition
+	ord                    int
+	minX, minY, maxX, maxY float64
+}
+
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(t.partitions)), nil
@@ -230,6 +264,18 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	// make a copy of the values as they exist when execution begins.
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
+
+	if r, ok := partition.(*spatialRangePartition); ok {
+		return &spatialTableIter{
+			columns: t.columns,
+			ord:     r.ord,
+			minX:    r.minX,
+			minY:    r.minY,
+			maxX:    r.maxX,
+			maxY:    r.maxY,
+			rows:    rowsCopy,
+		}, nil
+	}
 
 	return &tableIter{
 		rows:    rowsCopy,
@@ -365,13 +411,14 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	if len(i.columns) > 0 {
+	if i.columns != nil {
 		resultRow := make(sql.Row, len(i.columns))
 		for i, j := range i.columns {
 			resultRow[i] = row[j]
 		}
 		return resultRow, nil
 	}
+
 	return row, nil
 }
 
@@ -448,6 +495,86 @@ func (i *tableIter) getFromIndex(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return i.rows[value.Pos], nil
+}
+
+type spatialTableIter struct {
+	columns                []int
+	rows                   []sql.Row
+	pos                    int
+	ord                    int
+	minX, minY, maxX, maxY float64
+}
+
+var _ sql.RowIter = (*spatialTableIter)(nil)
+var _ sql.RowIter2 = (*spatialTableIter)(nil)
+
+func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.getRow(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(i.columns) == 0 {
+		return row, nil
+	}
+
+	// check if bounding boxes of geometry and range intersect
+	// if the range [i.minX, i.maxX] and [gMinX, gMaxX] overlap and
+	// if the range [i.minY, i.maxY] and [gMinY, gMaxY] overlap
+	// then, the bounding boxes intersect
+	g, ok := row[i.ord].(types.GeometryValue)
+	if !ok {
+		return nil, fmt.Errorf("spatial index over non-geometry column")
+	}
+	gMinX, gMinY, gMaxX, gMaxY := g.BBox()
+	xInt := (gMinX <= i.minX && i.minX <= gMaxX) ||
+		(gMinX <= i.maxX && i.maxX <= gMaxX) ||
+		(i.minX <= gMinX && gMinX <= i.maxX) ||
+		(i.minX <= gMaxX && gMaxX <= i.maxX)
+	yInt := (gMinY <= i.minY && i.minY <= gMaxY) ||
+		(gMinY <= i.maxY && i.maxY <= gMaxY) ||
+		(i.minY <= gMinY && gMinY <= i.maxY) ||
+		(i.minY <= gMaxY && gMaxY <= i.maxY)
+	if !(xInt && yInt) {
+		return i.Next(ctx)
+	}
+
+	resultRow := make(sql.Row, len(i.columns))
+	for i, j := range i.columns {
+		resultRow[i] = row[j]
+	}
+	return resultRow, nil
+}
+
+func (i *spatialTableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	r, err := i.Next(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range r {
+		x, err := sql.ConvertToValue(v)
+		if err != nil {
+			return err
+		}
+		frame.Append(x)
+	}
+
+	return nil
+}
+
+func (i *spatialTableIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+func (i *spatialTableIter) getRow(ctx *sql.Context) (sql.Row, error) {
+	if i.pos >= len(i.rows) {
+		return nil, io.EOF
+	}
+
+	row := i.rows[i.pos]
+	i.pos++
+	return row, nil
 }
 
 type IndexValue struct {
@@ -1002,6 +1129,29 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		return nil, err
 	}
 
+	if lookup.Index.IsSpatial() {
+		lower := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
+		upper := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
+		minPoint, ok := lower.(types.Point)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+		maxPoint, ok := upper.(types.Point)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+
+		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
+		return spatialRangePartitionIter{
+			child: child.(*partitionIter),
+			ord:   ord,
+			minX:  minPoint.X,
+			minY:  minPoint.Y,
+			maxX:  maxPoint.X,
+			maxY:  maxPoint.Y,
+		}, nil
+	}
+
 	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
 }
 
@@ -1016,12 +1166,23 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		for i, e := range t.Idx.Exprs {
 			sf[i] = sql.SortField{Column: e}
 		}
-		sorter := &expression.Sorter{
-			SortFields: sf,
-			Rows:       iter.(*tableIter).rows,
-			LastError:  nil,
-			Ctx:        ctx,
+		var sorter *expression.Sorter
+		if i, ok := iter.(*tableIter); ok {
+			sorter = &expression.Sorter{
+				SortFields: sf,
+				Rows:       i.rows,
+				LastError:  nil,
+				Ctx:        ctx,
+			}
+		} else if i, ok := iter.(*spatialTableIter); ok {
+			sorter = &expression.Sorter{
+				SortFields: sf,
+				Rows:       i.rows,
+				LastError:  nil,
+				Ctx:        ctx,
+			}
 		}
+
 		sort.Stable(sorter)
 	}
 	return iter, nil
@@ -1033,10 +1194,6 @@ func (t *Table) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 
 // WithProjections implements sql.ProjectedTable
 func (t *Table) WithProjections(cols []string) sql.Table {
-	if len(cols) == 0 {
-		return t
-	}
-
 	nt := *t
 	columns, err := nt.columnIndexes(cols)
 	if err != nil {
@@ -1061,7 +1218,7 @@ func (t *Table) Projections() []string {
 }
 
 func (t *Table) columnIndexes(colNames []string) ([]int, error) {
-	var columns []int
+	columns := make([]int, 0, len(colNames))
 
 	for _, name := range colNames {
 		i := t.schema.IndexOf(name, t.name)
@@ -1256,7 +1413,6 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		for i, column := range columns {
 			prefixLengths[i] = uint16(column.Length)
 		}
-
 	}
 
 	if constraint == sql.IndexConstraint_Unique {
@@ -1274,6 +1430,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Exprs:      exprs,
 		Name:       name,
 		Unique:     constraint == sql.IndexConstraint_Unique,
+		Spatial:    constraint == sql.IndexConstraint_Spatial,
 		CommentStr: comment,
 		PrefixLens: prefixLengths,
 	}, nil

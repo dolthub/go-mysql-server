@@ -3175,6 +3175,9 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+}
+
+var SpatialIndexScriptTests = []ScriptTest{
 	{
 		Name:        "create spatial index errors",
 		SetUpScript: []string{},
@@ -3190,39 +3193,6 @@ var SpatialScriptTests = []ScriptTest{
 			{
 				Query:       "create table geom(g1 geometry NOT NULL SRID 0, g2 geometry NOT NULL SRID 4326, SPATIAL INDEX(g1, g2))",
 				ExpectedErr: sql.ErrTooManyKeyParts,
-			},
-			{
-				Query:                           "create table geom(g geometry NOT NULL, SPATIAL INDEX(g))",
-				ExpectedWarningMessageSubstring: "will not be used by the query optimizer since the column does not have an SRID attribute",
-				ExpectedErr:                     sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g geometry not null srid 4326, spatial index (g))",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g point not null srid 4326, spatial index (g))",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g linestring not null srid 4326, spatial index (g))",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g polygon not null srid 4326, spatial index (g))",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g multipoint not null srid 4326, spatial index (g))",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g multilinestring not null srid 4326, spatial index (g))",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "create table geom(g multipolygon not null srid 4326, spatial index (g))",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
 			},
 		},
 	},
@@ -3251,44 +3221,52 @@ var SpatialScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "valid add spatial index alter",
+		Name: "show table with spatial indexes",
 		SetUpScript: []string{
-			"create table geom1(g point SRID 4326 NOT NULL)",
-			"create table geom2(g linestring SRID 4326 NOT NULL)",
-			"create table geom3(g polygon SRID 4326 NOT NULL)",
-			"create table geom4(g multipoint SRID 4326 NOT NULL)",
-			"create table geom5(g multilinestring SRID 4326 NOT NULL)",
-			"create table geom6(g multipolygon SRID 4326 NOT NULL)",
-			"create table geom7(g geometry SRID 4326 NOT NULL)",
+			"create table geom(" +
+				"p point not null srid 0," +
+				"l linestring not null srid 0," +
+				"py polygon not null srid 0," +
+				"mp multipoint not null srid 0," +
+				"ml multilinestring not null srid 0," +
+				"mpy multipolygon not null srid 0," +
+				"gc geometrycollection not null srid 0," +
+				"g geometry not null srid 0)",
+			"alter table geom add spatial index (p)",
+			"alter table geom add spatial index (l)",
+			"alter table geom add spatial index (py)",
+			"alter table geom add spatial index (mp)",
+			"alter table geom add spatial index (ml)",
+			"alter table geom add spatial index (mpy)",
+			"alter table geom add spatial index (gc)",
+			"alter table geom add spatial index (g)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "alter table geom1 add spatial index (g)",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "alter table geom2 add spatial index (g)",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "alter table geom3 add spatial index (g)",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "alter table geom4 add spatial index (g)",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "alter table geom5 add spatial index (g)",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "alter table geom6 add spatial index (g)",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
-			},
-			{
-				Query:       "alter table geom7 add spatial index (g)",
-				ExpectedErr: sql.ErrUnsupportedSpatialIdx,
+				Query: "show create table geom",
+				Expected: []sql.Row{
+					{
+						"geom",
+						"CREATE TABLE `geom` (\n" +
+							"  `p` point NOT NULL SRID 0,\n" +
+							"  `l` linestring NOT NULL SRID 0,\n" +
+							"  `py` polygon NOT NULL SRID 0,\n" +
+							"  `mp` multipoint NOT NULL SRID 0,\n" +
+							"  `ml` multilinestring NOT NULL SRID 0,\n" +
+							"  `mpy` multipolygon NOT NULL SRID 0,\n" +
+							"  `gc` geometrycollection NOT NULL SRID 0,\n" +
+							"  `g` geometry NOT NULL SRID 0,\n" +
+							"  SPATIAL KEY `g` (`g`),\n" +
+							"  SPATIAL KEY `gc` (`gc`),\n" +
+							"  SPATIAL KEY `l` (`l`),\n" +
+							"  SPATIAL KEY `ml` (`ml`),\n" +
+							"  SPATIAL KEY `mp` (`mp`),\n" +
+							"  SPATIAL KEY `mpy` (`mpy`),\n" +
+							"  SPATIAL KEY `p` (`p`),\n" +
+							"  SPATIAL KEY `py` (`py`)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+					},
+				},
 			},
 		},
 	},
@@ -3695,6 +3673,66 @@ var PreparedScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Drop column with check constraint, no other columns",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable DROP COLUMN col2",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, other column referenced first",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col3 LIKE col2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, other column referenced second",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE col3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, multiple constraints",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT ok_check CHECK (col2 LIKE '%myregex%');",
+			"ALTER TABLE mytable ADD CONSTRAINT bad_check CHECK (col2 LIKE col3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
@@ -3815,20 +3853,6 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT `t1`.`id`, `t1`.`name` FROM `person` AS `t1` WHERE (`t1`.`name` REGEXP 'N[1,3]') ORDER BY `t1`.`name`;",
 				Expected: []sql.Row{{1, "n1"}, {3, "n3"}},
-			},
-		},
-	},
-	{
-		Name: "Drop a column with a check constraint",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "ALTER TABLE mytable DROP COLUMN col2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},

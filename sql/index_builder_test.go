@@ -188,6 +188,10 @@ func (testIndex) IsUnique() bool {
 	return false
 }
 
+func (testIndex) IsSpatial() bool {
+	return false
+}
+
 func (testIndex) Comment() string {
 	return ""
 }

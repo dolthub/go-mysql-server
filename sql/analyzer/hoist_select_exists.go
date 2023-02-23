@@ -95,15 +95,21 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 
 		retFilters = append(retFilters, s.innerFilters...)
 
+		var comment string
+		if c, ok := ret.(sql.CommentedNode); ok {
+			comment = c.Comment()
+		}
+
 		switch joinType {
 		case plan.JoinTypeAnti:
-			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...))
+			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
 		case plan.JoinTypeSemi:
-			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...))
+			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
 		default:
 			panic("expected JoinTypeSemi or JoinTypeAnti")
 		}
 		same = transform.NewTree
+
 	}
 
 	if same {

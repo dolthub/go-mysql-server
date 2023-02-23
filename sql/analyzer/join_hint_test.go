@@ -93,7 +93,7 @@ func TestHintIndicatedDeps(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := newJoinOrderBuilder(NewMemo(nil, nil, nil))
+			j := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
 			j.reorderJoin(tt.plan)
 			j.m.WithJoinOrder(JoinOrderHint{tables: tt.hint})
 			if tt.invalid {

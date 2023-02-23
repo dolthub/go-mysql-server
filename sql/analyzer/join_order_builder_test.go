@@ -112,7 +112,7 @@ func TestJoinOrderBuilder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := newJoinOrderBuilder(NewMemo(nil, nil, nil))
+			j := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
 			j.reorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
 		})
@@ -259,7 +259,7 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := newJoinOrderBuilder(NewMemo(nil, nil, nil))
+			b := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
 			b.populateSubgraph(tt.join)
 			edgesEq(t, tt.expEdges, b.edges)
 		})

@@ -1081,8 +1081,28 @@ func TestScripts(t *testing.T, harness Harness) {
 func TestSpatialScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SpatialScriptTests {
-
 		TestScript(t, harness, script)
+	}
+}
+
+func TestSpatialScriptsPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SpatialScriptTests {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
+func TestSpatialIndexScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SpatialIndexScriptTests {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestSpatialIndexScriptsPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.SpatialIndexScriptTests {
+		TestScriptPrepared(t, harness, script)
 	}
 }
 
@@ -1992,55 +2012,64 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData, setup.TabletestData, setup.Pk_tablesData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
-	require.NoError(err)
 
-	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
-	require.True(ok)
+	func() {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		ctx := NewContext(harness)
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(err)
 
-	TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS mytable, not_exist", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		_, ok, err := db.GetTableInsensitive(ctx, "mytable")
+		require.True(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
-	require.NoError(err)
-	require.False(ok)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS mytable, not_exist", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
-	require.NoError(err)
-	require.True(ok)
+		_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+		require.NoError(err)
+		require.False(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
-	require.NoError(err)
-	require.True(ok)
+		_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+		require.NoError(err)
+		require.True(ok)
 
-	TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS othertable, tabletest", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+		require.NoError(err)
+		require.True(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
-	require.NoError(err)
-	require.False(ok)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS othertable, tabletest", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
-	require.NoError(err)
-	require.False(ok)
+		_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+		require.NoError(err)
+		require.False(ok)
 
-	_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
-	require.Error(err)
+		_, ok, err = db.GetTableInsensitive(ctx, "tabletest")
+		require.NoError(err)
+		require.False(ok)
 
-	_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
-	require.NoError(err)
+		_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
+		require.Error(err)
+
+		_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
+		require.NoError(err)
+	}()
 
 	t.Run("no database selected", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(err)
 
 		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
 		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE mydb.one_pk", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
-		_, ok, err = db.GetTableInsensitive(ctx, "mydb.one_pk")
+		_, ok, err := db.GetTableInsensitive(ctx, "mydb.one_pk")
 		require.NoError(err)
 		require.False(ok)
 
@@ -2085,8 +2114,14 @@ func TestDropTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("cur database selected, drop tables in other db", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("mydb")
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(err)
 
 		RunQuery(t, e, harness, "DROP DATABASE IF EXISTS otherdb")
 		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
@@ -2099,7 +2134,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
 		require.NoError(err)
 
-		_, ok, err = db.GetTableInsensitive(ctx, "tab1")
+		_, ok, err := db.GetTableInsensitive(ctx, "tab1")
 		require.NoError(err)
 		require.True(ok)
 
@@ -3006,10 +3041,11 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 
 func TestDropDatabase(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
 	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		ctx := NewContext(harness)
+
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE mydb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
@@ -3022,6 +3058,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP DATABASE works on newly created databases.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
+		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")
@@ -3034,6 +3071,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP DATABASE works on current database and sets current database to empty.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
+		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 		RunQueryWithContext(t, e, harness, ctx, "USE TESTdb")
 
@@ -3048,6 +3086,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
 		e := mustNewEngine(t, harness)
 		defer e.Close()
+		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, harness, "CREATE SCHEMA testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")
@@ -5362,22 +5401,74 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		}, checks)
 	})
 
-	t.Run("drop column preserves check constraints", func(t *testing.T) {
+	t.Run("drop column drops check constraint", func(t *testing.T) {
 		RunQuery(t, e, harness, "create table t34 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t34 ADD COLUMN j int, ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t34 ADD COLUMN j int")
 		RunQuery(t, e, harness, "ALTER TABLE t34 ADD CONSTRAINT test_check CHECK (j < 12345)")
-
-		AssertErr(t, e, harness, "ALTER TABLE t34 DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
-
-		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN k")
+		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN j")
 		tt := queries.QueryTest{
 			Query: "show create table t34",
 			Expected: []sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` varchar(20),\n" +
-				"  `j` int,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+	})
+
+	t.Run("drop column drops all relevant check constraints", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t42 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t42 ADD COLUMN j int")
+		RunQuery(t, e, harness, "ALTER TABLE t42 ADD CONSTRAINT check1 CHECK (j < 12345)")
+		RunQuery(t, e, harness, "ALTER TABLE t42 ADD CONSTRAINT check2 CHECK (j > 0)")
+		RunQuery(t, e, harness, "ALTER TABLE t42 DROP COLUMN j")
+		tt := queries.QueryTest{
+			Query: "show create table t42",
+			Expected: []sql.Row{{"t42", "CREATE TABLE `t42` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+	})
+
+	t.Run("drop column drops correct check constraint", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t41 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD COLUMN j int")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD CONSTRAINT j_check CHECK (j < 12345)")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD CONSTRAINT k_check CHECK (k < 123)")
+		RunQuery(t, e, harness, "ALTER TABLE t41 DROP COLUMN j")
+		tt := queries.QueryTest{
+			Query: "show create table t41",
+			Expected: []sql.Row{{"t41", "CREATE TABLE `t41` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  `k` int,\n" +
 				"  PRIMARY KEY (`i`),\n" +
-				"  CONSTRAINT `test_check` CHECK ((`j` < 12345))\n" +
+				"  CONSTRAINT `k_check` CHECK ((`k` < 123))\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+	})
+
+	t.Run("drop column does not drop when referenced in constraint with other column", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t43 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN j int")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD CONSTRAINT test_check CHECK (j < k)")
+		AssertErr(t, e, harness, "ALTER TABLE t43 DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
+		tt := queries.QueryTest{
+			Query: "show create table t43",
+			Expected: []sql.Row{{"t43", "CREATE TABLE `t43` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  `j` int,\n" +
+				"  `k` int,\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  CONSTRAINT `test_check` CHECK ((`j` < `k`))\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 		}
 		TestQueryWithEngine(t, harness, e, tt)
@@ -6594,6 +6685,13 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
 	require.NotNil(t, findRole("test_user", persister.roles))
+
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER testuser@localhost;")
+	RunQueryWithContext(t, engine, harness, ctx, "GRANT REPLICATION_SLAVE_ADMIN ON *.* TO testuser@localhost;")
+	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
+	testuser := findUser("testuser", "localhost", persister.users)
+	require.ElementsMatch(t, []string{"REPLICATION_SLAVE_ADMIN"}, testuser.PrivilegeSet.ToSliceDynamic(false))
+	require.ElementsMatch(t, []string{}, testuser.PrivilegeSet.ToSliceDynamic(true))
 
 	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
 	require.Error(t, err)

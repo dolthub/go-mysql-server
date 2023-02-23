@@ -122,6 +122,16 @@ func TestJoinQueriesPrepared(t *testing.T) {
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJoinPlanning runs join-specific tests for merge
+func TestJoinPlanning(t *testing.T) {
+	enginetest.TestJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJoinPlanningPrepared runs prepared join-specific tests for merge
+func TestJoinPlanningPrepared(t *testing.T) {
+	enginetest.TestJoinPlanningPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestJoinOps runs join-specific tests for merge
 func TestJoinOps(t *testing.T) {
 	enginetest.TestJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
@@ -153,17 +163,8 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: "SELECT pk, count(*) over (order by v2) FROM one_pk_three_idx ORDER BY pk",
-		Expected: []sql.Row{
-			{0, 4},
-			{1, 4},
-			{2, 5},
-			{3, 6},
-			{4, 4},
-			{5, 4},
-			{6, 7},
-			{7, 8},
-		},
+		Query:    `SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp`,
+		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
@@ -204,7 +205,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "create table as select distinct",
@@ -539,6 +539,26 @@ func TestScripts(t *testing.T) {
 
 func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialScriptsPrepared(t *testing.T) {
+	enginetest.TestSpatialScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexScripts(t *testing.T) {
+	enginetest.TestSpatialIndexScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexScriptsPrepared(t *testing.T) {
+	enginetest.TestSpatialIndexScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexPlans(t *testing.T) {
+	enginetest.TestSpatialIndexPlans(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexPlansPrepared(t *testing.T) {
+	enginetest.TestSpatialIndexPlansPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestLoadDataPrepared(t *testing.T) {

@@ -28,16 +28,26 @@ func filterHasBindVar(filter sql.Node) bool {
 	transform.Inspect(filter, func(node sql.Node) bool {
 		if fn, ok := node.(*plan.Filter); ok {
 			for _, expr := range fn.Expressions() {
-				transform.InspectExpr(expr, func(e sql.Expression) bool {
-					if _, ok := e.(*expression.BindVar); ok {
-						hasBindVar = true
-						return true
-					}
+				if exprHasBindVar(expr) {
+					hasBindVar = true
 					return false
-				})
+				}
 			}
 		}
 		return !hasBindVar // stop recursing if bindvar already found
+	})
+	return hasBindVar
+}
+
+// exprHasBindVar looks for any BindVars found in expressions
+func exprHasBindVar(expr sql.Expression) bool {
+	var hasBindVar bool
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.BindVar); ok {
+			hasBindVar = true
+			return true
+		}
+		return false
 	})
 	return hasBindVar
 }
@@ -70,6 +80,9 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	}
 
 	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
 
 	if !filterHasBindVar(n) {
 		return node, same, err
@@ -228,7 +241,11 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 					return nil, transform.SameTree, err
 				}
 				filters.markFiltersHandled(handled...)
-				return node, len(handled) == 0, nil
+				ret, err := plan.NewStaticIndexedAccessForResolvedTable(node.ResolvedTable, lookup.lookup)
+				if err != nil {
+					return node, transform.SameTree, err
+				}
+				return ret, len(handled) == 0, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(sql.NameableNode), scope, filters, tableAliases)
 				if plan.ErrInvalidLookupForIndexedTable.Is(err) {
@@ -460,6 +477,10 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *p
 	if !ok {
 		return nil, nil
 	}
+	// Spatial Indexes are lossy, so do not remove filter node above the lookup
+	if filteredIdx.IsSpatial() {
+		return nil, nil
+	}
 
 	idxFilters := splitConjunction(lookup.expr)
 	if len(idxFilters) == 0 {
@@ -548,7 +569,11 @@ func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.Filtere
 	handledNormalizedFilters := ft.HandledFilters(normalizedFilters)
 	handledDenormalizedFilters := make([]sql.Expression, len(handledNormalizedFilters))
 	for i, handledFilter := range handledNormalizedFilters {
-		handledDenormalizedFilters[i] = normalizedToDenormalizedFilterMap[handledFilter]
+		if val, ok := normalizedToDenormalizedFilterMap[handledFilter]; ok {
+			handledDenormalizedFilters[i] = val
+		} else {
+			handledDenormalizedFilters[i] = handledFilter
+		}
 	}
 
 	return handledDenormalizedFilters
