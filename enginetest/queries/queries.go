@@ -7157,6 +7157,14 @@ With c as (
 				      AND EXISTS (SELECT * FROM othertable Alias WHERE Alias.i2 = Alias0.i + 2));`,
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query: `
+select * from mytable
+where
+  i = (select i2 from othertable alias1 where i2 = 2) and
+  i+1 = (select i2 from othertable alias1 where i2 = 3);`,
+		Expected: []sql.Row{{2, "second row"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
