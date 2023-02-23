@@ -6686,6 +6686,13 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
 	require.NotNil(t, findRole("test_user", persister.roles))
 
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER testuser@localhost;")
+	RunQueryWithContext(t, engine, harness, ctx, "GRANT REPLICATION_SLAVE_ADMIN ON *.* TO testuser@localhost;")
+	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
+	testuser := findUser("testuser", "localhost", persister.users)
+	require.ElementsMatch(t, []string{"REPLICATION_SLAVE_ADMIN"}, testuser.PrivilegeSet.ToSliceDynamic(false))
+	require.ElementsMatch(t, []string{}, testuser.PrivilegeSet.ToSliceDynamic(true))
+
 	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
 	require.Error(t, err)
 
