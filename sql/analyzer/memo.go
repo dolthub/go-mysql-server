@@ -309,7 +309,7 @@ func (p *relProps) outputColsForRel(r relExpr) sql.Schema {
 	case *distinct:
 		return r.child.relProps.OutputCols()
 	case *project:
-		return r.child.relProps.OutputCols()
+		return r.outputCols()
 	case sourceRel:
 		return r.outputCols()
 	default:
@@ -321,6 +321,9 @@ func (p *relProps) outputColsForRel(r relExpr) sql.Schema {
 // OutputCols returns the output schema of a node
 func (p *relProps) OutputCols() sql.Schema {
 	if p.outputCols == nil {
+		if p.grp.best == nil {
+			return p.outputColsForRel(p.grp.first)
+		}
 		p.populateOutputCols()
 	}
 	return p.outputCols
