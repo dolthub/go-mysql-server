@@ -33,6 +33,7 @@ table PrivilegeSet {
     global_static:[int];
     global_dynamic:[string];
     databases:[PrivilegeSetDatabase];
+    global_dynamic_wgo:[bool]; // WITH GRANT OPTION, separate as this was added later
 }
 
 // Entries in the user table
