@@ -45,6 +45,21 @@ func (ta TableAliases) putAll(other TableAliases) {
 	}
 }
 
+func (ta TableAliases) findConflicts(other TableAliases) (conflicts []string, nonConflicted []string) {
+	conflicts = []string{}
+	nonConflicted = []string{}
+
+	for alias := range other {
+		if _, ok := ta[alias]; ok {
+			conflicts = append(conflicts, alias)
+		} else {
+			nonConflicted = append(nonConflicted, alias)
+		}
+	}
+
+	return
+}
+
 // getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name.
 // Unaliased tables are returned keyed by their original lower-cased name.
 func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
@@ -211,4 +226,88 @@ func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expres
 	})
 
 	return normalized
+}
+
+// renameAliasesInExpressions returns expressions where any table references are renamed to the new table name.
+func renameAliasesInExpressions(expressions []sql.Expression, oldNameLower string, newName string) ([]sql.Expression, error) {
+	for i, e := range expressions {
+		newExpression, tree, err := renameAliasesInExp(e, oldNameLower, newName)
+		if err != nil {
+			return nil, err
+		}
+		if tree == transform.NewTree {
+			expressions[i] = newExpression
+		}
+	}
+	return expressions, nil
+}
+
+// renameAliasesInExp returns an expression where any table references are renamed to the new table name.
+func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string) (sql.Expression, transform.TreeIdentity, error) {
+	newExp, tree, err := transform.Expr(exp, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *expression.GetField:
+			if strings.EqualFold(e.Table(), oldNameLower) {
+				gf := e.WithTable(newName)
+				return gf, transform.NewTree, nil
+			}
+		case *expression.UnresolvedColumn:
+			if strings.EqualFold(e.Table(), oldNameLower) {
+				return expression.NewUnresolvedQualifiedColumn(newName, e.Name()), transform.NewTree, nil
+			}
+		case *plan.Subquery:
+			newSubquery, tree, err := renameAliases(e.Query, oldNameLower, newName)
+			if err != nil {
+				return nil, tree, err
+			}
+			if tree == transform.NewTree {
+				e.WithQuery(newSubquery)
+			}
+			return e, tree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+	return newExp, tree, err
+}
+
+// renameAliasesInExp returns a node where any table references are renamed to the new table name.
+func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		nodeUpdated := false
+
+		// update TableAlias directly
+		tableAlias, ok := node.(*plan.TableAlias)
+		if ok {
+			if strings.EqualFold(tableAlias.Name(), oldNameLower) {
+				node = tableAlias.WithName(newName)
+				nodeUpdated = true
+			}
+		}
+
+		// update expressions
+		expressioner, ok := node.(sql.Expressioner)
+		if ok {
+			expressions := expressioner.Expressions()
+			expressionsUpdated := false
+			for i, exp := range expressions {
+				newExp, tree, err := renameAliasesInExp(exp, oldNameLower, newName)
+				if err != nil {
+					return nil, tree, err
+				}
+				if tree == transform.NewTree {
+					expressions[i] = newExp
+					expressionsUpdated = true
+				}
+			}
+			if expressionsUpdated {
+				expressioner.WithExpressions(expressions...)
+				nodeUpdated = true
+			}
+		}
+
+		if nodeUpdated {
+			return node, transform.NewTree, nil
+		}
+		return node, transform.SameTree, nil
+	})
 }

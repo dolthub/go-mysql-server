@@ -395,6 +395,14 @@ SELECT * FROM xy WHERE (
 				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
+			{
+				q: `
+SELECT * FROM xy WHERE (
+      EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				exp:   []sql.Row{{0, 2}, {1, 0}},
+			},
 		},
 	},
 	{

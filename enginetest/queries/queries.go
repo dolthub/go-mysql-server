@@ -7150,6 +7150,13 @@ With c as (
 		Query:    "SELECT 4294967296;",
 		Expected: []sql.Row{{int64(4294967296)}},
 	},
+	{
+		// verify that duplicate aliases in different subqueries are allowed
+		Query: `SELECT COUNT(*) FROM mytable Alias0 WHERE (
+				      EXISTS (SELECT * FROM mytable Alias WHERE Alias.i = Alias0.i + 1)
+				      AND EXISTS (SELECT * FROM othertable Alias WHERE Alias.i2 = Alias0.i + 2));`,
+		Expected: []sql.Row{{1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
