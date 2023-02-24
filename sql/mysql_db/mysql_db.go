@@ -58,10 +58,10 @@ type MySQLDb struct {
 	role_edges          *mysqlTable
 	replica_source_info *mysqlTable
 
-	db          *mysqlTableShim
-	tables_priv *mysqlTableShim
+	db            *mysqlTableShim
+	tables_priv   *mysqlTableShim
+	global_grants *mysqlTableShim
 	//TODO: add the rest of these tables
-	//global_grants    *mysqlTable
 	//columns_priv     *mysqlTable
 	//procs_priv       *mysqlTable
 	//proxies_priv     *mysqlTable
@@ -109,6 +109,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	// mysqlTable shims
 	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
 	mysqlDb.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, mysqlDb.user, TablesPrivConverter{})
+	mysqlDb.global_grants = newMySQLTableShim(globalGrantsTblName, globalGrantsTblSchema, mysqlDb.user, GlobalGrantsConverter{})
 
 	// Start the counter at 1, all new sessions will start at zero so this forces an update for any new session
 	mysqlDb.updateCounter = 1
@@ -117,7 +118,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 }
 
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
-// pre-existing data.
+// pre-existing data. This has been deprecated in favor of LoadData.
 func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
 	db.Enabled = true
 	for _, user := range users {

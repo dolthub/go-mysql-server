@@ -288,7 +288,6 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		case msRet:
 			return i.removeParentRow(ret), nil
-			return ret, nil
 		case msRetLeft:
 			ret = i.removeParentRow(i.nullifyRightRow(ret))
 			err = i.incLeft(ctx)

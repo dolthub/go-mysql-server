@@ -25,6 +25,7 @@ import (
 type Privilege struct {
 	Type    PrivilegeType
 	Columns []string
+	Dynamic string // PrivilegeType_Dynamic will set this string to the correct lowercased value
 }
 
 // PrivilegeLevel defines the level that a privilege applies to.
@@ -209,6 +210,18 @@ func (p *Privilege) String() string {
 		sb.WriteString(")")
 	}
 	return sb.String()
+}
+
+// IsValidDynamic returns whether the given dynamic privilege is valid. If the privilege is NOT dynamic, or the dynamic
+// privilege is not supported, then this returns false.
+func (p *Privilege) IsValidDynamic() bool {
+	if p.Type == PrivilegeType_Dynamic {
+		switch p.Dynamic {
+		case "replication_slave_admin":
+			return true
+		}
+	}
+	return false
 }
 
 // String returns the PrivilegeLevel as a formatted string.

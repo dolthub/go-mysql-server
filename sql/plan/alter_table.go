@@ -706,6 +706,16 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	i.runOnce = true
 
+	// drop constraints that reference the dropped column
+	cat, ok := i.alterable.(sql.CheckAlterableTable)
+	if ok {
+		// note: validations done earlier ensure safety of dropping any constraint referencing the column
+		err := dropConstraints(ctx, cat, i.d.Checks, i.d.Column)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	rwt, ok := i.alterable.(sql.RewritableTable)
 	if ok {
 		rewritten, err := i.rewriteTable(ctx, rwt)
@@ -803,6 +813,27 @@ func dropColumnFromSchema(schema sql.Schema, column string, tableName string) (s
 	}
 
 	return newSch, projections, nil
+}
+
+// dropConstraints drop constraints that reference the column to be dropped.
+func dropConstraints(ctx *sql.Context, cat sql.CheckAlterableTable, checks sql.CheckConstraints, column string) error {
+	var err error
+	for _, check := range checks {
+		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
+			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
+				if column == unresolvedColumn.Name() {
+					err = cat.DropCheck(ctx, check.Name)
+					return true
+				}
+			}
+			return false
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (i *dropColumnIter) Close(context *sql.Context) error {

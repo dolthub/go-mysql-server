@@ -3673,6 +3673,66 @@ var PreparedScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Drop column with check constraint, no other columns",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE mytable DROP COLUMN col2",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, other column referenced first",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col3 LIKE col2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, other column referenced second",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE col3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
+	{
+		Name: "Drop column with check constraint, multiple constraints",
+		SetUpScript: []string{
+			"create table mytable (pk int primary key);",
+			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
+			"ALTER TABLE mytable ADD COLUMN col3 text NOT NULL;",
+			"ALTER TABLE mytable ADD CONSTRAINT ok_check CHECK (col2 LIKE '%myregex%');",
+			"ALTER TABLE mytable ADD CONSTRAINT bad_check CHECK (col2 LIKE col3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE mytable DROP COLUMN col2",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+		},
+	},
 }
 
 var BrokenScriptTests = []ScriptTest{
@@ -3793,20 +3853,6 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT `t1`.`id`, `t1`.`name` FROM `person` AS `t1` WHERE (`t1`.`name` REGEXP 'N[1,3]') ORDER BY `t1`.`name`;",
 				Expected: []sql.Row{{1, "n1"}, {3, "n3"}},
-			},
-		},
-	},
-	{
-		Name: "Drop a column with a check constraint",
-		SetUpScript: []string{
-			"create table mytable (pk int primary key);",
-			"ALTER TABLE mytable ADD COLUMN col2 text NOT NULL;",
-			"ALTER TABLE mytable ADD CONSTRAINT constraint_check CHECK (col2 LIKE '%myregex%');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "ALTER TABLE mytable DROP COLUMN col2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},

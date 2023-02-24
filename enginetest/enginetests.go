@@ -5415,22 +5415,74 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		}, checks)
 	})
 
-	t.Run("drop column preserves check constraints", func(t *testing.T) {
+	t.Run("drop column drops check constraint", func(t *testing.T) {
 		RunQuery(t, e, harness, "create table t34 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t34 ADD COLUMN j int, ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t34 ADD COLUMN j int")
 		RunQuery(t, e, harness, "ALTER TABLE t34 ADD CONSTRAINT test_check CHECK (j < 12345)")
-
-		AssertErr(t, e, harness, "ALTER TABLE t34 DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
-
-		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN k")
+		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN j")
 		tt := queries.QueryTest{
 			Query: "show create table t34",
 			Expected: []sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` varchar(20),\n" +
-				"  `j` int,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+	})
+
+	t.Run("drop column drops all relevant check constraints", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t42 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t42 ADD COLUMN j int")
+		RunQuery(t, e, harness, "ALTER TABLE t42 ADD CONSTRAINT check1 CHECK (j < 12345)")
+		RunQuery(t, e, harness, "ALTER TABLE t42 ADD CONSTRAINT check2 CHECK (j > 0)")
+		RunQuery(t, e, harness, "ALTER TABLE t42 DROP COLUMN j")
+		tt := queries.QueryTest{
+			Query: "show create table t42",
+			Expected: []sql.Row{{"t42", "CREATE TABLE `t42` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+	})
+
+	t.Run("drop column drops correct check constraint", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t41 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD COLUMN j int")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD CONSTRAINT j_check CHECK (j < 12345)")
+		RunQuery(t, e, harness, "ALTER TABLE t41 ADD CONSTRAINT k_check CHECK (k < 123)")
+		RunQuery(t, e, harness, "ALTER TABLE t41 DROP COLUMN j")
+		tt := queries.QueryTest{
+			Query: "show create table t41",
+			Expected: []sql.Row{{"t41", "CREATE TABLE `t41` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  `k` int,\n" +
 				"  PRIMARY KEY (`i`),\n" +
-				"  CONSTRAINT `test_check` CHECK ((`j` < 12345))\n" +
+				"  CONSTRAINT `k_check` CHECK ((`k` < 123))\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		}
+		TestQueryWithEngine(t, harness, e, tt)
+	})
+
+	t.Run("drop column does not drop when referenced in constraint with other column", func(t *testing.T) {
+		RunQuery(t, e, harness, "create table t43 (i bigint primary key, s varchar(20))")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN j int")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE t43 ADD CONSTRAINT test_check CHECK (j < k)")
+		AssertErr(t, e, harness, "ALTER TABLE t43 DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
+		tt := queries.QueryTest{
+			Query: "show create table t43",
+			Expected: []sql.Row{{"t43", "CREATE TABLE `t43` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` varchar(20),\n" +
+				"  `j` int,\n" +
+				"  `k` int,\n" +
+				"  PRIMARY KEY (`i`),\n" +
+				"  CONSTRAINT `test_check` CHECK ((`j` < `k`))\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 		}
 		TestQueryWithEngine(t, harness, e, tt)
@@ -6647,6 +6699,13 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
 	require.NotNil(t, findRole("test_user", persister.roles))
+
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE USER testuser@localhost;")
+	RunQueryWithContext(t, engine, harness, ctx, "GRANT REPLICATION_SLAVE_ADMIN ON *.* TO testuser@localhost;")
+	RunQueryWithContext(t, engine, harness, ctx, "FLUSH PRIVILEGES")
+	testuser := findUser("testuser", "localhost", persister.users)
+	require.ElementsMatch(t, []string{"REPLICATION_SLAVE_ADMIN"}, testuser.PrivilegeSet.ToSliceDynamic(false))
+	require.ElementsMatch(t, []string{}, testuser.PrivilegeSet.ToSliceDynamic(true))
 
 	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
 	require.Error(t, err)

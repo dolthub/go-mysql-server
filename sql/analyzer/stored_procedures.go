@@ -130,7 +130,15 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		var newChild sql.Node
 		switch child := child.(type) {
 		case plan.RepresentsBlock:
+			// Many analyzer rules only check the top-level node, so we have to recursively analyze each child
 			newChild, _, err = analyzeProcedureBodies(ctx, a, child, skipCall, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			// Blocks may have expressions declared directly on them, so we explicitly check the block node for variables
+			newChild, _, err = a.analyzeWithSelector(ctx, newChild, scope, SelectAllBatches, func(id RuleId) bool {
+				return id == resolveVariablesId
+			})
 		case *plan.Call:
 			if skipCall {
 				newChild = child

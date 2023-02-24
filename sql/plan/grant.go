@@ -449,7 +449,10 @@ func (n *Grant) handleGlobalPrivileges(user *mysql_db.User) error {
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
 		case PrivilegeType_Dynamic:
-			return fmt.Errorf("GRANT does not yet support dynamic privileges")
+			if !priv.IsValidDynamic() {
+				return fmt.Errorf(`GRANT does not yet support the dynamic privilege: "%s"`, priv.Dynamic)
+			}
+			user.PrivilegeSet.AddGlobalDynamic(n.WithGrantOption, priv.Dynamic)
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}

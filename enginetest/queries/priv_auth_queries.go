@@ -379,6 +379,31 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
+		Name: "Dynamic privilege support",
+		SetUpScript: []string{
+			"CREATE USER testuser@localhost;",
+			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO testuser@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query: "SELECT user, host from mysql.user",
+				Expected: []sql.Row{
+					{"root", "localhost"},
+					{"testuser", "localhost"},
+				},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR testuser@localhost;",
+				Expected: []sql.Row{
+					{"GRANT USAGE ON *.* TO `testuser`@`localhost`"},
+					{"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
+				},
+			},
+		},
+	},
+	{
 		Name: "user creation no host",
 		SetUpScript: []string{
 			"CREATE USER testuser;",

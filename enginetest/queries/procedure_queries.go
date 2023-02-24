@@ -269,6 +269,56 @@ END;`,
 		},
 	},
 	{
+		Name: "REPEAT loop over user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(p1 INT)
+BEGIN
+	SET @x = 0;
+	REPEAT SET @x = @x + 1; UNTIL @x > p1 END REPEAT;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1(0)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "CALL p1(1)",
+				Expected: []sql.Row{{}, {}}, // Next calls return an empty row, but progress the loop
+			},
+			{
+				Query:    "CALL p1(2)",
+				Expected: []sql.Row{{}, {}, {}},
+			},
+		},
+	},
+	{
+		Name: "WHILE loop over user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(p1 INT)
+BEGIN
+	SET @x = 0;
+	WHILE @x <= p1 DO
+		SET @x = @x + 1;
+	END WHILE;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1(0)",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "CALL p1(1)",
+				Expected: []sql.Row{{}, {}},
+			},
+			{
+				Query:    "CALL p1(2)",
+				Expected: []sql.Row{{}, {}, {}},
+			},
+		},
+	},
+	{
 		Name: "CASE statements",
 		SetUpScript: []string{
 			`CREATE PROCEDURE p1(IN a BIGINT)

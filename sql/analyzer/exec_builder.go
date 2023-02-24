@@ -336,8 +336,12 @@ func (b *ExecBuilder) buildSelectSingleRel(r *selectSingleRel, _ sql.Schema, _ .
 	return r.table, nil
 }
 
-func (b *ExecBuilder) buildProject(r *project, _ sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return plan.NewProject(r.projections, children[0]), nil
+func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, input, r.projections...)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewProject(p, children[0]), nil
 }
 
 func (b *ExecBuilder) buildDistinct(r *distinct, _ sql.Schema, children ...sql.Node) (sql.Node, error) {

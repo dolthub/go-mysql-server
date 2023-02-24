@@ -122,7 +122,9 @@ func generatePrivStrings(db, tbl, user string, privs []sql.PrivilegeType) string
 	for i, priv := range privs {
 		privStr := priv.String()
 		if privStr == sql.PrivilegeType_GrantOption.String() {
-			withGrantOption = " WITH GRANT OPTION"
+			if len(privs) > 1 {
+				withGrantOption = " WITH GRANT OPTION"
+			}
 		} else {
 			if i > 0 {
 				sb.WriteString(", ")
@@ -194,6 +196,27 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 	if sb.Len() > 0 {
 		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})
+	}
+
+	sb.Reset()
+	for i, dynamicPrivWithWgo := range user.PrivilegeSet.ToSliceDynamic(true) {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(dynamicPrivWithWgo)
+	}
+	if sb.Len() > 0 {
+		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s WITH GRANT OPTION", sb.String(), user.UserHostToString("`"))})
+	}
+	sb.Reset()
+	for i, dynamicPrivWithoutWgo := range user.PrivilegeSet.ToSliceDynamic(false) {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(dynamicPrivWithoutWgo)
+	}
+	if sb.Len() > 0 {
+		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s", sb.String(), user.UserHostToString("`"))})
 	}
 	return sql.RowsToRowIter(rows...), nil
 }

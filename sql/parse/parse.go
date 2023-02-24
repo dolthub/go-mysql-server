@@ -2561,6 +2561,7 @@ func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
 	planPrivs := make([]plan.Privilege, len(privileges))
 	for i, privilege := range privileges {
 		var privType plan.PrivilegeType
+		var dynamicString string
 		switch privilege.Type {
 		case sqlparser.PrivilegeType_All:
 			privType = plan.PrivilegeType_All
@@ -2630,6 +2631,7 @@ func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
 			privType = plan.PrivilegeType_Usage
 		case sqlparser.PrivilegeType_Dynamic:
 			privType = plan.PrivilegeType_Dynamic
+			dynamicString = privilege.DynamicName
 		default:
 			// all privileges have been implemented, so if we hit the default something bad has happened
 			panic("given privilege type parses but is not implemented")
@@ -2637,6 +2639,7 @@ func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
 		planPrivs[i] = plan.Privilege{
 			Type:    privType,
 			Columns: privilege.Columns,
+			Dynamic: dynamicString,
 		}
 	}
 	return planPrivs

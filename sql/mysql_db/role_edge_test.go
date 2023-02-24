@@ -36,7 +36,7 @@ func TestRoleEdgeJson(t *testing.T) {
 	jsonStr, err := testRoleEdge.ToJson(ctx)
 	require.NoError(t, err)
 	require.Equal(t, `{"FromHost":"localhost","FromUser":"some_role","ToHost":"127.0.0.1","ToUser":"some_user","WithAdminOption":true}`, jsonStr)
-	newRoleEdge, err := (RoleEdge{}).FromJson(ctx, jsonStr)
+	newRoleEdge, err := (&RoleEdge{}).FromJson(ctx, jsonStr)
 	require.NoError(t, err)
 	require.True(t, testRoleEdge.Equals(ctx, newRoleEdge))
 
