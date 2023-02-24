@@ -109,6 +109,7 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 		if err != nil {
 			return err
 		}
+		n.setCost(relCost)
 		cost += relCost
 		m.updateBest(grp, n, cost)
 		n = n.next()
@@ -439,7 +440,19 @@ func (e *exprGroup) String() string {
 	sep := ""
 	for n != nil {
 		b.WriteString(sep)
-		b.WriteString(fmt.Sprintf("(%s)", formatRelExpr(n)))
+		b.WriteString(fmt.Sprintf("(%s", formatRelExpr(n)))
+		if e.best != nil {
+			b.WriteString(fmt.Sprintf(" %.1f", n.cost()))
+		}
+		b.WriteString(")")
+
+		childCost := 0.0
+		for _, c := range n.children() {
+			childCost += c.cost
+		}
+		if e.cost == n.cost()+childCost {
+			b.WriteString("*")
+		}
 		sep = " "
 		n = n.next()
 	}
@@ -472,6 +485,8 @@ type relExpr interface {
 	setNext(relExpr)
 	children() []*exprGroup
 	setGroup(g *exprGroup)
+	setCost(c float64)
+	cost() float64
 }
 
 type relBase struct {
@@ -517,6 +532,10 @@ func (r *relBase) setNext(rel relExpr) {
 
 func (r *relBase) setCost(c float64) {
 	r.c = c
+}
+
+func (r *relBase) cost() float64 {
+	return r.c
 }
 
 func tableIdForSource(id GroupId) TableId {

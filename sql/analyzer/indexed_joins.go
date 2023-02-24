@@ -185,10 +185,6 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		return nil, err
 	}
 
-	if a.Verbose && a.Debug {
-		a.Log(m.String())
-	}
-
 	if hint := extractJoinHint(n); !hint.IsEmpty() {
 		// this should probably happen earlier, but the root is not
 		// populated before reordering
@@ -199,6 +195,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	if err != nil {
 		return nil, err
 	}
+
+	if a.Verbose && a.Debug {
+		a.Log(m.String())
+	}
+
 	return m.bestRootPlan()
 }
 
