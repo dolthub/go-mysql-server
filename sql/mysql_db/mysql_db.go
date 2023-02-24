@@ -378,8 +378,8 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 				continue
 			}
 
-			// We don't currently support setting non-global dynamic privileges, so if there
-			// isn't a global dynamic privilege, then go ahead and return false.
+			// Dynamic privileges are only allowed at a global scope, so no need to check
+			// for database, table, or column privileges.
 			return false
 		}
 	}
