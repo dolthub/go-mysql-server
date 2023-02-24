@@ -367,21 +367,20 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 			}
 		}
 
-		for _, operationPriv := range operation.DynamicPrivileges {
-			// Super users have all privileges, so if they have global super privs, then they have all dynamic privs
-			if privSet.Has(sql.PrivilegeType_Super) {
-				continue
-			}
+		// Super users have all privileges, so if they have global super privs, then
+		// they have all dynamic privs and we don't need to check them.
+		if privSet.Has(sql.PrivilegeType_Super) {
+			continue
+		}
 
+		for _, operationPriv := range operation.DynamicPrivileges {
 			if privSet.HasDynamic(operationPriv) {
 				continue
 			}
 
-			// We don't currently support setting non-global dynamic privileges, so if there isn't a global
-			// dynamic privilege, then go ahead and return false.
+			// We don't currently support setting non-global dynamic privileges, so if there
+			// isn't a global dynamic privilege, then go ahead and return false.
 			return false
-
-			// TODO: Add tests that assert granting a dynamic priv to non-global scope fails with a good error msg
 		}
 	}
 	return true

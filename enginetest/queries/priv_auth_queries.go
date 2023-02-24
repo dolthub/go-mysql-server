@@ -316,6 +316,22 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query:       "CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db01.t1);",
 				ExpectedErr: plan.ErrNoReplicationController,
 			},
+			{
+				// Dynamic privileges can currently only be applied globally, so if a user attempts
+				// to grant a dynamic privilege on a specific database or table, we return an error.
+				User:        "root",
+				Host:        "localhost",
+				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.* TO 'user'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeUnsupportedOperation,
+			},
+			{
+				// Dynamic privileges can currently only be applied globally, so if a user attempts
+				// to grant a dynamic privilege on a specific database or table, we return an error.
+				User:        "root",
+				Host:        "localhost",
+				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.mytable TO 'user'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeUnsupportedOperation,
+			},
 		},
 	},
 	{
