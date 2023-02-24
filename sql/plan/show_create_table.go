@@ -461,7 +461,14 @@ func FmtCreateTableIndex(isUnique, isSpatial bool, indexID string, indexCols []s
 func FmtCreateTableForiegnKey(fkName string, fkCols []string, parentTbl string, parentCols []string, onDelete, onUpdate string) string {
 	keyCols := strings.Join(quoteIdentifiers(fkCols), ",")
 	refCols := strings.Join(quoteIdentifiers(parentCols), ",")
-	return fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)%s%s", quoteIdentifier(fkName), keyCols, quoteIdentifier(parentTbl), refCols, onDelete, onUpdate)
+	fkey := fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quoteIdentifier(fkName), keyCols, quoteIdentifier(parentTbl), refCols)
+	if onDelete != "" {
+		fkey = fmt.Sprintf("%s ON DELETE %s", fkey, onDelete)
+	}
+	if onUpdate != "" {
+		fkey = fmt.Sprintf("%s ON UPDATE %s", fkey, onUpdate)
+	}
+	return fkey
 }
 
 func FmtCreateTableCheckConstraint(checkName, checkExpr string, enforced bool) string {
