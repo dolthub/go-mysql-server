@@ -33,7 +33,8 @@ func NewPrivilegedOperation(dbName string, tblName string, colName string, privs
 	}
 }
 
-// NewDynamicPrivilegedOperation returns a new PrivilegedOperation for the specified dynamic privileges.
+// NewDynamicPrivilegedOperation returns a new PrivilegedOperation for the specified dynamic privileges. Dynamic
+// privileges may only be applied globally, so you cannot specify a database, table, or column.
 func NewDynamicPrivilegedOperation(privs ...string) PrivilegedOperation {
 	return PrivilegedOperation{
 		DynamicPrivileges: privs,

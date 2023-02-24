@@ -106,7 +106,7 @@ type ServerAuthenticationTestAssertion struct {
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
 	{
-		Name: "Replication privileges",
+		Name: "Binlog replication privileges",
 		SetUpScript: []string{
 			"CREATE USER user@localhost;",
 			"CREATE USER 'replica-admin'@localhost;",
@@ -315,22 +315,6 @@ var UserPrivTests = []UserPrivilegeTest{
 				Host:        "localhost",
 				Query:       "CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db01.t1);",
 				ExpectedErr: plan.ErrNoReplicationController,
-			},
-			{
-				// Dynamic privileges can currently only be applied globally, so if a user attempts
-				// to grant a dynamic privilege on a specific database or table, we return an error.
-				User:        "root",
-				Host:        "localhost",
-				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.* TO 'user'@'localhost';",
-				ExpectedErr: sql.ErrGrantRevokeUnsupportedOperation,
-			},
-			{
-				// Dynamic privileges can currently only be applied globally, so if a user attempts
-				// to grant a dynamic privilege on a specific database or table, we return an error.
-				User:        "root",
-				Host:        "localhost",
-				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.mytable TO 'user'@'localhost';",
-				ExpectedErr: sql.ErrGrantRevokeUnsupportedOperation,
 			},
 		},
 	},
@@ -629,6 +613,34 @@ var UserPrivTests = []UserPrivilegeTest{
 					{"GRANT USAGE ON *.* TO `testuser`@`localhost`"},
 					{"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
 				},
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.* TO 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.mytable TO 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE REPLICATION_SLAVE_ADMIN ON mydb.* FROM 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE REPLICATION_SLAVE_ADMIN ON mydb.mytable FROM 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
 			},
 		},
 	},

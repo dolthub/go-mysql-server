@@ -516,8 +516,8 @@ func (n *Grant) handleDatabasePrivileges(user *mysql_db.User, dbName string) err
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
 		case PrivilegeType_Dynamic:
-			return sql.ErrGrantRevokeUnsupportedOperation.New(
-				"dynamic privileges can currently only be applied globally for a user")
+			return sql.ErrGrantRevokeIllegalPrivilegeWithMessage.New(
+				"dynamic privileges may only operate at a global scope")
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
@@ -569,8 +569,8 @@ func (n *Grant) handleTablePrivileges(user *mysql_db.User, dbName string, tblNam
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
 		case PrivilegeType_Dynamic:
-			return sql.ErrGrantRevokeUnsupportedOperation.New(
-				"dynamic privileges can currently only be applied globally for a user")
+			return sql.ErrGrantRevokeIllegalPrivilegeWithMessage.New(
+				"dynamic privileges may only operate at a global scope")
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
