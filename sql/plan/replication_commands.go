@@ -28,6 +28,8 @@ import (
 // replication controller to dispatch the command to.
 var ErrNoReplicationController = errors.NewKind("no replication controller available")
 
+// DynamicPrivilege_ReplicationSlaveAdmin is the dynamic privilege required to execute replication commands.
+// https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-slave-admin
 const DynamicPrivilge_ReplicationSlaveAdmin = "replication_slave_admin"
 
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController

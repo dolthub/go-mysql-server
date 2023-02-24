@@ -33,7 +33,7 @@ func NewPrivilegedOperation(dbName string, tblName string, colName string, privs
 	}
 }
 
-// TODO: Add godocs
+// NewDynamicPrivilegedOperation returns a new PrivilegedOperation for the specified dynamic privileges.
 func NewDynamicPrivilegedOperation(dbName, tblName, colName string, privs ...string) PrivilegedOperation {
 	return PrivilegedOperation{
 		Database:          dbName,
