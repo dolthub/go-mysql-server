@@ -7165,6 +7165,13 @@ where
   i+1 = (select i2 from othertable alias1 where i2 = 3);`,
 		Expected: []sql.Row{{2, "second row"}},
 	},
+	{
+		Query: `
+SELECT * FROM mytable WHERE (
+      EXISTS (SELECT * FROM mytable Alias1 join mytable Alias2 WHERE Alias1.i = (mytable.i + 1))
+      AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
+		Expected: []sql.Row{{1, "first row"}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
