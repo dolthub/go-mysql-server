@@ -34,11 +34,8 @@ func NewPrivilegedOperation(dbName string, tblName string, colName string, privs
 }
 
 // NewDynamicPrivilegedOperation returns a new PrivilegedOperation for the specified dynamic privileges.
-func NewDynamicPrivilegedOperation(dbName, tblName, colName string, privs ...string) PrivilegedOperation {
+func NewDynamicPrivilegedOperation(privs ...string) PrivilegedOperation {
 	return PrivilegedOperation{
-		Database:          dbName,
-		Table:             tblName,
-		Column:            colName,
 		DynamicPrivileges: privs,
 	}
 }

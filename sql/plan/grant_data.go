@@ -217,7 +217,7 @@ func (p *Privilege) String() string {
 func (p *Privilege) IsValidDynamic() bool {
 	if p.Type == PrivilegeType_Dynamic {
 		switch p.Dynamic {
-		case DynamicPrivilge_ReplicationSlaveAdmin:
+		case DynamicPrivilege_ReplicationSlaveAdmin:
 			return true
 		}
 	}

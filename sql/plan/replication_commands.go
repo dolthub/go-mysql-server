@@ -30,7 +30,7 @@ var ErrNoReplicationController = errors.NewKind("no replication controller avail
 
 // DynamicPrivilege_ReplicationSlaveAdmin is the dynamic privilege required to execute replication commands.
 // https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-slave-admin
-const DynamicPrivilge_ReplicationSlaveAdmin = "replication_slave_admin"
+const DynamicPrivilege_ReplicationSlaveAdmin = "replication_slave_admin"
 
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
 // (e.g. Start Replica, Show Replica Status).
@@ -109,7 +109,7 @@ func (c *ChangeReplicationSource) WithChildren(children ...sql.Node) (sql.Node, 
 
 func (c *ChangeReplicationSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
+		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
 // ChangeReplicationFilter is a plan node for the "CHANGE REPLICATION FILTER" statement.
@@ -182,7 +182,7 @@ func (c *ChangeReplicationFilter) WithChildren(children ...sql.Node) (sql.Node, 
 
 func (c *ChangeReplicationFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
+		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
 // StartReplica is a plan node for the "START REPLICA" statement.
@@ -241,7 +241,7 @@ func (s *StartReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (s *StartReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
+		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
 // StopReplica is the plan node for the "STOP REPLICA" statement.
@@ -300,7 +300,7 @@ func (s *StopReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (s *StopReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
+		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
 // ResetReplica is a plan node for the "RESET REPLICA" statement.
