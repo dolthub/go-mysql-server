@@ -245,10 +245,10 @@ var UserPrivTests = []UserPrivilegeTest{
 				ExpectedErr: sql.ErrPrivilegeCheckFailed,
 			},
 			{
-				User:        "root",
-				Host:        "localhost",
-				Query:       "SHOW REPLICA STATUS;",
-				ExpectedErr: plan.ErrNoReplicationController,
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW REPLICA STATUS;",
+				Expected: []sql.Row{},
 			},
 
 			// CHANGE REPLICATION SOURCE

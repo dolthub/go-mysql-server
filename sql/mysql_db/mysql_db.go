@@ -368,6 +368,11 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 		}
 
 		for _, operationPriv := range operation.DynamicPrivileges {
+			// Super users have all privileges, so if they have global super privs, then they have all dynamic privs
+			if privSet.Has(sql.PrivilegeType_Super) {
+				continue
+			}
+
 			if privSet.HasDynamic(operationPriv) {
 				continue
 			}
