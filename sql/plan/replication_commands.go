@@ -16,11 +16,18 @@ package plan
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 )
+
+// ErrNoReplicationController is returned when replication commands are executed without a configured
+// replication controller to dispatch the command to.
+var ErrNoReplicationController = errors.NewKind("no replication controller available")
+
+const DynamicPrivilge_ReplicationSlaveAdmin = "replication_slave_admin"
 
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
 // (e.g. Start Replica, Show Replica Status).
@@ -81,7 +88,7 @@ func (c *ChangeReplicationSource) Children() []sql.Node {
 
 func (c *ChangeReplicationSource) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	if c.replicaController == nil {
-		return nil, fmt.Errorf("no replication controller available")
+		return nil, ErrNoReplicationController.New()
 	}
 
 	err := c.replicaController.SetReplicationSourceOptions(ctx, c.Options)
@@ -99,7 +106,7 @@ func (c *ChangeReplicationSource) WithChildren(children ...sql.Node) (sql.Node, 
 
 func (c *ChangeReplicationSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
+		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
 }
 
 // ChangeReplicationFilter is a plan node for the "CHANGE REPLICATION FILTER" statement.
@@ -154,7 +161,7 @@ func (c *ChangeReplicationFilter) Children() []sql.Node {
 
 func (c *ChangeReplicationFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if c.replicaController == nil {
-		return nil, fmt.Errorf("no replication controller available")
+		return nil, ErrNoReplicationController.New()
 	}
 
 	err := c.replicaController.SetReplicationFilterOptions(ctx, c.Options)
@@ -172,7 +179,7 @@ func (c *ChangeReplicationFilter) WithChildren(children ...sql.Node) (sql.Node, 
 
 func (c *ChangeReplicationFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
+		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
 }
 
 // StartReplica is a plan node for the "START REPLICA" statement.
@@ -213,7 +220,7 @@ func (s *StartReplica) Children() []sql.Node {
 
 func (s *StartReplica) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	if s.replicaController == nil {
-		return nil, fmt.Errorf("no replication controller available")
+		return nil, ErrNoReplicationController.New()
 	}
 
 	err := s.replicaController.StartReplica(ctx)
@@ -231,7 +238,7 @@ func (s *StartReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (s *StartReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
+		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
 }
 
 // StopReplica is the plan node for the "STOP REPLICA" statement.
@@ -272,7 +279,7 @@ func (s *StopReplica) Children() []sql.Node {
 
 func (s *StopReplica) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	if s.replicaController == nil {
-		return nil, fmt.Errorf("no replication controller available")
+		return nil, ErrNoReplicationController.New()
 	}
 
 	err := s.replicaController.StopReplica(ctx)
@@ -290,7 +297,7 @@ func (s *StopReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (s *StopReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
+		sql.NewDynamicPrivilegedOperation("", "", "", DynamicPrivilge_ReplicationSlaveAdmin))
 }
 
 // ResetReplica is a plan node for the "RESET REPLICA" statement.
@@ -339,7 +346,7 @@ func (r *ResetReplica) Children() []sql.Node {
 
 func (r *ResetReplica) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if r.replicaController == nil {
-		return nil, fmt.Errorf("no replication controller available")
+		return nil, ErrNoReplicationController.New()
 	}
 
 	err := r.replicaController.ResetReplica(ctx, r.All)
@@ -357,5 +364,5 @@ func (r *ResetReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (r *ResetReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationSlave))
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Reload))
 }

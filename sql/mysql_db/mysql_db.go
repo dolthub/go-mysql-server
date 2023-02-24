@@ -344,7 +344,7 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 	}
 	privSet := db.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
-		for _, operationPriv := range operation.Privileges {
+		for _, operationPriv := range operation.StaticPrivileges {
 			if privSet.Has(operationPriv) {
 				//TODO: Handle partial revokes
 				continue
@@ -365,6 +365,18 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 			if !colSet.Has(operationPriv) {
 				return false
 			}
+		}
+
+		for _, operationPriv := range operation.DynamicPrivileges {
+			if privSet.HasDynamic(operationPriv) {
+				continue
+			}
+
+			// We don't currently support setting non-global dynamic privileges, so if there isn't a global
+			// dynamic privilege, then go ahead and return false.
+			return false
+
+			// TODO: Add tests that assert granting a dynamic priv to non-global scope fails with a good error msg
 		}
 	}
 	return true
