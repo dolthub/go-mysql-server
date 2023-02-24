@@ -443,15 +443,16 @@ func (e *exprGroup) String() string {
 		b.WriteString(fmt.Sprintf("(%s", formatRelExpr(n)))
 		if e.best != nil {
 			b.WriteString(fmt.Sprintf(" %.1f", n.cost()))
-		}
-		b.WriteString(")")
 
-		childCost := 0.0
-		for _, c := range n.children() {
-			childCost += c.cost
-		}
-		if e.cost == n.cost()+childCost {
-			b.WriteString("*")
+			childCost := 0.0
+			for _, c := range n.children() {
+				childCost += c.cost
+			}
+			if e.cost == n.cost()+childCost {
+				b.WriteString(")*")
+			}
+		} else {
+			b.WriteString(")")
 		}
 		sep = " "
 		n = n.next()
