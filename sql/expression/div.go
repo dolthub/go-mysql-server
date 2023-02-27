@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -174,6 +175,21 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 		return nil, nil, err
 	}
 
+	// this operation is only done on the left value as the scale/fraction part of the leftmost value
+	// is used to calculate the scale of the final result. If the value is GetField of decimal type column
+	// the decimal value evaluated does not always match the scale of column type definition
+	if dt, ok := d.Left.Type().(sql.DecimalType); ok {
+		if dVal, ok := lval.(decimal.Decimal); ok {
+			ts := int32(dt.Scale())
+			if ts > dVal.Exponent()*-1 {
+				lval, err = decimal.NewFromString(dVal.StringFixed(ts))
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+		}
+	}
+
 	rval, err = d.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, nil, err
@@ -255,7 +271,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 				d.curIntermediatePrecisionInc += int(math.Ceil(float64(r.Exponent()*-1) / float64(divIntermediatePrecisionInc)))
 			}
 
-			storedScale := int32(d.curIntermediatePrecisionInc * divIntermediatePrecisionInc)
+			storedScale := d.leftmostScale + int32(d.curIntermediatePrecisionInc*divIntermediatePrecisionInc)
 			l = l.Truncate(storedScale)
 			r = r.Truncate(storedScale)
 
@@ -410,6 +426,15 @@ func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d,
 				return 0
 			}
 			_, s := GetPrecisionAndScale(lval)
+			// the leftmost value can be row value of decimal type column
+			// the evaluated value does not always match the scale of column type definition
+			typ := a.Left.Type()
+			if dt, dok := typ.(sql.DecimalType); dok {
+				ts := dt.Scale()
+				if ts > s {
+					s = ts
+				}
+			}
 			return int32(s)
 		} else {
 			return getScaleOfLeftmostValue(ctx, row, a.Left, d, dScale)
@@ -717,9 +742,11 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 
 			// intDiv operation gets the integer part of the divided value
 			divRes := l.DivRound(r, 2)
-			intPart := divRes.IntPart()
-
-			if (divRes.IsNegative() && intPart >= 0) || (divRes.IsPositive() && intPart < 0) {
+			// cannot use IntPart() function of decimal.Decimal package as it returns 0 as undefined value for out of range value
+			// it causes valid result value of 0 to be the same as invalid out of range value of 0. The fraction part
+			// should not be rounded, so truncate the result wih 0 precision.
+			intPart, err := strconv.ParseInt(divRes.Truncate(0).String(), 10, 64)
+			if err != nil {
 				return nil, ErrIntDivDataOutOfRange.New(l.StringFixed(l.Exponent()), r.StringFixed(r.Exponent()))
 			}
 
