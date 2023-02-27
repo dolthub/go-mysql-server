@@ -408,6 +408,9 @@ func (n *Revoke) handleDatabasePrivileges(user *mysql_db.User, dbName string) er
 			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_Update)
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
+		case PrivilegeType_Dynamic:
+			return sql.ErrGrantRevokeIllegalPrivilegeWithMessage.New(
+				"dynamic privileges may only operate at a global scope")
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
@@ -458,6 +461,9 @@ func (n *Revoke) handleTablePrivileges(user *mysql_db.User, dbName string, tblNa
 			user.PrivilegeSet.RemoveTable(dbName, tblName, sql.PrivilegeType_Update)
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
+		case PrivilegeType_Dynamic:
+			return sql.ErrGrantRevokeIllegalPrivilegeWithMessage.New(
+				"dynamic privileges may only operate at a global scope")
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
