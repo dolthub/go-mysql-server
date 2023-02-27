@@ -16,10 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"io"
-	"strings"
-
 	"gopkg.in/src-d/go-errors.v1"
+	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -281,7 +279,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, i)
 		}
 
-		colStmts[i] = FmtCreateTableColumn(col.Name, col.Type, col.Nullable, col.AutoIncrement, col.Default != nil, colDefault, col.Comment)
+		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col.Name, col.Type, col.Nullable, col.AutoIncrement, col.Default != nil, colDefault, col.Comment)
 	}
 
 	for _, i := range pkOrdinals {
@@ -289,7 +287,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	if len(primaryKeyCols) > 0 {
-		colStmts = append(colStmts, FmtCreateTablePrimaryKey(primaryKeyCols))
+		colStmts = append(colStmts, sql.GenerateCreateTablePrimaryKeyDefinition(primaryKeyCols))
 	}
 
 	for _, index := range i.indexes {
@@ -303,7 +301,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		for i, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexDef := quoteIdentifier(col.Name)
+				indexDef := sql.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > i && prefixLengths[i] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
 				}
@@ -311,7 +309,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			}
 		}
 
-		colStmts = append(colStmts, FmtCreateTableIndex(index.IsUnique(), index.IsSpatial(), index.ID(), indexCols, index.Comment()))
+		colStmts = append(colStmts, sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(), index.ID(), indexCols, index.Comment()))
 	}
 
 	fkt, err := getForeignKeyTable(table)
@@ -329,34 +327,17 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
 				onUpdate = string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, FmtCreateTableForiegnKey(fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
+			colStmts = append(colStmts, sql.GenerateCreateTableForiegnKeyDefinition(fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
 		}
 	}
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			colStmts = append(colStmts, FmtCreateTableCheckConstraint(check.Name, check.Expr.String(), check.Enforced))
+			colStmts = append(colStmts, sql.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
 		}
 	}
 
-	return CreateTableFmt(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name()), nil
-}
-
-// quoteIdentifier wraps the specified identifier in backticks and escapes all occurrences of backticks in the
-// identifier by replacing them with double backticks.
-func quoteIdentifier(id string) string {
-	id = strings.ReplaceAll(id, "`", "``")
-	return fmt.Sprintf("`%s`", id)
-}
-
-// quoteIdentifiers wraps each of the specified identifiers in backticks, escapes all occurrences of backticks in
-// the identifier, and returns a slice of the quoted identifiers.
-func quoteIdentifiers(ids []string) []string {
-	quoted := make([]string, len(ids))
-	for i, id := range ids {
-		quoted[i] = quoteIdentifier(id)
-	}
-	return quoted
+	return sql.GenerateCreateTableStatement(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name()), nil
 }
 
 // isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.
@@ -403,78 +384,4 @@ func produceCreateViewStatement(view *SubqueryAlias) string {
 
 func (i *showCreateTablesIter) Close(*sql.Context) error {
 	return nil
-}
-
-func CreateTableFmt(tblName string, colStmts []string, tblCharsetName, tblCollName string) string {
-	return fmt.Sprintf(
-		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s",
-		quoteIdentifier(tblName),
-		strings.Join(colStmts, ",\n"),
-		tblCharsetName,
-		tblCollName,
-	)
-}
-
-func FmtCreateTableColumn(colName string, colType sql.Type, nullable bool, autoInc bool, hasDefault bool, colDefault string, comment string) string {
-	stmt := fmt.Sprintf("  %s %s", quoteIdentifier(colName), colType.String())
-	if !nullable {
-		stmt = fmt.Sprintf("%s NOT NULL", stmt)
-	}
-	if autoInc {
-		stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
-	}
-	if c, ok := colType.(sql.SpatialColumnType); ok {
-		if s, d := c.GetSpatialTypeSRID(); d {
-			stmt = fmt.Sprintf("%s SRID %v", stmt, s)
-		}
-	}
-	if hasDefault {
-		stmt = fmt.Sprintf("%s DEFAULT %s", stmt, colDefault)
-	}
-	if comment != "" {
-		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, comment)
-	}
-	return stmt
-}
-
-func FmtCreateTablePrimaryKey(pkCols []string) string {
-	return fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(pkCols), ","))
-}
-
-func FmtCreateTableIndex(isUnique, isSpatial bool, indexID string, indexCols []string, comment string) string {
-	unique := ""
-	if isUnique {
-		unique = "UNIQUE "
-	}
-
-	spatial := ""
-	if isSpatial {
-		unique = "SPATIAL "
-	}
-	key := fmt.Sprintf("  %s%sKEY %s (%s)", unique, spatial, quoteIdentifier(indexID), strings.Join(indexCols, ","))
-	if comment != "" {
-		key = fmt.Sprintf("%s COMMENT '%s'", key, comment)
-	}
-	return key
-}
-
-func FmtCreateTableForiegnKey(fkName string, fkCols []string, parentTbl string, parentCols []string, onDelete, onUpdate string) string {
-	keyCols := strings.Join(quoteIdentifiers(fkCols), ",")
-	refCols := strings.Join(quoteIdentifiers(parentCols), ",")
-	fkey := fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quoteIdentifier(fkName), keyCols, quoteIdentifier(parentTbl), refCols)
-	if onDelete != "" {
-		fkey = fmt.Sprintf("%s ON DELETE %s", fkey, onDelete)
-	}
-	if onUpdate != "" {
-		fkey = fmt.Sprintf("%s ON UPDATE %s", fkey, onUpdate)
-	}
-	return fkey
-}
-
-func FmtCreateTableCheckConstraint(checkName, checkExpr string, enforced bool) string {
-	cc := fmt.Sprintf("  CONSTRAINT %s CHECK (%s)", quoteIdentifier(checkName), checkExpr)
-	if !enforced {
-		cc = fmt.Sprintf("%s /*!80016 NOT ENFORCED */", cc)
-	}
-	return cc
 }
