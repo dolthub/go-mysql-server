@@ -98,6 +98,7 @@ func main() {
 
 func createTestDatabase(ctx *sql.Context) *memory.Database {
 	db := memory.NewDatabase(dbName)
+	db.EnablePrimaryKeyIndexes()
 	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
