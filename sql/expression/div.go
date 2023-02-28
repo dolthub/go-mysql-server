@@ -740,12 +740,14 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 				return nil, nil
 			}
 
-			// intDiv operation gets the integer part of the divided value
-			divRes := l.DivRound(r, 2)
+			// intDiv operation gets the integer part of the divided value without rounding the result with 0 precision
+			// We get division result with non-zero precision and then truncate it to get integer part without it being rounded
+			divRes := l.DivRound(r, 2).Truncate(0)
+
 			// cannot use IntPart() function of decimal.Decimal package as it returns 0 as undefined value for out of range value
 			// it causes valid result value of 0 to be the same as invalid out of range value of 0. The fraction part
 			// should not be rounded, so truncate the result wih 0 precision.
-			intPart, err := strconv.ParseInt(divRes.Truncate(0).String(), 10, 64)
+			intPart, err := strconv.ParseInt(divRes.String(), 10, 64)
 			if err != nil {
 				return nil, ErrIntDivDataOutOfRange.New(l.StringFixed(l.Exponent()), r.StringFixed(r.Exponent()))
 			}
