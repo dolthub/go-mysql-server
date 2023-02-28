@@ -19,6 +19,13 @@ import (
 	"strings"
 )
 
+// All functions here are used together to generate 'CREATE TABLE' statement. Each function takes what it requires
+// to build the definition, which are mostly exact names or values (e.g. columns, indexes names, types, etc.)
+// These functions allow creating the compatible 'CREATE TABLE' statement from both GMS and Dolt, which use different
+// implementations of schema, column and other objects.
+
+// GenerateCreateTableStatement returns 'CREATE TABLE' statement with given table names
+// and column definition statements in order and the collation and character set names for the table
 func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetName, tblCollName string) string {
 	return fmt.Sprintf(
 		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s",
@@ -29,6 +36,8 @@ func GenerateCreateTableStatement(tblName string, colStmts []string, tblCharsetN
 	)
 }
 
+// GenerateCreateTableColumnDefinition returns column definition string for 'CREATE TABLE' statement for given column.
+// This part comes first in the 'CREATE TABLE' statement.
 func GenerateCreateTableColumnDefinition(colName string, colType Type, nullable bool, autoInc bool, hasDefault bool, colDefault string, comment string) string {
 	stmt := fmt.Sprintf("  %s %s", QuoteIdentifier(colName), colType.String())
 	if !nullable {
@@ -51,10 +60,14 @@ func GenerateCreateTableColumnDefinition(colName string, colType Type, nullable 
 	return stmt
 }
 
+// GenerateCreateTablePrimaryKeyDefinition returns primary key definition string for 'CREATE TABLE' statement
+// for given column(s). This part comes after each column definitions.
 func GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string {
 	return fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(QuoteIdentifiers(pkCols), ","))
 }
 
+// GenerateCreateTableIndexDefinition returns index definition string for 'CREATE TABLE' statement
+// for given index. This part comes after primary key definition if there is any.
 func GenerateCreateTableIndexDefinition(isUnique, isSpatial bool, indexID string, indexCols []string, comment string) string {
 	unique := ""
 	if isUnique {
@@ -72,6 +85,8 @@ func GenerateCreateTableIndexDefinition(isUnique, isSpatial bool, indexID string
 	return key
 }
 
+// GenerateCreateTableForiegnKeyDefinition returns foreign key constraint definition string for 'CREATE TABLE' statement
+// for given foreign key. This part comes after index definitions if there are any.
 func GenerateCreateTableForiegnKeyDefinition(fkName string, fkCols []string, parentTbl string, parentCols []string, onDelete, onUpdate string) string {
 	keyCols := strings.Join(QuoteIdentifiers(fkCols), ",")
 	refCols := strings.Join(QuoteIdentifiers(parentCols), ",")
@@ -85,6 +100,8 @@ func GenerateCreateTableForiegnKeyDefinition(fkName string, fkCols []string, par
 	return fkey
 }
 
+// GenerateCreateTableCheckConstraintClause returns check constraint clause string for 'CREATE TABLE' statement
+// for given check constraint. This part comes the last and after foreign key definitions if there are any.
 func GenerateCreateTableCheckConstraintClause(checkName, checkExpr string, enforced bool) string {
 	cc := fmt.Sprintf("  CONSTRAINT %s CHECK (%s)", QuoteIdentifier(checkName), checkExpr)
 	if !enforced {
