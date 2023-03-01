@@ -208,6 +208,86 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	return n, transform.SameTree, nil
 }
 
+// validateDeleteFrom checks for invalid settings, such as deleting from multiple databases, specifying a delete target
+// table multiple times, or using a DELETE FROM JOIN without specifying any explicit delete target tables, and returns
+// an error if any validation issues were detected.
+func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_order_by")
+	defer span.End()
+
+	df, ok := n.(*plan.DeleteFrom)
+	if !ok {
+		return n, transform.SameTree, nil
+	}
+
+	// Check that delete from join only targets tables that exist in the join
+	if df.HasExplicitTargets() {
+		sourceTables := make(map[string]struct{})
+		transform.Inspect(df.Child, func(node sql.Node) bool {
+			if t, ok := node.(sql.Table); ok {
+				sourceTables[t.Name()] = struct{}{}
+			}
+			return true
+		})
+
+		for _, target := range df.GetDeleteTargets() {
+			deletable, err := plan.GetDeletable(target)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			tableName := deletable.Name()
+			if _, ok := sourceTables[tableName]; !ok {
+				return nil, transform.SameTree,
+					fmt.Errorf("table %q not found in DELETE FROM sources", tableName)
+			}
+		}
+	}
+
+	// Duplicate explicit target tables or from explicit target tables from multiple databases
+	databases := make(map[string]struct{})
+	tables := make(map[string]struct{})
+	if df.HasExplicitTargets() {
+		for _, target := range df.GetDeleteTargets() {
+			// Check for multiple databases
+			databases[plan.GetDatabaseName(target)] = struct{}{}
+			if len(databases) > 1 {
+				return nil, transform.SameTree,
+					fmt.Errorf("multiple databases specified as delete from targets")
+			}
+
+			// Check for duplicate targets
+			if nameable, ok := target.(sql.Nameable); ok {
+				if _, ok := tables[nameable.Name()]; ok {
+					return nil, transform.SameTree,
+						fmt.Errorf("duplicate tables specified as delete from targets")
+				}
+				tables[nameable.Name()] = struct{}{}
+			} else {
+				return nil, transform.SameTree,
+					fmt.Errorf("target node does not implement sql.Nameable: %T", target)
+			}
+		}
+	}
+
+	// DELETE FROM JOIN with no target tables specified
+	deleteFromJoin := false
+	transform.Inspect(df.Child, func(node sql.Node) bool {
+		if _, ok := node.(*plan.JoinNode); ok {
+			deleteFromJoin = true
+			return false
+		}
+		return true
+	})
+	if deleteFromJoin {
+		if df.HasExplicitTargets() {
+			return nil, transform.SameTree,
+				fmt.Errorf("delete from statement with join requires specifying explicit delete target tables")
+		}
+	}
+
+	return n, transform.SameTree, nil
+}
+
 // checkSqlMode checks if the option is set for the Session in ctx
 func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
 	// session variable overrides global

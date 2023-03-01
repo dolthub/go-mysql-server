@@ -143,5 +143,5 @@ func (d *DropIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(d.Table), getTableName(d.Table), "", sql.PrivilegeType_Index))
+		sql.NewPrivilegedOperation(GetDatabaseName(d.Table), getTableName(d.Table), "", sql.PrivilegeType_Index))
 }

@@ -121,6 +121,7 @@ const (
 	validateSubqueryColumnsId   // validateSubqueryColumns
 	validateUnionSchemasMatchId // validateUnionSchemasMatch
 	validateAggregationsId      // validateAggregations
+	validateDeleteFromId        // validateDeleteFrom
 
 	// after all
 	normalizeSelectSingleRelId    // normalizeSelectSingleRel
