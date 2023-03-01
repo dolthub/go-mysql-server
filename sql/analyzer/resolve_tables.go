@@ -43,8 +43,17 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			// lower in the tree.
 			var resolvedTables []sql.Node
 			for _, t := range p.Children() {
-				if _, ok := t.(*plan.ResolvedTable); ok {
+				switch tbl := t.(type) {
+				case *plan.ResolvedTable:
 					resolvedTables = append(resolvedTables, t)
+				case *plan.UnresolvedTable:
+					continue
+				case *plan.SubqueryAlias:
+					// the views are resolved to be SubqueryAlias node
+					return p, transform.SameTree, sql.ErrUnknownTable.New(tbl.Name())
+				default:
+					// TODO: should other nodes be skipped as well?
+					continue
 				}
 			}
 			newn, _ := p.WithChildren(resolvedTables...)
