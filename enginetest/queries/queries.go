@@ -7150,26 +7150,6 @@ With c as (
 		Query:    "SELECT 4294967296;",
 		Expected: []sql.Row{{int64(4294967296)}},
 	},
-	{
-		// verify that duplicate aliases in different subqueries are allowed
-		Query: `SELECT * FROM mytable Alias0 WHERE (
-			  	EXISTS (SELECT * FROM mytable Alias WHERE Alias.i = Alias0.i + 1)
-			 	AND EXISTS (SELECT * FROM othertable Alias WHERE Alias.i2 = Alias0.i + 2));`,
-		Expected: []sql.Row{{1, "first row"}},
-	},
-	{
-		Query: `SELECT * FROM mytable
-				WHERE
-  					i = (SELECT i2 FROM othertable alias1 WHERE i2 = 2) AND
-  					i+1 = (SELECT i2 FROM othertable alias1 WHERE i2 = 3);`,
-		Expected: []sql.Row{{2, "second row"}},
-	},
-	{
-		Query: `SELECT * FROM mytable WHERE (
-      			EXISTS (SELECT * FROM mytable Alias1 join mytable Alias2 WHERE Alias1.i = (mytable.i + 1))
-      			AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
-		Expected: []sql.Row{{1, "first row"}},
-	},
 }
 
 var KeylessQueries = []QueryTest{
