@@ -278,6 +278,7 @@ func (s *BaseSession) SetCurrentDatabase(dbName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.currentDB = dbName
+	s.SetLogger(s.GetLogger().WithField(ConnectionDbLogField, dbName))
 }
 
 // ID implements the Session interface.
