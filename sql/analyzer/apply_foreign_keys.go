@@ -140,30 +140,47 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if n.Child == plan.EmptyTable {
 			return n, transform.SameTree, nil
 		}
-		deleteDest, err := plan.GetDeletable(n.Child)
-		if err != nil {
-			return nil, transform.SameTree, err
+
+		targets := n.GetDeleteTargets()
+		foreignKeyHandlers := make([]sql.Node, len(targets))
+		copy(foreignKeyHandlers, targets)
+
+		for i, node := range targets {
+			deleteDest, err := plan.GetDeletable(node)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			tbl, ok := deleteDest.(sql.ForeignKeyTable)
+			// If foreign keys aren't supported then check the next node
+			if !ok {
+				continue
+			}
+			fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if fkEditor == nil {
+				continue
+			}
+
+			foreignKeyHandlers[i] = &plan.ForeignKeyHandler{
+				Table:        tbl,
+				Sch:          deleteDest.Schema(),
+				OriginalNode: targets[i],
+				Editor:       fkEditor,
+				AllUpdaters:  fkChain.GetUpdaters(),
+			}
 		}
-		tbl, ok := deleteDest.(sql.ForeignKeyTable)
-		// If foreign keys aren't supported then we return
-		if !ok {
-			return n, transform.SameTree, nil
+		if n.HasExplicitTargets() {
+			return n.WithExplicitTargets(foreignKeyHandlers), transform.NewTree, nil
+		} else {
+			newNode, err := n.WithChildren(foreignKeyHandlers...)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
 		}
-		fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if fkEditor == nil {
-			return n, transform.SameTree, nil
-		}
-		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
-			Table:        tbl,
-			Sch:          deleteDest.Schema(),
-			OriginalNode: n.Child,
-			Editor:       fkEditor,
-			AllUpdaters:  fkChain.GetUpdaters(),
-		})
-		return nn, transform.NewTree, err
 	case *plan.RowUpdateAccumulator:
 		children := n.Children()
 		newChildren := make([]sql.Node, len(children))

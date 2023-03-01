@@ -137,6 +137,7 @@ var DefaultValidationRules = []Rule{
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
 	{validateAggregationsId, validateAggregations},
+	{validateDeleteFromId, validateDeleteFrom},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

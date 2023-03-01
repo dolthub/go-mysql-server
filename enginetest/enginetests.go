@@ -740,9 +740,24 @@ func TestSpatialUpdate(t *testing.T, harness Harness) {
 
 func TestDelete(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData)
-	for _, tt := range queries.DeleteTests {
-		RunWriteQueryTest(t, harness, tt)
-	}
+	t.Run("Delete from single table", func(t *testing.T) {
+		for _, tt := range queries.DeleteTests {
+			RunWriteQueryTest(t, harness, tt)
+		}
+	})
+	t.Run("Delete from join", func(t *testing.T) {
+		// Run tests with each biased coster to get coverage over join types
+		for name, coster := range biasedCosters {
+			t.Run(name+" join", func(t *testing.T) {
+				for _, tt := range queries.DeleteJoinTests {
+					e := mustNewEngine(t, harness)
+					e.Analyzer.Coster = coster
+					defer e.Close()
+					RunWriteQueryTestWithEngine(t, harness, e, tt)
+				}
+			})
+		}
+	})
 }
 
 func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
@@ -754,9 +769,16 @@ func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 
 func TestDeleteQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData)
-	for _, tt := range queries.DeleteTests {
-		runWriteQueryTestPrepared(t, harness, tt)
-	}
+	t.Run("Delete from single table", func(t *testing.T) {
+		for _, tt := range queries.DeleteTests {
+			runWriteQueryTestPrepared(t, harness, tt)
+		}
+	})
+	t.Run("Delete from join", func(t *testing.T) {
+		for _, tt := range queries.DeleteJoinTests {
+			runWriteQueryTestPrepared(t, harness, tt)
+		}
+	})
 }
 
 func TestInsertQueriesPrepared(t *testing.T, harness Harness) {
@@ -774,9 +796,9 @@ func TestReplaceQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 func TestDeleteErrors(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData)
-	for _, expectedFailure := range queries.DeleteErrorTests {
-		runGenericErrorTest(t, harness, expectedFailure)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.TabletestData, setup.TestdbData, []setup.SetupScript{{"create table test.other (pk int primary key);"}})
+	for _, tt := range queries.DeleteErrorTests {
+		TestScript(t, harness, tt)
 	}
 }
 

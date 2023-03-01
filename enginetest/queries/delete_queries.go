@@ -19,6 +19,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// DeleteTests contains tests for deletes that implicitly target the single table mentioned
+// in the from clause.
 var DeleteTests = []WriteQueryTest{
 	{
 		WriteQuery:          "DELETE FROM mytable;",
@@ -147,6 +149,127 @@ var DeleteTests = []WriteQueryTest{
 	},
 }
 
+// DeleteJoinTests contains tests for deletes that explicitly list the table from which
+// to delete, and whose source may contain joined table relations.
+var DeleteJoinTests = []WriteQueryTest{
+	{
+		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE MYTABLE FROM mytAble join tAbletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{3, 0}},
+	},
+	{
+		WriteQuery:          "DELETE t1 FROM mytable as t1 join tabletest where t1.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 0}},
+	},
+	{
+		WriteQuery:          "DELETE MYTABLE, TABLETEST FROM mytable join tabletest where mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 0}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT count(*) FROM mytable;",
+		ExpectedSelect:      []sql.Row{{0}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable WHERE i > 9999;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SELECT count(*) FROM mytable;",
+		ExpectedSelect:      []sql.Row{{3}},
+	},
+	{
+		WriteQuery:          "DELETE FROM mytable USING mytable inner join tabletest on mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 3}},
+	},
+	{
+		WriteQuery:          "DELETE FROM tabletest USING mytable inner join tabletest on mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{3, 0}},
+	},
+	{
+		WriteQuery:          "DELETE FROM mytable, tabletest USING mytable inner join tabletest on mytable.i=tabletest.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{0, 0}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 3}},
+	},
+	{
+		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 2}},
+	},
+	{
+		WriteQuery:          "DELETE tabletest, mytable FROM mytable join tabletest where mytable.i=tabletest.i and mytable.i = 2;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 2}},
+	},
+	{
+		WriteQuery:          "DELETE mytable FROM mytable join (select 1 as i union all select 2 as i) dt where mytable.i=dt.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{1, 3}},
+	},
+	{
+		WriteQuery:          "with t (n) as (select (1) from dual) delete mytable from mytable join tabletest where mytable.i=tabletest.i and mytable.i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 3}},
+	},
+	{
+		WriteQuery:          "with t (n) as (select (1) from dual) delete mytable, tabletest from mytable join tabletest where mytable.i=tabletest.i and mytable.i in (select n from t)",
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{2, 2}},
+	},
+	{
+		// Single target table, join with table function
+		WriteQuery:          "DELETE mytable FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{1, 3}},
+	},
+	{
+		// Multiple target tables, join with table function
+		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{1, 1}},
+	},
+}
+
 var SpatialDeleteTests = []WriteQueryTest{
 	{
 		WriteQuery:          "DELETE FROM point_table;",
@@ -168,37 +291,85 @@ var SpatialDeleteTests = []WriteQueryTest{
 	},
 }
 
-var DeleteErrorTests = []GenericErrorQueryTest{
+var DeleteErrorTests = []ScriptTest{
 	{
-		Name:  "invalid table",
-		Query: "DELETE FROM invalidtable WHERE x < 1;",
+		Name: "DELETE FROM error cases",
+		Assertions: []ScriptTestAssertion{
+			{
+				// unknown table
+				Query:          "DELETE FROM invalidtable WHERE x < 1;",
+				ExpectedErrStr: "table not found: invalidtable",
+			},
+			{
+				// invalid column
+				Query:          "DELETE FROM mytable WHERE z = 'dne';",
+				ExpectedErrStr: "column \"z\" could not be found in any table in scope",
+			},
+			{
+				// missing binding
+				Query:          "DELETE FROM mytable WHERE i = ?;",
+				ExpectedErrStr: "unbound variable \"v1\" in query",
+			},
+			{
+				// negative limit
+				Query:          "DELETE FROM mytable LIMIT -1;",
+				ExpectedErrStr: "syntax error at position 28 near 'LIMIT'",
+			},
+			{
+				// negative offset
+				Query:          "DELETE FROM mytable LIMIT 1 OFFSET -1;",
+				ExpectedErrStr: "syntax error at position 37 near 'OFFSET'",
+			},
+			{
+				// missing keyword from
+				Query:          "DELETE mytable WHERE i = 1;",
+				ExpectedErrStr: "syntax error at position 21 near 'WHERE'",
+			},
+			{
+				// targets subquery alias
+				Query:          "DELETE FROM (SELECT * FROM mytable) mytable WHERE i = 1;",
+				ExpectedErrStr: "syntax error at position 14 near 'FROM'",
+			},
+		},
 	},
 	{
-		Name:  "invalid column",
-		Query: "DELETE FROM mytable WHERE z = 'dne';",
-	},
-	{
-		Name:  "missing binding",
-		Query: "DELETE FROM mytable WHERE i = ?;",
-	},
-	{
-		Name:  "negative limit",
-		Query: "DELETE FROM mytable LIMIT -1;",
-	},
-	{
-		Name:  "negative offset",
-		Query: "DELETE FROM mytable LIMIT 1 OFFSET -1;",
-	},
-	{
-		Name:  "missing keyword from",
-		Query: "DELETE mytable WHERE id = 1;",
-	},
-	{
-		Name:  "targets join",
-		Query: "DELETE FROM mytable one, mytable two WHERE id = 1;",
-	},
-	{
-		Name:  "targets subquery alias",
-		Query: "DELETE FROM (SELECT * FROM mytable) mytable WHERE id = 1;",
+		Name: "DELETE FROM JOIN error cases",
+		Assertions: []ScriptTestAssertion{
+			{
+				// targeting tables in multiple databases
+				Query:          "DELETE mydb.mytable, test.other FROM mydb.mytable inner join test.other on mydb.mytable.i=test.other.pk;",
+				ExpectedErrStr: "multiple databases specified as delete from targets",
+			},
+			{
+				// unknown table in delete join
+				Query:          "DELETE unknowntable FROM mytable WHERE i < 1;",
+				ExpectedErrStr: "table not found: unknowntable",
+			},
+			{
+				// invalid table in delete join
+				Query:          "DELETE tabletest FROM mytable WHERE i < 1;",
+				ExpectedErrStr: "table \"tabletest\" not found in DELETE FROM sources",
+			},
+			{
+				// repeated table in delete join
+				Query:          "DELETE mytable, mytable FROM mytable WHERE i < 1;",
+				ExpectedErrStr: "duplicate tables specified as delete from targets",
+			},
+			{
+				// targets join with no explicit target tables
+				Query:          "DELETE FROM mytable one, mytable two WHERE one.i = 1;",
+				ExpectedErrStr: "syntax error at position 24 near 'one'",
+			},
+			{
+				// targets table function alias
+				Query:          "DELETE jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+				ExpectedErrStr: "table not found: jt",
+			},
+			{
+				// targets valid table and table function alias
+				Query:          "DELETE mytable, jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+				ExpectedErrStr: "table not found: jt",
+			},
+		},
 	},
 }

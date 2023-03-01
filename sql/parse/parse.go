@@ -2263,7 +2263,15 @@ func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
 		}
 	}
 
-	node = plan.NewDeleteFrom(node)
+	var targets []sql.Node
+	if len(d.Targets) > 0 {
+		targets = make([]sql.Node, len(d.Targets))
+		for i, tableName := range d.Targets {
+			targets[i] = tableNameToUnresolvedTable(tableName)
+		}
+	}
+
+	node = plan.NewDeleteFrom(node, targets)
 
 	if d.With != nil {
 		node, err = ctesToWith(ctx, d.With, node)

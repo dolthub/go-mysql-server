@@ -15,9 +15,13 @@
 package plan
 
 import (
+	"fmt"
+	"strings"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FROM")
@@ -25,13 +29,47 @@ var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FRO
 // DeleteFrom is a node describing a deletion from some table.
 type DeleteFrom struct {
 	UnaryNode
+	// targets are the explicitly specified table nodes from which rows should be deleted. For simple DELETES against a
+	// single source table, targets do NOT need to be explicitly specified and will not be set here. For DELETE FROM JOIN
+	// statements, targets MUST be explicitly specified by the user and will be populated here.
+	explicitTargets []sql.Node
 }
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)
+var _ sql.Node = (*DeleteFrom)(nil)
 
 // NewDeleteFrom creates a DeleteFrom node.
-func NewDeleteFrom(n sql.Node) *DeleteFrom {
-	return &DeleteFrom{UnaryNode{n}}
+func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
+	return &DeleteFrom{
+		UnaryNode:       UnaryNode{n},
+		explicitTargets: targets,
+	}
+}
+
+// HasExplicitTargets returns true if the target delete tables were explicitly specified. This can only happen with
+// DELETE FROM JOIN statements – for DELETE FROM statements using a single source table, the target is NOT explicitly
+// specified and is assumed to be the single source table.
+func (p *DeleteFrom) HasExplicitTargets() bool {
+	return len(p.explicitTargets) > 0
+}
+
+// WithExplicitTargets returns a new DeleteFrom node instance with the specified |targets| set as the explicitly
+// specified targets of the delete operation.
+func (p *DeleteFrom) WithExplicitTargets(targets []sql.Node) *DeleteFrom {
+	copy := *p
+	copy.explicitTargets = targets
+	return &copy
+}
+
+// GetDeleteTargets returns the sql.Nodes representing the tables from which rows should be deleted. For a DELETE FROM
+// JOIN statement, this will return the tables explicitly specified by the caller. For a DELETE FROM statement this will
+// return the single table in the DELETE FROM source that is implicitly assumed to be the target of the delete operation.
+func (p *DeleteFrom) GetDeleteTargets() []sql.Node {
+	if len(p.explicitTargets) == 0 {
+		return []sql.Node{p.Child}
+	} else {
+		return p.explicitTargets
+	}
 }
 
 func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
@@ -91,6 +129,21 @@ func deleteDatabaseHelper(node sql.Node) string {
 	return ""
 }
 
+// Resolved implements the sql.Resolvable interface.
+func (p *DeleteFrom) Resolved() bool {
+	if p.Child.Resolved() == false {
+		return false
+	}
+
+	for _, target := range p.explicitTargets {
+		if target.Resolved() == false {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (p *DeleteFrom) Database() string {
 	return deleteDatabaseHelper(p.Child)
 }
@@ -103,23 +156,83 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return sql.RowsToRowIter(), nil
 	}
 
-	deletable, err := GetDeletable(p.Child)
-	if err != nil {
-		return nil, err
-	}
-
 	iter, err := p.Child.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	deleter := deletable.Deleter(ctx)
+	targets := p.GetDeleteTargets()
+	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
+	for i, target := range targets {
+		deletable, err := GetDeletable(target)
+		if err != nil {
+			return nil, err
+		}
+		deleter := deletable.Deleter(ctx)
 
-	return newDeleteIter(iter, deleter, deletable.Schema()), nil
+		// By default the sourceName in the schema is the table name, but if there is a
+		// table alias applied, then use that instead.
+		sourceName := deletable.Name()
+		transform.Inspect(target, func(node sql.Node) bool {
+			if tableAlias, ok := node.(*TableAlias); ok {
+				sourceName = tableAlias.Name()
+				return false
+			}
+			return true
+		})
+
+		start, end, err := findSourcePosition(p.Child.Schema(), sourceName)
+		if err != nil {
+			return nil, err
+		}
+		schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
+	}
+	return newDeleteIter(iter, p.Child.Schema(), schemaPositionDeleters...), nil
 }
 
+// schemaPositionDeleter contains a sql.RowDeleter and the start (inclusive) and end (exclusive) position
+// within a schema that indicate the portion of the schema that is associated with this specific deleter.
+type schemaPositionDeleter struct {
+	deleter     sql.RowDeleter
+	schemaStart int
+	schemaEnd   int
+}
+
+// findSourcePosition searches the specified |schema| for the first group of columns whose source is |name|,
+// and returns the start position of that source in the schema (inclusive) and the end position (exclusive).
+// If any problems were an encountered, such as not finding any columns from the specified source name,
+// an error is returned.
+func findSourcePosition(schema sql.Schema, name string) (uint, uint, error) {
+	foundStart := false
+	name = strings.ToLower(name)
+	var start uint
+	for i, col := range schema {
+		if strings.ToLower(col.Source) == name {
+			if !foundStart {
+				start = uint(i)
+				foundStart = true
+			}
+		} else {
+			if foundStart {
+				return start, uint(i), nil
+			}
+		}
+	}
+	if foundStart {
+		return start, uint(len(schema)), nil
+	}
+
+	return 0, 0, fmt.Errorf("unable to find any columns in schema from source %q", name)
+}
+
+// deleteIter executes the DELETE FROM logic to delete rows from tables as they flow through the iterator. For every
+// table the deleteIter needs to delete rows from, it needs a schemaPositionDeleter that provides the RowDeleter
+// interface as well as start and end position for that table's full row in the row this iterator consumes from its
+// child. For simple DELETE FROM statements deleting from a single table, this will likely be the full row contents,
+// but in more complex scenarios when there are columns contributed by outer scopes and for DELETE FROM JOIN statements
+// the child iterator will return a row that is composed of rows from multiple table sources.
 type deleteIter struct {
-	deleter   sql.RowDeleter
+	deleters  []schemaPositionDeleter
 	schema    sql.Schema
 	childIter sql.RowIter
 	closed    bool
@@ -136,33 +249,59 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	default:
 	}
 
-	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
-	// scope, which will be the first N values in the row.
-	// TODO: handle this in the analyzer instead?
-	if len(d.schema) < len(row) {
-		row = row[len(row)-len(d.schema):]
+	// For each target table from which we are deleting rows, reduce the row from our child iterator to just
+	// the columns that are part of that target table. This means looking at the position in the schema for
+	// the target table and also removing any prepended columns contributed by outer scopes.
+	fullSchemaLength := len(d.schema)
+	rowLength := len(row)
+	for _, deleter := range d.deleters {
+		schemaLength := deleter.schemaEnd - deleter.schemaStart
+		subSlice := row
+		if schemaLength < rowLength {
+			subSlice = row[(rowLength - fullSchemaLength + deleter.schemaStart):(rowLength - fullSchemaLength + deleter.schemaEnd)]
+		}
+		err = deleter.deleter.Delete(ctx, subSlice)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return row, d.deleter.Delete(ctx, row)
+	return row, nil
 }
 
 func (d *deleteIter) Close(ctx *sql.Context) error {
 	if !d.closed {
 		d.closed = true
-		if err := d.deleter.Close(ctx); err != nil {
+		var firstErr error
+		// Make sure we close all the deleters and the childIter, and track the first
+		// error seen so we can return it after safely closing all resources.
+		for _, deleter := range d.deleters {
+			err := deleter.deleter.Close(ctx)
+			if err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+		err := d.childIter.Close(ctx)
+
+		if firstErr != nil {
+			return firstErr
+		} else {
 			return err
 		}
-		return d.childIter.Close(ctx)
 	}
 	return nil
 }
 
-func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema) sql.RowIter {
-	return NewTableEditorIter(deleter, &deleteIter{
-		deleter:   deleter,
+func newDeleteIter(childIter sql.RowIter, schema sql.Schema, deleters ...schemaPositionDeleter) sql.RowIter {
+	openerClosers := make([]sql.EditOpenerCloser, len(deleters))
+	for i, ds := range deleters {
+		openerClosers[i] = ds.deleter
+	}
+	return NewTableEditorIter(&deleteIter{
+		deleters:  deleters,
 		childIter: childIter,
 		schema:    schema,
-	})
+	}, openerClosers...)
 }
 
 // WithChildren implements the Node interface.
@@ -170,26 +309,38 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewDeleteFrom(children[0]), nil
+	return NewDeleteFrom(children[0], p.explicitTargets), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: If column values are retrieved then the SELECT privilege is required
-	// For example: "DELETE FROM table WHERE z > 0"
-	// We would need SELECT privileges on the "z" column as it's retrieving values
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.Database(), getTableName(p.Child), "", sql.PrivilegeType_Delete))
+	// TODO: If column values are retrieved then the SELECT privilege is required
+	//       For example: "DELETE FROM table WHERE z > 0"
+	//       We would need SELECT privileges on the "z" column as it's retrieving values
+
+	for _, target := range p.GetDeleteTargets() {
+		deletable, err := GetDeletable(target)
+		if err != nil {
+			ctx.GetLogger().Warnf("unable to determine deletable table from delete target: %v", target)
+			return false
+		}
+		op := sql.NewPrivilegedOperation(p.Database(), deletable.Name(), "", sql.PrivilegeType_Delete)
+		if opChecker.UserHasPrivileges(ctx, op) == false {
+			return false
+		}
+	}
+
+	return true
 }
 
-func (p DeleteFrom) String() string {
+func (p *DeleteFrom) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
 	_ = pr.WriteChildren(p.Child.String())
 	return pr.String()
 }
 
-func (p DeleteFrom) DebugString() string {
+func (p *DeleteFrom) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
 	_ = pr.WriteChildren(sql.DebugString(p.Child))

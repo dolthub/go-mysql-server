@@ -25,7 +25,7 @@ import (
 type tableEditorIter struct {
 	once             *sync.Once
 	onceCtx          *sql.Context
-	editIter         sql.EditOpenerCloser
+	openerClosers    []sql.EditOpenerCloser
 	inner            sql.RowIter
 	errorEncountered error
 }
@@ -34,10 +34,12 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 
 // NewTableEditorIter returns a new *tableEditorIter by wrapping the given iterator. If the
 // "statement_boundaries" session variable is set to false, then the original iterator is returned.
-func NewTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
+// Each of the |openerClosers| specified will be called to begin, complete, and discard statements as
+// needed as the |wrappedIter| is processed.
+func NewTableEditorIter(wrappedIter sql.RowIter, openerClosers ...sql.EditOpenerCloser) sql.RowIter {
 	return &tableEditorIter{
 		once:             &sync.Once{},
-		editIter:         table,
+		openerClosers:    openerClosers,
 		inner:            wrappedIter,
 		errorEncountered: nil,
 	}
@@ -46,7 +48,9 @@ func NewTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql
 // Next implements the interface sql.RowIter.
 func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	s.once.Do(func() {
-		s.editIter.StatementBegin(ctx)
+		for _, openerCloser := range s.openerClosers {
+			openerCloser.StatementBegin(ctx)
+		}
 	})
 	row, err := s.inner.Next(ctx)
 	if err != nil && err != io.EOF {
@@ -63,14 +67,23 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Close implements the interface sql.RowIter.
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
-
 	err := s.errorEncountered
 	_, ok := err.(sql.IgnorableError)
 
 	if err != nil && !ok {
-		err = s.editIter.DiscardChanges(ctx, s.errorEncountered)
+		for _, openerCloser := range s.openerClosers {
+			tempErr := openerCloser.DiscardChanges(ctx, s.errorEncountered)
+			if tempErr != nil {
+				err = tempErr
+			}
+		}
 	} else {
-		err = s.editIter.StatementComplete(ctx)
+		for _, openerCloser := range s.openerClosers {
+			tempErr := openerCloser.StatementComplete(ctx)
+			if tempErr != nil {
+				err = tempErr
+			}
+		}
 	}
 	if err != nil {
 		_ = s.inner.Close(ctx)
@@ -92,7 +105,7 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 // after every iter of |wrappedIter|. While SLOW, this functionality ensures
 // correctness for statements that need to rollback individual statements that
 // error such as INSERT IGNORE INTO.
-func NewCheckpointingTableEditorIter(table sql.EditOpenerCloser, wrappedIter sql.RowIter) sql.RowIter {
+func NewCheckpointingTableEditorIter(wrappedIter sql.RowIter, table sql.EditOpenerCloser) sql.RowIter {
 	return &checkpointingTableEditorIter{
 		editIter: table,
 		inner:    wrappedIter,
