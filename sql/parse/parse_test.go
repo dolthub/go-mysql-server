@@ -5015,6 +5015,25 @@ func TestParseCreateTrigger(t *testing.T) {
 			time.Unix(0, 0),
 			"``@``",
 		),
+		`create trigger signal_with_user_var
+    BEFORE DELETE ON FOO FOR EACH ROW
+		BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
+			"signal_with_user_var", "before", "delete", 
+			nil, 
+			plan.NewUnresolvedTable("FOO", ""),
+			nil, 
+			"",
+			`BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`,
+			time.Unix(0, 0),
+			"``@``"),
 	}
 
 	var queriesInOrder []string

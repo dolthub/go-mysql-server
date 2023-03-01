@@ -1608,24 +1608,41 @@ func convertSignal(ctx *sql.Context, s *sqlparser.Signal) (sql.Node, error) {
 		}
 
 		if si.ConditionItemName == plan.SignalConditionItemName_MysqlErrno {
-			number, err := strconv.ParseUint(string(info.Value.Val), 10, 16)
-			if err != nil || number == 0 {
-				// We use our own error instead
-				return nil, fmt.Errorf("invalid value '%s' for signal condition information item MYSQL_ERRNO", string(info.Value.Val))
+			switch v := info.Value.(type) {
+			case *sqlparser.SQLVal:
+				number, err := strconv.ParseUint(string(v.Val), 10, 16)
+				if err != nil || number == 0 {
+					// We use our own error instead
+					return nil, fmt.Errorf("invalid value '%s' for signal condition information item MYSQL_ERRNO", string(v.Val))
+				}
+				si.IntValue = int64(number)
+			default:
+				return nil, fmt.Errorf("invalid value '%v' for signal condition information item MYSQL_ERRNO", info.Value)
 			}
-			si.IntValue = int64(number)
 		} else if si.ConditionItemName == plan.SignalConditionItemName_MessageText {
-			val := string(info.Value.Val)
-			if len(val) > 128 {
-				return nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
+			switch v := info.Value.(type) {
+			case *sqlparser.SQLVal:
+				val := string(v.Val)
+				if len(val) > 128 {
+					return nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
+				}
+				si.StrValue = val
+			case *sqlparser.ColName:
+				si.ExprVal = expression.NewUnresolvedColumn(v.Name.String())
+			default:
+				return nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", info.Value)
 			}
-			si.StrValue = val
 		} else {
-			val := string(info.Value.Val)
-			if len(val) > 64 {
-				return nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(si.ConditionItemName)))
+			switch v := info.Value.(type) {
+			case *sqlparser.SQLVal:
+				val := string(v.Val)
+				if len(val) > 64 {
+					return nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(si.ConditionItemName)))
+				}
+				si.StrValue = val
+			default:
+				return nil, fmt.Errorf("invalid value '%v' for signal condition information item '%s''", info.Value, strings.ToUpper(string(si.ConditionItemName)))
 			}
-			si.StrValue = val
 		}
 		signalInfo[si.ConditionItemName] = si
 	}

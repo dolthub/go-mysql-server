@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -61,6 +62,7 @@ type SignalInfo struct {
 	ConditionItemName SignalConditionItemName
 	IntValue          int64
 	StrValue          string
+	ExprVal           *expression.UnresolvedColumn
 }
 
 // Signal represents the SIGNAL statement with a set SQLSTATE.
