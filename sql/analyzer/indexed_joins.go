@@ -306,16 +306,17 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 		for _, f := range semi.filter {
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				switch e.(type) {
-				case *expression.GetField, *expression.Literal, *expression.BindVar,
-					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
-					gf, ok := e.(*expression.GetField)
-					if ok {
-						tableName := strings.ToLower(gf.Table())
-						isRightOutTable := stringContains(rightOutTables, tableName)
-						if isRightOutTable {
-							projectExpressions = append(projectExpressions, gf)
-						}
+				case *expression.GetField:
+					// getField expressions tell us which columns are used, so we can create the correct project
+					gf, _ := e.(*expression.GetField)
+					tableName := strings.ToLower(gf.Table())
+					isRightOutTable := stringContains(rightOutTables, tableName)
+					if isRightOutTable {
+						projectExpressions = append(projectExpressions, gf)
 					}
+				case *expression.Literal, *expression.BindVar,
+					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+					// these expressions are equality expressions
 				default:
 					onlyEquality = false
 				}

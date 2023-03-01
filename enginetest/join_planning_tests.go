@@ -531,11 +531,11 @@ order by 1;`,
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(b,c,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE EXISTS (select 1 from uv c where c.u = a.x+2)",
-				order: []string{"b", "a"},
+				order: []string{"b", "c", "a"},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(b,applySubq0,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
-				order: []string{"b", "a"},
+				order: []string{"b", "applySubq0", "a"},
 			},
 		},
 	},
@@ -657,56 +657,21 @@ func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp 
 }
 
 func collectJoinOrder(n sql.Node) []string {
-	var order []string
+	order := []string{}
 
-	j, ok := n.(*plan.JoinNode)
-	if ok {
-		if n, ok := j.Left().(sql.NameableNode); ok {
-			order = append(order, n.Name())
-		}
-	}
-	for _, n := range n.Children() {
-		order = append(order, collectJoinOrder(n)...)
-	}
-	if ok {
-		switch n := j.Right().(type) {
-		case sql.NameableNode:
-			order = append(order, n.Name())
-		case *plan.HashLookup:
-			ok = false
-			r := n.Child
-			for !ok {
-				switch n := r.(type) {
-				case sql.NameableNode:
-					order = append(order, n.Name())
-					ok = true
-				case *plan.JoinNode:
-					ok = true
-				case *plan.Distinct:
-					r = n.Child
-				case *plan.Project:
-					r = n.Child
-				case *plan.CachedResults:
-					r = n.Child
-				default:
-					ok = true
-				}
-			}
+	switch n := n.(type) {
+	case *plan.JoinNode:
+		order = append(order, collectJoinOrder(n.Left())...)
+		order = append(order, collectJoinOrder(n.Right())...)
+	case *plan.TableAlias:
+		order = append(order, n.Name())
+	default:
+		children := n.Children()
+		for _, c := range children {
+			order = append(order, collectJoinOrder(c)...)
 		}
 	}
 
-	if ex, ok := n.(sql.Expressioner); ok {
-		for _, e := range ex.Expressions() {
-			transform.InspectExpr(e, func(e sql.Expression) bool {
-				sq, ok := e.(*plan.Subquery)
-				if !ok {
-					return false
-				}
-				order = append(order, collectJoinOrder(sq.Query)...)
-				return false
-			})
-		}
-	}
 	return order
 }
 
