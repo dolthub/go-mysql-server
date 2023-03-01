@@ -272,12 +272,22 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (d *deleteIter) Close(ctx *sql.Context) error {
 	if !d.closed {
 		d.closed = true
+		var firstErr error
+		// Make sure we close all the deleters and the childIter, and track the first
+		// error seen so we can return it after safely closing all resources.
 		for _, deleter := range d.deleters {
-			if err := deleter.deleter.Close(ctx); err != nil {
-				return err
+			err := deleter.deleter.Close(ctx)
+			if err != nil && firstErr == nil {
+				firstErr = err
 			}
 		}
-		return d.childIter.Close(ctx)
+		err := d.childIter.Close(ctx)
+
+		if firstErr != nil {
+			return firstErr
+		} else {
+			return err
+		}
 	}
 	return nil
 }
