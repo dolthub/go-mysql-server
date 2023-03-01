@@ -91,21 +91,18 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.s:1!null]\n" +
 			" └─ Sort(mytable.i:0!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [mytable.i:1!null, mytable.s:2!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ applySubq0.i2:0!null\n" +
-			"             │   └─ mytable.i:1!null\n" +
-			"             ├─ TableAlias(applySubq0)\n" +
-			"             │   └─ IndexedTableAccess(othertable)\n" +
-			"             │       ├─ index: [othertable.i2]\n" +
-			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [i2]\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"     └─ RightSemiLookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ mytable.i:1!null\n" +
+			"         │   └─ applySubq0.i2:0!null\n" +
+			"         ├─ Distinct\n" +
+			"         │   └─ TableAlias(applySubq0)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: othertable\n" +
+			"         │           └─ columns: [i2]\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -776,20 +773,20 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select * from ab where exists (select * from uv where a = 1)`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [ab.a:0!null, ab.b:1]\n" +
-			" └─ HashJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ ab.a:0!null\n" +
-			"     │   └─ 1 (tinyint)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: ab\n" +
-			"     │   └─ columns: [a b]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ source: TUPLE(ab.a:0!null)\n" +
-			"         ├─ target: TUPLE(1 (tinyint))\n" +
-			"         └─ CachedResults\n" +
-			"             └─ Distinct\n" +
+		ExpectedPlan: "HashJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ ab.a:0!null\n" +
+			" │   └─ 1 (tinyint)\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: ab\n" +
+			" │   └─ columns: [a b]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ source: TUPLE(ab.a:0!null)\n" +
+			"     ├─ target: TUPLE(1 (tinyint))\n" +
+			"     └─ CachedResults\n" +
+			"         └─ Distinct\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: []\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: uv\n" +
 			"                     └─ columns: [u v]\n" +
@@ -849,20 +846,17 @@ var PlanTests = []QueryPlanTest{
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: ab.a:0!null\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a:2!null, ab.b:3]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ xy.x:0!null\n" +
-			"             │   └─ ab.a:2!null\n" +
-			"             ├─ IndexedTableAccess(xy)\n" +
-			"             │   ├─ index: [xy.x]\n" +
-			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [x y]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [a b]\n" +
+			"     └─ RightSemiLookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ xy.x:0!null\n" +
+			"         │   └─ ab.a:2!null\n" +
+			"         ├─ Distinct\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ columns: [x y]\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -887,40 +881,34 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select * from xy where exists (select * from ab where a = x) order by x`,
 		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:2!null, xy.y:3]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ ab.a:0!null\n" +
-			"         │   └─ xy.x:2!null\n" +
-			"         ├─ IndexedTableAccess(ab)\n" +
-			"         │   ├─ index: [ab.a]\n" +
-			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [a b]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [x y]\n" +
+			" └─ RightSemiLookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ ab.a:0!null\n" +
+			"     │   └─ xy.x:2!null\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: ab\n" +
+			"     │       └─ columns: [a b]\n" +
+			"     └─ IndexedTableAccess(xy)\n" +
+			"         ├─ index: [xy.x]\n" +
+			"         └─ columns: [x y]\n" +
 			"",
 	},
 	{
 		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ TopN(Limit: [5 (tinyint)]; xy.x:0!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x:2!null, xy.y:3]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ ab.a:0!null\n" +
-			"             │   └─ xy.x:2!null\n" +
-			"             ├─ IndexedTableAccess(ab)\n" +
-			"             │   ├─ index: [ab.a]\n" +
-			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [a b]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [x y]\n" +
+			"     └─ RightSemiLookupJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ ab.a:0!null\n" +
+			"         │   └─ xy.x:2!null\n" +
+			"         ├─ Distinct\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: ab\n" +
+			"         │       └─ columns: [a b]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -965,9 +953,11 @@ inner join xy on a = x;`,
 			" │                   ├─ target: TUPLE(pq.p:0!null)\n" +
 			" │                   └─ CachedResults\n" +
 			" │                       └─ Distinct\n" +
-			" │                           └─ Table\n" +
-			" │                               ├─ name: pq\n" +
-			" │                               └─ columns: [p q]\n" +
+			" │                           └─ Project\n" +
+			" │                               ├─ columns: [pq.p:0!null]\n" +
+			" │                               └─ Table\n" +
+			" │                                   ├─ name: pq\n" +
+			" │                                   └─ columns: [p q]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     └─ columns: [x y]\n" +
@@ -1038,9 +1028,11 @@ where exists (select * from pq where a = p)
 			"         ├─ target: TUPLE(pq.p:0!null)\n" +
 			"         └─ CachedResults\n" +
 			"             └─ Distinct\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: pq\n" +
-			"                     └─ columns: [p q]\n" +
+			"                 └─ Project\n" +
+			"                     ├─ columns: [pq.p:0!null]\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: pq\n" +
+			"                         └─ columns: [p q]\n" +
 			"",
 	},
 	{
@@ -1149,31 +1141,30 @@ inner join pq on true
 			"             ├─ target: TUPLE(uv.u:0!null)\n" +
 			"             └─ CachedResults\n" +
 			"                 └─ Distinct\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: uv\n" +
-			"                         └─ columns: [u v]\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [uv.u:0!null]\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: uv\n" +
+			"                             └─ columns: [u v]\n" +
 			"",
 	},
 	{
 		Query: `select i from mytable a where exists (select 1 from mytable b where a.i = b.i)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [a.i:1!null, a.s:2!null]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ b.i:0!null\n" +
-			"         │   └─ a.i:1!null\n" +
-			"         ├─ TableAlias(b)\n" +
-			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [i]\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			" └─ RightSemiLookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ a.i:1!null\n" +
+			"     │   └─ b.i:0!null\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3240,21 +3231,18 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable)`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:1!null, mytable.s:2!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ applySubq0.i2:0!null\n" +
-			"     │   └─ mytable.i:1!null\n" +
-			"     ├─ TableAlias(applySubq0)\n" +
-			"     │   └─ IndexedTableAccess(othertable)\n" +
-			"     │       ├─ index: [othertable.i2]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedPlan: "RightSemiLookupJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ mytable.i:1!null\n" +
+			" │   └─ applySubq0.i2:0!null\n" +
+			" ├─ Distinct\n" +
+			" │   └─ TableAlias(applySubq0)\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: othertable\n" +
+			" │           └─ columns: [i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     └─ columns: [i s]\n" +
 			"",
 	},
 	{

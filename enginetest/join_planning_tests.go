@@ -388,11 +388,17 @@ order by 1;`,
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
-				q: `
-SELECT * FROM xy WHERE (
-      EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
-      AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				q: `SELECT * FROM xy WHERE (
+      				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				exp:   []sql.Row{{0, 2}, {1, 0}},
+			},
+			{
+				q: `SELECT * FROM xy WHERE (
+      				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 		},
@@ -651,56 +657,21 @@ func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp 
 }
 
 func collectJoinOrder(n sql.Node) []string {
-	var order []string
+	order := []string{}
 
-	j, ok := n.(*plan.JoinNode)
-	if ok {
-		if n, ok := j.Left().(sql.NameableNode); ok {
-			order = append(order, n.Name())
-		}
-	}
-	for _, n := range n.Children() {
-		order = append(order, collectJoinOrder(n)...)
-	}
-	if ok {
-		switch n := j.Right().(type) {
-		case sql.NameableNode:
-			order = append(order, n.Name())
-		case *plan.HashLookup:
-			ok = false
-			r := n.Child
-			for !ok {
-				switch n := r.(type) {
-				case sql.NameableNode:
-					order = append(order, n.Name())
-					ok = true
-				case *plan.JoinNode:
-					ok = true
-				case *plan.Distinct:
-					r = n.Child
-				case *plan.Project:
-					r = n.Child
-				case *plan.CachedResults:
-					r = n.Child
-				default:
-					ok = true
-				}
-			}
+	switch n := n.(type) {
+	case *plan.JoinNode:
+		order = append(order, collectJoinOrder(n.Left())...)
+		order = append(order, collectJoinOrder(n.Right())...)
+	case *plan.TableAlias:
+		order = append(order, n.Name())
+	default:
+		children := n.Children()
+		for _, c := range children {
+			order = append(order, collectJoinOrder(c)...)
 		}
 	}
 
-	if ex, ok := n.(sql.Expressioner); ok {
-		for _, e := range ex.Expressions() {
-			transform.InspectExpr(e, func(e sql.Expression) bool {
-				sq, ok := e.(*plan.Subquery)
-				if !ok {
-					return false
-				}
-				order = append(order, collectJoinOrder(sq.Query)...)
-				return false
-			})
-		}
-	}
 	return order
 }
 
