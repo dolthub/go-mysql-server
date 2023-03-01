@@ -61,10 +61,14 @@ func (s *BaseSession) GetLogger() *logrus.Entry {
 	defer s.mu.Unlock()
 
 	if s.logger == nil {
-		log := logrus.StandardLogger()
-		s.logger = logrus.NewEntry(log)
+		s.logger = s.newLogger()
 	}
 	return s.logger
+}
+
+func (s *BaseSession) newLogger() *logrus.Entry {
+	log := logrus.StandardLogger()
+	return logrus.NewEntry(log)
 }
 
 func (s *BaseSession) SetLogger(logger *logrus.Entry) {
@@ -278,7 +282,11 @@ func (s *BaseSession) SetCurrentDatabase(dbName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.currentDB = dbName
-	s.SetLogger(s.GetLogger().WithField(ConnectionDbLogField, dbName))
+	logger := s.logger
+	if logger == nil {
+		logger = s.newLogger()
+	}
+	s.logger = logger.WithField(ConnectionDbLogField, dbName)
 }
 
 // ID implements the Session interface.
