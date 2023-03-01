@@ -773,7 +773,16 @@ func ExtractQueryNode(node sql.Node) sql.Node {
 	}
 }
 
+// RunWriteQueryTest runs the specified |tt| WriteQueryTest using the specified harness.
 func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	RunWriteQueryTestWithEngine(t, harness, e, tt)
+}
+
+// RunWriteQueryTestWithEngine runs the specified |tt| WriteQueryTest, using the specified harness and engine. Callers
+// are still responsible for closing the engine.
+func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e *sqle.Engine, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
@@ -785,9 +794,7 @@ func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest)
 				return
 			}
 		}
-		e := mustNewEngine(t, harness)
 		ctx := NewContext(harness)
-		defer e.Close()
 		TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, tt.ExpectedSelect, nil, nil)
 	})

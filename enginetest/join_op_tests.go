@@ -29,11 +29,11 @@ type JoinOpTests struct {
 	Skip     bool
 }
 
-var biasedCosters = []analyzer.Coster{
-	analyzer.NewInnerBiasedCoster(),
-	analyzer.NewLookupBiasedCoster(),
-	analyzer.NewHashBiasedCoster(),
-	analyzer.NewMergeBiasedCoster(),
+var biasedCosters = map[string]analyzer.Coster{
+	"inner":  analyzer.NewInnerBiasedCoster(),
+	"lookup": analyzer.NewLookupBiasedCoster(),
+	"hash":   analyzer.NewHashBiasedCoster(),
+	"merge":  analyzer.NewMergeBiasedCoster(),
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
@@ -52,10 +52,10 @@ func TestJoinOps(t *testing.T, harness Harness) {
 					RunQueryWithContext(t, e, harness, ctx, statement)
 				}
 			}
-			for i, c := range []string{"inner", "lookup", "hash", "merge"} {
-				e.Analyzer.Coster = biasedCosters[i]
+			for name, coster := range biasedCosters {
+				e.Analyzer.Coster = coster
 				for _, tt := range tt.tests {
-					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", c, tt.Query), tt.Query, tt.Expected, tt.Skip)
+					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", name, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}
 			}
 		})
