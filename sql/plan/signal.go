@@ -132,6 +132,11 @@ func NewSignalName(name string, info map[SignalConditionItemName]SignalInfo) *Si
 
 // Resolved implements the sql.Node interface.
 func (s *Signal) Resolved() bool {
+	for _, e := range s.Expressions() {
+		if !e.Resolved() {
+			return false
+		}
+	}
 	return true
 }
 
@@ -148,6 +153,26 @@ func (s *Signal) String() string {
 					infoStr += ","
 				}
 				infoStr += " " + info.String()
+				i++
+			}
+		}
+	}
+	return fmt.Sprintf("SIGNAL SQLSTATE '%s'%s", s.SqlStateValue, infoStr)
+}
+
+// DebugString implements the sql.DebugStringer interface.
+func (s *Signal) DebugString() string {
+	infoStr := ""
+	if len(s.Info) > 0 {
+		infoStr = " SET"
+		i := 0
+		for _, k := range SignalItems {
+			// enforce deterministic ordering
+			if info, ok := s.Info[k]; ok {
+				if i > 0 {
+					infoStr += ","
+				}
+				infoStr += " " + info.DebugString()
 				i++
 			}
 		}
@@ -243,10 +268,25 @@ func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		//TODO: implement warnings
 		return nil, fmt.Errorf("warnings not yet implemented")
 	} else {
+		
+		messageItem := s.Info[SignalConditionItemName_MessageText]
+		strValue := messageItem.StrValue
+		if messageItem.ExprVal != nil {
+			exprResult, err := messageItem.ExprVal.Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			s, ok := exprResult.(string)
+			if !ok {
+				return nil, fmt.Errorf("message text expression did not evaluate to a string")
+			}
+			strValue = s
+		}
+		
 		return nil, mysql.NewSQLError(
 			int(s.Info[SignalConditionItemName_MysqlErrno].IntValue),
 			s.SqlStateValue,
-			s.Info[SignalConditionItemName_MessageText].StrValue,
+			strValue,
 		)
 	}
 }
@@ -300,7 +340,19 @@ func (s *SignalName) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 func (s SignalInfo) String() string {
 	itemName := strings.ToUpper(string(s.ConditionItemName))
-	if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
+	if s.ExprVal != nil {
+		return fmt.Sprintf("%s = %s", itemName, s.ExprVal.String())
+	} else if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
+		return fmt.Sprintf("%s = %d", itemName, s.IntValue)
+	}
+	return fmt.Sprintf("%s = %s", itemName, s.StrValue)
+}
+
+func (s SignalInfo) DebugString() string {
+	itemName := strings.ToUpper(string(s.ConditionItemName))
+	if s.ExprVal != nil {
+		return fmt.Sprintf("%s = %s", itemName, sql.DebugString(s.ExprVal))
+	} else if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
 		return fmt.Sprintf("%s = %d", itemName, s.IntValue)
 	}
 	return fmt.Sprintf("%s = %s", itemName, s.StrValue)

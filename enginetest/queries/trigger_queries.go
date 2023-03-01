@@ -1295,10 +1295,11 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t1 values (1)",
+				ExpectedErrStr: "broken (errno 1644) (sqlstate 45000)",
 			},
 			{
-				Query:    "select id from rn",
-				Expected: []sql.Row{{1}},
+				Query:    "select id from t1",
+				Expected: []sql.Row{},
 			},
 		},
 	},

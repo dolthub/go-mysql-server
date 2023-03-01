@@ -207,23 +207,26 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "create table as select distinct",
+			Name: "trigger with signal and user var",
 			SetUpScript: []string{
-				"CREATE TABLE t1 (a int, b varchar(10));",
-				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
+				"create table t1 (id int primary key)",
+				"create table t2 (id int primary key)",
+				`
+create trigger trigger1 before insert on t1
+for each row
+begin
+	set @myvar = concat('bro', 'ken');
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @myvar;
+end;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "create table t2 as select distinct b, a from t1;",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+					Query: "insert into t1 values (1)",
+					ExpectedErrStr: "broken (errno 1644) (sqlstate 45000)",
 				},
 				{
-					Query: "select * from t2 order by a;",
-					Expected: []sql.Row{
-						{"a", 1},
-						{"b", 2},
-						{"c", 3},
-					},
+					Query:    "select id from t1",
+					Expected: []sql.Row{},
 				},
 			},
 		},
