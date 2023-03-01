@@ -16,9 +16,9 @@ package plan
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -62,7 +62,7 @@ type SignalInfo struct {
 	ConditionItemName SignalConditionItemName
 	IntValue          int64
 	StrValue          string
-	ExprVal           *expression.UnresolvedColumn
+	ExprVal           sql.Expression
 }
 
 // Signal represents the SIGNAL statement with a set SQLSTATE.
@@ -79,6 +79,7 @@ type SignalName struct {
 
 var _ sql.Node = (*Signal)(nil)
 var _ sql.Node = (*SignalName)(nil)
+var _ sql.Expressioner = (*Signal)(nil)
 
 // NewSignal returns a *Signal node.
 func NewSignal(sqlstate string, info map[SignalConditionItemName]SignalInfo) *Signal {
@@ -167,6 +168,58 @@ func (s *Signal) Children() []sql.Node {
 // WithChildren implements the sql.Node interface.
 func (s *Signal) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
+}
+
+func (s *Signal) Expressions() []sql.Expression {
+	items := s.signalItemsWithExpressions()
+	
+	var exprs []sql.Expression
+	for _, itemInfo := range items {
+		exprs = append(exprs, itemInfo.ExprVal)
+	}
+
+	return exprs
+}
+
+// signalItemsWithExpressions returns the subset of the Info map entries that have an expression value, sorted by 
+// item name
+func (s *Signal) signalItemsWithExpressions() []SignalInfo {
+	var items []SignalInfo
+
+	for _, itemInfo := range s.Info {
+		if itemInfo.ExprVal != nil {
+			items = append(items, itemInfo)
+		}
+	}
+
+	// Very important to have a consistent sort order between here and the WithExpressions call
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].ConditionItemName < items[j].ConditionItemName
+	})
+
+	return items
+}
+
+func (s Signal) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	itemsWithExprs := s.signalItemsWithExpressions()
+	if len(itemsWithExprs) != len(exprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(itemsWithExprs))
+	}
+	
+	mapCopy := make(map[SignalConditionItemName]SignalInfo)
+	for k, v := range s.Info {
+		mapCopy[k] = v
+	}
+
+	for i := range exprs {
+		// transfer the expression to the new info map
+		newInfo := itemsWithExprs[i]
+		newInfo.ExprVal = exprs[i]
+		mapCopy[itemsWithExprs[i].ConditionItemName] = newInfo 
+	}
+	
+	s.Info = mapCopy
+	return &s, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
