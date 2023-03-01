@@ -254,6 +254,20 @@ var DeleteJoinTests = []WriteQueryTest{
 		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
 		ExpectedSelect:      []sql.Row{{2, 2}},
 	},
+	{
+		// Single target table, join with table function
+		WriteQuery:          "DELETE mytable FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{1, 3}},
+	},
+	{
+		// Multiple target tables, join with table function
+		WriteQuery:          "DELETE mytable, tabletest FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT (select count(*) FROM mytable), (SELECT count(*) from tabletest);",
+		ExpectedSelect:      []sql.Row{{1, 1}},
+	},
 }
 
 var SpatialDeleteTests = []WriteQueryTest{
@@ -345,6 +359,16 @@ var DeleteErrorTests = []ScriptTest{
 				// targets join with no explicit target tables
 				Query:          "DELETE FROM mytable one, mytable two WHERE one.i = 1;",
 				ExpectedErrStr: "syntax error at position 24 near 'one'",
+			},
+			{
+				// targets table function alias
+				Query:          "DELETE jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+				ExpectedErrStr: "table not found: jt",
+			},
+			{
+				// targets valid table and table function alias
+				Query:          "DELETE mytable, jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
+				ExpectedErrStr: "table not found: jt",
 			},
 		},
 	},
