@@ -3445,6 +3445,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
+		Query:    "select -1.00 div 2;",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query:    "select 'a' div 'a';",
 		Expected: []sql.Row{{nil}},
 	},

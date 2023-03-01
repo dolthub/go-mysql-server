@@ -2823,6 +2823,23 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "division and int division operation on negative, small and big value for decimal type column of table",
+		SetUpScript: []string{
+			"create table t (d decimal(25,10) primary key);",
+			"insert into t values (-4990), (2), (22336578);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select d div 314990 from t order by d;",
+				Expected: []sql.Row{{0}, {0}, {70}},
+			},
+			{
+				Query:    "select d / 314990 from t order by d;",
+				Expected: []sql.Row{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

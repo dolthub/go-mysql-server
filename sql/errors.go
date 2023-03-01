@@ -646,6 +646,10 @@ var (
 	// ErrGrantRevokeIllegalPrivilege is returned when a GRANT or REVOKE statement is malformed, or attempts to use privilege incorrectly.
 	ErrGrantRevokeIllegalPrivilege = errors.NewKind("Illegal GRANT/REVOKE command")
 
+	// ErrGrantRevokeIllegalPrivilegeWithMessage is returned when a GRANT or REVOKE statement is malformed, or attempts
+	// to use privilege incorrectly and an additional message needs to be provided to the user.
+	ErrGrantRevokeIllegalPrivilegeWithMessage = errors.NewKind("Illegal GRANT/REVOKE command: %s")
+
 	// ErrInvalidWindowInheritance is returned when a window and its dependency contains conflicting partitioning, ordering, or framing clauses
 	ErrInvalidWindowInheritance = errors.NewKind("window '%s' cannot inherit '%s' since %s")
 

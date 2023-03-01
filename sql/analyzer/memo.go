@@ -109,6 +109,7 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 		if err != nil {
 			return err
 		}
+		n.setCost(relCost)
 		cost += relCost
 		m.updateBest(grp, n, cost)
 		n = n.next()
@@ -366,6 +367,21 @@ func (p *tableProps) getId(n string) (GroupId, bool) {
 	return id, ok
 }
 
+func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
+	var names []string
+	for idx, ok := f.Next(0); ok; idx, ok = f.Next(idx + 1) {
+		if ok {
+			groupId := GroupId(idx + 1)
+			table, ok := p.getTable(groupId)
+			if !ok {
+				panic(fmt.Sprintf("table not found for group %d", groupId))
+			}
+			names = append(names, table)
+		}
+	}
+	return names
+}
+
 // exprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type exprGroup struct {
@@ -439,7 +455,20 @@ func (e *exprGroup) String() string {
 	sep := ""
 	for n != nil {
 		b.WriteString(sep)
-		b.WriteString(fmt.Sprintf("(%s)", formatRelExpr(n)))
+		b.WriteString(fmt.Sprintf("(%s", formatRelExpr(n)))
+		if e.best != nil {
+			b.WriteString(fmt.Sprintf(" %.1f", n.cost()))
+
+			childCost := 0.0
+			for _, c := range n.children() {
+				childCost += c.cost
+			}
+			if e.cost == n.cost()+childCost {
+				b.WriteString(")*")
+			}
+		} else {
+			b.WriteString(")")
+		}
 		sep = " "
 		n = n.next()
 	}
@@ -472,6 +501,8 @@ type relExpr interface {
 	setNext(relExpr)
 	children() []*exprGroup
 	setGroup(g *exprGroup)
+	setCost(c float64)
+	cost() float64
 }
 
 type relBase struct {
@@ -517,6 +548,10 @@ func (r *relBase) setNext(rel relExpr) {
 
 func (r *relBase) setCost(c float64) {
 	r.c = c
+}
+
+func (r *relBase) cost() float64 {
+	return r.c
 }
 
 func tableIdForSource(id GroupId) TableId {

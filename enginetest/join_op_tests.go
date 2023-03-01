@@ -52,10 +52,10 @@ func TestJoinOps(t *testing.T, harness Harness) {
 					RunQueryWithContext(t, e, harness, ctx, statement)
 				}
 			}
-			for name, coster := range biasedCosters {
-				e.Analyzer.Coster = coster
+			for k, c := range biasedCosters {
+				e.Analyzer.Coster = c
 				for _, tt := range tt.tests {
-					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", name, tt.Query), tt.Query, tt.Expected, tt.Skip)
+					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}
 			}
 		})
@@ -78,10 +78,11 @@ func TestJoinOpsPrepared(t *testing.T, harness Harness) {
 					RunQueryWithContext(t, e, harness, ctx, statement)
 				}
 			}
-			for name, coster := range biasedCosters {
-				e.Analyzer.Coster = coster
+
+			for k, c := range biasedCosters {
+				e.Analyzer.Coster = c
 				for _, tt := range tt.tests {
-					evalJoinCorrectnessPrepared(t, harness, e, fmt.Sprintf("%s join: %s", name, tt.Query), tt.Query, tt.Expected, tt.Skip)
+					evalJoinCorrectnessPrepared(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}
 			}
 		})
@@ -102,6 +103,7 @@ var joinCostTests = []struct {
 			setup.Pk_tablesData[0],
 			setup.NiltableData[0],
 			setup.TabletestData[0],
+			setup.XyData[0],
 		},
 		tests: []JoinOpTests{
 			{
@@ -1080,6 +1082,41 @@ var joinCostTests = []struct {
 					{2, "second row"},
 					{3, "third row"},
 				},
+			},
+
+			{
+				Query: `SELECT * FROM mytable WHERE (
+			EXISTS (SELECT * FROM mytable Alias1 JOIN mytable Alias2 WHERE Alias1.i = (mytable.i + 1))
+			AND EXISTS (SELECT * FROM othertable Alias1 JOIN othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)));`,
+				Expected: []sql.Row{{1, "first row"}},
+			},
+			{
+				Query: `SELECT * FROM ab WHERE (
+			EXISTS (SELECT * FROM ab Alias1 JOIN ab Alias2 WHERE Alias1.a = (ab.a + 1))
+			AND EXISTS (SELECT * FROM xy Alias1 JOIN xy Alias2 WHERE Alias1.x = (ab.a + 2)));`,
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2}},
+			},
+			{
+				// verify that duplicate aliases in different subqueries are allowed
+				Query: `SELECT * FROM mytable Alias0 WHERE (
+				      	EXISTS (SELECT * FROM mytable Alias WHERE Alias.i = Alias0.i + 1)
+				      	AND EXISTS (SELECT * FROM othertable Alias WHERE Alias.i2 = Alias0.i + 2));`,
+				Expected: []sql.Row{{1, "first row"}},
+			},
+			{
+				Query: `SELECT * FROM mytable
+						WHERE
+  							i = (SELECT i2 FROM othertable alias1 WHERE i2 = 2) AND
+  							i+1 = (SELECT i2 FROM othertable alias1 WHERE i2 = 3);`,
+				Expected: []sql.Row{{2, "second row"}},
+			},
+			{
+				Query: `SELECT * FROM mytable WHERE (
+      					EXISTS (SELECT * FROM mytable Alias1 join mytable Alias2 WHERE Alias1.i = (mytable.i + 1))
+      					AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
+				Expected: []sql.Row{{1, "first row"}},
 			},
 		},
 	},

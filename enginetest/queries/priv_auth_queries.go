@@ -106,6 +106,219 @@ type ServerAuthenticationTestAssertion struct {
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
 	{
+		Name: "Binlog replication privileges",
+		SetUpScript: []string{
+			"CREATE USER user@localhost;",
+			"CREATE USER 'replica-admin'@localhost;",
+			"CREATE USER 'replica-client'@localhost;",
+			"CREATE USER 'replica-reload'@localhost;",
+			// REPLICATION_SLAVE_ADMIN allows: start replica,
+			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO 'replica-admin'@localhost;",
+			// REPLICATION CLIENT allows: show replica status
+			"GRANT REPLICATION CLIENT ON *.* to 'replica-client'@localhost;",
+			// RELOAD allows: reset replica
+			"GRANT RELOAD ON *.* TO 'replica-reload'@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			// START REPLICA
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "START REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				// ErrNoReplicationController means the priv check passed
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "START REPLICA",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+			{
+				User:        "replica-client",
+				Host:        "localhost",
+				Query:       "START REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "START REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "START REPLICA",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+
+			// STOP REPLICA
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "STOP REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				// ErrNoReplicationController means the priv check passed
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "STOP REPLICA",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+			{
+				User:        "replica-client",
+				Host:        "localhost",
+				Query:       "STOP REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "STOP REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "STOP REPLICA",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+
+			// RESET REPLICA
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "RESET REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "RESET REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-client",
+				Host:        "localhost",
+				Query:       "RESET REPLICA",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				// ErrNoReplicationController means the priv check passed
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "RESET REPLICA",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "RESET REPLICA",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+
+			// SHOW REPLICA STATUS
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "SHOW REPLICA STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "SHOW REPLICA STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "replica-client",
+				Host:     "localhost",
+				Query:    "SHOW REPLICA STATUS;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "SHOW REPLICA STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW REPLICA STATUS;",
+				Expected: []sql.Row{},
+			},
+
+			// CHANGE REPLICATION SOURCE
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION SOURCE TO SOURCE_HOST='localhost';",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				// ErrNoReplicationController means the priv check passed
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION SOURCE TO SOURCE_HOST='localhost';",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+			{
+				User:        "replica-client",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION SOURCE TO SOURCE_HOST='localhost';",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION SOURCE TO SOURCE_HOST='localhost';",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION SOURCE TO SOURCE_HOST='localhost';",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+
+			// CHANGE REPLICATION FILTER
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db01.t1);",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				// ErrNoReplicationController means the priv check passed
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db01.t1);",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+			{
+				User:        "replica-client",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db01.t1);",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db01.t1);",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "CHANGE REPLICATION FILTER REPLICATE_IGNORE_TABLE=(db01.t1);",
+				ExpectedErr: plan.ErrNoReplicationController,
+			},
+		},
+	},
+	{
 		Name: "Basic database and table name visibility",
 		SetUpScript: []string{
 			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
@@ -400,6 +613,34 @@ var UserPrivTests = []UserPrivilegeTest{
 					{"GRANT USAGE ON *.* TO `testuser`@`localhost`"},
 					{"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
 				},
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.* TO 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "GRANT REPLICATION_SLAVE_ADMIN ON mydb.mytable TO 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE REPLICATION_SLAVE_ADMIN ON mydb.* FROM 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
+			},
+			{
+				// Dynamic privileges may only be applied globally
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE REPLICATION_SLAVE_ADMIN ON mydb.mytable FROM 'testuser'@'localhost';",
+				ExpectedErr: sql.ErrGrantRevokeIllegalPrivilegeWithMessage,
 			},
 		},
 	},

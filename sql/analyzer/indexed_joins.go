@@ -164,7 +164,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)
 
-	err = convertSemiToInnerJoin(m)
+	err = convertSemiToInnerJoin(a, m)
 	if err != nil {
 		return nil, err
 	}
@@ -185,10 +185,6 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		return nil, err
 	}
 
-	if a.Verbose && a.Debug {
-		a.Log(m.String())
-	}
-
 	if hint := extractJoinHint(n); !hint.IsEmpty() {
 		// this should probably happen earlier, but the root is not
 		// populated before reordering
@@ -199,6 +195,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	if err != nil {
 		return nil, err
 	}
+
+	if a.Verbose && a.Debug {
+		a.Log(m.String())
+	}
+
 	return m.bestRootPlan()
 }
 
@@ -292,7 +293,7 @@ func addLookupJoins(m *Memo) error {
 // Ref sction 2.1.1 of:
 // https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner
-func convertSemiToInnerJoin(m *Memo) error {
+func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 	seen := make(map[GroupId]struct{})
 	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
 		semi, ok := e.(*semiJoin)
@@ -300,12 +301,22 @@ func convertSemiToInnerJoin(m *Memo) error {
 			return nil
 		}
 
+		rightOutTables := m.tableProps.getTableNames(semi.right.relProps.OutputTables())
+		projectExpressions := []sql.Expression{}
 		onlyEquality := true
 		for _, f := range semi.filter {
 			transform.InspectExpr(f, func(e sql.Expression) bool {
-				switch e.(type) {
-				case *expression.GetField, *expression.Literal, *expression.BindVar,
+				switch e := e.(type) {
+				case *expression.GetField:
+					// getField expressions tell us which columns are used, so we can create the correct project
+					tableName := strings.ToLower(e.Table())
+					isRightOutTable := stringContains(rightOutTables, tableName)
+					if isRightOutTable {
+						projectExpressions = append(projectExpressions, e)
+					}
+				case *expression.Literal, *expression.BindVar,
 					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+					// these expressions are equality expressions
 				default:
 					onlyEquality = false
 				}
@@ -316,19 +327,27 @@ func convertSemiToInnerJoin(m *Memo) error {
 			}
 		}
 
-		// distinct is a new group
-		newRight := &distinct{
-			relBase: &relBase{},
-			child:   semi.right,
+		// project is a new group
+		newRight := &project{
+			relBase:     &relBase{},
+			child:       semi.right,
+			projections: projectExpressions,
 		}
 		rightGrp := m.memoize(newRight)
+
+		// distinct is a new group
+		rightDistinct := &distinct{
+			relBase: &relBase{},
+			child:   rightGrp,
+		}
+		rightDistinctGrp := m.memoize(rightDistinct)
 
 		// join and its commute are a new group
 		newJoin := &innerJoin{
 			joinBase: &joinBase{
 				relBase: &relBase{},
 				left:    semi.left,
-				right:   rightGrp,
+				right:   rightDistinctGrp,
 				op:      plan.JoinTypeInner,
 				filter:  semi.filter,
 			},
@@ -338,7 +357,7 @@ func convertSemiToInnerJoin(m *Memo) error {
 		newJoinCommuted := &innerJoin{
 			joinBase: &joinBase{
 				relBase: &relBase{g: joinGrp},
-				left:    rightGrp,
+				left:    rightDistinctGrp,
 				right:   semi.left,
 				op:      plan.JoinTypeInner,
 				filter:  semi.filter,

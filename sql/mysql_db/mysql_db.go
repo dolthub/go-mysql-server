@@ -344,7 +344,7 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 	}
 	privSet := db.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
-		for _, operationPriv := range operation.Privileges {
+		for _, operationPriv := range operation.StaticPrivileges {
 			if privSet.Has(operationPriv) {
 				//TODO: Handle partial revokes
 				continue
@@ -365,6 +365,22 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 			if !colSet.Has(operationPriv) {
 				return false
 			}
+		}
+
+		// Super users have all privileges, so if they have global super privs, then
+		// they have all dynamic privs and we don't need to check them.
+		if privSet.Has(sql.PrivilegeType_Super) {
+			continue
+		}
+
+		for _, operationPriv := range operation.DynamicPrivileges {
+			if privSet.HasDynamic(operationPriv) {
+				continue
+			}
+
+			// Dynamic privileges are only allowed at a global scope, so no need to check
+			// for database, table, or column privileges.
+			return false
 		}
 	}
 	return true
