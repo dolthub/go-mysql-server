@@ -5022,7 +5022,7 @@ func TestParseCreateTrigger(t *testing.T) {
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = @message_text;
     END`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
-			"signal_with_user_var", "before", "delete", 
+			"signal_with_user_var", "before", "delete",
 			nil,
 			plan.NewUnresolvedTable("FOO", ""),
 			plan.NewBeginEndBlock("", plan.NewBlock([]sql.Node{

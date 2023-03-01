@@ -1294,7 +1294,7 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t1 values (1)",
+				Query:          "insert into t1 values (1)",
 				ExpectedErrStr: "broken (errno 1644) (sqlstate 45000)",
 			},
 			{

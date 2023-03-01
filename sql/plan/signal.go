@@ -197,7 +197,7 @@ func (s *Signal) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (s *Signal) Expressions() []sql.Expression {
 	items := s.signalItemsWithExpressions()
-	
+
 	var exprs []sql.Expression
 	for _, itemInfo := range items {
 		exprs = append(exprs, itemInfo.ExprVal)
@@ -206,7 +206,7 @@ func (s *Signal) Expressions() []sql.Expression {
 	return exprs
 }
 
-// signalItemsWithExpressions returns the subset of the Info map entries that have an expression value, sorted by 
+// signalItemsWithExpressions returns the subset of the Info map entries that have an expression value, sorted by
 // item name
 func (s *Signal) signalItemsWithExpressions() []SignalInfo {
 	var items []SignalInfo
@@ -230,7 +230,7 @@ func (s Signal) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(itemsWithExprs) != len(exprs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(itemsWithExprs))
 	}
-	
+
 	mapCopy := make(map[SignalConditionItemName]SignalInfo)
 	for k, v := range s.Info {
 		mapCopy[k] = v
@@ -240,9 +240,9 @@ func (s Signal) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		// transfer the expression to the new info map
 		newInfo := itemsWithExprs[i]
 		newInfo.ExprVal = exprs[i]
-		mapCopy[itemsWithExprs[i].ConditionItemName] = newInfo 
+		mapCopy[itemsWithExprs[i].ConditionItemName] = newInfo
 	}
-	
+
 	s.Info = mapCopy
 	return &s, nil
 }
@@ -268,7 +268,7 @@ func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		//TODO: implement warnings
 		return nil, fmt.Errorf("warnings not yet implemented")
 	} else {
-		
+
 		messageItem := s.Info[SignalConditionItemName_MessageText]
 		strValue := messageItem.StrValue
 		if messageItem.ExprVal != nil {
@@ -282,7 +282,7 @@ func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 			strValue = s
 		}
-		
+
 		return nil, mysql.NewSQLError(
 			int(s.Info[SignalConditionItemName_MysqlErrno].IntValue),
 			s.SqlStateValue,
