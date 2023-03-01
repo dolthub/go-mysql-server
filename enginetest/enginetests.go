@@ -746,8 +746,16 @@ func TestDelete(t *testing.T, harness Harness) {
 		}
 	})
 	t.Run("Delete from join", func(t *testing.T) {
-		for _, tt := range queries.DeleteJoinTests {
-			RunWriteQueryTest(t, harness, tt)
+		// Run tests with each biased coster to get coverage over join types
+		for name, coster := range biasedCosters {
+			t.Run(name+" join", func(t *testing.T) {
+				for _, tt := range queries.DeleteJoinTests {
+					e := mustNewEngine(t, harness)
+					e.Analyzer.Coster = coster
+					defer e.Close()
+					RunWriteQueryTestWithEngine(t, harness, e, tt)
+				}
+			})
 		}
 	})
 }
