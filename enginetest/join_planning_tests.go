@@ -388,19 +388,17 @@ order by 1;`,
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
-				q: `
-SELECT * FROM xy WHERE (
-      EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
-      AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				q: `SELECT * FROM xy WHERE (
+      				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
-				q: `
-SELECT * FROM xy WHERE (
-      EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
-      AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				q: `SELECT * FROM xy WHERE (
+      				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 		},
@@ -533,11 +531,11 @@ SELECT * FROM xy WHERE (
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(b,c,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE EXISTS (select 1 from uv c where c.u = a.x+2)",
-				order: []string{"b", "c", "a"},
+				order: []string{"b", "a"},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(b,applySubq0,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
-				order: []string{"b", "applySubq0", "a"},
+				order: []string{"b", "a"},
 			},
 		},
 	},

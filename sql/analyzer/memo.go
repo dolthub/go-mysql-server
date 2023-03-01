@@ -366,6 +366,21 @@ func (p *tableProps) getId(n string) (GroupId, bool) {
 	return id, ok
 }
 
+func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
+	var names []string
+	for idx, ok := f.Next(0); ok; idx, ok = f.Next(idx + 1) {
+		if ok {
+			groupId := GroupId(idx + 1)
+			table, ok := p.getTable(groupId)
+			if !ok {
+				panic(fmt.Sprintf("table not found for group %d", groupId))
+			}
+			names = append(names, table)
+		}
+	}
+	return names
+}
+
 // exprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type exprGroup struct {

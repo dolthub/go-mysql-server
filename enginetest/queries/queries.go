@@ -7152,24 +7152,22 @@ With c as (
 	},
 	{
 		// verify that duplicate aliases in different subqueries are allowed
-		Query: `SELECT COUNT(*) FROM mytable Alias0 WHERE (
-				      EXISTS (SELECT * FROM mytable Alias WHERE Alias.i = Alias0.i + 1)
-				      AND EXISTS (SELECT * FROM othertable Alias WHERE Alias.i2 = Alias0.i + 2));`,
-		Expected: []sql.Row{{1}},
+		Query: `SELECT * FROM mytable Alias0 WHERE (
+			  	EXISTS (SELECT * FROM mytable Alias WHERE Alias.i = Alias0.i + 1)
+			 	AND EXISTS (SELECT * FROM othertable Alias WHERE Alias.i2 = Alias0.i + 2));`,
+		Expected: []sql.Row{{1, "first row"}},
 	},
 	{
-		Query: `
-select * from mytable
-where
-  i = (select i2 from othertable alias1 where i2 = 2) and
-  i+1 = (select i2 from othertable alias1 where i2 = 3);`,
+		Query: `SELECT * FROM mytable
+				WHERE
+  					i = (SELECT i2 FROM othertable alias1 WHERE i2 = 2) AND
+  					i+1 = (SELECT i2 FROM othertable alias1 WHERE i2 = 3);`,
 		Expected: []sql.Row{{2, "second row"}},
 	},
 	{
-		Query: `
-SELECT * FROM mytable WHERE (
-      EXISTS (SELECT * FROM mytable Alias1 join mytable Alias2 WHERE Alias1.i = (mytable.i + 1))
-      AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
+		Query: `SELECT * FROM mytable WHERE (
+      			EXISTS (SELECT * FROM mytable Alias1 join mytable Alias2 WHERE Alias1.i = (mytable.i + 1))
+      			AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
 		Expected: []sql.Row{{1, "first row"}},
 	},
 }
