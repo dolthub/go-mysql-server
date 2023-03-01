@@ -302,7 +302,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		for i, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexDef := sql.QuoteIdentifier(col.Name)
+				indexDef := col.Name
 				if len(prefixLengths) > i && prefixLengths[i] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
 				}

@@ -78,7 +78,9 @@ func GenerateCreateTableIndexDefinition(isUnique, isSpatial bool, indexID string
 	if isSpatial {
 		unique = "SPATIAL "
 	}
-	key := fmt.Sprintf("  %s%sKEY %s (%s)", unique, spatial, QuoteIdentifier(indexID), strings.Join(indexCols, ","))
+
+	quotedIndexCols := QuoteIdentifiers(indexCols)
+	key := fmt.Sprintf("  %s%sKEY %s (%s)", unique, spatial, QuoteIdentifier(indexID), strings.Join(quotedIndexCols, ","))
 	if comment != "" {
 		key = fmt.Sprintf("%s COMMENT '%s'", key, comment)
 	}
