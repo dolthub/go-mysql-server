@@ -5013,6 +5013,45 @@ func TestParseCreateTrigger(t *testing.T) {
 			time.Unix(0, 0),
 			"``@``",
 		),
+		`create trigger signal_with_user_var
+    BEFORE DELETE ON FOO FOR EACH ROW
+		BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
+			"signal_with_user_var", "before", "delete",
+			nil,
+			plan.NewUnresolvedTable("FOO", ""),
+			plan.NewBeginEndBlock("", plan.NewBlock([]sql.Node{
+				plan.NewSet([]sql.Expression{
+					expression.NewSetField(
+						expression.NewUserVar("message_text"),
+						expression.NewUnresolvedFunction("concat", false, nil, expression.NewLiteral("ouch", types.LongText), expression.NewLiteral("oof", types.LongText)),
+					),
+				}),
+				plan.NewSignal("45000", map[plan.SignalConditionItemName]plan.SignalInfo{
+					plan.SignalConditionItemName_MessageText: {
+						ConditionItemName: plan.SignalConditionItemName_MessageText,
+						ExprVal:           expression.NewUnresolvedColumn("@message_text"),
+					},
+				}),
+			},
+			)),
+			`create trigger signal_with_user_var
+    BEFORE DELETE ON FOO FOR EACH ROW
+		BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`,
+			`BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`,
+			time.Unix(0, 0),
+			"``@``"),
 	}
 
 	var queriesInOrder []string

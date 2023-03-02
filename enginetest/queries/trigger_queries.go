@@ -1320,13 +1320,41 @@ begin
   if
     (select target_id from sn where id = NEW.upstream_edge_id) <> (select source_id from sn where id = NEW.downstream_edge_id)
   then
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'broken';
+    set @myvar = concat('bro', 'ken');
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @myvar;
   end if;
 end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query: "insert into rn values (1,1,1)",
+			},
+			{
 				Query:    "select id from rn",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "trigger with signal and user var",
+		SetUpScript: []string{
+			"create table t1 (id int primary key)",
+			"create table t2 (id int primary key)",
+			`
+create trigger trigger1 before insert on t1
+for each row
+begin
+	set @myvar = concat('bro', 'ken');
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @myvar;
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t1 values (1)",
+				ExpectedErrStr: "broken (errno 1644) (sqlstate 45000)",
+			},
+			{
+				Query:    "select id from t1",
 				Expected: []sql.Row{},
 			},
 		},
