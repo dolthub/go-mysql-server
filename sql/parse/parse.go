@@ -4034,6 +4034,12 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 			return nil, err
 		}
 		return expression.NewBinary(expr), nil
+	case sqlparser.BangStr:
+		c, err := ExprToExpression(ctx, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewNot(c), nil
 	default:
 		lowerOperator := strings.TrimSpace(strings.ToLower(e.Operator))
 		if strings.HasPrefix(lowerOperator, "_") {

@@ -752,6 +752,76 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger before update with set clause inside if statement with '!' operator",
+		SetUpScript: []string{
+			"CREATE TABLE test (stat_id INT);",
+			"INSERT INTO test VALUES (-1), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE TRIGGER before_test_stat_update BEFORE UPDATE ON test FOR EACH ROW
+BEGIN
+	IF !(new.stat_id < 0)
+		THEN SET new.stat_id = new.stat_id * -1;
+	END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "update test set stat_id=2 where stat_id=1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test order by stat_id;",
+				Expected: []sql.Row{{-2}, {-1}},
+			},
+			{
+				Query:    "update test set stat_id=-2 where stat_id=-1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test;",
+				Expected: []sql.Row{{-2}, {-2}},
+			},
+		},
+	},
+	{
+		Name: "trigger before update with set clause inside if statement with 'NOT'",
+		SetUpScript: []string{
+			"CREATE TABLE test (stat_id INT);",
+			"INSERT INTO test VALUES (-1), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE TRIGGER before_test_stat_update BEFORE UPDATE ON test FOR EACH ROW
+BEGIN
+	IF NOT(new.stat_id < 0)
+		THEN SET new.stat_id = new.stat_id * -1;
+	END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "update test set stat_id=2 where stat_id=1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test order by stat_id;",
+				Expected: []sql.Row{{-2}, {-1}},
+			},
+			{
+				Query:    "update test set stat_id=-2 where stat_id=-1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test;",
+				Expected: []sql.Row{{-2}, {-2}},
+			},
+		},
+	},
 	// DELETE triggers
 	{
 		Name: "trigger after delete, insert into other table",
