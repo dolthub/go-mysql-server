@@ -34,30 +34,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		switch p := c.Node.(type) {
-		case *plan.DropTable:
-			// *plan.DropTable is special cased to account
-			// for when we explicitly remove nonexistent
-			// child tables. In this case, the output node
-			// will have fewer children. The UnresolvedNode
-			// case is modified to skip those undesired children
-			// lower in the tree.
-			var resolvedTables []sql.Node
-			for _, t := range p.Children() {
-				switch tbl := t.(type) {
-				case *plan.ResolvedTable:
-					resolvedTables = append(resolvedTables, t)
-				case *plan.UnresolvedTable:
-					continue
-				case *plan.SubqueryAlias:
-					// the views are resolved to be SubqueryAlias node
-					return p, transform.SameTree, sql.ErrUnknownTable.New(tbl.Name())
-				default:
-					// TODO: should other nodes be skipped as well?
-					continue
-				}
-			}
-			newn, _ := p.WithChildren(resolvedTables...)
-			return newn, transform.NewTree, nil
 		case *plan.UnresolvedTable:
 			r, err := resolveTable(ctx, p, a)
 			if sql.ErrTableNotFound.Is(err) && ignore {
@@ -330,16 +306,28 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 
 	// validates that each table in DropTable is ResolvedTable and each database of
 	// each table is TableDropper (each table can be of different database later on)
+	var resolvedTables []sql.Node
 	for _, table := range dt.Tables {
-		rt, ok := table.(*plan.ResolvedTable)
-		if !ok {
-			return nil, transform.SameTree, plan.ErrUnresolvedTable.New(rt.String())
-		}
-		_, ok = rt.Database.(sql.TableDropper)
-		if !ok {
-			return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(rt.Database.Name())
+		switch t := table.(type) {
+		case *plan.ResolvedTable:
+			_, ok = t.Database.(sql.TableDropper)
+			if !ok {
+				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database.Name())
+			}
+			resolvedTables = append(resolvedTables, table)
+		case *plan.UnresolvedTable:
+			if !dt.IfExists() {
+				return nil, transform.SameTree, sql.ErrUnknownTable.New(t.String())
+			}
+		case *plan.SubqueryAlias:
+			return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
+		default:
+			// TODO: try to get the name used for the error rather than the node plan string
+			return nil, transform.SameTree, sql.ErrUnknownTable.New(table.String())
 		}
 	}
 
-	return n, transform.SameTree, nil
+	newn, _ := n.WithChildren(resolvedTables...)
+	return newn, transform.NewTree, nil
+
 }
