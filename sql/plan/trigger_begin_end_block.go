@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"io"
 	"sync"
 
@@ -111,23 +112,27 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
+// shouldUseTriggerStatementForReturnRow returns whether the statement has Set node that contains GetField expression,
+// which means whether there is column value update. The Set node can be inside other nodes, so need to inspect all nodes
+// of the given node.
 func shouldUseTriggerStatementForReturnRow(stmt sql.Node) bool {
-	switch logic := stmt.(type) {
-	case *Set:
-		hasSetField := false
-		for _, expr := range logic.Exprs {
-			sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
-				if _, ok := e.(*expression.GetField); ok {
-					hasSetField = true
-					return false
-				}
-				return true
-			})
+	hasSetField := false
+	transform.Inspect(stmt, func(n sql.Node) bool {
+		switch logic := n.(type) {
+		case *Set:
+			for _, expr := range logic.Exprs {
+				sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+					if _, ok := e.(*expression.GetField); ok {
+						hasSetField = true
+						return false
+					}
+					return true
+				})
+			}
 		}
-		return hasSetField
-	default:
-		return false
-	}
+		return true
+	})
+	return hasSetField
 }
 
 // Close implements the sql.RowIter interface.

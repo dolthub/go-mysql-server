@@ -752,6 +752,42 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger with set clause in if statement with '!' equivalent to 'NOT'",
+		SetUpScript: []string{
+			"create table test (stat_id int);",
+			"insert into test values (-1), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+create trigger before_test_stat_update before update on test
+for each row
+begin
+	if !(new.stat_id < 0)
+		then set new.stat_id = new.stat_id * -1;
+	end if;
+end;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "update test set stat_id=2 where stat_id=1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test order by stat_id;",
+				Expected: []sql.Row{{-2}, {-1}},
+			},
+			{
+				Query:    "update test set stat_id=-2 where stat_id=-1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test;",
+				Expected: []sql.Row{{-2}, {-2}},
+			},
+		},
+	},
 	// DELETE triggers
 	{
 		Name: "trigger after delete, insert into other table",
