@@ -15,9 +15,10 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"io"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
