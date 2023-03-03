@@ -172,14 +172,12 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 		case *plan.IndexedTableAccess:
 			ret[n.ResolvedTable.Name()] = n.ResolvedTable
 		case *plan.TableAlias:
-			rt, ok := n.Child.(*plan.ResolvedTable)
-			if ok {
+			rt := getResolvedTable(n)
+			if rt != nil {
 				ret[n.Name()] = rt
 			}
 		default:
-			return true
 		}
-
 		return true
 	})
 

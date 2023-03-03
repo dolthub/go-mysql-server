@@ -268,6 +268,10 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
+		WriteQuery:          `update mytable h join mytable on h.i = mytable.i and h.s <> mytable.s set h.i = mytable.i;`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+	},
+	{
 		WriteQuery:          `UPDATE othertable CROSS JOIN tabletest set othertable.i2 = othertable.i2 * 10`, // cross join
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM othertable order by i2",
