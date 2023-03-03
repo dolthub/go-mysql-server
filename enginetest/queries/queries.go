@@ -8216,6 +8216,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "select -9223372036854775808 div 0.1;",
 		ExpectedErr: expression.ErrIntDivDataOutOfRange,
 	},
+	{
+		Query:       "drop table myview;",
+		ExpectedErr: sql.ErrUnknownTable,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
