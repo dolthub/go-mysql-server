@@ -15,12 +15,13 @@
 package analyzer
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
