@@ -2840,6 +2840,18 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "drop table if exists on unknown table shows warning",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "DROP TABLE IF EXISTS non_existent_table;",
+				ExpectedWarning:                 1051,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Unknown table 'non_existent_table'",
+				SkipResultsCheck:                true,
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

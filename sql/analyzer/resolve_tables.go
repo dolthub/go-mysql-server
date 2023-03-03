@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -316,14 +317,17 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			}
 			resolvedTables = append(resolvedTables, table)
 		case *plan.UnresolvedTable:
-			if !dt.IfExists() {
-				return nil, transform.SameTree, sql.ErrUnknownTable.New(t.String())
+			if dt.IfExists() {
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    mysql.ERBadTable,
+					Message: sql.ErrUnknownTable.New(t.Name()).Error(),
+				})
+			} else {
+				return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
 			}
-		case *plan.SubqueryAlias:
-			return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
 		default:
-			// TODO: try to get the name used for the error rather than the node plan string
-			return nil, transform.SameTree, sql.ErrUnknownTable.New(table.String())
+			return nil, transform.SameTree, sql.ErrUnknownTable.New(getTableName(table))
 		}
 	}
 
