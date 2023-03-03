@@ -2522,6 +2522,33 @@ var QuickPrivTests = []QuickPrivilegeTest{
 	},
 	{
 		Queries: []string{
+			"DELETE test, test2 FROM mydb.test join mydb.test2 where test.pk=test2.pk",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DELETE ON mydb.test TO tester@localhost",
+			"DELETE test, test2 FROM mydb.test join mydb.test2 where test.pk=test2.pk",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DELETE ON mydb.test2 TO tester@localhost",
+			"DELETE test, test2 FROM mydb.test join mydb.test2 where test.pk=test2.pk",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT DELETE ON mydb.test TO tester@localhost",
+			"GRANT DELETE ON mydb.test2 TO tester@localhost",
+			"DELETE test, test2 FROM mydb.test join mydb.test2 where test.pk=test2.pk",
+		},
+	},
+	{
+		Queries: []string{
 			"CREATE DATABASE new_db4;",
 		},
 		ExpectingErr: true,

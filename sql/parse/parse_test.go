@@ -4413,8 +4413,7 @@ CREATE TABLE t2
 							), "select * from cte1"),
 						),
 						plan.NewUnresolvedTable("c", ""),
-					),
-				),
+					), nil),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
 						plan.NewSubqueryAlias("cte1", "select a from b",
@@ -4965,8 +4964,7 @@ func TestParseCreateTrigger(t *testing.T) {
 						plan.NewFilter(
 							expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
 							plan.NewUnresolvedTable("baz", ""),
-						),
-					),
+						), nil),
 					plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
 						expression.NewUnresolvedQualifiedColumn("old", "a"),
 						expression.NewUnresolvedQualifiedColumn("old", "b"),
@@ -5015,6 +5013,45 @@ func TestParseCreateTrigger(t *testing.T) {
 			time.Unix(0, 0),
 			"``@``",
 		),
+		`create trigger signal_with_user_var
+    BEFORE DELETE ON FOO FOR EACH ROW
+		BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
+			"signal_with_user_var", "before", "delete",
+			nil,
+			plan.NewUnresolvedTable("FOO", ""),
+			plan.NewBeginEndBlock("", plan.NewBlock([]sql.Node{
+				plan.NewSet([]sql.Expression{
+					expression.NewSetField(
+						expression.NewUserVar("message_text"),
+						expression.NewUnresolvedFunction("concat", false, nil, expression.NewLiteral("ouch", types.LongText), expression.NewLiteral("oof", types.LongText)),
+					),
+				}),
+				plan.NewSignal("45000", map[plan.SignalConditionItemName]plan.SignalInfo{
+					plan.SignalConditionItemName_MessageText: {
+						ConditionItemName: plan.SignalConditionItemName_MessageText,
+						ExprVal:           expression.NewUnresolvedColumn("@message_text"),
+					},
+				}),
+			},
+			)),
+			`create trigger signal_with_user_var
+    BEFORE DELETE ON FOO FOR EACH ROW
+		BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`,
+			`BEGIN
+        SET @message_text = CONCAT('ouch', 'oof');
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = @message_text;
+    END`,
+			time.Unix(0, 0),
+			"``@``"),
 	}
 
 	var queriesInOrder []string

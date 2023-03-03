@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"fmt"
+
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -42,6 +44,40 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				return p, transform.SameTree, nil
 			}
 			return r, transform.NewTree, err
+		case *plan.DeleteFrom:
+			// DeleteFrom may contain explicitly specified target tables that are not modeled as child nodes
+			if p.HasExplicitTargets() {
+				targets := p.GetDeleteTargets()
+				resolvedTargets := make([]sql.Node, len(targets))
+				allSame := transform.SameTree
+
+				aliases, err := getTableAliases(p.Child, scope)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				for i, target := range targets {
+					aliasedName := getTableName(target)
+					if aliasedTarget, ok := aliases[aliasedName]; ok {
+						if aliasedNode, ok := aliasedTarget.(sql.Node); ok {
+							target = plan.NewTableAlias(aliasedName, aliasedNode)
+						} else {
+							return nil, transform.SameTree, fmt.Errorf("unexpected target type "+
+								"doesn't implement sql.Node: %T", aliasedTarget)
+						}
+					}
+
+					new, same, err := resolveTables(ctx, a, target, scope, sel)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					allSame = same && allSame
+					resolvedTargets[i] = new
+				}
+				return p.WithExplicitTargets(resolvedTargets), allSame, nil
+			} else {
+				return p, transform.SameTree, nil
+			}
 		case *plan.InsertInto:
 			if with, ok := p.Source.(*plan.With); ok {
 				newSrc, same, err := resolveCommonTableExpressions(ctx, a, with, scope, sel)

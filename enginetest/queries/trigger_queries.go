@@ -752,6 +752,76 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger before update with set clause inside if statement with '!' operator",
+		SetUpScript: []string{
+			"CREATE TABLE test (stat_id INT);",
+			"INSERT INTO test VALUES (-1), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE TRIGGER before_test_stat_update BEFORE UPDATE ON test FOR EACH ROW
+BEGIN
+	IF !(new.stat_id < 0)
+		THEN SET new.stat_id = new.stat_id * -1;
+	END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "update test set stat_id=2 where stat_id=1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test order by stat_id;",
+				Expected: []sql.Row{{-2}, {-1}},
+			},
+			{
+				Query:    "update test set stat_id=-2 where stat_id=-1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test;",
+				Expected: []sql.Row{{-2}, {-2}},
+			},
+		},
+	},
+	{
+		Name: "trigger before update with set clause inside if statement with 'NOT'",
+		SetUpScript: []string{
+			"CREATE TABLE test (stat_id INT);",
+			"INSERT INTO test VALUES (-1), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE TRIGGER before_test_stat_update BEFORE UPDATE ON test FOR EACH ROW
+BEGIN
+	IF NOT(new.stat_id < 0)
+		THEN SET new.stat_id = new.stat_id * -1;
+	END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "update test set stat_id=2 where stat_id=1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test order by stat_id;",
+				Expected: []sql.Row{{-2}, {-1}},
+			},
+			{
+				Query:    "update test set stat_id=-2 where stat_id=-1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "select * from test;",
+				Expected: []sql.Row{{-2}, {-2}},
+			},
+		},
+	},
 	// DELETE triggers
 	{
 		Name: "trigger after delete, insert into other table",
@@ -957,6 +1027,62 @@ var TriggerTests = []ScriptTest{
 				Expected: []sql.Row{
 					{9},
 				},
+			},
+		},
+	},
+	{
+		Name: "single trigger before single target table delete from join",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create table b (i int primary key)",
+			"insert into b values (1), (3), (5)",
+			"create table c (x int)",
+			"insert into c values (0)",
+			"create trigger trig before delete on a for each row begin update c set x = x + 1; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "delete a from a inner join b on a.j=b.i;",
+				ExpectedErrStr: "delete from with explicit target tables does not support triggers; retry with single table deletes",
+			},
+		},
+	},
+	{
+		Name: "multiple trigger before single target table delete from join",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create table b (i int primary key)",
+			"insert into b values (1), (3), (5)",
+			"create table c (x int)",
+			"insert into c values (0)",
+			"create trigger trig1 before delete on a for each row begin update c set x = x + 1; end;",
+			"create trigger trig2 before delete on b for each row begin update c set x = x + 1; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "delete a from a inner join b on a.j=b.i where a.i >= 0;",
+				ExpectedErrStr: "delete from with explicit target tables does not support triggers; retry with single table deletes",
+			},
+		},
+	},
+	{
+		Name: "multiple trigger before multiple target table delete from join",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create table b (i int primary key)",
+			"insert into b values (1), (3), (5)",
+			"create table c (x int)",
+			"insert into c values (0)",
+			"create trigger trig1 before delete on a for each row begin update c set x = x + 1; end;",
+			"create trigger trig2 before delete on b for each row begin update c set x = x + 1; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "delete a, b from a inner join b on a.j=b.i where a.i >= 0;",
+				ExpectedErrStr: "delete from with explicit target tables does not support triggers; retry with single table deletes",
 			},
 		},
 	},
@@ -1264,13 +1390,41 @@ begin
   if
     (select target_id from sn where id = NEW.upstream_edge_id) <> (select source_id from sn where id = NEW.downstream_edge_id)
   then
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'broken';
+    set @myvar = concat('bro', 'ken');
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @myvar;
   end if;
 end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query: "insert into rn values (1,1,1)",
+			},
+			{
 				Query:    "select id from rn",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "trigger with signal and user var",
+		SetUpScript: []string{
+			"create table t1 (id int primary key)",
+			"create table t2 (id int primary key)",
+			`
+create trigger trigger1 before insert on t1
+for each row
+begin
+	set @myvar = concat('bro', 'ken');
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @myvar;
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t1 values (1)",
+				ExpectedErrStr: "broken (errno 1644) (sqlstate 45000)",
+			},
+			{
+				Query:    "select id from t1",
 				Expected: []sql.Row{},
 			},
 		},

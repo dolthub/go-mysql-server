@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -153,7 +154,9 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				db = n.Database()
 			}
 		case *plan.DeleteFrom:
-			affectedTables = append(affectedTables, getTableName(n))
+			for _, target := range n.GetDeleteTargets() {
+				affectedTables = append(affectedTables, getTableName(target))
+			}
 			triggerEvent = plan.DeleteTrigger
 			if n.Database() != "" {
 				db = n.Database()
@@ -273,6 +276,20 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.DeleteFrom:
+			// TODO: This should work correctly when there is only one table that
+			//       has a trigger on it, but it won't work if a DELETE FROM JOIN
+			//       is deleting from two tables that both have triggers. Seems
+			//       like we need something like a MultipleTriggerExecutor node
+			//       that could execute multiple triggers on the same row from its
+			//       wrapped iterator. There is also an issue with running triggers
+			//       because their field indexes assume the row they evalute will
+			//       only ever contain the columns from the single table the trigger
+			//       is based on, but this isn't true with UPDATE JOIN or DELETE JOIN.
+			if n.HasExplicitTargets() {
+				return nil, transform.SameTree, fmt.Errorf("delete from with explicit target tables " +
+					"does not support triggers; retry with single table deletes")
+			}
+
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,

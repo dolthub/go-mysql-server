@@ -841,7 +841,7 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	for _, tbl := range d.Tables {
 		if !opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(getDatabaseName(tbl), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
+			sql.NewPrivilegedOperation(GetDatabaseName(tbl), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
 			return false
 		}
 	}

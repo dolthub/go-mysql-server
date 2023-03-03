@@ -312,9 +312,9 @@ func newInsertIter(
 	}
 
 	if ignore {
-		return NewCheckpointingTableEditorIter(ed, insertIter), nil
+		return NewCheckpointingTableEditorIter(insertIter, ed), nil
 	} else {
-		return NewTableEditorIter(ed, insertIter), nil
+		return NewTableEditorIter(insertIter, ed), nil
 	}
 }
 
