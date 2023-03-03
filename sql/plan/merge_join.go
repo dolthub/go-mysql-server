@@ -224,23 +224,16 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				nextState = msSelect
 			}
 		case msRejectNull:
-			j := i.scopeLen + i.parentLen
-			for j < len(i.fullRow) {
-				if i.fullRow[j] == nil {
-					if j < i.scopeLen+i.parentLen+i.leftRowLen {
-						// this range corresponds to left-row fields
-						if i.typ.IsLeftOuter() && !i.leftMatched {
-							ret = i.copyReturnRow()
-							nextState = msRetLeft
-						} else {
-							nextState = msIncLeft
-						}
-					} else {
-						nextState = msIncRight
-					}
-					break
+			left, _ := i.cmp.Left().Eval(ctx, i.fullRow)
+			if left == nil {
+				if i.typ.IsLeftOuter() && !i.leftMatched {
+					ret = i.copyReturnRow()
+					nextState = msRetLeft
+				} else {
+					nextState = msIncLeft
 				}
-				j++
+			} else {
+				nextState = msIncRight
 			}
 		case msIncLeft:
 			err = i.incLeft(ctx)
