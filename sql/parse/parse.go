@@ -3697,7 +3697,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 		return nil, nil
 	case *sqlparser.ExtractFuncExpr:
-		var unit sql.Expression = expression.NewLiteral(v.Unit, types.LongText)
+		var unit sql.Expression = expression.NewLiteral(strings.ToUpper(v.Unit), types.LongText)
 		expr, err := ExprToExpression(ctx, v.Expr)
 		if err != nil {
 			return nil, err

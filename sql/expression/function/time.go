@@ -741,15 +741,17 @@ func calcDaynr(yyyy, mm, dd int32) int32 {
 }
 
 var (
-	year      = datePartFunc((time.Time).Year)
-	month     = datePartFunc(func(t time.Time) int { return int(t.Month()) })
-	day       = datePartFunc((time.Time).Day)
-	weekday   = datePartFunc(func(t time.Time) int { return (int(t.Weekday()) + 6) % 7 })
-	hour      = datePartFunc((time.Time).Hour)
-	minute    = datePartFunc((time.Time).Minute)
-	second    = datePartFunc((time.Time).Second)
-	dayOfWeek = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1 })
-	dayOfYear = datePartFunc((time.Time).YearDay)
+	year         = datePartFunc((time.Time).Year)
+	month        = datePartFunc(func(t time.Time) int { return int(t.Month()) })
+	day          = datePartFunc((time.Time).Day)
+	weekday      = datePartFunc(func(t time.Time) int { return (int(t.Weekday()) + 6) % 7 })
+	hour         = datePartFunc((time.Time).Hour)
+	minute       = datePartFunc((time.Time).Minute)
+	second       = datePartFunc((time.Time).Second)
+	microsecond  = datePartFunc(func(t time.Time) int { return t.Nanosecond() / 1000 })
+	quarter      = datePartFunc(func(t time.Time) int { return (int(t.Month()) - 1) / 3 + 1 })
+	dayOfWeek    = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1 })
+	dayOfYear    = datePartFunc((time.Time).YearDay)
 )
 
 // Now is a function that returns the current time.
