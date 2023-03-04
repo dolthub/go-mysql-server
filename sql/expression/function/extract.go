@@ -16,10 +16,11 @@ package function
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"time"
 )
 
 // Extract takes out the specified unit(s) from the time expression.
@@ -115,7 +116,7 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case "MICROSECOND":
 		return dateTime.Nanosecond() / 1000, nil
 	case "QUARTER":
-		return (int(dateTime.Month()) - 1) / 3  + 1, nil
+		return (int(dateTime.Month())-1)/3 + 1, nil
 	case "MONTH":
 		return int(dateTime.Month()), nil
 	case "WEEK":
@@ -147,12 +148,12 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case "DAY_HOUR":
 		dd := dateTime.Day() * 1_00
 		hh := dateTime.Hour()
-		return  dd + hh, nil
+		return dd + hh, nil
 	case "DAY_MINUTE":
 		dd := dateTime.Day() * 1_00_00
 		hh := dateTime.Hour() * 1_00
 		mm := dateTime.Minute()
-		return  dd + hh + mm, nil
+		return dd + hh + mm, nil
 	case "DAY_SECOND":
 		dd := dateTime.Day() * 1_00_00_00
 		hh := dateTime.Hour() * 1_00_00
