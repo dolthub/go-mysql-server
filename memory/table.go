@@ -1746,8 +1746,8 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 
 	// Check for foreign key relationships
 	for _, pk := range pks {
-		if columnInFkRelationship(pk.Name, t.fkColl.Keys()) {
-			return sql.ErrCantDropIndex.New("PRIMARY")
+		if fkName, ok := columnInFkRelationship(pk.Name, t.fkColl.Keys()); ok {
+			return sql.ErrCantDropIndex.New("PRIMARY", fkName)
 		}
 	}
 
@@ -1762,16 +1762,17 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	return nil
 }
 
-func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) bool {
-	colsInFks := make(map[string]bool)
+func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) (string, bool) {
+	colsInFks := make(map[string]string)
 	for _, fk := range fkc {
 		allCols := append(fk.Columns, fk.ParentColumns...)
 		for _, ac := range allCols {
-			colsInFks[ac] = true
+			colsInFks[ac] = fk.Name
 		}
 	}
 
-	return colsInFks[col]
+	fkName, ok := colsInFks[col]
+	return fkName, ok
 }
 
 type partitionIndexKeyValueIter struct {
