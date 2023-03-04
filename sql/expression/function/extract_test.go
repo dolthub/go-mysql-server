@@ -17,178 +17,179 @@ package function
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestExtract(t *testing.T) {
 	testCases := []struct {
-		name string
-		unit string
+		name     string
+		unit     string
 		dateTime string
 		expected interface{}
-		skip bool
-	} {
+		skip     bool
+	}{
 		{
-			name: "get year",
-			unit: "YEAR",
+			name:     "get year",
+			unit:     "YEAR",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 2023,
 		},
 		{
-			name: "get quarter 1",
-			unit: "QUARTER",
+			name:     "get quarter 1",
+			unit:     "QUARTER",
 			dateTime: "2023-3-12 11:22:33.445566",
 			expected: 1,
 		},
 		{
-			name: "get quarter 2",
-			unit: "QUARTER",
+			name:     "get quarter 2",
+			unit:     "QUARTER",
 			dateTime: "2023-6-12 11:22:33.445566",
 			expected: 2,
 		},
 		{
-			name: "get quarter 3",
-			unit: "QUARTER",
+			name:     "get quarter 3",
+			unit:     "QUARTER",
 			dateTime: "2023-9-12 11:22:33.445566",
 			expected: 3,
 		},
 		{
-			name: "get quarter 4",
-			unit: "QUARTER",
+			name:     "get quarter 4",
+			unit:     "QUARTER",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 4,
 		},
 		{
-			name: "get month",
-			unit: "MONTH",
+			name:     "get month",
+			unit:     "MONTH",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 11,
 		},
 		{
-			name: "get week",
-			unit: "WEEK",
+			name:     "get week",
+			unit:     "WEEK",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 46,
 		},
 		{
-			name: "get day",
-			unit: "DAY",
+			name:     "get day",
+			unit:     "DAY",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 12,
 		},
 		{
-			name: "get hour",
-			unit: "HOUR",
+			name:     "get hour",
+			unit:     "HOUR",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 11,
 		},
 		{
-			name: "get minute",
-			unit: "MINUTE",
+			name:     "get minute",
+			unit:     "MINUTE",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 22,
 		},
 		{
-			name: "get second",
-			unit: "SECOND",
+			name:     "get second",
+			unit:     "SECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 33,
 		},
 		{
-			name: "get microsecond",
-			unit: "MICROSECOND",
+			name:     "get microsecond",
+			unit:     "MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 445566,
 		},
 		{
-			name: "get year_month",
-			unit: "YEAR_MONTH",
+			name:     "get year_month",
+			unit:     "YEAR_MONTH",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 202311,
 		},
 		{
-			name: "get day_hour",
-			unit: "DAY_HOUR",
+			name:     "get day_hour",
+			unit:     "DAY_HOUR",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 1211,
 		},
 		{
-			name: "get day_minute",
-			unit: "DAY_MINUTE",
+			name:     "get day_minute",
+			unit:     "DAY_MINUTE",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 121122,
 		},
 		{
-			name: "get day_second",
-			unit: "DAY_SECOND",
+			name:     "get day_second",
+			unit:     "DAY_SECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 12112233,
 		},
 		{
-			name: "get day_microsecond",
-			unit: "DAY_MICROSECOND",
+			name:     "get day_microsecond",
+			unit:     "DAY_MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 12112233445566,
 		},
 		{
-			name: "get hour_minute",
-			unit: "HOUR_MINUTE",
+			name:     "get hour_minute",
+			unit:     "HOUR_MINUTE",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 1122,
 		},
 		{
-			name: "get hour_second",
-			unit: "HOUR_SECOND",
+			name:     "get hour_second",
+			unit:     "HOUR_SECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 112233,
 		},
 		{
-			name: "get hour_microsecond",
-			unit: "HOUR_MICROSECOND",
+			name:     "get hour_microsecond",
+			unit:     "HOUR_MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 112233445566,
 		},
 		{
-			name: "get minute_second",
-			unit: "MINUTE_SECOND",
+			name:     "get minute_second",
+			unit:     "MINUTE_SECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 2233,
 		},
 		{
-			name: "get minute_microsecond",
-			unit: "MINUTE_MICROSECOND",
+			name:     "get minute_microsecond",
+			unit:     "MINUTE_MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 2233445566,
 		},
 		{
-			name: "get second_microsecond",
-			unit: "SECOND_MICROSECOND",
+			name:     "get second_microsecond",
+			unit:     "SECOND_MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
 			expected: 33445566,
 		},
 		{
-			name: "get month 0",
-			unit: "MONTH",
+			name:     "get month 0",
+			unit:     "MONTH",
 			dateTime: "2023-00-12 11:22:33.445566",
 			expected: 0,
-			skip: true,
+			skip:     true,
 		},
 		{
-			name: "get quarter 0",
-			unit: "QUARTER",
+			name:     "get quarter 0",
+			unit:     "QUARTER",
 			dateTime: "2023-00-12 11:22:33.445566",
 			expected: 0,
-			skip: true,
+			skip:     true,
 		},
 		{
-			name: "get day 0",
-			unit: "DAY",
+			name:     "get day 0",
+			unit:     "DAY",
 			dateTime: "2023-01-00 11:22:33.445566",
 			expected: 0,
-			skip: true,
+			skip:     true,
 		},
 	}
 
