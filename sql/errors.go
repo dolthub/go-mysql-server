@@ -50,6 +50,9 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
+	// ErrUnknownTable is returned when the non-table name is used for table actions.
+	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
+
 	// ErrTableColumnNotFound is thrown when a column named cannot be found in scope
 	ErrTableColumnNotFound = errors.NewKind("table %q does not have column %q")
 
