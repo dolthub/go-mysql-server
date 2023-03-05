@@ -221,4 +221,14 @@ func TestExtract(t *testing.T) {
 		require.NoError(err)
 		require.Equal(nil, v)
 	})
+
+	t.Run("test bad date", func(t *testing.T) {
+		require := require.New(t)
+		f := NewExtract(expression.NewLiteral("DAY", types.LongText), expression.NewLiteral("thisisnotadate", types.LongText))
+		ctx := sql.NewEmptyContext()
+		_, err := f.Eval(ctx, nil)
+		require.NoError(err)
+		require.Equal(1, len(ctx.Warnings()))
+		require.Equal(1292, ctx.Warnings()[0].Code)
+	})
 }

@@ -96,12 +96,14 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	right, err = types.Datetime.ConvertWithoutRangeCheck(right)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, err.Error())
+		return nil, nil
 	}
 
 	dateTime, ok := right.(time.Time)
 	if !ok {
-		return nil, fmt.Errorf("invalid DateTime")
+		ctx.Warn(1292, "invalid DateTime")
+		return nil, nil
 	}
 
 	switch unit {
