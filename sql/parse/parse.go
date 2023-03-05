@@ -3682,14 +3682,27 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 		unit = expression.NewLiteral(v.Unit, types.LongText)
 		expr1, err = ExprToExpression(ctx, v.Expr1)
+		if err != nil {
+			return nil, err
+		}
 		expr2, err = ExprToExpression(ctx, v.Expr2)
+		if err != nil {
+			return nil, err
+		}
 
 		if v.Name == "timestampdiff" {
-			return function.NewTimestampDiff(unit, expr1, expr2), err
+			return function.NewTimestampDiff(unit, expr1, expr2), nil
 		} else if v.Name == "timestampadd" {
 			return nil, fmt.Errorf("TIMESTAMPADD() not supported")
 		}
 		return nil, nil
+	case *sqlparser.ExtractFuncExpr:
+		var unit sql.Expression = expression.NewLiteral(strings.ToUpper(v.Unit), types.LongText)
+		expr, err := ExprToExpression(ctx, v.Expr)
+		if err != nil {
+			return nil, err
+		}
+		return function.NewExtract(unit, expr), err
 	}
 }
 

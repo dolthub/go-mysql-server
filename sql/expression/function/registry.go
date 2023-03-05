@@ -78,6 +78,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "dayofweek", Fn: NewDayOfWeek},
 	sql.Function1{Name: "dayofyear", Fn: NewDayOfYear},
 	sql.Function1{Name: "degrees", Fn: NewDegrees},
+	sql.Function2{Name: "extract", Fn: NewExtract},
 	sql.Function1{Name: "first", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewFirst(e) }},
 	sql.Function1{Name: "floor", Fn: NewFloor},
 	sql.Function0{Name: "found_rows", Fn: NewFoundRows},

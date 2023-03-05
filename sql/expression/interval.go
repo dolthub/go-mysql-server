@@ -194,7 +194,7 @@ func textFormatParts(text string, r *regexp.Regexp) []int64 {
 	parts := r.FindStringSubmatch(text)
 	var result []int64
 	for _, p := range parts[1:] {
-		// It is safe to igore the error here, because at this point we know
+		// It is safe to ignore the error here, because at this point we know
 		// the string matches the regexp, and that means it can't be an
 		// invalid number.
 		n, _ := strconv.ParseInt(p, 10, 64)
