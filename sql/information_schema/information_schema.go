@@ -1187,6 +1187,9 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		privSet = mysql_db.NewPrivilegeSet()
+	}
 	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
 		var users = make(map[*mysql_db.User]struct{})
 		db, err := c.Database(ctx, "mysql")
@@ -1584,6 +1587,9 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		privSet = mysql_db.NewPrivilegeSet()
+	}
 	if privSet.Has(PrivilegeType_Select) || privSet.Database("mysql").Has(PrivilegeType_Select) {
 		var users = make(map[*mysql_db.User]struct{})
 		db, err := c.Database(ctx, "mysql")
@@ -1920,6 +1926,9 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
 	curUserPrivSet, _ := ctx.GetPrivilegeSet()
+	if curUserPrivSet == nil {
+		curUserPrivSet = mysql_db.NewPrivilegeSet()
+	}
 	// TODO: or has both of `CREATE USER` and `SYSTEM_USER` privileges
 	if curUserPrivSet.Has(PrivilegeType_Select) || curUserPrivSet.Has(PrivilegeType_Update) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Select) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Update) {
 		var users = make(map[*mysql_db.User]struct{})
@@ -1968,6 +1977,9 @@ func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 func userPrivilegesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
 	curUserPrivSet, _ := ctx.GetPrivilegeSet()
+	if curUserPrivSet == nil {
+		curUserPrivSet = mysql_db.NewPrivilegeSet()
+	}
 	if curUserPrivSet.Has(PrivilegeType_Select) || curUserPrivSet.Database("mysql").Has(PrivilegeType_Select) {
 		var users = make(map[*mysql_db.User]struct{})
 		db, err := catalog.Database(ctx, "mysql")

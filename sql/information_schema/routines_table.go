@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -138,6 +140,9 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		return nil, err
 	}
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		privSet = mysql_db.NewPrivilegeSet()
+	}
 	for dbName, procedures := range p {
 		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue
@@ -246,6 +251,9 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 		return nil, err
 	}
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		privSet = mysql_db.NewPrivilegeSet()
+	}
 	for dbName, procedures := range p {
 		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue
