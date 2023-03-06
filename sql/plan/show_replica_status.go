@@ -56,7 +56,7 @@ func (s *ShowReplicaStatus) String() string {
 func (s *ShowReplicaStatus) Schema() sql.Schema {
 	return sql.Schema{
 		{Name: "Replica_IO_State", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Source_Host", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Source_Host", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false},
 		{Name: "Source_User", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_Port", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Connect_Retry", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
