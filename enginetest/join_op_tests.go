@@ -107,6 +107,10 @@ var joinCostTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
+				Query:    `select a.i,a.f, b.i2 from niltable a left join niltable b on a.i = b.i2`,
+				Expected: []sql.Row{{1, nil, nil}, {2, nil, 2}, {3, nil, nil}, {4, 4.0, 4}, {5, 5.0, nil}, {6, 6.0, 6}},
+			},
+			{
 				Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
 				Expected: []sql.Row{
 					{1, "first row", 1, "third"},
