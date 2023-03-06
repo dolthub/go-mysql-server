@@ -1042,4 +1042,16 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 		},
 	},
+	{
+		Name: "Issue #5482",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: `SELECT T.TABLE_NAME AS label, 'connection.table' as type, T.TABLE_SCHEMA AS 'schema',
+T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
+0 AS isView FROM INFORMATION_SCHEMA.TABLES AS T WHERE T.TABLE_CATALOG = 'def' AND
+                                                      UPPER(T.TABLE_TYPE) = 'BASE TABLE' ORDER BY T.TABLE_NAME;`,
+				Expected: []sql.Row(nil),
+			},
+		},
+	},
 }

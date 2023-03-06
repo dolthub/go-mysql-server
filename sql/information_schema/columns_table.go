@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -164,6 +165,9 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 	)
 
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		privSet = mysql_db.NewPrivilegeSet()
+	}
 	globalPrivSetMap = getCurrentPrivSetMapForColumn(privSet.ToSlice(), globalPrivSetMap)
 
 	for _, db := range catalog.AllDatabases(ctx) {
