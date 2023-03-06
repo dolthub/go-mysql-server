@@ -250,7 +250,7 @@ func ResolveCoercibility(leftCollation sql.CollationID, leftCoercibility int, ri
 	}
 }
 
-//TODO: remove when finished with collation coercibility
+// TODO: remove when finished with collation coercibility
 func inspectExpression(expr sql.Expression, exprFunc func(sql.Expression)) {
 	for _, child := range expr.Children() {
 		inspectExpression(child, exprFunc)
