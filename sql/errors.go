@@ -478,7 +478,7 @@ var (
 	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")
 
 	// ErrCantDropIndex is return when a table can't drop an index due to a foreign key relationship.
-	ErrCantDropIndex = errors.NewKind("error: can't drop index '%s': needed in a foreign key constraint")
+	ErrCantDropIndex = errors.NewKind("error: can't drop index '%s': needed in foreign key constraint %s")
 
 	// ErrImmutableDatabaseProvider is returned when attempting to edit an immutable database databaseProvider.
 	ErrImmutableDatabaseProvider = errors.NewKind("error: can't modify database databaseProvider")
