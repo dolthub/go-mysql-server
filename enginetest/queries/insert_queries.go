@@ -1828,6 +1828,32 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/5411
+		Name: "check constrains with escaped strings",
+		SetUpScript: []string{
+			`CREATE TABLE quoted ( id int NOT NULL AUTO_INCREMENT,
+                                   val varchar(15) NOT NULL CHECK (val IN ('joe''s',
+                                                                           "jan's",
+                                                                           'mia\\''s',
+                                                                           'bob\'s')),
+                                   PRIMARY KEY (id));`,
+			`INSERT INTO quoted VALUES (0,"joe's");`,
+			`INSERT INTO quoted VALUES (0,"jan's");`,
+			`INSERT INTO quoted VALUES (0,"mia\\'s");`,
+			`INSERT INTO quoted VALUES (0,"bob's");`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT val from quoted",
+				Expected: []sql.Row{
+					{"joe's"},
+					{"jan's"},
+					{"mia\\'s"},
+					{"bob's"}},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
