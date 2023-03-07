@@ -35,10 +35,6 @@ type indexLookup struct {
 
 type indexLookupsByTable map[string]*indexLookup
 
-func getSpatialIndexLookup() indexLookup {
-	return indexLookup{}
-}
-
 // getIndexes returns indexes applicable to all tables in the node given for the expression given, keyed by the name of
 // the table (aliased as appropriate). If more than one index per table is usable for the expression given, chooses a
 // best match (typically the longest prefix by column count).
