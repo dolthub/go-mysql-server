@@ -35,7 +35,6 @@ type indexLookup struct {
 
 type indexLookupsByTable map[string]*indexLookup
 
-
 func getSpatialIndexLookup() indexLookup {
 	return indexLookup{}
 }
