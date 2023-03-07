@@ -35,6 +35,11 @@ type indexLookup struct {
 
 type indexLookupsByTable map[string]*indexLookup
 
+
+func getSpatialIndexLookup() indexLookup {
+	return indexLookup{}
+}
+
 // getIndexes returns indexes applicable to all tables in the node given for the expression given, keyed by the name of
 // the table (aliased as appropriate). If more than one index per table is usable for the expression given, chooses a
 // best match (typically the longest prefix by column count).
@@ -269,7 +274,7 @@ func getIndexes(
 	// TODO (james): add all other spatial index supported functions here
 	// TODO: make generalizable to all functions?
 	switch e := e.(type) {
-	case *spatial.Intersects:
+	case *spatial.Intersects, *spatial.Within:
 		// don't pushdown functions with bindvars
 		if exprHasBindVar(e) {
 			return nil, nil
@@ -281,8 +286,14 @@ func getIndexes(
 			return nil, nil
 		}
 
+		// Assume these are all BinaryExpression with exactly two children
+		children := e.Children()
+		if len(children) != 2 {
+			panic("st function is not a binary expression")
+		}
+
 		// Put GetField on the left
-		left, right := e.BinaryExpression.Left, e.BinaryExpression.Right
+		left, right := children[0], children[1]
 		if _, ok := right.(*expression.GetField); ok {
 			left, right = right, left
 		}

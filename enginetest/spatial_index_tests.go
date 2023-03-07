@@ -316,6 +316,21 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 		},
 	},
+	{
+		name: "filter point table with st_within",
+		setup: []string{
+			"create table point_tbl(p point not null srid 0, spatial index (p))",
+			"insert into point_tbl values (point(0,0)), (point(1,1)), (point(2,2))",
+		},
+		tests: []SpatialIndexPlanTestAssertion{
+			{
+				q: "select p from point_tbl where st_within(p, point(0,0))",
+				exp: []sql.Row{
+					{types.Point{}},
+				},
+			},
+		},
+	},
 }
 
 func TestSpatialIndexPlans(t *testing.T, harness Harness) {
