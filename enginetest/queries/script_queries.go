@@ -3299,6 +3299,33 @@ var SpatialIndexScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "add spatial index to non-empty table",
+		SetUpScript: []string{
+			"create table geom_tbl(g geometry not null srid 0)",
+			"insert into geom_tbl values (point(0,0)), (linestring(point(1,1), point(2,2)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table geom_tbl add spatial index (g)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table geom_tbl",
+				Expected: []sql.Row{
+					{"geom_tbl", "CREATE TABLE `geom_tbl` (\n  `g` geometry NOT NULL SRID 0,\n  SPATIAL KEY `g` (`g`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select count(*) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((0 0,0 10,10 10,10 0,0 0))'))",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
