@@ -73,7 +73,9 @@ func (pl *ProcessList) AddProcess(
 
 	pl.procs[ctx.Pid()] = &sql.Process{
 		Pid:        ctx.Pid(),
-		Connection: ctx.ID(),
+		Connection: ctx.Session.ID(),
+		Host:       ctx.Session.Client().Address,
+		Database:   ctx.Session.GetCurrentDatabase(),
 		Query:      query,
 		Progress:   make(map[string]sql.TableProgress),
 		User:       ctx.Session.Client().User,

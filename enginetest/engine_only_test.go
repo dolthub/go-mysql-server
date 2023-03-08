@@ -211,10 +211,12 @@ type analyzerTestCase struct {
 func TestShowProcessList(t *testing.T) {
 	require := require.New(t)
 
-	addr := "127.0.0.1:34567"
+	addr1 := "127.0.0.1:34567"
+	addr2 := "127.0.0.1:34568"
+	username := "foo"
 
 	p := sqle.NewProcessList()
-	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
 	ctx, err := p.AddProcess(ctx, "SELECT foo")
@@ -223,6 +225,7 @@ func TestShowProcessList(t *testing.T) {
 	p.AddTableProgress(ctx.Pid(), "a", 5)
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
+	sess = sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr2, User: username}, 2)
 	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess), sql.WithProcessList(p))
 	ctx, err = p.AddProcess(ctx, "SELECT bar")
 	require.NoError(err)
@@ -237,7 +240,6 @@ func TestShowProcessList(t *testing.T) {
 	p.UpdateTableProgress(2, "foo", 1)
 
 	n := plan.NewShowProcessList()
-	n.Database = "foo"
 
 	iter, err := n.RowIter(ctx, nil)
 	require.NoError(err)
@@ -245,7 +247,7 @@ func TestShowProcessList(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{int64(1), "foo", addr, "foo", "Query", int64(0),
+		{int64(1), username, addr1, nil, "Query", int64(0),
 			`
 a (4/5 partitions)
  ├─ a-1 (7/? rows)
@@ -253,7 +255,7 @@ a (4/5 partitions)
 
 b (2/6 partitions)
 `, "SELECT foo"},
-		{int64(1), "foo", addr, "foo", "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
+		{int64(2), username, addr2, nil, "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
 	}
 
 	require.ElementsMatch(expected, rows)

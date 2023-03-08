@@ -62,6 +62,8 @@ type ProcessList interface {
 type Process struct {
 	Pid        uint64
 	Connection uint32
+	Host       string
+	Database   string
 	User       string
 	Query      string
 	Progress   map[string]TableProgress

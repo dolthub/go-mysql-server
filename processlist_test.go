@@ -27,8 +27,9 @@ import (
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
 
+	clientHost := "127.0.0.1:34567"
 	p := NewProcessList()
-	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHost, User: "foo"}, 1)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
@@ -42,6 +43,7 @@ func TestProcessList(t *testing.T) {
 	expectedProcess := &sql.Process{
 		Pid:        1,
 		Connection: 1,
+		Host:       clientHost,
 		Progress: map[string]sql.TableProgress{
 			"a": {sql.Progress{Name: "a", Done: 0, Total: 5}, map[string]sql.PartitionProgress{}},
 			"b": {sql.Progress{Name: "b", Done: 0, Total: 6}, map[string]sql.PartitionProgress{}},
