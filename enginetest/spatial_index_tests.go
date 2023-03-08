@@ -334,9 +334,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: true,
 				q: "select p from point_tbl where st_within(p, null)",
-				exp: []sql.Row{
-					{},
-				},
+				exp: []sql.Row{},
 			},
 			{
 				q: "select i, p from point_pk_tbl where st_within(p, point(0,0))",
@@ -347,9 +345,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: true,
 				q: "select i, p from point_pk_tbl where st_within(p, null)",
-				exp: []sql.Row{
-					{},
-				},
+				exp: []sql.Row{},
 			},
 		},
 	},
