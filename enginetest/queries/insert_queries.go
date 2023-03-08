@@ -1613,19 +1613,19 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       `insert into t values (0, "first")`,
+				Query: `insert into t values (0, "first")`,
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Query:    `insert into t values (0, "second") on duplicate key update j = "third"`,
+				Query: `insert into t values (0, "second") on duplicate key update j = "third"`,
 				Expected: []sql.Row{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
-				Query:    `select i, j from t order by i`,
+				Query: `select i, j from t order by i`,
 				Expected: []sql.Row{
 					{0, "third"},
 				},
@@ -1639,37 +1639,37 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Query:    `select c1, c2, c3 from t order by c1`,
+				Query: `select c1, c2, c3 from t order by c1`,
 				Expected: []sql.Row{
 					{0, 0, 0},
 				},
 			},
 			{
-				Query:       `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
+				Query: `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query:    `select c1, c2, c3 from t order by c1`,
+				Query: `select c1, c2, c3 from t order by c1`,
 				Expected: []sql.Row{
 					{0, 0, 0},
 				},
 			},
 			{
-				Query:       `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
 				Expected: []sql.Row{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
-				Query:    `select c1, c2, c3 from t order by c1`,
+				Query: `select c1, c2, c3 from t order by c1`,
 				Expected: []sql.Row{
 					{0, 0, 1},
 				},
