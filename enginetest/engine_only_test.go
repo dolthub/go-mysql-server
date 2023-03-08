@@ -115,14 +115,16 @@ func TestLocks(t *testing.T) {
 	analyzer := analyzer.NewDefault(pro)
 	engine := sqle.New(analyzer, new(sqle.Config))
 
-	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx.SetCurrentDatabase("db")
 	sch, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err)
 
-	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx.SetCurrentDatabase("db")
 	sch, iter, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
 
@@ -370,7 +372,8 @@ func TestUnlockTables(t *testing.T) {
 
 	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider(db))
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("db").WithCurrentDB("db")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("db")
 	catalog.LockTable(ctx, "foo")
 	catalog.LockTable(ctx, "bar")
 

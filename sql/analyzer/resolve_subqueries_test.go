@@ -132,7 +132,8 @@ func TestResolveSubqueries(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("mydb")
 	resolveSubqueries := getRule(resolveSubqueriesId)
 	cacheSubqueryResults := getRule(cacheSubqueryResultsId)
 	finalizeSubqueries := getRule(finalizeSubqueriesId)
@@ -425,7 +426,8 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("mydb")
 	runTestCases(t, ctx, testCases, a, getRule(resolveSubqueriesId))
 }
 
@@ -474,7 +476,8 @@ func TestFinalizeSubqueryExpressions(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("mydb")
 	runTestCases(t, ctx, testCases, a, getRule(finalizeSubqueriesId))
 }
 
