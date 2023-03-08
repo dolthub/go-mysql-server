@@ -1801,6 +1801,8 @@ var InsertScripts = []ScriptTest{
                                t3 varchar(15) DEFAULT "joe\'s bar",
                                t4 varchar(15) DEFAULT "quote""bazzar",
                                t5 varchar(15) DEFAULT 'back\\''slash',
+                               t6 varchar(15) DEFAULT 'tab\ttab',
+                               t7 varchar(15) DEFAULT 'new\nline',
                                PRIMARY KEY (id)
                      );`,
 			"INSERT INTO escpe VALUES ();",
@@ -1826,6 +1828,14 @@ var InsertScripts = []ScriptTest{
 				Query:    "SELECT t5 from escpe",
 				Expected: []sql.Row{{"back\\'slash"}},
 			},
+			{
+				Query:    "SELECT t6 from escpe",
+				Expected: []sql.Row{{"tab\ttab"}},
+			},
+			{
+				Query:    "SELECT t7 from escpe",
+				Expected: []sql.Row{{"new\nline"}},
+			},
 		},
 	},
 	{
@@ -1836,21 +1846,25 @@ var InsertScripts = []ScriptTest{
                                    val varchar(15) NOT NULL CHECK (val IN ('joe''s',
                                                                            "jan's",
                                                                            'mia\\''s',
-                                                                           'bob\'s')),
+                                                                           'bob\'s',
+                                                                           'tab\tvs\tcoke',
+                                                                           'percent\%')),
                                    PRIMARY KEY (id));`,
 			`INSERT INTO quoted VALUES (0,"joe's");`,
 			`INSERT INTO quoted VALUES (0,"jan's");`,
 			`INSERT INTO quoted VALUES (0,"mia\\'s");`,
 			`INSERT INTO quoted VALUES (0,"bob's");`,
+			`INSERT INTO quoted VALUES (0,"tab\tvs\tcoke");`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT val from quoted",
+				Query: "SELECT val from quoted order by id",
 				Expected: []sql.Row{
 					{"joe's"},
 					{"jan's"},
 					{"mia\\'s"},
-					{"bob's"}},
+					{"bob's"},
+					{"tab\tvs\tcoke"}},
 			},
 		},
 	},
