@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
@@ -284,7 +285,7 @@ func getIndexes(
 		// Assume these are all BinaryExpression with exactly two children
 		children := e.Children()
 		if len(children) != 2 {
-			panic("st function is not a binary expression")
+			return nil, fmt.Errorf("st function is not a binary expression")
 		}
 
 		// Put GetField on the left
@@ -296,6 +297,10 @@ func getIndexes(
 		value, err := right.Eval(ctx, nil)
 		if err != nil {
 			return nil, err
+		}
+
+		if value == nil {
+			return nil, nil
 		}
 
 		g, ok := value.(types.GeometryValue)

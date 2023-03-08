@@ -321,12 +321,34 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		setup: []string{
 			"create table point_tbl(p point not null srid 0, spatial index (p))",
 			"insert into point_tbl values (point(0,0)), (point(1,1)), (point(2,2))",
+			"create table point_pk_tbl(i int primary key, p point not null srid 0, spatial index (p))",
+			"insert into point_pk_tbl values (0, point(0,0)), (1, point(1,1)), (2, point(2,2))",
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select p from point_tbl where st_within(p, point(0,0))",
 				exp: []sql.Row{
-					{types.Point{}},
+					{types.Point{X: 0, Y: 0}},
+				},
+			},
+			{
+				noIdx: true,
+				q: "select p from point_tbl where st_within(p, null)",
+				exp: []sql.Row{
+					{},
+				},
+			},
+			{
+				q: "select i, p from point_pk_tbl where st_within(p, point(0,0))",
+				exp: []sql.Row{
+					{0, types.Point{X: 0, Y: 0}},
+				},
+			},
+			{
+				noIdx: true,
+				q: "select i, p from point_pk_tbl where st_within(p, null)",
+				exp: []sql.Row{
+					{},
 				},
 			},
 		},
