@@ -1830,6 +1830,12 @@ func TestViews(t *testing.T, harness Harness) {
 			sql.NewRow(int64(2), "second row"),
 		}, nil, nil)
 	})
+
+	// Newer Tests should be put in view_queries.go
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ViewScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
