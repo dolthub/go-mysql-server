@@ -615,6 +615,7 @@ func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 
 		if eq {
 			k.deletes = append(k.deletes[:i], k.deletes[i+1:]...)
+			return nil
 		}
 	}
 
@@ -632,6 +633,7 @@ func (k *keylessTableEditAccumulator) Delete(value sql.Row) error {
 
 		if eq {
 			k.adds = append(k.adds[:i], k.adds[i+1:]...)
+			return nil
 		}
 
 	}
