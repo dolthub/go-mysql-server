@@ -62,6 +62,17 @@ func (f *ForeignKeyConstraint) DebugString() string {
 	)
 }
 
+// IsEquivalentToRestrict returns whether the referential action is equivalent to RESTRICT. In MySQL, although there are
+// a number of referential actions, the majority of them are functionally ignored and default to RESTRICT.
+func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
+	switch f {
+	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull:
+		return false
+	default:
+		return true
+	}
+}
+
 // CheckDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
 // but must store and return them when asked.
 type CheckDefinition struct {
