@@ -3353,6 +3353,23 @@ var SpatialIndexScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "spatial indexes do not work as foreign keys",
+		SetUpScript: []string{
+			"create table parent (i int primary key, p point not null srid 0, spatial index (p))",
+			"create table child1 (j int primary key, p point not null srid 0, spatial index (p))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table child1 add foreign key (p) references parent (p)",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query:       "create table child2 (p point not null srid 0, spatial index (p), foreign key (p) references parent (p))",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
