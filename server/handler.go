@@ -92,21 +92,14 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 		h.sel.ClientConnected()
 	}
 
-	h.sm.InitialSession(c)
-	h.sm.processlist.AddConnection(c.ConnectionID, c.RemoteAddr().String())
+	h.sm.BeginConn(c)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
-	err := h.sm.SetDB(c, schemaName)
-	if err != nil {
-		return err
-	}
-	sess := h.sm.session(c)
-	h.sm.processlist.ConnectionReady(sess)
-	return nil
+	return h.sm.SetDB(c, schemaName)
 }
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
@@ -154,7 +147,6 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	}()
 
 	defer h.sm.CloseConn(c)
-	defer h.sm.processlist.RemoveConnection(c.ConnectionID)
 	defer h.e.CloseSession(c.ConnectionID)
 
 	if ctx, err := h.sm.NewContextWithQuery(c, ""); err != nil {

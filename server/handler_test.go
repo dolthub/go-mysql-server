@@ -531,7 +531,8 @@ func TestHandlerKill(t *testing.T) {
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 
-	require.Len(handler.sm.sessions, 2)
+	require.Len(handler.sm.connections, 2)
+	require.Len(handler.sm.sessions, 0)
 
 	handler.ComInitDB(conn2, "test")
 	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result, more bool) error {
@@ -540,6 +541,8 @@ func TestHandlerKill(t *testing.T) {
 	require.NoError(err)
 
 	require.False(conn1.Conn.(*mockConn).closed)
+	require.Len(handler.sm.connections, 2)
+	require.Len(handler.sm.sessions, 1)
 
 	err = handler.sm.SetDB(conn1, "test")
 	require.NoError(err)
