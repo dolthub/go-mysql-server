@@ -69,6 +69,7 @@ type ProcessList interface {
 }
 
 type ProcessCommand string
+
 const (
 	// During initial connection and handshake.
 	ProcessCommandConnect ProcessCommand = "Connect"
