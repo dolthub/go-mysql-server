@@ -440,6 +440,43 @@ order by 1;`,
 		},
 	},
 	{
+		name: "unnest twice-nested subquery",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+			"CREATE table uv (u int primary key, v int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from xy where x in (select * from (select 1) r);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q: `
+with recursive rec(x) as (select 1 union select 1)
+select * from xy where x in (
+  select * from rec
+);`,
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q: `
+with recursive rec(x) as (
+  select 1
+  union
+  select rec.x from rec join xy on rec.x = xy.y
+)
+select * from uv
+where u in (select * from rec);`,
+				types: []plan.JoinType{plan.JoinTypeHash},
+				exp:   []sql.Row{{1, 1}},
+			},
+		},
+	},
+	{
 		name: "convert semi to inner join",
 		setup: []string{
 			"CREATE table xy (x int, y int, primary key(x,y));",
