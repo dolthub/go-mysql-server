@@ -327,7 +327,7 @@ func TestTrackProcess(t *testing.T) {
 
 	procs := ctx.ProcessList.Processes()
 	require.Len(procs, 1)
-	require.Equal(procs[0].Command, "Sleep")
+	require.Equal(procs[0].Command, sql.ProcessCommandSleep)
 	require.Error(ctx.Err())
 }
 

@@ -64,7 +64,7 @@ func (pl *ProcessList) AddConnection(id uint32, addr string) {
 	defer pl.mu.Unlock()
 	pl.procs[id] = &sql.Process{
 		Connection: id,
-		Command:    "Connect",
+		Command:    sql.ProcessCommandConnect,
 		Host:       addr,
 		User:       "unauthenticated user",
 		StartedAt:  time.Now(),
@@ -76,7 +76,7 @@ func (pl *ProcessList) ConnectionReady(sess sql.Session) {
 	defer pl.mu.Unlock()
 	pl.procs[sess.ID()] = &sql.Process{
 		Connection: sess.ID(),
-		Command:    "Sleep",
+		Command:    sql.ProcessCommandSleep,
 		Host:       sess.Client().Address,
 		User:       sess.Client().User,
 		StartedAt:  time.Now(),
@@ -115,7 +115,7 @@ func (pl *ProcessList) BeginQuery(
 	newCtx, cancel := context.WithCancel(ctx)
 	ctx = ctx.WithContext(newCtx)
 
-	p.Command = "Query"
+	p.Command = sql.ProcessCommandQuery
 	p.Query = query
 	p.QueryPid = pid
 	p.StartedAt = time.Now()
@@ -135,7 +135,7 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 	delete(pl.byQueryPid, pid)
 	p := pl.procs[id]
 	if p != nil && p.QueryPid == pid {
-		p.Command = "Sleep"
+		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
 		p.StartedAt = time.Now()
 		p.Kill()

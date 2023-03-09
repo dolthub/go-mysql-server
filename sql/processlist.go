@@ -68,17 +68,25 @@ type ProcessList interface {
 	RemovePartitionProgress(pid uint64, tableName, partitionName string)
 }
 
+type ProcessCommand string
+const (
+	// During initial connection and handshake.
+	ProcessCommandConnect ProcessCommand = "Connect"
+	// Connected, not running a query.
+	ProcessCommandSleep ProcessCommand = "Sleep"
+	// Currently running a query, possibly streaming the response.
+	ProcessCommandQuery ProcessCommand = "Query"
+)
+
 // Process represents a process in the SQL server.
 type Process struct {
 	Connection uint32
 	Host       string
 	Database   string
 	User       string
-	// Connect, on initial connection
-	// Sleep, while the connection is idle.
-	// Query, while a query is running.
-	Command string
-	// The time of the last Query transition...
+	Command    ProcessCommand
+
+	// The time of the last Command transition...
 	StartedAt time.Time
 
 	QueryPid uint64

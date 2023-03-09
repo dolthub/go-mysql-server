@@ -53,7 +53,7 @@ func TestProcessList(t *testing.T) {
 		},
 		User:      "foo",
 		Query:     "SELECT foo",
-		Command:   "Query",
+		Command:   sql.ProcessCommandQuery,
 		StartedAt: p.procs[1].StartedAt,
 	}
 	require.NotNil(p.procs[1].Kill)
@@ -119,7 +119,7 @@ func TestProcessList(t *testing.T) {
 	require.Len(p.procs, 2)
 	proc, ok := p.procs[2]
 	require.True(ok)
-	require.Equal("Sleep", proc.Command)
+	require.Equal(sql.ProcessCommandSleep, proc.Command)
 }
 
 func sortById(slice []sql.Process) {
