@@ -19,11 +19,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -42,7 +40,7 @@ import (
 func TestHandlerOutput(t *testing.T) {
 
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
+	dummyConn := newConn(1)
 	handler := NewHandler(
 		e,
 		NewSessionManager(
@@ -165,7 +163,7 @@ func TestHandlerOutput(t *testing.T) {
 
 func TestHandlerComPrepare(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
+	dummyConn := newConn(1)
 	handler := NewHandler(
 		e,
 		NewSessionManager(
@@ -239,7 +237,7 @@ func TestHandlerComPrepare(t *testing.T) {
 
 func TestHandlerComPrepareExecute(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
+	dummyConn := newConn(1)
 	handler := NewHandler(
 		e,
 		NewSessionManager(
@@ -316,7 +314,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 
 func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
+	dummyConn := newConn(1)
 	handler := NewHandler(
 		e,
 		NewSessionManager(
@@ -533,23 +531,24 @@ func TestHandlerKill(t *testing.T) {
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 
+	require.Len(handler.sm.connections, 2)
 	require.Len(handler.sm.sessions, 0)
 
 	handler.ComInitDB(conn2, "test")
 	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
-
 	require.NoError(err)
 
+	require.False(conn1.Conn.(*mockConn).closed)
+	require.Len(handler.sm.connections, 2)
 	require.Len(handler.sm.sessions, 1)
-	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
 	err = handler.sm.SetDB(conn1, "test")
 	require.NoError(err)
 	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
 	require.NoError(err)
-	ctx1, err = handler.e.ProcessList.AddProcess(ctx1, "SELECT 1")
+	ctx1, err = handler.e.ProcessList.BeginQuery(ctx1, "SELECT 1")
 	require.NoError(err)
 
 	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result, more bool) error {
@@ -557,18 +556,10 @@ func TestHandlerKill(t *testing.T) {
 	})
 	require.NoError(err)
 
+	require.Error(ctx1.Err())
+	require.True(conn1.Conn.(*mockConn).closed)
+	handler.ConnectionClosed(conn1)
 	require.Len(handler.sm.sessions, 1)
-	assertNoConnProcesses(t, e, conn1.ConnectionID)
-}
-
-func assertNoConnProcesses(t *testing.T, e *sqle.Engine, conn uint32) {
-	t.Helper()
-
-	for _, p := range e.ProcessList.Processes() {
-		if p.Connection == conn {
-			t.Errorf("expecting no processes with connection id %d", conn)
-		}
-	}
 }
 
 func TestSchemaToFields(t *testing.T) {
@@ -916,7 +907,7 @@ func TestBindingsToExprs(t *testing.T) {
 // Tests the CLIENT_FOUND_ROWS capabilities flag
 func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
+	dummyConn := newConn(1)
 
 	// Set the capabilities to include found rows
 	dummyConn.Capabilities = mysql.CapabilityClientFoundRows
@@ -1064,20 +1055,31 @@ func testSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Se
 
 type mockConn struct {
 	net.Conn
+	closed bool
 }
 
-func (c *mockConn) Close() error { return nil }
+func (c *mockConn) Close() error {
+	c.closed = true
+	return nil
+}
+
+func (c *mockConn) RemoteAddr() net.Addr {
+	return mockAddr{}
+}
+
+type mockAddr struct{}
+
+func (mockAddr) Network() string {
+	return "tcp"
+}
+
+func (mockAddr) String() string {
+	return "localhost"
+}
 
 func newConn(id uint32) *mysql.Conn {
-	conn := &mysql.Conn{
+	return &mysql.Conn{
 		ConnectionID: id,
+		Conn:         new(mockConn),
 	}
-
-	// Set conn so it does not panic when we close it
-	val := reflect.ValueOf(conn).Elem()
-	field := val.FieldByName("Conn")
-	field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
-	field.Set(reflect.ValueOf(new(mockConn)))
-
-	return conn
 }

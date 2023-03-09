@@ -115,14 +115,16 @@ func TestLocks(t *testing.T) {
 	analyzer := analyzer.NewDefault(pro)
 	engine := sqle.New(analyzer, new(sqle.Config))
 
-	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx.SetCurrentDatabase("db")
 	sch, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err)
 
-	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx.SetCurrentDatabase("db")
 	sch, iter, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
 
@@ -209,20 +211,27 @@ type analyzerTestCase struct {
 func TestShowProcessList(t *testing.T) {
 	require := require.New(t)
 
-	addr := "127.0.0.1:34567"
+	addr1 := "127.0.0.1:34567"
+	addr2 := "127.0.0.1:34568"
+	username := "foo"
 
 	p := sqle.NewProcessList()
-	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
+	p.AddConnection(1, addr1)
+	p.AddConnection(2, addr2)
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
+	p.ConnectionReady(sess)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
-	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "a", 5)
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
+	sess = sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr2, User: username}, 2)
+	p.ConnectionReady(sess)
 	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess), sql.WithProcessList(p))
-	ctx, err = p.AddProcess(ctx, "SELECT bar")
+	ctx, err = p.BeginQuery(ctx, "SELECT bar")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "foo", 2)
@@ -235,7 +244,6 @@ func TestShowProcessList(t *testing.T) {
 	p.UpdateTableProgress(2, "foo", 1)
 
 	n := plan.NewShowProcessList()
-	n.Database = "foo"
 
 	iter, err := n.RowIter(ctx, nil)
 	require.NoError(err)
@@ -243,7 +251,7 @@ func TestShowProcessList(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{int64(1), "foo", addr, "foo", "Query", int64(0),
+		{int64(1), username, addr1, nil, "Query", int64(0),
 			`
 a (4/5 partitions)
  ├─ a-1 (7/? rows)
@@ -251,7 +259,7 @@ a (4/5 partitions)
 
 b (2/6 partitions)
 `, "SELECT foo"},
-		{int64(1), "foo", addr, "foo", "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
+		{int64(2), username, addr2, nil, "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
 	}
 
 	require.ElementsMatch(expected, rows)
@@ -269,8 +277,12 @@ func TestTrackProcess(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(sqle.NewProcessList()))
-	ctx, err := ctx.ProcessList.AddProcess(ctx, "SELECT foo")
+	pl := sqle.NewProcessList()
+
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl))
+	pl.AddConnection(ctx.Session.ID(), "localhost")
+	pl.ConnectionReady(ctx.Session)
+	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
 	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
@@ -313,13 +325,10 @@ func TestTrackProcess(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
-	require.Len(ctx.ProcessList.Processes(), 0)
-
-	select {
-	case <-ctx.Done():
-	case <-time.After(5 * time.Millisecond):
-		t.Errorf("expecting context to be cancelled")
-	}
+	procs := ctx.ProcessList.Processes()
+	require.Len(procs, 1)
+	require.Equal(procs[0].Command, sql.ProcessCommandSleep)
+	require.Error(ctx.Err())
 }
 
 func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
@@ -370,7 +379,8 @@ func TestUnlockTables(t *testing.T) {
 
 	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider(db))
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("db").WithCurrentDB("db")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("db")
 	catalog.LockTable(ctx, "foo")
 	catalog.LockTable(ctx, "bar")
 

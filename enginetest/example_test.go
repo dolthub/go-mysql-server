@@ -30,7 +30,8 @@ func Example() {
 	db := createTestDatabase()
 	e := sqle.NewDefault(sql.NewDatabaseProvider(db))
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("test")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("test")
 
 	_, r, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
 	WHERE name = 'John Doe'

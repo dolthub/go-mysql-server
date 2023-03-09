@@ -78,7 +78,7 @@ func NewSession(harness Harness) *sql.Context {
 	currentDB := ctx.GetCurrentDatabase()
 	if currentDB == "" {
 		currentDB = "mydb"
-		ctx.WithCurrentDB(currentDB)
+		ctx.SetCurrentDatabase(currentDB)
 	}
 
 	_ = ctx.GetViewRegistry().Register(currentDB,

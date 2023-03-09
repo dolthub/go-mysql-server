@@ -92,6 +92,8 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 		h.sel.ClientConnected()
 	}
 
+	h.sm.AddConn(c)
+
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
@@ -144,26 +146,21 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		}
 	}()
 
-	ctx, err := h.sm.NewContextWithQuery(c, "")
-	if err != nil {
-		h.sm.CloseConn(c)
-		return
-	}
+	defer h.sm.RemoveConn(c)
+	defer h.e.CloseSession(c.ConnectionID)
 
-	_, err = h.e.LS.ReleaseAll(ctx)
-	if err != nil {
+	if ctx, err := h.sm.NewContextWithQuery(c, ""); err != nil {
 		logrus.Errorf("unable to release all locks on session close: %s", err)
-	}
-
-	h.sm.CloseConn(c)
-
-	// If connection was closed, kill its associated queries.
-	ctx.ProcessList.Kill(c.ConnectionID)
-	if err = h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
+	} else {
+		_, err = h.e.LS.ReleaseAll(ctx)
+		if err != nil {
+			logrus.Errorf("unable to release all locks on session close: %s", err)
+		}
+		if err = h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
+			logrus.Errorf("unable to unlock tables on session close: %s", err)
+		}
 	}
-
-	defer h.e.CloseSession(ctx)
 
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
@@ -357,10 +354,10 @@ func (h *Handler) doQuery(
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
-	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
+	ctx, err = ctx.ProcessList.BeginQuery(ctx, query)
 	defer func() {
 		if err != nil && ctx != nil {
-			ctx.ProcessList.Done(ctx.Pid())
+			ctx.ProcessList.EndQuery(ctx)
 		}
 	}()
 

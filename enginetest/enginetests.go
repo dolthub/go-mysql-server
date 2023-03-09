@@ -248,10 +248,12 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		e := mustNewEngine(t, h)
 		defer e.Close()
 		p := sqle.NewProcessList()
+		p.AddConnection(1, "localhost")
 		sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
+		p.ConnectionReady(sess)
 		ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
-		ctx, err := p.AddProcess(ctx, "SELECT foo")
+		ctx, err := p.BeginQuery(ctx, "SELECT foo")
 		require.NoError(t, err)
 
 		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{uint64(1), "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
@@ -4794,23 +4796,28 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
+	pl := e.ProcessList
 
 	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
 
 	clientSessionA := NewSession(harness)
-	clientSessionA.ProcessList = sqle.NewProcessList()
+	clientSessionA.ProcessList = pl
+	pl.AddConnection(clientSessionA.ID(), clientSessionA.Address())
+	pl.ConnectionReady(clientSessionA.Session)
 
 	clientSessionB := NewSession(harness)
-	clientSessionB.ProcessList = sqle.NewProcessList()
+	clientSessionB.ProcessList = pl
+	pl.AddConnection(clientSessionB.ID(), clientSessionB.Address())
+	pl.ConnectionReady(clientSessionB.Session)
 
 	var err error
 	// We want to add the query to the process list to represent the full workflow.
-	clientSessionA, err = clientSessionA.ProcessList.AddProcess(clientSessionA, "INSERT INTO a VALUES (1,1)")
+	clientSessionA, err = pl.BeginQuery(clientSessionA, "INSERT INTO a VALUES (1,1)")
 	require.NoError(err)
 	sch, iter, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")
 	require.NoError(err)
 
-	clientSessionB, err = clientSessionB.ProcessList.AddProcess(clientSessionB, "INSERT INTO a VALUES (2,2)")
+	clientSessionB, err = pl.BeginQuery(clientSessionB, "INSERT INTO a VALUES (2,2)")
 	require.NoError(err)
 	sch2, iter2, err := e.Query(clientSessionB, "INSERT INTO a VALUES (2,2)")
 	require.NoError(err)
