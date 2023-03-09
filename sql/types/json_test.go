@@ -39,7 +39,7 @@ func TestJsonCompare(t *testing.T) {
 		{`"a"`, `0`, 1},
 		{`0`, `null`, 1},
 
-		// null
+		// json null
 		{`null`, `0`, -1},
 		{`0`, `null`, 1},
 		{`null`, `null`, 0},
@@ -91,6 +91,29 @@ func TestJsonCompare(t *testing.T) {
 				MustJSON(test.left),
 				MustJSON(test.right),
 			)
+			require.NoError(t, err)
+			assert.Equal(t, test.cmp, cmp)
+		})
+	}
+}
+
+func TestJsonCompareNulls(t *testing.T) {
+	tests := []struct {
+		left  interface{}
+		right interface{}
+		cmp   int
+	}{
+		{nil, MustJSON(`{"key": "value"}`), 1},
+		{MustJSON(`{"key": "value"}`), nil, -1},
+		{nil, nil, 0},
+		{nil, MustJSON(`null`), 1},
+		{MustJSON(`null`), nil, -1},
+	}
+
+	for _, test := range tests {
+		name := fmt.Sprintf("%v_%v__%d", test.left, test.right, test.cmp)
+		t.Run(name, func(t *testing.T) {
+			cmp, err := JSON.Compare(test.left, test.right)
 			require.NoError(t, err)
 			assert.Equal(t, test.cmp, cmp)
 		})
