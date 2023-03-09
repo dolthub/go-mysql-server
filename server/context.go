@@ -92,7 +92,13 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.lastPid
 }
 
-func (s *SessionManager) BeginConn(conn *mysql.Conn) {
+// Add a connection to be tracked by the SessionManager. Should be called as
+// soon as possible after the server has accepted the connection. Results in
+// the connection being tracked by ProcessList and being available through
+// KillConnection. The connection will be tracked until RemoveConn is called,
+// so clients should ensure a call to AddConn is always paired up with a call
+// to RemoveConn.
+func (s *SessionManager) AddConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.connections[conn.ConnectionID] = conn
@@ -224,9 +230,12 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 	return context, nil
 }
 
-// Exposed through sql.Services.KillConnection. At the time that this is
-// called, any outstanding process has been killed through ProcessList.Kill()
-// as well.
+// Exposed through (*sql.Context).Services.KillConnection. Calls Close on the
+// tracked connection with |connID|. The full teardown of the connection is
+// asychronous, similar to how |Process.Kill| for tearing down an inflight
+// query is asynchronous. The connection and any running query will remain in
+// the ProcessList and in the SessionManager until it has been torn down by the
+// server handler.
 func (s *SessionManager) KillConnection(connID uint32) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -237,7 +246,7 @@ func (s *SessionManager) KillConnection(connID uint32) error {
 }
 
 // Remove the session assosiated with |conn| from the session manager.
-func (s *SessionManager) CloseConn(conn *mysql.Conn) {
+func (s *SessionManager) RemoveConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sessions, conn.ConnectionID)

@@ -92,7 +92,7 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 		h.sel.ClientConnected()
 	}
 
-	h.sm.BeginConn(c)
+	h.sm.AddConn(c)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
@@ -146,7 +146,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		}
 	}()
 
-	defer h.sm.CloseConn(c)
+	defer h.sm.RemoveConn(c)
 	defer h.e.CloseSession(c.ConnectionID)
 
 	if ctx, err := h.sm.NewContextWithQuery(c, ""); err != nil {
