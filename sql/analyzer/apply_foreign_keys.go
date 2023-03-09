@@ -73,7 +73,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		n, err = n.WithParentForeignKeyTables(fkParentTbls)
 		return n, transform.NewTree, err
 	case *plan.InsertInto:
-		if n.Destination == plan.EmptyTable {
+		if plan.IsEmptyTable(n.Destination) {
 			return n, transform.SameTree, nil
 		}
 		insertableDest, err := plan.GetInsertable(n.Destination)
@@ -109,7 +109,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		})
 		return nn, transform.NewTree, err
 	case *plan.Update:
-		if n.Child == plan.EmptyTable {
+		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
 		updateDest, err := plan.GetUpdatable(n.Child)
@@ -137,7 +137,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		})
 		return nn, transform.NewTree, err
 	case *plan.DeleteFrom:
-		if n.Child == plan.EmptyTable {
+		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
 

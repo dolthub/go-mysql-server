@@ -19,12 +19,24 @@ import "github.com/dolthub/go-mysql-server/sql"
 // EmptyTable is a node representing an empty table.
 var EmptyTable = new(emptyTable)
 
-type emptyTable struct{}
+func IsEmptyTable(n sql.Node) bool {
+	_, ok := n.(*emptyTable)
+	return ok
+}
+func NewEmptyTableWithSchema(schema sql.Schema) sql.Node {
+	return &emptyTable{schema: schema}
+}
 
-func (emptyTable) Schema() sql.Schema   { return nil }
-func (emptyTable) Children() []sql.Node { return nil }
-func (emptyTable) Resolved() bool       { return true }
-func (e *emptyTable) String() string    { return "EmptyTable" }
+var _ sql.Node = (*emptyTable)(nil)
+
+type emptyTable struct {
+	schema sql.Schema
+}
+
+func (e *emptyTable) Schema() sql.Schema { return e.schema }
+func (emptyTable) Children() []sql.Node  { return nil }
+func (emptyTable) Resolved() bool        { return true }
+func (e *emptyTable) String() string     { return "EmptyTable" }
 
 func (emptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil

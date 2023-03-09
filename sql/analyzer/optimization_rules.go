@@ -400,7 +400,8 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		}
 
 		if isFalse(e) {
-			return plan.EmptyTable, transform.NewTree, nil
+			emptyTable := plan.NewEmptyTableWithSchema(filter.Schema())
+			return emptyTable, transform.NewTree, nil
 		}
 
 		if isTrue(e) {

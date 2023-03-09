@@ -7158,6 +7158,11 @@ With c as (
 		Query:    "SELECT 4294967296;",
 		Expected: []sql.Row{{int64(4294967296)}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/5522
+		Query:    "select * from mytable where exists (select * from othertable where 1 = 0)",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
