@@ -31,6 +31,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 	span, ctx := ctx.Span("expand_stars")
 	defer span.End()
 
+	scopeLen := len(scope.Schema())
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, transform.SameTree, nil
@@ -42,7 +43,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 				return n, transform.SameTree, nil
 			}
 
-			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child)
+			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -55,7 +56,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 				return n, transform.SameTree, nil
 			}
 
-			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -67,7 +68,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 			if !n.Child.Resolved() {
 				return n, transform.SameTree, nil
 			}
-			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -81,7 +82,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 	})
 }
 
-func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node) ([]sql.Expression, transform.TreeIdentity, error) {
+func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node, scopeLen int) ([]sql.Expression, transform.TreeIdentity, error) {
 	schema := n.Schema()
 	var expressions []sql.Expression
 	same := transform.SameTree
@@ -97,7 +98,7 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node) 
 				lowerTable := strings.ToLower(star.Table)
 				if star.Table == "" || lowerTable == lowerSource {
 					exprs = append(exprs, expression.NewGetFieldWithTable(
-						i, col.Type, col.Source, col.Name, col.Nullable,
+						scopeLen+i, col.Type, col.Source, col.Name, col.Nullable,
 					))
 				}
 			}

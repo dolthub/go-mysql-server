@@ -346,7 +346,6 @@ func (fkEditor *ForeignKeyEditor) ColumnsUpdated(refActionData ForeignKeyRefActi
 
 // Close closes this handler along with all child handlers.
 func (fkEditor *ForeignKeyEditor) Close(ctx *sql.Context) error {
-	//TODO: remove this once the table collection has been added
 	err := fkEditor.Editor.Close(ctx)
 	for _, child := range fkEditor.RefActions {
 		nErr := child.Editor.Close(ctx)

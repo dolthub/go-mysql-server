@@ -349,7 +349,11 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
-		fkChain = fkChain.AddTableUpdater(fk.Database, fk.Table, childUpdater)
+		// If either referential action is not equivalent to RESTRICT, then the updater has the possibility of having
+		// its contents modified, therefore we add it to the chain.
+		if !fk.OnUpdate.IsEquivalentToRestrict() || !fk.OnDelete.IsEquivalentToRestrict() {
+			fkChain = fkChain.AddTableUpdater(fk.Database, fk.Table, childUpdater)
+		}
 
 		// Resolve the foreign key if it has not been resolved yet
 		if !fk.IsResolved {
@@ -533,7 +537,8 @@ func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName 
 
 // foreignKeyChain holds all previously used foreign keys and modified tables in the chain. Also keeps track of all
 // updaters that have been used in the chain. This differs from the updaters in the cache, as the cache may contain
-// updaters that are not a part of this chain.
+// updaters that are not a part of this chain. In addition, any updaters that cannot be modified (such as those
+// belonging to strictly RESTRICT referential actions) will not appear in the chain.
 type foreignKeyChain struct {
 	fkNames  map[string]struct{}
 	fkTables map[foreignKeyTableName]struct{}
