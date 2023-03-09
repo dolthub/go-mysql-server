@@ -245,3 +245,132 @@ func normalizeSelectSingleRel(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return c.Node, transform.SameTree, nil
 	})
 }
+
+func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	ret, same, _, err := recurseSubqueryForOuterFilters(n, a, scope)
+	return ret, same, err
+}
+
+// recurseSubqueryForOuterFilters recursively collects filters that belong
+// to an outer scope (maybe higher than the parent). We do a DFS to hoisting
+// filters upwards. We do a BFS to extract hoistable filters from subquery
+// expressions, before checking the exhausted subquery and its hoisted
+// expression for further hoisting.
+func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.Node, transform.TreeIdentity, []sql.Expression, error) {
+	var hoistFilters []sql.Expression
+	lowestAllowedIdx := len(scope.Schema())
+	ret, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		sq, _ := n.(*plan.SubqueryAlias)
+		if sq != nil {
+			subScope := scope.newScopeFromSubqueryAlias(sq)
+			newQ, same, hoisted, err := recurseSubqueryForOuterFilters(sq.Child, a, subScope)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			if len(hoisted) > 0 {
+				hoistFilters = append(hoistFilters, hoisted...)
+			}
+			return newQ, transform.NewTree, nil
+		}
+		f, _ := n.(*plan.Filter)
+		if f == nil {
+			return n, transform.SameTree, nil
+		}
+
+		var keepFilters []sql.Expression
+		allSame := transform.SameTree
+		queue := splitConjunction(f.Expression)
+		for len(queue) > 0 {
+			e := queue[0]
+			queue = queue[1:]
+
+			var not bool
+			if n, ok := e.(*expression.Not); ok {
+				not = true
+				e = n.Child
+			}
+
+			// (1) expand next if subquery expression
+			// (1a) add hoisted to queue
+			var sq *plan.Subquery
+			switch e := e.(type) {
+			case *plan.InSubquery:
+				sq, _ = e.Right.(*plan.Subquery)
+			case *plan.ExistsSubquery:
+				sq = e.Query
+			default:
+			}
+			if sq != nil {
+				children := e.Children()
+				subScope := scope.newScopeFromSubqueryExpression(n)
+				newQ, same, hoisted, err := recurseSubqueryForOuterFilters(sq.Query, a, subScope)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				allSame = allSame && same
+				if len(hoisted) > 0 {
+					newScopeFilters, _, err := FixFieldIndexesOnExpressions(scope, a, n.Schema(), hoisted...)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					queue = append(queue, newScopeFilters...)
+				}
+				newSq := sq.WithQuery(newQ)
+				children[len(children)-1] = newSq
+				e, _ = e.WithChildren(children...)
+			}
+
+			if not {
+				e = expression.NewNot(e)
+			}
+
+			if lowestAllowedIdx == 0 {
+				// cannot hoist any filters above root scope
+				keepFilters = append(keepFilters, e)
+				continue
+			}
+
+			// (2) evaluate this expression for hoistable
+			//   - at this point, subquery expressions will have lower deps extracted
+			var outerRef bool
+			var innerRef bool
+			transform.InspectExpr(e, func(e sql.Expression) bool {
+				gf, _ := e.(*expression.GetField)
+				if gf == nil {
+					return false
+				}
+				if gf.Index() >= lowestAllowedIdx {
+					innerRef = true
+				} else {
+					outerRef = true
+				}
+				return innerRef && outerRef
+			})
+
+			// (3)
+			if outerRef && !innerRef {
+				// belongs in outer scope
+				hoistFilters = append(hoistFilters, e)
+			} else {
+				keepFilters = append(keepFilters, e)
+			}
+		}
+
+		if len(hoistFilters) > 0 {
+			allSame = transform.NewTree
+		}
+		if allSame {
+			return n, transform.SameTree, nil
+		}
+
+		if len(keepFilters) == 0 {
+			return f.Child, transform.NewTree, nil
+		}
+		ret := plan.NewFilter(expression.JoinAnd(keepFilters...), f.Child)
+		return ret, transform.NewTree, nil
+	})
+	return ret, same, hoistFilters, err
+}

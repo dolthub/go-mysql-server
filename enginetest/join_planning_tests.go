@@ -449,6 +449,21 @@ order by 1;`,
 		},
 		tests: []JoinPlanTest{
 			{
+				q:     "select * from xy where x in (select * from (select 1) r where x = 1);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q:     "select * from xy where x in (select 1 where 1 in (select 1 where 1 in (select 1 where x != 2)) and x = 1);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeHash, plan.JoinTypeHash},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q:     "select * from xy where x in (select * from (select 1 where 1 in (select 1 where x != 2)) r where x = 1);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeHash},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
 				q:     "select * from xy where x in (select * from (select 1) r);",
 				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
 				exp:   []sql.Row{{1, 0}},
@@ -588,6 +603,8 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 				if tt.types != nil {
 					evalJoinTypeTest(t, harness, e, tt)
 				}
+				e.Analyzer.Verbose = true
+				e.Analyzer.Debug = true
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
 				}
