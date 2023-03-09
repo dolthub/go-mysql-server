@@ -3361,11 +3361,11 @@ var SpatialIndexScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "alter table child1 add foreign key (p) references parent (p)",
+				Query:       "alter table child1 add foreign key (p) references parent (p)",
 				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 			{
-				Query: "create table child2 (p point not null srid 0, spatial index (p), foreign key (p) references parent (p))",
+				Query:       "create table child2 (p point not null srid 0, spatial index (p), foreign key (p) references parent (p))",
 				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 		},
