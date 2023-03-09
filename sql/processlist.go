@@ -24,14 +24,24 @@ type ProcessList interface {
 	// Processes returns the list of current running processes
 	Processes() []Process
 
-	// AddProcess adds a new process to the list and returns a new context that can be used to cancel it
-	AddProcess(ctx *Context, query string) (*Context, error)
+	// AddConnection adds a new connection to the process list. Must be matched with RemoveConnection.
+	AddConnection(connID uint32, addr string)
+
+	// Transitions a connection from Connect to Sleep.
+	ConnectionReady(sess Session)
+
+	// RemoveConnection removes the connection from the process list.
+	RemoveConnection(connID uint32)
+
+	// BeginQuery transitions an existing connection in the processlist from Command "Sleep" to Command "Query".
+	// Returns a new context which will be canceled when this query is done.
+	BeginQuery(ctx *Context, query string) (*Context, error)
+
+	// EndQuery transitions a previously transitioned connection from Command "Query" to Command "Sleep".
+	EndQuery(ctx *Context)
 
 	// Kill terminates all queries for a given connection id
 	Kill(connID uint32)
-
-	// Done removes the finished process with the given pid from the process list
-	Done(pid uint64)
 
 	// UpdateTableProgress updates the progress of the table with the given name for the
 	// process with the given pid.
@@ -60,15 +70,21 @@ type ProcessList interface {
 
 // Process represents a process in the SQL server.
 type Process struct {
-	Pid        uint64
 	Connection uint32
 	Host       string
 	Database   string
 	User       string
-	Query      string
-	Progress   map[string]TableProgress
-	StartedAt  time.Time
-	Kill       context.CancelFunc
+	// Connect, on initial connection
+	// Sleep, while the connection is idle.
+	// Query, while a query is running.
+	Command string
+	// The time of the last Query transition...
+	StartedAt time.Time
+
+	QueryPid uint64
+	Query    string
+	Progress map[string]TableProgress
+	Kill     context.CancelFunc
 }
 
 // Done needs to be called when this process has finished.
@@ -133,9 +149,14 @@ func (e EmptyProcessList) Processes() []Process {
 	return nil
 }
 
-func (e EmptyProcessList) AddProcess(ctx *Context, query string) (*Context, error) {
+func (e EmptyProcessList) AddConnection(id uint32, addr string) {}
+func (e EmptyProcessList) ConnectionReady(Session)              {}
+func (e EmptyProcessList) RemoveConnection(uint32)              {}
+
+func (e EmptyProcessList) BeginQuery(ctx *Context, query string) (*Context, error) {
 	return ctx, nil
 }
+func (e EmptyProcessList) EndQuery(ctx *Context) {}
 
 func (e EmptyProcessList) Kill(connID uint32)                                       {}
 func (e EmptyProcessList) Done(pid uint64)                                          {}

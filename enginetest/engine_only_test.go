@@ -216,18 +216,22 @@ func TestShowProcessList(t *testing.T) {
 	username := "foo"
 
 	p := sqle.NewProcessList()
+	p.AddConnection(1, addr1)
+	p.AddConnection(2, addr2)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
+	p.ConnectionReady(sess)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
-	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "a", 5)
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
 	sess = sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr2, User: username}, 2)
+	p.ConnectionReady(sess)
 	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess), sql.WithProcessList(p))
-	ctx, err = p.AddProcess(ctx, "SELECT bar")
+	ctx, err = p.BeginQuery(ctx, "SELECT bar")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "foo", 2)
@@ -273,8 +277,12 @@ func TestTrackProcess(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(sqle.NewProcessList()))
-	ctx, err := ctx.ProcessList.AddProcess(ctx, "SELECT foo")
+	pl := sqle.NewProcessList()
+
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl))
+	pl.AddConnection(ctx.Session.ID(), "localhost")
+	pl.ConnectionReady(ctx.Session)
+	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
 	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
@@ -317,13 +325,10 @@ func TestTrackProcess(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
-	require.Len(ctx.ProcessList.Processes(), 0)
-
-	select {
-	case <-ctx.Done():
-	case <-time.After(5 * time.Millisecond):
-		t.Errorf("expecting context to be cancelled")
-	}
+	procs := ctx.ProcessList.Processes()
+	require.Len(procs, 1)
+	require.Equal(procs[0].Command, "Sleep")
+	require.Error(ctx.Err())
 }
 
 func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {

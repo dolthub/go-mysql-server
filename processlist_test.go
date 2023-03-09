@@ -27,11 +27,14 @@ import (
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
 
-	clientHost := "127.0.0.1:34567"
+	clientHostOne := "127.0.0.1:34567"
+	clientHostTwo := "127.0.0.1:34568"
 	p := NewProcessList()
-	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHost, User: "foo"}, 1)
+	p.AddConnection(1, clientHostOne)
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostOne, User: "foo"}, 1)
+	p.ConnectionReady(sess)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
-	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
 	require.Equal(uint64(1), ctx.Pid())
@@ -41,20 +44,21 @@ func TestProcessList(t *testing.T) {
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
 	expectedProcess := &sql.Process{
-		Pid:        1,
+		QueryPid:   1,
 		Connection: 1,
-		Host:       clientHost,
+		Host:       clientHostOne,
 		Progress: map[string]sql.TableProgress{
 			"a": {sql.Progress{Name: "a", Done: 0, Total: 5}, map[string]sql.PartitionProgress{}},
 			"b": {sql.Progress{Name: "b", Done: 0, Total: 6}, map[string]sql.PartitionProgress{}},
 		},
 		User:      "foo",
 		Query:     "SELECT foo",
-		StartedAt: p.procs[ctx.Pid()].StartedAt,
+		Command:   "Query",
+		StartedAt: p.procs[1].StartedAt,
 	}
-	require.NotNil(p.procs[ctx.Pid()].Kill)
-	p.procs[ctx.Pid()].Kill = nil
-	require.Equal(expectedProcess, p.procs[ctx.Pid()])
+	require.NotNil(p.procs[1].Kill)
+	p.procs[1].Kill = nil
+	require.Equal(expectedProcess, p.procs[1])
 
 	p.AddPartitionProgress(ctx.Pid(), "b", "b-1", -1)
 	p.AddPartitionProgress(ctx.Pid(), "b", "b-2", -1)
@@ -71,10 +75,13 @@ func TestProcessList(t *testing.T) {
 			"b-2": {sql.Progress{Name: "b-2", Done: 1, Total: -1}},
 		}},
 	}
-	require.Equal(expectedProgress, p.procs[ctx.Pid()].Progress)
+	require.Equal(expectedProgress, p.procs[1].Progress)
 
+	p.AddConnection(2, clientHostTwo)
+	sess = sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostTwo, User: "foo"}, 2)
+	p.ConnectionReady(sess)
 	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
-	ctx, err = p.AddProcess(ctx, "SELECT bar")
+	ctx, err = p.BeginQuery(ctx, "SELECT bar")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "foo", 2)
@@ -103,54 +110,58 @@ func TestProcessList(t *testing.T) {
 		result[i].Kill = nil
 	}
 
-	sortByPid(expected)
-	sortByPid(result)
+	sortById(expected)
+	sortById(result)
 	require.Equal(expected, result)
 
-	p.Done(2)
+	p.EndQuery(ctx)
 
-	require.Len(p.procs, 1)
-	_, ok := p.procs[1]
+	require.Len(p.procs, 2)
+	proc, ok := p.procs[2]
 	require.True(ok)
+	require.Equal("Sleep", proc.Command)
 }
 
-func sortByPid(slice []sql.Process) {
+func sortById(slice []sql.Process) {
 	sort.Slice(slice, func(i, j int) bool {
-		return slice[i].Pid < slice[j].Pid
+		return slice[i].Connection < slice[j].Connection
 	})
 }
 
 func TestKillConnection(t *testing.T) {
 	pl := NewProcessList()
 
+	pl.AddConnection(1, "")
+	pl.AddConnection(2, "")
 	s1 := sql.NewBaseSessionWithClientServer("", sql.Client{}, 1)
 	s2 := sql.NewBaseSessionWithClientServer("", sql.Client{}, 2)
+	pl.ConnectionReady(s1)
+	pl.ConnectionReady(s2)
+
+	_, err := pl.BeginQuery(
+		sql.NewContext(context.Background(), sql.WithPid(3), sql.WithSession(s1)),
+		"foo",
+	)
+	require.NoError(t, err)
+
+	_, err = pl.BeginQuery(
+		sql.NewContext(context.Background(), sql.WithPid(4), sql.WithSession(s2)),
+		"foo",
+	)
+	require.NoError(t, err)
 
 	var killed = make(map[uint64]bool)
-	for i := uint64(1); i <= 3; i++ {
-		// Odds get s1, evens get s2
-		s := s1
-		if i%2 == 0 {
-			s = s2
-		}
 
-		_, err := pl.AddProcess(
-			sql.NewContext(context.Background(), sql.WithPid(i), sql.WithSession(s)),
-			"foo",
-		)
-		require.NoError(t, err)
-
-		i := i
-		pl.procs[i].Kill = func() {
-			killed[i] = true
-		}
+	pl.procs[1].Kill = func() {
+		killed[1] = true
+	}
+	pl.procs[2].Kill = func() {
+		killed[2] = true
 	}
 
 	pl.Kill(1)
-	require.Len(t, pl.procs, 1)
+	require.Len(t, pl.procs, 2)
 
-	// Odds should have been killed
 	require.True(t, killed[1])
 	require.False(t, killed[2])
-	require.True(t, killed[3])
 }

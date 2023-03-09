@@ -95,6 +95,12 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.pid
 }
 
+func (s *SessionManager) InitialSession(conn *mysql.Conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessions[conn.ConnectionID] = &managedSession{nil, conn}
+}
+
 // NewSession creates a Session for the given connection and saves it to the session pool.
 func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error {
 	s.mu.Lock()
@@ -151,6 +157,9 @@ func (s *SessionManager) Iter(f func(session sql.Session) (stop bool, err error)
 
 	var err error
 	for _, value := range sessionsCopy {
+		if value.session == nil {
+			continue
+		}
 		var stop bool
 		stop, err = f(value.session)
 		if stop == true || err != nil {
@@ -178,7 +187,7 @@ func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Con
 	// cannot hold the lock. We will relock if we need to.
 	s.mu.Unlock()
 
-	if !ok {
+	if !ok || sess.session == nil {
 		err := s.NewSession(ctx, conn)
 		if err != nil {
 			return nil, err
@@ -228,7 +237,6 @@ func (s *SessionManager) KillConnection(connID uint32) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if entry, ok := s.sessions[connID]; ok {
-		delete(s.sessions, connID)
 		entry.conn.Close()
 	}
 	return nil

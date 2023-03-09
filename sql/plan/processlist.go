@@ -121,7 +121,7 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			status = append(status, printer.String())
 		}
 
-		if len(status) == 0 {
+		if len(status) == 0 && proc.Command == "Query" {
 			status = []string{"running"}
 		}
 
@@ -130,7 +130,7 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			user:    proc.User,
 			time:    int64(proc.Seconds()),
 			state:   strings.Join(status, ""),
-			command: "Query",
+			command: proc.Command,
 			host:    proc.Host,
 			info:    proc.Query,
 			db:      proc.Database,
