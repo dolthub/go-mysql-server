@@ -1798,6 +1798,26 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "insert on duplicate key for keyless table multiple unique columns batched",
+		SetUpScript: []string{
+			`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, 1) on duplicate key update c3 = 1`,
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 1},
+				},
+			},
+		},
+	},
+	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key);",
@@ -2417,26 +2437,6 @@ var InsertBrokenScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
-			},
-		},
-	},
-	{
-		Name: "insert on duplicate key for keyless table multiple unique columns all at once",
-		SetUpScript: []string{
-			`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, 1) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
-					{types.NewOkResult(5)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, 0, 1},
-				},
 			},
 		},
 	},
