@@ -3760,7 +3760,7 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// non-existent vars is the same as preparing with NULL
-				Query: "prepare stmt from @asdf",
+				Query:          "prepare stmt from @asdf",
 				ExpectedErrStr: "syntax error at position 5 near 'NULL'",
 			},
 			{
