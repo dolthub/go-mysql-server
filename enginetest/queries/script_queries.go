@@ -1748,7 +1748,7 @@ var ScriptTests = []ScriptTest{
 						"  `c` int NOT NULL,\n" +
 						"  `d` varchar(10),\n" +
 						"  PRIMARY KEY (`c`),\n" +
-						"  UNIQUE KEY `d` (`d`),\n" +
+						"  UNIQUE KEY `t2du` (`d`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -3296,6 +3296,77 @@ var SpatialIndexScriptTests = []ScriptTest{
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
+			},
+		},
+	},
+	{
+		Name: "add spatial index to non-empty table",
+		SetUpScript: []string{
+			"create table geom_tbl(g geometry not null srid 0)",
+			"insert into geom_tbl values (point(0,0)), (linestring(point(1,1), point(2,2)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table geom_tbl add spatial index (g)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table geom_tbl",
+				Expected: []sql.Row{
+					{"geom_tbl", "CREATE TABLE `geom_tbl` (\n  `g` geometry NOT NULL SRID 0,\n  SPATIAL KEY `g` (`g`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select count(*) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((0 0,0 10,10 10,10 0,0 0))'))",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "add spatial index to non-empty table with primary key",
+		SetUpScript: []string{
+			"create table geom_tbl(i int, j int, g geometry not null srid 0, primary key (i, j))",
+			"insert into geom_tbl values (1, 10, point(0,0)), (2, 20, linestring(point(1,1), point(2,2)))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table geom_tbl add spatial index (g)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table geom_tbl",
+				Expected: []sql.Row{
+					{"geom_tbl", "CREATE TABLE `geom_tbl` (\n  `i` int NOT NULL,\n  `j` int NOT NULL,\n  `g` geometry NOT NULL SRID 0,\n  PRIMARY KEY (`i`,`j`),\n  SPATIAL KEY `g` (`g`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select count(*) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((0 0,0 10,10 10,10 0,0 0))'))",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "spatial indexes do not work as foreign keys",
+		SetUpScript: []string{
+			"create table parent (i int primary key, p point not null srid 0, spatial index (p))",
+			"create table child1 (j int primary key, p point not null srid 0, spatial index (p))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table child1 add foreign key (p) references parent (p)",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query:       "create table child2 (p point not null srid 0, spatial index (p), foreign key (p) references parent (p))",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 		},
 	},

@@ -29,7 +29,8 @@ import (
 // wrapInTransaction runs the function given surrounded in a transaction. If the db provided doesn't implement
 // sql.TransactionDatabase, then the function is simply run and the transaction logic is a no-op.
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
-	ctx := NewContext(harness).WithCurrentDB(db.Name())
+	ctx := NewContext(harness)
+	ctx.SetCurrentDatabase(db.Name())
 	if privilegedDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
 		db = privilegedDatabase.Unwrap()
 	}

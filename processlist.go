@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -27,14 +28,16 @@ import (
 // ProcessList is a structure that keeps track of all the processes and their
 // status.
 type ProcessList struct {
-	mu    sync.RWMutex
-	procs map[uint64]*sql.Process
+	mu         sync.RWMutex
+	procs      map[uint32]*sql.Process
+	byQueryPid map[uint64]uint32
 }
 
 // NewProcessList creates a new process list.
 func NewProcessList() *ProcessList {
 	return &ProcessList{
-		procs: make(map[uint64]*sql.Process),
+		procs:      make(map[uint32]*sql.Process),
+		byQueryPid: make(map[uint64]uint32),
 	}
 }
 
@@ -56,32 +59,90 @@ func (pl *ProcessList) Processes() []sql.Process {
 	return result
 }
 
-// AddProcess adds a new process to the list given a process type and a query
-func (pl *ProcessList) AddProcess(
+func (pl *ProcessList) AddConnection(id uint32, addr string) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	pl.procs[id] = &sql.Process{
+		Connection: id,
+		Command:    sql.ProcessCommandConnect,
+		Host:       addr,
+		User:       "unauthenticated user",
+		StartedAt:  time.Now(),
+	}
+}
+
+func (pl *ProcessList) ConnectionReady(sess sql.Session) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	pl.procs[sess.ID()] = &sql.Process{
+		Connection: sess.ID(),
+		Command:    sql.ProcessCommandSleep,
+		Host:       sess.Client().Address,
+		User:       sess.Client().User,
+		StartedAt:  time.Now(),
+	}
+}
+
+func (pl *ProcessList) RemoveConnection(connID uint32) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	p := pl.procs[connID]
+	if p != nil {
+		if p.Kill != nil {
+			p.Kill()
+		}
+		delete(pl.byQueryPid, p.QueryPid)
+		delete(pl.procs, connID)
+	}
+}
+
+func (pl *ProcessList) BeginQuery(
 	ctx *sql.Context,
 	query string,
 ) (*sql.Context, error) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-
-	if _, ok := pl.procs[ctx.Pid()]; ok {
-		return nil, sql.ErrPidAlreadyUsed.New(ctx.Pid())
+	id := ctx.Session.ID()
+	pid := ctx.Pid()
+	p := pl.procs[id]
+	if p == nil {
+		return nil, errors.New("internal error: connection not registered with process list")
+	}
+	if _, ok := pl.byQueryPid[pid]; ok {
+		return nil, sql.ErrPidAlreadyUsed.New(pid)
 	}
 
 	newCtx, cancel := context.WithCancel(ctx)
 	ctx = ctx.WithContext(newCtx)
 
-	pl.procs[ctx.Pid()] = &sql.Process{
-		Pid:        ctx.Pid(),
-		Connection: ctx.ID(),
-		Query:      query,
-		Progress:   make(map[string]sql.TableProgress),
-		User:       ctx.Session.Client().User,
-		StartedAt:  time.Now(),
-		Kill:       cancel,
-	}
+	p.Command = sql.ProcessCommandQuery
+	p.Query = query
+	p.QueryPid = pid
+	p.StartedAt = time.Now()
+	p.Kill = cancel
+	p.Progress = make(map[string]sql.TableProgress)
+
+	pl.byQueryPid[ctx.Pid()] = ctx.Session.ID()
 
 	return ctx, nil
+}
+
+func (pl *ProcessList) EndQuery(ctx *sql.Context) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	id := ctx.Session.ID()
+	pid := ctx.Pid()
+	delete(pl.byQueryPid, pid)
+	p := pl.procs[id]
+	if p != nil && p.QueryPid == pid {
+		p.Command = sql.ProcessCommandSleep
+		p.Query = ""
+		p.StartedAt = time.Now()
+		p.Kill()
+		p.Kill = nil
+		p.QueryPid = 0
+		p.Progress = nil
+	}
 }
 
 // UpdateTableProgress updates the progress of the table with the given name for the
@@ -90,7 +151,11 @@ func (pl *ProcessList) UpdateTableProgress(pid uint64, name string, delta int64)
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	p, ok := pl.procs[pid]
+	id, ok := pl.byQueryPid[pid]
+	if !ok {
+		return
+	}
+	p, ok := pl.procs[id]
 	if !ok {
 		return
 	}
@@ -110,7 +175,11 @@ func (pl *ProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionN
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	p, ok := pl.procs[pid]
+	id, ok := pl.byQueryPid[pid]
+	if !ok {
+		return
+	}
+	p, ok := pl.procs[id]
 	if !ok {
 		return
 	}
@@ -135,7 +204,11 @@ func (pl *ProcessList) AddTableProgress(pid uint64, name string, total int64) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	p, ok := pl.procs[pid]
+	id, ok := pl.byQueryPid[pid]
+	if !ok {
+		return
+	}
+	p, ok := pl.procs[id]
 	if !ok {
 		return
 	}
@@ -154,7 +227,11 @@ func (pl *ProcessList) AddPartitionProgress(pid uint64, tableName, partitionName
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	p, ok := pl.procs[pid]
+	id, ok := pl.byQueryPid[pid]
+	if !ok {
+		return
+	}
+	p, ok := pl.procs[id]
 	if !ok {
 		return
 	}
@@ -179,7 +256,11 @@ func (pl *ProcessList) RemoveTableProgress(pid uint64, name string) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	p, ok := pl.procs[pid]
+	id, ok := pl.byQueryPid[pid]
+	if !ok {
+		return
+	}
+	p, ok := pl.procs[id]
 	if !ok {
 		return
 	}
@@ -193,7 +274,11 @@ func (pl *ProcessList) RemovePartitionProgress(pid uint64, tableName, partitionN
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	p, ok := pl.procs[pid]
+	id, ok := pl.byQueryPid[pid]
+	if !ok {
+		return
+	}
+	p, ok := pl.procs[id]
 	if !ok {
 		return
 	}
@@ -211,24 +296,9 @@ func (pl *ProcessList) Kill(connID uint32) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	for pid, proc := range pl.procs {
-		if proc.Connection == connID {
-			logrus.Infof("kill query: pid %d", pid)
-			proc.Done()
-			delete(pl.procs, pid)
-		}
+	p := pl.procs[connID]
+	if p != nil && p.Kill != nil {
+		logrus.Infof("kill query: pid %d", p.QueryPid)
+		p.Kill()
 	}
-}
-
-// Done removes the finished process with the given pid from the process list.
-// If the process does not exist, it will do nothing.
-func (pl *ProcessList) Done(pid uint64) {
-	pl.mu.Lock()
-	defer pl.mu.Unlock()
-
-	if proc, ok := pl.procs[pid]; ok {
-		proc.Done()
-	}
-
-	delete(pl.procs, pid)
 }

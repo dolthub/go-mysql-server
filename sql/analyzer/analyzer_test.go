@@ -60,7 +60,8 @@ func TestMaxIterations(t *testing.T) {
 			return n, transform.NewTree, nil
 		}).Build())
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("mydb")
 	notAnalyzed := plan.NewUnresolvedTable(tName, "")
 	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
 	require.Error(err)

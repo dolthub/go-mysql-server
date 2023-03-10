@@ -34,11 +34,15 @@ type process struct {
 }
 
 func (p process) toRow() sql.Row {
+	var db interface{}
+	if p.db != "" {
+		db = p.db
+	}
 	return sql.NewRow(
 		p.id,
 		p.user,
 		p.host,
-		p.db,
+		db,
 		p.command,
 		p.time,
 		p.state,
@@ -117,7 +121,7 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			status = append(status, printer.String())
 		}
 
-		if len(status) == 0 {
+		if len(status) == 0 && proc.Command == sql.ProcessCommandQuery {
 			status = []string{"running"}
 		}
 
@@ -126,10 +130,10 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			user:    proc.User,
 			time:    int64(proc.Seconds()),
 			state:   strings.Join(status, ""),
-			command: "Query",
-			host:    ctx.Session.Client().Address,
+			command: string(proc.Command),
+			host:    proc.Host,
 			info:    proc.Query,
-			db:      p.Database,
+			db:      proc.Database,
 		}.toRow()
 	}
 

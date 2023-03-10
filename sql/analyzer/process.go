@@ -135,7 +135,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	}
 
 	return plan.NewQueryProcess(node, func() {
-		processList.Done(ctx.Pid())
+		processList.EndQuery(ctx)
 		if span := ctx.RootSpan(); span != nil {
 			span.End()
 		}

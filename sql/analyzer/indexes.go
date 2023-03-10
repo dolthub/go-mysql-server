@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
@@ -269,7 +271,7 @@ func getIndexes(
 	// TODO (james): add all other spatial index supported functions here
 	// TODO: make generalizable to all functions?
 	switch e := e.(type) {
-	case *spatial.Intersects:
+	case *spatial.Intersects, *spatial.Within:
 		// don't pushdown functions with bindvars
 		if exprHasBindVar(e) {
 			return nil, nil
@@ -281,8 +283,14 @@ func getIndexes(
 			return nil, nil
 		}
 
+		// Assume these are all BinaryExpression with exactly two children
+		children := e.Children()
+		if len(children) != 2 {
+			return nil, fmt.Errorf("st function is not a binary expression")
+		}
+
 		// Put GetField on the left
-		left, right := e.BinaryExpression.Left, e.BinaryExpression.Right
+		left, right := children[0], children[1]
 		if _, ok := right.(*expression.GetField); ok {
 			left, right = right, left
 		}
@@ -290,6 +298,10 @@ func getIndexes(
 		value, err := right.Eval(ctx, nil)
 		if err != nil {
 			return nil, err
+		}
+
+		if value == nil {
+			return nil, nil
 		}
 
 		g, ok := value.(types.GeometryValue)

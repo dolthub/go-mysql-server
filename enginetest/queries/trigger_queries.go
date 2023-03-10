@@ -483,6 +483,30 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger with escaped chars",
+		SetUpScript: []string{
+			"CREATE TABLE testInt(v1 BIGINT);",
+			"CREATE TABLE testStr(s1 VARCHAR(255), s2 VARCHAR(255), s3 VARCHAR(255));",
+			`CREATE TRIGGER tt BEFORE INSERT ON testInt FOR EACH ROW
+				BEGIN
+					insert into testStr values (CONCAT('joe''s:', NEW.v1),
+                                                CONCAT('jill\'s:', NEW.v1 + 1),
+                                                CONCAT("stan""s:", NEW.v1 + 2)
+                                               );
+				END;`,
+			"INSERT INTO testInt VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM testStr",
+				Expected: []sql.Row{
+					{"joe's:1", "jill's:2", "stan\"s:3"},
+				},
+			},
+		},
+	},
+
 	// UPDATE triggers
 	{
 		Name: "trigger after update, insert into other table",

@@ -2001,6 +2001,84 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/5411
+		Name: "Defaults with escaped strings",
+		SetUpScript: []string{
+			`CREATE TABLE escpe (
+                               id int NOT NULL AUTO_INCREMENT,
+                               t1 varchar(15) DEFAULT 'foo''s baz',
+                               t2 varchar(15) DEFAULT 'who\'s dat',
+                               t3 varchar(15) DEFAULT "joe\'s bar",
+                               t4 varchar(15) DEFAULT "quote""bazzar",
+                               t5 varchar(15) DEFAULT 'back\\''slash',
+                               t6 varchar(15) DEFAULT 'tab\ttab',
+                               t7 varchar(15) DEFAULT 'new\nline',
+                               PRIMARY KEY (id)
+                     );`,
+			"INSERT INTO escpe VALUES ();",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT t1 from escpe",
+				Expected: []sql.Row{{"foo's baz"}},
+			},
+			{
+				Query:    "SELECT t2 from escpe",
+				Expected: []sql.Row{{"who's dat"}},
+			},
+			{
+				Query:    "SELECT t3 from escpe",
+				Expected: []sql.Row{{"joe's bar"}},
+			},
+			{
+				Query:    "SELECT t4 from escpe",
+				Expected: []sql.Row{{"quote\"bazzar"}},
+			},
+			{
+				Query:    "SELECT t5 from escpe",
+				Expected: []sql.Row{{"back\\'slash"}},
+			},
+			{
+				Query:    "SELECT t6 from escpe",
+				Expected: []sql.Row{{"tab\ttab"}},
+			},
+			{
+				Query:    "SELECT t7 from escpe",
+				Expected: []sql.Row{{"new\nline"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5411
+		Name: "check constrains with escaped strings",
+		SetUpScript: []string{
+			`CREATE TABLE quoted ( id int NOT NULL AUTO_INCREMENT,
+                                   val varchar(15) NOT NULL CHECK (val IN ('joe''s',
+                                                                           "jan's",
+                                                                           'mia\\''s',
+                                                                           'bob\'s',
+                                                                           'tab\tvs\tcoke',
+                                                                           'percent\%')),
+                                   PRIMARY KEY (id));`,
+			`INSERT INTO quoted VALUES (0,"joe's");`,
+			`INSERT INTO quoted VALUES (0,"jan's");`,
+			`INSERT INTO quoted VALUES (0,"mia\\'s");`,
+			`INSERT INTO quoted VALUES (0,"bob's");`,
+			`INSERT INTO quoted VALUES (0,"tab\tvs\tcoke");`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT val from quoted order by id",
+				Expected: []sql.Row{
+					{"joe's"},
+					{"jan's"},
+					{"mia\\'s"},
+					{"bob's"},
+					{"tab\tvs\tcoke"}},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

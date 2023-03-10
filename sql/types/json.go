@@ -36,6 +36,9 @@ type JsonType struct{}
 
 // Compare implements Type interface.
 func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := CompareNulls(a, b); hasNulls {
+		return res, nil
+	}
 	var err error
 	if a, err = t.Convert(a); err != nil {
 		return 0, err

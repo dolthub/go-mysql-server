@@ -6284,29 +6284,39 @@ inner join pq on true
 			" ├─ cacheable: true\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
-			"     └─ Filter\n" +
-			"         ├─ InSubquery\n" +
-			"         │   ├─ left: 1 (tinyint)\n" +
-			"         │   └─ right: Subquery\n" +
-			"         │       ├─ cacheable: true\n" +
-			"         │       └─ SubqueryAlias\n" +
-			"         │           ├─ name: a\n" +
-			"         │           ├─ outerVisibility: true\n" +
-			"         │           ├─ cacheable: true\n" +
-			"         │           └─ Union distinct\n" +
-			"         │               ├─ Project\n" +
-			"         │               │   ├─ columns: [1 (tinyint)]\n" +
-			"         │               │   └─ Table\n" +
-			"         │               │       ├─ name: \n" +
-			"         │               │       └─ columns: []\n" +
-			"         │               └─ Project\n" +
-			"         │                   ├─ columns: [2 (tinyint)]\n" +
-			"         │                   └─ Table\n" +
-			"         │                       ├─ name: \n" +
-			"         │                       └─ columns: []\n" +
-			"         └─ Table\n" +
-			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [:1!null]\n" +
+			"         └─ HashJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ 1 (tinyint)\n" +
+			"             │   └─ applySubq0.1:0!null\n" +
+			"             ├─ Distinct\n" +
+			"             │   └─ SubqueryAlias\n" +
+			"             │       ├─ name: applySubq0\n" +
+			"             │       ├─ outerVisibility: false\n" +
+			"             │       ├─ cacheable: true\n" +
+			"             │       └─ SubqueryAlias\n" +
+			"             │           ├─ name: a\n" +
+			"             │           ├─ outerVisibility: true\n" +
+			"             │           ├─ cacheable: true\n" +
+			"             │           └─ Union distinct\n" +
+			"             │               ├─ Project\n" +
+			"             │               │   ├─ columns: [1 (tinyint)]\n" +
+			"             │               │   └─ Table\n" +
+			"             │               │       ├─ name: \n" +
+			"             │               │       └─ columns: []\n" +
+			"             │               └─ Project\n" +
+			"             │                   ├─ columns: [2 (tinyint)]\n" +
+			"             │                   └─ Table\n" +
+			"             │                       ├─ name: \n" +
+			"             │                       └─ columns: []\n" +
+			"             └─ HashLookup\n" +
+			"                 ├─ source: TUPLE(applySubq0.1:0!null)\n" +
+			"                 ├─ target: TUPLE(1 (tinyint))\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: \n" +
+			"                         └─ columns: []\n" +
 			"",
 	},
 	{
@@ -6663,29 +6673,39 @@ inner join pq on true
 			" ├─ cacheable: true\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [1 (tinyint)]\n" +
-			"     └─ Filter\n" +
-			"         ├─ InSubquery\n" +
-			"         │   ├─ left: 1 (tinyint)\n" +
-			"         │   └─ right: Subquery\n" +
-			"         │       ├─ cacheable: true\n" +
-			"         │       └─ SubqueryAlias\n" +
-			"         │           ├─ name: a\n" +
-			"         │           ├─ outerVisibility: true\n" +
-			"         │           ├─ cacheable: true\n" +
-			"         │           └─ Union distinct\n" +
-			"         │               ├─ Project\n" +
-			"         │               │   ├─ columns: [1 (tinyint)]\n" +
-			"         │               │   └─ Table\n" +
-			"         │               │       ├─ name: \n" +
-			"         │               │       └─ columns: []\n" +
-			"         │               └─ Project\n" +
-			"         │                   ├─ columns: [2 (tinyint)]\n" +
-			"         │                   └─ Table\n" +
-			"         │                       ├─ name: \n" +
-			"         │                       └─ columns: []\n" +
-			"         └─ Table\n" +
-			"             ├─ name: \n" +
-			"             └─ columns: []\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [:1!null]\n" +
+			"         └─ HashJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ 1 (tinyint)\n" +
+			"             │   └─ applySubq0.1:0!null\n" +
+			"             ├─ Distinct\n" +
+			"             │   └─ SubqueryAlias\n" +
+			"             │       ├─ name: applySubq0\n" +
+			"             │       ├─ outerVisibility: false\n" +
+			"             │       ├─ cacheable: true\n" +
+			"             │       └─ SubqueryAlias\n" +
+			"             │           ├─ name: a\n" +
+			"             │           ├─ outerVisibility: true\n" +
+			"             │           ├─ cacheable: true\n" +
+			"             │           └─ Union distinct\n" +
+			"             │               ├─ Project\n" +
+			"             │               │   ├─ columns: [1 (tinyint)]\n" +
+			"             │               │   └─ Table\n" +
+			"             │               │       ├─ name: \n" +
+			"             │               │       └─ columns: []\n" +
+			"             │               └─ Project\n" +
+			"             │                   ├─ columns: [2 (tinyint)]\n" +
+			"             │                   └─ Table\n" +
+			"             │                       ├─ name: \n" +
+			"             │                       └─ columns: []\n" +
+			"             └─ HashLookup\n" +
+			"                 ├─ source: TUPLE(applySubq0.1:0!null)\n" +
+			"                 ├─ target: TUPLE(1 (tinyint))\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: \n" +
+			"                         └─ columns: []\n" +
 			"",
 	},
 	{

@@ -2105,6 +2105,29 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
+
+	{
+		Name: "String literals with escaped chars",
+		SetUpScript: []string{
+			`CREATE PROCEDURE joe(IN str VARCHAR(15)) SELECT CONCAT('joe''s bar:', str);`,
+			`CREATE PROCEDURE jill(IN str VARCHAR(15)) SELECT CONCAT('jill\'s bar:', str);`,
+			`CREATE PROCEDURE stan(IN str VARCHAR(15)) SELECT CONCAT("stan\'s bar:", str);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL joe('open')",
+				Expected: []sql.Row{{"joe's bar:open"}},
+			},
+			{
+				Query:    "CALL jill('closed')",
+				Expected: []sql.Row{{"jill's bar:closed"}},
+			},
+			{
+				Query:    "CALL stan('quarantined')",
+				Expected: []sql.Row{{"stan's bar:quarantined"}},
+			},
+		},
+	},
 }
 
 var ProcedureDropTests = []ScriptTest{

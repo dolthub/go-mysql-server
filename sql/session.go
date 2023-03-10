@@ -223,19 +223,10 @@ type Context struct {
 	queryTime   time.Time
 	tracer      trace.Tracer
 	rootSpan    trace.Span
-	initialDb   string
 }
 
 // ContextOption is a function to configure the context.
 type ContextOption func(*Context)
-
-// WithInitialDatabase adds the initial database name to the context.
-// Calls ctx.SetCurrentDatabase after constructing the context.
-func WithInitialDatabase(dbName string) ContextOption {
-	return func(ctx *Context) {
-		ctx.initialDb = dbName
-	}
-}
 
 // WithSession adds the given session to the context.
 func WithSession(s Session) ContextOption {
@@ -343,9 +334,6 @@ func NewContext(
 	if c.Session == nil {
 		c.Session = NewBaseSession()
 	}
-	if c.initialDb != "" {
-		c.Session.SetCurrentDatabase(c.initialDb)
-	}
 
 	return c
 }
@@ -402,11 +390,6 @@ func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(c.Context)
 
 	return c.WithContext(ctx), cancelFunc
-}
-
-func (c *Context) WithCurrentDB(db string) *Context {
-	c.SetCurrentDatabase(db)
-	return c
 }
 
 // WithContext returns a new context with the given underlying context.

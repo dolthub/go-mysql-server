@@ -69,7 +69,8 @@ func TestResolveViews(t *testing.T) {
 
 	sess := sql.NewBaseSession()
 	sess.SetViewRegistry(viewReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess)).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx.SetCurrentDatabase("mydb")
 
 	// AS OF expressions on a view should be pushed down to unresolved tables
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview1", "")

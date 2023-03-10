@@ -40,7 +40,8 @@ func TestShowTableStatus(t *testing.T) {
 	node := NewShowTableStatus(db1)
 	node.Catalog = catalog
 
-	ctx := sql.NewEmptyContext().WithCurrentDB("a")
+	ctx := sql.NewEmptyContext()
+	ctx.SetCurrentDatabase("a")
 	iter, err := node.RowIter(ctx, nil)
 	require.NoError(err)
 

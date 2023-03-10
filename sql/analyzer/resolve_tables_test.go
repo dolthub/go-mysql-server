@@ -35,7 +35,8 @@ func TestResolveTables(t *testing.T) {
 	db.AddTableAsOf("mytable", table, "2019-01-01")
 
 	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Id, f.Apply).Build()
-	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
+	ctx := sql.NewEmptyContext()
+	ctx.SetCurrentDatabase("mydb")
 
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
 	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
@@ -102,7 +103,8 @@ func TestResolveTablesNested(t *testing.T) {
 	db2.AddTable("my_other_table", table2)
 
 	a := NewBuilder(sql.NewDatabaseProvider(db, db2)).AddPostAnalyzeRule(f.Id, f.Apply).Build()
-	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
+	ctx := sql.NewEmptyContext()
+	ctx.SetCurrentDatabase("mydb")
 
 	notAnalyzed := plan.NewProject(
 		[]sql.Expression{expression.NewGetField(0, types.Int32, "i", true)},
