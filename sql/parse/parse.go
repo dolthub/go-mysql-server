@@ -439,12 +439,30 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 }
 
 func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
-	childStmt, err := sqlparser.Parse(n.Expr)
+	expr := n.Expr
+	if strings.HasPrefix(n.Expr, "@") {
+		varName := strings.ToLower(strings.Trim(n.Expr, "@"))
+		_, val, err := ctx.GetUserVariable(ctx, varName)
+		if err != nil {
+			return nil, err
+		}
+		strVal, err := types.LongText.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+		if strVal == nil {
+			expr = "NULL"
+		} else {
+			expr = strVal.(string)
+		}
+	}
+
+	childStmt, err := sqlparser.Parse(expr)
 	if err != nil {
 		return nil, err
 	}
 
-	child, err := convert(ctx, childStmt, n.Expr)
+	child, err := convert(ctx, childStmt, expr)
 	if err != nil {
 		return nil, err
 	}
