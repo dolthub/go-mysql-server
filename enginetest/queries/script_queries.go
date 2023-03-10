@@ -3756,12 +3756,22 @@ var PreparedScriptTests = []ScriptTest{
 			"insert into t values (0), (1), (2);",
 			"set @a = 'select * from t order by i'",
 			"set @b = concat('select 1',' + 1')",
+			"set @num = 123",
+			"set @bad = 'bad'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				// non-existent vars is the same as preparing with NULL
 				Query:          "prepare stmt from @asdf",
 				ExpectedErrStr: "syntax error at position 5 near 'NULL'",
+			},
+			{
+				Query: "prepare stmt from @num",
+				ExpectedErrStr: "syntax error at position 4 near '123'",
+			},
+			{
+				Query: "prepare stmt from @bad",
+				ExpectedErrStr: "syntax error at position 4 near 'bad'",
 			},
 			{
 				Query: "prepare stmt from @a",
