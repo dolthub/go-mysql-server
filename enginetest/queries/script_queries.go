@@ -3754,10 +3754,12 @@ var PreparedScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"create table t (i int primary key);",
 			"insert into t values (0), (1), (2);",
-			"set @a = 'select * from t order by i'",
-			"set @b = concat('select 1',' + 1')",
 			"set @num = 123",
 			"set @bad = 'bad'",
+			"set @a = 'select * from t order by i'",
+			"set @b = concat('select 1',' + 1')",
+			"set @c = 'select 1 from dual limit ?'",
+			"set @d = 'select @num'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -3797,6 +3799,30 @@ var PreparedScriptTests = []ScriptTest{
 				Query: "execute stmt",
 				Expected: []sql.Row{
 					{2},
+				},
+			},
+			{
+				Query: "prepare stmt from @c",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt using @num",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "prepare stmt from @d",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt",
+				Expected: []sql.Row{
+					{123},
 				},
 			},
 		},
