@@ -3750,6 +3750,48 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "prepare using user vars",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"insert into t values (0), (1), (2);",
+			"set @a = 'select * from t order by i'",
+			"set @b = concat('select 1',' + 1')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// non-existent vars is the same as preparing with NULL
+				Query: "prepare stmt from @asdf",
+				ExpectedErrStr: "syntax error at position 5 near 'NULL'",
+			},
+			{
+				Query: "prepare stmt from @a",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt",
+				Expected: []sql.Row{
+					{0},
+					{1},
+					{2},
+				},
+			},
+			{
+				Query: "prepare stmt from @b",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.PrepareInfo{}}},
+				},
+			},
+			{
+				Query: "execute stmt",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
+	{
 		Name: "Complex join query with foreign key constraints",
 		SetUpScript: []string{
 			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `username` varchar(255) NOT NULL, PRIMARY KEY (`id`));",
