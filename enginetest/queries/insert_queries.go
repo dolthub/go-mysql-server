@@ -1815,6 +1815,18 @@ var InsertScripts = []ScriptTest{
 					{0, 0, 1},
 				},
 			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 0, 2), (0, 0, 3), (0, 0, 4) on duplicate key update c3 = 100`,
+				Expected: []sql.Row{
+					{types.NewOkResult(5)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 100},
+				},
+			},
 		},
 	},
 	{
