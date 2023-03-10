@@ -77,7 +77,7 @@ const (
 	optimizeDistinctId             // optimizeDistinct
 
 	// after default
-	hoistOutOfScopeFiltersId     // transformJoinApply
+	hoistOutOfScopeFiltersId     // hoistOutOfScopeFilters
 	transformJoinApplyId         // transformJoinApply
 	hoistSelectExistsId          // hoistSelectExists
 	finalizeSubqueriesId         // finalizeSubqueries

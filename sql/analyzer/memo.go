@@ -465,6 +465,8 @@ func (e *exprGroup) String() string {
 			}
 			if e.cost == n.cost()+childCost {
 				b.WriteString(")*")
+			} else {
+				b.WriteString(")")
 			}
 		} else {
 			b.WriteString(")")

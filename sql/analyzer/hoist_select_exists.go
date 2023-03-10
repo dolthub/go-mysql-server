@@ -169,6 +169,7 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 	if len(retFilters) > 0 {
 		ret = plan.NewFilter(expression.JoinAnd(retFilters...), ret)
 	}
+	log.Debug(sql.DebugString(ret))
 	return ret, transform.NewTree, nil
 }
 

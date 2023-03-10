@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -176,7 +177,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			return n, transform.SameTree, err
 		}
 	}
-	return ret, transform.TreeIdentity(applyId > 0), nil
+	return ret, transform.TreeIdentity(applyId == 0), nil
 }
 
 // simplifySubqExpr converts a subquery expression into a *plan.TableAlias
@@ -246,19 +247,34 @@ func normalizeSelectSingleRel(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	})
 }
 
+// hoistOutOfScopeFilters pulls filters upwards into the parent scope
+// to decorrelate subqueries for further optimizations.
+//
+// select * from xy where exists (select * from uv where x = 1)
+// =>
+// select * from xy where x = 1 and exists (select * from uv)
 func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	switch n.(type) {
+	case *plan.DeleteFrom, *plan.InsertInto, *plan.TriggerBeginEndBlock:
+		return n, transform.SameTree, nil
+	}
 	ret, same, _, err := recurseSubqueryForOuterFilters(n, a, scope)
 	return ret, same, err
 }
 
-// recurseSubqueryForOuterFilters recursively collects filters that belong
-// to an outer scope (maybe higher than the parent). We do a DFS to hoisting
-// filters upwards. We do a BFS to extract hoistable filters from subquery
-// expressions, before checking the exhausted subquery and its hoisted
-// expression for further hoisting.
+// recurseSubqueryForOuterFilters recursively hoists filters that belong
+// to an outer scope (maybe higher than the parent). We do a DFS for hoisting
+// subquery filters. We do a BFS to extract hoistable filters from subquery
+// expressions before checking the normalized subquery and its hoisted
+// filters for further hoisting.
 func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.Node, transform.TreeIdentity, []sql.Expression, error) {
 	var hoistFilters []sql.Expression
 	lowestAllowedIdx := len(scope.Schema())
+
+	inScope, err := getTableAliases(n, nil)
+	if err != nil {
+		return n, transform.SameTree, nil, err
+	}
 	ret, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		sq, _ := n.(*plan.SubqueryAlias)
 		if sq != nil {
@@ -273,7 +289,9 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			if len(hoisted) > 0 {
 				hoistFilters = append(hoistFilters, hoisted...)
 			}
-			return newQ, transform.NewTree, nil
+			ret := *sq
+			ret.Child = newQ
+			return &ret, transform.NewTree, nil
 		}
 		f, _ := n.(*plan.Filter)
 		if f == nil {
@@ -293,8 +311,10 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 				e = n.Child
 			}
 
-			// (1) expand next if subquery expression
-			// (1a) add hoisted to queue
+			// (1) normalize subquery expressions
+			// (1a) recurse downwards
+			// (1b) add hoisted to queue
+			// (1c) standardize subquery expression for hoisting
 			var sq *plan.Subquery
 			switch e := e.(type) {
 			case *plan.InSubquery:
@@ -328,13 +348,12 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			}
 
 			if lowestAllowedIdx == 0 {
-				// cannot hoist any filters above root scope
+				// cannot hoist filters above root scope
 				keepFilters = append(keepFilters, e)
 				continue
 			}
 
-			// (2) evaluate this expression for hoistable
-			//   - at this point, subquery expressions will have lower deps extracted
+			// (2) evaluate if expression hoistable
 			var outerRef bool
 			var innerRef bool
 			transform.InspectExpr(e, func(e sql.Expression) bool {
@@ -342,16 +361,16 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 				if gf == nil {
 					return false
 				}
-				if gf.Index() >= lowestAllowedIdx {
+				if _, ok := inScope[strings.ToLower(gf.Table())]; ok {
 					innerRef = true
 				} else {
-					outerRef = true
+					print("")
 				}
 				return innerRef && outerRef
 			})
 
-			// (3)
-			if outerRef && !innerRef {
+			// (3) bucket filter into parent or current scope
+			if !innerRef {
 				// belongs in outer scope
 				hoistFilters = append(hoistFilters, e)
 			} else {
