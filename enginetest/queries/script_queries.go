@@ -3766,11 +3766,11 @@ var PreparedScriptTests = []ScriptTest{
 				ExpectedErrStr: "syntax error at position 5 near 'NULL'",
 			},
 			{
-				Query: "prepare stmt from @num",
+				Query:          "prepare stmt from @num",
 				ExpectedErrStr: "syntax error at position 4 near '123'",
 			},
 			{
-				Query: "prepare stmt from @bad",
+				Query:          "prepare stmt from @bad",
 				ExpectedErrStr: "syntax error at position 4 near 'bad'",
 			},
 			{
