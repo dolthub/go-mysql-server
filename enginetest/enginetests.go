@@ -5217,7 +5217,6 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			{1, 1},
 		}, nil, nil)
 	})
-
 }
 
 func TestAddAutoIncrementColumn(t *testing.T, harness Harness) {

@@ -1763,6 +1763,7 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	}
 
 	delete(t.indexes, "PRIMARY")
+	t.ed = nil
 
 	t.schema.PkOrdinals = []int{}
 
