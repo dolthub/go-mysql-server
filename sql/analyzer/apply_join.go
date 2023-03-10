@@ -255,7 +255,7 @@ func normalizeSelectSingleRel(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 // select * from xy where x = 1 and exists (select * from uv)
 func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n.(type) {
-	case *plan.DeleteFrom, *plan.InsertInto, *plan.TriggerBeginEndBlock:
+	case *plan.TriggerBeginEndBlock:
 		return n, transform.SameTree, nil
 	}
 	ret, same, _, err := recurseSubqueryForOuterFilters(n, a, scope)
@@ -270,11 +270,7 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.Node, transform.TreeIdentity, []sql.Expression, error) {
 	var hoistFilters []sql.Expression
 	lowestAllowedIdx := len(scope.Schema())
-
-	inScope, err := getTableAliases(n, nil)
-	if err != nil {
-		return n, transform.SameTree, nil, err
-	}
+	var inScope TableAliases
 	ret, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		sq, _ := n.(*plan.SubqueryAlias)
 		if sq != nil {
@@ -356,6 +352,13 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			// (2) evaluate if expression hoistable
 			var outerRef bool
 			var innerRef bool
+			if inScope == nil {
+				var err error
+				inScope, err = getTableAliases(n, nil)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+			}
 			transform.InspectExpr(e, func(e sql.Expression) bool {
 				gf, _ := e.(*expression.GetField)
 				if gf == nil {
