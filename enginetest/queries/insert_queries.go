@@ -1870,7 +1870,7 @@ var InsertScripts = []ScriptTest{
 	},
 }
 
-var InsertDuplicateKeyKeyless = []ScriptTest {
+var InsertDuplicateKeyKeyless = []ScriptTest{
 	{
 		Name: "insert on duplicate key for keyless table",
 		SetUpScript: []string{
