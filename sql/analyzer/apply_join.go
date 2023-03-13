@@ -258,7 +258,10 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	case *plan.TriggerBeginEndBlock:
 		return n, transform.SameTree, nil
 	}
-	ret, same, _, err := recurseSubqueryForOuterFilters(n, a, scope)
+	ret, same, filters, err := recurseSubqueryForOuterFilters(n, a, scope)
+	if len(filters) != 0 {
+		return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
+	}
 	return ret, same, err
 }
 
@@ -285,9 +288,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			if len(hoisted) > 0 {
 				hoistFilters = append(hoistFilters, hoisted...)
 			}
-			ret := *sq
-			ret.Child = newQ
-			return &ret, transform.NewTree, nil
+			return sq.WithChild(newQ), transform.NewTree, nil
 		}
 		f, _ := n.(*plan.Filter)
 		if f == nil {
@@ -350,8 +351,8 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			}
 
 			// (2) evaluate if expression hoistable
-			var outerRef bool
 			var innerRef bool
+			var maybeAlias bool
 			if inScope == nil {
 				var err error
 				inScope, err = getTableAliases(n, nil)
@@ -364,16 +365,18 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 				if gf == nil {
 					return false
 				}
-				if _, ok := inScope[strings.ToLower(gf.Table())]; ok {
+				tName := strings.ToLower(gf.Table())
+				if tName == "" {
+					maybeAlias = true
+				} else if _, ok := inScope[tName]; ok {
 					innerRef = true
-				} else {
-					print("")
 				}
-				return innerRef && outerRef
+
+				return innerRef && maybeAlias
 			})
 
 			// (3) bucket filter into parent or current scope
-			if !innerRef {
+			if !innerRef && !maybeAlias {
 				// belongs in outer scope
 				hoistFilters = append(hoistFilters, e)
 			} else {

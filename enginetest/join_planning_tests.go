@@ -489,6 +489,16 @@ where u in (select * from rec);`,
 				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 1}},
 			},
+			{
+				q:     "select x+1 as newX, y from xy having y in (select x from xy where newX=1)",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{1, 2}},
+			},
+			{
+				q:     "select x, x+1 as newX from xy having x in (select * from (select 1 where 1 in (select 1 where newX != 1)) r where x = 1);",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{1, 2}},
+			},
 		},
 	},
 	{
