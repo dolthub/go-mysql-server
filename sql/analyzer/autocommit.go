@@ -26,11 +26,6 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	// DropDB is always implicitly committed and doesn't need to be explicitly wrapped in a TransactionCommittingNode.
-	if _, ok := n.(*plan.DropDB); ok {
-		return n, transform.SameTree, nil
-	}
-
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if hasShowWarningsNode(n) {
 		return n, transform.SameTree, nil
