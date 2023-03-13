@@ -786,7 +786,15 @@ func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt 
 		require.NoError(t, err)
 
 		jts := collectJoinTypes(a)
-		require.Equal(t, tt.types, jts)
+		var exp []string
+		for _, t := range tt.types {
+			exp = append(exp, t.String())
+		}
+		var cmp []string
+		for _, t := range jts {
+			cmp = append(cmp, t.String())
+		}
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})
 }
 
