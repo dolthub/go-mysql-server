@@ -637,13 +637,25 @@ func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	}
 }
 
-// todo: merge this into the above test when https://github.com/dolthub/dolt/issues/3836 is fixed
 func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.IgnoreWithDuplicateUniqueKeyKeylessScripts {
 		TestScript(t, harness, script)
 	}
+}
 
+func TestInsertDuplicateKeyKeylessPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.InsertDuplicateKeyKeyless {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
+func TestIgnoreIntoWithDuplicateUniqueKeyKeylessPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.IgnoreWithDuplicateUniqueKeyKeylessScripts {
+		TestScriptPrepared(t, harness, script)
+	}
 }
 
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
@@ -1162,13 +1174,6 @@ func TestScriptsPrepared(t *testing.T, harness Harness) {
 func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.InsertScripts {
-		TestScriptPrepared(t, harness, script)
-	}
-}
-
-func TestInsertDuplicateKeyKeylessPrepared(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData)
-	for _, script := range queries.InsertDuplicateKeyKeyless {
 		TestScriptPrepared(t, harness, script)
 	}
 }
