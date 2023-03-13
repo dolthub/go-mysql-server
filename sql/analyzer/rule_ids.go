@@ -47,7 +47,6 @@ const (
 	validateDatabaseSetId                        // validateDatabaseSet
 	validatePrivilegesId                         // validatePrivileges
 	reresolveTablesId                            // reresolveTables
-	transformJoinApplyId                         // transformJoinApply
 	setInsertColumnsId                           // setInsertColumns
 	validateJoinComplexityId                     // validateJoinComplexity
 	applyBinlogReplicaControllerId               // applyBinlogReplicaController
@@ -78,6 +77,9 @@ const (
 	optimizeDistinctId             // optimizeDistinct
 
 	// after default
+	hoistOutOfScopeFiltersId     // hoistOutOfScopeFilters
+	transformJoinApplyId         // transformJoinApply
+	hoistSelectExistsId          // hoistSelectExists
 	finalizeSubqueriesId         // finalizeSubqueries
 	finalizeUnionsId             // finalizeUnions
 	loadTriggersId               // loadTriggers
@@ -87,7 +89,6 @@ const (
 	removeUnnecessaryConvertsId  // removeUnnecessaryConverts
 	pruneColumnsId               // pruneColumns
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
-	hoistSelectExistsId          // hoistSelectExists
 	optimizeJoinsId              // optimizeJoins
 	concatFiltersId              // concatFilters
 	pushdownFiltersId            // pushdownFilters

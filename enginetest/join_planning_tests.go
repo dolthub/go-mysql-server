@@ -449,6 +449,21 @@ order by 1;`,
 		},
 		tests: []JoinPlanTest{
 			{
+				q:     "select * from xy where x in (select * from (select 1) r where x = 1);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q:     "select * from xy where x in (select 1 where 1 in (select 1 where 1 in (select 1 where x != 2)) and x = 1);",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash, plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q:     "select * from xy where x in (select * from (select 1 where 1 in (select 1 where x != 2)) r where x = 1);",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
 				q:     "select * from xy where x in (select * from (select 1) r);",
 				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
 				exp:   []sql.Row{{1, 0}},
@@ -473,6 +488,16 @@ select * from uv
 where u in (select * from rec);`,
 				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 1}},
+			},
+			{
+				q:     "select x+1 as newX, y from xy having y in (select x from xy where newX=1)",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{1, 2}},
+			},
+			{
+				q:     "select x, x+1 as newX from xy having x in (select * from (select 1 where 1 in (select 1 where newX != 1)) r where x = 1);",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{1, 2}},
 			},
 		},
 	},
@@ -761,7 +786,15 @@ func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt 
 		require.NoError(t, err)
 
 		jts := collectJoinTypes(a)
-		require.Equal(t, tt.types, jts)
+		var exp []string
+		for _, t := range tt.types {
+			exp = append(exp, t.String())
+		}
+		var cmp []string
+		for _, t := range jts {
+			cmp = append(cmp, t.String())
+		}
+		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(a)))
 	})
 }
 
