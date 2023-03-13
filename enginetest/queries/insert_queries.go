@@ -1607,244 +1607,6 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert on duplicate key for keyless table",
-		SetUpScript: []string{
-			`create table t (i int unique, j varchar(128))`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `insert into t values (0, "first")`,
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: `insert into t values (0, "second") on duplicate key update j = "third"`,
-				Expected: []sql.Row{
-					{types.NewOkResult(2)},
-				},
-			},
-			{
-				Query: `select i, j from t order by i`,
-				Expected: []sql.Row{
-					{0, "third"},
-				},
-			},
-		},
-	},
-	{
-		Name: "insert on duplicate key for keyless table multiple unique columns",
-		SetUpScript: []string{
-			`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, 0, 0},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, 0, 0},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
-					{types.NewOkResult(2)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, 0, 1},
-				},
-			},
-		},
-	},
-	{
-		Name: "insert on duplicate key for keyless tables with nulls",
-		SetUpScript: []string{
-			`create table t (c1 int, c2 int, c3 int, unique key(c1, c2))`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `insert into t(c1, c2, c3) values (0, null, 0) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, nil, 0},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, null, 1) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
-					{0, nil, 0},
-					{0, nil, 1},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, null, 0) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
-					{0, nil, 0},
-					{0, nil, 0},
-					{0, nil, 1},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = null`,
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
-					{0, nil, 0},
-					{0, nil, 0},
-					{0, nil, 1},
-					{0, 0, 0},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = null`,
-				Expected: []sql.Row{
-					{types.NewOkResult(2)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
-					{0, nil, 0},
-					{0, nil, 0},
-					{0, nil, 1},
-					{0, 0, nil},
-				},
-			},
-		},
-	},
-	{
-		Name: "insert on duplicate key for keyless table mixed ordering",
-		SetUpScript: []string{
-			`create table t (c1 int, c2 int, c3 int, unique key(c2, c1))`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, 0, 0},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, 0, 0},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
-					{types.NewOkResult(2)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
-					{0, 0, 1},
-				},
-			},
-		},
-	},
-	{
-		Name: "insert on duplicate key for keyless table multiple unique columns batched",
-		SetUpScript: []string{
-			`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, 1) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
-					{types.NewOkResult(3)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
-					{0, 0, 1},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 0, 2), (0, 0, 3), (0, 0, 4) on duplicate key update c3 = 100`,
-				Expected: []sql.Row{
-					{types.NewOkResult(2)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
-					{0, 0, 100},
-				},
-			},
-			{
-				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 1, 1), (0, 2, 2), (0, 3, 3) on duplicate key update c3 = 200`,
-				Expected: []sql.Row{
-					{types.NewOkResult(5)},
-				},
-			},
-			{
-				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
-					{0, 0, 200},
-					{0, 1, 1},
-					{0, 2, 2},
-					{0, 3, 3},
-				},
-			},
-		},
-	},
-	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key);",
@@ -2103,6 +1865,247 @@ var InsertScripts = []ScriptTest{
 					{"mia\\'s"},
 					{"bob's"},
 					{"tab\tvs\tcoke"}},
+			},
+		},
+	},
+}
+
+var InsertDuplicateKeyKeyless = []ScriptTest{
+	{
+		Name: "insert on duplicate key for keyless table",
+		SetUpScript: []string{
+			`create table t (i int unique, j varchar(128))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into t values (0, "first")`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: `insert into t values (0, "second") on duplicate key update j = "third"`,
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: `select i, j from t order by i`,
+				Expected: []sql.Row{
+					{0, "third"},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert on duplicate key for keyless table multiple unique columns",
+		SetUpScript: []string{
+			`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 0},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 0},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 1},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert on duplicate key for keyless tables with nulls",
+		SetUpScript: []string{
+			`create table t (c1 int, c2 int, c3 int, unique key(c1, c2))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into t(c1, c2, c3) values (0, null, 0) on duplicate key update c3 = 0`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, nil, 0},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, null, 1) on duplicate key update c3 = 0`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, nil, 0},
+					{0, nil, 1},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, null, 0) on duplicate key update c3 = 1`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, nil, 0},
+					{0, nil, 0},
+					{0, nil, 1},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = null`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, nil, 0},
+					{0, nil, 0},
+					{0, nil, 1},
+					{0, 0, 0},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = null`,
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, nil, 0},
+					{0, nil, 0},
+					{0, nil, 1},
+					{0, 0, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert on duplicate key for keyless table mixed ordering",
+		SetUpScript: []string{
+			`create table t (c1 int, c2 int, c3 int, unique key(c2, c1))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 0},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 0},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1`,
+				Expected: []sql.Row{
+					{0, 0, 1},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert on duplicate key for keyless table multiple unique columns batched",
+		SetUpScript: []string{
+			`create table t (c1 int, c2 int, c3 int, unique key(c1,c2))`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, 1) on duplicate key update c3 = 1`,
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, 0, 1},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 0, 2), (0, 0, 3), (0, 0, 4) on duplicate key update c3 = 100`,
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, 0, 100},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 1, 1), (0, 2, 2), (0, 3, 3) on duplicate key update c3 = 200`,
+				Expected: []sql.Row{
+					{types.NewOkResult(5)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, 0, 200},
+					{0, 1, 1},
+					{0, 2, 2},
+					{0, 3, 3},
+				},
 			},
 		},
 	},
