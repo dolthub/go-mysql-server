@@ -623,6 +623,13 @@ func TestInsertInto(t *testing.T, harness Harness) {
 	}
 }
 
+func TestInsertDuplicateKeyKeyless(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.InsertDuplicateKeyKeyless {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.InsertIgnoreScripts {
