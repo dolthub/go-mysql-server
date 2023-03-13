@@ -773,23 +773,16 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select * from ab where exists (select * from uv where a = 1)`,
-		ExpectedPlan: "HashJoin\n" +
-			" ├─ Eq\n" +
-			" │   ├─ ab.a:0!null\n" +
-			" │   └─ 1 (tinyint)\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: ab\n" +
-			" │   └─ columns: [a b]\n" +
-			" └─ HashLookup\n" +
-			"     ├─ source: TUPLE(ab.a:0!null)\n" +
-			"     ├─ target: TUPLE(1 (tinyint))\n" +
-			"     └─ CachedResults\n" +
-			"         └─ Distinct\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: []\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: uv\n" +
-			"                     └─ columns: [u v]\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ EXISTS Subquery\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: uv\n" +
+			" │       └─ columns: [u v]\n" +
+			" └─ IndexedTableAccess(ab)\n" +
+			"     ├─ index: [ab.a]\n" +
+			"     ├─ static: [{[1, 1]}]\n" +
+			"     └─ columns: [a b]\n" +
 			"",
 	},
 	{

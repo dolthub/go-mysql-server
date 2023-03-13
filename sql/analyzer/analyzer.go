@@ -414,6 +414,7 @@ func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 			resolveUnionsId,
 			// skip redundant finalize rules
 			finalizeSubqueriesId,
+			hoistOutOfScopeFiltersId,
 			cacheSubqueryResultsId,
 			TrackProcessId:
 			return false
