@@ -1810,7 +1810,7 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: `select c1, c2, c3 from t order by c1`,
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
 				Expected: []sql.Row{
 					{0, 0, 1},
 				},
@@ -1818,13 +1818,28 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 0, 2), (0, 0, 3), (0, 0, 4) on duplicate key update c3 = 100`,
 				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
+				Expected: []sql.Row{
+					{0, 0, 100},
+				},
+			},
+			{
+				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 1, 1), (0, 2, 2), (0, 3, 3) on duplicate key update c3 = 200`,
+				Expected: []sql.Row{
 					{types.NewOkResult(5)},
 				},
 			},
 			{
-				Query: `select c1, c2, c3 from t order by c1`,
+				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
 				Expected: []sql.Row{
-					{0, 0, 100},
+					{0, 0, 200},
+					{0, 1, 1},
+					{0, 2, 2},
+					{0, 3, 3},
 				},
 			},
 		},
