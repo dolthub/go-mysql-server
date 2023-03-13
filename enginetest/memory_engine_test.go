@@ -448,6 +448,10 @@ func TestInsertDuplicateKeyKeyless(t *testing.T) {
 	enginetest.TestInsertDuplicateKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestInsertDuplicateKeyKeylessPrepared(t *testing.T) {
+	enginetest.TestInsertDuplicateKeyKeylessPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
 	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
 }

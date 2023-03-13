@@ -1166,6 +1166,13 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestInsertDuplicateKeyKeylessPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.InsertDuplicateKeyKeyless {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)
