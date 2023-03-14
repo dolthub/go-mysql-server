@@ -98,14 +98,22 @@ func (sq *SubqueryAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 	return sq.Child.CheckPrivileges(ctx, opChecker)
 }
 
-func (sq SubqueryAlias) WithName(name string) *SubqueryAlias {
-	sq.name = name
-	return &sq
+func (sq *SubqueryAlias) WithChild(n sql.Node) *SubqueryAlias {
+	ret := *sq
+	ret.Child = n
+	return &ret
 }
 
-func (sq SubqueryAlias) WithCachedResults() *SubqueryAlias {
-	sq.CanCacheResults = true
-	return &sq
+func (sq *SubqueryAlias) WithName(name string) *SubqueryAlias {
+	ret := *sq
+	ret.name = name
+	return &ret
+}
+
+func (sq *SubqueryAlias) WithCachedResults() *SubqueryAlias {
+	ret := *sq
+	ret.CanCacheResults = true
+	return &ret
 }
 
 // Opaque implements the OpaqueNode interface.
@@ -113,7 +121,7 @@ func (sq *SubqueryAlias) Opaque() bool {
 	return true
 }
 
-func (sq SubqueryAlias) String() string {
+func (sq *SubqueryAlias) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
 	children := make([]string, 4)
@@ -125,7 +133,7 @@ func (sq SubqueryAlias) String() string {
 	return pr.String()
 }
 
-func (sq SubqueryAlias) DebugString() string {
+func (sq *SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
 	children := make([]string, 4)
@@ -137,7 +145,8 @@ func (sq SubqueryAlias) DebugString() string {
 	return pr.String()
 }
 
-func (sq SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
-	sq.Columns = columns
-	return &sq
+func (sq *SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
+	ret := *sq
+	ret.Columns = columns
+	return &ret
 }

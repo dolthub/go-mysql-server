@@ -78,10 +78,6 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		}
 
-		if opaque, ok := node.(sql.OpaqueNode); ok && opaque.Opaque() {
-			return false
-		}
-
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
 			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
@@ -129,6 +125,10 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		case *plan.UnresolvedTable:
 			panic("Table not resolved")
+		}
+
+		if opaque, ok := node.(sql.OpaqueNode); ok && opaque.Opaque() {
+			return false
 		}
 
 		return true
