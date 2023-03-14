@@ -47,22 +47,6 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 	}
 }
 
-// JoinOr joins several expressions with Or.
-func JoinOr(exprs ...sql.Expression) sql.Expression {
-	switch len(exprs) {
-	case 0:
-		return nil
-	case 1:
-		return exprs[0]
-	default:
-		result := NewOr(exprs[0], exprs[1])
-		for _, e := range exprs[2:] {
-			result = NewOr(result, e)
-		}
-		return result
-	}
-}
-
 // SplitConjunction breaks AND expressions into their left and right parts, recursively
 func SplitConjunction(expr sql.Expression) []sql.Expression {
 	if expr == nil {

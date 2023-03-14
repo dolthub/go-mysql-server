@@ -678,9 +678,6 @@ func evalJoinCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q 
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		//e.Analyzer.Verbose = true
-		//e.Analyzer.Debug = true
-
 		sch, iter, err := e.QueryWithBindings(ctx, q, nil)
 		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
