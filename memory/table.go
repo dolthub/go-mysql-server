@@ -45,6 +45,7 @@ type Table struct {
 	checks           []sql.CheckDefinition
 	collation        sql.CollationID
 	pkIndexesEnabled bool
+	ed               tableEditAccumulator
 
 	// pushdown info
 	filters         []sql.Expression // currently unused, filter pushdown is significantly broken right now
@@ -603,26 +604,26 @@ func EncodeIndexValue(value *IndexValue) ([]byte, error) {
 }
 
 func (t *Table) Inserter(*sql.Context) sql.RowInserter {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) Updater(*sql.Context) sql.RowUpdater {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) Replacer(*sql.Context) sql.RowReplacer {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
-func (t *Table) newTableEditor() *tableEditor {
+func (t *Table) getTableEditor() *tableEditor {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
 	for _, idx := range t.indexes {
@@ -641,11 +642,16 @@ func (t *Table) newTableEditor() *tableEditor {
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
 		prefixLengths = append(prefixLengths, idx.PrefixLengths())
 	}
+
+	if t.ed == nil {
+		t.ed = NewTableEditAccumulator(t)
+	}
+
 	return &tableEditor{
 		table:             t,
 		initialAutoIncVal: 1,
 		initialPartitions: nil,
-		ea:                NewTableEditAccumulator(t),
+		ea:                t.ed,
 		initialInsert:     0,
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
@@ -1341,7 +1347,7 @@ func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 
 // GetForeignKeyEditor implements sql.ForeignKeyTable.
 func (t *Table) GetForeignKeyEditor(ctx *sql.Context) sql.ForeignKeyEditor {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 // GetChecks implements sql.CheckTable
@@ -1757,6 +1763,7 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	}
 
 	delete(t.indexes, "PRIMARY")
+	t.ed = nil
 
 	t.schema.PkOrdinals = []int{}
 

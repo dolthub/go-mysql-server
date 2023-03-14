@@ -370,9 +370,9 @@ func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sq
 
 // tableEditAccumulator tracks the set of inserts and deletes and applies those edits to a initialTable.
 type tableEditAccumulator interface {
-	// Insert adds a row to the accumulator to be inserted in the future. Updates are modeled as a delete than an insertPartIdx.
+	// Insert adds a row to the accumulator to be inserted in the future. Updates are modeled as a Delete then an insertPartIdx.
 	Insert(value sql.Row) error
-	// Delete adds a row to the accumulator to be deleted in the future. Updates are modeled as a delete than an insertPartIdx.
+	// Delete adds a row to the accumulator to be deleted in the future. Updates are modeled as a Delete then an insertPartIdx.
 	Delete(value sql.Row) error
 	// Get returns a row if found along with two booleans added and deleted. Added is true if a row was inserted. Deleted
 	// is true if a row was deleted.
@@ -650,24 +650,30 @@ func (k *keylessTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) 
 }
 
 func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error) {
-	// If we have this row in any delete, bail.
+	deleteCount := 0
 	for _, r := range k.deletes {
 		if columnsMatch(cols, prefixLengths, r, value) {
-			return nil, false, nil
-		}
-	}
-
-	for _, r := range k.adds {
-		if columnsMatch(cols, prefixLengths, r, value) {
-			return r, true, nil
+			deleteCount++
 		}
 	}
 
 	for _, partition := range k.table.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(cols, prefixLengths, partitionRow, value) {
-				return partitionRow, true, nil
+				if deleteCount == 0 {
+					return partitionRow, true, nil
+				}
+				deleteCount--
 			}
+		}
+	}
+
+	for _, r := range k.adds {
+		if columnsMatch(cols, prefixLengths, r, value) {
+			if deleteCount == 0 {
+				return r, true, nil
+			}
+			deleteCount--
 		}
 	}
 
