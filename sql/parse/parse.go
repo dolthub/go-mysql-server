@@ -439,35 +439,34 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 }
 
 func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
-	expr := n.Expr
-	if strings.HasPrefix(n.Expr, "@") {
-		varName := strings.ToLower(strings.Trim(n.Expr, "@"))
-		_, val, err := ctx.GetUserVariable(ctx, varName)
+	delayedParser := func(ctx *sql.Context) (sql.Node, error) {
+		expr := n.Expr
+
+		if strings.HasPrefix(n.Expr, "@") {
+			varName := strings.ToLower(strings.Trim(n.Expr, "@"))
+			_, val, err := ctx.GetUserVariable(ctx, varName)
+			if err != nil {
+				return nil, err
+			}
+			strVal, err := types.LongText.Convert(val)
+			if err != nil {
+				return nil, err
+			}
+			if strVal == nil {
+				expr = "NULL"
+			} else {
+				expr = strVal.(string)
+			}
+		}
+
+		childStmt, err := sqlparser.Parse(expr)
 		if err != nil {
 			return nil, err
 		}
-		strVal, err := types.LongText.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-		if strVal == nil {
-			expr = "NULL"
-		} else {
-			expr = strVal.(string)
-		}
-	}
 
-	childStmt, err := sqlparser.Parse(expr)
-	if err != nil {
-		return nil, err
+		return convert(ctx, childStmt, expr)
 	}
-
-	child, err := convert(ctx, childStmt, expr)
-	if err != nil {
-		return nil, err
-	}
-
-	return plan.NewPrepareQuery(n.Name, child), nil
+	return plan.NewPrepareQuery(n.Name, delayedParser), nil
 }
 
 func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {

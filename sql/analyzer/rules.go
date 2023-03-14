@@ -63,7 +63,7 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
-	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table & table function resolution
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -124,6 +124,7 @@ var OnceAfterDefault = []Rule{
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
 	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},
+	{preparedStatementsId, preparedStatements},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.

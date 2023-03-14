@@ -1852,6 +1852,87 @@ END;`,
 		},
 	},
 	{
+		Name: "Basic prepared statement",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	PREPARE stmt FROM "SELECT 'best message';";
+	EXECUTE stmt;
+	DEALLOCATE PREPARE stmt;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1();",
+				Expected: []sql.Row{{"best message"}},
+			},
+		},
+	},
+	{
+		Name: "Prepared statement from user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	SET @sql_text = "SELECT 'best message';";
+	PREPARE stmt FROM @sql_text;
+	EXECUTE stmt;
+	DEALLOCATE PREPARE stmt;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1();",
+				Expected: []sql.Row{{"best message"}},
+			},
+		},
+	},
+	{
+		Name: "Prepared statement modified by parameter",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(v1 VARCHAR(255))
+BEGIN
+	SET @sql_text = CONCAT("SELECT CONCAT('yyy', '", v1, "', 'zzz');");
+	PREPARE stmt FROM @sql_text;
+	EXECUTE stmt;
+	DEALLOCATE PREPARE stmt;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1('some_text');",
+				Expected: []sql.Row{{"yyysome_textzzz"}},
+			},
+			{
+				Query:    "CALL p1('other');",
+				Expected: []sql.Row{{"yyyotherzzz"}},
+			},
+		},
+	},
+	//TODO: implement EXECUTE parameter recognition
+	/*{
+			Name: "Prepared statement called multiple times",
+			SetUpScript: []string{
+				`CREATE PROCEDURE p1(v1 INT)
+	BEGIN
+		PREPARE stmt FROM "SET v1 = v1 + 1";
+		EXECUTE stmt;
+		EXECUTE stmt;
+		DEALLOCATE PREPARE stmt;
+		SELECT v1;
+	END;`,
+			},
+			Assertions: []ScriptTestAssertion{
+				{
+					Query:    "CALL p1(3);",
+					Expected: []sql.Row{{5}},
+				},
+				{
+					Query:    "CALL p1(47194);",
+					Expected: []sql.Row{{47196}},
+				},
+			},
+		},*/
+	{
 		Name: "Dolt Issue #4480",
 		SetUpScript: []string{
 			"create table p1 (row_id int primary key, pred int, actual int)",

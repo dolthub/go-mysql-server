@@ -106,7 +106,7 @@ func nodeRepresentsSelect(s sql.Node) bool {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
 			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update, *Into:
 			return false
-		case *ResolvedTable, *ProcedureResolvedTable:
+		case *ResolvedTable, *ProcedureResolvedTable, *ExecuteQuery:
 			isSelect = true
 			return false
 		default:

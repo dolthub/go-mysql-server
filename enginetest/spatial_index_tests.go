@@ -493,7 +493,7 @@ func evalSpatialIndexPlanTestPrepared(t *testing.T, harness Harness, e *sqle.Eng
 		bindings, err := injectBindVarsAndPrepare(t, ctx, e, query)
 		require.NoError(t, err)
 
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		p, ok := e.Analyzer.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 		require.True(t, ok, "prepared statement not found")
 
 		if len(bindings) > 0 {

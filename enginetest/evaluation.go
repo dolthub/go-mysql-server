@@ -411,7 +411,7 @@ func injectBindVarsAndPrepare(
 	if err != nil {
 		return nil, err
 	}
-	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), q, prepared)
+	e.Analyzer.PreparedDataCache.CacheStmt(ctx.Session.ID(), q, prepared)
 	return bindVars, nil
 }
 
@@ -426,7 +426,7 @@ func runQueryPreparedWithCtx(
 		return nil, nil, err
 	}
 
-	p, _ := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
+	p, _ := e.Analyzer.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
 
 	sch, iter, err := e.QueryNodeWithBindings(ctx, q, p, bindVars)
 	if err != nil {

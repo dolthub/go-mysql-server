@@ -770,7 +770,7 @@ func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt 
 		bindings, err := injectBindVarsAndPrepare(t, ctx, e, tt.q)
 		require.NoError(t, err)
 
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), tt.q)
+		p, ok := e.Analyzer.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), tt.q)
 		require.True(t, ok, "prepared statement not found")
 
 		if len(bindings) > 0 {
@@ -837,7 +837,7 @@ func evalJoinOrderPrepared(t *testing.T, harness Harness, e *sqle.Engine, q stri
 		bindings, err := injectBindVarsAndPrepare(t, ctx, e, q)
 		require.NoError(t, err)
 
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
+		p, ok := e.Analyzer.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), q)
 		require.True(t, ok, "prepared statement not found")
 
 		if len(bindings) > 0 {

@@ -55,65 +55,6 @@ type TemporaryUser struct {
 	Password string
 }
 
-// PreparedDataCache manages all the prepared data for every session for every query for an engine
-type PreparedDataCache struct {
-	data map[uint32]map[string]sql.Node
-	mu   *sync.Mutex
-}
-
-func NewPreparedDataCache() *PreparedDataCache {
-	return &PreparedDataCache{
-		data: make(map[uint32]map[string]sql.Node),
-		mu:   &sync.Mutex{},
-	}
-}
-
-// GetCachedStmt will retrieve the prepared sql.Node associated with the ctx.SessionId and query if it exists
-// it will return nil, false if the query does not exist
-func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sql.Node, bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if sessData, ok := p.data[sessId]; ok {
-		data, ok := sessData[query]
-		return data, ok
-	}
-	return nil, false
-}
-
-// GetSessionData returns all the prepared queries for a particular session
-func (p *PreparedDataCache) GetSessionData(sessId uint32) map[string]sql.Node {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.data[sessId]
-}
-
-// DeleteSessionData clears a session along with all prepared queries for that session
-func (p *PreparedDataCache) DeleteSessionData(sessId uint32) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	delete(p.data, sessId)
-}
-
-// CacheStmt saves the prepared node and associates a ctx.SessionId and query to it
-func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, node sql.Node) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
-		p.data[sessId] = make(map[string]sql.Node)
-	}
-	p.data[sessId][query] = node
-}
-
-// UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
-func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if _, ok := p.data[sessId]; !ok {
-		return
-	}
-	delete(p.data[sessId], query)
-}
-
 // Engine is a SQL engine.
 type Engine struct {
 	Analyzer          *analyzer.Analyzer
@@ -123,7 +64,6 @@ type Engine struct {
 	BackgroundThreads *sql.BackgroundThreads
 	IsReadOnly        bool
 	IsServerLocked    bool
-	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
 }
 
@@ -161,7 +101,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsReadOnly:        cfg.IsReadOnly,
 		IsServerLocked:    cfg.IsServerLocked,
-		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 	}
 }
@@ -199,7 +138,7 @@ func (e *Engine) PrepareQuery(
 		return nil, err
 	}
 
-	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), query, node)
+	e.Analyzer.PreparedDataCache.CacheStmt(ctx.Session.ID(), query, node)
 	return node, nil
 }
 
@@ -255,7 +194,7 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
-	if p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
+	if p, ok := e.Analyzer.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query); ok {
 		analyzed, err = e.analyzePreparedQuery(ctx, query, p, bindings)
 	} else {
 		analyzed, err = e.analyzeQuery(ctx, query, parsed, bindings)
@@ -330,29 +269,7 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CloseSession(connID uint32) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.PreparedDataCache.DeleteSessionData(connID)
-}
-
-// Count number of BindVars in given tree
-func countBindVars(node sql.Node) int {
-	bindCnt := 0
-	bindCntFunc := func(e sql.Expression) bool {
-		if _, ok := e.(*expression.BindVar); ok {
-			bindCnt++
-		}
-		return true
-	}
-	transform.InspectExpressions(node, bindCntFunc)
-
-	// InsertInto.Source not a child of InsertInto, so also need to traverse those
-	transform.Inspect(node, func(n sql.Node) bool {
-		if in, ok := n.(*plan.InsertInto); ok {
-			transform.InspectExpressions(in.Source, bindCntFunc)
-			return false
-		}
-		return true
-	})
-	return bindCnt
+	e.Analyzer.PreparedDataCache.DeleteSessionData(connID)
 }
 
 func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
@@ -371,61 +288,6 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 	err = e.readOnlyCheck(parsed)
 	if err != nil {
 		return nil, err
-	}
-
-	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
-	// along with a new rule that handles analysis
-	switch n := parsed.(type) {
-	case *plan.PrepareQuery:
-		analyzedChild, err := e.Analyzer.PrepareQuery(ctx, n.Child, nil)
-		if err != nil {
-			return nil, err
-		}
-		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, analyzedChild)
-		return parsed, nil
-	case *plan.ExecuteQuery:
-		// replace execute query node with the one prepared
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name)
-		if !ok {
-			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
-		}
-
-		// number of BindVars provided must match number of BindVars expected
-		if countBindVars(p) != len(n.BindVars) {
-			return nil, sql.ErrInvalidArgument.New(n.Name)
-		}
-		parsed = p
-
-		bindings = map[string]sql.Expression{}
-		for i, binding := range n.BindVars {
-			varName := fmt.Sprintf("v%d", i+1)
-			bindings[varName] = binding
-		}
-
-		if len(bindings) > 0 {
-			var usedBindings map[string]bool
-			parsed, usedBindings, err = plan.ApplyBindings(parsed, bindings)
-			if err != nil {
-				return nil, err
-			}
-			for binding := range bindings {
-				if !usedBindings[binding] {
-					return nil, fmt.Errorf("unused binding %s", binding)
-				}
-			}
-		}
-
-		analyzed, _, err = e.Analyzer.AnalyzePrepared(ctx, parsed, nil)
-		if err != nil {
-			return nil, err
-		}
-		return analyzed, nil
-	case *plan.DeallocateQuery:
-		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
-			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
-		}
-		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
-		return parsed, nil
 	}
 
 	if len(bindings) > 0 {

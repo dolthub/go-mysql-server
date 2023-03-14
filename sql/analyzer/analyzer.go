@@ -258,13 +258,14 @@ func (ab *Builder) Build() *Analyzer {
 	}
 
 	return &Analyzer{
-		Debug:        debug || ab.debug,
-		contextStack: make([]string, 0),
-		Batches:      batches,
-		Catalog:      NewCatalog(ab.provider),
-		Parallelism:  ab.parallelism,
-		Coster:       NewDefaultCoster(),
-		Carder:       NewDefaultCarder(),
+		Debug:             debug || ab.debug,
+		contextStack:      make([]string, 0),
+		Batches:           batches,
+		Catalog:           NewCatalog(ab.provider),
+		Parallelism:       ab.parallelism,
+		Coster:            NewDefaultCoster(),
+		Carder:            NewDefaultCarder(),
+		PreparedDataCache: sql.NewPreparedDataCache(),
 	}
 }
 
@@ -289,6 +290,8 @@ type Analyzer struct {
 	Carder Carder
 	// Coster estimates the incremental CPU+memory cost for execution operators.
 	Coster Coster
+	// PreparedDataCache manages all the prepared data for every session for every query for the engine.
+	PreparedDataCache *sql.PreparedDataCache
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

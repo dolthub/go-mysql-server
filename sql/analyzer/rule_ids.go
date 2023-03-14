@@ -108,6 +108,7 @@ const (
 	applyRowUpdateAccumulatorsId // applyRowUpdateAccumulators
 	wrapWithRollbackId           // rollback triggers
 	applyFKsId                   // applyFKs
+	preparedStatementsId         // preparedStatements
 
 	// validate
 	validateResolvedId          // validateResolved
