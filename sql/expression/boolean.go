@@ -62,7 +62,11 @@ func (e *Not) String() string {
 }
 
 func (e *Not) DebugString() string {
-	return fmt.Sprintf("(NOT(%s))", sql.DebugString(e.Child))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("NOT")
+	children := []string{sql.DebugString(e.Child)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // WithChildren implements the Expression interface.

@@ -447,10 +447,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<>75) OR (v1<=11));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   └─ 75 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │       └─ 75 (tinyint)\n" +
 			" │   └─ LessThanOrEqual\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 11 (tinyint)\n" +
@@ -467,10 +467,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ LessThanOrEqual\n" +
 			" │   │   ├─ comp_index_t0.v1:1\n" +
 			" │   │   └─ 86 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 9 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t0.v1:1\n" +
+			" │           └─ 9 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{[87, 87], (NULL, 45]}]\n" +
@@ -488,10 +488,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ Eq\n" +
 			" │   │       ├─ comp_index_t0.v1:1\n" +
 			" │   │       └─ 71 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 96 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t0.v1:1\n" +
+			" │           └─ 96 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{(NULL, 96), [NULL, ∞)}, {(96, ∞), [NULL, ∞)}]\n" +
@@ -520,17 +520,17 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │   └─ 22 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │   │   │       └─ 22 (tinyint)\n" +
 			" │   │   │   └─ GreaterThan\n" +
 			" │   │   │       ├─ comp_index_t0.v2:2\n" +
 			" │   │   │       └─ 18 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │       └─ 12 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t0.v1:1\n" +
+			" │   │           └─ 12 (tinyint)\n" +
 			" │   └─ LessThanOrEqual\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 34 (tinyint)\n" +
@@ -600,18 +600,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       ├─ GreaterThanOrEqual\n" +
 			" │   │       │   ├─ comp_index_t0.v1:1\n" +
 			" │   │       │   └─ 28 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t0.v2:2\n" +
-			" │   │           └─ 68 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t0.v2:2\n" +
+			" │   │               └─ 68 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ GreaterThanOrEqual\n" +
 			" │       │   ├─ comp_index_t0.v1:1\n" +
 			" │       │   └─ 33 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t0.v2:2\n" +
-			" │           └─ 39 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t0.v2:2\n" +
+			" │               └─ 39 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{[33, 46), (NULL, 39)}, {[33, 46), (39, ∞)}, {[46, ∞), (NULL, ∞)}]\n" +
@@ -662,15 +662,15 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<>74) OR (v1<>40 AND v2>=54));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   └─ 74 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │       └─ 74 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t0.v1:1\n" +
-			" │       │   └─ 40 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t0.v1:1\n" +
+			" │       │       └─ 40 (tinyint)\n" +
 			" │       └─ GreaterThanOrEqual\n" +
 			" │           ├─ comp_index_t0.v2:2\n" +
 			" │           └─ 54 (tinyint)\n" +
@@ -700,10 +700,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<>94) OR (v1<=52));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   └─ 94 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │       └─ 94 (tinyint)\n" +
 			" │   └─ LessThanOrEqual\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 52 (tinyint)\n" +
@@ -762,10 +762,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   ├─ comp_index_t0.v1:1\n" +
 			" │   │   │   └─ 35 (tinyint)\n" +
 			" │   │   └─ (comp_index_t0.v1:1 BETWEEN 11 (tinyint) AND 21 (tinyint))\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 98 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t0.v1:1\n" +
+			" │           └─ 98 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
@@ -792,10 +792,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   └─ LessThan\n" +
 			" │   │   │       ├─ comp_index_t0.v2:2\n" +
 			" │   │   │       └─ 10 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │       └─ 37 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t0.v1:1\n" +
+			" │   │           └─ 37 (tinyint)\n" +
 			" │   └─ GreaterThan\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 23 (tinyint)\n" +
@@ -812,19 +812,19 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Or\n" +
 			" │   │   ├─ Or\n" +
 			" │   │   │   ├─ Or\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │   │   └─ 30 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │   │   │   │       └─ 30 (tinyint)\n" +
 			" │   │   │   │   └─ AND\n" +
 			" │   │   │   │       ├─ GreaterThanOrEqual\n" +
 			" │   │   │   │       │   ├─ comp_index_t0.v1:1\n" +
 			" │   │   │   │       │   └─ 6 (tinyint)\n" +
 			" │   │   │   │       └─ (comp_index_t0.v2:2 BETWEEN 62 (tinyint) AND 65 (tinyint))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │       └─ 89 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t0.v1:1\n" +
+			" │   │   │           └─ 89 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ LessThanOrEqual\n" +
 			" │   │       │   ├─ comp_index_t0.v1:1\n" +
@@ -874,10 +874,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ Eq\n" +
 			" │   │           ├─ comp_index_t0.v2:2\n" +
 			" │   │           └─ 96 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 50 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t0.v1:1\n" +
+			" │           └─ 50 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{(NULL, 50), [NULL, ∞)}, {(50, ∞), [NULL, ∞)}]\n" +
@@ -962,14 +962,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   └─ 75 (tinyint)\n" +
 			" │   │       └─ (comp_index_t0.v2:2 BETWEEN 54 (tinyint) AND 54 (tinyint))\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t0.v1:1\n" +
-			" │       │   └─ 31 (tinyint)\n" +
-			" │       │  ))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t0.v2:2\n" +
-			" │           └─ 56 (tinyint)\n" +
-			" │          ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t0.v1:1\n" +
+			" │       │       └─ 31 (tinyint)\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t0.v2:2\n" +
+			" │               └─ 56 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{(NULL, 31), (NULL, 56)}, {(NULL, 31), (56, ∞)}, {[31, 31], [54, 54]}, {(31, ∞), (NULL, 56)}, {(31, ∞), (56, ∞)}]\n" +
@@ -1020,10 +1020,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<>39) OR (v1=55)) AND (v1=67);`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   └─ 39 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │       └─ 39 (tinyint)\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 55 (tinyint)\n" +
@@ -1059,19 +1059,19 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ Or\n" +
 			" │   │   │   │   │   ├─ Or\n" +
 			" │   │   │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   │   │   │   │   │   └─ 99 (tinyint)\n" +
-			" │   │   │   │   │   │   │   │  ))\n" +
+			" │   │   │   │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │   │   │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │   │   │   │   │   │   │       └─ 99 (tinyint)\n" +
 			" │   │   │   │   │   │   │   └─ (comp_index_t0.v2:2 BETWEEN 12 (tinyint) AND 31 (tinyint))\n" +
 			" │   │   │   │   │   │   └─ AND\n" +
 			" │   │   │   │   │   │       ├─ LessThan\n" +
 			" │   │   │   │   │   │       │   ├─ comp_index_t0.v1:1\n" +
 			" │   │   │   │   │   │       │   └─ 56 (tinyint)\n" +
-			" │   │   │   │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │   │   │   │           ├─ comp_index_t0.v2:2\n" +
-			" │   │   │   │   │   │           └─ 69 (tinyint)\n" +
-			" │   │   │   │   │   │          ))\n" +
+			" │   │   │   │   │   │       └─ NOT\n" +
+			" │   │   │   │   │   │           └─ Eq\n" +
+			" │   │   │   │   │   │               ├─ comp_index_t0.v2:2\n" +
+			" │   │   │   │   │   │               └─ 69 (tinyint)\n" +
 			" │   │   │   │   │   └─ AND\n" +
 			" │   │   │   │   │       ├─ GreaterThanOrEqual\n" +
 			" │   │   │   │   │       │   ├─ comp_index_t0.v1:1\n" +
@@ -1116,14 +1116,14 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   └─ 31 (tinyint)\n" +
-			" │   │   │  ))\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │       └─ 43 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │   │       └─ 31 (tinyint)\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t0.v1:1\n" +
+			" │   │           └─ 43 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ GreaterThan\n" +
 			" │       │   ├─ comp_index_t0.v1:1\n" +
@@ -1145,10 +1145,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ LessThanOrEqual\n" +
 			" │   │   │   ├─ comp_index_t0.v1:1\n" +
 			" │   │   │   └─ 91 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │       └─ 79 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t0.v1:1\n" +
+			" │   │           └─ 79 (tinyint)\n" +
 			" │   └─ LessThan\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 64 (tinyint)\n" +
@@ -1162,10 +1162,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<>48) OR (v1>11));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   └─ 48 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │       └─ 48 (tinyint)\n" +
 			" │   └─ GreaterThan\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 11 (tinyint)\n" +
@@ -1232,10 +1232,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ GreaterThan\n" +
 			" │   │           ├─ comp_index_t0.v2:2\n" +
 			" │   │           └─ 38 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 30 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t0.v1:1\n" +
+			" │           └─ 30 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{(NULL, ∞), [NULL, ∞)}]\n" +
@@ -1281,10 +1281,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Eq\n" +
 			" │   │   ├─ comp_index_t0.v1:1\n" +
 			" │   │   └─ 30 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t0.v1:1\n" +
-			" │       └─ 67 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t0.v1:1\n" +
+			" │           └─ 67 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t0)\n" +
 			"     ├─ index: [comp_index_t0.v1,comp_index_t0.v2]\n" +
 			"     ├─ static: [{(NULL, 67), [NULL, ∞)}, {(67, ∞), [NULL, ∞)}]\n" +
@@ -1357,10 +1357,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t0 WHERE ((v1<>66) OR (v1<50));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   └─ 66 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │       └─ 66 (tinyint)\n" +
 			" │   └─ LessThan\n" +
 			" │       ├─ comp_index_t0.v1:1\n" +
 			" │       └─ 50 (tinyint)\n" +
@@ -1425,18 +1425,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │           ├─ comp_index_t0.v2:2\n" +
 			" │   │   │   │   │           └─ 51 (tinyint)\n" +
 			" │   │   │   │   └─ (comp_index_t0.v1:1 BETWEEN 8 (tinyint) AND 19 (tinyint))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t0.v1:1\n" +
-			" │   │   │       └─ 4 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t0.v1:1\n" +
+			" │   │   │           └─ 4 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ LessThanOrEqual\n" +
 			" │   │       │   ├─ comp_index_t0.v1:1\n" +
 			" │   │       │   └─ 58 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t0.v2:2\n" +
-			" │   │           └─ 70 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t0.v2:2\n" +
+			" │   │               └─ 70 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ LessThan\n" +
 			" │       │   ├─ comp_index_t0.v1:1\n" +
@@ -1455,10 +1455,10 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t0.v1:1\n" +
-			" │   │   │   └─ 50 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t0.v1:1\n" +
+			" │   │   │       └─ 50 (tinyint)\n" +
 			" │   │   └─ LessThanOrEqual\n" +
 			" │   │       ├─ comp_index_t0.v1:1\n" +
 			" │   │       └─ 88 (tinyint)\n" +
@@ -1622,10 +1622,10 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 87 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 87 (tinyint)\n" +
 			" │   │   └─ (comp_index_t1.v2:2 BETWEEN 8 (tinyint) AND 33 (tinyint))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ (comp_index_t1.v1:1 BETWEEN 39 (tinyint) AND 69 (tinyint))\n" +
@@ -1655,10 +1655,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       ├─ comp_index_t1.v3:3\n" +
 			" │   │   │       └─ 63 (tinyint)\n" +
 			" │   │   └─ AND\n" +
-			" │   │       ├─ (NOT(Eq\n" +
-			" │   │       │   ├─ comp_index_t1.v1:1\n" +
-			" │   │       │   └─ 54 (tinyint)\n" +
-			" │   │       │  ))\n" +
+			" │   │       ├─ NOT\n" +
+			" │   │       │   └─ Eq\n" +
+			" │   │       │       ├─ comp_index_t1.v1:1\n" +
+			" │   │       │       └─ 54 (tinyint)\n" +
 			" │   │       └─ (comp_index_t1.v2:2 BETWEEN 3 (tinyint) AND 80 (tinyint))\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ comp_index_t1.v1:1\n" +
@@ -1694,18 +1694,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   ├─ LessThan\n" +
 			" │   │   │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │   │   │   └─ 3 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t1.v2:2\n" +
-			" │   │   │       └─ 23 (tinyint)\n" +
-			" │   │   │      ))\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t1.v3:3\n" +
-			" │   │       └─ 11 (tinyint)\n" +
-			" │   │      ))\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 49 (tinyint)\n" +
-			" │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t1.v2:2\n" +
+			" │   │   │           └─ 23 (tinyint)\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t1.v3:3\n" +
+			" │   │           └─ 11 (tinyint)\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 49 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 41], (40, ∞), [NULL, ∞)}]\n" +
@@ -1763,24 +1763,24 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 6 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 6 (tinyint)\n" +
 			" │   │   └─ (comp_index_t1.v2:2 BETWEEN 0 (tinyint) AND 97 (tinyint))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   │   └─ 40 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │       │   │       └─ 40 (tinyint)\n" +
 			" │       │   └─ LessThan\n" +
 			" │       │       ├─ comp_index_t1.v3:3\n" +
 			" │       │       └─ 10 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v2:2\n" +
-			" │           └─ 10 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v2:2\n" +
+			" │               └─ 10 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 6), (NULL, 0), (NULL, 10)}, {(NULL, 6), [0, 97], [NULL, ∞)}, {(NULL, 6), (97, ∞), (NULL, 10)}, {[6, 6], (NULL, 10), (NULL, 10)}, {[6, 6], (10, ∞), (NULL, 10)}, {(6, 40), (NULL, 0), (NULL, 10)}, {(6, 40), (97, ∞), (NULL, 10)}, {(6, ∞), [0, 97], [NULL, ∞)}, {(40, ∞), (NULL, 0), (NULL, 10)}, {(40, ∞), (97, ∞), (NULL, 10)}]\n" +
@@ -1806,10 +1806,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ GreaterThanOrEqual\n" +
 			" │   │           ├─ comp_index_t1.v2:2\n" +
 			" │   │           └─ 92 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 28 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 28 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 28), [NULL, ∞), [NULL, ∞)}, {(28, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -1832,20 +1832,20 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │       └─ 20 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 41 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │           └─ 41 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ LessThanOrEqual\n" +
 			" │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │       │   │   └─ 74 (tinyint)\n" +
 			" │       │   └─ (comp_index_t1.v3:3 BETWEEN 14 (tinyint) AND 74 (tinyint))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v2:2\n" +
-			" │           └─ 13 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v2:2\n" +
+			" │               └─ 13 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 41), [NULL, ∞), [NULL, ∞)}, {[41, 41], (NULL, 13), [14, 74]}, {[41, 41], (13, ∞), [14, 74]}, {(41, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -1875,10 +1875,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           └─ 73 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   │   └─ 80 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │       │   │       └─ 80 (tinyint)\n" +
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t1.v2:2\n" +
 			" │       │       └─ 32 (tinyint)\n" +
@@ -1898,10 +1898,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   ├─ LessThan\n" +
 			" │   │   │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │   │   │   └─ 45 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │   │       └─ 72 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │   │           └─ 72 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ (comp_index_t1.v1:1 BETWEEN 10 (tinyint) AND 86 (tinyint))\n" +
 			" │   │       └─ Eq\n" +
@@ -2004,16 +2004,16 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ LessThan\n" +
 			" │   │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │   │   └─ 7 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t1.v2:2\n" +
-			" │   │       └─ 43 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t1.v2:2\n" +
+			" │   │           └─ 43 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   │   └─ 5 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │       │   │       └─ 5 (tinyint)\n" +
 			" │       │   └─ LessThan\n" +
 			" │       │       ├─ comp_index_t1.v3:3\n" +
 			" │       │       └─ 0 (tinyint)\n" +
@@ -2057,10 +2057,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   │   └─ 12 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │   │       └─ 12 (tinyint)\n" +
 			" │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │   │       └─ 60 (tinyint)\n" +
@@ -2075,10 +2075,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   └─ GreaterThanOrEqual\n" +
 			" │   │       │       ├─ comp_index_t1.v2:2\n" +
 			" │   │       │       └─ 8 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t1.v3:3\n" +
-			" │   │           └─ 32 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t1.v3:3\n" +
+			" │   │               └─ 32 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ GreaterThan\n" +
 			" │       │   ├─ comp_index_t1.v1:1\n" +
@@ -2157,10 +2157,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ GreaterThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │       │   │   └─ 29 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t1.v2:2\n" +
-			" │   │       │       └─ 21 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t1.v2:2\n" +
+			" │   │       │           └─ 21 (tinyint)\n" +
 			" │   │       └─ (comp_index_t1.v3:3 BETWEEN 37 (tinyint) AND 55 (tinyint))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ GreaterThanOrEqual\n" +
@@ -2219,10 +2219,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1<>43) OR (v1=14));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   └─ 43 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │       └─ 43 (tinyint)\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ comp_index_t1.v1:1\n" +
 			" │       └─ 14 (tinyint)\n" +
@@ -2271,19 +2271,19 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ Or\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   │   └─ 79 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │   │       └─ 79 (tinyint)\n" +
 			" │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │       ├─ comp_index_t1.v1:1\n" +
 			" │   │   │   │       └─ 66 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
-			" │   │   │       │   ├─ (NOT(Eq\n" +
-			" │   │   │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │       │   │   └─ 81 (tinyint)\n" +
-			" │   │   │       │   │  ))\n" +
+			" │   │   │       │   ├─ NOT\n" +
+			" │   │   │       │   │   └─ Eq\n" +
+			" │   │   │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       │   │       └─ 81 (tinyint)\n" +
 			" │   │   │       │   └─ LessThan\n" +
 			" │   │   │       │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │       │       └─ 34 (tinyint)\n" +
@@ -2295,14 +2295,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ 42 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   │   └─ 12 (tinyint)\n" +
-			" │       │   │  ))\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t1.v2:2\n" +
-			" │       │       └─ 17 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │       │   │       └─ 12 (tinyint)\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t1.v2:2\n" +
+			" │       │           └─ 17 (tinyint)\n" +
 			" │       └─ LessThanOrEqual\n" +
 			" │           ├─ comp_index_t1.v3:3\n" +
 			" │           └─ 23 (tinyint)\n" +
@@ -2335,10 +2335,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ GreaterThan\n" +
 			" │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │   └─ 47 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 25 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 25 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 25), [NULL, ∞), [NULL, ∞)}, {(25, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -2359,10 +2359,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   └─ 65 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │       └─ 65 (tinyint)\n" +
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │       └─ 52 (tinyint)\n" +
@@ -2407,10 +2407,10 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 0 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 0 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ LessThan\n" +
 			" │   │       │   ├─ comp_index_t1.v1:1\n" +
@@ -2680,19 +2680,19 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   │   └─ 68 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │   │       └─ 68 (tinyint)\n" +
 			" │   │   │   │   └─ LessThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │   │       └─ 57 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
-			" │   │   │       │   ├─ (NOT(Eq\n" +
-			" │   │   │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │       │   │   └─ 84 (tinyint)\n" +
-			" │   │   │       │   │  ))\n" +
+			" │   │   │       │   ├─ NOT\n" +
+			" │   │   │       │   │   └─ Eq\n" +
+			" │   │   │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       │   │       └─ 84 (tinyint)\n" +
 			" │   │   │       │   └─ (comp_index_t1.v3:3 BETWEEN 24 (tinyint) AND 98 (tinyint))\n" +
 			" │   │   │       └─ (comp_index_t1.v2:2 BETWEEN 28 (tinyint) AND 45 (tinyint))\n" +
 			" │   │   └─ AND\n" +
@@ -2700,10 +2700,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ GreaterThan\n" +
 			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │       │   │   └─ 0 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t1.v2:2\n" +
-			" │   │       │       └─ 47 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t1.v2:2\n" +
+			" │   │       │           └─ 47 (tinyint)\n" +
 			" │   │       └─ GreaterThanOrEqual\n" +
 			" │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │           └─ 69 (tinyint)\n" +
@@ -2739,10 +2739,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │       │   │   └─ 12 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t1.v2:2\n" +
-			" │   │       │       └─ 4 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t1.v2:2\n" +
+			" │   │       │           └─ 4 (tinyint)\n" +
 			" │   │       └─ GreaterThan\n" +
 			" │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │           └─ 53 (tinyint)\n" +
@@ -2868,14 +2868,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │       └─ 33 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
-			" │   │   │       │   ├─ (NOT(Eq\n" +
-			" │   │   │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │       │   │   └─ 85 (tinyint)\n" +
-			" │   │   │       │   │  ))\n" +
-			" │   │   │       │   └─ (NOT(Eq\n" +
-			" │   │   │       │       ├─ comp_index_t1.v2:2\n" +
-			" │   │   │       │       └─ 50 (tinyint)\n" +
-			" │   │   │       │      ))\n" +
+			" │   │   │       │   ├─ NOT\n" +
+			" │   │   │       │   │   └─ Eq\n" +
+			" │   │   │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       │   │       └─ 85 (tinyint)\n" +
+			" │   │   │       │   └─ NOT\n" +
+			" │   │   │       │       └─ Eq\n" +
+			" │   │   │       │           ├─ comp_index_t1.v2:2\n" +
+			" │   │   │       │           └─ 50 (tinyint)\n" +
 			" │   │   │       └─ (comp_index_t1.v3:3 BETWEEN 34 (tinyint) AND 67 (tinyint))\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
@@ -2892,10 +2892,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ GreaterThanOrEqual\n" +
 			" │       │       ├─ comp_index_t1.v2:2\n" +
 			" │       │       └─ 29 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v3:3\n" +
-			" │           └─ 80 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v3:3\n" +
+			" │               └─ 80 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 5), (NULL, 50), [34, 67]}, {(NULL, 16), (50, ∞), [34, 67]}, {[5, 16), (4, 50), [34, 67]}, {[5, 47], (NULL, 4), [34, 67]}, {[5, 47], [4, 4], [13, 76]}, {[16, 16], (4, 29), [34, 67]}, {[16, 16], [29, ∞), (NULL, 80)}, {[16, 16], [29, ∞), (80, ∞)}, {(16, 47], (4, 50), [34, 67]}, {(16, 85), (50, ∞), [34, 67]}, {(47, 71], (NULL, 50), [34, 67]}, {(71, 85), (NULL, 33), [34, 67]}, {(71, 85), (33, 50), [34, 67]}, {(71, ∞), [33, 33], [NULL, ∞)}, {(85, ∞), (NULL, 33), [34, 67]}, {(85, ∞), (33, 50), [34, 67]}, {(85, ∞), (50, ∞), [34, 67]}]\n" +
@@ -2917,10 +2917,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       ├─ comp_index_t1.v1:1\n" +
 			" │   │       └─ 79 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 38 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 38 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 38), [NULL, ∞), [NULL, ∞)}, {(38, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -2940,10 +2940,10 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 50 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 50 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ LessThanOrEqual\n" +
 			" │   │       │   ├─ comp_index_t1.v1:1\n" +
@@ -3078,14 +3078,14 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1<>19) OR (v1<>48));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   └─ 19 (tinyint)\n" +
-			" │   │  ))\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 48 (tinyint)\n" +
-			" │      ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │       └─ 19 (tinyint)\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 48 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -3140,10 +3140,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   ├─ GreaterThan\n" +
 			" │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │       │   │   └─ 38 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t1.v3:3\n" +
-			" │       │       └─ 57 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t1.v3:3\n" +
+			" │       │           └─ 57 (tinyint)\n" +
 			" │       └─ Eq\n" +
 			" │           ├─ comp_index_t1.v2:2\n" +
 			" │           └─ 87 (tinyint)\n" +
@@ -3166,18 +3166,18 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 23 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 23 (tinyint)\n" +
 			" │   │   └─ LessThanOrEqual\n" +
 			" │   │       ├─ comp_index_t1.v3:3\n" +
 			" │   │       └─ 52 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   └─ 19 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t1.v1:1\n" +
+			" │       │       └─ 19 (tinyint)\n" +
 			" │       └─ Eq\n" +
 			" │           ├─ comp_index_t1.v2:2\n" +
 			" │           └─ 25 (tinyint)\n" +
@@ -3288,10 +3288,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │   │   │   │           └─ 29 (tinyint)\n" +
 			" │   │   │   │   └─ AND\n" +
-			" │   │   │   │       ├─ (NOT(Eq\n" +
-			" │   │   │   │       │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │       │   └─ 54 (tinyint)\n" +
-			" │   │   │   │       │  ))\n" +
+			" │   │   │   │       ├─ NOT\n" +
+			" │   │   │   │       │   └─ Eq\n" +
+			" │   │   │   │       │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │       │       └─ 54 (tinyint)\n" +
 			" │   │   │   │       └─ (comp_index_t1.v2:2 BETWEEN 0 (tinyint) AND 54 (tinyint))\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ (comp_index_t1.v1:1 BETWEEN 17 (tinyint) AND 17 (tinyint))\n" +
@@ -3305,10 +3305,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ GreaterThanOrEqual\n" +
 			" │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │           └─ 42 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 0 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 0 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 0), [NULL, ∞), [NULL, ∞)}, {[0, 0], [0, 54], [NULL, ∞)}, {(0, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -3329,10 +3329,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   └─ 9 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │       └─ 9 (tinyint)\n" +
 			" │   │   │   └─ LessThan\n" +
 			" │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │       └─ 74 (tinyint)\n" +
@@ -3441,10 +3441,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ LessThan\n" +
 			" │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │   └─ 11 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 33 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 33 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 33), [NULL, ∞), [NULL, ∞)}, {(33, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -3474,10 +3474,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │   │   │   │           └─ 40 (tinyint)\n" +
 			" │   │   │   │   └─ AND\n" +
-			" │   │   │   │       ├─ (NOT(Eq\n" +
-			" │   │   │   │       │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │       │   └─ 88 (tinyint)\n" +
-			" │   │   │   │       │  ))\n" +
+			" │   │   │   │       ├─ NOT\n" +
+			" │   │   │   │       │   └─ Eq\n" +
+			" │   │   │   │       │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │       │       └─ 88 (tinyint)\n" +
 			" │   │   │   │       └─ Eq\n" +
 			" │   │   │   │           ├─ comp_index_t1.v2:2\n" +
 			" │   │   │   │           └─ 8 (tinyint)\n" +
@@ -3529,10 +3529,10 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 77 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 77 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ LessThanOrEqual\n" +
@@ -3573,10 +3573,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE ((v1<>50) OR (v1<=71));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   └─ 50 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │       └─ 50 (tinyint)\n" +
 			" │   └─ LessThanOrEqual\n" +
 			" │       ├─ comp_index_t1.v1:1\n" +
 			" │       └─ 71 (tinyint)\n" +
@@ -3687,10 +3687,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ Eq\n" +
 			" │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │           └─ 19 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 48 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 48 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 48), [NULL, ∞), [NULL, ∞)}, {[48, 48], (NULL, 94], [NULL, ∞)}, {(48, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -3738,10 +3738,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   ├─ GreaterThanOrEqual\n" +
 			" │   │   │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │   │   │   └─ 43 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t1.v2:2\n" +
-			" │   │   │       └─ 39 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t1.v2:2\n" +
+			" │   │   │           └─ 39 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ LessThanOrEqual\n" +
@@ -3754,10 +3754,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │           └─ 54 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   └─ 68 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t1.v1:1\n" +
+			" │       │       └─ 68 (tinyint)\n" +
 			" │       └─ (comp_index_t1.v2:2 BETWEEN 42 (tinyint) AND 46 (tinyint))\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
@@ -3794,10 +3794,10 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 45 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 45 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ GreaterThanOrEqual\n" +
@@ -3811,17 +3811,17 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           └─ 38 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   │   └─ 58 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │       │   │       └─ 58 (tinyint)\n" +
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t1.v3:3\n" +
 			" │       │       └─ 32 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v2:2\n" +
-			" │           └─ 45 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v2:2\n" +
+			" │               └─ 45 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 45), [NULL, ∞), [NULL, ∞)}, {[45, 45], (NULL, 45), (NULL, 32]}, {[45, 45], (45, ∞), (NULL, 32]}, {(45, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -3897,10 +3897,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ 34 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ (comp_index_t1.v1:1 BETWEEN 2 (tinyint) AND 57 (tinyint))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v2:2\n" +
-			" │           └─ 70 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v2:2\n" +
+			" │               └─ 70 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 1), [NULL, ∞), [NULL, ∞)}, {[2, 57], (NULL, 70), [NULL, ∞)}, {[2, 57], (70, ∞), [NULL, ∞)}]\n" +
@@ -3925,10 +3925,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ LessThanOrEqual\n" +
 			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │   │   │   │   └─ 93 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t1.v3:3\n" +
-			" │   │   │   │       └─ 47 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t1.v3:3\n" +
+			" │   │   │   │           └─ 47 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
 			" │   │   │       │   ├─ GreaterThanOrEqual\n" +
@@ -4005,10 +4005,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │       │   │   └─ 44 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t1.v2:2\n" +
-			" │   │       │       └─ 43 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t1.v2:2\n" +
+			" │   │       │           └─ 43 (tinyint)\n" +
 			" │   │       └─ Eq\n" +
 			" │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │           └─ 29 (tinyint)\n" +
@@ -4064,10 +4064,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ GreaterThan\n" +
 			" │       │       ├─ comp_index_t1.v2:2\n" +
 			" │       │       └─ 10 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v3:3\n" +
-			" │           └─ 65 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v3:3\n" +
+			" │               └─ 65 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, 19), [10, ∞), [NULL, ∞)}, {[19, 36), (10, ∞), (NULL, 65)}, {[19, 36), (10, ∞), (65, ∞)}]\n" +
@@ -4093,10 +4093,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │       └─ 46 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ (comp_index_t1.v1:1 BETWEEN 21 (tinyint) AND 53 (tinyint))\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t1.v2:2\n" +
-			" │   │   │           └─ 63 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t1.v2:2\n" +
+			" │   │   │               └─ 63 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ (comp_index_t1.v1:1 BETWEEN 10 (tinyint) AND 62 (tinyint))\n" +
 			" │   │       └─ GreaterThanOrEqual\n" +
@@ -4124,16 +4124,16 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 51 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 51 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
-			" │   │       │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │       │   │   └─ 4 (tinyint)\n" +
-			" │   │       │   │  ))\n" +
+			" │   │       │   ├─ NOT\n" +
+			" │   │       │   │   └─ Eq\n" +
+			" │   │       │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │       │   │       └─ 4 (tinyint)\n" +
 			" │   │       │   └─ LessThan\n" +
 			" │   │       │       ├─ comp_index_t1.v2:2\n" +
 			" │   │       │       └─ 47 (tinyint)\n" +
@@ -4206,14 +4206,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThan\n" +
 			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │       │   │   └─ 22 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t1.v2:2\n" +
-			" │   │       │       └─ 42 (tinyint)\n" +
-			" │   │       │      ))\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t1.v3:3\n" +
-			" │   │           └─ 54 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t1.v2:2\n" +
+			" │   │       │           └─ 42 (tinyint)\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t1.v3:3\n" +
+			" │   │               └─ 54 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ GreaterThanOrEqual\n" +
 			" │       │   ├─ comp_index_t1.v1:1\n" +
@@ -4254,15 +4254,15 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ LessThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │   │       └─ 9 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │   │       └─ 50 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │   │           └─ 50 (tinyint)\n" +
 			" │   │   └─ AND\n" +
-			" │   │       ├─ (NOT(Eq\n" +
-			" │   │       │   ├─ comp_index_t1.v1:1\n" +
-			" │   │       │   └─ 4 (tinyint)\n" +
-			" │   │       │  ))\n" +
+			" │   │       ├─ NOT\n" +
+			" │   │       │   └─ Eq\n" +
+			" │   │       │       ├─ comp_index_t1.v1:1\n" +
+			" │   │       │       └─ 4 (tinyint)\n" +
 			" │   │       └─ GreaterThan\n" +
 			" │   │           ├─ comp_index_t1.v2:2\n" +
 			" │   │           └─ 56 (tinyint)\n" +
@@ -4302,10 +4302,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ GreaterThanOrEqual\n" +
 			" │       │       ├─ comp_index_t1.v3:3\n" +
 			" │       │       └─ 87 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v2:2\n" +
-			" │           └─ 46 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v2:2\n" +
+			" │               └─ 46 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{[23, 50), (NULL, 46), [87, ∞)}, {[23, 50), (46, ∞), [87, ∞)}, {[50, 59], [NULL, ∞), [NULL, ∞)}, {(59, ∞), (NULL, 46), [87, ∞)}, {(59, ∞), (46, ∞), [87, ∞)}]\n" +
@@ -4338,10 +4338,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ LessThanOrEqual\n" +
 			" │   │   │           ├─ comp_index_t1.v2:2\n" +
 			" │   │   │           └─ 3 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 91 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │           └─ 91 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ Eq\n" +
 			" │       │   ├─ comp_index_t1.v1:1\n" +
@@ -4423,10 +4423,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t1.v3:3\n" +
 			" │   │   │       └─ 77 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 4 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │           └─ 4 (tinyint)\n" +
 			" │   └─ LessThanOrEqual\n" +
 			" │       ├─ comp_index_t1.v1:1\n" +
 			" │       └─ 41 (tinyint)\n" +
@@ -4441,17 +4441,17 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   └─ 33 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │       └─ 33 (tinyint)\n" +
 			" │   │   └─ LessThanOrEqual\n" +
 			" │   │       ├─ comp_index_t1.v1:1\n" +
 			" │   │       └─ 28 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t1.v1:1\n" +
-			" │       └─ 68 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t1.v1:1\n" +
+			" │           └─ 68 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -4541,10 +4541,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │   │       │   │   └─ 24 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t1.v3:3\n" +
-			" │   │       │       └─ 22 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t1.v3:3\n" +
+			" │   │       │           └─ 22 (tinyint)\n" +
 			" │   │       └─ (comp_index_t1.v2:2 BETWEEN 12 (tinyint) AND 25 (tinyint))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ (comp_index_t1.v1:1 BETWEEN 48 (tinyint) AND 49 (tinyint))\n" +
@@ -4573,10 +4573,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   └─ LessThan\n" +
 			" │   │   │       ├─ comp_index_t1.v3:3\n" +
 			" │   │   │       └─ 90 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 90 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │           └─ 90 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ LessThanOrEqual\n" +
 			" │       │   ├─ comp_index_t1.v1:1\n" +
@@ -4665,10 +4665,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   │   └─ 1 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │   │       └─ 1 (tinyint)\n" +
 			" │   │   │   │   └─ Eq\n" +
 			" │   │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │   │       └─ 88 (tinyint)\n" +
@@ -4683,10 +4683,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   ├─ GreaterThan\n" +
 			" │       │   │   ├─ comp_index_t1.v1:1\n" +
 			" │       │   │   └─ 74 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t1.v3:3\n" +
-			" │       │       └─ 55 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t1.v3:3\n" +
+			" │       │           └─ 55 (tinyint)\n" +
 			" │       └─ GreaterThanOrEqual\n" +
 			" │           ├─ comp_index_t1.v2:2\n" +
 			" │           └─ 9 (tinyint)\n" +
@@ -4802,10 +4802,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │   │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │   │   │       └─ 53 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t1.v3:3\n" +
-			" │   │   │   │       └─ 12 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t1.v3:3\n" +
+			" │   │   │   │           └─ 12 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
 			" │   │   │       │   ├─ Eq\n" +
@@ -4814,10 +4814,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   └─ LessThan\n" +
 			" │   │   │       │       ├─ comp_index_t1.v2:2\n" +
 			" │   │   │       │       └─ 1 (tinyint)\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t1.v3:3\n" +
-			" │   │   │           └─ 89 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t1.v3:3\n" +
+			" │   │   │               └─ 89 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ Eq\n" +
@@ -4880,10 +4880,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ LessThanOrEqual\n" +
 			" │   │   │           ├─ comp_index_t1.v3:3\n" +
 			" │   │   │           └─ 8 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │       └─ 57 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │           └─ 57 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ Eq\n" +
@@ -4916,18 +4916,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t1.v3:3\n" +
 			" │   │   │   │       └─ 64 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t1.v1:1\n" +
-			" │   │   │       └─ 47 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t1.v1:1\n" +
+			" │   │   │           └─ 47 (tinyint)\n" +
 			" │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       ├─ comp_index_t1.v1:1\n" +
 			" │   │       └─ 11 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t1.v1:1\n" +
-			" │       │   └─ 46 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t1.v1:1\n" +
+			" │       │       └─ 46 (tinyint)\n" +
 			" │       └─ (comp_index_t1.v2:2 BETWEEN 4 (tinyint) AND 26 (tinyint))\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
@@ -4956,10 +4956,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       ├─ AND\n" +
 			" │       │   ├─ (comp_index_t1.v1:1 BETWEEN 50 (tinyint) AND 50 (tinyint))\n" +
 			" │       │   └─ (comp_index_t1.v2:2 BETWEEN 16 (tinyint) AND 38 (tinyint))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t1.v3:3\n" +
-			" │           └─ 94 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t1.v3:3\n" +
+			" │               └─ 94 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t1)\n" +
 			"     ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
 			"     ├─ static: [{[50, 50], [16, 38], (NULL, 94)}, {[50, 50], [16, 38], (94, ∞)}, {[79, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -4973,10 +4973,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Or\n" +
 			" │   │   ├─ Or\n" +
 			" │   │   │   ├─ Or\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t1.v1:1\n" +
-			" │   │   │   │   │   └─ 79 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t1.v1:1\n" +
+			" │   │   │   │   │       └─ 79 (tinyint)\n" +
 			" │   │   │   │   └─ AND\n" +
 			" │   │   │   │       ├─ AND\n" +
 			" │   │   │   │       │   ├─ (comp_index_t1.v1:1 BETWEEN 9 (tinyint) AND 11 (tinyint))\n" +
@@ -5045,10 +5045,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   └─ LessThanOrEqual\n" +
 			" │   │       │       ├─ comp_index_t1.v2:2\n" +
 			" │   │       │       └─ 62 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t1.v3:3\n" +
-			" │   │           └─ 76 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t1.v3:3\n" +
+			" │   │               └─ 76 (tinyint)\n" +
 			" │   └─ GreaterThanOrEqual\n" +
 			" │       ├─ comp_index_t1.v1:1\n" +
 			" │       └─ 94 (tinyint)\n" +
@@ -5230,10 +5230,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   ├─ LessThanOrEqual\n" +
 			" │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   │   └─ 31 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v4:4\n" +
-			" │       │       └─ 35 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v4:4\n" +
+			" │       │           └─ 35 (tinyint)\n" +
 			" │       └─ Eq\n" +
 			" │           ├─ comp_index_t2.v2:2\n" +
 			" │           └─ 38 (tinyint)\n" +
@@ -5356,10 +5356,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           └─ 98 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 5 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 5 (tinyint)\n" +
 			" │       │   └─ (comp_index_t2.v2:2 BETWEEN 35 (tinyint) AND 40 (tinyint))\n" +
 			" │       └─ LessThanOrEqual\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
@@ -5422,10 +5422,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ (comp_index_t2.v1:1 BETWEEN 41 (tinyint) AND 80 (tinyint))\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v2:2\n" +
-			" │       │       └─ 21 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v2:2\n" +
+			" │       │           └─ 21 (tinyint)\n" +
 			" │       └─ GreaterThan\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
 			" │           └─ 60 (tinyint)\n" +
@@ -5454,10 +5454,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ AND\n" +
 			" │   │   │   │   │   ├─ (comp_index_t2.v1:1 BETWEEN 81 (tinyint) AND 87 (tinyint))\n" +
-			" │   │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │   │   │       └─ 81 (tinyint)\n" +
-			" │   │   │   │   │      ))\n" +
+			" │   │   │   │   │   └─ NOT\n" +
+			" │   │   │   │   │       └─ Eq\n" +
+			" │   │   │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │   │   │           └─ 81 (tinyint)\n" +
 			" │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │   │       └─ 30 (tinyint)\n" +
@@ -5469,10 +5469,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThan\n" +
 			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   └─ 27 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │       └─ 8 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │           └─ 8 (tinyint)\n" +
 			" │   │       └─ GreaterThan\n" +
 			" │   │           ├─ comp_index_t2.v3:3\n" +
 			" │   │           └─ 35 (tinyint)\n" +
@@ -5505,10 +5505,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       ├─ Eq\n" +
 			" │   │       │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   └─ 82 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │           └─ 99 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │               └─ 99 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -5543,10 +5543,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       ├─ LessThan\n" +
 			" │       │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   └─ 70 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v2:2\n" +
-			" │           └─ 43 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v2:2\n" +
+			" │               └─ 43 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 27], [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(27, 70), (NULL, 43), [NULL, ∞), [NULL, ∞)}, {(27, 70), (43, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -5560,10 +5560,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   └─ 34 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │       └─ 34 (tinyint)\n" +
 			" │   │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │       └─ 89 (tinyint)\n" +
@@ -5621,10 +5621,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ GreaterThan\n" +
 			" │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │       └─ 51 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 30 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 30 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -5722,10 +5722,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ LessThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   │       └─ 46 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │       └─ 36 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │           └─ 36 (tinyint)\n" +
 			" │   │   └─ Eq\n" +
 			" │   │       ├─ comp_index_t2.v1:1\n" +
 			" │   │       └─ 84 (tinyint)\n" +
@@ -5735,10 +5735,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ LessThan\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 71 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 45 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 45 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{[52, 98], (NULL, 71), (NULL, 45), [NULL, ∞)}, {[52, 98], (NULL, 71), (45, ∞), [NULL, ∞)}, {[84, 84], [13, 71), [45, 45], (NULL, 36)}, {[84, 84], [13, 71), [45, 45], (36, ∞)}, {[84, 84], [71, ∞), (NULL, 46], (NULL, 36)}, {[84, 84], [71, ∞), (NULL, 46], (36, ∞)}]\n" +
@@ -5768,10 +5768,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   │       └─ 33 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       └─ 52 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │   │           └─ 52 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ (comp_index_t2.v1:1 BETWEEN 3 (tinyint) AND 61 (tinyint))\n" +
 			" │   │       └─ LessThanOrEqual\n" +
@@ -5821,25 +5821,25 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   │   ├─ LessThan\n" +
 			" │   │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │       │   │   │   └─ 44 (tinyint)\n" +
-			" │   │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │   │       │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │       │   │       └─ 6 (tinyint)\n" +
-			" │   │   │       │   │      ))\n" +
-			" │   │   │       │   └─ (NOT(Eq\n" +
-			" │   │   │       │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       │       └─ 10 (tinyint)\n" +
-			" │   │   │       │      ))\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │   │           └─ 14 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       │   │   └─ NOT\n" +
+			" │   │   │       │   │       └─ Eq\n" +
+			" │   │   │       │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │       │   │           └─ 6 (tinyint)\n" +
+			" │   │   │       │   └─ NOT\n" +
+			" │   │   │       │       └─ Eq\n" +
+			" │   │   │       │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │       │           └─ 10 (tinyint)\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │   │               └─ 14 (tinyint)\n" +
 			" │   │   └─ GreaterThan\n" +
 			" │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       └─ 25 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v4:4\n" +
-			" │       └─ 32 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v4:4\n" +
+			" │           └─ 32 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(∞, ∞), (∞, ∞), (∞, ∞), (∞, ∞)}]\n" +
@@ -5868,10 +5868,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
-			" │       │   │   ├─ (NOT(Eq\n" +
-			" │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   │   └─ 73 (tinyint)\n" +
-			" │       │   │   │  ))\n" +
+			" │       │   │   ├─ NOT\n" +
+			" │       │   │   │   └─ Eq\n" +
+			" │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │   │       └─ 73 (tinyint)\n" +
 			" │       │   │   └─ GreaterThan\n" +
 			" │       │   │       ├─ comp_index_t2.v4:4\n" +
 			" │       │   │       └─ 9 (tinyint)\n" +
@@ -5907,18 +5907,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │   │       └─ 57 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │   │       └─ 74 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │   │           └─ 74 (tinyint)\n" +
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │       └─ 69 (tinyint)\n" +
 			" │   │   └─ AND\n" +
-			" │   │       ├─ (NOT(Eq\n" +
-			" │   │       │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   └─ 66 (tinyint)\n" +
-			" │   │       │  ))\n" +
+			" │   │       ├─ NOT\n" +
+			" │   │       │   └─ Eq\n" +
+			" │   │       │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │       └─ 66 (tinyint)\n" +
 			" │   │       └─ Eq\n" +
 			" │   │           ├─ comp_index_t2.v2:2\n" +
 			" │   │           └─ 16 (tinyint)\n" +
@@ -5955,20 +5955,20 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ GreaterThan\n" +
 			" │   │   │           ├─ comp_index_t2.v2:2\n" +
 			" │   │   │           └─ 21 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 10 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 10 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ (comp_index_t2.v1:1 BETWEEN 43 (tinyint) AND 44 (tinyint))\n" +
 			" │       │   └─ GreaterThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 35 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 87 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 87 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 10), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[10, 10], (NULL, 41], [NULL, ∞), [NULL, ∞)}, {(10, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -6027,10 +6027,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       └─ 20 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 68 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 68 (tinyint)\n" +
 			" │       └─ GreaterThan\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
 			" │           └─ 32 (tinyint)\n" +
@@ -6079,10 +6079,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ Eq\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 1 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 54 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 54 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 44), [1, 1], (NULL, 54), [NULL, ∞)}, {(NULL, 44), [1, 1], (54, ∞), [NULL, ∞)}, {[44, 44], (NULL, 98], [NULL, ∞), [NULL, ∞)}, {(44, 45], [1, 1], (NULL, 54), [NULL, ∞)}, {(44, 45], [1, 1], (54, ∞), [NULL, ∞)}]\n" +
@@ -6162,10 +6162,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   └─ Eq\n" +
 			" │   │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       │       └─ 55 (tinyint)\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │   │           └─ 46 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │   │               └─ 46 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
@@ -6252,10 +6252,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   │   └─ 39 (tinyint)\n" +
-			" │   │   │   │   │   │  ))\n" +
+			" │   │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │   │       └─ 39 (tinyint)\n" +
 			" │   │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   │   │       └─ 44 (tinyint)\n" +
@@ -6302,22 +6302,22 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │   ├─ LessThan\n" +
 			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   │   └─ 31 (tinyint)\n" +
-			" │   │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │   │       └─ 14 (tinyint)\n" +
-			" │   │   │   │   │      ))\n" +
+			" │   │   │   │   │   └─ NOT\n" +
+			" │   │   │   │   │       └─ Eq\n" +
+			" │   │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │   │           └─ 14 (tinyint)\n" +
 			" │   │   │   │   └─ (comp_index_t2.v3:3 BETWEEN 0 (tinyint) AND 10 (tinyint))\n" +
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │       └─ 95 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 91 (tinyint)\n" +
-			" │   │      ))\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 35 (tinyint)\n" +
-			" │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 91 (tinyint)\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 35 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -6333,10 +6333,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ 13 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 3 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 3 (tinyint)\n" +
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v4:4\n" +
 			" │       │       └─ 42 (tinyint)\n" +
@@ -6428,10 +6428,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ AND\n" +
 			" │   │   ├─ Or\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   └─ 61 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │       └─ 61 (tinyint)\n" +
 			" │   │   │   │   └─ (comp_index_t2.v2:2 BETWEEN 46 (tinyint) AND 51 (tinyint))\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ (comp_index_t2.v1:1 BETWEEN 32 (tinyint) AND 75 (tinyint))\n" +
@@ -6461,10 +6461,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       └─ 70 (tinyint)\n" +
 			" │   │   └─ AND\n" +
-			" │   │       ├─ (NOT(Eq\n" +
-			" │   │       │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   └─ 47 (tinyint)\n" +
-			" │   │       │  ))\n" +
+			" │   │       ├─ NOT\n" +
+			" │   │       │   └─ Eq\n" +
+			" │   │       │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │       └─ 47 (tinyint)\n" +
 			" │   │       └─ (comp_index_t2.v2:2 BETWEEN 19 (tinyint) AND 65 (tinyint))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ Eq\n" +
@@ -6496,18 +6496,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   │   ├─ LessThan\n" +
 			" │   │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │       │   │   │   └─ 5 (tinyint)\n" +
-			" │   │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │   │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       │   │       └─ 13 (tinyint)\n" +
-			" │   │   │       │   │      ))\n" +
+			" │   │   │       │   │   └─ NOT\n" +
+			" │   │   │       │   │       └─ Eq\n" +
+			" │   │   │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │       │   │           └─ 13 (tinyint)\n" +
 			" │   │   │       │   └─ (comp_index_t2.v3:3 BETWEEN 20 (tinyint) AND 96 (tinyint))\n" +
 			" │   │   │       └─ GreaterThan\n" +
 			" │   │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │   │           └─ 92 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 76 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 76 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ (comp_index_t2.v1:1 BETWEEN 12 (tinyint) AND 88 (tinyint))\n" +
@@ -6544,10 +6544,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   │   ├─ LessThanOrEqual\n" +
 			" │   │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │       │   │   │   └─ 22 (tinyint)\n" +
-			" │   │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │   │       │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │       │   │       └─ 40 (tinyint)\n" +
-			" │   │   │       │   │      ))\n" +
+			" │   │   │       │   │   └─ NOT\n" +
+			" │   │   │       │   │       └─ Eq\n" +
+			" │   │   │       │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │       │   │           └─ 40 (tinyint)\n" +
 			" │   │   │       │   └─ GreaterThan\n" +
 			" │   │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       │       └─ 76 (tinyint)\n" +
@@ -6598,10 +6598,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ GreaterThan\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 35 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │       └─ 26 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │           └─ 26 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
 			" │   │   │       │   ├─ AND\n" +
@@ -6615,10 +6615,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ GreaterThan\n" +
 			" │   │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │   │           └─ 5 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 97 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 97 (tinyint)\n" +
 			" │   └─ GreaterThan\n" +
 			" │       ├─ comp_index_t2.v1:1\n" +
 			" │       └─ 31 (tinyint)\n" +
@@ -6703,10 +6703,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ GreaterThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   └─ 95 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │       └─ 72 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │           └─ 72 (tinyint)\n" +
 			" │   │       └─ Eq\n" +
 			" │   │           ├─ comp_index_t2.v3:3\n" +
 			" │   │           └─ 22 (tinyint)\n" +
@@ -6807,10 +6807,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   │   └─ LessThan\n" +
 			" │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │       │   │       └─ 53 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v3:3\n" +
-			" │       │       └─ 15 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v3:3\n" +
+			" │       │           └─ 15 (tinyint)\n" +
 			" │       └─ GreaterThan\n" +
 			" │           ├─ comp_index_t2.v4:4\n" +
 			" │           └─ 22 (tinyint)\n" +
@@ -6836,20 +6836,20 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ LessThanOrEqual\n" +
 			" │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   └─ 97 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       └─ 2 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │           └─ 2 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ Eq\n" +
 			" │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   │   └─ 49 (tinyint)\n" +
 			" │       │   └─ (comp_index_t2.v2:2 BETWEEN 29 (tinyint) AND 30 (tinyint))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 97 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 97 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 97], [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -6898,10 +6898,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
 			" │   │   ├─ Or\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   └─ 37 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │       └─ 37 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
 			" │   │   │       │   ├─ LessThanOrEqual\n" +
@@ -6916,23 +6916,23 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThan\n" +
 			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   └─ 10 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       │       └─ 26 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v3:3\n" +
+			" │   │       │           └─ 26 (tinyint)\n" +
 			" │   │       └─ LessThan\n" +
 			" │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │           └─ 91 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 21 (tinyint)\n" +
-			" │       │   │  ))\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v2:2\n" +
-			" │       │       └─ 24 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 21 (tinyint)\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v2:2\n" +
+			" │       │           └─ 24 (tinyint)\n" +
 			" │       └─ LessThan\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
 			" │           └─ 46 (tinyint)\n" +
@@ -6965,10 +6965,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   └─ 91 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │       └─ 91 (tinyint)\n" +
 			" │   │   │   │   └─ Eq\n" +
 			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │       └─ 91 (tinyint)\n" +
@@ -6977,10 +6977,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ 15 (tinyint)\n" +
 			" │   │   └─ (comp_index_t2.v1:1 BETWEEN 16 (tinyint) AND 30 (tinyint))\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 27 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 27 (tinyint)\n" +
 			" │       └─ Eq\n" +
 			" │           ├─ comp_index_t2.v4:4\n" +
 			" │           └─ 62 (tinyint)\n" +
@@ -7015,10 +7015,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 43 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 97 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 97 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(8, ∞), (NULL, 43], (NULL, 97), [NULL, ∞)}, {(8, ∞), (NULL, 43], (97, ∞), [NULL, ∞)}, {[54, 54], [3, 8], [97, 97], (30, ∞)}]\n" +
@@ -7035,10 +7035,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ GreaterThanOrEqual\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 38 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │       └─ 11 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │           └─ 11 (tinyint)\n" +
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │       └─ 26 (tinyint)\n" +
@@ -7051,10 +7051,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ LessThan\n" +
 			" │   │           ├─ comp_index_t2.v2:2\n" +
 			" │   │           └─ 0 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 23 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 23 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 23), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(23, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -7138,10 +7138,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   │   ├─ Eq\n" +
 			" │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   │   │   └─ 1 (tinyint)\n" +
-			" │       │   │   └─ (NOT(Eq\n" +
-			" │       │   │       ├─ comp_index_t2.v4:4\n" +
-			" │       │   │       └─ 29 (tinyint)\n" +
-			" │       │   │      ))\n" +
+			" │       │   │   └─ NOT\n" +
+			" │       │   │       └─ Eq\n" +
+			" │       │   │           ├─ comp_index_t2.v4:4\n" +
+			" │       │   │           └─ 29 (tinyint)\n" +
 			" │       │   └─ (comp_index_t2.v2:2 BETWEEN 64 (tinyint) AND 81 (tinyint))\n" +
 			" │       └─ GreaterThan\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
@@ -7169,20 +7169,20 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   ├─ GreaterThanOrEqual\n" +
 			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   └─ 72 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       └─ 17 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │   │           └─ 17 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
 			" │   │       │   │   ├─ Eq\n" +
 			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   │   └─ 47 (tinyint)\n" +
-			" │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │   │       └─ 1 (tinyint)\n" +
-			" │   │       │   │      ))\n" +
+			" │   │       │   │   └─ NOT\n" +
+			" │   │       │   │       └─ Eq\n" +
+			" │   │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │   │           └─ 1 (tinyint)\n" +
 			" │   │       │   └─ (comp_index_t2.v3:3 BETWEEN 75 (tinyint) AND 78 (tinyint))\n" +
 			" │   │       └─ (comp_index_t2.v4:4 BETWEEN 10 (tinyint) AND 44 (tinyint))\n" +
 			" │   └─ AND\n" +
@@ -7221,10 +7221,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ AND\n" +
 			" │   │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   │   │   └─ 11 (tinyint)\n" +
-			" │   │   │   │   │   │   │  ))\n" +
+			" │   │   │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │   │   │       └─ 11 (tinyint)\n" +
 			" │   │   │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │   │   │       └─ 47 (tinyint)\n" +
@@ -7244,10 +7244,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │       │       └─ 65 (tinyint)\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t2.v2:2\n" +
-			" │   │   │           └─ 96 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t2.v2:2\n" +
+			" │   │   │               └─ 96 (tinyint)\n" +
 			" │   │   └─ LessThanOrEqual\n" +
 			" │   │       ├─ comp_index_t2.v1:1\n" +
 			" │   │       └─ 62 (tinyint)\n" +
@@ -7257,18 +7257,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   │   ├─ LessThan\n" +
 			" │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   │   │   └─ 61 (tinyint)\n" +
-			" │       │   │   └─ (NOT(Eq\n" +
-			" │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │       │   │       └─ 28 (tinyint)\n" +
-			" │       │   │      ))\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v3:3\n" +
-			" │       │       └─ 8 (tinyint)\n" +
-			" │       │      ))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 30 (tinyint)\n" +
-			" │          ))\n" +
+			" │       │   │   └─ NOT\n" +
+			" │       │   │       └─ Eq\n" +
+			" │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │       │   │           └─ 28 (tinyint)\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v3:3\n" +
+			" │       │           └─ 8 (tinyint)\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 30 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 62], [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(62, ∞), (NULL, 96), [4, 29], [65, ∞)}, {(62, ∞), (47, ∞), [67, ∞), [29, 29]}, {(62, ∞), (96, ∞), [4, 29], [65, ∞)}]\n" +
@@ -7284,10 +7284,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
-			" │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   │   └─ 48 (tinyint)\n" +
-			" │   │       │   │   │  ))\n" +
+			" │   │       │   │   ├─ NOT\n" +
+			" │   │       │   │   │   └─ Eq\n" +
+			" │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │   │       └─ 48 (tinyint)\n" +
 			" │   │       │   │   └─ GreaterThan\n" +
 			" │   │       │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │       │   │       └─ 91 (tinyint)\n" +
@@ -7298,10 +7298,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           ├─ comp_index_t2.v3:3\n" +
 			" │   │           └─ 38 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 17 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 17 (tinyint)\n" +
 			" │       └─ Eq\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
 			" │           └─ 50 (tinyint)\n" +
@@ -7327,10 +7327,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   └─ LessThan\n" +
 			" │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │       └─ 25 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │           └─ 24 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │               └─ 24 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ LessThan\n" +
@@ -7405,10 +7405,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │       └─ 44 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │       └─ 68 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │           └─ 68 (tinyint)\n" +
 			" │   │   └─ Eq\n" +
 			" │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │       └─ 50 (tinyint)\n" +
@@ -7424,10 +7424,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ LessThan\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 11 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 44 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 44 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 1), (NULL, 11), (NULL, 44), (NULL, 66)}, {(NULL, 1), (NULL, 11), (44, ∞), (NULL, 66)}, {[0, 87], [44, ∞), (NULL, 68), [50, 50]}, {[0, 87], [44, ∞), (68, ∞), [50, 50]}]\n" +
@@ -7495,10 +7495,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ GreaterThan\n" +
 			" │   │           ├─ comp_index_t2.v3:3\n" +
 			" │   │           └─ 17 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 71 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 71 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{[2, 71), (NULL, 78), (NULL, 29), (NULL, 63)}, {[2, 71), (NULL, 78), (NULL, 29), (63, ∞)}, {[2, 71), (NULL, 78), (29, ∞), (NULL, 63)}, {[2, 71), (NULL, 78), (29, ∞), (63, ∞)}, {[2, 71), (78, ∞), (29, ∞), (NULL, 63)}, {[2, 71), (78, ∞), (29, ∞), (63, ∞)}, {[2, 86], (78, ∞), (NULL, 29), (NULL, 63)}, {[2, 86], (78, ∞), (NULL, 29), (63, ∞)}, {[71, 71], (1, 53), (29, 56], (NULL, 63)}, {[71, 71], (1, 53), (29, 56], (63, ∞)}, {[71, 71], (1, 78), (NULL, 29), (NULL, 63)}, {[71, 71], (1, 78), (NULL, 29), (63, ∞)}, {[71, 71], [53, 53], (29, ∞), (NULL, 63)}, {[71, 71], [53, 53], (29, ∞), (63, ∞)}, {[71, 71], (53, 78), (29, 56], (NULL, 63)}, {[71, 71], (53, 78), (29, 56], (63, ∞)}, {[71, 71], (78, ∞), (29, 56], (NULL, 63)}, {[71, 71], (78, ∞), (29, 56], (63, ∞)}, {(71, 86], (NULL, 78), (NULL, 29), (NULL, 63)}, {(71, 86], (NULL, 78), (NULL, 29), (63, ∞)}, {(71, 86], (NULL, 78), (29, ∞), (NULL, 63)}, {(71, 86], (NULL, 78), (29, ∞), (63, ∞)}, {(71, 86], (78, ∞), (29, ∞), (NULL, 63)}, {(71, 86], (78, ∞), (29, ∞), (63, ∞)}]\n" +
@@ -7589,10 +7589,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   └─ GreaterThanOrEqual\n" +
 			" │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │       └─ 1 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │           └─ 63 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │               └─ 63 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ (comp_index_t2.v1:1 BETWEEN 24 (tinyint) AND 86 (tinyint))\n" +
 			" │       └─ LessThanOrEqual\n" +
@@ -7614,10 +7614,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ LessThan\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 63 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │       └─ 32 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │           └─ 32 (tinyint)\n" +
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │       └─ 14 (tinyint)\n" +
@@ -7651,10 +7651,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   │   └─ 34 (tinyint)\n" +
-			" │   │   │   │   │   │  ))\n" +
+			" │   │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │   │       └─ 34 (tinyint)\n" +
 			" │   │   │   │   │   └─ (comp_index_t2.v3:3 BETWEEN 27 (tinyint) AND 48 (tinyint))\n" +
 			" │   │   │   │   └─ LessThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
@@ -7665,28 +7665,28 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
-			" │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   │   └─ 47 (tinyint)\n" +
-			" │   │       │   │   │  ))\n" +
+			" │   │       │   │   ├─ NOT\n" +
+			" │   │       │   │   │   └─ Eq\n" +
+			" │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │   │       └─ 47 (tinyint)\n" +
 			" │   │       │   │   └─ LessThan\n" +
 			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │   │       └─ 48 (tinyint)\n" +
 			" │   │       │   └─ LessThanOrEqual\n" +
 			" │   │       │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       │       └─ 47 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v4:4\n" +
-			" │   │           └─ 12 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v4:4\n" +
+			" │   │               └─ 12 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ LessThanOrEqual\n" +
 			" │       │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   └─ 36 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v2:2\n" +
-			" │           └─ 17 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v2:2\n" +
+			" │               └─ 17 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 36], (NULL, 17), [NULL, ∞), [NULL, ∞)}, {(NULL, 36], (17, ∞), [NULL, ∞), [NULL, ∞)}, {(36, 47), (42, 48), [27, 47], (NULL, 11]}, {(47, ∞), (42, 48), [27, 47], (NULL, 11]}]\n" +
@@ -7720,10 +7720,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │       │   │       └─ 50 (tinyint)\n" +
 			" │       │   └─ (comp_index_t2.v3:3 BETWEEN 0 (tinyint) AND 5 (tinyint))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 31 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 31 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 56], [50, 50], [0, 5], (NULL, 31)}, {(NULL, 56], [50, 50], [0, 5], (31, ∞)}]\n" +
@@ -7738,10 +7738,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ LessThanOrEqual\n" +
 			" │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   └─ 93 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       └─ 5 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │           └─ 5 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -7791,10 +7791,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   └─ LessThan\n" +
 			" │   │       │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       │       └─ 89 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v4:4\n" +
-			" │   │           └─ 12 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v4:4\n" +
+			" │   │               └─ 12 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ Eq\n" +
@@ -7866,10 +7866,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   ├─ GreaterThanOrEqual\n" +
 			" │   │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │       │   │   └─ 78 (tinyint)\n" +
-			" │   │   │       │   └─ (NOT(Eq\n" +
-			" │   │   │       │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       │       └─ 28 (tinyint)\n" +
-			" │   │   │       │      ))\n" +
+			" │   │   │       │   └─ NOT\n" +
+			" │   │   │       │       └─ Eq\n" +
+			" │   │   │       │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │       │           └─ 28 (tinyint)\n" +
 			" │   │   │       └─ LessThan\n" +
 			" │   │   │           ├─ comp_index_t2.v3:3\n" +
 			" │   │   │           └─ 52 (tinyint)\n" +
@@ -7878,10 +7878,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThan\n" +
 			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   └─ 8 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │       └─ 76 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │           └─ 76 (tinyint)\n" +
 			" │   │       └─ (comp_index_t2.v3:3 BETWEEN 36 (tinyint) AND 70 (tinyint))\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ comp_index_t2.v1:1\n" +
@@ -7896,10 +7896,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>69) OR (v1>=43));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 69 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 69 (tinyint)\n" +
 			" │   └─ GreaterThanOrEqual\n" +
 			" │       ├─ comp_index_t2.v1:1\n" +
 			" │       └─ 43 (tinyint)\n" +
@@ -7921,21 +7921,21 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │   │   │       └─ 16 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │       └─ 15 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │       └─ 35 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │           └─ 15 (tinyint)\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │           └─ 35 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
-			" │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   │   └─ 50 (tinyint)\n" +
-			" │   │       │   │   │  ))\n" +
+			" │   │       │   │   ├─ NOT\n" +
+			" │   │       │   │   │   └─ Eq\n" +
+			" │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │   │       └─ 50 (tinyint)\n" +
 			" │   │       │   │   └─ GreaterThan\n" +
 			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │   │       └─ 21 (tinyint)\n" +
@@ -8042,10 +8042,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   ├─ LessThanOrEqual\n" +
 			" │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   │   └─ 14 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v2:2\n" +
-			" │       │       └─ 1 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v2:2\n" +
+			" │       │           └─ 1 (tinyint)\n" +
 			" │       └─ LessThan\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
 			" │           └─ 62 (tinyint)\n" +
@@ -8061,10 +8061,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ AND\n" +
 			" │   ├─ Or\n" +
 			" │   │   ├─ Or\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   └─ 5 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │       └─ 5 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ LessThan\n" +
 			" │   │   │       │   ├─ comp_index_t2.v1:1\n" +
@@ -8072,10 +8072,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ GreaterThanOrEqual\n" +
 			" │   │   │           ├─ comp_index_t2.v2:2\n" +
 			" │   │   │           └─ 14 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 96 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 96 (tinyint)\n" +
 			" │   └─ GreaterThan\n" +
 			" │       ├─ comp_index_t2.v3:3\n" +
 			" │       └─ 41 (tinyint)\n" +
@@ -8096,17 +8096,17 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │   ├─ GreaterThan\n" +
 			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   │   └─ 97 (tinyint)\n" +
-			" │   │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │   │   │       └─ 77 (tinyint)\n" +
-			" │   │   │   │   │      ))\n" +
+			" │   │   │   │   │   └─ NOT\n" +
+			" │   │   │   │   │       └─ Eq\n" +
+			" │   │   │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │   │   │           └─ 77 (tinyint)\n" +
 			" │   │   │   │   └─ Eq\n" +
 			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │   │       └─ 30 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       └─ 45 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │           └─ 45 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ Eq\n" +
@@ -8193,10 +8193,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       │       └─ 46 (tinyint)\n" +
 			" │   │   │       └─ (comp_index_t2.v3:3 BETWEEN 11 (tinyint) AND 29 (tinyint))\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 11 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 11 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -8209,10 +8209,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v4:4\n" +
 			" │       │       └─ 47 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v2:2\n" +
-			" │           └─ 62 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v2:2\n" +
+			" │               └─ 62 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{[23, 23], (NULL, 48], [NULL, ∞), [NULL, ∞)}, {(41, ∞), [46, ∞), [11, 29], [NULL, ∞)}, {[70, 70], (NULL, 46), (NULL, 54), (NULL, 47]}, {[70, 70], [46, 62), (NULL, 11), (NULL, 47]}, {[70, 70], [46, 62), (29, 54), (NULL, 47]}, {[70, 70], (62, ∞), (NULL, 11), (NULL, 47]}, {[70, 70], (62, ∞), (29, 54), (NULL, 47]}]\n" +
@@ -8254,10 +8254,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       │   │       └─ 95 (tinyint)\n" +
 			" │   │   │       │   └─ (comp_index_t2.v3:3 BETWEEN 9 (tinyint) AND 81 (tinyint))\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t2.v4:4\n" +
-			" │   │   │           └─ 8 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t2.v4:4\n" +
+			" │   │   │               └─ 8 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
@@ -8287,19 +8287,19 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   └─ 3 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       └─ 3 (tinyint)\n" +
 			" │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       └─ 34 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 31 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 31 (tinyint)\n" +
 			" │       │   └─ LessThan\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 16 (tinyint)\n" +
@@ -8384,28 +8384,28 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>70) OR (v1<>2 AND v2>79 AND v3<>6 AND v4<>42));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 70 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 70 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
-			" │       │   │   ├─ (NOT(Eq\n" +
-			" │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   │   └─ 2 (tinyint)\n" +
-			" │       │   │   │  ))\n" +
+			" │       │   │   ├─ NOT\n" +
+			" │       │   │   │   └─ Eq\n" +
+			" │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │   │       └─ 2 (tinyint)\n" +
 			" │       │   │   └─ GreaterThan\n" +
 			" │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │       │   │       └─ 79 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v3:3\n" +
-			" │       │       └─ 6 (tinyint)\n" +
-			" │       │      ))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 42 (tinyint)\n" +
-			" │          ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v3:3\n" +
+			" │       │           └─ 6 (tinyint)\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 42 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 70), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[70, 70], (79, ∞), (NULL, 6), (NULL, 42)}, {[70, 70], (79, ∞), (NULL, 6), (42, ∞)}, {[70, 70], (79, ∞), (6, ∞), (NULL, 42)}, {[70, 70], (79, ∞), (6, ∞), (42, ∞)}, {(70, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -8419,10 +8419,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   └─ 46 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │       └─ 46 (tinyint)\n" +
 			" │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │       └─ 93 (tinyint)\n" +
@@ -8486,10 +8486,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ Eq\n" +
 			" │       │       ├─ comp_index_t2.v3:3\n" +
 			" │       │       └─ 51 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 30 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 30 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 41), (0, 11), [95, 95], (NULL, 2]}, {(NULL, 41), [11, 35], [NULL, ∞), [NULL, ∞)}, {(NULL, 41), (35, ∞), [95, 95], (NULL, 2]}, {[11, 11], (NULL, 11), [51, 51], (NULL, 30)}, {[11, 11], (NULL, 11), [51, 51], (30, ∞)}, {[41, 53], (0, ∞), [95, 95], (NULL, 2]}]\n" +
@@ -8529,10 +8529,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ 59 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 85 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 85 (tinyint)\n" +
 			" │       │   └─ LessThan\n" +
 			" │       │       ├─ comp_index_t2.v4:4\n" +
 			" │       │       └─ 6 (tinyint)\n" +
@@ -8608,14 +8608,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │   │       └─ 30 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       └─ 38 (tinyint)\n" +
-			" │   │   │      ))\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 35 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │           └─ 38 (tinyint)\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 35 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -8674,10 +8674,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
-			" │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   │   └─ 48 (tinyint)\n" +
-			" │   │       │   │   │  ))\n" +
+			" │   │       │   │   ├─ NOT\n" +
+			" │   │       │   │   │   └─ Eq\n" +
+			" │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │   │       └─ 48 (tinyint)\n" +
 			" │   │       │   │   └─ (comp_index_t2.v4:4 BETWEEN 32 (tinyint) AND 33 (tinyint))\n" +
 			" │   │       │   └─ GreaterThan\n" +
 			" │   │       │       ├─ comp_index_t2.v2:2\n" +
@@ -8687,10 +8687,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           └─ 25 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ (comp_index_t2.v1:1 BETWEEN 51 (tinyint) AND 88 (tinyint))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v2:2\n" +
-			" │           └─ 67 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v2:2\n" +
+			" │               └─ 67 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 37), (21, ∞), (NULL, 25], [32, 33]}, {[37, 48), (21, 42), (NULL, 25], [32, 33]}, {[37, 48), [42, 42], (14, 25], [32, 33]}, {[37, 48), (42, ∞), (NULL, 25], [32, 33]}, {[37, 51), [42, 42], (NULL, 14], [NULL, ∞)}, {(48, 51), (21, 42), (NULL, 25], [32, 33]}, {(48, 51), [42, 42], (14, 25], [32, 33]}, {(48, 51), (42, ∞), (NULL, 25], [32, 33]}, {[51, 88], (NULL, 67), [NULL, ∞), [NULL, ∞)}, {[51, 88], [67, 67], (NULL, 25], [32, 33]}, {[51, 88], (67, ∞), [NULL, ∞), [NULL, ∞)}, {(88, ∞), (21, 85), (NULL, 25], [32, 33]}, {(88, ∞), [85, 85], [NULL, ∞), [NULL, ∞)}, {(88, ∞), (85, 89), (NULL, 25], [32, 33]}, {(88, ∞), [89, 89], (NULL, 12], [32, 33]}, {(88, ∞), [89, 89], (12, ∞), [NULL, ∞)}, {(88, ∞), (89, ∞), (NULL, 25], [32, 33]}]\n" +
@@ -8764,10 +8764,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           └─ 97 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 90 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 90 (tinyint)\n" +
 			" │       │   └─ Eq\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 43 (tinyint)\n" +
@@ -8804,26 +8804,26 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   │   └─ 35 (tinyint)\n" +
-			" │   │   │   │   │   │  ))\n" +
+			" │   │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │   │       └─ 35 (tinyint)\n" +
 			" │   │   │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │   │       └─ 14 (tinyint)\n" +
 			" │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   │       └─ 65 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │       └─ 9 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │           └─ 9 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
-			" │   │       │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   └─ 14 (tinyint)\n" +
-			" │   │       │   │  ))\n" +
+			" │   │       │   ├─ NOT\n" +
+			" │   │       │   │   └─ Eq\n" +
+			" │   │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │       └─ 14 (tinyint)\n" +
 			" │   │       │   └─ LessThan\n" +
 			" │   │       │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       │       └─ 51 (tinyint)\n" +
@@ -8835,14 +8835,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   ├─ GreaterThanOrEqual\n" +
 			" │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   │   └─ 21 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v3:3\n" +
-			" │       │       └─ 25 (tinyint)\n" +
-			" │       │      ))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 16 (tinyint)\n" +
-			" │          ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v3:3\n" +
+			" │       │           └─ 25 (tinyint)\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 16 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 14), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[14, 14], [14, ∞), (NULL, 65), (NULL, 9)}, {[14, 14], [14, ∞), (NULL, 65), (9, ∞)}, {(14, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -8915,18 +8915,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ GreaterThanOrEqual\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 19 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │   │       └─ 62 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       └─ 19 (tinyint)\n" +
-			" │   │   │      ))\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       └─ 29 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │   │           └─ 62 (tinyint)\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │           └─ 19 (tinyint)\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │           └─ 29 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ (comp_index_t2.v1:1 BETWEEN 37 (tinyint) AND 75 (tinyint))\n" +
@@ -8994,10 +8994,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ (comp_index_t2.v1:1 BETWEEN 20 (tinyint) AND 54 (tinyint))\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │       └─ 31 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │           └─ 31 (tinyint)\n" +
 			" │   │   │   └─ (comp_index_t2.v3:3 BETWEEN 15 (tinyint) AND 21 (tinyint))\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ LessThanOrEqual\n" +
@@ -9095,10 +9095,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>18) OR (v1>=42 AND v2<=65 AND v3=87 AND v4=80));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 18 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 18 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -9171,10 +9171,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       ├─ GreaterThanOrEqual\n" +
 			" │       │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   └─ 31 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 71 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 71 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 31), [33, ∞), (58, ∞), [NULL, ∞)}, {(NULL, 31), [89, 89], [46, 58], (NULL, 32]}, {[31, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -9388,10 +9388,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   │   ├─ GreaterThan\n" +
 			" │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   │   │   └─ 78 (tinyint)\n" +
-			" │       │   │   └─ (NOT(Eq\n" +
-			" │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │       │   │       └─ 1 (tinyint)\n" +
-			" │       │   │      ))\n" +
+			" │       │   │   └─ NOT\n" +
+			" │       │   │       └─ Eq\n" +
+			" │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │       │   │           └─ 1 (tinyint)\n" +
 			" │       │   └─ Eq\n" +
 			" │       │       ├─ comp_index_t2.v3:3\n" +
 			" │       │       └─ 98 (tinyint)\n" +
@@ -9410,17 +9410,17 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
 			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   └─ 79 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │       └─ 79 (tinyint)\n" +
 			" │   │   │   └─ LessThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       └─ 85 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │       └─ 13 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │           └─ 13 (tinyint)\n" +
 			" │   └─ (comp_index_t2.v1:1 BETWEEN 4 (tinyint) AND 67 (tinyint))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
@@ -9446,10 +9446,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ LessThan\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 65 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │       └─ 44 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │           └─ 44 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ LessThanOrEqual\n" +
 			" │   │   │       │   ├─ comp_index_t2.v1:1\n" +
@@ -9461,10 +9461,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       ├─ LessThanOrEqual\n" +
 			" │   │       │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   └─ 33 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v2:2\n" +
-			" │   │           └─ 11 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v2:2\n" +
+			" │   │               └─ 11 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ Eq\n" +
@@ -9488,19 +9488,19 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   └─ 50 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │       └─ 50 (tinyint)\n" +
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       └─ 46 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
-			" │   │       │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   └─ 17 (tinyint)\n" +
-			" │   │       │   │  ))\n" +
+			" │   │       │   ├─ NOT\n" +
+			" │   │       │   │   └─ Eq\n" +
+			" │   │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │       └─ 17 (tinyint)\n" +
 			" │   │       │   └─ Eq\n" +
 			" │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │       └─ 45 (tinyint)\n" +
@@ -9533,10 +9533,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ LessThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   └─ 62 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v4:4\n" +
-			" │   │       │       └─ 18 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v4:4\n" +
+			" │   │       │           └─ 18 (tinyint)\n" +
 			" │   │       └─ (comp_index_t2.v2:2 BETWEEN 1 (tinyint) AND 41 (tinyint))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
@@ -9603,14 +9603,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   └─ 5 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │       └─ 53 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │       └─ 5 (tinyint)\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │           └─ 53 (tinyint)\n" +
 			" │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │       └─ 49 (tinyint)\n" +
@@ -9656,10 +9656,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
-			" │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   │   └─ 72 (tinyint)\n" +
-			" │   │       │   │   │  ))\n" +
+			" │   │       │   │   ├─ NOT\n" +
+			" │   │       │   │   │   └─ Eq\n" +
+			" │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │   │       └─ 72 (tinyint)\n" +
 			" │   │       │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │   │       └─ 13 (tinyint)\n" +
@@ -9700,10 +9700,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ GreaterThan\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 35 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │   │       └─ 20 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │   │           └─ 20 (tinyint)\n" +
 			" │   │   │   └─ LessThan\n" +
 			" │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       └─ 81 (tinyint)\n" +
@@ -9780,10 +9780,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │           └─ 5 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ (comp_index_t2.v1:1 BETWEEN 5 (tinyint) AND 80 (tinyint))\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 80 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 80 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{[5, 80], [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(80, ∞), (24, ∞), (NULL, 5), [NULL, ∞)}, {[86, 86], (NULL, 5), (NULL, 36), (NULL, 81)}]\n" +
@@ -9802,10 +9802,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>31) OR (v1 BETWEEN 27 AND 87 AND v2=71 AND v3=38 AND v4=1));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 31 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 31 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -9882,10 +9882,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │   │       └─ 41 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       └─ 12 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │           └─ 12 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
@@ -9895,10 +9895,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │   │       └─ 34 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       │       └─ 68 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v3:3\n" +
+			" │   │       │           └─ 68 (tinyint)\n" +
 			" │   │       └─ LessThanOrEqual\n" +
 			" │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │           └─ 13 (tinyint)\n" +
@@ -9953,10 +9953,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       ├─ GreaterThan\n" +
 			" │   │       │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   └─ 36 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v2:2\n" +
-			" │   │           └─ 41 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v2:2\n" +
+			" │   │               └─ 41 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -10007,14 +10007,14 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   └─ 22 (tinyint)\n" +
-			" │   │   │  ))\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       └─ 49 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       └─ 22 (tinyint)\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │           └─ 49 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ GreaterThanOrEqual\n" +
@@ -10133,14 +10133,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   └─ 9 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │   │       └─ 61 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │       └─ 9 (tinyint)\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │   │           └─ 61 (tinyint)\n" +
 			" │   │   │   └─ Eq\n" +
 			" │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       └─ 98 (tinyint)\n" +
@@ -10188,23 +10188,23 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   └─ 53 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │       └─ 53 (tinyint)\n" +
 			" │   │   │   └─ LessThan\n" +
 			" │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │       └─ 99 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       └─ 31 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │           └─ 31 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 5 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 5 (tinyint)\n" +
 			" │       │   └─ GreaterThan\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 70 (tinyint)\n" +
@@ -10411,10 +10411,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   └─ 40 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 32 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 32 (tinyint)\n" +
 			" │       └─ LessThanOrEqual\n" +
 			" │           ├─ comp_index_t2.v4:4\n" +
 			" │           └─ 37 (tinyint)\n" +
@@ -10497,18 +10497,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   │   └─ LessThan\n" +
 			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │   │       └─ 24 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       │       └─ 27 (tinyint)\n" +
-			" │   │       │      ))\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v4:4\n" +
-			" │   │           └─ 50 (tinyint)\n" +
-			" │   │          ))\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 37 (tinyint)\n" +
-			" │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v3:3\n" +
+			" │   │       │           └─ 27 (tinyint)\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v4:4\n" +
+			" │   │               └─ 50 (tinyint)\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 37 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 37), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[37, 37], (NULL, 43], [NULL, ∞), [NULL, ∞)}, {(37, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -10523,20 +10523,20 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ (comp_index_t2.v1:1 BETWEEN 55 (tinyint) AND 66 (tinyint))\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │       └─ 81 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │           └─ 81 (tinyint)\n" +
 			" │   │   │   └─ Eq\n" +
 			" │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │       └─ 6 (tinyint)\n" +
 			" │   │   └─ LessThanOrEqual\n" +
 			" │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │       └─ 19 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 91 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 91 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 91), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(91, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -10598,10 +10598,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       ├─ GreaterThanOrEqual\n" +
 			" │       │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   └─ 47 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v2:2\n" +
-			" │           └─ 63 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v2:2\n" +
+			" │               └─ 63 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(16, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -10627,10 +10627,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ GreaterThan\n" +
 			" │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       └─ 67 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 55 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 55 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 55), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(55, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -10651,10 +10651,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ 5 (tinyint)\n" +
 			" │   │   └─ (comp_index_t2.v3:3 BETWEEN 53 (tinyint) AND 61 (tinyint))\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 72 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 72 (tinyint)\n" +
 			" │       └─ LessThan\n" +
 			" │           ├─ comp_index_t2.v3:3\n" +
 			" │           └─ 20 (tinyint)\n" +
@@ -10742,10 +10742,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   └─ GreaterThan\n" +
 			" │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │       └─ 52 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │           └─ 55 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │               └─ 55 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -10866,27 +10866,27 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ (comp_index_t2.v3:3 BETWEEN 21 (tinyint) AND 83 (tinyint))\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
-			" │   │   │       │   ├─ (NOT(Eq\n" +
-			" │   │   │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       │   │   └─ 5 (tinyint)\n" +
-			" │   │   │       │   │  ))\n" +
+			" │   │   │       │   ├─ NOT\n" +
+			" │   │   │       │   │   └─ Eq\n" +
+			" │   │   │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       │   │       └─ 5 (tinyint)\n" +
 			" │   │   │       │   └─ GreaterThan\n" +
 			" │   │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       │       └─ 59 (tinyint)\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │   │           └─ 17 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │   │               └─ 17 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
 			" │   │       │   │   ├─ LessThan\n" +
 			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   │   └─ 69 (tinyint)\n" +
-			" │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │       │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       │   │       └─ 65 (tinyint)\n" +
-			" │   │       │   │      ))\n" +
+			" │   │       │   │   └─ NOT\n" +
+			" │   │       │   │       └─ Eq\n" +
+			" │   │       │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │       │   │           └─ 65 (tinyint)\n" +
 			" │   │       │   └─ GreaterThanOrEqual\n" +
 			" │   │       │       ├─ comp_index_t2.v4:4\n" +
 			" │   │       │       └─ 51 (tinyint)\n" +
@@ -10917,10 +10917,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ LessThan\n" +
 			" │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   └─ 46 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 60 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 60 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 60), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(60, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -10951,10 +10951,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   │   └─ GreaterThan\n" +
 			" │       │   │       ├─ comp_index_t2.v4:4\n" +
 			" │       │   │       └─ 72 (tinyint)\n" +
-			" │       │   └─ (NOT(Eq\n" +
-			" │       │       ├─ comp_index_t2.v2:2\n" +
-			" │       │       └─ 44 (tinyint)\n" +
-			" │       │      ))\n" +
+			" │       │   └─ NOT\n" +
+			" │       │       └─ Eq\n" +
+			" │       │           ├─ comp_index_t2.v2:2\n" +
+			" │       │           └─ 44 (tinyint)\n" +
 			" │       └─ (comp_index_t2.v3:3 BETWEEN 4 (tinyint) AND 51 (tinyint))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
@@ -10983,28 +10983,28 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │       └─ 2 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │       └─ 63 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │           └─ 63 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
 			" │   │       │   │   ├─ (comp_index_t2.v1:1 BETWEEN 20 (tinyint) AND 95 (tinyint))\n" +
-			" │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │   │       └─ 7 (tinyint)\n" +
-			" │   │       │   │      ))\n" +
+			" │   │       │   │   └─ NOT\n" +
+			" │   │       │   │       └─ Eq\n" +
+			" │   │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │   │           └─ 7 (tinyint)\n" +
 			" │   │       │   └─ (comp_index_t2.v3:3 BETWEEN 95 (tinyint) AND 96 (tinyint))\n" +
 			" │   │       └─ (comp_index_t2.v4:4 BETWEEN 34 (tinyint) AND 41 (tinyint))\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
 			" │       │   │   ├─ (comp_index_t2.v1:1 BETWEEN 27 (tinyint) AND 44 (tinyint))\n" +
-			" │       │   │   └─ (NOT(Eq\n" +
-			" │       │   │       ├─ comp_index_t2.v4:4\n" +
-			" │       │   │       └─ 28 (tinyint)\n" +
-			" │       │   │      ))\n" +
+			" │       │   │   └─ NOT\n" +
+			" │       │   │       └─ Eq\n" +
+			" │       │   │           ├─ comp_index_t2.v4:4\n" +
+			" │       │   │           └─ 28 (tinyint)\n" +
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 43 (tinyint)\n" +
@@ -11109,10 +11109,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │   │   ├─ LessThan\n" +
 			" │   │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   │   │   └─ 4 (tinyint)\n" +
-			" │   │   │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │   │   │       └─ 1 (tinyint)\n" +
-			" │   │   │   │   │   │      ))\n" +
+			" │   │   │   │   │   │   └─ NOT\n" +
+			" │   │   │   │   │   │       └─ Eq\n" +
+			" │   │   │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │   │   │           └─ 1 (tinyint)\n" +
 			" │   │   │   │   │   └─ LessThanOrEqual\n" +
 			" │   │   │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   │   │       └─ 34 (tinyint)\n" +
@@ -11165,10 +11165,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       ├─ comp_index_t2.v1:1\n" +
 			" │   │       └─ 5 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v4:4\n" +
-			" │       └─ 31 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v4:4\n" +
+			" │           └─ 31 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{[5, 85), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(85, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -11185,10 +11185,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ Eq\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 82 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │   │       └─ 55 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │   │           └─ 55 (tinyint)\n" +
 			" │   │   │   └─ GreaterThan\n" +
 			" │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │       └─ 26 (tinyint)\n" +
@@ -11236,10 +11236,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ 77 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
-			" │   │       │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   └─ 32 (tinyint)\n" +
-			" │   │       │   │  ))\n" +
+			" │   │       │   ├─ NOT\n" +
+			" │   │       │   │   └─ Eq\n" +
+			" │   │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │       └─ 32 (tinyint)\n" +
 			" │   │       │   └─ LessThanOrEqual\n" +
 			" │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │       └─ 17 (tinyint)\n" +
@@ -11288,10 +11288,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ (comp_index_t2.v1:1 BETWEEN 32 (tinyint) AND 72 (tinyint))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       └─ 89 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │           └─ 89 (tinyint)\n" +
 			" │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       └─ 39 (tinyint)\n" +
@@ -11319,10 +11319,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
-			" │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   │   └─ 37 (tinyint)\n" +
-			" │   │       │   │   │  ))\n" +
+			" │   │       │   │   ├─ NOT\n" +
+			" │   │       │   │   │   └─ Eq\n" +
+			" │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │   │       └─ 37 (tinyint)\n" +
 			" │   │       │   │   └─ LessThanOrEqual\n" +
 			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │   │       └─ 12 (tinyint)\n" +
@@ -11332,10 +11332,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ LessThan\n" +
 			" │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │           └─ 47 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 76 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 76 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 76), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[76, 76], (NULL, 12], (65, ∞), (NULL, 47)}, {(76, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -11370,18 +11370,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   └─ LessThan\n" +
 			" │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       └─ 43 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       └─ 15 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v3:3\n" +
+			" │   │           └─ 15 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ LessThanOrEqual\n" +
 			" │       │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   └─ 71 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 22 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 22 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 71], [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(71, ∞), (NULL, 43), (NULL, 15), [NULL, ∞)}, {(71, ∞), (NULL, 43), (15, ∞), [NULL, ∞)}]\n" +
@@ -11396,10 +11396,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ (comp_index_t2.v1:1 BETWEEN 18 (tinyint) AND 36 (tinyint))\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │   │       └─ 87 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │   │           └─ 87 (tinyint)\n" +
 			" │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       └─ 13 (tinyint)\n" +
@@ -11430,10 +11430,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │   ├─ LessThan\n" +
 			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   │   └─ 93 (tinyint)\n" +
-			" │   │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │   │       └─ 16 (tinyint)\n" +
-			" │   │   │   │   │      ))\n" +
+			" │   │   │   │   │   └─ NOT\n" +
+			" │   │   │   │   │       └─ Eq\n" +
+			" │   │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │   │           └─ 16 (tinyint)\n" +
 			" │   │   │   │   └─ AND\n" +
 			" │   │   │   │       ├─ GreaterThanOrEqual\n" +
 			" │   │   │   │       │   ├─ comp_index_t2.v1:1\n" +
@@ -11450,10 +11450,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   │   └─ LessThanOrEqual\n" +
 			" │   │   │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       │   │       └─ 45 (tinyint)\n" +
-			" │   │   │       │   └─ (NOT(Eq\n" +
-			" │   │   │       │       ├─ comp_index_t2.v3:3\n" +
-			" │   │   │       │       └─ 46 (tinyint)\n" +
-			" │   │   │       │      ))\n" +
+			" │   │   │       │   └─ NOT\n" +
+			" │   │   │       │       └─ Eq\n" +
+			" │   │   │       │           ├─ comp_index_t2.v3:3\n" +
+			" │   │   │       │           └─ 46 (tinyint)\n" +
 			" │   │   │       └─ GreaterThan\n" +
 			" │   │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │   │           └─ 76 (tinyint)\n" +
@@ -11520,10 +11520,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       ├─ GreaterThan\n" +
 			" │       │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   └─ 84 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v2:2\n" +
-			" │           └─ 43 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v2:2\n" +
+			" │               └─ 43 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{[5, 41], [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {(84, ∞), (NULL, 43), [NULL, ∞), [NULL, ∞)}, {(84, ∞), (43, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -11560,18 +11560,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │       │   └─ GreaterThan\n" +
 			" │   │   │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │       │       └─ 52 (tinyint)\n" +
-			" │   │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │   │   │           └─ 70 (tinyint)\n" +
-			" │   │   │   │          ))\n" +
+			" │   │   │   │       └─ NOT\n" +
+			" │   │   │   │           └─ Eq\n" +
+			" │   │   │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │   │   │               └─ 70 (tinyint)\n" +
 			" │   │   │   └─ Eq\n" +
 			" │   │   │       ├─ comp_index_t2.v1:1\n" +
 			" │   │   │       └─ 58 (tinyint)\n" +
 			" │   │   └─ AND\n" +
-			" │   │       ├─ (NOT(Eq\n" +
-			" │   │       │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   └─ 22 (tinyint)\n" +
-			" │   │       │  ))\n" +
+			" │   │       ├─ NOT\n" +
+			" │   │       │   └─ Eq\n" +
+			" │   │       │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │       └─ 22 (tinyint)\n" +
 			" │   │       └─ GreaterThan\n" +
 			" │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │           └─ 76 (tinyint)\n" +
@@ -11680,15 +11680,15 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>74) OR (v1<>86 AND v2<=91)) AND (v1>=8);`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 74 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 74 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 86 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 86 (tinyint)\n" +
 			" │       └─ LessThanOrEqual\n" +
 			" │           ├─ comp_index_t2.v2:2\n" +
 			" │           └─ 91 (tinyint)\n" +
@@ -11709,18 +11709,18 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ 25 (tinyint)\n" +
 			" │   │   │   └─ (comp_index_t2.v2:2 BETWEEN 23 (tinyint) AND 54 (tinyint))\n" +
 			" │   │   └─ AND\n" +
-			" │   │       ├─ (NOT(Eq\n" +
-			" │   │       │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   └─ 40 (tinyint)\n" +
-			" │   │       │  ))\n" +
+			" │   │       ├─ NOT\n" +
+			" │   │       │   └─ Eq\n" +
+			" │   │       │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │       └─ 40 (tinyint)\n" +
 			" │   │       └─ GreaterThan\n" +
 			" │   │           ├─ comp_index_t2.v3:3\n" +
 			" │   │           └─ 90 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 7 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 7 (tinyint)\n" +
 			" │       └─ LessThanOrEqual\n" +
 			" │           ├─ comp_index_t2.v4:4\n" +
 			" │           └─ 78 (tinyint)\n" +
@@ -11774,15 +11774,15 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>75) OR (v1<>74 AND v3 BETWEEN 29 AND 73));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 75 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 75 (tinyint)\n" +
 			" │   └─ AND\n" +
-			" │       ├─ (NOT(Eq\n" +
-			" │       │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   └─ 74 (tinyint)\n" +
-			" │       │  ))\n" +
+			" │       ├─ NOT\n" +
+			" │       │   └─ Eq\n" +
+			" │       │       ├─ comp_index_t2.v1:1\n" +
+			" │       │       └─ 74 (tinyint)\n" +
 			" │       └─ (comp_index_t2.v3:3 BETWEEN 29 (tinyint) AND 73 (tinyint))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
@@ -11806,14 +11806,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ Or\n" +
 			" │   │   │   ├─ AND\n" +
 			" │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   │   └─ 18 (tinyint)\n" +
-			" │   │   │   │   │   │  ))\n" +
-			" │   │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │   │   │       └─ 90 (tinyint)\n" +
-			" │   │   │   │   │      ))\n" +
+			" │   │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │   │       └─ 18 (tinyint)\n" +
+			" │   │   │   │   │   └─ NOT\n" +
+			" │   │   │   │   │       └─ Eq\n" +
+			" │   │   │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │   │   │           └─ 90 (tinyint)\n" +
 			" │   │   │   │   └─ GreaterThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   │       └─ 95 (tinyint)\n" +
@@ -11829,10 +11829,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   │   └─ LessThanOrEqual\n" +
 			" │   │       │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       │   │       └─ 26 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v4:4\n" +
-			" │   │       │       └─ 67 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v4:4\n" +
+			" │   │       │           └─ 67 (tinyint)\n" +
 			" │   │       └─ GreaterThanOrEqual\n" +
 			" │   │           ├─ comp_index_t2.v2:2\n" +
 			" │   │           └─ 37 (tinyint)\n" +
@@ -11900,15 +11900,15 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ AND\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   └─ 8 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       └─ 8 (tinyint)\n" +
 			" │   │   └─ (comp_index_t2.v2:2 BETWEEN 34 (tinyint) AND 48 (tinyint))\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 54 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 54 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 54), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[54, 54], [34, 48], [NULL, ∞), [NULL, ∞)}, {(54, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -11998,10 +11998,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ GreaterThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   └─ 52 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │       └─ 47 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │           └─ 47 (tinyint)\n" +
 			" │   │       └─ Eq\n" +
 			" │   │           ├─ comp_index_t2.v3:3\n" +
 			" │   │           └─ 37 (tinyint)\n" +
@@ -12073,10 +12073,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │       └─ 98 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
-			" │   │   │       │   ├─ (NOT(Eq\n" +
-			" │   │   │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       │   │   └─ 51 (tinyint)\n" +
-			" │   │   │       │   │  ))\n" +
+			" │   │   │       │   ├─ NOT\n" +
+			" │   │   │       │   │   └─ Eq\n" +
+			" │   │   │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       │   │       └─ 51 (tinyint)\n" +
 			" │   │   │       │   └─ Eq\n" +
 			" │   │   │       │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │       │       └─ 79 (tinyint)\n" +
@@ -12092,10 +12092,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       ├─ GreaterThanOrEqual\n" +
 			" │       │   ├─ comp_index_t2.v1:1\n" +
 			" │       │   └─ 29 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v2:2\n" +
-			" │           └─ 21 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v2:2\n" +
+			" │               └─ 21 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -12321,10 +12321,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   ├─ AND\n" +
 			" │   │   ├─ AND\n" +
 			" │   │   │   ├─ AND\n" +
-			" │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   └─ 82 (tinyint)\n" +
-			" │   │   │   │   │  ))\n" +
+			" │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │       └─ 82 (tinyint)\n" +
 			" │   │   │   │   └─ Eq\n" +
 			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │   │       └─ 74 (tinyint)\n" +
@@ -12413,10 +12413,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   │   ├─ LessThanOrEqual\n" +
 			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   │   └─ 3 (tinyint)\n" +
-			" │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │   │       └─ 65 (tinyint)\n" +
-			" │   │       │   │      ))\n" +
+			" │   │       │   │   └─ NOT\n" +
+			" │   │       │   │       └─ Eq\n" +
+			" │   │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │   │           └─ 65 (tinyint)\n" +
 			" │   │       │   └─ LessThan\n" +
 			" │   │       │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       │       └─ 8 (tinyint)\n" +
@@ -12508,14 +12508,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
 			" │   │   │       │   ├─ AND\n" +
-			" │   │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       │   │   │   └─ 19 (tinyint)\n" +
-			" │   │   │       │   │   │  ))\n" +
-			" │   │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │   │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       │   │       └─ 47 (tinyint)\n" +
-			" │   │   │       │   │      ))\n" +
+			" │   │   │       │   │   ├─ NOT\n" +
+			" │   │   │       │   │   │   └─ Eq\n" +
+			" │   │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       │   │   │       └─ 19 (tinyint)\n" +
+			" │   │   │       │   │   └─ NOT\n" +
+			" │   │   │       │   │       └─ Eq\n" +
+			" │   │   │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │       │   │           └─ 47 (tinyint)\n" +
 			" │   │   │       │   └─ (comp_index_t2.v3:3 BETWEEN 38 (tinyint) AND 77 (tinyint))\n" +
 			" │   │   │       └─ GreaterThan\n" +
 			" │   │   │           ├─ comp_index_t2.v4:4\n" +
@@ -12546,15 +12546,15 @@ var IndexPlanTests = []QueryPlanTest{
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
 			" │   │   ├─ Or\n" +
-			" │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   └─ 36 (tinyint)\n" +
-			" │   │   │   │  ))\n" +
+			" │   │   │   ├─ NOT\n" +
+			" │   │   │   │   └─ Eq\n" +
+			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │       └─ 36 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
-			" │   │   │       ├─ (NOT(Eq\n" +
-			" │   │   │       │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       │   └─ 70 (tinyint)\n" +
-			" │   │   │       │  ))\n" +
+			" │   │   │       ├─ NOT\n" +
+			" │   │   │       │   └─ Eq\n" +
+			" │   │   │       │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       │       └─ 70 (tinyint)\n" +
 			" │   │   │       └─ (comp_index_t2.v2:2 BETWEEN 23 (tinyint) AND 39 (tinyint))\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ GreaterThan\n" +
@@ -12595,10 +12595,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       │   └─ GreaterThan\n" +
 			" │   │   │       │       ├─ comp_index_t2.v4:4\n" +
 			" │   │   │       │       └─ 43 (tinyint)\n" +
-			" │   │   │       └─ (NOT(Eq\n" +
-			" │   │   │           ├─ comp_index_t2.v2:2\n" +
-			" │   │   │           └─ 80 (tinyint)\n" +
-			" │   │   │          ))\n" +
+			" │   │   │       └─ NOT\n" +
+			" │   │   │           └─ Eq\n" +
+			" │   │   │               ├─ comp_index_t2.v2:2\n" +
+			" │   │   │               └─ 80 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ (comp_index_t2.v1:1 BETWEEN 2 (tinyint) AND 23 (tinyint))\n" +
 			" │   │       └─ GreaterThanOrEqual\n" +
@@ -12630,10 +12630,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ LessThan\n" +
 			" │   │   │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   │       └─ 34 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │       └─ 33 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │           └─ 33 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
@@ -12737,21 +12737,21 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ AND\n" +
-			" │   │       │   │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   │   └─ 49 (tinyint)\n" +
-			" │   │       │   │   │  ))\n" +
-			" │   │       │   │   └─ (NOT(Eq\n" +
-			" │   │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │   │       └─ 39 (tinyint)\n" +
-			" │   │       │   │      ))\n" +
+			" │   │       │   │   ├─ NOT\n" +
+			" │   │       │   │   │   └─ Eq\n" +
+			" │   │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │   │       └─ 49 (tinyint)\n" +
+			" │   │       │   │   └─ NOT\n" +
+			" │   │       │   │       └─ Eq\n" +
+			" │   │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │   │           └─ 39 (tinyint)\n" +
 			" │   │       │   └─ GreaterThanOrEqual\n" +
 			" │   │       │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       │       └─ 70 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v4:4\n" +
-			" │   │           └─ 24 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v4:4\n" +
+			" │   │               └─ 24 (tinyint)\n" +
 			" │   └─ LessThan\n" +
 			" │       ├─ comp_index_t2.v1:1\n" +
 			" │       └─ 79 (tinyint)\n" +
@@ -12792,10 +12792,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ 44 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 87 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 87 (tinyint)\n" +
 			" │       │   └─ GreaterThan\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 42 (tinyint)\n" +
@@ -13082,10 +13082,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>43) OR (v1>=41 AND v4=32 AND v2<=66)) AND (v1>43 AND v2 BETWEEN 83 AND 97);`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 43 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 43 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ GreaterThanOrEqual\n" +
@@ -13127,10 +13127,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
-			" │       │   │   ├─ (NOT(Eq\n" +
-			" │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   │   └─ 31 (tinyint)\n" +
-			" │       │   │   │  ))\n" +
+			" │       │   │   ├─ NOT\n" +
+			" │       │   │   │   └─ Eq\n" +
+			" │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │   │       └─ 31 (tinyint)\n" +
 			" │       │   │   └─ LessThanOrEqual\n" +
 			" │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │       │   │       └─ 96 (tinyint)\n" +
@@ -13172,14 +13172,14 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │       └─ 9 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
-			" │   │       │   ├─ (NOT(Eq\n" +
-			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │       │   │   └─ 41 (tinyint)\n" +
-			" │   │       │   │  ))\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v3:3\n" +
-			" │   │       │       └─ 69 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   ├─ NOT\n" +
+			" │   │       │   │   └─ Eq\n" +
+			" │   │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       │   │       └─ 41 (tinyint)\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v3:3\n" +
+			" │   │       │           └─ 69 (tinyint)\n" +
 			" │   │       └─ LessThan\n" +
 			" │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │           └─ 24 (tinyint)\n" +
@@ -13265,20 +13265,20 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │   │       ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │       └─ 28 (tinyint)\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       └─ 10 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v1:1\n" +
+			" │   │   │           └─ 10 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ AND\n" +
 			" │   │       │   ├─ (comp_index_t2.v1:1 BETWEEN 20 (tinyint) AND 60 (tinyint))\n" +
 			" │   │       │   └─ GreaterThan\n" +
 			" │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │       │       └─ 96 (tinyint)\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v3:3\n" +
-			" │   │           └─ 28 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v3:3\n" +
+			" │   │               └─ 28 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
@@ -13428,10 +13428,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ Or\n" +
 			" │   │   │   ├─ Or\n" +
 			" │   │   │   │   ├─ AND\n" +
-			" │   │   │   │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   │   │   │   └─ 89 (tinyint)\n" +
-			" │   │   │   │   │   │  ))\n" +
+			" │   │   │   │   │   ├─ NOT\n" +
+			" │   │   │   │   │   │   └─ Eq\n" +
+			" │   │   │   │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │   │   │   │       └─ 89 (tinyint)\n" +
 			" │   │   │   │   │   └─ GreaterThanOrEqual\n" +
 			" │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │   │       └─ 75 (tinyint)\n" +
@@ -13496,10 +13496,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │       └─ 3 (tinyint)\n" +
 			" │   │   │   └─ AND\n" +
 			" │   │   │       ├─ AND\n" +
-			" │   │   │       │   ├─ (NOT(Eq\n" +
-			" │   │   │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │       │   │   └─ 84 (tinyint)\n" +
-			" │   │   │       │   │  ))\n" +
+			" │   │   │       │   ├─ NOT\n" +
+			" │   │   │       │   │   └─ Eq\n" +
+			" │   │   │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       │   │       └─ 84 (tinyint)\n" +
 			" │   │   │       │   └─ Eq\n" +
 			" │   │   │       │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │       │       └─ 46 (tinyint)\n" +
@@ -13517,10 +13517,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       └─ GreaterThanOrEqual\n" +
 			" │   │           ├─ comp_index_t2.v4:4\n" +
 			" │   │           └─ 15 (tinyint)\n" +
-			" │   └─ (NOT(Eq\n" +
-			" │       ├─ comp_index_t2.v1:1\n" +
-			" │       └─ 82 (tinyint)\n" +
-			" │      ))\n" +
+			" │   └─ NOT\n" +
+			" │       └─ Eq\n" +
+			" │           ├─ comp_index_t2.v1:1\n" +
+			" │           └─ 82 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 82), [NULL, ∞), [NULL, ∞), [NULL, ∞)}, {[82, 82], [34, 39], [34, 71], [15, ∞)}, {[82, 82], [46, 46], [4, 4], [NULL, ∞)}, {(82, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -13535,10 +13535,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   ├─ GreaterThanOrEqual\n" +
 			" │   │   │   ├─ comp_index_t2.v3:3\n" +
 			" │   │   │   └─ 51 (tinyint)\n" +
-			" │   │   └─ (NOT(Eq\n" +
-			" │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │       └─ 69 (tinyint)\n" +
-			" │   │      ))\n" +
+			" │   │   └─ NOT\n" +
+			" │   │       └─ Eq\n" +
+			" │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │           └─ 69 (tinyint)\n" +
 			" │   └─ LessThan\n" +
 			" │       ├─ comp_index_t2.v3:3\n" +
 			" │       └─ 24 (tinyint)\n" +
@@ -13649,16 +13649,16 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   │       ├─ comp_index_t2.v2:2\n" +
 			" │   │   │   │   │       └─ 81 (tinyint)\n" +
 			" │   │   │   │   └─ (comp_index_t2.v3:3 BETWEEN 14 (tinyint) AND 61 (tinyint))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │       └─ 99 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │           └─ 99 (tinyint)\n" +
 			" │   │   └─ AND\n" +
 			" │   │       ├─ (comp_index_t2.v1:1 BETWEEN 31 (tinyint) AND 86 (tinyint))\n" +
-			" │   │       └─ (NOT(Eq\n" +
-			" │   │           ├─ comp_index_t2.v4:4\n" +
-			" │   │           └─ 43 (tinyint)\n" +
-			" │   │          ))\n" +
+			" │   │       └─ NOT\n" +
+			" │   │           └─ Eq\n" +
+			" │   │               ├─ comp_index_t2.v4:4\n" +
+			" │   │               └─ 43 (tinyint)\n" +
 			" │   └─ (comp_index_t2.v1:1 BETWEEN 15 (tinyint) AND 67 (tinyint))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
@@ -13699,10 +13699,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 44 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v3:3\n" +
-			" │           └─ 53 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v3:3\n" +
+			" │               └─ 53 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{[52, ∞), [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -13734,10 +13734,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       │   └─ GreaterThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v3:3\n" +
 			" │       │       └─ 83 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 91 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 91 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(5, ∞), [62, ∞), [NULL, ∞), [NULL, ∞)}, {[91, ∞), [28, 62), [83, ∞), (NULL, 91)}, {[91, ∞), [28, 62), [83, ∞), (91, ∞)}]\n" +
@@ -13748,10 +13748,10 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE ((v1<>87) OR (v1>91 AND v2>23 AND v3<74));`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
-			" │   ├─ (NOT(Eq\n" +
-			" │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   └─ 87 (tinyint)\n" +
-			" │   │  ))\n" +
+			" │   ├─ NOT\n" +
+			" │   │   └─ Eq\n" +
+			" │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │       └─ 87 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ GreaterThan\n" +
@@ -13824,17 +13824,17 @@ var IndexPlanTests = []QueryPlanTest{
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
 			" │       │   │   ├─ (comp_index_t2.v1:1 BETWEEN 15 (tinyint) AND 23 (tinyint))\n" +
-			" │       │   │   └─ (NOT(Eq\n" +
-			" │       │   │       ├─ comp_index_t2.v2:2\n" +
-			" │       │   │       └─ 24 (tinyint)\n" +
-			" │       │   │      ))\n" +
+			" │       │   │   └─ NOT\n" +
+			" │       │   │       └─ Eq\n" +
+			" │       │   │           ├─ comp_index_t2.v2:2\n" +
+			" │       │   │           └─ 24 (tinyint)\n" +
 			" │       │   └─ LessThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v3:3\n" +
 			" │       │       └─ 50 (tinyint)\n" +
-			" │       └─ (NOT(Eq\n" +
-			" │           ├─ comp_index_t2.v4:4\n" +
-			" │           └─ 84 (tinyint)\n" +
-			" │          ))\n" +
+			" │       └─ NOT\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ comp_index_t2.v4:4\n" +
+			" │               └─ 84 (tinyint)\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
 			"     ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
 			"     ├─ static: [{(NULL, 95], [NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
@@ -13882,20 +13882,20 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter\n" +
 			" ├─ Or\n" +
 			" │   ├─ Or\n" +
-			" │   │   ├─ (NOT(Eq\n" +
-			" │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │   │   │   └─ 66 (tinyint)\n" +
-			" │   │   │  ))\n" +
+			" │   │   ├─ NOT\n" +
+			" │   │   │   └─ Eq\n" +
+			" │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │   │   │       └─ 66 (tinyint)\n" +
 			" │   │   └─ Eq\n" +
 			" │   │       ├─ comp_index_t2.v1:1\n" +
 			" │   │       └─ 33 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
 			" │       │   ├─ AND\n" +
-			" │       │   │   ├─ (NOT(Eq\n" +
-			" │       │   │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   │   └─ 39 (tinyint)\n" +
-			" │       │   │   │  ))\n" +
+			" │       │   │   ├─ NOT\n" +
+			" │       │   │   │   └─ Eq\n" +
+			" │       │   │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │   │       └─ 39 (tinyint)\n" +
 			" │       │   │   └─ GreaterThan\n" +
 			" │       │   │       ├─ comp_index_t2.v2:2\n" +
 			" │       │   │       └─ 53 (tinyint)\n" +
@@ -13952,10 +13952,10 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │       │   ├─ GreaterThanOrEqual\n" +
 			" │   │       │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │       │   │   └─ 36 (tinyint)\n" +
-			" │   │       │   └─ (NOT(Eq\n" +
-			" │   │       │       ├─ comp_index_t2.v2:2\n" +
-			" │   │       │       └─ 6 (tinyint)\n" +
-			" │   │       │      ))\n" +
+			" │   │       │   └─ NOT\n" +
+			" │   │       │       └─ Eq\n" +
+			" │   │       │           ├─ comp_index_t2.v2:2\n" +
+			" │   │       │           └─ 6 (tinyint)\n" +
 			" │   │       └─ (comp_index_t2.v3:3 BETWEEN 30 (tinyint) AND 53 (tinyint))\n" +
 			" │   └─ (comp_index_t2.v1:1 BETWEEN 41 (tinyint) AND 95 (tinyint))\n" +
 			" └─ IndexedTableAccess(comp_index_t2)\n" +
@@ -13974,23 +13974,23 @@ var IndexPlanTests = []QueryPlanTest{
 			" │   │   │   │   ├─ GreaterThan\n" +
 			" │   │   │   │   │   ├─ comp_index_t2.v1:1\n" +
 			" │   │   │   │   │   └─ 6 (tinyint)\n" +
-			" │   │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │   │       ├─ comp_index_t2.v4:4\n" +
-			" │   │   │   │       └─ 9 (tinyint)\n" +
-			" │   │   │   │      ))\n" +
-			" │   │   │   └─ (NOT(Eq\n" +
-			" │   │   │       ├─ comp_index_t2.v2:2\n" +
-			" │   │   │       └─ 77 (tinyint)\n" +
-			" │   │   │      ))\n" +
+			" │   │   │   │   └─ NOT\n" +
+			" │   │   │   │       └─ Eq\n" +
+			" │   │   │   │           ├─ comp_index_t2.v4:4\n" +
+			" │   │   │   │           └─ 9 (tinyint)\n" +
+			" │   │   │   └─ NOT\n" +
+			" │   │   │       └─ Eq\n" +
+			" │   │   │           ├─ comp_index_t2.v2:2\n" +
+			" │   │   │           └─ 77 (tinyint)\n" +
 			" │   │   └─ GreaterThanOrEqual\n" +
 			" │   │       ├─ comp_index_t2.v3:3\n" +
 			" │   │       └─ 81 (tinyint)\n" +
 			" │   └─ AND\n" +
 			" │       ├─ AND\n" +
-			" │       │   ├─ (NOT(Eq\n" +
-			" │       │   │   ├─ comp_index_t2.v1:1\n" +
-			" │       │   │   └─ 21 (tinyint)\n" +
-			" │       │   │  ))\n" +
+			" │       │   ├─ NOT\n" +
+			" │       │   │   └─ Eq\n" +
+			" │       │   │       ├─ comp_index_t2.v1:1\n" +
+			" │       │   │       └─ 21 (tinyint)\n" +
 			" │       │   └─ GreaterThanOrEqual\n" +
 			" │       │       ├─ comp_index_t2.v2:2\n" +
 			" │       │       └─ 17 (tinyint)\n" +
