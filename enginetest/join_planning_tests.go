@@ -499,6 +499,26 @@ where u in (select * from rec);`,
 				types: []plan.JoinType{},
 				exp:   []sql.Row{{1, 2}},
 			},
+			{
+				q:     "select * from uv where not exists (select * from xy where u = 1)",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{0, 1}, {2, 2}, {3, 2}},
+			},
+			{
+				q:     "select * from uv where not exists (select * from xy where not exists (select * from xy where u = 1))",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{1, 1}},
+			},
+			{
+				q:     "select * from uv where not exists (select * from xy where not exists (select * from xy where u = 1 or v = 2))",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
+			},
+			{
+				q:     "select * from uv where not exists (select * from xy where v = 1 and not exists (select * from xy where u = 1))",
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
+			},
 		},
 	},
 	{
@@ -657,6 +677,9 @@ func evalJoinCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q 
 
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
+
+		//e.Analyzer.Verbose = true
+		//e.Analyzer.Debug = true
 
 		sch, iter, err := e.QueryWithBindings(ctx, q, nil)
 		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)

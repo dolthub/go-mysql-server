@@ -257,6 +257,7 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	switch n.(type) {
 	case *plan.TriggerBeginEndBlock:
 		return n, transform.SameTree, nil
+	default:
 	}
 	ret, same, filters, err := recurseSubqueryForOuterFilters(n, a, scope)
 	if len(filters) != 0 {
@@ -265,18 +266,13 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	return ret, same, err
 }
 
-type hoistable struct {
-	e      sql.Expression
-	invert bool
-}
-
 // recurseSubqueryForOuterFilters recursively hoists filters that belong
 // to an outer scope (maybe higher than the parent). We do a DFS for hoisting
 // subquery filters. We do a BFS to extract hoistable filters from subquery
 // expressions before checking the normalized subquery and its hoisted
 // filters for further hoisting.
-func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.Node, transform.TreeIdentity, []hoistable, error) {
-	var hoistFilters []hoistable
+func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.Node, transform.TreeIdentity, []sql.Expression, error) {
+	var hoistFilters []sql.Expression
 	lowestAllowedIdx := len(scope.Schema())
 	var inScope TableAliases
 	ret, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -300,17 +296,11 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			return n, transform.SameTree, nil
 		}
 
-		var keepFilters []hoistable
+		var keepFilters []sql.Expression
 		allSame := transform.SameTree
-		conjunctions := splitConjunction(f.Expression)
-		queue := make([]hoistable, len(conjunctions))
-		for i, e := range conjunctions {
-			queue[i] = hoistable{e: e, invert: false}
-		}
-
+		queue := splitConjunction(f.Expression)
 		for len(queue) > 0 {
-			h := queue[0]
-			e := h.e
+			e := queue[0]
 			queue = queue[1:]
 
 			var not bool
@@ -339,17 +329,22 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 					return n, transform.SameTree, err
 				}
 				allSame = allSame && same
-				for _, h := range hoisted {
-					h.e, _, err = FixFieldIndexes(scope, a, n.Schema(), h.e)
-					if err != nil {
-						return n, transform.SameTree, err
-					}
-					h.invert = h.invert != not
-					queue = append(queue, h)
-				}
 				newSq := sq.WithQuery(newQ)
 				children[len(children)-1] = newSq
 				e, _ = e.WithChildren(children...)
+
+				if len(hoisted) > 0 {
+					newScopeFilters, _, err := FixFieldIndexesOnExpressions(scope, a, n.Schema(), hoisted...)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					if not {
+						// not (A and B) = (not A) or (not B)
+						e = expression.JoinAnd(e, expression.JoinAnd(hoisted...))
+					} else {
+						queue = append(queue, newScopeFilters...)
+					}
+				}
 			}
 
 			if not {
@@ -358,7 +353,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 
 			if lowestAllowedIdx == 0 {
 				// cannot hoist filters above root scope
-				keepFilters = append(keepFilters, h)
+				keepFilters = append(keepFilters, e)
 				continue
 			}
 
@@ -390,9 +385,9 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			// (3) bucket filter into parent or current scope
 			if !innerRef && !maybeAlias {
 				// belongs in outer scope
-				hoistFilters = append(hoistFilters, h)
+				hoistFilters = append(hoistFilters, e)
 			} else {
-				keepFilters = append(keepFilters, h)
+				keepFilters = append(keepFilters, e)
 			}
 		}
 
@@ -406,18 +401,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 		if len(keepFilters) == 0 {
 			return f.Child, transform.NewTree, nil
 		}
-		var keepInverted []sql.Expression
-		var keepNotInverted []sql.Expression
-		for _, h := range keepFilters {
-			if h.invert {
-				keepInverted = append(keepInverted, h.e)
-			} else {
-				keepNotInverted = append(keepNotInverted, h.e)
-			}
-		}
-		keepInverted = append(keepInverted, expression.JoinAnd(keepNotInverted...))
-		output := expression.JoinOr(keepNotInverted...)
-		ret := plan.NewFilter(output, f.Child)
+		ret := plan.NewFilter(expression.JoinAnd(keepFilters...), f.Child)
 		return ret, transform.NewTree, nil
 	})
 	return ret, same, hoistFilters, err
