@@ -15,10 +15,11 @@
 package queries
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
