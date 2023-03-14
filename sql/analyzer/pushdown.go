@@ -711,16 +711,24 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 		return node, transform.SameTree, nil
 	}
 
-	unhandled := filters.unhandledPredicates(ctx)
+	// figure out if the filter's filters were all handled
+	filterExpressions := splitConjunction(node.Expression)
+	unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 	if len(unhandled) == 0 {
 		a.Log("filter node has no unhandled filters, so it will be removed")
 		return node.Child, transform.NewTree, nil
 	}
 
+	if len(unhandled) == len(filterExpressions) {
+		a.Log("no filters removed from filter node")
+		return node, transform.SameTree, nil
+	}
+
 	a.Log(
-		"filters removed from filter node: %s\nfilter has now %d filters",
+		"filters removed from filter node: %s\nfilter has now %d filters: %s",
 		filters.handledFilters,
 		len(unhandled),
+		unhandled,
 	)
 
 	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child), transform.NewTree, nil

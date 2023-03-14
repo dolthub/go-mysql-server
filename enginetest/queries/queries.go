@@ -15,11 +15,10 @@
 package queries
 
 import (
-	"math"
-	"time"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
+	"math"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -7184,6 +7183,13 @@ from (select * from uv) a1
 where a1.u = 1 AND false;`,
 	},
 	{
+		// false filter on a subquery
+		Query: `/*h1*/select a1.u
+from (select * from uv where false) a1
+where a1.u = 1;`,
+		Expected: []sql.Row{},
+	},
+	{
 		// multiple false filter EXISTS clauses
 		Query: `select a, b from ab where
 exists (select * from xy where false)
@@ -7194,6 +7200,14 @@ or exists (select * from uv where false);`,
 		Query: `select a,b from ab where
 exists (select * from xy where
     exists (select * from uv where false));`,
+	},
+	{
+		// nested subqueries and aliases
+		Query: `select *
+	from (select * from xy where x = 1 and x in
+	   (select * from (select 1 where false) a1)
+	) a2;`,
+		Expected: []sql.Row{},
 	},
 	{
 		// relation is a query
@@ -7241,6 +7255,34 @@ where exists (select * from ab where 1 = 0);`,
 	{
 		// false having
 		Query: `select x from xy as t1 group by t1.x having exists (select * from ab where 1 = 0);`,
+	},
+	{
+		// false having
+		Query: `select * from xy where x in (select 1 having false);`,
+	},
+	{
+		// indexed table access test
+		Query: "select * from (select * from xy where false) s where s.x = 2;",
+	},
+	{
+		// projections
+		Query: "select * from xy where exists (select a, true, a*7 from ab where false);",
+	},
+	{
+		// nested empty function calls
+		Query: `select * from xy
+where not exists (
+  select * from ab
+  where false and exists (
+    select 1 where false
+  )
+)`,
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+			{2, 1},
+			{3, 3},
+		},
 	},
 }
 
