@@ -7158,6 +7158,133 @@ With c as (
 		Query:    "SELECT 4294967296;",
 		Expected: []sql.Row{{int64(4294967296)}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/5522
+		Query:    "select * from mytable where exists (select * from othertable where 1 = 0)",
+		Expected: []sql.Row{},
+	},
+	// tests to verify this issue is fixed: https://github.com/dolthub/dolt/issues/5522
+	{
+		// original query from issue
+		Query:    "select count(*) from ab where exists (select * from xy where 1 = 0);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// false filter and a table
+		Query: "select a from ab where false;",
+	},
+	{
+		// false filter and a join
+		Query: "select a, u from (ab cross join uv) where false;",
+	},
+	{
+		// false filter and a subquery
+		Query: `select a1.u
+from (select * from uv) a1
+where a1.u = 1 AND false;`,
+	},
+	{
+		// false filter on a subquery
+		Query: `/*h1*/select a1.u
+from (select * from uv where false) a1
+where a1.u = 1;`,
+		Expected: []sql.Row{},
+	},
+	{
+		// multiple false filter EXISTS clauses
+		Query: `select a, b from ab where
+exists (select * from xy where false)
+or exists (select * from uv where false);`,
+	},
+	{
+		// nested false filter EXISTS clauses
+		Query: `select a,b from ab where
+exists (select * from xy where
+    exists (select * from uv where false));`,
+	},
+	{
+		// nested subqueries and aliases
+		Query: `select *
+	from (select * from xy where x = 1 and x in
+	   (select * from (select 1 where false) a1)
+	) a2;`,
+		Expected: []sql.Row{},
+	},
+	{
+		// relation is a query
+		Query: "select a1.a from (select * from ab) a1 where exists (select * from xy where 1 = 0);",
+	},
+	{
+		// relation is a group by
+		Query: "select a1.a from (select * from ab group by a, b) a1 where exists (select a from xy where 1 = 0);",
+	},
+	{
+		// relation is a window
+		Query: "select a1.s from (select sum(a) over() as s from ab) a1 where exists (select * from xy where 1 = 0);",
+	},
+	{
+		// relation is a CTE
+		Query: `with cte1 as (select * from ab)
+select *
+from xy
+where exists (select * from cte1 where 1 = 0);`,
+	},
+	{
+		// relation is a recursive CTE
+		Query: `
+with recursive my_cte as
+(
+  select 1 as f, 1 as next_f
+  union all
+  select next_f, f+next_f from my_cte where f < 50
+)
+select * from my_cte
+where exists (select * from ab where 1 = 0);`,
+		Expected: []sql.Row{},
+	},
+	{
+		// relation is a table function
+		Query: `SELECT count(*)
+FROM
+JSON_TABLE(
+	'[{"a":1.5, "b":2.25},{"a":3.125, "b":4.0625}]',
+	'$[*]' COLUMNS(x float path '$.a', y float path '$.b')
+) as t1
+where exists (select * from ab where 1 = 0);`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// false having
+		Query: `select x from xy as t1 group by t1.x having exists (select * from ab where 1 = 0);`,
+	},
+	{
+		// false having
+		Query: `select * from xy where x in (select 1 having false);`,
+	},
+	{
+		// indexed table access test
+		Query: "select * from (select * from xy where false) s where s.x = 2;",
+	},
+	{
+		// projections
+		Query: "select * from xy where exists (select a, true, a*7 from ab where false);",
+	},
+	{
+		// nested empty function calls
+		Query: `select * from xy
+where not exists (
+  select * from ab
+  where false and exists (
+    select 1 where false
+  )
+)`,
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+			{2, 1},
+			{3, 3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
