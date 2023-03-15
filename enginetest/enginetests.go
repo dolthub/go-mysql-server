@@ -3097,6 +3097,9 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE mydb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
+		// After dropping the selected database, the tx db field should be cleared out
+		require.Equal(t, "", ctx.GetTransactionDatabase())
+
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 		require.Error(t, err)
 
@@ -3113,7 +3116,12 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "testdb")
 		require.NoError(t, err)
 
+		ctx.SetCurrentDatabase("testdb")
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
+
+		// After dropping the selected database, the tx db field should be cleared out
+		require.Equal(t, "", ctx.GetTransactionDatabase())
+
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
 
@@ -3163,6 +3171,9 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
+
+		// After dropping the selected database, the tx db field should be cleared out
+		require.Equal(t, "", ctx.GetTransactionDatabase())
 
 		sch, iter, err := e.Query(ctx, "USE testdb")
 		if err == nil {
