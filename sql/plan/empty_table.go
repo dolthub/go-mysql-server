@@ -34,11 +34,11 @@ type emptyTable struct {
 }
 
 func (e *emptyTable) Schema() sql.Schema { return e.schema }
-func (emptyTable) Children() []sql.Node  { return nil }
-func (emptyTable) Resolved() bool        { return true }
+func (*emptyTable) Children() []sql.Node { return nil }
+func (*emptyTable) Resolved() bool       { return true }
 func (e *emptyTable) String() string     { return "EmptyTable" }
 
-func (emptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (*emptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
