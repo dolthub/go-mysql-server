@@ -159,6 +159,7 @@ func (d *DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Unsets the current database. Database name is case-insensitive.
 	if strings.ToLower(ctx.GetCurrentDatabase()) == strings.ToLower(d.dbName) {
 		ctx.SetCurrentDatabase("")
+		ctx.Session.SetTransactionDatabase("")
 	}
 
 	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
