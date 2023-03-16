@@ -7285,6 +7285,45 @@ where not exists (
 			{3, 3},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/5549 - verify that recursive CTE outputs are correct
+		Query: `WITH RECURSIVE my_cte AS
+(
+  SELECT 1 as f, 1 as next_f
+  UNION ALL
+  SELECT next_f, f+next_f FROM my_cte WHERE f < 1000
+)
+SELECT * FROM my_cte;`,
+		Expected: []sql.Row{
+			{1, 1},
+			{1, 2},
+			{2, 3},
+			{3, 5},
+			{5, 8},
+			{8, 13},
+			{13, 21},
+			{21, 34},
+			{34, 55},
+			{55, 89},
+			{89, 144},
+			{144, 233},
+			{233, 377},
+			{377, 610},
+			{610, 987},
+			{987, 1597},
+			{1597, 2584},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "f",
+				Type: types.Int64,
+			},
+			{
+				Name: "next_f",
+				Type: types.Int64,
+			},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
