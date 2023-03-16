@@ -138,7 +138,7 @@ func TestConvertTz(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			loc, err := time.LoadLocation("UTC")
 			time.Local = loc
-			fn := NewConvertTz(expression.NewLiteral(test.datetime, sql.Text), expression.NewLiteral(test.fromTimeZone, sql.Text), expression.NewLiteral(test.toTimeZone, sql.Text))
+			fn := NewConvertTz(expression.NewLiteral(test.datetime, types.Text), expression.NewLiteral(test.fromTimeZone, types.Text), expression.NewLiteral(test.toTimeZone, types.Text))
 
 			res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 			require.NoError(t, err)
