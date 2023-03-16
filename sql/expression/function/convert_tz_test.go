@@ -126,11 +126,18 @@ func TestConvertTz(t *testing.T) {
 			expectedResult: nil,
 		},
 		{
-			name:           "Test with @@GLOBAL.time_zone value: SYSTEM",
+			name:           "Test fromTimeZone value: SYSTEM",
 			datetime:       time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
 			fromTimeZone:   "SYSTEM",
 			toTimeZone:     "+01:00",
 			expectedResult: time.Date(2010, 6, 3, 13, 12, 12, 0, time.UTC),
+		},
+		{
+			name:           "Test toTimeZone value: SYSTEM",
+			datetime:       time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
+			fromTimeZone:   "+01:00",
+			toTimeZone:     "SYSTEM",
+			expectedResult: time.Date(2010, 6, 3, 11, 12, 12, 0, time.UTC),
 		},
 	}
 
