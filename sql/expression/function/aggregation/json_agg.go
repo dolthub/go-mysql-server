@@ -20,6 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrUnsupportedJSONFunction is returned when a unsupported JSON function is called.
@@ -70,7 +71,7 @@ func (j *JSONObjectAgg) String() string {
 
 // Type implements the Expression interface.
 func (j *JSONObjectAgg) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 // IsNullable implements the Expression interface.
@@ -143,7 +144,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := val.(sql.JSONValue); ok {
+	if js, ok := val.(types.JSONValue); ok {
 		doc, err := js.Unmarshall(ctx)
 		if err != nil {
 			return err
@@ -152,7 +153,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// Update the map.
-	keyAsString, err := sql.LongText.Convert(key)
+	keyAsString, err := types.LongText.Convert(key)
 	if err != nil {
 		return nil
 	}
@@ -168,7 +169,7 @@ func (j *jsonObjectBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.JSONDocument{Val: j.vals}, nil
+	return types.JSONDocument{Val: j.vals}, nil
 }
 
 // Dispose implements the Disposable interface.

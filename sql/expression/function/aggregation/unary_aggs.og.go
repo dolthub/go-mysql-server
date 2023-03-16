@@ -8,6 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type AnyValue struct {
@@ -177,7 +178,7 @@ func NewBitAnd(e sql.Expression) *BitAnd {
 }
 
 func (a *BitAnd) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
 }
 
 func (a *BitAnd) IsNullable() bool {
@@ -251,7 +252,7 @@ func NewBitOr(e sql.Expression) *BitOr {
 }
 
 func (a *BitOr) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
 }
 
 func (a *BitOr) IsNullable() bool {
@@ -325,7 +326,7 @@ func NewBitXor(e sql.Expression) *BitXor {
 }
 
 func (a *BitXor) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
 }
 
 func (a *BitXor) IsNullable() bool {
@@ -399,7 +400,7 @@ func NewCount(e sql.Expression) *Count {
 }
 
 func (a *Count) Type() sql.Type {
-	return sql.Int64
+	return types.Int64
 }
 
 func (a *Count) IsNullable() bool {
@@ -547,7 +548,7 @@ func NewJsonArray(e sql.Expression) *JsonArray {
 }
 
 func (a *JsonArray) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 func (a *JsonArray) IsNullable() bool {

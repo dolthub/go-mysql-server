@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const (
@@ -165,7 +166,7 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return sql.ConvertToBool(autoCommitSessionVar)
+	return types.ConvertToBool(autoCommitSessionVar)
 }
 
 func ReadCommitted(ctx *sql.Context) bool {

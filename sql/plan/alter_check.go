@@ -155,7 +155,7 @@ func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(c.Child), getTableName(c.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(GetDatabaseName(c.Child), getTableName(c.Child), "", sql.PrivilegeType_Alter))
 }
 
 func (c *CreateCheck) Schema() sql.Schema { return nil }
@@ -207,7 +207,7 @@ func (p *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(GetDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
 }
 
 func (p *DropCheck) Schema() sql.Schema { return nil }
@@ -272,7 +272,7 @@ func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropConstraint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(GetDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
 }
 
 // NewDropConstraint returns a new DropConstraint node

@@ -16,8 +16,10 @@ package enginetest_test
 
 import (
 	"context"
+	sql2 "database/sql"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -33,12 +35,14 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -111,14 +115,16 @@ func TestLocks(t *testing.T) {
 	analyzer := analyzer.NewDefault(pro)
 	engine := sqle.New(analyzer, new(sqle.Config))
 
-	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx.SetCurrentDatabase("db")
 	sch, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err)
 
-	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
+	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
+	ctx.SetCurrentDatabase("db")
 	sch, iter, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
 
@@ -205,20 +211,27 @@ type analyzerTestCase struct {
 func TestShowProcessList(t *testing.T) {
 	require := require.New(t)
 
-	addr := "127.0.0.1:34567"
+	addr1 := "127.0.0.1:34567"
+	addr2 := "127.0.0.1:34568"
+	username := "foo"
 
 	p := sqle.NewProcessList()
-	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
+	p.AddConnection(1, addr1)
+	p.AddConnection(2, addr2)
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
+	p.ConnectionReady(sess)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
-	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "a", 5)
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
+	sess = sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr2, User: username}, 2)
+	p.ConnectionReady(sess)
 	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess), sql.WithProcessList(p))
-	ctx, err = p.AddProcess(ctx, "SELECT bar")
+	ctx, err = p.BeginQuery(ctx, "SELECT bar")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "foo", 2)
@@ -231,7 +244,6 @@ func TestShowProcessList(t *testing.T) {
 	p.UpdateTableProgress(2, "foo", 1)
 
 	n := plan.NewShowProcessList()
-	n.Database = "foo"
 
 	iter, err := n.RowIter(ctx, nil)
 	require.NoError(err)
@@ -239,7 +251,7 @@ func TestShowProcessList(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{int64(1), "foo", addr, "foo", "Query", int64(0),
+		{int64(1), username, addr1, nil, "Query", int64(0),
 			`
 a (4/5 partitions)
  ├─ a-1 (7/? rows)
@@ -247,7 +259,7 @@ a (4/5 partitions)
 
 b (2/6 partitions)
 `, "SELECT foo"},
-		{int64(1), "foo", addr, "foo", "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
+		{int64(2), username, addr2, nil, "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
 	}
 
 	require.ElementsMatch(expected, rows)
@@ -262,11 +274,15 @@ func TestTrackProcess(t *testing.T) {
 	node := plan.NewInnerJoin(
 		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
 		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
-		expression.NewLiteral(int64(1), sql.Int64),
+		expression.NewLiteral(int64(1), types.Int64),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(sqle.NewProcessList()))
-	ctx, err := ctx.ProcessList.AddProcess(ctx, "SELECT foo")
+	pl := sqle.NewProcessList()
+
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl))
+	pl.AddConnection(ctx.Session.ID(), "localhost")
+	pl.ConnectionReady(ctx.Session)
+	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
 	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
@@ -309,13 +325,10 @@ func TestTrackProcess(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
-	require.Len(ctx.ProcessList.Processes(), 0)
-
-	select {
-	case <-ctx.Done():
-	case <-time.After(5 * time.Millisecond):
-		t.Errorf("expecting context to be cancelled")
-	}
+	procs := ctx.ProcessList.Processes()
+	require.Len(procs, 1)
+	require.Equal(procs[0].Command, sql.ProcessCommandSleep)
+	require.Error(ctx.Err())
 }
 
 func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
@@ -366,7 +379,8 @@ func TestUnlockTables(t *testing.T) {
 
 	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider(db))
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("db").WithCurrentDB("db")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("db")
 	catalog.LockTable(ctx, "foo")
 	catalog.LockTable(ctx, "bar")
 
@@ -396,7 +410,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 		{
@@ -405,7 +419,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 		{
@@ -415,8 +429,8 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				greatest, err := function.NewGreatest(
-					expression.NewLiteral("abc123", sql.LongText),
-					expression.NewLiteral("cde456", sql.LongText),
+					expression.NewLiteral("abc123", types.LongText),
+					expression.NewLiteral("cde456", types.LongText),
 				)
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, greatest)
@@ -429,7 +443,7 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				timestamp, err := function.NewTimestamp(
-					expression.NewLiteral("20200101:120000Z", sql.LongText),
+					expression.NewLiteral("20200101:120000Z", types.LongText),
 				)
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, timestamp)
@@ -441,7 +455,7 @@ func TestAnalyzer(t *testing.T) {
 			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
 				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
 				require.NoError(t, err)
-				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
+				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", types.LongText))
 			},
 		},
 	}
@@ -646,16 +660,32 @@ func TestTableFunctions(t *testing.T) {
 			Query:    "SELECT * from (select * from simple_TABLE_function(123)) as tf;",
 			Expected: []sql.Row{{"foo", 123}},
 		},
+		{
+			Query:    "select * from sequence_table('x', 5)",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
+			Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0",
+			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 2) where x is not null",
+			Expected: []sql.Row{{0}, {1}},
+		},
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	harness.Setup(setup.MydbData)
 
 	databaseProvider := harness.NewDatabaseProvider()
-	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
+	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
-	engine, err := enginetest.RunEngineScripts(harness.NewContext(), engine, setup.MydbData, true)
+	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
 
 	for _, test := range tableFunctionScriptTests {
@@ -667,10 +697,124 @@ func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ExternalProcedureTests {
-		e, err := harness.NewEngine(t)
-		require.NoError(t, err)
-		defer e.Close()
-		enginetest.TestScriptWithEngine(t, e, harness, script)
+		func() {
+			e, err := harness.NewEngine(t)
+			require.NoError(t, err)
+			defer func() {
+				_ = e.Close()
+			}()
+			enginetest.TestScriptWithEngine(t, e, harness, script)
+		}()
+	}
+}
+
+func TestCallAsOf(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	enginetest.CreateVersionedTestData(t, harness)
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "AS OF propagates to nested CALLs",
+			SetUpScript: []string{
+				"CREATE PROCEDURE p1() BEGIN CALL p2(); END",
+				"CREATE PROCEDURE p1a() BEGIN CALL p2() AS OF '2019-01-01'; END",
+				"CREATE PROCEDURE p1b() BEGIN CALL p2a(); END",
+				"CREATE PROCEDURE p2() BEGIN SELECT * FROM myhistorytable; END",
+				"CREATE PROCEDURE p2a() BEGIN SELECT * FROM myhistorytable AS OF '2019-01-02'; END",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "CALL p1();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 3", "1"},
+						{int64(2), "second row, 3", "2"},
+						{int64(3), "third row, 3", "3"},
+					},
+				},
+				{
+					Query: "CALL p1a();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p1b();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+				{
+					Query: "CALL p2();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 3", "1"},
+						{int64(2), "second row, 3", "2"},
+						{int64(3), "third row, 3", "3"},
+					},
+				},
+				{
+					Query: "CALL p2a();",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+				{
+					Query: "CALL p1() AS OF '2019-01-01';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p1a() AS OF '2019-01-03';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p1b() AS OF '2019-01-03';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+				{
+					Query: "CALL p2() AS OF '2019-01-01';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 1"},
+						{int64(2), "second row, 1"},
+						{int64(3), "third row, 1"},
+					},
+				},
+				{
+					Query: "CALL p2a() AS OF '2019-01-03';",
+					Expected: []sql.Row{
+						{int64(1), "first row, 2"},
+						{int64(2), "second row, 2"},
+						{int64(3), "third row, 2"},
+					},
+				},
+			},
+		},
+	}
+
+	for _, script := range scripts {
+		func() {
+			e, err := harness.NewEngine(t)
+			require.NoError(t, err)
+			defer func() {
+				_ = e.Close()
+			}()
+			enginetest.TestScriptWithEngine(t, e, harness, script)
+		}()
 	}
 }
 
@@ -698,11 +842,11 @@ func (s SimpleTableFunction) Schema() sql.Schema {
 	schema := []*sql.Column{
 		&sql.Column{
 			Name: "one",
-			Type: sql.TinyText,
+			Type: types.TinyText,
 		},
 		&sql.Column{
 			Name: "two",
-			Type: sql.Int64,
+			Type: types.Int64,
 		},
 	}
 
@@ -781,10 +925,14 @@ type TestProvider struct {
 	tableFunctions map[string]sql.TableFunction
 }
 
-func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf sql.TableFunction) *TestProvider {
+func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf ...sql.TableFunction) *TestProvider {
+	tfs := make(map[string]sql.TableFunction)
+	for _, tf := range tf {
+		tfs[strings.ToLower(tf.Name())] = tf
+	}
 	return &TestProvider{
 		*dbProvider,
-		map[string]sql.TableFunction{strings.ToLower(tf.Name()): tf},
+		tfs,
 	}
 }
 
@@ -798,4 +946,73 @@ func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunct
 	}
 
 	return nil, sql.ErrTableFunctionNotFound.New(name)
+}
+
+func TestTimestampBindingsCanBeConverted(t *testing.T) {
+	db, close := newDatabase()
+	defer close()
+
+	_, err := db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
+	require.NoError(t, err)
+
+	// All we are doing in this test is ensuring that writing a timestamp to the
+	// database does not throw an error.
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", time.Now())
+	require.NoError(t, err)
+}
+
+func TestTimestampBindingsCanBeCompared(t *testing.T) {
+	db, close := newDatabase()
+	defer close()
+
+	_, err := db.Exec("CREATE TABLE mytable (t TIMESTAMP)")
+	require.NoError(t, err)
+
+	// We'll insert both of these timestamps and then try and filter them.
+	t0 := time.Date(2022, 01, 01, 0, 0, 0, 0, time.UTC)
+	t1 := t0.Add(1 * time.Minute)
+
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", t0)
+	require.NoError(t, err)
+	_, err = db.Exec("INSERT INTO mytable (t) VALUES (?)", t1)
+	require.NoError(t, err)
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(1) FROM mytable WHERE t > ?", t0).Scan(&count)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+}
+
+func newDatabase() (*sql2.DB, func()) {
+	// Grab an empty port so that tests do not fail if a specific port is already in use
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err = listener.Close(); err != nil {
+		panic(err)
+	}
+
+	provider := sql.NewDatabaseProvider(
+		memory.NewDatabase("mydb"),
+	)
+	engine := sqle.New(analyzer.NewDefault(provider), &sqle.Config{
+		IncludeRootAccount: true,
+	})
+	cfg := server.Config{
+		Protocol: "tcp",
+		Address:  fmt.Sprintf("localhost:%d", port),
+	}
+	srv, err := server.NewDefaultServer(cfg, engine)
+	if err != nil {
+		panic(err)
+	}
+	go srv.Start()
+
+	db, err := sql2.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/mydb", port))
+	if err != nil {
+		panic(err)
+	}
+	return db, func() { srv.Close() }
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Dimension is a function that converts a spatial type into WKT format (alias for AsText)
@@ -50,7 +51,7 @@ func (p *Dimension) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *Dimension) Type() sql.Type {
-	return sql.Int32
+	return types.Int32
 }
 
 func (p *Dimension) String() string {
@@ -65,15 +66,15 @@ func (p *Dimension) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewDimension(children[0]), nil
 }
 
-func FindDimension(g sql.GeometryValue) interface{} {
+func FindDimension(g types.GeometryValue) interface{} {
 	switch v := g.(type) {
-	case sql.Point, sql.MultiPoint:
+	case types.Point, types.MultiPoint:
 		return 0
-	case sql.LineString, sql.MultiLineString:
+	case types.LineString, types.MultiLineString:
 		return 1
-	case sql.Polygon, sql.MultiPolygon:
+	case types.Polygon, types.MultiPolygon:
 		return 2
-	case sql.GeomColl:
+	case types.GeomColl:
 		if len(v.Geoms) == 0 {
 			return nil
 		}
@@ -108,7 +109,7 @@ func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch v := val.(type) {
-	case sql.GeometryValue:
+	case types.GeometryValue:
 		return FindDimension(v), nil
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")

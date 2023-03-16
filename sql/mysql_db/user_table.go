@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 )
@@ -109,17 +110,17 @@ func (u UserSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_tabl
 // init creates the schema for the "user" Grant Table.
 func init() {
 	// Types
-	char32_utf8_bin := sql.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
-	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
-	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
-	enum_ANY_X509_SPECIFIED_utf8_general_ci := sql.MustCreateEnumType([]string{"", "ANY", "X509", "SPECIFIED"}, sql.Collation_utf8_general_ci)
-	enum_N_Y_utf8_general_ci := sql.MustCreateEnumType([]string{"N", "Y"}, sql.Collation_utf8_general_ci)
-	text_utf8_bin := sql.CreateText(sql.Collation_utf8_bin)
+	char32_utf8_bin := types.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
+	char64_utf8_bin := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
+	char255_ascii_general_ci := types.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
+	enum_ANY_X509_SPECIFIED_utf8_general_ci := types.MustCreateEnumType([]string{"", "ANY", "X509", "SPECIFIED"}, sql.Collation_utf8_general_ci)
+	enum_N_Y_utf8_general_ci := types.MustCreateEnumType([]string{"N", "Y"}, sql.Collation_utf8_general_ci)
+	text_utf8_bin := types.CreateText(sql.Collation_utf8_bin)
 
 	// Column Templates
 	blob_not_null_default_empty := &sql.Column{
-		Type:     sql.Blob,
-		Default:  mustDefault(expression.NewLiteral("", sql.Blob), sql.Blob, true, false),
+		Type:     types.Blob,
+		Default:  mustDefault(expression.NewLiteral("", types.Blob), types.Blob, true, false),
 		Nullable: false,
 	}
 	char32_utf8_bin_not_null_default_empty := &sql.Column{
@@ -153,17 +154,17 @@ func init() {
 		Nullable: true,
 	}
 	int_unsigned_not_null_default_0 := &sql.Column{
-		Type:     sql.Uint32,
-		Default:  mustDefault(expression.NewLiteral(uint32(0), sql.Uint32), sql.Uint32, true, false),
+		Type:     types.Uint32,
+		Default:  mustDefault(expression.NewLiteral(uint32(0), types.Uint32), types.Uint32, true, false),
 		Nullable: false,
 	}
 	json_nullable_default_nil := &sql.Column{
-		Type:     sql.JSON,
+		Type:     types.JSON,
 		Default:  nil,
 		Nullable: true,
 	}
 	smallint_unsigned_nullable_default_nil := &sql.Column{
-		Type:     sql.Uint16,
+		Type:     types.Uint16,
 		Default:  nil,
 		Nullable: true,
 	}
@@ -173,7 +174,7 @@ func init() {
 		Nullable: true,
 	}
 	timestamp_nullable_default_nil := &sql.Column{
-		Type:     sql.Timestamp,
+		Type:     types.Timestamp,
 		Default:  nil,
 		Nullable: true,
 	}
@@ -238,7 +239,7 @@ func addSuperUser(userTable *mysqlTable, username string, host string, password 
 	err := userTable.data.Put(sql.NewEmptyContext(), &User{
 		User:                username,
 		Host:                host,
-		PrivilegeSet:        newPrivilegeSetWithAllPrivileges(),
+		PrivilegeSet:        NewPrivilegeSetWithAllPrivileges(),
 		Plugin:              "mysql_native_password",
 		Password:            password,
 		PasswordLastChanged: time.Unix(1, 0).UTC(),

@@ -17,6 +17,8 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/mysql"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -122,8 +124,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.MustConvert(sql.Timestamp.Convert("2020-03-06 00:00:00")),
-			sql.MustConvert(sql.Date.Convert("2019-12-31")),
+			sql.MustConvert(types.Timestamp.Convert("2020-03-06 00:00:00")),
+			sql.MustConvert(types.Date.Convert("2019-12-31")),
 			"fourteen",
 			0,
 			nil,
@@ -147,8 +149,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.MustConvert(sql.Timestamp.Convert("2020-03-06 00:00:00")),
-			sql.MustConvert(sql.Date.Convert("2020-03-06")),
+			sql.MustConvert(types.Timestamp.Convert("2020-03-06 00:00:00")),
+			sql.MustConvert(types.Date.Convert("2020-03-06")),
 			"fourteen",
 			0,
 			nil,
@@ -172,8 +174,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.Timestamp.Zero(),
-			sql.Date.Zero(),
+			types.Timestamp.Zero(),
+			types.Date.Zero(),
 			"fourteen",
 			0,
 			nil,
@@ -264,6 +266,10 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(1, 0, 22, 21, 22, 23, 24),
 			sql.NewRow(1, 1, 32, 31, 32, 33, 34),
 		},
+	},
+	{
+		WriteQuery:          `update mytable h join mytable on h.i = mytable.i and h.s <> mytable.s set h.i = mytable.i;`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
 	},
 	{
 		WriteQuery:          `UPDATE othertable CROSS JOIN tabletest set othertable.i2 = othertable.i2 * 10`, // cross join
@@ -446,21 +452,21 @@ var SpatialUpdateTests = []WriteQueryTest{
 		WriteQuery:          "UPDATE point_table SET p = point(123.456,789);",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
-		ExpectedSelect:      []sql.Row{{int64(5), sql.Point{X: 123.456, Y: 789}}},
+		ExpectedSelect:      []sql.Row{{int64(5), types.Point{X: 123.456, Y: 789}}},
 	},
 	{
 		WriteQuery:          "UPDATE line_table SET l = linestring(point(1.2,3.4),point(5.6,7.8));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{int64(0), sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
+		ExpectedSelect:      []sql.Row{{int64(0), types.LineString{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), types.LineString{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
 	},
 	{
 		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
 		ExpectedSelect: []sql.Row{
-			{int64(0), sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
-			{int64(1), sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
+			{int64(0), types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
+			{int64(1), types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
 		},
 	},
 }
@@ -490,8 +496,8 @@ var SkippedUpdateTests = []WriteQueryTest{
 	},
 }
 
-func newUpdateResult(matched, updated int) sql.OkResult {
-	return sql.OkResult{
+func newUpdateResult(matched, updated int) types.OkResult {
+	return types.OkResult{
 		RowsAffected: uint64(updated),
 		Info:         plan.UpdateInfo{matched, updated, 0},
 	}
@@ -734,6 +740,6 @@ var UpdateErrorScripts = []ScriptTest{
 			"insert into bad values ('good')",
 		},
 		Query:       "update bad set s = '1234567890'",
-		ExpectedErr: sql.ErrLengthBeyondLimit,
+		ExpectedErr: types.ErrLengthBeyondLimit,
 	},
 }

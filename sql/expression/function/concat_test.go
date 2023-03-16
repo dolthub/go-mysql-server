@@ -21,14 +21,15 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestConcat(t *testing.T) {
 	t.Run("concat multiple arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(expression.NewLiteral("foo", sql.LongText),
-			expression.NewLiteral(5, sql.LongText),
-			expression.NewLiteral(true, sql.Boolean),
+		f, err := NewConcat(expression.NewLiteral("foo", types.LongText),
+			expression.NewLiteral(5, types.LongText),
+			expression.NewLiteral(true, types.Boolean),
 		)
 		require.NoError(err)
 
@@ -39,9 +40,9 @@ func TestConcat(t *testing.T) {
 
 	t.Run("some argument is nil", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(expression.NewLiteral("foo", sql.LongText),
-			expression.NewLiteral(nil, sql.LongText),
-			expression.NewLiteral(true, sql.Boolean),
+		f, err := NewConcat(expression.NewLiteral("foo", types.LongText),
+			expression.NewLiteral(nil, types.LongText),
+			expression.NewLiteral(true, types.Boolean),
 		)
 		require.NoError(err)
 
@@ -54,17 +55,17 @@ func TestConcat(t *testing.T) {
 func TestNewConcat(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcat(expression.NewLiteral(nil, sql.LongText))
+	_, err := NewConcat(expression.NewLiteral(nil, types.LongText))
 	require.NoError(err)
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.LongText), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcat(expression.NewLiteral(nil, types.LongText), expression.NewLiteral(nil, types.Int64))
 	require.NoError(err)
 
 	_, err = NewConcat(
-		expression.NewLiteral(nil, sql.LongText),
-		expression.NewLiteral(nil, sql.Boolean),
-		expression.NewLiteral(nil, sql.Int64),
-		expression.NewLiteral(nil, sql.LongText),
+		expression.NewLiteral(nil, types.LongText),
+		expression.NewLiteral(nil, types.Boolean),
+		expression.NewLiteral(nil, types.Int64),
+		expression.NewLiteral(nil, types.LongText),
 	)
 	require.NoError(err)
 }

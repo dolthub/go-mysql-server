@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ShowCreateProcedure struct {
@@ -31,12 +32,12 @@ var _ sql.Databaser = (*ShowCreateProcedure)(nil)
 var _ sql.Node = (*ShowCreateProcedure)(nil)
 
 var showCreateProcedureSchema = sql.Schema{
-	&sql.Column{Name: "Procedure", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Create Procedure", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Procedure", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "sql_mode", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Create Procedure", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "character_set_client", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "collation_connection", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Database Collation", Type: types.LongText, Nullable: false},
 }
 
 // NewShowCreateProcedure creates a new ShowCreateProcedure node for SHOW CREATE PROCEDURE statements.

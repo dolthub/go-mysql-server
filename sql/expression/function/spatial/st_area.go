@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Area is a function that returns the Area of a Polygon
@@ -45,7 +46,7 @@ func (a *Area) Description() string {
 
 // Type implements the sql.Expression interface.
 func (a *Area) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 func (a *Area) String() string {
@@ -63,7 +64,7 @@ func (a *Area) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // calculateArea takes a polygon linestring, and finds the area
 // this uses the Shoelace formula: https://en.wikipedia.org/wiki/Shoelace_formula
 // TODO: if SRID is not cartesian, the area should be geodetic
-func calculateArea(l sql.LineString) float64 {
+func calculateArea(l types.LineString) float64 {
 	var area float64
 	for i := 0; i < len(l.Points)-1; i++ {
 		p1 := l.Points[i]
@@ -93,7 +94,7 @@ func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// TODO: Multi-Polygons are also valid
 	// Only allow polygons
-	p, ok := v.(sql.Polygon)
+	p, ok := v.(types.Polygon)
 	if !ok {
 		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
 	}

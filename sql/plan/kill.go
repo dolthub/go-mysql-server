@@ -19,6 +19,7 @@ import (
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type KillType int
@@ -71,7 +72,7 @@ func (k *Kill) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 }
 
 func (k *Kill) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (k *Kill) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -81,7 +82,7 @@ func (k *Kill) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if k.kt == KillType_Connection {
 				ctx.KillConnection(k.connID)
 			}
-			return sql.NewRow(sql.NewOkResult(0)), nil
+			return sql.NewRow(types.NewOkResult(0)), nil
 		},
 	}, nil
 }

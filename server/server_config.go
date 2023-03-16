@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"go.opentelemetry.io/otel/trace"
 
+	gms "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -29,6 +30,7 @@ type Server struct {
 	Listener   *mysql.Listener
 	handler    mysql.Handler
 	sessionMgr *SessionManager
+	Engine     *gms.Engine
 }
 
 // Config for the mysql server.
@@ -65,6 +67,9 @@ type Config struct {
 	// Socket is a path to unix socket file
 	Socket                   string
 	AllowClearTextWithoutTLS bool
+	// MaxLoggedQueryLen sets the length at which queries written to the logs are truncated.  A value of 0 will
+	// result in no truncation. A value less than 0 will result in the queries being omitted from the logs completely
+	MaxLoggedQueryLen int
 }
 
 func (c Config) NewConfig() (Config, error) {

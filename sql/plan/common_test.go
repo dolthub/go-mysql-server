@@ -24,16 +24,17 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var benchtable = func() *memory.Table {
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "strfield", Type: sql.Text, Nullable: true},
-		{Name: "floatfield", Type: sql.Float64, Nullable: true},
-		{Name: "boolfield", Type: sql.Boolean, Nullable: false},
-		{Name: "intfield", Type: sql.Int32, Nullable: false},
-		{Name: "bigintfield", Type: sql.Int64, Nullable: false},
-		{Name: "blobfield", Type: sql.Blob, Nullable: false},
+		{Name: "strfield", Type: types.Text, Nullable: true},
+		{Name: "floatfield", Type: types.Float64, Nullable: true},
+		{Name: "boolfield", Type: types.Boolean, Nullable: false},
+		{Name: "intfield", Type: types.Int32, Nullable: false},
+		{Name: "bigintfield", Type: types.Int64, Nullable: false},
+		{Name: "blobfield", Type: types.Blob, Nullable: false},
 	})
 	t := memory.NewTable("test", schema, nil)
 

@@ -17,13 +17,10 @@ package sql
 import (
 	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -38,12 +35,26 @@ var (
 
 	ErrInvalidBaseType = errors.NewKind("%v is not a valid %v base type")
 
-	// ErrNotArray is returned when the value is not an array.
-	ErrNotArray = errors.NewKind("value of type %T is not an array")
-
 	// ErrConvertToSQL is returned when Convert failed.
 	// It makes an error less verbose comparing to what spf13/cast returns.
 	ErrConvertToSQL = errors.NewKind("incompatible conversion to SQL type: %s")
+)
+
+const (
+	// DateLayout is the layout of the MySQL date format in the representation
+	// Go understands.
+	DateLayout = "2006-01-02"
+
+	// TimestampDatetimeLayout is the formatting string with the layout of the timestamp
+	// using the format of Go "time" package.
+	TimestampDatetimeLayout = "2006-01-02 15:04:05.999999"
+)
+
+const (
+	// False is the numeric representation of False as defined by MySQL.
+	False = int8(0)
+	// True is the numeric representation of True as defined by MySQL.
+	True = int8(1)
 )
 
 // Type represents a SQL type.
@@ -71,6 +82,122 @@ type Type interface {
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
+}
+
+// NullType represents the type of NULL values
+type NullType interface {
+	Type
+}
+
+// DeferredType is a placeholder for prepared statements
+// that is replaced by the BindVar type on re-analysis.
+type DeferredType interface {
+	Type
+	IsDeferred() bool
+	Name() string
+}
+
+// NumberType represents all integer and floating point types.
+// https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
+// https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html
+// The type of the returned value is one of the following: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64.
+type NumberType interface {
+	Type
+	IsSigned() bool
+	IsFloat() bool
+}
+
+// StringType represents all string types, including VARCHAR and BLOB.
+// https://dev.mysql.com/doc/refman/8.0/en/char.html
+// https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html
+// https://dev.mysql.com/doc/refman/8.0/en/blob.html
+// The type of the returned value is string.
+type StringType interface {
+	Type
+	CharacterSet() CharacterSetID
+	Collation() CollationID
+	// MaxCharacterLength returns the maximum number of chars that can safely be stored in this type, based on
+	// the current character set.
+	MaxCharacterLength() int64
+	// MaxByteLength returns the maximum number of bytes that may be consumed by a value stored in this type.
+	MaxByteLength() int64
+	// Length returns the maximum length, in characters, allowed for this string type.
+	Length() int64
+}
+
+// DatetimeType represents DATE, DATETIME, and TIMESTAMP.
+// https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+// The type of the returned value is time.Time.
+type DatetimeType interface {
+	Type
+	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
+	MaximumTime() time.Time
+	MinimumTime() time.Time
+}
+
+// YearType represents the YEAR type.
+// https://dev.mysql.com/doc/refman/8.0/en/year.html
+// The type of the returned value is int16.
+type YearType interface {
+	Type
+}
+
+// SetType represents the SET type.
+// https://dev.mysql.com/doc/refman/8.0/en/set.html
+// The type of the returned value is uint64.
+type SetType interface {
+	Type
+	CharacterSet() CharacterSetID
+	Collation() CollationID
+	// NumberOfElements returns the number of elements in this set.
+	NumberOfElements() uint16
+	// BitsToString takes a previously-converted value and returns it as a string.
+	BitsToString(bits uint64) (string, error)
+	// Values returns all of the set's values in ascending order according to their corresponding bit value.
+	Values() []string
+}
+
+// EnumType represents the ENUM type.
+// https://dev.mysql.com/doc/refman/8.0/en/enum.html
+// The type of the returned value is uint16.
+type EnumType interface {
+	Type
+	// At returns the string at the given index, as well if the string was found.
+	At(index int) (string, bool)
+	CharacterSet() CharacterSetID
+	Collation() CollationID
+	// IndexOf returns the index of the given string. If the string was not found, then this returns -1.
+	IndexOf(v string) int
+	// NumberOfElements returns the number of enumerations.
+	NumberOfElements() uint16
+	// Values returns the elements, in order, of every enumeration.
+	Values() []string
+}
+
+// DecimalType represents the DECIMAL type.
+// https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
+// The type of the returned value is decimal.Decimal.
+type DecimalType interface {
+	Type
+	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
+	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
+	// decimal.NullDecimal.
+	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
+	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
+	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
+	// BoundsCheck rounds and validates a decimal
+	BoundsCheck(v decimal.Decimal) (decimal.Decimal, error)
+	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
+	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
+	ExclusiveUpperBound() decimal.Decimal
+	// MaximumScale returns the maximum scale allowed for the current precision.
+	MaximumScale() uint8
+	// Precision returns the base-10 precision of the type, which is the total number of digits. For example, a
+	// precision of 3 means that 999, 99.9, 9.99, and .999 are all valid maximums (depending on the scale).
+	Precision() uint8
+	// Scale returns the scale, or number of digits after the decimal, that may be held.
+	// This will always be less than or equal to the precision.
+	Scale() uint8
 }
 
 type Type2 interface {
@@ -105,681 +232,4 @@ type SystemVariableType interface {
 	// DecodeValue returns the original value given to EncodeValue from the given string. This is different from `Convert`,
 	// as the encoded value may technically be an "illegal" value according to the type rules.
 	DecodeValue(string) (interface{}, error)
-}
-
-// ApproximateTypeFromValue returns the closest matching type to the given value. For example, an int16 will return SMALLINT.
-func ApproximateTypeFromValue(val interface{}) Type {
-	switch v := val.(type) {
-	case bool:
-		return Boolean
-	case int:
-		if strconv.IntSize == 32 {
-			return Int32
-		}
-		return Int64
-	case int64:
-		return Int64
-	case int32:
-		return Int32
-	case int16:
-		return Int16
-	case int8:
-		return Int8
-	case uint:
-		if strconv.IntSize == 32 {
-			return Uint32
-		}
-		return Uint64
-	case uint64:
-		return Uint64
-	case uint32:
-		return Uint32
-	case uint16:
-		return Uint16
-	case uint8:
-		return Uint8
-	case Timespan, time.Duration:
-		return Time
-	case time.Time:
-		return Datetime
-	case float32:
-		return Float32
-	case float64:
-		return Float64
-	case string:
-		typ, err := CreateString(sqltypes.VarChar, int64(len(v)), Collation_Default)
-		if err != nil {
-			typ, err = CreateString(sqltypes.Text, int64(len(v)), Collation_Default)
-			if err != nil {
-				typ = LongText
-			}
-		}
-		return typ
-	case []byte:
-		typ, err := CreateBinary(sqltypes.VarBinary, int64(len(v)))
-		if err != nil {
-			typ, err = CreateBinary(sqltypes.Blob, int64(len(v)))
-			if err != nil {
-				typ = LongBlob
-			}
-		}
-		return typ
-	case decimal.Decimal:
-		str := v.String()
-		dotIdx := strings.Index(str, ".")
-		if len(str) > 66 {
-			return Float64
-		} else if dotIdx == -1 {
-			typ, err := CreateDecimalType(uint8(len(str)), 0)
-			if err != nil {
-				return Float64
-			}
-			return typ
-		} else {
-			precision := uint8(len(str) - 1)
-			scale := uint8(len(str) - dotIdx - 1)
-			typ, err := CreateDecimalType(precision, scale)
-			if err != nil {
-				return Float64
-			}
-			return typ
-		}
-	case decimal.NullDecimal:
-		if !v.Valid {
-			return Float64
-		}
-		return ApproximateTypeFromValue(v.Decimal)
-	case nil:
-		return Null
-	default:
-		return LongText
-	}
-}
-
-// AreComparable returns whether the given types are either the same or similar enough that values can meaningfully be
-// compared across all permutations. Int8 and Int64 are comparable types, where as VarChar and Int64 are not. In the case
-// of the latter example, not all possible values of a VarChar are comparable to an Int64, while this is true for the
-// former example.
-func AreComparable(types ...Type) bool {
-	if len(types) <= 1 {
-		return true
-	}
-	typeNums := make([]int, len(types))
-	for i, typ := range types {
-		switch typ.Type() {
-		case sqltypes.Int8, sqltypes.Uint8, sqltypes.Int16,
-			sqltypes.Uint16, sqltypes.Int24, sqltypes.Uint24,
-			sqltypes.Int32, sqltypes.Uint32, sqltypes.Int64,
-			sqltypes.Uint64, sqltypes.Float32, sqltypes.Float64,
-			sqltypes.Decimal, sqltypes.Bit, sqltypes.Year:
-			typeNums[i] = 1
-		case sqltypes.Timestamp, sqltypes.Date, sqltypes.Datetime:
-			typeNums[i] = 2
-		case sqltypes.Time:
-			typeNums[i] = 3
-		case sqltypes.Text, sqltypes.Blob, sqltypes.VarChar,
-			sqltypes.VarBinary, sqltypes.Char, sqltypes.Binary:
-			typeNums[i] = 4
-		case sqltypes.Enum:
-			typeNums[i] = 5
-		case sqltypes.Set:
-			typeNums[i] = 6
-		case sqltypes.Geometry:
-			typeNums[i] = 7
-		case sqltypes.TypeJSON:
-			typeNums[i] = 8
-		default:
-			return false
-		}
-	}
-	for i := 1; i < len(typeNums); i++ {
-		if typeNums[i-1] != typeNums[i] {
-			return false
-		}
-	}
-	return true
-}
-
-// ColumnTypeToType gets the column type using the column definition.
-func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
-	switch strings.ToLower(ct.Type) {
-	case "boolean", "bool":
-		return Int8, nil
-	case "tinyint":
-		if ct.Unsigned {
-			return Uint8, nil
-		}
-		return Int8, nil
-	case "smallint":
-		if ct.Unsigned {
-			return Uint16, nil
-		}
-		return Int16, nil
-	case "mediumint":
-		if ct.Unsigned {
-			return Uint24, nil
-		}
-		return Int24, nil
-	case "int", "integer":
-		if ct.Unsigned {
-			return Uint32, nil
-		}
-		return Int32, nil
-	case "bigint":
-		if ct.Unsigned {
-			return Uint64, nil
-		}
-		return Int64, nil
-	case "float":
-		if ct.Length != nil {
-			precision, err := strconv.ParseInt(string(ct.Length.Val), 10, 8)
-			if err != nil {
-				return nil, err
-			}
-			if precision > 53 || precision < 0 {
-				return nil, ErrInvalidColTypeDefinition.New(ct.String(), "Valid range for precision is 0-24 or 25-53")
-			} else if precision > 24 {
-				return Float64, nil
-			} else {
-				return Float32, nil
-			}
-		}
-		return Float32, nil
-	case "double", "real", "double precision":
-		return Float64, nil
-	case "decimal", "fixed", "dec", "numeric":
-		precision := int64(0)
-		scale := int64(0)
-		if ct.Length != nil {
-			var err error
-			precision, err = strconv.ParseInt(string(ct.Length.Val), 10, 8)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if ct.Scale != nil {
-			var err error
-			scale, err = strconv.ParseInt(string(ct.Scale.Val), 10, 8)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateColumnDecimalType(uint8(precision), uint8(scale))
-	case "bit":
-		length := int64(1)
-		if ct.Length != nil {
-			var err error
-			length, err = strconv.ParseInt(string(ct.Length.Val), 10, 8)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateBitType(uint8(length))
-	case "tinyblob":
-		return TinyBlob, nil
-	case "blob":
-		if ct.Length == nil {
-			return Blob, nil
-		}
-		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		return CreateBinary(sqltypes.Blob, length)
-	case "mediumblob":
-		return MediumBlob, nil
-	case "longblob":
-		return LongBlob, nil
-	case "tinytext":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		return CreateString(sqltypes.Text, tinyTextBlobMax/collation.CharacterSet().MaxLength(), collation)
-	case "text":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		if ct.Length == nil {
-			return CreateString(sqltypes.Text, textBlobMax/collation.CharacterSet().MaxLength(), collation)
-		}
-		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		return CreateString(sqltypes.Text, length, collation)
-	case "mediumtext", "long", "long varchar":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		return CreateString(sqltypes.Text, mediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
-	case "longtext":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		return CreateString(sqltypes.Text, longTextBlobMax/collation.CharacterSet().MaxLength(), collation)
-	case "char", "character":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		length := int64(1)
-		if ct.Length != nil {
-			var err error
-			length, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateString(sqltypes.Char, length, collation)
-	case "nchar", "national char", "national character":
-		length := int64(1)
-		if ct.Length != nil {
-			var err error
-			length, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateString(sqltypes.Char, length, Collation_utf8mb3_general_ci)
-	case "varchar", "character varying":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		if ct.Length == nil {
-			return nil, fmt.Errorf("VARCHAR requires a length")
-		}
-
-		var strLen = string(ct.Length.Val)
-		var length int64
-		if strings.ToLower(strLen) == "max" {
-			length = 16383
-		} else {
-			length, err = strconv.ParseInt(strLen, 10, 64)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateString(sqltypes.VarChar, length, collation)
-	case "nvarchar", "national varchar", "national character varying":
-		if ct.Length == nil {
-			return nil, fmt.Errorf("VARCHAR requires a length")
-		}
-		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		return CreateString(sqltypes.VarChar, length, Collation_utf8mb3_general_ci)
-	case "binary":
-		length := int64(1)
-		if ct.Length != nil {
-			var err error
-			length, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return CreateString(sqltypes.Binary, length, Collation_binary)
-	case "varbinary":
-		if ct.Length == nil {
-			return nil, fmt.Errorf("VARBINARY requires a length")
-		}
-		length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		return CreateString(sqltypes.VarBinary, length, Collation_binary)
-	case "year":
-		return Year, nil
-	case "date":
-		return Date, nil
-	case "time":
-		if ct.Length != nil {
-			length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			switch length {
-			case 0, 1, 2, 3, 4, 5:
-				return nil, fmt.Errorf("TIME length not yet supported")
-			case 6:
-				return Time, nil
-			default:
-				return nil, fmt.Errorf("TIME only supports a length from 0 to 6")
-			}
-		}
-		return Time, nil
-	case "timestamp":
-		return Timestamp, nil
-	case "datetime":
-		return Datetime, nil
-	case "enum":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		return CreateEnumType(ct.EnumValues, collation)
-	case "set":
-		collation, err := ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
-		if err != nil {
-			return nil, err
-		}
-		return CreateSetType(ct.EnumValues, collation)
-	case "json":
-		return JSON, nil
-	case "geometry":
-		return GeometryType{}, nil
-	case "geometrycollection":
-		return GeomCollType{}, nil
-	case "linestring":
-		return LineStringType{}, nil
-	case "multilinestring":
-		return MultiLineStringType{}, nil
-	case "point":
-		return PointType{}, nil
-	case "multipoint":
-		return MultiPointType{}, nil
-	case "polygon":
-		return PolygonType{}, nil
-	case "multipolygon":
-		return MultiPolygonType{}, nil
-	default:
-		return nil, fmt.Errorf("unknown type: %v", ct.Type)
-	}
-	return nil, fmt.Errorf("type not yet implemented: %v", ct.Type)
-}
-
-func ConvertToBool(v interface{}) (bool, error) {
-	switch b := v.(type) {
-	case bool:
-		if b {
-			return true, nil
-		}
-		return false, nil
-	case int:
-		return ConvertToBool(int64(b))
-	case int64:
-		if b == 0 {
-			return false, nil
-		}
-		return true, nil
-	case int32:
-		return ConvertToBool(int64(b))
-	case int16:
-		return ConvertToBool(int64(b))
-	case int8:
-		return ConvertToBool(int64(b))
-	case uint:
-		return ConvertToBool(int64(b))
-	case uint64:
-		if b == 0 {
-			return false, nil
-		}
-		return true, nil
-	case uint32:
-		return ConvertToBool(uint64(b))
-	case uint16:
-		return ConvertToBool(uint64(b))
-	case uint8:
-		return ConvertToBool(uint64(b))
-	case time.Duration:
-		if b == 0 {
-			return false, nil
-		}
-		return true, nil
-	case time.Time:
-		if b.UnixNano() == 0 {
-			return false, nil
-		}
-		return true, nil
-	case float32:
-		return ConvertToBool(float64(b))
-	case float64:
-		if b == 0 {
-			return false, nil
-		}
-		return true, nil
-	case string:
-		bFloat, err := strconv.ParseFloat(b, 64)
-		if err != nil {
-			// In MySQL, if the string does not represent a float then it's false
-			return false, nil
-		}
-		return bFloat != 0, nil
-	case nil:
-		return false, fmt.Errorf("unable to cast nil to bool")
-	default:
-		return false, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
-	}
-}
-
-// IsBlobType checks if t is BLOB
-func IsBlobType(t Type) bool {
-	switch t.Type() {
-	case sqltypes.Blob:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsBinaryType checks if t is BINARY, VARBINARY, or BLOB
-func IsBinaryType(t Type) bool {
-	switch t.Type() {
-	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsDecimal checks if t is a DECIMAL type.
-func IsDecimal(t Type) bool {
-	_, ok := t.(decimalType)
-	return ok
-}
-
-// IsBit checks if t is a BIT type.
-func IsBit(t Type) bool {
-	_, ok := t.(bitType)
-	return ok
-}
-
-// IsFloat checks if t is float type.
-func IsFloat(t Type) bool {
-	return t == Float32 || t == Float64
-}
-
-// IsInteger checks if t is an integer type.
-func IsInteger(t Type) bool {
-	return IsSigned(t) || IsUnsigned(t)
-}
-
-// IsJSON returns true if the specified type is a JSON type.
-func IsJSON(t Type) bool {
-	_, ok := t.(jsonType)
-	return ok
-}
-
-// IsGeometry returns true if the specified type is a Geometry type.
-func IsGeometry(t Type) bool {
-	switch t.(type) {
-	case GeometryType, PointType, LineStringType, PolygonType:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsNull returns true if expression is nil or is Null Type, otherwise false.
-func IsNull(ex Expression) bool {
-	return ex == nil || ex.Type() == Null
-}
-
-// IsNumber checks if t is a number type
-func IsNumber(t Type) bool {
-	switch t.(type) {
-	case numberTypeImpl, decimalType, bitType, yearType, systemBoolType:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsSigned checks if t is a signed type.
-func IsSigned(t Type) bool {
-	// systemBoolType is Int8
-	if _, ok := t.(systemBoolType); ok {
-		return true
-	}
-	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
-}
-
-// IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
-func IsText(t Type) bool {
-	_, ok := t.(stringType)
-	return ok
-}
-
-// IsTextBlob checks if t is one of the TEXTs or BLOBs.
-func IsTextBlob(t Type) bool {
-	switch t.Type() {
-	case sqltypes.Text, sqltypes.Blob:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsTextOnly checks if t is CHAR, VARCHAR, or one of the TEXTs.
-func IsTextOnly(t Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Type() {
-	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsTimespan checks if t is a time (timespan)
-func IsTimespan(t Type) bool {
-	_, ok := t.(timespanType)
-	return ok
-}
-
-// IsTime checks if t is a timestamp, date or datetime
-func IsTime(t Type) bool {
-	_, ok := t.(datetimeType)
-	return ok
-}
-
-// IsDateType checks if t is a date
-func IsDateType(t Type) bool {
-	dt, ok := t.(datetimeType)
-	return ok && dt.baseType == sqltypes.Date
-}
-
-// IsDatetimeType checks if t is a datetime
-func IsDatetimeType(t Type) bool {
-	dt, ok := t.(datetimeType)
-	return ok && dt.baseType == sqltypes.Datetime
-}
-
-// IsTimestampType checks if t is a timestamp
-func IsTimestampType(t Type) bool {
-	dt, ok := t.(datetimeType)
-	return ok && dt.baseType == sqltypes.Timestamp
-}
-
-// IsEnum checks if t is a enum
-func IsEnum(t Type) bool {
-	_, ok := t.(enumType)
-	return ok
-}
-
-// IsEnum checks if t is a set
-func IsSet(t Type) bool {
-	_, ok := t.(setType)
-	return ok
-}
-
-// IsTuple checks if t is a tuple type.
-// Note that TupleType instances with just 1 value are not considered
-// as a tuple, but a parenthesized value.
-func IsTuple(t Type) bool {
-	v, ok := t.(TupleType)
-	return ok && len(v) > 1
-}
-
-// IsUnsigned checks if t is an unsigned type.
-func IsUnsigned(t Type) bool {
-	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
-}
-
-// NumColumns returns the number of columns in a type. This is one for all
-// types, except tuples.
-func NumColumns(t Type) int {
-	v, ok := t.(TupleType)
-	if !ok {
-		return 1
-	}
-	return len(v)
-}
-
-// ErrIfMismatchedColumns returns an operand error if the number of columns in
-// t1 is not equal to the number of columns in t2. If the number of columns is
-// equal, and both types are tuple types, it recurses into each subtype,
-// asserting that those subtypes are structurally identical as well.
-func ErrIfMismatchedColumns(t1, t2 Type) error {
-	if NumColumns(t1) != NumColumns(t2) {
-		return ErrInvalidOperandColumns.New(NumColumns(t1), NumColumns(t2))
-	}
-	v1, ok1 := t1.(TupleType)
-	v2, ok2 := t2.(TupleType)
-	if ok1 && ok2 {
-		for i := range v1 {
-			if err := ErrIfMismatchedColumns(v1[i], v2[i]); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// ErrIfMismatchedColumnsInTuple returns an operand error is t2 is not a tuple
-// type whose subtypes are structurally identical to t1.
-func ErrIfMismatchedColumnsInTuple(t1, t2 Type) error {
-	v2, ok2 := t2.(TupleType)
-	if !ok2 {
-		return ErrInvalidOperandColumns.New(NumColumns(t1), NumColumns(t2))
-	}
-	for _, v := range v2 {
-		if err := ErrIfMismatchedColumns(t1, v); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// compareNulls compares two values, and returns true if either is null.
-// The returned integer represents the ordering, with a rule that states nulls
-// as being ordered before non-nulls.
-func compareNulls(a interface{}, b interface{}) (bool, int) {
-	aIsNull := a == nil
-	bIsNull := b == nil
-	if aIsNull && bIsNull {
-		return true, 0
-	} else if aIsNull && !bIsNull {
-		return true, 1
-	} else if !aIsNull && bIsNull {
-		return true, -1
-	}
-	return false, 0
 }

@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var conditions = []struct {
@@ -30,26 +31,26 @@ var conditions = []struct {
 	value     interface{}
 	t         sql.Type
 }{
-	{true, int16(1), sql.Int16},
-	{false, int16(0), sql.Int16},
-	{true, int32(1), sql.Int32},
-	{false, int32(0), sql.Int32},
-	{true, int(1), sql.Int64},
-	{false, int(0), sql.Int64},
-	{true, float32(1), sql.Float32},
-	{true, float64(1), sql.Float64},
-	{false, float32(0), sql.Float32},
-	{false, float64(0), sql.Float64},
-	{true, float32(0.5), sql.Float32},
-	{true, float64(0.5), sql.Float64},
-	{true, "1", sql.LongText},
-	{false, "0", sql.LongText},
-	{false, "foo", sql.LongText},
-	{false, "0.5", sql.LongText},
-	{false, time.Duration(0), sql.Timestamp},
-	{true, time.Duration(1), sql.Timestamp},
-	{false, false, sql.Boolean},
-	{true, true, sql.Boolean},
+	{true, int16(1), types.Int16},
+	{false, int16(0), types.Int16},
+	{true, int32(1), types.Int32},
+	{false, int32(0), types.Int32},
+	{true, int(1), types.Int64},
+	{false, int(0), types.Int64},
+	{true, float32(1), types.Float32},
+	{true, float64(1), types.Float64},
+	{false, float32(0), types.Float32},
+	{false, float64(0), types.Float64},
+	{true, float32(0.5), types.Float32},
+	{true, float64(0.5), types.Float64},
+	{true, "1", types.LongText},
+	{false, "0", types.LongText},
+	{false, "foo", types.LongText},
+	{false, "0.5", types.LongText},
+	{false, time.Duration(0), types.Timestamp},
+	{true, time.Duration(1), types.Timestamp},
+	{false, false, types.Boolean},
+	{true, true, types.Boolean},
 }
 
 func TestEvaluateCondition(t *testing.T) {

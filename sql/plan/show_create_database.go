@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowCreateDatabase returns the SQL for creating a database.
@@ -28,8 +29,8 @@ type ShowCreateDatabase struct {
 }
 
 var showCreateDatabaseSchema = sql.Schema{
-	{Name: "Database", Type: sql.LongText},
-	{Name: "Create Database", Type: sql.LongText},
+	{Name: "Database", Type: types.LongText},
+	{Name: "Create Database", Type: types.LongText},
 }
 
 // NewShowCreateDatabase creates a new ShowCreateDatabase node.

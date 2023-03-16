@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -48,7 +49,7 @@ func (i *IsIPv4) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv4) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv4) Type() sql.Type { return types.Boolean }
 
 func (i *IsIPv4) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
@@ -110,7 +111,7 @@ func (i *IsIPv6) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv6) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv6) Type() sql.Type { return types.Boolean }
 
 func (i *IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
@@ -172,7 +173,7 @@ func (i *IsIPv4Compat) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv4Compat) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv4Compat) Type() sql.Type { return types.Boolean }
 
 func (i *IsIPv4Compat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
@@ -238,7 +239,7 @@ func (i *IsIPv4Mapped) String() string {
 	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
 }
 
-func (i *IsIPv4Mapped) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv4Mapped) Type() sql.Type { return types.Boolean }
 
 func (i *IsIPv4Mapped) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {

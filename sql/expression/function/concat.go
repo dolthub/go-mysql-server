@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Concat joins several strings together.
@@ -48,7 +49,7 @@ func (c *Concat) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Concat) Type() sql.Type { return sql.LongText }
+func (c *Concat) Type() sql.Type { return types.LongText }
 
 // IsNullable implements the Expression interface.
 func (c *Concat) IsNullable() bool {
@@ -108,7 +109,7 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		val, err = sql.LongText.Convert(val)
+		val, err = types.LongText.Convert(val)
 		if err != nil {
 			return nil, err
 		}

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // PrepareQuery is a node that prepares the query
@@ -35,7 +36,7 @@ func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
 
 // Schema implements the Node interface.
 func (p *PrepareQuery) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // PrepareInfo is the Info for OKResults returned by Update nodes.
@@ -49,7 +50,7 @@ func (pi PrepareInfo) String() string {
 
 // RowIter implements the Node interface.
 func (p *PrepareQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{RowsAffected: 0, Info: PrepareInfo{}})), nil
+	return sql.RowsToRowIter(sql.NewRow(types.OkResult{RowsAffected: 0, Info: PrepareInfo{}})), nil
 }
 
 func (p *PrepareQuery) Resolved() bool {
@@ -138,12 +139,12 @@ func NewDeallocateQuery(name string) *DeallocateQuery {
 
 // Schema implements the Node interface.
 func (p *DeallocateQuery) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // RowIter implements the Node interface.
 func (p *DeallocateQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.NewRow(sql.OkResult{})), nil
+	return sql.RowsToRowIter(sql.NewRow(types.OkResult{})), nil
 }
 
 func (p *DeallocateQuery) Resolved() bool {

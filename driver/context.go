@@ -8,6 +8,7 @@ import (
 
 // A ContextBuilder creates SQL contexts.
 type ContextBuilder interface {
+	// NewContext constructs a sql.Context with the given conn and options set.
 	NewContext(context.Context, *Conn, ...sql.ContextOption) (*sql.Context, error)
 }
 

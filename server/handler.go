@@ -38,6 +38,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var errConnectionNotFound = errors.NewKind("connection not found: %c")
@@ -67,18 +68,20 @@ type Handler struct {
 	sm                *SessionManager
 	readTimeout       time.Duration
 	disableMultiStmts bool
+	maxLoggedQueryLen int
 	sel               ServerEventListener
 }
 
 var _ mysql.Handler = (*Handler)(nil)
 
 // NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, listener ServerEventListener) *Handler {
+func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, maxLoggedQueryLen int, listener ServerEventListener) *Handler {
 	return &Handler{
 		e:                 e,
 		sm:                sm,
 		readTimeout:       rt,
 		disableMultiStmts: disableMultiStmts,
+		maxLoggedQueryLen: maxLoggedQueryLen,
 		sel:               listener,
 	}
 }
@@ -88,6 +91,8 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	if h.sel != nil {
 		h.sel.ClientConnected()
 	}
+
+	h.sm.AddConn(c)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
@@ -116,7 +121,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 		return nil, err
 	}
 
-	if sql.IsOkResultSchema(analyzed.Schema()) {
+	if types.IsOkResultSchema(analyzed.Schema()) {
 		return nil, nil
 	}
 	return schemaToFields(analyzed.Schema()), nil
@@ -141,20 +146,21 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		}
 	}()
 
-	ctx, err := h.sm.NewContextWithQuery(c, "")
-	if err != nil {
-		h.sm.CloseConn(c)
-		return
-	}
-	h.sm.CloseConn(c)
+	defer h.sm.RemoveConn(c)
+	defer h.e.CloseSession(c.ConnectionID)
 
-	// If connection was closed, kill its associated queries.
-	ctx.ProcessList.Kill(c.ConnectionID)
-	if err := h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
+	if ctx, err := h.sm.NewContextWithQuery(c, ""); err != nil {
+		logrus.Errorf("unable to release all locks on session close: %s", err)
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
+	} else {
+		_, err = h.e.LS.ReleaseAll(ctx)
+		if err != nil {
+			logrus.Errorf("unable to release all locks on session close: %s", err)
+		}
+		if err = h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
+			logrus.Errorf("unable to unlock tables on session close: %s", err)
+		}
 	}
-
-	defer h.e.CloseSession(ctx)
 
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
@@ -186,17 +192,17 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 		}
 		switch {
 		case v.Type() == sqltypes.Year:
-			v, err := sql.Year.Convert(string(v.ToBytes()))
+			v, err := types.Year.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
-			res[k] = expression.NewLiteral(v, sql.Year)
+			res[k] = expression.NewLiteral(v, types.Year)
 		case sqltypes.IsSigned(v.Type()):
 			v, err := strconv.ParseInt(string(v.ToBytes()), 0, 64)
 			if err != nil {
 				return nil, err
 			}
-			t := sql.Int64
+			t := types.Int64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
@@ -207,7 +213,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			if err != nil {
 				return nil, err
 			}
-			t := sql.Uint64
+			t := types.Uint64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
@@ -218,29 +224,29 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			if err != nil {
 				return nil, err
 			}
-			t := sql.Float64
+			t := types.Float64
 			c, err := t.Convert(v)
 			if err != nil {
 				return nil, err
 			}
 			res[k] = expression.NewLiteral(c, t)
 		case v.Type() == sqltypes.Decimal:
-			v, err := sql.InternalDecimalType.Convert(string(v.ToBytes()))
+			v, err := types.InternalDecimalType.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
-			res[k] = expression.NewLiteral(v, sql.InternalDecimalType)
+			res[k] = expression.NewLiteral(v, types.InternalDecimalType)
 		case v.Type() == sqltypes.Bit:
-			t := sql.MustCreateBitType(sql.BitTypeMaxBits)
+			t := types.MustCreateBitType(types.BitTypeMaxBits)
 			v, err := t.Convert(v.ToBytes())
 			if err != nil {
 				return nil, err
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Null:
-			res[k] = expression.NewLiteral(nil, sql.Null)
+			res[k] = expression.NewLiteral(nil, types.Null)
 		case v.Type() == sqltypes.Blob || v.Type() == sqltypes.VarBinary || v.Type() == sqltypes.Binary:
-			t, err := sql.CreateBinary(v.Type(), int64(len(v.ToBytes())))
+			t, err := types.CreateBinary(v.Type(), int64(len(v.ToBytes())))
 			if err != nil {
 				return nil, err
 			}
@@ -250,7 +256,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Text || v.Type() == sqltypes.VarChar || v.Type() == sqltypes.Char:
-			t, err := sql.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
+			t, err := types.CreateStringWithDefaults(v.Type(), int64(len(v.ToBytes())))
 			if err != nil {
 				return nil, err
 			}
@@ -260,7 +266,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Date || v.Type() == sqltypes.Datetime || v.Type() == sqltypes.Timestamp:
-			t, err := sql.CreateDatetimeType(v.Type())
+			t, err := types.CreateDatetimeType(v.Type())
 			if err != nil {
 				return nil, err
 			}
@@ -270,7 +276,7 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Time:
-			t := sql.Time
+			t := types.Time
 			v, err := t.Convert(string(v.ToBytes()))
 			if err != nil {
 				return nil, err
@@ -310,8 +316,14 @@ func (h *Handler) doQuery(
 	ctx = ctx.WithQuery(query)
 	more := remainder != ""
 
-	ctx.SetLogger(ctx.GetLogger().
-		WithField("query", string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
+	queryStr := string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
+	if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
+		queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
+	}
+
+	if h.maxLoggedQueryLen >= 0 {
+		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
+	}
 	ctx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(ctx, query)
@@ -342,10 +354,10 @@ func (h *Handler) doQuery(
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
-	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
+	ctx, err = ctx.ProcessList.BeginQuery(ctx, query)
 	defer func() {
 		if err != nil && ctx != nil {
-			ctx.ProcessList.Done(ctx.Pid())
+			ctx.ProcessList.EndQuery(ctx)
 		}
 	}()
 
@@ -498,11 +510,11 @@ func (h *Handler) doQuery(
 					if !ok {
 						return nil
 					}
-					if sql.IsOkResult(row) {
+					if types.IsOkResult(row) {
 						if len(r.Rows) > 0 {
 							panic("Got OkResult mixed with RowResult")
 						}
-						r = resultFromOkResult(row[0].(sql.OkResult))
+						r = resultFromOkResult(row[0].(types.OkResult))
 						continue
 					}
 
@@ -597,7 +609,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return sql.ConvertToBool(autoCommitSessionVar)
+	return types.ConvertToBool(autoCommitSessionVar)
 }
 
 // Call doQuery and cast known errors to SQLError
@@ -689,7 +701,7 @@ func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
 	return nil, false
 }
 
-func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
+func resultFromOkResult(result types.OkResult) *sqltypes.Result {
 	infoStr := ""
 	if result.Info != nil {
 		infoStr = result.Info.String()
@@ -755,7 +767,7 @@ func schemaToFields(s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
 		var charset uint32 = mysql.CharacterSetUtf8
-		if sql.IsBinaryType(c.Type) {
+		if types.IsBinaryType(c.Type) {
 			charset = mysql.CharacterSetBinary
 		}
 

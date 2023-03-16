@@ -346,7 +346,6 @@ func (fkEditor *ForeignKeyEditor) ColumnsUpdated(refActionData ForeignKeyRefActi
 
 // Close closes this handler along with all child handlers.
 func (fkEditor *ForeignKeyEditor) Close(ctx *sql.Context) error {
-	//TODO: remove this once the table collection has been added
 	err := fkEditor.Editor.Close(ctx)
 	for _, child := range fkEditor.RefActions {
 		nErr := child.Editor.Close(ctx)
@@ -473,9 +472,13 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row) (sql.R
 		rang[i+len(mapper.IndexPositions)] = sql.AllRangeColumnExpr(appendType)
 	}
 
+	if !mapper.Index.CanSupport(rang) {
+		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
+	}
 	//TODO: profile this, may need to redesign this or add a fast path
-	editorData := mapper.Updater.IndexedAccess(mapper.Index)
 	lookup := sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index}
+
+	editorData := mapper.Updater.IndexedAccess(lookup)
 	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {
 		return nil, err

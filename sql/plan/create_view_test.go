@@ -21,14 +21,15 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/require"
 )
 
 func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Source: "mytable", Type: sql.Int32},
-		{Name: "s", Source: "mytable", Type: sql.Text},
+		{Name: "i", Source: "mytable", Type: types.Int32},
+		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
 
 	db.AddTable("db", table)
@@ -36,7 +37,7 @@ func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 	subqueryAlias := NewSubqueryAlias("myview", "select i from mytable",
 		NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
 			},
 			NewUnresolvedTable(table.Name(), ""),
 		),
@@ -99,8 +100,8 @@ func TestReplaceExistingViewNative(t *testing.T) {
 		NewProject(
 			[]sql.Expression{
 				expression.NewArithmetic(
-					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "i", true),
-					expression.NewLiteral(1, sql.Int8),
+					expression.NewGetFieldWithTable(1, types.Int32, "mytable", "i", true),
+					expression.NewLiteral(1, types.Int8),
 					"+",
 				),
 			},

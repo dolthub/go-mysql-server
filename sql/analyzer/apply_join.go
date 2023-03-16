@@ -76,7 +76,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					// which aren't possible when values are projected
 					// above join filter
 					rt := getResolvedTable(n)
-					if plan.IsDualTable(rt.Table) {
+					if rt == nil || plan.IsDualTable(rt.Table) {
 						newFilters = append(newFilters, e)
 						continue
 					}
@@ -160,7 +160,11 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				if err != nil {
 					return n, transform.SameTree, err
 				}
-				ret = plan.NewJoin(ret, newSubq, m.op, filter)
+				var comment string
+				if c, ok := ret.(sql.CommentedNode); ok {
+					comment = c.Comment()
+				}
+				ret = plan.NewJoin(ret, newSubq, m.op, filter).WithComment(comment)
 			}
 
 			if len(newFilters) == 0 {
@@ -172,7 +176,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			return n, transform.SameTree, err
 		}
 	}
-	return ret, transform.TreeIdentity(applyId > 0), nil
+	return ret, transform.TreeIdentity(applyId == 0), nil
 }
 
 // simplifySubqExpr converts a subquery expression into a *plan.TableAlias

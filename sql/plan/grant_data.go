@@ -25,6 +25,7 @@ import (
 type Privilege struct {
 	Type    PrivilegeType
 	Columns []string
+	Dynamic string // PrivilegeType_Dynamic will set this string to the correct lowercased value
 }
 
 // PrivilegeLevel defines the level that a privilege applies to.
@@ -53,6 +54,7 @@ const (
 	PrivilegeType_Event
 	PrivilegeType_Execute
 	PrivilegeType_File
+	PrivilegeType_GrantOption
 	PrivilegeType_Index
 	PrivilegeType_Insert
 	PrivilegeType_LockTables
@@ -110,6 +112,8 @@ func convertToSqlPrivilegeType(addGrant bool, privs ...Privilege) []sql.Privileg
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Execute)
 		case PrivilegeType_File:
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_File)
+		case PrivilegeType_GrantOption:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:
@@ -147,7 +151,7 @@ func convertToSqlPrivilegeType(addGrant bool, privs ...Privilege) []sql.Privileg
 		}
 	}
 	if addGrant {
-		sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Grant)
+		sqlPrivs = append(sqlPrivs, sql.PrivilegeType_GrantOption)
 	}
 	return sqlPrivs
 }
@@ -206,6 +210,18 @@ func (p *Privilege) String() string {
 		sb.WriteString(")")
 	}
 	return sb.String()
+}
+
+// IsValidDynamic returns whether the given dynamic privilege is valid. If the privilege is NOT dynamic, or the dynamic
+// privilege is not supported, then this returns false.
+func (p *Privilege) IsValidDynamic() bool {
+	if p.Type == PrivilegeType_Dynamic {
+		switch p.Dynamic {
+		case DynamicPrivilege_ReplicationSlaveAdmin:
+			return true
+		}
+	}
+	return false
 }
 
 // String returns the PrivilegeLevel as a formatted string.

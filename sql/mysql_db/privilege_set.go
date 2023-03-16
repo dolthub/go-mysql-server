@@ -25,7 +25,7 @@ import (
 // as the singular location to modify all nested sets.
 type PrivilegeSet struct {
 	globalStatic  map[sql.PrivilegeType]struct{}
-	globalDynamic map[string]struct{}
+	globalDynamic map[string]bool
 	databases     map[string]PrivilegeSetDatabase
 }
 
@@ -35,13 +35,13 @@ var _ sql.PrivilegeSet = PrivilegeSet{}
 func NewPrivilegeSet() PrivilegeSet {
 	return PrivilegeSet{
 		make(map[sql.PrivilegeType]struct{}),
-		make(map[string]struct{}),
+		make(map[string]bool),
 		make(map[string]PrivilegeSetDatabase),
 	}
 }
 
-// newPrivilegeSetWithAllPrivileges returns a new PrivilegeSet with every global static privilege added.
-func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
+// NewPrivilegeSetWithAllPrivileges returns a new PrivilegeSet with every global static privilege added.
+func NewPrivilegeSetWithAllPrivileges() PrivilegeSet {
 	return PrivilegeSet{
 		map[sql.PrivilegeType]struct{}{
 			sql.PrivilegeType_Select:            {},
@@ -54,7 +54,7 @@ func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
 			sql.PrivilegeType_Shutdown:          {},
 			sql.PrivilegeType_Process:           {},
 			sql.PrivilegeType_File:              {},
-			sql.PrivilegeType_Grant:             {},
+			sql.PrivilegeType_GrantOption:       {},
 			sql.PrivilegeType_References:        {},
 			sql.PrivilegeType_Index:             {},
 			sql.PrivilegeType_Alter:             {},
@@ -76,7 +76,7 @@ func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
 			sql.PrivilegeType_CreateRole:        {},
 			sql.PrivilegeType_DropRole:          {},
 		},
-		make(map[string]struct{}),
+		make(map[string]bool),
 		make(map[string]PrivilegeSetDatabase),
 	}
 }
@@ -89,9 +89,9 @@ func (ps PrivilegeSet) AddGlobalStatic(privileges ...sql.PrivilegeType) {
 }
 
 // AddGlobalDynamic adds the given global dynamic privilege(s).
-func (ps PrivilegeSet) AddGlobalDynamic(privileges ...string) {
+func (ps PrivilegeSet) AddGlobalDynamic(withGrantOption bool, privileges ...string) {
 	for _, priv := range privileges {
-		ps.globalDynamic[priv] = struct{}{}
+		ps.globalDynamic[strings.ToLower(priv)] = withGrantOption
 	}
 }
 
@@ -176,6 +176,16 @@ func (ps PrivilegeSet) Has(privileges ...sql.PrivilegeType) bool {
 	return true
 }
 
+// HasDynamic returns whether the given global dynamic privilege(s) exists.
+func (ps PrivilegeSet) HasDynamic(privileges ...string) bool {
+	for _, priv := range privileges {
+		if _, ok := ps.globalDynamic[strings.ToLower(priv)]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 // HasPrivileges returns whether this PrivilegeSet has any privileges at any level.
 func (ps PrivilegeSet) HasPrivileges() bool {
 	if len(ps.globalStatic) > 0 || len(ps.globalDynamic) > 0 {
@@ -249,8 +259,9 @@ func (ps PrivilegeSet) UnionWith(other PrivilegeSet) {
 	for priv := range other.globalStatic {
 		ps.globalStatic[priv] = struct{}{}
 	}
-	for priv := range other.globalDynamic {
-		ps.globalDynamic[priv] = struct{}{}
+	for priv, withGrantOption := range other.globalDynamic {
+		localWithGrantOption, _ := ps.globalDynamic[priv]
+		ps.globalDynamic[priv] = localWithGrantOption || withGrantOption
 	}
 	for _, otherDbSet := range other.databases {
 		ps.getUseableDb(otherDbSet.name).unionWith(otherDbSet)
@@ -260,7 +271,7 @@ func (ps PrivilegeSet) UnionWith(other PrivilegeSet) {
 // ClearGlobal removes all global privileges.
 func (ps *PrivilegeSet) ClearGlobal() {
 	ps.globalStatic = make(map[sql.PrivilegeType]struct{})
-	ps.globalDynamic = make(map[string]struct{})
+	ps.globalDynamic = make(map[string]bool)
 }
 
 // ClearDatabase removes all privileges for the given database.
@@ -281,7 +292,7 @@ func (ps PrivilegeSet) ClearColumn(dbName string, tblName string, colName string
 // ClearAll removes all privileges.
 func (ps *PrivilegeSet) ClearAll() {
 	ps.globalStatic = make(map[sql.PrivilegeType]struct{})
-	ps.globalDynamic = make(map[string]struct{})
+	ps.globalDynamic = make(map[string]bool)
 	ps.databases = make(map[string]PrivilegeSetDatabase)
 }
 
@@ -325,6 +336,21 @@ func (ps PrivilegeSet) ToSlice() []sql.PrivilegeType {
 	for priv := range ps.globalStatic {
 		privs[i] = priv
 		i++
+	}
+	sort.Slice(privs, func(i, j int) bool {
+		return privs[i] < privs[j]
+	})
+	return privs
+}
+
+// ToSliceDynamic returns all of the global dynamic privileges that match the given "WITH GRANT OPTION". Privileges will
+// be uppercase.
+func (ps PrivilegeSet) ToSliceDynamic(withGrantOption bool) []string {
+	privs := make([]string, 0, len(ps.globalDynamic))
+	for priv, option := range ps.globalDynamic {
+		if option == withGrantOption {
+			privs = append(privs, strings.ToUpper(priv))
+		}
 	}
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]

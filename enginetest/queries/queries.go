@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type QueryTest struct {
@@ -133,15 +134,15 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
-		Expected: []sql.Row{{sql.Point{X: 123.45, Y: 6.78}}},
+		Expected: []sql.Row{{types.Point{X: 123.45, Y: 6.78}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
-		Expected: []sql.Row{{sql.LineString{Points: []sql.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
+		Expected: []sql.Row{{types.LineString{Points: []types.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+		Expected: []sql.Row{{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_ASWKT(p) from point_table`,
@@ -170,15 +171,15 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)))`,
-		Expected: []sql.Row{{sql.Point{X: 1, Y: 2}}},
+		Expected: []sql.Row{{types.Point{X: 1, Y: 2}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
-		Expected: []sql.Row{{sql.LineString{Points: []sql.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
+		Expected: []sql.Row{{types.LineString{Points: []types.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
+		Expected: []sql.Row{{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_X(POINT(1,2))`,
@@ -198,11 +199,11 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_X(POINT(1,2),99.9)`,
-		Expected: []sql.Row{{sql.Point{X: 99.9, Y: 2}}},
+		Expected: []sql.Row{{types.Point{X: 99.9, Y: 2}}},
 	},
 	{
 		Query:    `SELECT ST_Y(POINT(1,2),99.9)`,
-		Expected: []sql.Row{{sql.Point{X: 1, Y: 99.9}}},
+		Expected: []sql.Row{{types.Point{X: 1, Y: 99.9}}},
 	},
 	{
 		Query:    `SELECT ST_X(p) from point_table`,
@@ -233,138 +234,138 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_SRID(p, 4326) from point_table`,
-		Expected: []sql.Row{{sql.Point{SRID: 4326, X: 1, Y: 2}}},
+		Expected: []sql.Row{{types.Point{SRID: 4326, X: 1, Y: 2}}},
 	},
 	{
 		Query: `SELECT ST_SRID(l, 4326) from line_table ORDER BY l`,
 		Expected: []sql.Row{
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
+			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(s) from stringtogeojson_table`,
 		Expected: []sql.Row{
-			{sql.Point{SRID: 4326, X: 1, Y: 2}},
-			{sql.Point{SRID: 4326, X: 123.45, Y: 56.789}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.23, Y: 2.345}, {SRID: 4326, X: 3.56789, Y: 4.56}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 5.5, Y: 6.6}, {SRID: 4326, X: 1.1, Y: 2.2}}}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 2}, {SRID: 4326, X: 0, Y: 0}}}}}},
-			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
-			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.23, Y: 2.345}, {SRID: 4326, X: 3.56789, Y: 4.56}}}},
-			{sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 5.5, Y: 6.6}, {SRID: 4326, X: 7.7, Y: 8.8}}}}}},
-			{sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{
-				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 0, Y: 0}}}}},
-				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1.1, Y: 1.1}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 1.1, Y: 1.1}}}}},
+			{types.Point{SRID: 4326, X: 1, Y: 2}},
+			{types.Point{SRID: 4326, X: 123.45, Y: 56.789}},
+			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1.23, Y: 2.345}, {SRID: 4326, X: 3.56789, Y: 4.56}}}},
+			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 5.5, Y: 6.6}, {SRID: 4326, X: 1.1, Y: 2.2}}}}}},
+			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 2}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{types.MultiPoint{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{types.MultiPoint{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1.23, Y: 2.345}, {SRID: 4326, X: 3.56789, Y: 4.56}}}},
+			{types.MultiLineString{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}}}, {SRID: 4326, Points: []types.Point{{SRID: 4326, X: 5.5, Y: 6.6}, {SRID: 4326, X: 7.7, Y: 8.8}}}}}},
+			{types.MultiPolygon{SRID: 4326, Polygons: []types.Polygon{
+				{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 0, Y: 0}}}}},
+				{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1.1, Y: 1.1}, {SRID: 4326, X: 1.1, Y: 2.2}, {SRID: 4326, X: 3.3, Y: 4.4}, {SRID: 4326, X: 1.1, Y: 1.1}}}}},
 			}}},
-			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
+			{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from point_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(l) from line_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from mpoint_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(l) from mline_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}, {5, 6}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}, {5, 6}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(ST_GEOMFROMGEOJSON(s)) from stringtogeojson_table`,
 		Expected: []sql.Row{
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{123.45, 56.789}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}, {5.5, 6.6}, {1.1, 2.2}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {1, 1}, {2, 2}, {0, 0}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}}, {{5.5, 6.6}, {7.7, 8.8}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "MultiPolygon", "coordinates": [][][][2]float64{{{{0, 0}, {1.1, 2.2}, {3.3, 4.4}, {0, 0}}}, {{{1.1, 1.1}, {1.1, 2.2}, {3.3, 4.4}, {1.1, 1.1}}}}}}},
-			{sql.JSONDocument{Val: map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{123.45, 56.789}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}, {5.5, 6.6}, {1.1, 2.2}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {1, 1}, {2, 2}, {0, 0}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1.23, 2.345}, {3.56789, 4.56}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1.1, 2.2}, {3.3, 4.4}}, {{5.5, 6.6}, {7.7, 8.8}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPolygon", "coordinates": [][][][2]float64{{{{0, 0}, {1.1, 2.2}, {3.3, 4.4}, {0, 0}}}, {{{1.1, 1.1}, {1.1, 2.2}, {3.3, 4.4}, {1.1, 1.1}}}}}}},
+			{types.JSONDocument{Val: map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{map[string]interface{}{"type": "GeometryCollection", "geometries": []interface{}{}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from point_table`,
 		Expected: []sql.Row{
-			{sql.Point{SRID: 4326, X: 1, Y: 2}},
+			{types.Point{SRID: 4326, X: 1, Y: 2}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(l)) from line_table`,
 		Expected: []sql.Row{
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
+			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from mpoint_table`,
 		Expected: []sql.Row{
-			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
-			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
+			{types.MultiPoint{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{types.MultiPoint{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(l)) from mline_table`,
 		Expected: []sql.Row{
-			{sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}}},
-			{sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}}}},
+			{types.MultiLineString{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}}},
+			{types.MultiLineString{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from mpoly_table`,
 		Expected: []sql.Row{
-			{sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 0, Y: 0}}}}}}}},
-			{sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{
-				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 0, Y: 0}}}}},
-				{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 3}, {SRID: 4326, X: 4, Y: 5}, {SRID: 4326, X: 1, Y: 1}}}}}}}},
+			{types.MultiPolygon{SRID: 4326, Polygons: []types.Polygon{{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 0, Y: 0}}}}}}}},
+			{types.MultiPolygon{SRID: 4326, Polygons: []types.Polygon{
+				{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 0, Y: 0}}}}},
+				{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 2, Y: 3}, {SRID: 4326, X: 4, Y: 5}, {SRID: 4326, X: 1, Y: 1}}}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(g)) from geom_coll_table`,
 		Expected: []sql.Row{
-			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
+			{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{}}}}},
 		},
 	},
 	{
@@ -417,21 +418,21 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(p) from point_table`,
 		Expected: []sql.Row{
-			{sql.Point{X: 2, Y: 1}},
+			{types.Point{X: 2, Y: 1}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(l) from line_table`,
 		Expected: []sql.Row{
-			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
+			{types.LineString{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{types.LineString{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
@@ -456,24 +457,24 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(p) from mpoint_table`,
 		Expected: []sql.Row{
-			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
+			{types.MultiPoint{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{types.MultiPoint{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(l) from mline_table`,
 		Expected: []sql.Row{
-			{sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}}}},
-			{sql.MultiLineString{Lines: []sql.LineString{{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}}}},
+			{types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}}}},
+			{types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from mpoly_table`,
 		Expected: []sql.Row{
-			{sql.MultiPolygon{Polygons: []sql.Polygon{{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 3}, {X: 0, Y: 0}}}}}}}},
-			{sql.MultiPolygon{Polygons: []sql.Polygon{
-				{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 3}, {X: 0, Y: 0}}}}},
-				{Lines: []sql.LineString{{Points: []sql.Point{{X: 1, Y: 1}, {X: 3, Y: 2}, {X: 5, Y: 4}, {X: 1, Y: 1}}}}},
+			{types.MultiPolygon{Polygons: []types.Polygon{{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 3}, {X: 0, Y: 0}}}}}}}},
+			{types.MultiPolygon{Polygons: []types.Polygon{
+				{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 3}, {X: 0, Y: 0}}}}},
+				{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 3, Y: 2}, {X: 5, Y: 4}, {X: 1, Y: 1}}}}},
 			}}},
 		},
 	},
@@ -518,20 +519,20 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Point{X: 1, Y: 2}},
-			{sql.Point{X: 1, Y: 2}},
-			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.MultiPoint{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
-			{sql.MultiLineString{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}}}}}},
-			{sql.MultiLineString{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}}}}}},
-			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
-			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
-			{sql.GeomColl{Geoms: []sql.GeometryValue{sql.GeomColl{Geoms: []sql.GeometryValue{}}}}},
-			{sql.GeomColl{Geoms: []sql.GeometryValue{sql.GeomColl{Geoms: []sql.GeometryValue{}}}}},
+			{types.Point{X: 1, Y: 2}},
+			{types.Point{X: 1, Y: 2}},
+			{types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{types.MultiPoint{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{types.MultiPoint{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{types.MultiLineString{SRID: 0, Lines: []types.LineString{{SRID: 0, Points: []types.Point{{SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}}}}}},
+			{types.MultiLineString{SRID: 0, Lines: []types.LineString{{SRID: 0, Points: []types.Point{{SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}}}}}},
+			{types.MultiPolygon{SRID: 0, Polygons: []types.Polygon{{SRID: 0, Lines: []types.LineString{{SRID: 0, Points: []types.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
+			{types.MultiPolygon{SRID: 0, Polygons: []types.Polygon{{SRID: 0, Lines: []types.LineString{{SRID: 0, Points: []types.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 1, Y: 2}, {SRID: 0, X: 3, Y: 4}, {SRID: 0, X: 0, Y: 0}}}}}}}},
+			{types.GeomColl{Geoms: []types.GeometryValue{types.GeomColl{Geoms: []types.GeometryValue{}}}}},
+			{types.GeomColl{Geoms: []types.GeometryValue{types.GeomColl{Geoms: []types.GeometryValue{}}}}},
 		},
 	},
 	{
@@ -556,20 +557,20 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{sql.Point{X: 2, Y: 1}},
-			{sql.Point{SRID: 4326, X: 2, Y: 1}},
-			{sql.LineString{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.LineString{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
-			{sql.Polygon{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
-			{sql.MultiPoint{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
-			{sql.MultiPoint{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
-			{sql.MultiLineString{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 2, Y: 1}, {SRID: 0, X: 4, Y: 3}}}}}},
-			{sql.MultiLineString{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}}}},
-			{sql.MultiPolygon{SRID: 0, Polygons: []sql.Polygon{{SRID: 0, Lines: []sql.LineString{{SRID: 0, Points: []sql.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 2, Y: 1}, {SRID: 0, X: 4, Y: 3}, {SRID: 0, X: 0, Y: 0}}}}}}}},
-			{sql.MultiPolygon{SRID: 4326, Polygons: []sql.Polygon{{SRID: 4326, Lines: []sql.LineString{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 0, Y: 0}}}}}}}},
-			{sql.GeomColl{Geoms: []sql.GeometryValue{sql.GeomColl{Geoms: []sql.GeometryValue{}}}}},
-			{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{sql.GeomColl{SRID: 4326, Geoms: []sql.GeometryValue{}}}}},
+			{types.Point{X: 2, Y: 1}},
+			{types.Point{SRID: 4326, X: 2, Y: 1}},
+			{types.LineString{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+			{types.MultiPoint{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{types.MultiPoint{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{types.MultiLineString{SRID: 0, Lines: []types.LineString{{SRID: 0, Points: []types.Point{{SRID: 0, X: 2, Y: 1}, {SRID: 0, X: 4, Y: 3}}}}}},
+			{types.MultiLineString{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}}}},
+			{types.MultiPolygon{SRID: 0, Polygons: []types.Polygon{{SRID: 0, Lines: []types.LineString{{SRID: 0, Points: []types.Point{{SRID: 0, X: 0, Y: 0}, {SRID: 0, X: 2, Y: 1}, {SRID: 0, X: 4, Y: 3}, {SRID: 0, X: 0, Y: 0}}}}}}}},
+			{types.MultiPolygon{SRID: 4326, Polygons: []types.Polygon{{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}, {SRID: 4326, X: 0, Y: 0}}}}}}}},
+			{types.GeomColl{Geoms: []types.GeometryValue{types.GeomColl{Geoms: []types.GeometryValue{}}}}},
+			{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{}}}}},
 		},
 	},
 	{
@@ -665,14 +666,14 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT st_startpoint(g) from geometry_table ORDER BY g`,
 		Expected: []sql.Row{
 			{nil},
-			{sql.Point{X: 1, Y: 2}},
+			{types.Point{X: 1, Y: 2}},
 			{nil},
 			{nil},
 			{nil},
 			{nil},
 			{nil},
 			{nil},
-			{sql.Point{SRID: sql.GeoSpatialSRID, X: 1, Y: 2}},
+			{types.Point{SRID: types.GeoSpatialSRID, X: 1, Y: 2}},
 			{nil},
 			{nil},
 			{nil},
@@ -684,14 +685,14 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT st_endpoint(g) from geometry_table ORDER BY g`,
 		Expected: []sql.Row{
 			{nil},
-			{sql.Point{X: 3, Y: 4}},
+			{types.Point{X: 3, Y: 4}},
 			{nil},
 			{nil},
 			{nil},
 			{nil},
 			{nil},
 			{nil},
-			{sql.Point{SRID: sql.GeoSpatialSRID, X: 3, Y: 4}},
+			{types.Point{SRID: types.GeoSpatialSRID, X: 3, Y: 4}},
 			{nil},
 			{nil},
 			{nil},
@@ -716,6 +717,25 @@ var SpatialQueryTests = []QueryTest{
 			{false},
 			{nil},
 			{nil},
+		},
+	},
+	{
+		Query: `SELECT st_intersects(st_srid(g, 0), point(1,2)) from geometry_table ORDER BY g`,
+		Expected: []sql.Row{
+			{true},
+			{true},
+			{false},
+			{true},
+			{true},
+			{true},
+			{false},
+			{true},
+			{true},
+			{false},
+			{true},
+			{true},
+			{true},
+			{false},
 		},
 	},
 }
@@ -756,11 +776,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -774,11 +794,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -792,11 +812,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -810,11 +830,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -864,11 +884,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "pk DIV 2",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "sum_and_min",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 		},
 	},
@@ -881,11 +901,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "pk DIV 2",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "SUM(`c3`) +    min( c3 )",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 		},
 	},
@@ -922,11 +942,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "s",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -1017,11 +1037,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "a",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "b",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -1042,11 +1062,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: sql.Float64,
+				Type: types.Float64,
 			},
 			{
 				Name: "column_1",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
+				Type: types.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -1059,11 +1079,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: sql.Float64,
+				Type: types.Float64,
 			},
 			{
 				Name: "d",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
+				Type: types.MustCreateStringWithDefaults(sqltypes.Text, 1073741823),
 			},
 		},
 	},
@@ -1196,66 +1216,66 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
+			{types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2)
-	               FROM (values
+	              FROM (values
 						 row('{ "a": 1, "b": 2 }','null'),
-	                    row('{ "a": 1, "b": 2 }','"row one"'),
-	                    row('{ "a": 3, "c": 4 }','4'),
-	                    row('{ "a": 5, "d": 6 }','[true, true]'),
-	                    row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
-	               test (val1, val2)`,
+	                   row('{ "a": 1, "b": 2 }','"row one"'),
+	                   row('{ "a": 3, "c": 4 }','4'),
+	                   row('{ "a": 5, "d": 6 }','[true, true]'),
+	                   row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
+	              test (val1, val2)`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
-			{sql.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
-			{sql.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
-			{sql.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
-			{sql.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
+			{types.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
+			{types.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
+			{types.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
+			{types.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
+			{types.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY()`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[]`)},
+			{types.MustJSON(`[]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', "do")`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
+			{types.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(1, 'say, "hi"', JSON_OBJECT("abc", 22))`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
+			{types.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(JSON_OBJECT("a", JSON_ARRAY(1,2)), JSON_OBJECT("b", 22))`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
+			{types.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(pk, c1, c2, c3) FROM jsontable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
-			{sql.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
-			{sql.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
-			{sql.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
+			{types.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
+			{types.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
+			{types.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
+			{types.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(JSON_OBJECT("id", pk, "name", c1), c2, c3) FROM jsontable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
-			{sql.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
-			{sql.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
-			{sql.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
+			{types.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
+			{types.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
+			{types.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
+			{types.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
 		},
 	},
 	{
@@ -1369,9 +1389,9 @@ var QueryTests = []QueryTest{
 		Query: `select mt.i,
 			((
 				select count(*) from mytable
-	      	where i in (
-	         		select mt2.i from mytable mt2 where mt2.i > mt.i
-	      	)
+	     	where i in (
+	        		select mt2.i from mytable mt2 where mt2.i > mt.i
+	     	)
 			)) as greater_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
@@ -1380,9 +1400,9 @@ var QueryTests = []QueryTest{
 		Query: `select mt.i,
 			((
 				select count(*) from mytable
-	      	where i in (
-	         		select mt2.i from mytable mt2 where mt2.i = mt.i
-	      	)
+	     	where i in (
+	        		select mt2.i from mytable mt2 where mt2.i = mt.i
+	     	)
 			)) as eq_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
@@ -2038,11 +2058,11 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "Hello!",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 			{
 				Name: "CONcat(s, \"!\")",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 		},
 	},
@@ -2054,7 +2074,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: `"1" + '1'`,
-				Type: sql.Float64,
+				Type: types.Float64,
 			},
 		},
 	},
@@ -2545,7 +2565,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "'a' NOT IN ('b','c',null,'d')",
-				Type: sql.Boolean,
+				Type: types.Boolean,
 			},
 		},
 	},
@@ -2772,18 +2792,6 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT i2 FROM niltable WHERE i2 <=> NULL",
 		Expected: []sql.Row{{nil}, {nil}, {nil}},
-	},
-	{
-		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 = r.i2 ORDER BY 1",
-		Expected: []sql.Row{{2, 2}, {4, 4}, {6, 6}},
-	},
-	{
-		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 != r.i2 ORDER BY 1, 2",
-		Expected: []sql.Row{{2, 4}, {2, 6}, {4, 2}, {4, 6}, {6, 2}, {6, 4}},
-	},
-	{
-		Query:    "SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 <=> r.i2 ORDER BY 1 ASC",
-		Expected: []sql.Row{{1, nil}, {1, nil}, {1, nil}, {2, 2}, {3, nil}, {3, nil}, {3, nil}, {4, 4}, {5, nil}, {5, nil}, {5, nil}, {6, 6}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
@@ -3437,6 +3445,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{uint64(18446744073709551615)}},
 	},
 	{
+		Query:    "select -1.00 div 2;",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query:    "select 'a' div 'a';",
 		Expected: []sql.Row{{nil}},
 	},
@@ -3845,118 +3857,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
-		Expected: []sql.Row{
-			{"third"},
-			{"secon"},
-			{"first"},
-		},
-	},
-	{
-		Query: "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1,t2) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t2,t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER(t1, not_exist) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ NOTHING(abc) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "SELECT /*+ JOIN_ORDER( */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
-		Expected: []sql.Row{
-			{2},
-		},
-	},
-	{
-		Query: "select mytable.i as i2, othertable.i2 as i from mytable join othertable on i = i2 order by 1",
-		Expected: []sql.Row{
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR s = s2 order by 1",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
-		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR i = i2 order by 1, 3",
-		Expected: []sql.Row{
-			{1, "first row", 1, "third"},
-			{1, "first row", 3, "first"},
-			{2, "second row", 2, "second"},
-			{3, "third row", 1, "third"},
-			{3, "third row", 3, "first"},
-		},
-	},
-	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2 order by 1`,
 		Expected: []sql.Row{
@@ -3992,9 +3892,9 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `select pk,
-                       percent_rank() over(partition by v2 order by pk),
-                       dense_rank() over(partition by v2 order by pk),
-                       rank() over(partition by v2 order by pk)
+	                  percent_rank() over(partition by v2 order by pk),
+	                  dense_rank() over(partition by v2 order by pk),
+	                  rank() over(partition by v2 order by pk)
 				from one_pk_three_idx order by pk`,
 		Expected: []sql.Row{
 			{0, float64(0), uint64(1), uint64(1)},
@@ -4028,26 +3928,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 3",
-		Expected: []sql.Row{},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{int64(1), int64(1), "third"},
-			{int64(2), int64(2), "second"},
-			{int64(3), int64(3), "first"},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable as OTHERTABLE INNER JOIN othertable as MYTABLE ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{int64(1), int64(1), "third"},
-			{int64(2), int64(2), "second"},
-			{int64(3), int64(3), "first"},
-		},
-	},
-	{
 		Query: `SELECT s2, i2 FROM othertable WHERE s2 >= "first" AND i2 >= 2 ORDER BY 1`,
 		Expected: []sql.Row{
 			{"first", int64(3)},
@@ -4071,30 +3951,6 @@ var QueryTests = []QueryTest{
 		Query: `SELECT s2, i2 FROM othertable WHERE "second" >= s2 AND 2 >= i2 ORDER BY 1`,
 		Expected: []sql.Row{
 			{"second", int64(2)},
-		},
-	},
-	{
-		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{"third", int64(1), int64(1)},
-			{"second", int64(2), int64(2)},
-			{"first", int64(3), int64(3)},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM othertable JOIN mytable  ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{int64(1), int64(1), "third"},
-			{int64(2), int64(2), "second"},
-			{int64(3), int64(3), "first"},
-		},
-	},
-	{
-		Query: "SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 ORDER BY i",
-		Expected: []sql.Row{
-			{"third", int64(1), int64(1)},
-			{"second", int64(2), int64(2)},
-			{"first", int64(3), int64(3)},
 		},
 	},
 	{
@@ -4123,39 +3979,6 @@ var QueryTests = []QueryTest{
 		Query: `SELECT substring("first", -1), substring("second", -2), substring("third", -3)`,
 		Expected: []sql.Row{
 			{"t", "nd", "ird"},
-		},
-	},
-	{
-		Query: "SELECT s FROM mytable INNER JOIN othertable " +
-			"ON substring(s2, 1, 2) != '' AND i = i2 ORDER BY 1",
-		Expected: []sql.Row{
-			{"first row"},
-			{"second row"},
-			{"third row"},
-		},
-	},
-	{
-		Query: `SELECT i FROM mytable NATURAL JOIN tabletest`,
-		Expected: []sql.Row{
-			{int64(1)},
-			{int64(2)},
-			{int64(3)},
-		},
-	},
-	{
-		Query: `SELECT i FROM mytable AS t NATURAL JOIN tabletest AS test`,
-		Expected: []sql.Row{
-			{int64(1)},
-			{int64(2)},
-			{int64(3)},
-		},
-	},
-	{
-		Query: `SELECT t.i, test.s FROM mytable AS t NATURAL JOIN tabletest AS test`,
-		Expected: []sql.Row{
-			{int64(1), "first row"},
-			{int64(2), "second row"},
-			{int64(3), "third row"},
 		},
 	},
 	{
@@ -4298,48 +4121,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
-		Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
-		Expected: []sql.Row{
-			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
-			{int64(1), "first row", int64(2), "second row", "second", int64(2)},
-			{int64(1), "first row", int64(3), "third row", "first", int64(3)},
-			{int64(2), "second row", int64(1), "first row", "third", int64(1)},
-			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
-			{int64(2), "second row", int64(3), "third row", "first", int64(3)},
-			{int64(3), "third row", int64(1), "first row", "third", int64(1)},
-			{int64(3), "third row", int64(2), "second row", "second", int64(2)},
-			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
-		},
-	},
-	{
-		Query: `SELECT * FROM tabletest join mytable mt INNER JOIN othertable ot ON tabletest.i = ot.i2 order by 1,3,6`,
-		Expected: []sql.Row{
-			{int64(1), "first row", int64(1), "first row", "third", int64(1)},
-			{int64(1), "first row", int64(2), "second row", "third", int64(1)},
-			{int64(1), "first row", int64(3), "third row", "third", int64(1)},
-			{int64(2), "second row", int64(1), "first row", "second", int64(2)},
-			{int64(2), "second row", int64(2), "second row", "second", int64(2)},
-			{int64(2), "second row", int64(3), "third row", "second", int64(2)},
-			{int64(3), "third row", int64(1), "first row", "first", int64(3)},
-			{int64(3), "third row", int64(2), "second row", "first", int64(3)},
-			{int64(3), "third row", int64(3), "third row", "first", int64(3)},
-		},
-	},
-	{
 		Query:    `SELECT SUM(i) FROM mytable`,
 		Expected: []sql.Row{{float64(6)}},
-	},
-	{
-		Query: `SELECT * FROM mytable mt INNER JOIN othertable ot ON mt.i = ot.i2 AND mt.i > 2`,
-		Expected: []sql.Row{
-			{int64(3), "third row", "first", int64(3)},
-		},
-	},
-	{
-		Query: `SELECT * FROM othertable ot INNER JOIN mytable mt ON mt.i = ot.i2 AND mt.i > 2`,
-		Expected: []sql.Row{
-			{"first", int64(3), int64(3), "third row"},
-		},
 	},
 	{
 		Query: `SELECT i AS foo FROM mytable ORDER BY i DESC`,
@@ -4775,7 +4558,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "CURRENT_USER",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 		},
 	},
@@ -4787,7 +4570,7 @@ var QueryTests = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "CURRENT_user",
-				Type: sql.LongText,
+				Type: types.LongText,
 			},
 		},
 	},
@@ -4834,7 +4617,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
-		Expected: []sql.Row{{sql.MustJSON(`"foo"`)}},
+		Expected: []sql.Row{{types.MustJSON(`"foo"`)}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
@@ -5187,25 +4970,25 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) WHEN 2 THEN JSON_OBJECT("b", 2) END FROM mytable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": 1}`)},
-			{sql.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"a": 1}`)},
+			{types.MustJSON(`{"b": 2}`)},
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": 1}`)},
-			{sql.MustJSON(`{"b": 2}`)},
-			{sql.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"a": 1}`)},
+			{types.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"a": 1}`)},
-			{sql.MustJSON(`{"b": 2}`)},
-			{sql.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"a": 1}`)},
+			{types.MustJSON(`{"b": 2}`)},
+			{types.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
@@ -5350,7 +5133,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{sql.Timespan(44054000000)}},
+		Expected: []sql.Row{{types.Timespan(44054000000)}},
 	},
 	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
@@ -5362,7 +5145,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{sql.Timespan(43934000000)}},
+		Expected: []sql.Row{{types.Timespan(43934000000)}},
 	},
 	{
 		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
@@ -5475,6 +5258,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "SELECT EXTRACT(DAY FROM '9999-12-31 23:59:59')",
+		Expected: []sql.Row{{31}},
+	},
+	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00'`,
 		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
@@ -5504,7 +5291,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
-		Expected: []sql.Row{{sql.MustJSON(`1`)}},
+		Expected: []sql.Row{{types.MustJSON(`1`)}},
 	},
 	// TODO(andy)
 	//{
@@ -5698,60 +5485,6 @@ var QueryTests = []QueryTest{
 	{
 		Query:    `SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
 		Expected: []sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable LEFT JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-			{int64(3), nil, nil},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{nil, int64(1), "third"},
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable LEFT OUTER JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-			{int64(3), nil, nil},
-		},
-	},
-	{
-		Query: "SELECT i, i2, s2 FROM mytable RIGHT OUTER JOIN othertable ON i = i2 - 1",
-		Expected: []sql.Row{
-			{nil, int64(1), "third"},
-			{int64(1), int64(2), "second"},
-			{int64(2), int64(3), "first"},
-		},
-	},
-	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
-				FROM othertable ot INNER JOIN
-					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
-				ON sub.i = ot.i2 order by 1`,
-		Expected: []sql.Row{
-			{1, 1, "third", 1, "third"},
-			{2, 2, "second", 2, "second"},
-			{3, 3, "first", 3, "first"},
-		},
-	},
-	{
-		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2
-				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
-				INNER JOIN othertable ot
-				ON sub.i = ot.i2 order by 1`,
-		Expected: []sql.Row{
-			{1, 1, "third", 1, "third"},
-			{2, 2, "second", 2, "second"},
-			{3, 3, "first", 3, "first"},
-		},
 	},
 	{
 		Query:    `SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
@@ -6654,285 +6387,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{4, 0, 0},
-			{4, 0, 1},
-			{14, 1, 0},
-			{14, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{4, 0, 0},
-			{4, 0, 1},
-			{14, 1, 0},
-			{14, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{4, 0, 0},
-			{4, 0, 1},
-			{14, 1, 0},
-			{14, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE pk=1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{1, 0, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON pk=tpk.pk1 AND pk=tpk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk-1=tpk.pk2
-						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1
-						ORDER BY 1`,
-		Expected: []sql.Row{
-			{0, nil, nil, nil, nil},
-			{1, 1, 0, 0, 1},
-			{2, nil, nil, nil, nil},
-			{3, nil, nil, nil, nil},
-		},
-	},
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
-						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
-						ORDER BY 1`,
-		Expected: []sql.Row{
-			{1, 1, 0, 0, 1},
-		},
-	},
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
-						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
-						ORDER BY 1`,
-		Expected: []sql.Row{
-			{1, 1, 0, 0, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{1, 1, 1},
-			{2, nil, nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk RIGHT JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{nil, 0, 1},
-			{nil, 1, 0},
-			{0, 0, 0},
-			{1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT i,pk1,pk2 FROM mytable JOIN two_pk ON i-1=pk1 AND i-2=pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{int64(2), 1, 0},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 1, 0},
-			{1, 0, 0, 1},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 0, 1},
-			{1, 0, 1, 0},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 0, 1},
-			{1, 0, 1, 0},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON b.pk1=a.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0},
-			{0, 1, 0, 1},
-			{1, 0, 1, 0},
-			{1, 1, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a JOIN two_pk b ON a.pk1+1=b.pk1 AND a.pk2+1=b.pk2 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{1, 1, 0},
-			{1, 1, 1},
-			{2, nil, nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 ORDER BY 1",
-		Expected: []sql.Row{
-			{0, nil, nil},
-			{1, nil, nil},
-			{2, int64(2), nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 ORDER BY 2,3",
-		Expected: []sql.Row{
-			{nil, nil, nil},
-			{nil, nil, nil},
-			{nil, nil, 5.0},
-			{2, int64(2), nil},
-			{nil, int64(4), 4.0},
-			{nil, int64(6), 6.0},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 AND f IS NOT NULL ORDER BY 1", // AND clause causes right table join miss
-		Expected: []sql.Row{
-			{0, nil, nil},
-			{1, nil, nil},
-			{2, nil, nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 and pk > 0 ORDER BY 2,3", // > 0 clause in join condition is ignored
-		Expected: []sql.Row{
-			{nil, nil, nil},
-			{nil, nil, nil},
-			{nil, nil, 5.0},
-			{2, int64(2), nil},
-			{nil, int64(4), 4.0},
-			{nil, int64(6), 6.0},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE f IS NULL AND pk < 2 ORDER BY 1",
-		Expected: []sql.Row{
-			{0, nil, nil},
-			{1, 1, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
-		Expected: []sql.Row{
-			{nil, nil, 5.0},
-			{nil, int64(4), 4.0},
-			{nil, int64(6), 6.0},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE pk > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE c1 > 10 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i WHERE f IS NOT NULL ORDER BY 2,3",
-		Expected: []sql.Row{
-			{nil, 4, 4.0},
-			{nil, 5, 5.0},
-			{nil, 6, 6.0},
-		},
-	},
-	{
-		Query: "SELECT t1.i,t1.i2 FROM niltable t1 LEFT JOIN niltable t2 ON t1.i=t2.i2 WHERE t2.f IS NULL ORDER BY 1,2",
-		Expected: []sql.Row{
-			{1, nil},
-			{2, 2},
-			{3, nil},
-			{5, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, 2, nil},
-			{3, 3, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i WHERE i2 IS NOT NULL ORDER BY 1",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk LEFT JOIN niltable ON pk=i2 WHERE pk > 1 ORDER BY 1",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-			{3, nil, nil},
-		},
-	},
-	{
-		Query: "SELECT pk,i2,f FROM one_pk RIGHT JOIN niltable ON pk=i2 WHERE pk > 0 ORDER BY 2,3",
-		Expected: []sql.Row{
-			{2, int64(2), nil},
-		},
-	},
-	{
 		Query: "SELECT GREATEST(CAST(i AS CHAR), CAST(b AS CHAR)) FROM niltable order by i",
 		Expected: []sql.Row{
 			{nil},
@@ -6941,92 +6395,6 @@ var QueryTests = []QueryTest{
 			{nil},
 			{"5"},
 			{"6"},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0, 0, 0},
-			{1, 0, 1, 10, 10},
-			{2, 1, 0, 20, 20},
-			{3, 1, 1, 30, 30},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2,one_pk.c1 AS foo,two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 WHERE one_pk.c1=10",
-		Expected: []sql.Row{
-			{1, 0, 1, 10, 10},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1",
-		Expected: []sql.Row{
-			{0, 1, 0},
-		},
-	},
-	{
-		Query: "SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3",
-		Expected: []sql.Row{
-			{0, 0, 0},
-			{0, 0, 1},
-			{0, 1, 0},
-			{0, 1, 1},
-			{1, 0, 0},
-			{1, 0, 1},
-			{1, 1, 0},
-			{1, 1, 1},
-			{2, 0, 0},
-			{2, 0, 1},
-			{2, 1, 0},
-			{2, 1, 1},
-			{3, 0, 0},
-			{3, 0, 1},
-			{3, 1, 0},
-			{3, 1, 1},
-		},
-	},
-	{
-		Query: "SELECT a.pk,b.pk FROM one_pk a JOIN one_pk b ON a.pk = b.pk order by a.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT a.pk,b.pk FROM one_pk a, one_pk b WHERE a.pk = b.pk order by a.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT one_pk.pk,b.pk FROM one_pk JOIN one_pk b ON one_pk.pk = b.pk order by one_pk.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "SELECT one_pk.pk,b.pk FROM one_pk, one_pk b WHERE one_pk.pk = b.pk order by one_pk.pk",
-		Expected: []sql.Row{
-			{0, 0},
-			{1, 1},
-			{2, 2},
-			{3, 3},
-		},
-	},
-	{
-		Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
-		Expected: []sql.Row{
-			{int64(2)},
-			{int64(4)},
-			{int64(6)},
 		},
 	},
 	{
@@ -7311,67 +6679,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
-						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		Expected: []sql.Row{
-			{0, 0, 0, 0, 0},
-			{1, 1, 1, 1, 1},
-		},
-	},
-	{
-		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		Expected: []sql.Row{
-			{nil, nil, 1},
-			{1, 1, 2},
-			{2, 2, 3},
-			{3, 3, 4},
-			{nil, nil, 5},
-			{nil, nil, 6},
-		},
-	},
-	{
-		Query: `SELECT pk,pk2,
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1)
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	{
-		Query: `SELECT pk,pk2,
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1)
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	{
-		Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
-		Expected: []sql.Row{
-			{"third", 1, 1},
-			{"second", 2, 2},
-			{"first", 3, 3},
-		},
-	},
-	{
-		Query: `SELECT lefttable.i, righttable.s
-			FROM (SELECT * FROM mytable) lefttable
-			JOIN (SELECT * FROM mytable) righttable
-			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
-			ORDER BY lefttable.i ASC`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
 		Query: "SELECT BINARY 'hi'",
 		Expected: []sql.Row{
 			{[]byte("hi")},
@@ -7445,45 +6752,45 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT JSON_OBJECT(1000000, 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"1000000": 10}`)},
+			{types.MustJSON(`{"1000000": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(DATE('1981-02-16'), 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"1981-02-16": 10}`)},
+			{types.MustJSON(`{"1981-02-16": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"{\"foo\":\"bar\"}": 10}`)},
+			{types.MustJSON(`{"{\"foo\":\"bar\"}": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(true, 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"true": 10}`)},
+			{types.MustJSON(`{"true": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(10.1, 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"10.1": 10}`)},
+			{types.MustJSON(`{"10.1": 10}`)},
 		},
 	},
 
 	{
 		Query: `SELECT JSON_OBJECT("i",i,"s",s) as js FROM mytable;`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"i": 1, "s": "first row"}`)},
-			{sql.MustJSON(`{"i": 2, "s": "second row"}`)},
-			{sql.MustJSON(`{"i": 3, "s": "third row"}`)},
+			{types.MustJSON(`{"i": 1, "s": "first row"}`)},
+			{types.MustJSON(`{"i": 2, "s": "second row"}`)},
+			{types.MustJSON(`{"i": 3, "s": "third row"}`)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "js",
-				Type: sql.JSON,
+				Type: types.JSON,
 			},
 		},
 	},
@@ -7593,185 +6900,6 @@ var QueryTests = []QueryTest{
 		Query: `SHOW SESSION STATUS WHERE Value < 0`,
 		Expected: []sql.Row{
 			{"optimizer_trace_offset", -1},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i OR a.i = 1`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where NOT(a.i = b.i OR a.s = b.i)`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where NOT(a.i = b.i OR a.s = b.i)`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i >= b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query:    `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
-		Expected: []sql.Row{
-			{2, "second row"},
-			{2, "second row"},
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
-		Expected: []sql.Row{
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
-		Expected: []sql.Row{
-			{2, "second row"},
-			{2, "second row"},
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.s = c.s`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i OR a.i = 1`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{1, "first row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i >= b.i`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{2, "second row"},
-			{3, "third row"},
-			{3, "third row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query:    `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.s`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
-		Expected: []sql.Row{
-			{2, "second row"},
-		},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
-		Expected: []sql.Row{
-			{2, "second row"},
-			{2, "second row"},
-			{2, "second row"}},
-	},
-	{
-		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
 		},
 	},
 	{
@@ -8009,6 +7137,153 @@ With c as (
 		// https://github.com/dolthub/dolt/issues/4478
 		Query:    "SELECT STRCMP((SELECT CONCAT('a', 'b')), (SELECT SUBSTRING('cab', 2, 3)));",
 		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that decimal parses as decimal
+		Query:    "SELECT 809826404100301269648758758005707100;",
+		Expected: []sql.Row{{"809826404100301269648758758005707100"}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that decimal parses as decimal
+		Query:    "SELECT 809826404100301269648758758005707100.12345;",
+		Expected: []sql.Row{{"809826404100301269648758758005707100.12345"}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that uint64 still parses as uint64
+		Query:    "SELECT 4294967295;",
+		Expected: []sql.Row{{uint64(4294967295)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5068 - verify that int64 still parses as int64
+		Query:    "SELECT 4294967296;",
+		Expected: []sql.Row{{int64(4294967296)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/5522
+		Query:    "select * from mytable where exists (select * from othertable where 1 = 0)",
+		Expected: []sql.Row{},
+	},
+	// tests to verify this issue is fixed: https://github.com/dolthub/dolt/issues/5522
+	{
+		// original query from issue
+		Query:    "select count(*) from ab where exists (select * from xy where 1 = 0);",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// false filter and a table
+		Query: "select a from ab where false;",
+	},
+	{
+		// false filter and a join
+		Query: "select a, u from (ab cross join uv) where false;",
+	},
+	{
+		// false filter and a subquery
+		Query: `select a1.u
+from (select * from uv) a1
+where a1.u = 1 AND false;`,
+	},
+	{
+		// false filter on a subquery
+		Query: `/*h1*/select a1.u
+from (select * from uv where false) a1
+where a1.u = 1;`,
+		Expected: []sql.Row{},
+	},
+	{
+		// multiple false filter EXISTS clauses
+		Query: `select a, b from ab where
+exists (select * from xy where false)
+or exists (select * from uv where false);`,
+	},
+	{
+		// nested false filter EXISTS clauses
+		Query: `select a,b from ab where
+exists (select * from xy where
+    exists (select * from uv where false));`,
+	},
+	{
+		// nested subqueries and aliases
+		Query: `select *
+	from (select * from xy where x = 1 and x in
+	   (select * from (select 1 where false) a1)
+	) a2;`,
+		Expected: []sql.Row{},
+	},
+	{
+		// relation is a query
+		Query: "select a1.a from (select * from ab) a1 where exists (select * from xy where 1 = 0);",
+	},
+	{
+		// relation is a group by
+		Query: "select a1.a from (select * from ab group by a, b) a1 where exists (select a from xy where 1 = 0);",
+	},
+	{
+		// relation is a window
+		Query: "select a1.s from (select sum(a) over() as s from ab) a1 where exists (select * from xy where 1 = 0);",
+	},
+	{
+		// relation is a CTE
+		Query: `with cte1 as (select * from ab)
+select *
+from xy
+where exists (select * from cte1 where 1 = 0);`,
+	},
+	{
+		// relation is a recursive CTE
+		Query: `
+with recursive my_cte as
+(
+  select 1 as f, 1 as next_f
+  union all
+  select next_f, f+next_f from my_cte where f < 50
+)
+select * from my_cte
+where exists (select * from ab where 1 = 0);`,
+		Expected: []sql.Row{},
+	},
+	{
+		// relation is a table function
+		Query: `SELECT count(*)
+FROM
+JSON_TABLE(
+	'[{"a":1.5, "b":2.25},{"a":3.125, "b":4.0625}]',
+	'$[*]' COLUMNS(x float path '$.a', y float path '$.b')
+) as t1
+where exists (select * from ab where 1 = 0);`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// false having
+		Query: `select x from xy as t1 group by t1.x having exists (select * from ab where 1 = 0);`,
+	},
+	{
+		// false having
+		Query: `select * from xy where x in (select 1 having false);`,
+	},
+	{
+		// indexed table access test
+		Query: "select * from (select * from xy where false) s where s.x = 2;",
+	},
+	{
+		// projections
+		Query: "select * from xy where exists (select a, true, a*7 from ab where false);",
+	},
+	{
+		// nested empty function calls
+		Query: `select * from xy
+where not exists (
+  select * from ab
+  where false and exists (
+    select 1 where false
+  )
+)`,
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 0},
+			{2, 1},
+			{3, 3},
+		},
 	},
 }
 
@@ -8289,19 +7564,19 @@ var BrokenQueries = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "I",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 			{
 				Name: "S",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -8315,19 +7590,19 @@ var BrokenQueries = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "I",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 			{
 				Name: "S",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -8341,19 +7616,19 @@ var BrokenQueries = []QueryTest{
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "i",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "I",
-				Type: sql.Int64,
+				Type: types.Int64,
 			},
 			{
 				Name: "s",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 			{
 				Name: "S",
-				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
 	},
@@ -8981,11 +8256,11 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
-		ExpectedErr: sql.ErrConvertingToTime,
+		ExpectedErr: types.ErrConvertingToTime,
 	},
 	{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
-		ExpectedErr: sql.ErrConvertingToTime,
+		ExpectedErr: types.ErrConvertingToTime,
 	},
 	// this query was panicing, but should be allowed and should return error when this query is called
 	{
@@ -9071,6 +8346,10 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "select -9223372036854775808 div 0.1;",
 		ExpectedErr: expression.ErrIntDivDataOutOfRange,
+	},
+	{
+		Query:       "drop table myview;",
+		ExpectedErr: sql.ErrUnknownTable,
 	},
 }
 
@@ -9184,8 +8463,8 @@ var ViewTests = []QueryTest{
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb' order by table_name",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{
@@ -9354,12 +8633,12 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "YES", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "NO", "`root`@`localhost`", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "NO", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "NO", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{
@@ -9427,7 +8706,7 @@ var IndexQueries = []ScriptTest{
 			{
 				Query: "create unique index namespace__name on users (namespace, name)",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 0}},
+					{types.OkResult{RowsAffected: 0}},
 				},
 			},
 			{
@@ -9439,7 +8718,7 @@ var IndexQueries = []ScriptTest{
 			{
 				Query: "insert into users values ('user1', 'namespace1', 'name1')",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
+					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
@@ -9674,7 +8953,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9686,7 +8965,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'aa'), (1, 'bb'), (2, 'cc')",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "select * from t where v = 'a'",
@@ -9700,7 +8979,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (i int primary key, v varchar(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -9716,7 +8995,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9728,7 +9007,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (v varchar(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -9760,7 +9039,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (c(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9772,7 +9051,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table c_tbl (i int primary key, c varchar(100), index (c(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table c_tbl",
@@ -9788,7 +9067,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (c(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9800,7 +9079,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table c_tbl (c char(100), index (c(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table c_tbl",
@@ -9832,7 +9111,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9844,7 +9123,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (i int primary key, v varbinary(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -9860,7 +9139,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (v(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9872,7 +9151,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table v_tbl (v varbinary(100), index (v(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table v_tbl",
@@ -9904,7 +9183,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9916,7 +9195,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (i int primary key, b binary(100), index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -9932,7 +9211,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9944,7 +9223,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (b binary(100), index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -9976,7 +9255,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -9988,7 +9267,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (i int primary key, b blob, index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -10004,7 +9283,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (b(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -10016,7 +9295,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table b_tbl (b blob, index (b(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table b_tbl",
@@ -10048,7 +9327,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (t(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -10060,7 +9339,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table t_tbl (i int primary key, t text, index (t(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t_tbl",
@@ -10076,7 +9355,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add unique index (t(1))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t",
@@ -10088,7 +9367,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "create table t_tbl (t text, index (t(10)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t_tbl",
@@ -10108,7 +9387,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query:       "insert into t values (99, 'abc', 'abcde')",
@@ -10151,7 +9430,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -10166,7 +9445,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -10187,7 +9466,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values ('a', 'a'), ('ab','ab'), ('abc', 'abc'), ('abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query:       "insert into t values ('abc', 'abcde')",
@@ -10230,7 +9509,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -10245,7 +9524,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -10267,7 +9546,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Skip:        true,
@@ -10315,7 +9594,7 @@ var IndexPrefixQueries = []ScriptTest{
 				Skip:  true,
 				Query: "update t set v1 = concat(v1, 'Z') where v1 >= 'A'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -10332,7 +9611,7 @@ var IndexPrefixQueries = []ScriptTest{
 				Skip:  true,
 				Query: "delete from t where v1 >= 'A'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -10354,7 +9633,7 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
-				Expected: []sql.Row{{sql.NewOkResult(4)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query:       "insert into t values (99, 'abc', 'abcde')",
@@ -10397,7 +9676,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "update t set v1 = concat(v1, 'z') where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
+					{types.OkResult{RowsAffected: 4, InsertID: 0, Info: plan.UpdateInfo{Matched: 4, Updated: 4}}},
 				},
 			},
 			{
@@ -10412,7 +9691,7 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query: "delete from t where v1 >= 'a'",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 4}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -10427,19 +9706,19 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "create table varchar_limit(c varchar(10000), index (c(768)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "create table text_limit(c text, index (c(768)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "create table varbinary_limit(c varbinary(10000), index (c(3072)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "create table blob_limit(c blob, index (c(3072)))",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "create table bad(c varchar(10000), index (c(769)))",

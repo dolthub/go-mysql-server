@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Within is a function that true if left is spatially within right
@@ -51,7 +52,7 @@ func (w *Within) Description() string {
 
 // Type implements the sql.Expression interface.
 func (w *Within) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 func (w *Within) String() string {
@@ -71,7 +72,7 @@ func (w *Within) WithChildren(children ...sql.Expression) (sql.Expression, error
 // 1 = points are clockwise
 // 2 = points are counter-clockwise
 // Reference: https://www.geeksforgeeks.org/orientation-3-ordered-points/
-func orientation(a, b, c sql.Point) int {
+func orientation(a, b, c types.Point) int {
 	// compare slopes of line(a, b) and line(b, c)
 	val := (b.Y-a.Y)*(c.X-b.X) - (b.X-a.X)*(c.Y-b.Y)
 	if val > 0 {
@@ -84,7 +85,7 @@ func orientation(a, b, c sql.Point) int {
 }
 
 // isInBBox checks if Point c is within the bounding box created by Points a and b
-func isInBBox(a, b, c sql.Point) bool {
+func isInBBox(a, b, c types.Point) bool {
 	return c.X >= math.Min(a.X, b.X) &&
 		c.X <= math.Max(a.X, b.X) &&
 		c.Y >= math.Min(a.Y, b.Y) &&
@@ -92,39 +93,8 @@ func isInBBox(a, b, c sql.Point) bool {
 }
 
 // Closed LineStrings have no Terminal Points, so will always return false for Closed LineStrings
-func isTerminalPoint(p sql.Point, l sql.LineString) bool {
+func isTerminalPoint(p types.Point, l types.LineString) bool {
 	return !isClosed(l) && (isPointEqual(p, startPoint(l)) || isPointEqual(p, endPoint(l)))
-}
-
-// linesIntersect checks if line ab intersects line cd
-// Edge case for collinear points is to check if they are within the bounding box
-// Reference: https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-func linesIntersect(a, b, c, d sql.Point) bool {
-	abc := orientation(a, b, c)
-	abd := orientation(a, b, d)
-	cda := orientation(c, d, a)
-	cdb := orientation(c, d, b)
-
-	// different orientations mean they intersect
-	if (abc != abd) && (cda != cdb) {
-		return true
-	}
-
-	// if orientation is collinear, check if point is inside segment
-	if abc == 0 && isInBBox(a, b, c) {
-		return true
-	}
-	if abd == 0 && isInBBox(a, b, d) {
-		return true
-	}
-	if cda == 0 && isInBBox(c, d, a) {
-		return true
-	}
-	if cdb == 0 && isInBBox(c, d, b) {
-		return true
-	}
-
-	return false
 }
 
 // isPointWithinClosedLineString checks if a point lies inside a Closed LineString
@@ -133,7 +103,7 @@ func linesIntersect(a, b, c, d sql.Point) bool {
 // A Point on the interior of a Closed LineString will intersect with an odd number of line segments
 // A simpler, but possibly more compute intensive option is to sum angles, and check if equal to 2pi or 360 deg
 // Reference: https://en.wikipedia.org/wiki/Point_in_polygon
-func isPointWithinClosedLineString(p sql.Point, l sql.LineString) bool {
+func isPointWithinClosedLineString(p types.Point, l types.LineString) bool {
 	hasOddInters := false
 	for i := 1; i < len(l.Points); i++ {
 		a := l.Points[i-1]
@@ -151,7 +121,7 @@ func isPointWithinClosedLineString(p sql.Point, l sql.LineString) bool {
 		if p.X >= math.Max(a.X, b.X) {
 			continue
 		}
-		q := sql.Point{X: math.Max(a.X, b.X), Y: p.Y}
+		q := types.Point{X: math.Max(a.X, b.X), Y: p.Y}
 		if !linesIntersect(a, b, p, q) {
 			continue
 		}
@@ -161,10 +131,10 @@ func isPointWithinClosedLineString(p sql.Point, l sql.LineString) bool {
 }
 
 // countConcreteGeoms recursively counts all the Geometry Types that are not GeomColl inside a GeomColl
-func countConcreteGeoms(gc sql.GeomColl) int {
+func countConcreteGeoms(gc types.GeomColl) int {
 	count := 0
 	for _, g := range gc.Geoms {
-		if innerGC, ok := g.(sql.GeomColl); ok {
+		if innerGC, ok := g.(types.GeomColl); ok {
 			count += countConcreteGeoms(innerGC)
 		}
 		count++
@@ -172,52 +142,30 @@ func countConcreteGeoms(gc sql.GeomColl) int {
 	return count
 }
 
-func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
+func isPointWithin(p types.Point, g types.GeometryValue) bool {
 	switch g := g.(type) {
-	case sql.Point:
+	case types.Point:
 		return isPointEqual(p, g)
-	case sql.LineString:
+	case types.LineString:
 		// Terminal Points of LineStrings are not considered a part of their Interior
 		if isTerminalPoint(p, g) {
 			return false
 		}
-		// Alternatively, we could calculate if dist(ap) + dist(ab) == dist(ap)
-		for i := 1; i < len(g.Points); i++ {
-			a, b := g.Points[i-1], g.Points[i]
-			if !isInBBox(a, b, p) {
-				continue
-			}
-			if orientation(a, b, p) != 0 {
-				continue
-			}
-			return true
-		}
-	case sql.Polygon:
+		return isPointIntersectLine(p, g)
+	case types.Polygon:
 		// Points on the Polygon Boundary are not considered part of the Polygon
-		for _, line := range g.Lines {
-			if isPointWithin(p, line) {
-				return false
-			}
-		}
-		outerLine := g.Lines[0]
-		if !isPointWithinClosedLineString(p, outerLine) {
+		if isPointIntersectPolyBoundary(p, g) {
 			return false
 		}
-		// Points in the holes of Polygon are outside of Polygon
-		for i := 1; i < len(g.Lines); i++ {
-			if isPointWithinClosedLineString(p, g.Lines[i]) {
-				return false
-			}
-		}
-		return true
-	case sql.MultiPoint:
+		return isPointIntersectPolyInterior(p, g)
+	case types.MultiPoint:
 		// Point is considered within MultiPoint if it's equal to at least one Point
 		for _, pp := range g.Points {
 			if isPointWithin(p, pp) {
 				return true
 			}
 		}
-	case sql.MultiLineString:
+	case types.MultiLineString:
 		// Point is considered within MultiLineString if it is within at least one LineString
 		// Edge Case: If point is a terminal point for an odd number of lines,
 		//            then it's not within the entire MultiLineString.
@@ -237,14 +185,14 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 				return true
 			}
 		}
-	case sql.MultiPolygon:
+	case types.MultiPolygon:
 		// Point is considered within MultiPolygon if it is within at least one Polygon
 		for _, poly := range g.Polygons {
 			if isPointWithin(p, poly) {
 				return true
 			}
 		}
-	case sql.GeomColl:
+	case types.GeomColl:
 		// Point is considered within GeomColl if it is within at least one Geometry
 		for _, gg := range g.Geoms {
 			if isPointWithin(p, gg) {
@@ -256,16 +204,16 @@ func isPointWithin(p sql.Point, g sql.GeometryValue) bool {
 }
 
 // TODO: consider parallelization
-func isWithin(g1, g2 sql.GeometryValue) bool {
+func isWithin(g1, g2 types.GeometryValue) bool {
 	switch g1 := g1.(type) {
-	case sql.Point:
+	case types.Point:
 		return isPointWithin(g1, g2)
-	case sql.LineString:
-	case sql.Polygon:
-	case sql.MultiPoint:
-	case sql.MultiLineString:
-	case sql.MultiPolygon:
-	case sql.GeomColl:
+	case types.LineString:
+	case types.Polygon:
+	case types.MultiPoint:
+	case types.MultiLineString:
+	case types.MultiPolygon:
+	case types.GeomColl:
 		// TODO (james): implement these
 	}
 	return true
@@ -273,58 +221,37 @@ func isWithin(g1, g2 sql.GeometryValue) bool {
 
 // Eval implements the sql.Expression interface.
 func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	g1, err := w.Left.Eval(ctx, row)
+	geom1, err := w.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	g2, err := w.Right.Eval(ctx, row)
+	geom2, err := w.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
+	g1, g2, err := validateGeomComp(geom1, geom2, w.FunctionName())
+	if err != nil {
+		return nil, err
+	}
 	if g1 == nil || g2 == nil {
-		return nil, nil
-	}
-
-	// TODO: convert this to helper method validateGeometryValue
-	var geom1, geom2 sql.GeometryValue
-	var ok bool
-	geom1, ok = g1.(sql.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(w.FunctionName())
-	}
-	geom2, ok = g2.(sql.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(w.FunctionName())
-	}
-
-	if geom1.GetSRID() != geom2.GetSRID() {
-		return nil, sql.ErrDiffSRIDs.New(w.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
-	}
-
-	// Empty GeomColls return nil
-	if gc, ok := geom1.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
-		return nil, nil
-	}
-	if gc, ok := geom2.(sql.GeomColl); ok && countConcreteGeoms(gc) == 0 {
 		return nil, nil
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
 	switch geom1.(type) {
-	case sql.LineString:
+	case types.LineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", w.FunctionName())
-	case sql.Polygon:
+	case types.Polygon:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", w.FunctionName())
-	case sql.MultiPoint:
+	case types.MultiPoint:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", w.FunctionName())
-	case sql.MultiLineString:
+	case types.MultiLineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", w.FunctionName())
-	case sql.MultiPolygon:
+	case types.MultiPolygon:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", w.FunctionName())
-	case sql.GeomColl:
+	case types.GeomColl:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", w.FunctionName())
 	}
 
-	return isWithin(geom1, geom2), nil
+	return isWithin(g1, g2), nil
 }

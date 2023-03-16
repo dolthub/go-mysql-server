@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestNullIf(t *testing.T) {
@@ -39,12 +40,12 @@ func TestNullIf(t *testing.T) {
 	}
 
 	f := NewNullIf(
-		expression.NewGetField(0, sql.LongText, "ex1", true),
-		expression.NewGetField(1, sql.LongText, "ex2", true),
+		expression.NewGetField(0, types.LongText, "ex1", true),
+		expression.NewGetField(1, types.LongText, "ex2", true),
 	)
-	require.Equal(t, sql.LongText, f.Type())
+	require.Equal(t, types.LongText, f.Type())
 
-	var3 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 3)
+	var3 := types.MustCreateStringWithDefaults(sqltypes.VarChar, 3)
 	f = NewNullIf(
 		expression.NewGetField(0, var3, "ex1", true),
 		expression.NewGetField(1, var3, "ex2", true),

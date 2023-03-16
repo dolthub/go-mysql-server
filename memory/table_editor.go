@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // tableEditor manages the edits that a table receives.
@@ -163,7 +164,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		}
 		if cmp > 0 {
 			// Provided value larger than autoIncVal, set autoIncVal to that value
-			v, err := sql.Uint64.Convert(row[idx])
+			v, err := types.Uint64.Convert(row[idx])
 			if err != nil {
 				return err
 			}
@@ -255,7 +256,7 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
-func (t *tableEditor) IndexedAccess(i sql.Index) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
 	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
 		newTable, err := newTable(pkTea.table, pkTea.table.schema)
@@ -278,7 +279,7 @@ func (t *tableEditor) IndexedAccess(i sql.Index) sql.IndexedTable {
 		if err != nil {
 			panic(err)
 		}
-		return &IndexedTable{Table: newTable, Idx: i.(*Index)}
+		return &IndexedTable{Table: newTable, Idx: i.Index.(*Index)}
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
 		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
@@ -301,7 +302,7 @@ func (t *tableEditor) IndexedAccess(i sql.Index) sql.IndexedTable {
 		if err != nil {
 			panic(err)
 		}
-		return &IndexedTable{Table: newTable, Idx: i.(*Index)}
+		return &IndexedTable{Table: newTable, Idx: i.Index.(*Index)}
 	}
 }
 
@@ -369,9 +370,9 @@ func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sq
 
 // tableEditAccumulator tracks the set of inserts and deletes and applies those edits to a initialTable.
 type tableEditAccumulator interface {
-	// Insert adds a row to the accumulator to be inserted in the future. Updates are modeled as a delete than an insertPartIdx.
+	// Insert adds a row to the accumulator to be inserted in the future. Updates are modeled as a Delete then an insertPartIdx.
 	Insert(value sql.Row) error
-	// Delete adds a row to the accumulator to be deleted in the future. Updates are modeled as a delete than an insertPartIdx.
+	// Delete adds a row to the accumulator to be deleted in the future. Updates are modeled as a Delete then an insertPartIdx.
 	Delete(value sql.Row) error
 	// Get returns a row if found along with two booleans added and deleted. Added is true if a row was inserted. Deleted
 	// is true if a row was deleted.
@@ -614,6 +615,7 @@ func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 
 		if eq {
 			k.deletes = append(k.deletes[:i], k.deletes[i+1:]...)
+			return nil
 		}
 	}
 
@@ -631,6 +633,7 @@ func (k *keylessTableEditAccumulator) Delete(value sql.Row) error {
 
 		if eq {
 			k.adds = append(k.adds[:i], k.adds[i+1:]...)
+			return nil
 		}
 
 	}
@@ -647,24 +650,30 @@ func (k *keylessTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) 
 }
 
 func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error) {
-	// If we have this row in any delete, bail.
+	deleteCount := 0
 	for _, r := range k.deletes {
 		if columnsMatch(cols, prefixLengths, r, value) {
-			return nil, false, nil
-		}
-	}
-
-	for _, r := range k.adds {
-		if columnsMatch(cols, prefixLengths, r, value) {
-			return r, true, nil
+			deleteCount++
 		}
 	}
 
 	for _, partition := range k.table.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(cols, prefixLengths, partitionRow, value) {
-				return partitionRow, true, nil
+				if deleteCount == 0 {
+					return partitionRow, true, nil
+				}
+				deleteCount--
 			}
+		}
+	}
+
+	for _, r := range k.adds {
+		if columnsMatch(cols, prefixLengths, r, value) {
+			if deleteCount == 0 {
+				return r, true, nil
+			}
+			deleteCount--
 		}
 	}
 

@@ -19,6 +19,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
@@ -31,6 +32,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Table represents an in-memory database table.
@@ -43,6 +45,7 @@ type Table struct {
 	checks           []sql.CheckDefinition
 	collation        sql.CollationID
 	pkIndexesEnabled bool
+	ed               tableEditAccumulator
 
 	// pushdown info
 	filters         []sql.Expression // currently unused, filter pushdown is significantly broken right now
@@ -207,6 +210,40 @@ type rangePartition struct {
 	rang sql.Expression
 }
 
+// spatialRangePartitionIter returns a partition that has range and table data access
+type spatialRangePartitionIter struct {
+	child                  *partitionIter
+	ord                    int
+	minX, minY, maxX, maxY float64
+}
+
+var _ sql.PartitionIter = (*spatialRangePartitionIter)(nil)
+
+func (i spatialRangePartitionIter) Close(ctx *sql.Context) error {
+	return i.child.Close(ctx)
+}
+
+func (i spatialRangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
+	part, err := i.child.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &spatialRangePartition{
+		Partition: part.(*Partition),
+		ord:       i.ord,
+		minX:      i.minX,
+		minY:      i.minY,
+		maxX:      i.maxX,
+		maxY:      i.maxY,
+	}, nil
+}
+
+type spatialRangePartition struct {
+	*Partition
+	ord                    int
+	minX, minY, maxX, maxY float64
+}
+
 // PartitionCount implements the sql.PartitionCounter interface.
 func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 	return int64(len(t.partitions)), nil
@@ -228,6 +265,18 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	// make a copy of the values as they exist when execution begins.
 	rowsCopy := make([]sql.Row, len(rows))
 	copy(rowsCopy, rows)
+
+	if r, ok := partition.(*spatialRangePartition); ok {
+		return &spatialTableIter{
+			columns: t.columns,
+			ord:     r.ord,
+			minX:    r.minX,
+			minY:    r.minY,
+			maxX:    r.maxX,
+			maxY:    r.maxY,
+			rows:    rowsCopy,
+		}, nil
+	}
 
 	return &tableIter{
 		rows:    rowsCopy,
@@ -253,7 +302,7 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 			numBytesPerRow += 8
 		case sql.StringType:
 			numBytesPerRow += uint64(n.MaxByteLength())
-		case sql.BitType:
+		case types.BitType:
 			numBytesPerRow += 1
 		case sql.DatetimeType:
 			numBytesPerRow += 8
@@ -261,11 +310,11 @@ func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 			numBytesPerRow += uint64(n.MaximumScale())
 		case sql.EnumType:
 			numBytesPerRow += 2
-		case sql.JsonType:
+		case types.JsonType:
 			numBytesPerRow += 20
 		case sql.NullType:
 			numBytesPerRow += 1
-		case sql.TimeType:
+		case types.TimeType:
 			numBytesPerRow += 16
 		case sql.YearType:
 			numBytesPerRow += 8
@@ -289,7 +338,7 @@ func (t *Table) AnalyzeTable(ctx *sql.Context) error {
 		CreatedAt: time.Now(),
 	}
 
-	histMap, err := sql.NewHistogramMapFromTable(ctx, t)
+	histMap, err := NewHistogramMapFromTable(ctx, t)
 	if err != nil {
 		return err
 	}
@@ -357,19 +406,20 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		result, _ = sql.ConvertToBool(result)
+		result, _ = types.ConvertToBool(result)
 		if result != true {
 			return i.Next(ctx)
 		}
 	}
 
-	if len(i.columns) > 0 {
+	if i.columns != nil {
 		resultRow := make(sql.Row, len(i.columns))
 		for i, j := range i.columns {
 			resultRow[i] = row[j]
 		}
 		return resultRow, nil
 	}
+
 	return row, nil
 }
 
@@ -448,6 +498,86 @@ func (i *tableIter) getFromIndex(ctx *sql.Context) (sql.Row, error) {
 	return i.rows[value.Pos], nil
 }
 
+type spatialTableIter struct {
+	columns                []int
+	rows                   []sql.Row
+	pos                    int
+	ord                    int
+	minX, minY, maxX, maxY float64
+}
+
+var _ sql.RowIter = (*spatialTableIter)(nil)
+var _ sql.RowIter2 = (*spatialTableIter)(nil)
+
+func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.getRow(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(i.columns) == 0 {
+		return row, nil
+	}
+
+	// check if bounding boxes of geometry and range intersect
+	// if the range [i.minX, i.maxX] and [gMinX, gMaxX] overlap and
+	// if the range [i.minY, i.maxY] and [gMinY, gMaxY] overlap
+	// then, the bounding boxes intersect
+	g, ok := row[i.ord].(types.GeometryValue)
+	if !ok {
+		return nil, fmt.Errorf("spatial index over non-geometry column")
+	}
+	gMinX, gMinY, gMaxX, gMaxY := g.BBox()
+	xInt := (gMinX <= i.minX && i.minX <= gMaxX) ||
+		(gMinX <= i.maxX && i.maxX <= gMaxX) ||
+		(i.minX <= gMinX && gMinX <= i.maxX) ||
+		(i.minX <= gMaxX && gMaxX <= i.maxX)
+	yInt := (gMinY <= i.minY && i.minY <= gMaxY) ||
+		(gMinY <= i.maxY && i.maxY <= gMaxY) ||
+		(i.minY <= gMinY && gMinY <= i.maxY) ||
+		(i.minY <= gMaxY && gMaxY <= i.maxY)
+	if !(xInt && yInt) {
+		return i.Next(ctx)
+	}
+
+	resultRow := make(sql.Row, len(i.columns))
+	for i, j := range i.columns {
+		resultRow[i] = row[j]
+	}
+	return resultRow, nil
+}
+
+func (i *spatialTableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	r, err := i.Next(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range r {
+		x, err := sql.ConvertToValue(v)
+		if err != nil {
+			return err
+		}
+		frame.Append(x)
+	}
+
+	return nil
+}
+
+func (i *spatialTableIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+func (i *spatialTableIter) getRow(ctx *sql.Context) (sql.Row, error) {
+	if i.pos >= len(i.rows) {
+		return nil, io.EOF
+	}
+
+	row := i.rows[i.pos]
+	i.pos++
+	return row, nil
+}
+
 type IndexValue struct {
 	Key string
 	Pos int
@@ -474,26 +604,26 @@ func EncodeIndexValue(value *IndexValue) ([]byte, error) {
 }
 
 func (t *Table) Inserter(*sql.Context) sql.RowInserter {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) Updater(*sql.Context) sql.RowUpdater {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) Replacer(*sql.Context) sql.RowReplacer {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
-func (t *Table) newTableEditor() *tableEditor {
+func (t *Table) getTableEditor() *tableEditor {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
 	for _, idx := range t.indexes {
@@ -512,11 +642,16 @@ func (t *Table) newTableEditor() *tableEditor {
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
 		prefixLengths = append(prefixLengths, idx.PrefixLengths())
 	}
+
+	if t.ed == nil {
+		t.ed = NewTableEditAccumulator(t)
+	}
+
 	return &tableEditor{
 		table:             t,
 		initialAutoIncVal: 1,
 		initialPartitions: nil,
-		ea:                NewTableEditAccumulator(t),
+		ea:                t.ed,
 		initialInsert:     0,
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
@@ -604,13 +739,13 @@ func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (uint64, error) {
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
-	cmp, err := sql.Uint64.Compare(insertVal, t.autoIncVal)
+	cmp, err := types.Uint64.Compare(insertVal, t.autoIncVal)
 	if err != nil {
 		return 0, err
 	}
 
 	if cmp > 0 && insertVal != nil {
-		v, err := sql.Uint64.Convert(insertVal)
+		v, err := types.Uint64.Convert(insertVal)
 		if err != nil {
 			return 0, err
 		}
@@ -683,7 +818,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 
 					if cmp > 0 {
 						var val interface{}
-						val, err = sql.Uint64.Convert(row[newColIdx])
+						val, err = types.Uint64.Convert(row[newColIdx])
 						if err != nil {
 							panic(err)
 						}
@@ -1000,6 +1135,29 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 		return nil, err
 	}
 
+	if lookup.Index.IsSpatial() {
+		lower := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
+		upper := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
+		minPoint, ok := lower.(types.Point)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+		maxPoint, ok := upper.(types.Point)
+		if !ok {
+			return nil, sql.ErrInvalidGISData.New()
+		}
+
+		ord := lookup.Index.(*Index).Exprs[0].(*expression.GetField).Index()
+		return spatialRangePartitionIter{
+			child: child.(*partitionIter),
+			ord:   ord,
+			minX:  minPoint.X,
+			minY:  minPoint.Y,
+			maxX:  maxPoint.X,
+			maxY:  maxPoint.Y,
+		}, nil
+	}
+
 	return rangePartitionIter{child: child.(*partitionIter), ranges: filter}, nil
 }
 
@@ -1014,27 +1172,34 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		for i, e := range t.Idx.Exprs {
 			sf[i] = sql.SortField{Column: e}
 		}
-		sorter := &expression.Sorter{
-			SortFields: sf,
-			Rows:       iter.(*tableIter).rows,
-			LastError:  nil,
-			Ctx:        ctx,
+		var sorter *expression.Sorter
+		if i, ok := iter.(*tableIter); ok {
+			sorter = &expression.Sorter{
+				SortFields: sf,
+				Rows:       i.rows,
+				LastError:  nil,
+				Ctx:        ctx,
+			}
+		} else if i, ok := iter.(*spatialTableIter); ok {
+			sorter = &expression.Sorter{
+				SortFields: sf,
+				Rows:       i.rows,
+				LastError:  nil,
+				Ctx:        ctx,
+			}
 		}
+
 		sort.Stable(sorter)
 	}
 	return iter, nil
 }
 
-func (t *Table) IndexedAccess(i sql.Index) sql.IndexedTable {
-	return &IndexedTable{Table: t, Idx: i.(*Index)}
+func (t *Table) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
+	return &IndexedTable{Table: t, Idx: i.Index.(*Index)}
 }
 
 // WithProjections implements sql.ProjectedTable
 func (t *Table) WithProjections(cols []string) sql.Table {
-	if len(cols) == 0 {
-		return t
-	}
-
 	nt := *t
 	columns, err := nt.columnIndexes(cols)
 	if err != nil {
@@ -1059,7 +1224,7 @@ func (t *Table) Projections() []string {
 }
 
 func (t *Table) columnIndexes(colNames []string) ([]int, error) {
-	var columns []int
+	columns := make([]int, 0, len(colNames))
 
 	for _, name := range colNames {
 		i := t.schema.IndexOf(name, t.name)
@@ -1182,7 +1347,7 @@ func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 
 // GetForeignKeyEditor implements sql.ForeignKeyTable.
 func (t *Table) GetForeignKeyEditor(ctx *sql.Context) sql.ForeignKeyEditor {
-	return t.newTableEditor()
+	return t.getTableEditor()
 }
 
 // GetChecks implements sql.CheckTable
@@ -1254,7 +1419,6 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		for i, column := range columns {
 			prefixLengths[i] = uint16(column.Length)
 		}
-
 	}
 
 	if constraint == sql.IndexConstraint_Unique {
@@ -1272,6 +1436,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Exprs:      exprs,
 		Name:       name,
 		Unique:     constraint == sql.IndexConstraint_Unique,
+		Spatial:    constraint == sql.IndexConstraint_Spatial,
 		CommentStr: comment,
 		PrefixLens: prefixLengths,
 	}, nil
@@ -1358,11 +1523,12 @@ func (t *Table) DropIndex(ctx *sql.Context, indexName string) error {
 
 // RenameIndex implements sql.IndexAlterableTable
 func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName string) error {
-	for name, index := range t.indexes {
-		if name == fromIndexName {
-			delete(t.indexes, name)
-			t.indexes[toIndexName] = index
-		}
+	if fromIndexName == toIndexName {
+		return nil
+	}
+	if idx, ok := t.indexes[fromIndexName]; ok {
+		delete(t.indexes, fromIndexName)
+		t.indexes[toIndexName] = idx
 	}
 	return nil
 }
@@ -1437,7 +1603,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		found := false
 		for j, currCol := range potentialSchema {
 			if strings.ToLower(currCol.Name) == strings.ToLower(newCol.Name) {
-				if sql.IsText(currCol.Type) && newCol.Length > 0 {
+				if types.IsText(currCol.Type) && newCol.Length > 0 {
 					return sql.ErrUnsupportedIndexPrefix.New(currCol.Name)
 				}
 				currCol.PrimaryKey = true
@@ -1587,8 +1753,8 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 
 	// Check for foreign key relationships
 	for _, pk := range pks {
-		if columnInFkRelationship(pk.Name, t.fkColl.Keys()) {
-			return sql.ErrCantDropIndex.New("PRIMARY")
+		if fkName, ok := columnInFkRelationship(pk.Name, t.fkColl.Keys()); ok {
+			return sql.ErrCantDropIndex.New("PRIMARY", fkName)
 		}
 	}
 
@@ -1597,22 +1763,24 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	}
 
 	delete(t.indexes, "PRIMARY")
+	t.ed = nil
 
 	t.schema.PkOrdinals = []int{}
 
 	return nil
 }
 
-func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) bool {
-	colsInFks := make(map[string]bool)
+func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) (string, bool) {
+	colsInFks := make(map[string]string)
 	for _, fk := range fkc {
 		allCols := append(fk.Columns, fk.ParentColumns...)
 		for _, ac := range allCols {
-			colsInFks[ac] = true
+			colsInFks[ac] = fk.Name
 		}
 	}
 
-	return colsInFks[col]
+	fkName, ok := colsInFks[col]
+	return fkName, ok
 }
 
 type partitionIndexKeyValueIter struct {
@@ -1694,4 +1862,115 @@ func (t *Table) verifyRowTypes(row sql.Row) {
 			}
 		}
 	}
+}
+
+// NewHistogramMapFromTable will construct a HistogramMap given a Table
+// TODO: this is copied from the information_schema package, and should be moved to a more general location
+func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, error) {
+	// initialize histogram map
+	histMap := make(sql.HistogramMap)
+	cols := t.Schema()
+	for _, col := range cols {
+		hist := new(sql.Histogram)
+		hist.Min = math.MaxFloat64
+		hist.Max = -math.MaxFloat64
+		histMap[col.Name] = hist
+	}
+
+	// freqMap can be adapted to a histogram with any number of buckets
+	freqMap := make(map[string]map[float64]uint64)
+	for _, col := range cols {
+		freqMap[col.Name] = make(map[float64]uint64)
+	}
+
+	partIter, err := t.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		part, err := partIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		iter, err := t.PartitionRows(ctx, part)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		for {
+			row, err := iter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+
+			for i, col := range cols {
+				hist, ok := histMap[col.Name]
+				if !ok {
+					panic("histogram was not initialized for this column; shouldn't be possible")
+				}
+
+				if row[i] == nil {
+					hist.NullCount++
+					continue
+				}
+
+				val, err := types.Float64.Convert(row[i])
+				if err != nil {
+					continue // silently skip unsupported column types for now
+				}
+				v := val.(float64)
+
+				if freq, ok := freqMap[col.Name][v]; ok {
+					freq++
+				} else {
+					freqMap[col.Name][v] = 1
+					hist.DistinctCount++
+				}
+
+				hist.Mean += v
+				hist.Min = math.Min(hist.Min, v)
+				hist.Max = math.Max(hist.Max, v)
+				hist.Count++
+			}
+		}
+	}
+
+	// add buckets to histogram in sorted order
+	for colName, freqs := range freqMap {
+		keys := make([]float64, 0)
+		for k := range freqs {
+			keys = append(keys, k)
+		}
+		sort.Float64s(keys)
+
+		hist := histMap[colName]
+		if hist.Count == 0 {
+			hist.Min = 0
+			hist.Max = 0
+			continue
+		}
+
+		hist.Mean /= float64(hist.Count)
+		for _, k := range keys {
+			bucket := &sql.HistogramBucket{
+				LowerBound: k,
+				UpperBound: k,
+				Frequency:  float64(freqs[k]) / float64(hist.Count),
+			}
+			hist.Buckets = append(hist.Buckets, bucket)
+		}
+	}
+
+	return histMap, nil
 }

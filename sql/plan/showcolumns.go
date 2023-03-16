@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowColumns shows the columns details of a table.
@@ -31,7 +32,7 @@ type ShowColumns struct {
 	targetSchema sql.Schema
 }
 
-var VarChar25000 = sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
+var VarChar25000 = types.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
 var (
 	showColumnsSchema = sql.Schema{
 		{Name: "Field", Type: VarChar25000},
@@ -124,7 +125,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	for i, col := range schema {
 		var row sql.Row
 		var collation interface{}
-		if sql.IsTextOnly(col.Type) {
+		if types.IsTextOnly(col.Type) {
 			collation = sql.Collation_Default.String()
 		}
 

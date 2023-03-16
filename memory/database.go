@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -192,7 +193,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 	for _, idxCol := range idxDef.Columns {
 		col := sch.Schema[sch.Schema.IndexOfColName(idxCol.Name)]
-		if col.PrimaryKey && sql.IsText(col.Type) && idxCol.Length > 0 {
+		if col.PrimaryKey && types.IsText(col.Type) && idxCol.Length > 0 {
 			return sql.ErrUnsupportedIndexPrefix.New(col.Name)
 		}
 	}
@@ -268,6 +269,17 @@ func (d *BaseDatabase) DropTrigger(ctx *sql.Context, name string) error {
 		return sql.ErrTriggerDoesNotExist.New(name)
 	}
 	return nil
+}
+
+// GetStoredProcedure implements sql.StoredProcedureDatabase
+func (d *BaseDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.StoredProcedureDetails, bool, error) {
+	name = strings.ToLower(name)
+	for _, spd := range d.storedProcedures {
+		if name == strings.ToLower(spd.Name) {
+			return spd, true, nil
+		}
+	}
+	return sql.StoredProcedureDetails{}, false, nil
 }
 
 // GetStoredProcedures implements sql.StoredProcedureDatabase

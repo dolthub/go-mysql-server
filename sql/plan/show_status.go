@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowStatus implements the SHOW STATUS MySQL command.
@@ -57,8 +58,8 @@ func (s *ShowStatus) String() string {
 // Schema implements sql.Node interface.
 func (s *ShowStatus) Schema() sql.Schema {
 	return sql.Schema{
-		{Name: "Variable_name", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Value", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: "Variable_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Value", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
 	}
 }
 

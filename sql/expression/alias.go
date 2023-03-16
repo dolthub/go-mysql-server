@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AliasReference is a named reference to an aliased expression.
@@ -55,7 +56,7 @@ func (a AliasReference) Children() []sql.Expression {
 }
 
 func (a AliasReference) Type() sql.Type {
-	return sql.Null
+	return types.Null
 }
 
 func (a AliasReference) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

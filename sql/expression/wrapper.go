@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Wrapper simply acts as a wrapper for another expression. If a nil expression is wrapped, then the wrapper functions
@@ -87,7 +88,7 @@ func (w *Wrapper) String() string {
 // Type implements sql.Expression
 func (w *Wrapper) Type() sql.Type {
 	if w.inner == nil {
-		return sql.Null
+		return types.Null
 	}
 	return w.inner.Type()
 }

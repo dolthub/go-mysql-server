@@ -19,6 +19,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -157,18 +159,30 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		return nil, err
 	}
 
-	m := NewMemo(ctx, stats, scope)
+	m := NewMemo(ctx, stats, scope, a.Coster, a.Carder)
 
 	j := newJoinOrderBuilder(m)
 	j.reorderJoin(n)
 
-	addRightSemiJoins(m)
-	addLookupJoins(m)
-	addHashJoins(m)
-	addMergeJoins(m)
-
-	if a.Verbose && a.Debug {
-		a.Log(m.String())
+	err = convertSemiToInnerJoin(a, m)
+	if err != nil {
+		return nil, err
+	}
+	err = addRightSemiJoins(m)
+	if err != nil {
+		return nil, err
+	}
+	err = addLookupJoins(m)
+	if err != nil {
+		return nil, err
+	}
+	err = addHashJoins(m)
+	if err != nil {
+		return nil, err
+	}
+	err = addMergeJoins(m)
+	if err != nil {
+		return nil, err
 	}
 
 	if hint := extractJoinHint(n); !hint.IsEmpty() {
@@ -177,7 +191,15 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		m.WithJoinOrder(hint)
 	}
 
-	m.optimizeRoot()
+	err = m.optimizeRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	if a.Verbose && a.Debug {
+		a.Log(m.String())
+	}
+
 	return m.bestRootPlan()
 }
 
@@ -265,6 +287,96 @@ func addLookupJoins(m *Memo) error {
 	})
 }
 
+// convertSemiToInnerJoin adds inner join alternatives for semi joins.
+// The inner join plans can be explored (optimized) further.
+// Example: semiJoin(xy ab) => project(ab) -> innerJoin(xy, distinct(ab))
+// Ref sction 2.1.1 of:
+// https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
+// TODO: need more elegant way to extend the number of groups, interner
+func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
+	seen := make(map[GroupId]struct{})
+	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+		semi, ok := e.(*semiJoin)
+		if !ok {
+			return nil
+		}
+
+		rightOutTables := m.tableProps.getTableNames(semi.right.relProps.OutputTables())
+		projectExpressions := []sql.Expression{}
+		onlyEquality := true
+		for _, f := range semi.filter {
+			transform.InspectExpr(f, func(e sql.Expression) bool {
+				switch e := e.(type) {
+				case *expression.GetField:
+					// getField expressions tell us which columns are used, so we can create the correct project
+					tableName := strings.ToLower(e.Table())
+					isRightOutTable := stringContains(rightOutTables, tableName)
+					if isRightOutTable {
+						projectExpressions = append(projectExpressions, e)
+					}
+				case *expression.Literal, *expression.BindVar,
+					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+					// these expressions are equality expressions
+				default:
+					onlyEquality = false
+				}
+				return !onlyEquality
+			})
+			if !onlyEquality {
+				return nil
+			}
+		}
+
+		// project is a new group
+		newRight := &project{
+			relBase:     &relBase{},
+			child:       semi.right,
+			projections: projectExpressions,
+		}
+		rightGrp := m.memoize(newRight)
+
+		// distinct is a new group
+		rightDistinct := &distinct{
+			relBase: &relBase{},
+			child:   rightGrp,
+		}
+		rightDistinctGrp := m.memoize(rightDistinct)
+
+		// join and its commute are a new group
+		newJoin := &innerJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{},
+				left:    semi.left,
+				right:   rightDistinctGrp,
+				op:      plan.JoinTypeInner,
+				filter:  semi.filter,
+			},
+		}
+		joinGrp := m.memoize(newJoin)
+
+		newJoinCommuted := &innerJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{g: joinGrp},
+				left:    rightDistinctGrp,
+				right:   semi.left,
+				op:      plan.JoinTypeInner,
+				filter:  semi.filter,
+			},
+		}
+		joinGrp.prepend(newJoinCommuted)
+
+		// project belongs to the original group
+		rel := &project{
+			relBase:     &relBase{g: e.group()},
+			child:       joinGrp,
+			projections: expression.SchemaToGetFields(semi.left.relProps.outputColsForRel(semi.left.first)),
+		}
+		e.group().prepend(rel)
+
+		return nil
+	})
+}
+
 // addRightSemiJoins allows for a reversed semiJoin operator when
 // the join attributes of the left side are provably unique.
 func addRightSemiJoins(m *Memo) error {
@@ -333,6 +445,16 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 			return tableScanLookupCand(ctx, t)
 		default:
 		}
+	case *distinct:
+		if s, ok := n.child.first.(sourceRel); ok {
+			switch n := s.(type) {
+			case *tableAlias:
+				return tableAliasLookupCand(ctx, n.table, aliases)
+			case *tableScan:
+				return tableScanLookupCand(ctx, n.table)
+			default:
+			}
+		}
 	default:
 	}
 	return "", nil, nil
@@ -373,7 +495,7 @@ func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAli
 	aliases.add(n, indexableTable)
 	indexes, err := indexableTable.GetIndexes(ctx)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil
 	}
 	return attributeSource, indexes, nil
 }
@@ -438,11 +560,7 @@ func collectJoinConds(attributeSource string, filters ...sql.Expression) []*join
 // the the index xy(x,y). The second filter is not null rejecting, so the nullmask
 // will be [0,1]. The keyExprs will be [(ab.a + 1), (ab.b)], which project into
 // the table lookup (xy.x, xy.y).
-func indexMatchesKeyExprs(
-	i sql.Index,
-	joinColExprs []*joinColExpr,
-	tableAliases TableAliases,
-) ([]sql.Expression, []bool) {
+func indexMatchesKeyExprs(i sql.Index, joinColExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, []bool) {
 	idxExprs := i.Expressions()
 	count := len(idxExprs)
 	if count > len(joinColExprs) {
@@ -462,6 +580,16 @@ IndexExpressions:
 				continue IndexExpressions
 			}
 		}
+		return nil, nil
+	}
+
+	// TODO: better way of validating that we can apply an index lookup
+	lb := plan.NewLookupBuilder(i, keyExprs, nullmask)
+	look, err := lb.GetLookup(lb.GetZeroKey())
+	if err != nil {
+		return nil, nil
+	}
+	if !i.CanSupport(look.Ranges...) {
 		return nil, nil
 	}
 
@@ -495,6 +623,7 @@ func firstMatchingIndex(e *expression.Equals, indexes []sql.Index, attributeSour
 		if len(lKeyExprs) == 0 {
 			continue
 		}
+
 		return &lookup{
 			index:    lIdx,
 			keyExprs: lKeyExprs,
@@ -566,7 +695,8 @@ func exprMapsToSource(e sql.Expression, grp *exprGroup, tProps *tableProps) bool
 }
 
 // addMergeJoins will add merge join operators to join relations
-// with native indexes providing sort enforcement.
+// with native indexes providing sort enforcement on an equality
+// filter.
 // TODO: sort-merge joins
 func addMergeJoins(m *Memo) error {
 	var aliases = make(TableAliases)
@@ -587,106 +717,169 @@ func addMergeJoins(m *Memo) error {
 			return nil
 		}
 
-		lIScan, err := findSortedIndexScanForRel(m.ctx, join.left.first, join.filter, aliases)
+		lAttrSource, lIndexes, err := lookupCandidates(m.ctx, join.left.first, aliases)
 		if err != nil {
 			return err
-		} else if lIScan == nil {
+		} else if lAttrSource == "" {
+			return nil
+		}
+		rAttrSource, rIndexes, err := lookupCandidates(m.ctx, join.right.first, aliases)
+		if err != nil {
+			return err
+		} else if rAttrSource == "" {
 			return nil
 		}
 
-		rIScan, err := findSortedIndexScanForRel(m.ctx, join.right.first, join.filter, aliases)
-		if err != nil {
-			return err
-		} else if rIScan == nil {
-			return nil
-		}
-
-		var newFilters []sql.Expression
-		for _, f := range join.filter {
-			if e, ok := f.(*expression.Equals); ok {
-				// filter must bisect the rel attributes the merge comparison
-				// result to be monotonic
-				lTab, ok := attrsRefSingleRel(e.Left())
-				if !ok {
-					return nil
-				}
-				rTab, ok := attrsRefSingleRel(e.Right())
-				if !ok {
-					return nil
-				}
-				if lTab == rIScan.source && rTab == lIScan.source {
-					// comparison direction determines next iterator increment
-					newFilters = append(newFilters, expression.NewEquals(e.Right(), e.Left()))
-				} else {
-					newFilters = append(newFilters, f)
-				}
-			} else {
-				return nil
+		for i, f := range join.filter {
+			var l, r sql.Expression
+			switch f := f.(type) {
+			case *expression.Equals:
+				l = f.Left()
+				r = f.Right()
+			default:
+				continue
 			}
-		}
 
-		jb := join.copy()
-		jb.filter = newFilters
-		rel := &mergeJoin{
-			joinBase:  jb,
-			innerScan: lIScan,
-			outerScan: rIScan,
+			ltc, ok := attrsRefSingleTableCol(l)
+			if !ok {
+				continue
+			}
+			rtc, ok := attrsRefSingleTableCol(r)
+			if !ok {
+				continue
+			}
+
+			switch {
+			case ltc.table == lAttrSource && rtc.table == rAttrSource:
+			case rtc.table == lAttrSource && ltc.table == rAttrSource:
+				l, r = r, l
+				ltc, rtc = rtc, ltc
+			default:
+				continue
+			}
+
+			// check that comparer is not non-decreasing
+			if !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
+				continue
+			}
+
+			if tab, ok := aliases[ltc.table]; ok {
+				ltc = tableCol{table: strings.ToLower(tab.Name()), col: ltc.col}
+			}
+			if tab, ok := aliases[rtc.table]; ok {
+				rtc = tableCol{table: strings.ToLower(tab.Name()), col: rtc.col}
+
+			}
+
+			lIdx := sortedIndexScanForTableCol(lIndexes, ltc, l)
+			if lIdx == nil {
+				continue
+			}
+			rIdx := sortedIndexScanForTableCol(rIndexes, rtc, r)
+			if rIdx == nil {
+				continue
+			}
+
+			newFilters := make([]sql.Expression, len(join.filter))
+			copy(newFilters, join.filter)
+			newFilters[i], _ = f.WithChildren(l, r)
+			// merge cond first
+			newFilters[0], newFilters[i] = newFilters[i], newFilters[0]
+
+			jb := join.copy()
+			if d, ok := jb.left.first.(*distinct); ok && lIdx.idx.IsUnique() {
+				jb.left = d.child
+			}
+			if d, ok := jb.right.first.(*distinct); ok && rIdx.idx.IsUnique() {
+				jb.right = d.child
+			}
+
+			jb.filter = newFilters
+			rel := &mergeJoin{
+				joinBase:  jb,
+				innerScan: lIdx,
+				outerScan: rIdx,
+			}
+			rel.innerScan.parent = rel.joinBase
+			rel.outerScan.parent = rel.joinBase
+			e.group().prepend(rel)
 		}
-		rel.innerScan.parent = rel.joinBase
-		rel.outerScan.parent = rel.joinBase
-		e.group().prepend(rel)
 		return nil
 	})
 }
 
-// findSortedIndexScanForRel returns the first indexScan found for a relation
-// that provide a prefix for the joinFilters rel free attributes. I.e. the
-// indexScan will return the same rows as the rel, but sorted for every expression
-// for the table referenced in the join condition.
-func findSortedIndexScanForRel(
-	ctx *sql.Context,
-	rel relExpr,
-	joinFilters []sql.Expression,
-	aliases TableAliases,
-) (*indexScan, error) {
-	attrSource, indexes, err := lookupCandidates(ctx, rel, aliases)
-	if err != nil {
-		return nil, err
-	}
-
-	conds := collectJoinConds(attrSource, joinFilters...)
-	for _, idx := range indexes {
-		keyExprs, _ := indexMatchesKeyExprs(idx, conds, aliases)
-		if len(keyExprs) == 0 {
+// sortedIndexScanForTableCol returns the first indexScan found for a relation
+// that provide a prefix for the joinFilters rel free attribute. I.e. the
+// indexScan will return the same rows as the rel, but sorted by |col|.
+func sortedIndexScanForTableCol(is []sql.Index, tc tableCol, e sql.Expression) *indexScan {
+	for _, idx := range is {
+		if strings.ToLower(idx.Expressions()[0]) != tc.String() {
 			continue
 		}
+		rang := sql.Range{sql.AllRangeColumnExpr(e.Type())}
+		if !idx.CanSupport(rang) {
+			return nil
+		}
 		return &indexScan{
-			source: attrSource,
+			source: tc.table,
 			idx:    idx,
-		}, nil
+		}
 	}
-	return nil, nil
+	return nil
 }
 
-// attrsRefSingleRel returns false if there are
-// getFields sourced from more than one table.
-func attrsRefSingleRel(e sql.Expression) (string, bool) {
-	var name string
+// isWeaklyMonotonic is a weak test of whether an expression
+// will be strictly increasing as the value of column attribute
+// inputs increases.
+//
+// The simplest example is `x`, which will increase
+// as `x` increases, and decrease as `x` decreases.
+//
+// An example of a non-monotonic expression is `mod(x, 4)`,
+// which is strictly non-increasing from x=3 -> x=4.
+//
+// A non-obvious non-monotonic function is `x+y`. The index `(x,y)`
+// will be non-increasing on (y), and so `x+y` can decrease.
+// TODO: stricter monotonic check
+func isWeaklyMonotonic(e sql.Expression) bool {
+	switch e := e.(type) {
+	case *expression.Arithmetic:
+		if e.Op == sqlparser.MinusStr {
+			// TODO minus can be OK if it's not on the GetField
+			return false
+		}
+	case *expression.Equals, *expression.NullSafeEquals, *expression.Literal, *expression.GetField,
+		*expression.Tuple, *expression.IsNull, *expression.BindVar:
+	default:
+		return false
+	}
+	for _, c := range e.Children() {
+		if !isWeaklyMonotonic(c) {
+			return false
+		}
+	}
+	return true
+}
+
+// attrsRefSingleTableCol returns false if there are
+// getFields sourced from zero or more than one table.
+func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
+	var tc tableCol
 	var invalid bool
 	transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			newName := strings.ToLower(e.Table())
-			if name == "" && !invalid {
-				name = newName
-			} else if name != newName {
+			newTc := tableCol{col: strings.ToLower(e.Name()), table: strings.ToLower(e.Table())}
+			if tc.table == "" && !invalid {
+				tc = newTc
+			} else if tc != newTc {
 				invalid = true
 			}
 		default:
 		}
 		return invalid
 	})
-	return name, !invalid
+	return tc, !invalid && tc.table != ""
 }
 
 func extractJoinHint(n *plan.JoinNode) JoinOrderHint {
@@ -774,7 +967,7 @@ func newJoinOrderDeps(order map[GroupId]uint64) *joinOrderDeps {
 func (o joinOrderDeps) build(grp *exprGroup) {
 	s := vertexSet(0)
 	// convert global table order to hint order
-	inputs := grp.relProps.OutputTables()
+	inputs := grp.relProps.InputTables()
 	for idx, ok := inputs.Next(0); ok; idx, ok = inputs.Next(idx + 1) {
 		if i, ok := o.order[GroupId(idx+1)]; ok {
 			// If group |idx+1| is a dependency of this table, record the
@@ -818,8 +1011,14 @@ func (o joinOrderDeps) obeysOrder(n relExpr) bool {
 		valid := o.ordered(l, r) && o.compact(l, r)
 		o.cache[key] = valid
 		return valid
-	default:
+	case *project:
+		return o.obeysOrder(n.child.best)
+	case *distinct:
+		return o.obeysOrder(n.child.best)
+	case sourceRel:
 		return true
+	default:
+		panic(fmt.Sprintf("missed type: %T", n))
 	}
 }
 

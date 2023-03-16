@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrInvalidArgumentForLogarithm is returned when an invalid argument value is passed to a
@@ -100,7 +101,7 @@ func (l *LogBase) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Type returns the resultant type of the function.
 func (l *LogBase) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -122,7 +123,7 @@ func (l *LogBase) Eval(
 		return nil, nil
 	}
 
-	val, err := sql.Float64.Convert(v)
+	val, err := types.Float64.Convert(v)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
 	}
@@ -144,7 +145,7 @@ func NewLog(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	if argLen == 1 {
-		return &Log{expression.BinaryExpression{Left: expression.NewLiteral(math.E, sql.Float64), Right: args[0]}}, nil
+		return &Log{expression.BinaryExpression{Left: expression.NewLiteral(math.E, types.Float64), Right: args[0]}}, nil
 	} else {
 		return &Log{expression.BinaryExpression{Left: args[0], Right: args[1]}}, nil
 	}
@@ -176,7 +177,7 @@ func (l *Log) Children() []sql.Expression {
 
 // Type returns the resultant type of the function.
 func (l *Log) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 // IsNullable implements the Expression interface.
@@ -198,7 +199,7 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 
-	lhs, err := sql.Float64.Convert(left)
+	lhs, err := types.Float64.Convert(left)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(left))
 	}
@@ -212,7 +213,7 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 
-	rhs, err := sql.Float64.Convert(right)
+	rhs, err := types.Float64.Convert(right)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(right))
 	}

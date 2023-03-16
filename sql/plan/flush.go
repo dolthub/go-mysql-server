@@ -17,6 +17,7 @@ package plan
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // FlushPrivileges reads privileges from mysql tables and registers any unregistered privileges found.
@@ -47,7 +48,7 @@ func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, err
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // String implements the interface sql.Node.
@@ -81,7 +82,7 @@ func (f *FlushPrivileges) Resolved() bool {
 func (*FlushPrivileges) Children() []sql.Node { return nil }
 
 // Schema implements the sql.Node interface.
-func (*FlushPrivileges) Schema() sql.Schema { return sql.OkResultSchema }
+func (*FlushPrivileges) Schema() sql.Schema { return types.OkResultSchema }
 
 // Database implements the sql.Databaser interface.
 func (f *FlushPrivileges) Database() sql.Database {

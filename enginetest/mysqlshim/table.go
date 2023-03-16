@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Table represents a table for a local MySQL server.
@@ -45,7 +46,7 @@ var _ sql.CheckTable = Table{}
 var _ sql.StatisticsTable = Table{}
 var _ sql.PrimaryKeyAlterableTable = Table{}
 
-func (t Table) IndexedAccess(sql.Index) sql.IndexedTable {
+func (t Table) IndexedAccess(sql.IndexLookup) sql.IndexedTable {
 	panic("not implemented")
 }
 
@@ -138,7 +139,7 @@ func (t Table) Truncate(ctx *sql.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, err := sql.Int64.Convert(rows[0][0])
+	rowCount, err := types.Int64.Convert(rows[0][0])
 	if err != nil {
 		return 0, err
 	}
@@ -337,7 +338,7 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, err := sql.Uint64.Convert(rows[0][0])
+	rowCount, err := types.Uint64.Convert(rows[0][0])
 	if err != nil {
 		return 0, err
 	}

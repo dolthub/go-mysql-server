@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // If function returns the second value if the first is true, the third value otherwise.
@@ -69,7 +70,7 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if e == nil {
 		asBool = false
 	} else {
-		asBool, err = sql.ConvertToBool(e)
+		asBool, err = types.ConvertToBool(e)
 		if err != nil {
 			return nil, err
 		}

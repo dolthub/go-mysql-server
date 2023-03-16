@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Reverse is a function that returns the reverse of the text provided.
@@ -57,7 +58,7 @@ func (r *Reverse) Eval(
 		return nil, err
 	}
 
-	v, err = sql.LongText.Convert(v)
+	v, err = types.LongText.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +121,7 @@ func (r *Repeat) String() string {
 
 // Type implements the Expression interface.
 func (r *Repeat) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 // WithChildren implements the Expression interface.
@@ -142,7 +143,7 @@ func (r *Repeat) Eval(
 		return nil, err
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func (r *Repeat) Eval(
 		return nil, err
 	}
 
-	count, err = sql.Int32.Convert(count)
+	count, err = types.Int32.Convert(count)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +209,7 @@ func (r *Replace) String() string {
 
 // Type implements the Expression interface.
 func (r *Replace) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 // WithChildren implements the Expression interface.
@@ -230,7 +231,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +241,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	fromStr, err = sql.LongText.Convert(fromStr)
+	fromStr, err = types.LongText.Convert(fromStr)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +251,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	toStr, err = sql.LongText.Convert(toStr)
+	toStr, err = types.LongText.Convert(toStr)
 	if err != nil {
 		return nil, err
 	}

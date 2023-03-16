@@ -288,6 +288,7 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 	var newRanges []RangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
+
 			newRange, ok, err := currentRange.TryIntersect(potentialRange)
 			if err != nil {
 				b.isInvalid = true
@@ -316,4 +317,32 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 		return
 	}
 	b.ranges[colExpr] = newRanges
+}
+
+// SpatialIndexBuilder is like the IndexBuilder, but spatial
+type SpatialIndexBuilder struct {
+	idx Index
+	typ Type
+	rng RangeColumnExpr
+}
+
+func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
+	return &SpatialIndexBuilder{idx: idx, typ: idx.ColumnExpressionTypes()[0].Type}
+}
+
+func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBuilder {
+	b.rng = RangeColumnExpr{
+		LowerBound: Below{Key: lower},
+		UpperBound: Above{Key: upper},
+		Typ:        b.typ,
+	}
+	return b
+}
+
+func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
+	return IndexLookup{
+		Index:           b.idx,
+		Ranges:          RangeCollection{{b.rng}},
+		IsSpatialLookup: true,
+	}, nil
 }

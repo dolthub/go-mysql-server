@@ -15,11 +15,51 @@
 package analyzer
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
+
+type aliasDisambiguator struct {
+	n                   sql.Node
+	scope               *Scope
+	aliases             TableAliases
+	disambiguationIndex int
+}
+
+func (ad *aliasDisambiguator) GetAliases() (TableAliases, error) {
+	if ad.aliases == nil {
+		aliases, err := getTableAliases(ad.n, ad.scope)
+		if err != nil {
+			return nil, err
+		}
+		ad.aliases = aliases
+	}
+	return ad.aliases, nil
+}
+
+func (ad *aliasDisambiguator) Disambiguate(alias string) (string, error) {
+	nodeAliases, err := ad.GetAliases()
+	if err != nil {
+		return "", err
+	}
+
+	// all renamed aliases will be of the form <alias>_<disambiguationIndex++>
+	for {
+		ad.disambiguationIndex++
+		aliasName := fmt.Sprintf("%s_%d", alias, ad.disambiguationIndex)
+		if _, ok := nodeAliases[aliasName]; !ok {
+			return aliasName, nil
+		}
+	}
+}
+
+func newAliasDisambiguator(n sql.Node, scope *Scope) *aliasDisambiguator {
+	return &aliasDisambiguator{n: n, scope: scope}
+}
 
 // hoistSelectExists merges a WHERE EXISTS subquery scope with its outer
 // scope when the subquery filters on columns from the outer scope.
@@ -35,12 +75,14 @@ func hoistSelectExists(
 	scope *Scope,
 	sel RuleSelector,
 ) (sql.Node, transform.TreeIdentity, error) {
+	aliasDisambig := newAliasDisambiguator(n, scope)
+
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		return hoistExistSubqueries(scope, a, f, len(f.Schema())+len(scope.Schema()))
+		return hoistExistSubqueries(scope, a, f, len(f.Schema())+len(scope.Schema()), aliasDisambig)
 	})
 }
 
@@ -62,21 +104,30 @@ func simplifyPartialJoinParents(n sql.Node) sql.Node {
 // hoistExistSubqueries scans a filter for [NOT] WHERE EXISTS, and then attempts to
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
-func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeLen int) (sql.Node, transform.TreeIdentity, error) {
+func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeLen int, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
+
 	ret := filter.Child
 	var retFilters []sql.Expression
 	same := transform.SameTree
 	for _, f := range splitConjunction(filter.Expression) {
 		var joinType plan.JoinType
 		var s *hoistSubquery
+		var err error
 		switch e := f.(type) {
 		case *plan.ExistsSubquery:
 			joinType = plan.JoinTypeSemi
-			s = decorrelateOuterCols(e.Query, scopeLen)
+			s, err = decorrelateOuterCols(e.Query, scopeLen, aliasDisambig)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
 		case *expression.Not:
 			if esq, ok := e.Child.(*plan.ExistsSubquery); ok {
 				joinType = plan.JoinTypeAnti
-				s = decorrelateOuterCols(esq.Query, scopeLen)
+				s, err = decorrelateOuterCols(esq.Query, scopeLen, aliasDisambig)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
 			}
 		default:
 		}
@@ -95,15 +146,21 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 
 		retFilters = append(retFilters, s.innerFilters...)
 
+		var comment string
+		if c, ok := ret.(sql.CommentedNode); ok {
+			comment = c.Comment()
+		}
+
 		switch joinType {
 		case plan.JoinTypeAnti:
-			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...))
+			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
 		case plan.JoinTypeSemi:
-			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...))
+			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
 		default:
 			panic("expected JoinTypeSemi or JoinTypeAnti")
 		}
 		same = transform.NewTree
+
 	}
 
 	if same {
@@ -112,6 +169,7 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 	if len(retFilters) > 0 {
 		ret = plan.NewFilter(expression.JoinAnd(retFilters...), ret)
 	}
+	log.Debug(sql.DebugString(ret))
 	return ret, transform.NewTree, nil
 }
 
@@ -121,9 +179,18 @@ type hoistSubquery struct {
 	outerFilters []sql.Expression
 }
 
-// decorrelateOuterCols returns an optionally modified subquery and extracted
-// filters referencing an outer scope.
-func decorrelateOuterCols(e *plan.Subquery, scopeLen int) *hoistSubquery {
+type fakeNameable struct {
+	name string
+}
+
+var _ sql.Nameable = (*fakeNameable)(nil)
+
+func (f fakeNameable) Name() string { return f.name }
+
+// decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
+// If the subquery has aliases that conflict withoutside aliases, the internal aliases will be renamed to avoid
+// name collisions.
+func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
 	var outerFilters []sql.Expression
 	var innerFilters []sql.Expression
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -153,12 +220,82 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int) *hoistSubquery {
 	})
 
 	if same || len(outerFilters) == 0 {
-		return nil
+		return nil, nil
+	}
+
+	nodeAliases, err := getTableAliases(n, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	outsideAliases, err := aliasDisambig.GetAliases()
+	if err != nil {
+		return nil, err
+	}
+	conflicts, nonConflicted := outsideAliases.findConflicts(nodeAliases)
+	for _, goodAlias := range nonConflicted {
+		target, ok := nodeAliases[goodAlias]
+		if !ok {
+			return nil, fmt.Errorf("node alias %s is not in nodeAliases", goodAlias)
+		}
+		nameable := fakeNameable{name: goodAlias}
+		err = outsideAliases.add(nameable, target)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(conflicts) > 0 {
+		for _, conflict := range conflicts {
+
+			// conflict, need to rename
+			newAlias, err := aliasDisambig.Disambiguate(conflict)
+			if err != nil {
+				return nil, err
+			}
+			var tree transform.TreeIdentity
+			n, tree, err = renameAliases(n, conflict, newAlias)
+			if err != nil {
+				return nil, err
+			}
+			if tree == transform.SameTree {
+				return nil, fmt.Errorf("tree is unchanged after attempted rename")
+			}
+
+			// rename the aliases in the expressions
+			innerFilters, err = renameAliasesInExpressions(innerFilters, conflict, newAlias)
+			if err != nil {
+				return nil, err
+			}
+			outerFilters, err = renameAliasesInExpressions(outerFilters, conflict, newAlias)
+			if err != nil {
+				return nil, err
+			}
+
+			// alias was renamed, need to get the renamed target before adding to the outside aliases collection
+			nodeAliases, err = getTableAliases(n, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			// retrieve the new target
+			target, ok := nodeAliases[newAlias]
+			if !ok {
+				return nil, fmt.Errorf("node alias %s is not in nodeAliases", newAlias)
+			}
+
+			// add the new target to the outside aliases collection
+			nameable := fakeNameable{name: newAlias}
+			err = outsideAliases.add(nameable, target)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return &hoistSubquery{
 		inner:        simplifyPartialJoinParents(n),
 		innerFilters: innerFilters,
 		outerFilters: outerFilters,
-	}
+	}, nil
 }

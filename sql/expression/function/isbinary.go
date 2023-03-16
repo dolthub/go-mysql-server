@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // IsBinary is a function that returns whether a blob is binary or not.
@@ -58,7 +59,7 @@ func (ib *IsBinary) Eval(
 		return false, nil
 	}
 
-	blob, err := sql.LongBlob.Convert(v)
+	blob, err := types.LongBlob.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func (ib *IsBinary) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 // Type implements the Expression interface.
 func (ib *IsBinary) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 const sniffLen = 8000

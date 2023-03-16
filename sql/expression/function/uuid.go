@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // UUID()
@@ -73,7 +74,7 @@ func (u UUIDFunc) String() string {
 }
 
 func (u UUIDFunc) Type() sql.Type {
-	return sql.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
+	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
 func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -139,7 +140,7 @@ func (u IsUUID) String() string {
 }
 
 func (u IsUUID) Type() sql.Type {
-	return sql.Int8
+	return types.Int8
 }
 
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -249,7 +250,7 @@ func (ub UUIDToBin) String() string {
 }
 
 func (ub UUIDToBin) Type() sql.Type {
-	return sql.MustCreateBinary(query.Type_VARBINARY, int64(16))
+	return types.MustCreateBinary(query.Type_VARBINARY, int64(16))
 }
 
 func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -259,7 +260,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Get the inputted uuid as a string.
-	converted, err := sql.LongText.Convert(str)
+	converted, err := types.LongText.Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +294,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, err = sql.Int8.Convert(sf)
+	sf, err = types.Int8.Convert(sf)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +410,7 @@ func (bu BinToUUID) String() string {
 }
 
 func (bu BinToUUID) Type() sql.Type {
-	return sql.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
+	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
 func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -423,7 +424,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Get the inputted uuid as a string.
-	converted, err := sql.MustCreateBinary(query.Type_VARBINARY, int64(16)).Convert(str)
+	converted, err := types.MustCreateBinary(query.Type_VARBINARY, int64(16)).Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +437,6 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	parsed, err := uuid.FromBytes(asBytes)
 	if err != nil {
 		return nil, sql.ErrUuidUnableToParse.New(asBytes, err.Error())
-		return nil, err
 	}
 
 	// If no swap flag is passed we can return uuid's string format as is.
@@ -449,7 +449,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, err = sql.Int8.Convert(sf)
+	sf, err = types.Int8.Convert(sf)
 	if err != nil {
 		return nil, err
 	}

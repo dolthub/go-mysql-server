@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/test"
 )
 
@@ -45,8 +46,8 @@ func TestDeleteIndex(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}
 
 	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
@@ -91,8 +92,8 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}
 
 	sess := sql.NewBaseSession()
@@ -139,8 +140,8 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}
 
 	sess := sql.NewBaseSession()

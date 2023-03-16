@@ -51,6 +51,10 @@ func (n *ForeignKeyHandler) String() string {
 	return n.OriginalNode.String()
 }
 
+func (n *ForeignKeyHandler) DebugString() string {
+	return sql.DebugString(n.OriginalNode)
+}
+
 // Schema implements the interface sql.Node.
 func (n *ForeignKeyHandler) Schema() sql.Schema {
 	return n.OriginalNode.Schema()
@@ -92,7 +96,7 @@ func (n *ForeignKeyHandler) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 
 // Name implements the interface sql.Table.
 func (n *ForeignKeyHandler) Name() string {
-	return n.Name()
+	return n.Table.Name()
 }
 
 // Partitions implements the interface sql.Table.

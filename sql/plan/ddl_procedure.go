@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type CreateProcedure struct {
@@ -201,7 +202,7 @@ func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.Row{sql.NewOkResult(0)}, nil
+	return sql.Row{types.NewOkResult(0)}, nil
 }
 
 // Close implements the sql.RowIter interface.

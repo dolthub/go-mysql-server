@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // RenameUser represents the statement RENAME USER.
@@ -39,7 +40,7 @@ func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 
 // Schema implements the interface sql.Node.
 func (n *RenameUser) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.

@@ -27,6 +27,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Ascii implements the sql function "ascii" which returns the numeric value of the leftmost character
@@ -37,7 +38,7 @@ type Ascii struct {
 var _ sql.FunctionExpression = (*Ascii)(nil)
 
 func NewAscii(arg sql.Expression) sql.Expression {
-	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
+	return &Ascii{NewUnaryFunc(arg, "ASCII", types.Uint8)}
 }
 
 // Description implements sql.FunctionExpression
@@ -68,7 +69,7 @@ func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		val = x.Year()
 	}
 
-	x, err := sql.Text.Convert(val)
+	x, err := types.Text.Convert(val)
 
 	if err != nil {
 		return nil, err
@@ -97,7 +98,7 @@ func NewHex(arg sql.Expression) sql.Expression {
 	// Although this may seem convoluted, the Collation_Default is NOT guaranteed to be the character set's default
 	// collation. This ensures that you're getting the character set's default collation, and also works in the event
 	// that the Collation_Default is ever changed.
-	retType := sql.CreateLongText(sql.Collation_Default.CharacterSet().DefaultCollation())
+	retType := types.CreateLongText(sql.Collation_Default.CharacterSet().DefaultCollation())
 	return &Hex{NewUnaryFunc(arg, "HEX", retType)}
 }
 
@@ -120,7 +121,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch val := arg.(type) {
 	case string:
 		childType := h.Child.Type()
-		if sql.IsTextOnly(childType) {
+		if types.IsTextOnly(childType) {
 			// For string types we need to re-encode the internal string so that we get the correct hex output
 			encoder := childType.(sql.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(encodings.StringToBytes(val))
@@ -133,7 +134,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
-		n, err := sql.Int64.Convert(arg)
+		n, err := types.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -180,7 +181,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case []byte:
 		return hexForString(string(val)), nil
 
-	case sql.GeometryValue:
+	case types.GeometryValue:
 		return hexForString(string(val.Serialize())), nil
 
 	default:
@@ -253,7 +254,7 @@ type Unhex struct {
 var _ sql.FunctionExpression = (*Unhex)(nil)
 
 func NewUnhex(arg sql.Expression) sql.Expression {
-	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.LongBlob)}
+	return &Unhex{NewUnaryFunc(arg, "UNHEX", types.LongBlob)}
 }
 
 // Description implements sql.FunctionExpression
@@ -272,7 +273,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.LongText.Convert(arg)
+	val, err := types.LongText.Convert(arg)
 
 	if err != nil {
 		return nil, err
@@ -331,7 +332,7 @@ type Bin struct {
 var _ sql.FunctionExpression = (*Bin)(nil)
 
 func NewBin(arg sql.Expression) sql.Expression {
-	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
+	return &Bin{NewUnaryFunc(arg, "BIN", types.Text)}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -410,28 +411,28 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 		return int64(v), nil
 	case uint64:
 		if v > math.MaxInt64 {
-			return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+			return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
 		}
 		return int64(v), nil
 	case float32:
 		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
 			return int64(v), nil
 		}
-		return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+		return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
 	case float64:
 		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
 			return int64(v), nil
 		}
-		return 0, sql.ErrOutOfRange.New(v, sql.Int64)
+		return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
 	case decimal.Decimal:
 		if v.GreaterThan(decimal.NewFromInt(math.MaxInt64)) || v.LessThan(decimal.NewFromInt(math.MinInt64)) {
-			return 0, sql.ErrOutOfRange.New(v.String(), sql.Int64)
+			return 0, sql.ErrValueOutOfRange.New(v.String(), types.Int64)
 		}
 		return v.IntPart(), nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
-			return 0, sql.ErrInvalidValue.New(v, sql.Int64.String())
+			return 0, sql.ErrInvalidValue.New(v, types.Int64.String())
 		}
 		return i, nil
 	case string:
@@ -443,7 +444,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 		// If that fails, try as a float and truncate it to integral
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return 0, sql.ErrInvalidValue.New(v, sql.Int64.String())
+			return 0, sql.ErrInvalidValue.New(v, types.Int64.String())
 		}
 		return int64(f), nil
 	case bool:
@@ -454,7 +455,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 	case nil:
 		return 0, nil
 	default:
-		return 0, sql.ErrInvalidValueType.New(v, sql.Int64.String())
+		return 0, sql.ErrInvalidValueType.New(v, types.Int64.String())
 	}
 }
 
@@ -466,7 +467,7 @@ type Bitlength struct {
 var _ sql.FunctionExpression = (*Bitlength)(nil)
 
 func NewBitlength(arg sql.Expression) sql.Expression {
-	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}
+	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", types.Int32)}
 }
 
 // FunctionName implements sql.FunctionExpression

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // The BINARY operator converts the expression to a binary string (a string that has the binary character set and binary
@@ -39,7 +40,7 @@ func (b *Binary) String() string {
 }
 
 func (b *Binary) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
 }
 
 func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

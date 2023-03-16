@@ -19,9 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -72,7 +70,7 @@ type Session interface {
 	// initialization of readonly variables.
 	InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
-	SetUserVariable(ctx *Context, varName string, value interface{}) error
+	SetUserVariable(ctx *Context, varName string, value interface{}, typ Type) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
 	GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
 	// GetUserVariable returns this session's value of the user variable with the given name, along with its most
@@ -189,383 +187,6 @@ type TransactionSession interface {
 	ReleaseSavepoint(ctx *Context, transaction Transaction, name string) error
 }
 
-// BaseSession is the basic session implementation. Integrators should typically embed this type into their custom
-// session implementations to get base functionality.
-type BaseSession struct {
-	id     uint32
-	addr   string
-	client Client
-
-	// TODO(andy): in principle, we shouldn't
-	//   have concurrent access to the session.
-	//   Needs investigation.
-	mu sync.RWMutex
-
-	// |mu| protects the following state
-	logger           *logrus.Entry
-	currentDB        string
-	transactionDb    string
-	systemVars       map[string]interface{}
-	userVars         map[string]interface{}
-	idxReg           *IndexRegistry
-	viewReg          *ViewRegistry
-	warnings         []*Warning
-	warncnt          uint16
-	locks            map[string]bool
-	queriedDb        string
-	lastQueryInfo    map[string]int64
-	tx               Transaction
-	ignoreAutocommit bool
-
-	// When the MySQL database updates any tables related to privileges, it increments its counter. We then update our
-	// privilege set if our counter doesn't equal the database's counter.
-	privSetCounter uint64
-	privilegeSet   PrivilegeSet
-}
-
-func (s *BaseSession) GetLogger() *logrus.Entry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.logger == nil {
-		log := logrus.StandardLogger()
-		s.logger = logrus.NewEntry(log)
-	}
-	return s.logger
-}
-
-func (s *BaseSession) SetLogger(logger *logrus.Entry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.logger = logger
-}
-
-func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.ignoreAutocommit = ignore
-}
-
-func (s *BaseSession) GetIgnoreAutoCommit() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.ignoreAutocommit
-}
-
-var _ Session = (*BaseSession)(nil)
-
-func (s *BaseSession) SetTransactionDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.transactionDb = dbName
-}
-
-func (s *BaseSession) GetTransactionDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.transactionDb
-}
-
-// Address returns the server address.
-func (s *BaseSession) Address() string { return s.addr }
-
-// Client returns session's client information.
-func (s *BaseSession) Client() Client { return s.client }
-
-// SetClient implements the Session interface.
-func (s *BaseSession) SetClient(c Client) {
-	s.client = c
-	return
-}
-
-// GetAllSessionVariables implements the Session interface.
-func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
-	m := make(map[string]interface{})
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for k, v := range s.systemVars {
-		m[k] = v
-	}
-	return m
-}
-
-// SetSessionVariable implements the Session interface.
-func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
-	if !ok {
-		return ErrUnknownSystemVariable.New(sysVarName)
-	}
-	if !sysVar.Dynamic {
-		return ErrSystemVariableReadOnly.New(sysVarName)
-	}
-	return s.setSessVar(ctx, sysVar, sysVarName, value)
-}
-
-// InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
-func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
-	if !ok {
-		return ErrUnknownSystemVariable.New(sysVarName)
-	}
-
-	val, ok := s.systemVars[sysVar.Name]
-	if ok && val != sysVar.Default {
-		return ErrSystemVariableReinitialized.New(sysVarName)
-	}
-
-	return s.setSessVar(ctx, sysVar, sysVarName, value)
-}
-
-func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, sysVarName string, value interface{}) error {
-	if sysVar.Scope == SystemVariableScope_Global {
-		return ErrSystemVariableGlobalOnly.New(sysVarName)
-	}
-	convertedVal, err := sysVar.Type.Convert(value)
-	if err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.systemVars[sysVar.Name] = convertedVal
-	return nil
-}
-
-// SetUserVariable implements the Session interface.
-func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interface{}) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.userVars[strings.ToLower(varName)] = value
-	return nil
-}
-
-// GetSessionVariable implements the Session interface.
-func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
-	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
-	if !ok {
-		return nil, ErrUnknownSystemVariable.New(sysVarName)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	val, ok := s.systemVars[strings.ToLower(sysVarName)]
-	if !ok {
-		s.systemVars[strings.ToLower(sysVarName)] = sysVar.Default
-		val = sysVar.Default
-	}
-	if sysType, ok := sysVar.Type.(SetType); ok {
-		if sv, ok := val.(uint64); ok {
-			var err error
-			val, err = sysType.BitsToString(sv)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	return val, nil
-}
-
-// GetUserVariable implements the Session interface.
-func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, interface{}, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	val, ok := s.userVars[strings.ToLower(varName)]
-	if !ok {
-		return Null, nil, nil
-	}
-	return ApproximateTypeFromValue(val), val, nil
-}
-
-// GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
-func (s *BaseSession) GetCharacterSet() CharacterSetID {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	val, _ := s.systemVars[characterSetConnectionSysVarName]
-	if val == nil {
-		return CharacterSet_Unspecified
-	}
-	charSet, err := ParseCharacterSet(val.(string))
-	if err != nil {
-		panic(err) // shouldn't happen
-	}
-	return charSet
-}
-
-// GetCharacterSetResults returns the result character set for this session (defined by the system variable `character_set_results`).
-func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	val, _ := s.systemVars[characterSetResultsSysVarName]
-	if val == nil {
-		return CharacterSet_Unspecified
-	}
-	charSet, err := ParseCharacterSet(val.(string))
-	if err != nil {
-		panic(err) // shouldn't happen
-	}
-	return charSet
-}
-
-// GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
-func (s *BaseSession) GetCollation() CollationID {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	val, _ := s.systemVars[collationConnectionSysVarName]
-	if val == nil {
-		return Collation_Unspecified
-	}
-	valStr := val.(string)
-	collation, err := ParseCollation(nil, &valStr, false)
-	if err != nil {
-		panic(err) // shouldn't happen
-	}
-	return collation
-}
-
-// ValidateSession provides integrators a chance to do any custom validation of this session before any query is executed in it.
-func (s *BaseSession) ValidateSession(ctx *Context, dbName string) error {
-	return nil
-}
-
-// GetCurrentDatabase gets the current database for this session
-func (s *BaseSession) GetCurrentDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.currentDB
-}
-
-// SetCurrentDatabase sets the current database for this session
-func (s *BaseSession) SetCurrentDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.currentDB = dbName
-}
-
-// ID implements the Session interface.
-func (s *BaseSession) ID() uint32 { return s.id }
-
-// SetConnectionId sets the [id] for this session
-func (s *BaseSession) SetConnectionId(id uint32) {
-	s.id = id
-	return
-}
-
-// Warn stores the warning in the session.
-func (s *BaseSession) Warn(warn *Warning) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.warnings = append(s.warnings, warn)
-}
-
-// Warnings returns a copy of session warnings (from the most recent - the last one)
-// The function implements sql.Session interface
-func (s *BaseSession) Warnings() []*Warning {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	n := len(s.warnings)
-	warns := make([]*Warning, n)
-	for i := 0; i < n; i++ {
-		warns[i] = s.warnings[n-i-1]
-	}
-
-	return warns
-}
-
-// ClearWarnings cleans up session warnings
-func (s *BaseSession) ClearWarnings() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	cnt := uint16(len(s.warnings))
-	if s.warncnt == cnt {
-		if s.warnings != nil {
-			s.warnings = s.warnings[:0]
-		}
-		s.warncnt = 0
-	} else {
-		s.warncnt = cnt
-	}
-}
-
-// WarningCount returns a number of session warnings
-func (s *BaseSession) WarningCount() uint16 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return uint16(len(s.warnings))
-}
-
-// AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates
-func (s *BaseSession) AddLock(lockName string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.locks[lockName] = true
-	return nil
-}
-
-// DelLock removes a lock from the set of locks owned by this user
-func (s *BaseSession) DelLock(lockName string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	delete(s.locks, lockName)
-	return nil
-}
-
-// IterLocks iterates through all locks owned by this user
-func (s *BaseSession) IterLocks(cb func(name string) error) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for name := range s.locks {
-		err := cb(name)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// GetQueriedDatabase implements the Session interface.
-func (s *BaseSession) GetQueriedDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.queriedDb
-}
-
-// SetQueriedDatabase implements the Session interface.
-func (s *BaseSession) SetQueriedDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.queriedDb = dbName
-}
-
-func (s *BaseSession) GetIndexRegistry() *IndexRegistry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.idxReg
-}
-
-func (s *BaseSession) GetViewRegistry() *ViewRegistry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.viewReg
-}
-
-func (s *BaseSession) SetIndexRegistry(reg *IndexRegistry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.idxReg = reg
-}
-
-func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.viewReg = reg
-}
-
 type (
 	// TypedValue is a value along with its type.
 	TypedValue struct {
@@ -587,115 +208,8 @@ const (
 	LastInsertId = "last_insert_id"
 )
 
-func defaultLastQueryInfo() map[string]int64 {
-	return map[string]int64{
-		RowCount:     0,
-		FoundRows:    1, // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
-		LastInsertId: 0,
-	}
-}
-
-func (s *BaseSession) SetLastQueryInfo(key string, value int64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.lastQueryInfo[key] = value
-}
-
-func (s *BaseSession) GetLastQueryInfo(key string) int64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.lastQueryInfo[key]
-}
-
-// cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html
-func GetTmpdirSessionVar() string {
-	ret := os.Getenv("TMPDIR")
-	if ret != "" {
-		return ret
-	}
-
-	ret = os.Getenv("TEMP")
-	if ret != "" {
-		return ret
-	}
-
-	ret = os.Getenv("TMP")
-	if ret != "" {
-		return ret
-	}
-
-	return ""
-}
-
-// HasDefaultValue checks if session variable value is the default one.
-func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
-	val, err := s.GetSessionVariable(ctx, key)
-	if err == nil {
-		sysVar, _, ok := SystemVariables.GetGlobal(key)
-		if ok {
-			return sysVar.Default == val, val
-		}
-	}
-	return true, nil
-}
-
-func (s *BaseSession) GetTransaction() Transaction {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.tx
-}
-
-func (s *BaseSession) SetTransaction(tx Transaction) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.tx = tx
-}
-
-func (s *BaseSession) GetPrivilegeSet() (PrivilegeSet, uint64) {
-	return s.privilegeSet, s.privSetCounter
-}
-
-func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
-	s.privSetCounter = counter
-	s.privilegeSet = newPs
-}
-
-// NewBaseSessionWithClientServer creates a new session with data.
-func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
-	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	return &BaseSession{
-		addr:           server,
-		client:         client,
-		id:             id,
-		systemVars:     SystemVariables.NewSessionMap(),
-		userVars:       make(map[string]interface{}),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		mu:             sync.RWMutex{},
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
-	}
-}
-
 // Session ID 0 used as invalid SessionID
 var autoSessionIDs uint32 = 1
-
-// NewBaseSession creates a new empty session.
-func NewBaseSession() *BaseSession {
-	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	return &BaseSession{
-		id:             atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:     SystemVariables.NewSessionMap(),
-		userVars:       make(map[string]interface{}),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		mu:             sync.RWMutex{},
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
-	}
-}
 
 // Context of the query execution.
 type Context struct {
@@ -785,6 +299,13 @@ func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
 	return fn()
 }
 
+func Now() time.Time {
+	ctxNowFuncMutex.Lock()
+	defer ctxNowFuncMutex.Unlock()
+
+	return ctxNowFunc()
+}
+
 // NewContext creates a new query context. Options can be passed to configure
 // the context. If some aspect of the context is not configure, the default
 // value will be used.
@@ -817,7 +338,7 @@ func NewContext(
 	return c
 }
 
-// Applys the options given to the context. Mostly for tests, not safe for use after construction of the context.
+// ApplyOpts the options given to the context. Mostly for tests, not safe for use after construction of the context.
 func (c *Context) ApplyOpts(opts ...ContextOption) {
 	for _, opt := range opts {
 		opt(c)
@@ -843,6 +364,11 @@ func (c *Context) QueryTime() time.Time {
 	return c.queryTime
 }
 
+// SetQueryTime updates the queryTime to the given time
+func (c *Context) SetQueryTime(t time.Time) {
+	c.queryTime = t
+}
+
 // Span creates a new tracing span with the given context.
 // It will return the span and a new context that should be passed to all
 // children of this span.
@@ -864,11 +390,6 @@ func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(c.Context)
 
 	return c.WithContext(ctx), cancelFunc
-}
-
-func (c *Context) WithCurrentDB(db string) *Context {
-	c.SetCurrentDatabase(db)
-	return c
 }
 
 // WithContext returns a new context with the given underlying context.
@@ -1067,4 +588,44 @@ func (i *spanIter) Close(ctx *Context) error {
 		i.finish()
 	}
 	return i.iter.Close(ctx)
+}
+
+func defaultLastQueryInfo() map[string]int64 {
+	return map[string]int64{
+		RowCount:     0,
+		FoundRows:    1, // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
+		LastInsertId: 0,
+	}
+}
+
+// cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html
+func GetTmpdirSessionVar() string {
+	ret := os.Getenv("TMPDIR")
+	if ret != "" {
+		return ret
+	}
+
+	ret = os.Getenv("TEMP")
+	if ret != "" {
+		return ret
+	}
+
+	ret = os.Getenv("TMP")
+	if ret != "" {
+		return ret
+	}
+
+	return ""
+}
+
+// HasDefaultValue checks if session variable value is the default one.
+func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
+	val, err := s.GetSessionVariable(ctx, key)
+	if err == nil {
+		sysVar, _, ok := SystemVariables.GetGlobal(key)
+		if ok {
+			return sysVar.Default == val, val
+		}
+	}
+	return true, nil
 }

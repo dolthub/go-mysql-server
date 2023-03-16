@@ -35,6 +35,7 @@ type UnresolvedTable struct {
 var _ sql.Node = (*UnresolvedTable)(nil)
 var _ sql.Expressioner = (*UnresolvedTable)(nil)
 var _ sql.UnresolvedTable = (*UnresolvedTable)(nil)
+var _ Versionable = (*UnresolvedTable)(nil)
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name, db string) *UnresolvedTable {
@@ -141,6 +142,7 @@ type DeferredAsOfTable struct {
 var _ sql.Node = (*DeferredAsOfTable)(nil)
 var _ sql.Expressioner = (*DeferredAsOfTable)(nil)
 var _ sql.UnresolvedTable = (*DeferredAsOfTable)(nil)
+var _ Versionable = (*DeferredAsOfTable)(nil)
 
 func NewDeferredAsOfTable(t *ResolvedTable, asOf sql.Expression) *DeferredAsOfTable {
 	if asOf == nil {

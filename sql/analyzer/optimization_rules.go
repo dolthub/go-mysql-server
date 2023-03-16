@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // eraseProjection removes redundant Project nodes from the plan. A project is redundant if it doesn't alter the schema
@@ -86,7 +87,16 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	var topJoin sql.Node
 	node, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		join, ok := n.(*plan.JoinNode)
-		if !ok || !join.JoinType().IsInner() || join.JoinType().IsDegenerate() {
+		if !ok {
+			// no join
+			return n, transform.SameTree, nil
+		}
+
+		// update top join to be current join
+		topJoin = n
+
+		// no filter or left join: nothing to do to the tree
+		if join.JoinType().IsDegenerate() || !join.JoinType().IsInner() {
 			return n, transform.SameTree, nil
 		}
 
@@ -96,6 +106,11 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		var condFilters []sql.Expression
 		for _, e := range splitConjunction(join.JoinCond()) {
 			sources := expressionSources(e)
+			if len(sources) == 1 {
+				nonJoinFilters = append(nonJoinFilters, e)
+				filtersMoved++
+				continue
+			}
 
 			belongsToLeftTable := containsSources(leftSources, sources)
 			belongsToRightTable := containsSources(rightSources, sources)
@@ -109,7 +124,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		if filtersMoved == 0 {
-			topJoin = n
 			return topJoin, transform.SameTree, nil
 		}
 
@@ -135,21 +149,57 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return node, transform.SameTree, nil
 	}
 
-	return transform.NodeWithCtx(node, func(transform.Context) bool { return true }, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if c.Node != topJoin {
-			return c.Node, transform.SameTree, nil
+	if node == topJoin {
+		return plan.NewFilter(expression.JoinAnd(nonJoinFilters...), node), transform.NewTree, nil
+	}
+
+	resultNode, resultIdentity, err := transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		children := n.Children()
+		if len(children) == 0 {
+			return n, transform.SameTree, nil
 		}
-		switch n := c.Parent.(type) {
+
+		indexOfTopJoin := -1
+		for idx, child := range children {
+			if child == topJoin {
+				indexOfTopJoin = idx
+				break
+			}
+		}
+		if indexOfTopJoin == -1 {
+			return n, transform.SameTree, nil
+		}
+
+		switch n := n.(type) {
 		case *plan.Filter:
-			return plan.NewFilter(
-				expression.JoinAnd(append([]sql.Expression{n.Expression}, nonJoinFilters...)...),
-				n.Child), transform.NewTree, nil
+			nonJoinFilters = append(nonJoinFilters, n.Expression)
+			newExpression := expression.JoinAnd(nonJoinFilters...)
+			newFilter := plan.NewFilter(newExpression, topJoin)
+			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
+			return newFilter, transform.NewTree, nil
 		default:
-			return plan.NewFilter(
-				expression.JoinAnd(nonJoinFilters...),
-				c.Node), transform.NewTree, nil
+			newExpression := expression.JoinAnd(nonJoinFilters...)
+			newFilter := plan.NewFilter(newExpression, topJoin)
+			children[indexOfTopJoin] = newFilter
+			updatedNode, err := n.WithChildren(children...)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			nonJoinFilters = nil // clear nonJoinFilters so we know they were used
+			return updatedNode, transform.NewTree, nil
 		}
 	})
+
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	// if there are still nonJoinFilters left, it means we removed them but failed to re-insert them
+	if len(nonJoinFilters) > 0 {
+		return nil, transform.SameTree, sql.ErrDroppedJoinFilters.New()
+	}
+
+	return resultNode, resultIdentity, nil
 }
 
 // removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
@@ -277,6 +327,12 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 
 				return e, transform.SameTree, nil
 			case *expression.Like:
+				// if the charset is not utf8mb4, the last character used in optimization rule does not work
+				coll, _ := expression.GetCollationViaCoercion(e.Left)
+				charset := coll.CharacterSet()
+				if charset != sql.CharacterSet_utf8mb4 {
+					return e, transform.SameTree, nil
+				}
 				// TODO: maybe more cases to simplify
 				r, ok := e.Right.(*expression.Literal)
 				if !ok {
@@ -344,7 +400,8 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		}
 
 		if isFalse(e) {
-			return plan.EmptyTable, transform.NewTree, nil
+			emptyTable := plan.NewEmptyTableWithSchema(filter.Schema())
+			return emptyTable, transform.NewTree, nil
 		}
 
 		if isTrue(e) {
@@ -360,7 +417,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 
 func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == sql.Boolean && lit.Value() != nil {
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
 		switch v := lit.Value().(type) {
 		case bool:
 			return !v
@@ -373,7 +430,7 @@ func isFalse(e sql.Expression) bool {
 
 func isTrue(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == sql.Boolean && lit.Value() != nil {
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
 		switch v := lit.Value().(type) {
 		case bool:
 			return v

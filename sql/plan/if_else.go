@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // IfConditional represents IF statements only.
@@ -230,7 +231,7 @@ func (ieb *IfElseBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		}
 		var passedCondition bool
 		if condition != nil {
-			passedCondition, err = sql.ConvertToBool(condition)
+			passedCondition, err = types.ConvertToBool(condition)
 			if err != nil {
 				return nil, err
 			}

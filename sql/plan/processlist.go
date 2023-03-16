@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type process struct {
@@ -33,11 +34,15 @@ type process struct {
 }
 
 func (p process) toRow() sql.Row {
+	var db interface{}
+	if p.db != "" {
+		db = p.db
+	}
 	return sql.NewRow(
 		p.id,
 		p.user,
 		p.host,
-		p.db,
+		db,
 		p.command,
 		p.time,
 		p.state,
@@ -46,14 +51,14 @@ func (p process) toRow() sql.Row {
 }
 
 var processListSchema = sql.Schema{
-	{Name: "Id", Type: sql.Int64},
-	{Name: "User", Type: sql.LongText},
-	{Name: "Host", Type: sql.LongText},
-	{Name: "db", Type: sql.LongText},
-	{Name: "Command", Type: sql.LongText},
-	{Name: "Time", Type: sql.Int64},
-	{Name: "State", Type: sql.LongText},
-	{Name: "Info", Type: sql.LongText},
+	{Name: "Id", Type: types.Int64},
+	{Name: "User", Type: types.LongText},
+	{Name: "Host", Type: types.LongText},
+	{Name: "db", Type: types.LongText},
+	{Name: "Command", Type: types.LongText},
+	{Name: "Time", Type: types.Int64},
+	{Name: "State", Type: types.LongText},
+	{Name: "Info", Type: types.LongText},
 }
 
 // ShowProcessList shows a list of all current running processes.
@@ -116,7 +121,7 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			status = append(status, printer.String())
 		}
 
-		if len(status) == 0 {
+		if len(status) == 0 && proc.Command == sql.ProcessCommandQuery {
 			status = []string{"running"}
 		}
 
@@ -125,10 +130,10 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			user:    proc.User,
 			time:    int64(proc.Seconds()),
 			state:   strings.Join(status, ""),
-			command: "Query",
-			host:    ctx.Session.Client().Address,
+			command: string(proc.Command),
+			host:    proc.Host,
 			info:    proc.Query,
-			db:      p.Database,
+			db:      proc.Database,
 		}.toRow()
 	}
 

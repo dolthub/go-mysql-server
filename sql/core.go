@@ -279,58 +279,6 @@ func IsTrue(val interface{}) bool {
 	return ok && res
 }
 
-// TypesEqual compares two Types and returns whether they are equivalent.
-func TypesEqual(a, b Type) bool {
-	// TODO: replace all of the Type() == Type() calls with TypesEqual
-
-	// We can assume they have the same implementing type if this passes, so we have to check the parameters
-	if a.Type() != b.Type() {
-		return false
-	}
-	// Some types cannot be compared structurally as they contain non-comparable types (such as slices), so we handle
-	// those separately.
-	switch at := a.(type) {
-	case enumType:
-		aEnumType := at
-		bEnumType := b.(enumType)
-		if len(aEnumType.indexToVal) != len(bEnumType.indexToVal) {
-			return false
-		}
-		for i := 0; i < len(aEnumType.indexToVal); i++ {
-			if aEnumType.indexToVal[i] != bEnumType.indexToVal[i] {
-				return false
-			}
-		}
-		return aEnumType.collation == bEnumType.collation
-	case setType:
-		aSetType := at
-		bSetType := b.(setType)
-		if len(aSetType.bitToVal) != len(bSetType.bitToVal) {
-			return false
-		}
-		for bit, aVal := range aSetType.bitToVal {
-			if bVal, ok := bSetType.bitToVal[bit]; ok && aVal != bVal {
-				return false
-			}
-		}
-		return aSetType.collation == bSetType.collation
-	case TupleType:
-		if tupA, ok := a.(TupleType); ok {
-			if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
-				for i := range tupA {
-					if !TypesEqual(tupA[i], tupB[i]) {
-						return false
-					}
-				}
-				return true
-			}
-		}
-		return false
-	default:
-		return a == b
-	}
-}
-
 // DebugStringer is shared by implementors of Node and Expression, and is used for debugging the analyzer. It allows
 // a node or expression to be printed in greater detail than its default String() representation.
 type DebugStringer interface {
@@ -365,6 +313,86 @@ type Node2 interface {
 	// RowIter2 produces a row iterator from this node. The current row frame being
 	// evaluated is provided, as well the context of the query.
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
+}
+
+var SystemVariables SystemVariableRegistry
+
+// SystemVariableRegistry is a registry of system variables. Each session gets its own copy of all values via the
+// SessionMap() method.
+type SystemVariableRegistry interface {
+	// AddSystemVariables adds the given system variables to this registry
+	AddSystemVariables(sysVars []SystemVariable)
+	// AssignValues assigns the given values to the system variables in this registry
+	AssignValues(vals map[string]interface{}) error
+	// NewSessionMap returns a map of system variables values that can be used by a session
+	NewSessionMap() map[string]SystemVarValue
+	// GetGlobal returns the global value of the system variable with the given name
+	GetGlobal(name string) (SystemVariable, interface{}, bool)
+	// SetGlobal sets the global value of the system variable with the given name
+	SetGlobal(name string, val interface{}) error
+	// GetAllGlobalVariables returns a copy of all global variable values.
+	GetAllGlobalVariables() map[string]interface{}
+}
+
+// SystemVariable represents a system variable.
+type SystemVariable struct {
+	// Name is the name of the system variable.
+	Name string
+	// Scope defines the scope of the system variable, which is either Global, Session, or Both.
+	Scope SystemVariableScope
+	// Dynamic defines whether the variable may be written to during runtime. Variables with this set to `false` will
+	// return an error if a user attempts to set a value.
+	Dynamic bool
+	// SetVarHintApplies defines if the variable may be set for a single query using SET_VAR().
+	// https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html#optimizer-hints-set-var
+	SetVarHintApplies bool
+	// Type defines the type of the system variable. This may be a special type not accessible to standard MySQL operations.
+	Type Type
+	// Default defines the default value of the system variable.
+	Default interface{}
+}
+
+// SystemVariableScope represents the scope of a system variable.
+type SystemVariableScope byte
+
+const (
+	// SystemVariableScope_Global is set when the system variable exists only in the global context.
+	SystemVariableScope_Global SystemVariableScope = iota
+	// SystemVariableScope_Session is set when the system variable exists only in the session context.
+	SystemVariableScope_Session
+	// SystemVariableScope_Both is set when the system variable exists in both the global and session contexts.
+	SystemVariableScope_Both
+	// SystemVariableScope_Persist is set when the system variable is global and persisted.
+	SystemVariableScope_Persist
+	// SystemVariableScope_PersistOnly is set when the system variable is persisted outside of server context.
+	SystemVariableScope_PersistOnly
+	// SystemVariableScope_ResetPersist is used to remove a persisted variable
+	SystemVariableScope_ResetPersist
+)
+
+// String returns the scope as an uppercase string.
+func (s SystemVariableScope) String() string {
+	switch s {
+	case SystemVariableScope_Global:
+		return "GLOBAL"
+	case SystemVariableScope_Session:
+		return "SESSION"
+	case SystemVariableScope_Persist:
+		return "GLOBAL, PERSIST"
+	case SystemVariableScope_PersistOnly:
+		return "PERSIST"
+	case SystemVariableScope_ResetPersist:
+		return "RESET PERSIST"
+	case SystemVariableScope_Both:
+		return "GLOBAL, SESSION"
+	default:
+		return "UNKNOWN_SYSTEM_SCOPE"
+	}
+}
+
+type SystemVarValue struct {
+	Var SystemVariable
+	Val interface{}
 }
 
 type NameableNode interface {

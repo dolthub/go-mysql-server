@@ -24,19 +24,20 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestPushdownProjectionToTables(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "mytable"},
-		{Name: "f", Type: sql.Float64, Source: "mytable"},
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: types.Int32, Source: "mytable"},
+		{Name: "f", Type: types.Float64, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
-		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "i2", Type: types.Int32, Source: "mytable2"},
+		{Name: "f2", Type: types.Float64, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -51,16 +52,16 @@ func TestPushdownProjectionToTables(t *testing.T) {
 			name: "pushdown projections to tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewOr(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", false),
 						),
 					),
 					plan.NewCrossJoin(
@@ -71,16 +72,16 @@ func TestPushdownProjectionToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewOr(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", false),
 						),
 					),
 					plan.NewCrossJoin(
@@ -97,15 +98,15 @@ func TestPushdownProjectionToTables(t *testing.T) {
 
 func TestPushdownFilterToTables(t *testing.T) {
 	table := memory.NewFilteredTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "mytable"},
-		{Name: "f", Type: sql.Float64, Source: "mytable"},
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: types.Int32, Source: "mytable"},
+		{Name: "f", Type: types.Float64, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table2 := memory.NewFilteredTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
-		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "i2", Type: types.Int32, Source: "mytable2"},
+		{Name: "f2", Type: types.Float64, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -119,16 +120,16 @@ func TestPushdownFilterToTables(t *testing.T) {
 			name: "pushdown filter to tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewAnd(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", false),
 						),
 					),
 					plan.NewCrossJoin(
@@ -139,20 +140,20 @@ func TestPushdownFilterToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(5, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(
 						newFilteredTableWithFilters(table, []sql.Expression{
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-								expression.NewLiteral(3.14, sql.Float64),
+								expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", false),
+								expression.NewLiteral(3.14, types.Float64),
 							),
 						}), nil, nil),
 					plan.NewResolvedTable(
 						newFilteredTableWithFilters(table2, []sql.Expression{
 							expression.NewIsNull(
-								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+								expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", false),
 							),
 						}), nil, nil),
 				),
@@ -162,16 +163,16 @@ func TestPushdownFilterToTables(t *testing.T) {
 			name: "pushdown filter to aliased tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", false),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
+							expression.NewGetFieldWithTable(0, types.Int32, "t2", "i2", false),
 						),
 					),
 					plan.NewCrossJoin(
@@ -184,22 +185,22 @@ func TestPushdownFilterToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewCrossJoin(
 					plan.NewTableAlias("t1",
 						plan.NewResolvedTable(
 							newFilteredTableWithFilters(table, []sql.Expression{
 								expression.NewEquals(
-									expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", false),
-									expression.NewLiteral(3.14, sql.Float64),
+									expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", false),
+									expression.NewLiteral(3.14, types.Float64),
 								),
 							}), nil, nil)),
 					plan.NewTableAlias("t2",
 						plan.NewResolvedTable(
 							newFilteredTableWithFilters(table2, []sql.Expression{
 								expression.NewIsNull(
-									expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", false),
+									expression.NewGetFieldWithTable(0, types.Int32, "t2", "i2", false),
 								),
 							}), nil, nil)),
 				),
@@ -209,16 +210,16 @@ func TestPushdownFilterToTables(t *testing.T) {
 			name: "push filters down onto projected table",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(1, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(1, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewAnd(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(0, types.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "i2", false),
+							expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "i2", false),
 						),
 					),
 					plan.NewCrossJoin(
@@ -233,18 +234,18 @@ func TestPushdownFilterToTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(5, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(
 						newFilteredTableWithProjectionsAndFilters(
 							table, []string{"f"}, []sql.Expression{
-								eq(expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
+								eq(expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", false), expression.NewLiteral(3.14, types.Float64)),
 							}), nil, nil),
 					plan.NewResolvedTable(
 						newFilteredTableWithProjectionsAndFilters(
 							table2, []string{"t2", "i2"}, []sql.Expression{
-								expression.NewIsNull(expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false)),
+								expression.NewIsNull(expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", false)),
 							}), nil, nil),
 				),
 			),
@@ -256,15 +257,15 @@ func TestPushdownFilterToTables(t *testing.T) {
 
 func TestPushdownFiltersAboveTables(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "mytable"},
-		{Name: "f", Type: sql.Float64, Source: "mytable"},
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "i", Type: types.Int32, Source: "mytable"},
+		{Name: "f", Type: types.Float64, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
-		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "i2", Type: types.Int32, Source: "mytable2"},
+		{Name: "f2", Type: types.Float64, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	db := memory.NewDatabase("mydb")
@@ -278,22 +279,22 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			name: "pushdown filters to under join node",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
+								expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Int32, "mytable2", "t2", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 					),
@@ -305,25 +306,25 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						plan.NewResolvedTable(table, nil, nil),
 					),
 					plan.NewFilter(
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
+								expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "t2", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 						plan.NewResolvedTable(table2, nil, nil),
@@ -335,22 +336,22 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			name: "pushdown filters to under join node, aliased tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
+								expression.NewGetFieldWithTable(3, types.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Int32, "t2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Int32, "t2", "t2", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 					),
@@ -366,13 +367,13 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewCrossJoin(
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						plan.NewTableAlias("t1",
 							plan.NewResolvedTable(table, nil, nil),
@@ -381,12 +382,12 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 					plan.NewFilter(
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
+								expression.NewGetFieldWithTable(0, types.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Int32, "t2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Int32, "t2", "t2", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 						plan.NewTableAlias("t2",
@@ -400,16 +401,16 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			name: "pushdown filter to left join",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(2, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(2, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewAnd(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", false),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewIsNull(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", false),
+							expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", false),
 						),
 					),
 					plan.NewLeftOuterJoin(
@@ -421,17 +422,17 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
+					expression.NewGetFieldWithTable(5, types.Text, "mytable2", "t2", false),
 				},
 				plan.NewFilter(
 					expression.NewIsNull(
-						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
+						expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "i2", false),
 					),
 					plan.NewLeftOuterJoin(
 						plan.NewFilter(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
-								expression.NewLiteral(3.14, sql.Float64),
+								expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", false),
+								expression.NewLiteral(3.14, types.Float64),
 							),
 							plan.NewResolvedTable(table, nil, nil),
 						),
@@ -445,22 +446,22 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			name: "filter contains join condition",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+								expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
+								expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "i2", true),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
-								expression.NewLiteral(20, sql.Int32),
+								expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(20, types.Int32),
 							),
 						),
 					),
@@ -472,25 +473,25 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+						expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
+						expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "i2", true),
 					),
 					plan.NewCrossJoin(
 						plan.NewFilter(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-								expression.NewLiteral(3.14, sql.Float64),
+								expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+								expression.NewLiteral(3.14, types.Float64),
 							),
 							plan.NewResolvedTable(table, nil, nil),
 						),
 						plan.NewFilter(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-								expression.NewLiteral(20, sql.Int32),
+								expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(20, types.Int32),
 							),
 							plan.NewResolvedTable(table2, nil, nil),
 						),
@@ -502,15 +503,15 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			name: "filter contains a subquery",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					plan.NewInSubquery(
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+						expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
 						plan.NewSubquery(
 							plan.NewProject(
 								[]sql.Expression{
-									expression.NewLiteral(1, sql.Int32),
+									expression.NewLiteral(1, types.Int32),
 								},
 								plan.EmptyTable,
 							),
@@ -534,12 +535,12 @@ func TestPushdownIndex(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	myTableF := &sql.Column{Name: "f", Type: sql.Float64, Source: "mytable"}
-	myTableI := &sql.Column{Name: "i", Type: sql.Int32, Source: "mytable", PrimaryKey: true}
+	myTableF := &sql.Column{Name: "f", Type: types.Float64, Source: "mytable"}
+	myTableI := &sql.Column{Name: "i", Type: types.Int32, Source: "mytable", PrimaryKey: true}
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		myTableI,
 		myTableF,
-		{Name: "t", Type: sql.Text, Source: "mytable"},
+		{Name: "t", Type: types.Text, Source: "mytable"},
 	}), nil)
 
 	table.EnablePrimaryKeyIndexes()
@@ -557,11 +558,11 @@ func TestPushdownIndex(t *testing.T) {
 	fmt.Sprintf("%v", idxtable1I)
 	idxTable1F := table1Idxes[1]
 
-	mytable2I := &sql.Column{Name: "i2", Type: sql.Int32, Source: "mytable2", PrimaryKey: true}
+	mytable2I := &sql.Column{Name: "i2", Type: types.Int32, Source: "mytable2", PrimaryKey: true}
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		mytable2I,
-		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
-		{Name: "t2", Type: sql.Text, Source: "mytable2"},
+		{Name: "f2", Type: types.Float64, Source: "mytable2"},
+		{Name: "t2", Type: types.Text, Source: "mytable2"},
 	}), nil)
 
 	table2.EnablePrimaryKeyIndexes()
@@ -580,19 +581,19 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-						expression.NewLiteral(3.14, sql.Float64),
+						expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+						expression.NewLiteral(3.14, types.Float64),
 					),
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				mustStaticIta(
 					plan.NewResolvedTable(table, nil, nil),
@@ -604,17 +605,17 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index with extra predicate",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 					),
 					plan.NewResolvedTable(table, nil, nil),
@@ -622,12 +623,12 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-						expression.NewLiteral("hello", sql.Text),
+						expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+						expression.NewLiteral("hello", types.Text),
 					),
 					mustStaticIta(
 						plan.NewResolvedTable(table, nil, nil),
@@ -640,22 +641,22 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index with extra predicates",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -664,17 +665,17 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "mytable", "t", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					mustStaticIta(
@@ -688,17 +689,17 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index to each of two tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 					),
 					plan.NewCrossJoin(
@@ -709,7 +710,7 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
 					mustStaticIta(
@@ -728,20 +729,20 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index to each of two tables, filters already pushed down",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						plan.NewResolvedTable(table, nil, nil),
 					),
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(0, types.Int32, "mytable2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						plan.NewResolvedTable(table2, nil, nil),
 					),
@@ -749,7 +750,7 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
 					mustStaticIta(
@@ -767,7 +768,7 @@ func TestPushdownIndex(t *testing.T) {
 			name: "Index already pushed down, no change to plan",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
 					mustStaticIta(
@@ -785,22 +786,22 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index to each of two tables, extra predicates",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
+								expression.NewGetFieldWithTable(3, types.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(21, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Int32, "mytable2", "t2", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Int32, "mytable2", "t2", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 					),
@@ -812,7 +813,7 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "mytable", "i", true),
 				},
 				plan.NewCrossJoin(
 					mustStaticIta(
@@ -821,8 +822,8 @@ func TestPushdownIndex(t *testing.T) {
 					),
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "t2", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Int32, "mytable2", "t2", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 						mustStaticIta(
 							plan.NewResolvedTable(table2, nil, nil),
@@ -836,12 +837,12 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index on aliased table",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-						expression.NewLiteral(3.14, sql.Float64),
+						expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+						expression.NewLiteral(3.14, types.Float64),
 					),
 					plan.NewTableAlias("t1",
 						plan.NewResolvedTable(table, nil, nil),
@@ -850,12 +851,12 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-						expression.NewLiteral(3.14, sql.Float64),
+						expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+						expression.NewLiteral(3.14, types.Float64),
 					),
 					plan.NewTableAlias("t1",
 						mustStaticIta(
@@ -870,17 +871,17 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index on aliased table, extra predicate",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 					),
 					plan.NewTableAlias("t1",
@@ -890,17 +891,17 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-							expression.NewLiteral("hello", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+							expression.NewLiteral("hello", types.Text),
 						),
 					),
 					plan.NewTableAlias("t1",
@@ -916,17 +917,17 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index to each of two aliased tables",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(3, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 					),
 					plan.NewCrossJoin(
@@ -941,13 +942,13 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewCrossJoin(
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-							expression.NewLiteral(3.14, sql.Float64),
+							expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+							expression.NewLiteral(3.14, types.Float64),
 						),
 						plan.NewTableAlias("t1",
 							mustStaticIta(
@@ -958,8 +959,8 @@ func TestPushdownIndex(t *testing.T) {
 					),
 					plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(0, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						plan.NewTableAlias("t2",
 							mustStaticIta(
@@ -975,28 +976,28 @@ func TestPushdownIndex(t *testing.T) {
 			name: "single index to each of two aliased tables, extra predicates",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-								expression.NewLiteral(3.14, sql.Float64),
+								expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+								expression.NewLiteral(3.14, types.Float64),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
+								expression.NewGetFieldWithTable(3, types.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, types.Int32),
 							),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1012,18 +1013,18 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewCrossJoin(
 					plan.NewFilter(
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "t1", "f", true),
-								expression.NewLiteral(3.14, sql.Float64),
+								expression.NewGetFieldWithTable(1, types.Float64, "t1", "f", true),
+								expression.NewLiteral(3.14, types.Float64),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t1", "t", true),
-								expression.NewLiteral("hello", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "t1", "t", true),
+								expression.NewLiteral("hello", types.Text),
 							),
 						),
 						plan.NewTableAlias("t1",
@@ -1036,12 +1037,12 @@ func TestPushdownIndex(t *testing.T) {
 					plan.NewFilter(
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-								expression.NewLiteral(21, sql.Int32),
+								expression.NewGetFieldWithTable(0, types.Int32, "t2", "i2", true),
+								expression.NewLiteral(21, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(2, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 						plan.NewTableAlias("t2",
@@ -1058,22 +1059,22 @@ func TestPushdownIndex(t *testing.T) {
 			name: "two aliased tables, indexed join, no index on secondary table",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(3, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-								expression.NewLiteral(100, sql.Int32),
+								expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
+								expression.NewLiteral(100, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1086,12 +1087,12 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewLookupJoin(plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-						expression.NewLiteral(100, sql.Int32),
+						expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
+						expression.NewLiteral(100, types.Int32),
 					),
 					plan.NewTableAlias("t1",
 						mustStaticIta(
@@ -1102,12 +1103,12 @@ func TestPushdownIndex(t *testing.T) {
 				), plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(0, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					plan.NewTableAlias("t2",
@@ -1120,22 +1121,22 @@ func TestPushdownIndex(t *testing.T) {
 			name: "two aliased tables, indexed join, index on secondary table",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(3, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-								expression.NewLiteral(100, sql.Int32),
+								expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
+								expression.NewLiteral(100, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1151,12 +1152,12 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewLookupJoin(plan.NewFilter(
 					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-						expression.NewLiteral(100, sql.Int32),
+						expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
+						expression.NewLiteral(100, types.Int32),
 					),
 					plan.NewTableAlias("t1",
 						mustStaticIta(
@@ -1167,12 +1168,12 @@ func TestPushdownIndex(t *testing.T) {
 				), plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(0, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "t2", "t2", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(2, types.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					plan.NewTableAlias("t2",
@@ -1188,22 +1189,22 @@ func TestPushdownIndex(t *testing.T) {
 			name: "two aliased tables, left indexed join",
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(3, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						and(
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-								expression.NewLiteral(100, sql.Int32),
+								expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
+								expression.NewLiteral(100, types.Int32),
 							),
 							expression.NewEquals(
-								expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-								expression.NewLiteral("goodbye", sql.Text),
+								expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+								expression.NewLiteral("goodbye", types.Text),
 							),
 						),
 					),
@@ -1216,23 +1217,23 @@ func TestPushdownIndex(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
+					expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
 				},
 				plan.NewFilter(
 					and(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(3, sql.Int32, "t2", "i2", true),
-							expression.NewLiteral(21, sql.Int32),
+							expression.NewGetFieldWithTable(3, types.Int32, "t2", "i2", true),
+							expression.NewLiteral(21, types.Int32),
 						),
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(5, sql.Text, "t2", "t2", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewGetFieldWithTable(5, types.Text, "t2", "t2", true),
+							expression.NewLiteral("goodbye", types.Text),
 						),
 					),
 					plan.NewLeftOuterLookupJoin(plan.NewFilter(
 						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "t1", "i", true),
-							expression.NewLiteral(100, sql.Int32),
+							expression.NewGetFieldWithTable(0, types.Int32, "t1", "i", true),
+							expression.NewLiteral(100, types.Int32),
 						),
 						plan.NewTableAlias("t1",
 							mustStaticIta(

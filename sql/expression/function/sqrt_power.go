@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Sqrt is a function that returns the square value of the number provided.
@@ -50,7 +51,7 @@ func (s *Sqrt) String() string {
 
 // Type implements the Expression interface.
 func (s *Sqrt) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 // IsNullable implements the Expression interface.
@@ -78,7 +79,7 @@ func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	child, err = sql.Float64.Convert(child)
+	child, err = types.Float64.Convert(child)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +115,7 @@ func (p *Power) Description() string {
 }
 
 // Type implements the Expression interface.
-func (p *Power) Type() sql.Type { return sql.Float64 }
+func (p *Power) Type() sql.Type { return types.Float64 }
 
 // IsNullable implements the Expression interface.
 func (p *Power) IsNullable() bool { return p.Left.IsNullable() || p.Right.IsNullable() }
@@ -142,7 +143,7 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	left, err = sql.Float64.Convert(left)
+	left, err = types.Float64.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +157,7 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	right, err = sql.Float64.Convert(right)
+	right, err = types.Float64.Convert(right)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestStrCmp(t *testing.T) {
@@ -33,24 +34,24 @@ func TestStrCmp(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"equal strings", sql.Text, sql.Text, sql.NewRow("a", "a"), int(0), nil},
-		{"first string is smaller", sql.Text, sql.Text, sql.NewRow("a", "b"), int(-1), nil},
-		{"second string is smaller", sql.Text, sql.Text, sql.NewRow("b", "a"), int(1), nil},
-		{"first argument is null", sql.Text, sql.Text, sql.NewRow(nil, "a"), nil, nil},
-		{"second argument is null", sql.Text, sql.Text, sql.NewRow("a", nil), nil, nil},
-		{"both arguments are null", sql.Text, sql.Text, sql.NewRow(nil, nil), nil, nil},
-		{"first argument is text, second argument is not text", sql.Text, sql.Date, sql.NewRow("a", 2022), int(1), nil},
-		{"first argument is not text, second argument is text", sql.Int8, sql.Text, sql.NewRow(1, "1"), int(0), nil},
-		{"both arguments are non-text, different types", sql.Int8, sql.Date, sql.NewRow(3, 2007), int(1), nil},
-		{"type coercion, equal arguments", sql.Int8, sql.Int8, sql.NewRow(1, 1), int(0), nil},
-		{"type coercion, first argument is smaller", sql.Int8, sql.Int8, sql.NewRow(0, 1), int(-1), nil},
-		{"type coercion, second argument is smaller", sql.Int8, sql.Int8, sql.NewRow(1, 0), int(1), nil},
+		{"equal strings", types.Text, types.Text, sql.NewRow("a", "a"), int(0), nil},
+		{"first string is smaller", types.Text, types.Text, sql.NewRow("a", "b"), int(-1), nil},
+		{"second string is smaller", types.Text, types.Text, sql.NewRow("b", "a"), int(1), nil},
+		{"first argument is null", types.Text, types.Text, sql.NewRow(nil, "a"), nil, nil},
+		{"second argument is null", types.Text, types.Text, sql.NewRow("a", nil), nil, nil},
+		{"both arguments are null", types.Text, types.Text, sql.NewRow(nil, nil), nil, nil},
+		{"first argument is text, second argument is not text", types.Text, types.Date, sql.NewRow("a", 2022), int(1), nil},
+		{"first argument is not text, second argument is text", types.Int8, types.Text, sql.NewRow(1, "1"), int(0), nil},
+		{"both arguments are non-text, different types", types.Int8, types.Date, sql.NewRow(3, 2007), int(1), nil},
+		{"type coercion, equal arguments", types.Int8, types.Int8, sql.NewRow(1, 1), int(0), nil},
+		{"type coercion, first argument is smaller", types.Int8, types.Int8, sql.NewRow(0, 1), int(-1), nil},
+		{"type coercion, second argument is smaller", types.Int8, types.Int8, sql.NewRow(1, 0), int(1), nil},
 		// TODO: returning different results from MySQL
 		// {"same character set, both case sensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_as_cs), sql.CreateTinyText(sql.Collation_utf8mb4_cs_0900_as_cs), sql.NewRow("a", "a"), nil, sql.ErrCollationIllegalMix},
 		// {"same character set, both case insensitive", sql.CreateTinyText(sql.Collation_latin1_general_ci), sql.CreateTinyText(sql.Collation_latin1_german1_ci), sql.NewRow("a", "a"), nil, sql.ErrCollationIllegalMix},
-		{"different character sets, both case sensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_as_cs), sql.CreateTinyText(sql.Collation_latin1_general_cs), sql.NewRow("a", "a"), int(0), nil},
-		{"different character sets, both case insensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_ai_ci), sql.CreateTinyText(sql.Collation_latin1_general_ci), sql.NewRow("a", "a"), int(0), nil},
-		{"different character sets, one case sensitive, one case insensitive", sql.CreateTinyText(sql.Collation_utf8mb4_0900_ai_ci), sql.CreateTinyText(sql.Collation_latin1_general_cs), sql.NewRow("a", "a"), int(0), nil},
+		{"different character sets, both case sensitive", types.CreateTinyText(sql.Collation_utf8mb4_0900_as_cs), types.CreateTinyText(sql.Collation_latin1_general_cs), sql.NewRow("a", "a"), int(0), nil},
+		{"different character sets, both case insensitive", types.CreateTinyText(sql.Collation_utf8mb4_0900_ai_ci), types.CreateTinyText(sql.Collation_latin1_general_ci), sql.NewRow("a", "a"), int(0), nil},
+		{"different character sets, one case sensitive, one case insensitive", types.CreateTinyText(sql.Collation_utf8mb4_0900_ai_ci), types.CreateTinyText(sql.Collation_latin1_general_cs), sql.NewRow("a", "a"), int(0), nil},
 	}
 
 	for _, tt := range testCases {
@@ -75,16 +76,16 @@ func TestStrCmp(t *testing.T) {
 	t.Run("too many arguments", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewStrCmp(expression.NewLiteral('a', sql.Text), expression.NewLiteral('b', sql.Text))
-		_, err := f.WithChildren(expression.NewLiteral('a', sql.Text), expression.NewLiteral('b', sql.Text), expression.NewLiteral('c', sql.Text))
+		f := NewStrCmp(expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text))
+		_, err := f.WithChildren(expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text), expression.NewLiteral('c', types.Text))
 		require.Error(err)
 	})
 
 	t.Run("too few arguments", func(t *testing.T) {
 		require := require.New(t)
 
-		f := NewStrCmp(expression.NewLiteral('a', sql.Text), expression.NewLiteral('b', sql.Text))
-		_, err := f.WithChildren(expression.NewLiteral('a', sql.Text))
+		f := NewStrCmp(expression.NewLiteral('a', types.Text), expression.NewLiteral('b', types.Text))
+		_, err := f.WithChildren(expression.NewLiteral('a', types.Text))
 		require.Error(err)
 	})
 }

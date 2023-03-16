@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var mysqlTimeFormatSpec = strftime.NewSpecificationSet()
@@ -112,7 +113,7 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	d, err := sql.Time.ConvertToTimeDuration(left)
+	d, err := types.Time.ConvertToTimeDuration(left)
 	if err != nil {
 		return nil, err
 	}
@@ -139,13 +140,13 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the Expression interface.
 func (f *TimeFormat) Type() sql.Type {
-	return sql.Text
+	return types.Text
 }
 
 // IsNullable implements the Expression interface.
 func (f *TimeFormat) IsNullable() bool {
-	if sql.IsNull(f.Left) {
-		if sql.IsNull(f.Right) {
+	if types.IsNull(f.Left) {
+		if types.IsNull(f.Right) {
 			return true
 		}
 		return f.Right.IsNullable()

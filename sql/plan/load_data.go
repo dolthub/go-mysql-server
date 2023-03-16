@@ -26,6 +26,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type LoadData struct {
@@ -360,15 +361,15 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 				if destCol.Default != nil {
 					exprs[i] = destCol.Default
 				} else {
-					exprs[i] = expression.NewLiteral(nil, sql.Null)
+					exprs[i] = expression.NewLiteral(nil, types.Null)
 				}
 			} else {
-				exprs[i] = expression.NewLiteral(field, sql.LongText)
+				exprs[i] = expression.NewLiteral(field, types.LongText)
 			}
 		} else if field == "NULL" {
-			exprs[i] = expression.NewLiteral(nil, sql.Null)
+			exprs[i] = expression.NewLiteral(nil, types.Null)
 		} else {
-			exprs[i] = expression.NewLiteral(field, sql.LongText)
+			exprs[i] = expression.NewLiteral(field, types.LongText)
 		}
 	}
 

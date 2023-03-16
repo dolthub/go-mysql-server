@@ -27,7 +27,9 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var typeToNumericPrecision = map[query.Type]int{
@@ -72,7 +74,7 @@ func (c *ColumnsTable) Schema() sql.Schema {
 
 // Collation implements the sql.Table interface.
 func (c *ColumnsTable) Collation() sql.CollationID {
-	return sql.Collation_Default
+	return sql.Collation_Information_Schema_Default
 }
 
 // Name implements the sql.Table interface.
@@ -163,6 +165,9 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 	)
 
 	privSet, _ := ctx.GetPrivilegeSet()
+	if privSet == nil {
+		privSet = mysql_db.NewPrivilegeSet()
+	}
 	globalPrivSetMap = getCurrentPrivSetMapForColumn(privSet.ToSlice(), globalPrivSetMap)
 
 	for _, db := range catalog.AllDatabases(ctx) {
@@ -186,42 +191,17 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 // database name, table name, column key and column privileges information through privileges set for the table.
 func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
 	var (
-		charName          interface{}
-		collName          interface{}
-		charMaxLen        interface{}
-		charOctetLen      interface{}
-		nullable          = "NO"
 		ordinalPos        = uint32(curOrdPos + 1)
-		colType           = strings.Split(col.Type.String(), " COLLATE")[0]
-		dataType          = colType
+		nullable          = "NO"
 		datetimePrecision interface{}
 		srsId             interface{}
 	)
 
+	colType, dataType := getDtdIdAndDataType(col.Type)
+
 	if col.Nullable {
 		nullable = "YES"
 	}
-
-	if sql.IsText(col.Type) {
-		if sql.IsTextOnly(col.Type) {
-			charName = sql.Collation_Default.CharacterSet().String()
-			collName = sql.Collation_Default.String()
-		}
-
-		if st, ok := col.Type.(sql.StringType); ok {
-			charMaxLen = st.MaxCharacterLength()
-			charOctetLen = st.MaxByteLength()
-		}
-	} else if sql.IsEnum(col.Type) || sql.IsSet(col.Type) {
-		charName = sql.Collation_Default.CharacterSet().String()
-		collName = sql.Collation_Default.String()
-		charOctetLen = int64(col.Type.MaxTextResponseByteLength())
-		charMaxLen = int64(col.Type.MaxTextResponseByteLength()) / sql.Collation_Default.CharacterSet().MaxLength()
-	}
-
-	// The DATA_TYPE value is the type name only with no other information
-	dataType = strings.Split(dataType, "(")[0]
-	dataType = strings.Split(dataType, " ")[0]
 
 	if s, ok := col.Type.(sql.SpatialColumnType); ok {
 		if srid, d := s.GetSpatialTypeSRID(); d {
@@ -229,10 +209,12 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 		}
 	}
 
-	numericPrecision, numericScale := getColumnPrecisionAndScale(col)
-	if sql.IsDatetimeType(col.Type) || sql.IsTimestampType(col.Type) {
+	charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(col.Type)
+
+	numericPrecision, numericScale := getColumnPrecisionAndScale(col.Type)
+	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
 		datetimePrecision = 0
-	} else if sql.IsTimespan(col.Type) {
+	} else if types.IsTimespan(col.Type) {
 		// TODO: TIME length not yet supported
 		datetimePrecision = 6
 	}
@@ -463,14 +445,14 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
 			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
 		}
-		if sql.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		if types.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
 			defStr = strings.Replace(defStr, "NOW", "CURRENT_TIMESTAMP", -1)
 			defStr = strings.TrimSuffix(defStr, "()")
 		}
 		return fmt.Sprint(defStr)
 	}
 
-	if sql.IsEnum(cd.Type()) || sql.IsSet(cd.Type()) {
+	if types.IsEnum(cd.Type()) || types.IsSet(cd.Type()) {
 		return strings.Trim(defStr, "'")
 	}
 
@@ -487,7 +469,7 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		v = fmt.Sprintf("0x%s", hexStr)
 	}
 
-	if sql.IsBit(cd.Type()) {
+	if types.IsBit(cd.Type()) {
 		if i, ok := v.(uint64); ok {
 			bitStr := strconv.FormatUint(i, 2)
 			v = fmt.Sprintf("b'%s'", bitStr)
@@ -522,24 +504,61 @@ func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Sc
 	return allColsWithDefaultValue[start:end]
 }
 
+// get DtdIdAndDataType returns data types for given sql.Type but in two different ways.
+// The DTD_IDENTIFIER value contains the type name and possibly other information such as the precision or length.
+// The DATA_TYPE value is the type name only with no other information.
+func getDtdIdAndDataType(colType sql.Type) (string, string) {
+	dtdId := strings.Split(strings.Split(colType.String(), " COLLATE")[0], " CHARACTER SET")[0]
+
+	// The DATA_TYPE value is the type name only with no other information
+	dataType := strings.Split(dtdId, "(")[0]
+	dataType = strings.Split(dataType, " ")[0]
+
+	return dtdId, dataType
+}
+
 // getColumnPrecisionAndScale returns the precision or a number of mysql type. For non-numeric or decimal types this
 // function should return nil,nil.
-func getColumnPrecisionAndScale(col *sql.Column) (interface{}, interface{}) {
+func getColumnPrecisionAndScale(colType sql.Type) (interface{}, interface{}) {
 	var numericScale interface{}
-	switch t := col.Type.(type) {
-	case sql.BitType:
+	switch t := colType.(type) {
+	case types.BitType:
 		return int(t.NumberOfBits()), numericScale
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())
 	case sql.NumberType:
-		switch col.Type.Type() {
+		switch colType.Type() {
 		case sqltypes.Float32, sqltypes.Float64:
 			numericScale = nil
 		default:
 			numericScale = 0
 		}
-		return typeToNumericPrecision[col.Type.Type()], numericScale
+		return typeToNumericPrecision[colType.Type()], numericScale
 	default:
 		return nil, nil
 	}
+}
+
+func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {
+	var (
+		charName     interface{}
+		collName     interface{}
+		charMaxLen   interface{}
+		charOctetLen interface{}
+	)
+	if twc, ok := colType.(sql.TypeWithCollation); ok && !types.IsBinaryType(colType) {
+		colColl := twc.Collation()
+		collName = colColl.Name()
+		charName = colColl.CharacterSet().String()
+		if types.IsEnum(colType) || types.IsSet(colType) {
+			charOctetLen = int64(colType.MaxTextResponseByteLength())
+			charMaxLen = int64(colType.MaxTextResponseByteLength()) / colColl.CharacterSet().MaxLength()
+		}
+	}
+	if st, ok := colType.(sql.StringType); ok {
+		charMaxLen = st.MaxCharacterLength()
+		charOctetLen = st.MaxByteLength()
+	}
+
+	return charName, collName, charMaxLen, charOctetLen
 }

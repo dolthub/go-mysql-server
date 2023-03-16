@@ -17,7 +17,9 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -29,11 +31,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 	span, ctx := ctx.Span("expand_stars")
 	defer span.End()
 
-	tableAliases, err := getTableAliases(n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
+	scopeLen := len(scope.Schema())
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, transform.SameTree, nil
@@ -45,7 +43,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 				return n, transform.SameTree, nil
 			}
 
-			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child, tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -58,7 +56,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 				return n, transform.SameTree, nil
 			}
 
-			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child, tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -70,7 +68,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 			if !n.Child.Resolved() {
 				return n, transform.SameTree, nil
 			}
-			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child, tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child, scopeLen)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -84,7 +82,7 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 	})
 }
 
-func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node, tableAliases TableAliases) ([]sql.Expression, transform.TreeIdentity, error) {
+func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node, scopeLen int) ([]sql.Expression, transform.TreeIdentity, error) {
 	schema := n.Schema()
 	var expressions []sql.Expression
 	same := transform.SameTree
@@ -100,7 +98,7 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node, 
 				lowerTable := strings.ToLower(star.Table)
 				if star.Table == "" || lowerTable == lowerSource {
 					exprs = append(exprs, expression.NewGetFieldWithTable(
-						i, col.Type, col.Source, col.Name, col.Nullable,
+						scopeLen+i, col.Type, col.Source, col.Name, col.Nullable,
 					))
 				}
 			}
@@ -117,4 +115,26 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node, 
 
 	a.Log("resolved * to expressions %s", expressions)
 	return expressions, same, nil
+}
+
+// replaceCountStar replaces count(*) expressions with count(1) expressions, which are semantically equivalent and
+// lets us prune all the unused columns from the target tables.
+func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if plan.IsDDLNode(n) {
+		return n, transform.SameTree, nil
+	}
+
+	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if count, ok := e.(*aggregation.Count); ok {
+			if _, ok := count.Child.(*expression.Star); ok {
+				count, err := count.WithChildren(expression.NewLiteral(int64(1), types.Int64))
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return count, transform.NewTree, nil
+			}
+		}
+
+		return e, transform.SameTree, nil
+	})
 }

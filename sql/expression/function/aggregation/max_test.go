@@ -22,11 +22,12 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestMax_String(t *testing.T) {
 	assert := require.New(t)
-	m := NewMax(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
 	assert.Equal("MAX(field)", m.String())
 }
 
@@ -34,7 +35,7 @@ func TestMax_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(int32(7)))
@@ -50,7 +51,7 @@ func TestMax_Eval_Text(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Text, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Text, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("a"))
@@ -66,7 +67,7 @@ func TestMax_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Timestamp, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Timestamp, "field", true))
 	b, _ := m.NewBuffer()
 
 	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2008-01-02 15:04:05")
@@ -85,7 +86,7 @@ func TestMax_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(nil))
@@ -101,7 +102,7 @@ func TestMax_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
 	b, _ := m.NewBuffer()
 
 	v, err := b.Eval(ctx)
@@ -113,7 +114,7 @@ func TestMax_Distinct(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	m := NewMax(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ := m.NewBuffer()
 
 	require.Equal(t, "MAX(DISTINCT field)", m.String())
@@ -128,7 +129,7 @@ func TestMax_Distinct(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(3, v)
 
-	m = NewMax(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	m = NewMax(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ = m.NewBuffer()
 
 	require.NoError(t, b.Update(ctx, sql.Row{1}))

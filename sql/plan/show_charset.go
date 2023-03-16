@@ -17,6 +17,8 @@ package plan
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -56,10 +58,10 @@ func (sc *ShowCharset) String() string {
 // Note how this Schema differs in order from the information_schema.character_sets table.
 func (sc *ShowCharset) Schema() sql.Schema {
 	return sql.Schema{
-		{Name: "Charset", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Description", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Default collation", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Maxlen", Type: sql.Uint64, Default: nil, Nullable: false},
+		{Name: "Charset", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Description", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: "Default collation", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Maxlen", Type: types.Uint64, Default: nil, Nullable: false},
 	}
 }
 

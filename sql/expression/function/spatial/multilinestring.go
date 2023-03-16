@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -50,7 +51,7 @@ func (p *MultiLineString) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *MultiLineString) Type() sql.Type {
-	return sql.MultiLineStringType{}
+	return types.MultiLineStringType{}
 }
 
 func (p *MultiLineString) String() string {
@@ -68,21 +69,21 @@ func (p *MultiLineString) WithChildren(children ...sql.Expression) (sql.Expressi
 
 // Eval implements the sql.Expression interface.
 func (p *MultiLineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var lines = make([]sql.LineString, len(p.ChildExpressions))
+	var lines = make([]types.LineString, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		switch v := val.(type) {
-		case sql.LineString:
+		case types.LineString:
 			lines[i] = v
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(p.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.MultiLineString{Lines: lines}, nil
+	return types.MultiLineString{Lines: lines}, nil
 }

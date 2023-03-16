@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // DateAdd adds an interval to a date.
@@ -101,16 +102,16 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, err := sql.Datetime.Convert(val)
+	date, err := types.Datetime.Convert(val)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
 
 	// return appropriate type
-	res := sql.ValidateTime(delta.Add(date.(time.Time)))
+	res := types.ValidateTime(delta.Add(date.(time.Time)))
 	resType := d.Type()
-	if sql.IsText(resType) {
+	if types.IsText(resType) {
 		return res, nil
 	}
 	return resType.Convert(res)
@@ -189,7 +190,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, err = sql.Datetime.Convert(date)
+	date, err = types.Datetime.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -205,9 +206,9 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// return appropriate type
-	res := sql.ValidateTime(delta.Sub(date.(time.Time)))
+	res := types.ValidateTime(delta.Sub(date.(time.Time)))
 	resType := d.Type()
-	if sql.IsText(resType) {
+	if types.IsText(resType) {
 		return res, nil
 	}
 	return resType.Convert(res)
@@ -243,7 +244,7 @@ func (t *TimestampConversion) String() string {
 }
 
 func (t *TimestampConversion) Type() sql.Type {
-	return sql.Timestamp
+	return types.Timestamp
 }
 
 func (t *TimestampConversion) IsNullable() bool {
@@ -255,7 +256,7 @@ func (t *TimestampConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
-	return sql.Timestamp.Convert(e)
+	return types.Timestamp.Convert(e)
 }
 
 func (t *TimestampConversion) Children() []sql.Expression {
@@ -302,7 +303,7 @@ func (t *DatetimeConversion) String() string {
 }
 
 func (t *DatetimeConversion) Type() sql.Type {
-	return sql.Datetime
+	return types.Datetime
 }
 
 func (t *DatetimeConversion) IsNullable() bool {
@@ -314,7 +315,7 @@ func (t *DatetimeConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	return sql.Datetime.Convert(e)
+	return types.Datetime.Convert(e)
 }
 
 func (t *DatetimeConversion) Children() []sql.Expression {
@@ -385,7 +386,7 @@ func (ut *UnixTimestamp) IsNullable() bool {
 }
 
 func (ut *UnixTimestamp) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
 }
 
 func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -405,7 +406,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, nil
 	}
 
-	date, err = sql.Datetime.Convert(date)
+	date, err = types.Datetime.Convert(date)
 	if err != nil {
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
@@ -417,7 +418,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 func toUnixTimestamp(t time.Time) (interface{}, error) {
-	return sql.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
+	return types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
 }
 
 func (ut *UnixTimestamp) String() string {
@@ -436,7 +437,7 @@ type FromUnixtime struct {
 var _ sql.FunctionExpression = (*FromUnixtime)(nil)
 
 func NewFromUnixtime(arg sql.Expression) sql.Expression {
-	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", sql.Datetime)}
+	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", types.Datetime)}
 }
 
 // Description implements sql.FunctionExpression
@@ -454,7 +455,7 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	n, err := sql.Int64.Convert(val)
+	n, err := types.Int64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -486,13 +487,13 @@ func (c CurrDate) Description() string {
 
 func NewCurrDate() sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{"curdate", sql.LongText},
+		NoArgFunc: NoArgFunc{"curdate", types.LongText},
 	}
 }
 
 func NewCurrentDate() sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{"current_date", sql.LongText},
+		NoArgFunc: NoArgFunc{"current_date", types.LongText},
 	}
 }
 
@@ -515,23 +516,23 @@ func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, erro
 // Logic is based on https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-add
 func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Type {
 	if input == nil {
-		return sql.Null
+		return types.Null
 	}
 	inputType := input.Type()
 
 	// result is null if expression is null
-	if inputType == sql.Null {
-		return sql.Null
+	if inputType == types.Null {
+		return types.Null
 	}
 
 	// set type flags
-	isInputDate := inputType == sql.Date
-	isInputTime := inputType == sql.Time
-	isInputDatetime := inputType == sql.Datetime || inputType == sql.Timestamp
+	isInputDate := inputType == types.Date
+	isInputTime := inputType == types.Time
+	isInputDatetime := inputType == types.Datetime || inputType == types.Timestamp
 
 	// result is Datetime if expression is Datetime or Timestamp
 	if isInputDatetime {
-		return sql.Datetime
+		return types.Datetime
 	}
 
 	// determine what kind of interval we're dealing with
@@ -550,10 +551,10 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	if isInputDate {
 		if isHmsInterval || isMixedInterval {
 			// if interval contains time components, result is Datetime
-			return sql.Datetime
+			return types.Datetime
 		} else {
 			// otherwise result is Date
-			return sql.Date
+			return types.Date
 		}
 	}
 
@@ -561,24 +562,24 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	if isInputTime {
 		if isYmdInterval || isMixedInterval {
 			// if interval contains date components, result is Datetime
-			return sql.Datetime
+			return types.Datetime
 		} else {
 			// otherwise result is Time
-			return sql.Time
+			return types.Time
 		}
 	}
 
 	// handle dynamic input type
-	if sql.IsDeferredType(inputType) {
+	if types.IsDeferredType(inputType) {
 		if isYmdInterval && !isHmsInterval {
 			// if interval contains only date components, result is Date
-			return sql.Date
+			return types.Date
 		} else {
 			// otherwise result is Datetime
-			return sql.Datetime
+			return types.Datetime
 		}
 	}
 
 	// default type is VARCHAR
-	return sql.Text
+	return types.Text
 }

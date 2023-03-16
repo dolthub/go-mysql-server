@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
@@ -33,6 +34,7 @@ type Index struct {
 	Exprs      []sql.Expression
 	Name       string
 	Unique     bool
+	Spatial    bool
 	CommentStr string
 	PrefixLens []uint16
 }
@@ -61,6 +63,10 @@ func (idx *Index) CanSupport(...sql.Range) bool {
 
 func (idx *Index) IsUnique() bool {
 	return idx.Unique
+}
+
+func (idx *Index) IsSpatial() bool {
+	return idx.Spatial
 }
 
 func (idx *Index) Comment() string {
@@ -99,9 +105,9 @@ func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
 			// Both Empty and All may seem like strange inclusions, but if only one range is given we need some
 			// expression to evaluate, otherwise our expression would be a nil expression which would panic.
 			case sql.RangeType_Empty:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(2, sql.Int8))
+				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(2, types.Int8))
 			case sql.RangeType_All:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(1, sql.Int8))
+				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(1, types.Int8))
 			case sql.RangeType_EqualNull:
 				rangeColumnExpr = expression.NewIsNull(idx.Exprs[i])
 			case sql.RangeType_GreaterThan:
@@ -192,6 +198,9 @@ func (idx *Index) Table() string { return idx.TableName }
 
 func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
+	if idx.Spatial {
+		return handled
+	}
 	for _, expr := range filters {
 		if expression.ContainsImpreciseComparison(expr) {
 			continue
@@ -220,35 +229,35 @@ type ExpressionsIndex interface {
 func getType(val interface{}) (interface{}, sql.Type) {
 	switch val := val.(type) {
 	case int:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int8:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint8:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int16:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint16:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int32:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint32:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case int64:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case uint64:
-		return int64(val), sql.Int64
+		return int64(val), types.Int64
 	case float32:
-		return float64(val), sql.Float64
+		return float64(val), types.Float64
 	case float64:
-		return float64(val), sql.Float64
+		return float64(val), types.Float64
 	case string:
-		return val, sql.LongText
+		return val, types.LongText
 	case nil:
-		return nil, sql.Null
+		return nil, types.Null
 	case time.Time:
-		return val, sql.Datetime
+		return val, types.Datetime
 	default:
 		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
 	}

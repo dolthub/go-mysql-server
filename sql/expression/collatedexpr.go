@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CollatedExpression represents an expression (returning a string or byte slice) that carries a collation (which
@@ -75,7 +76,7 @@ func (ce *CollatedExpression) Type() sql.Type {
 // Eval implements the sql.Expression interface.
 func (ce *CollatedExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := ce.expr.Type()
-	if !sql.IsText(typ) {
+	if !types.IsText(typ) {
 		return nil, sql.ErrCollatedExprWrongType.New()
 	}
 	if ce.collation.CharacterSet() != typ.(sql.TypeWithCollation).Collation().CharacterSet() {
@@ -190,8 +191,21 @@ func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
 			case "user", "current_user", "version":
 				return collation, 3
 			default:
-				// It appears that many functions return a value of 4 (using the function COERCIBILITY).
-				return collation, 4
+				// It appears that many functions return a value of 4, so it's the default value (using the function COERCIBILITY).
+				// As a special rule, we inspect the expression tree of unknown expressions. This is not what MySQL does,
+				// but it's a better approximation of the behavior than just checking the top of the tree at all times.
+				coercibility := 4
+				inspectExpression(funcExpr, func(expr sql.Expression) {
+					switch expr.(type) {
+					case *CollatedExpression:
+						coercibility = 0
+					case *GetField, *ProcedureParam, *UserVar, *SystemVar:
+						if coercibility > 2 {
+							coercibility = 2
+						}
+					}
+				})
+				return collation, coercibility
 			}
 		}
 		// Some general expressions returns a value of 5, so we just return 5 for all unmatched expressions.
@@ -234,4 +248,12 @@ func ResolveCoercibility(leftCollation sql.CollationID, leftCoercibility int, ri
 			}
 		}
 	}
+}
+
+// TODO: remove when finished with collation coercibility
+func inspectExpression(expr sql.Expression, exprFunc func(sql.Expression)) {
+	for _, child := range expr.Children() {
+		inspectExpression(child, exprFunc)
+	}
+	exprFunc(expr)
 }

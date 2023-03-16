@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -311,9 +312,9 @@ func newInsertIter(
 	}
 
 	if ignore {
-		return NewCheckpointingTableEditorIter(ed, insertIter), nil
+		return NewCheckpointingTableEditorIter(insertIter, ed), nil
 	} else {
-		return NewTableEditorIter(ed, insertIter), nil
+		return NewTableEditorIter(insertIter, ed), nil
 	}
 }
 
@@ -374,8 +375,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					continue
 				} else {
 					// Fill in error with information
-					if sql.ErrLengthBeyondLimit.Is(cErr) {
-						cErr = sql.ErrLengthBeyondLimit.New(row[idx], col.Name)
+					if types.ErrLengthBeyondLimit.Is(cErr) {
+						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					}
@@ -575,7 +576,7 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 // Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
-	if sql.ErrLengthBeyondLimit.Is(err) {
+	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
 	} else {

@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Loop represents the LOOP statement, which loops over a set of statements.
@@ -41,7 +42,7 @@ var _ RepresentsLabeledBlock = (*Loop)(nil)
 func NewLoop(label string, block *Block) *Loop {
 	return &Loop{
 		Label:          label,
-		Condition:      expression.NewLiteral(true, sql.Boolean),
+		Condition:      expression.NewLiteral(true, types.Boolean),
 		OnceBeforeEval: true,
 		Block:          block,
 	}
@@ -176,7 +177,7 @@ func (l *loopIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		conditionBool, err := sql.ConvertToBool(condition)
+		conditionBool, err := types.ConvertToBool(condition)
 		if err != nil {
 			return nil, err
 		}

@@ -20,47 +20,48 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestTuple(t *testing.T) {
 	require := require.New(t)
 
 	tup := NewTuple(
-		NewLiteral(int64(1), sql.Int64),
-		NewLiteral(float64(3.14), sql.Float64),
-		NewLiteral("foo", sql.LongText),
+		NewLiteral(int64(1), types.Int64),
+		NewLiteral(float64(3.14), types.Float64),
+		NewLiteral("foo", types.LongText),
 	)
 
 	ctx := sql.NewEmptyContext()
 
 	require.False(tup.IsNullable())
 	require.True(tup.Resolved())
-	require.Equal(sql.CreateTuple(sql.Int64, sql.Float64, sql.LongText), tup.Type())
+	require.Equal(types.CreateTuple(types.Int64, types.Float64, types.LongText), tup.Type())
 
 	result, err := tup.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal([]interface{}{int64(1), float64(3.14), "foo"}, result)
 
 	tup = NewTuple(
-		NewGetField(0, sql.LongText, "text", true),
+		NewGetField(0, types.LongText, "text", true),
 	)
 
 	require.True(tup.IsNullable())
 	require.True(tup.Resolved())
-	require.Equal(sql.LongText, tup.Type())
+	require.Equal(types.LongText, tup.Type())
 
 	result, err = tup.Eval(ctx, sql.NewRow("foo"))
 	require.NoError(err)
 	require.Equal("foo", result)
 
 	tup = NewTuple(
-		NewGetField(0, sql.LongText, "text", true),
-		NewLiteral("bar", sql.LongText),
+		NewGetField(0, types.LongText, "text", true),
+		NewLiteral("bar", types.LongText),
 	)
 
 	require.False(tup.IsNullable())
 	require.True(tup.Resolved())
-	require.Equal(sql.CreateTuple(sql.LongText, sql.LongText), tup.Type())
+	require.Equal(types.CreateTuple(types.LongText, types.LongText), tup.Type())
 
 	result, err = tup.Eval(ctx, sql.NewRow("foo"))
 	require.NoError(err)
@@ -68,7 +69,7 @@ func TestTuple(t *testing.T) {
 
 	tup = NewTuple(
 		NewUnresolvedColumn("bar"),
-		NewLiteral("bar", sql.LongText),
+		NewLiteral("bar", types.LongText),
 	)
 
 	require.False(tup.Resolved())

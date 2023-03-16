@@ -16,6 +16,7 @@ package expression
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type BindVar struct {
@@ -24,7 +25,7 @@ type BindVar struct {
 }
 
 func NewBindVar(name string) sql.Expression {
-	return &BindVar{Name: name, Typ: sql.NewDeferredType(name)}
+	return &BindVar{Name: name, Typ: types.NewDeferredType(name)}
 }
 
 func (bv *BindVar) Resolved() bool {

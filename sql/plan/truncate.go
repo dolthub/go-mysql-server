@@ -17,6 +17,8 @@ package plan
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -105,12 +107,12 @@ func (p *Truncate) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 			break
 		}
 	}
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(removed))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(removed))), nil
 }
 
 // Schema implements the Node interface.
 func (p *Truncate) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface.

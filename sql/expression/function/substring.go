@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Substring is a function to return a part of a string.
@@ -103,7 +104,7 @@ func (s *Substring) Eval(
 		return nil, nil
 	}
 
-	start, err = sql.Int64.Convert(start)
+	start, err = types.Int64.Convert(start)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +121,7 @@ func (s *Substring) Eval(
 			return nil, nil
 		}
 
-		len, err = sql.Int64.Convert(len)
+		len, err = types.Int64.Convert(len)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +212,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = sql.LongText.Convert(ex)
+	ex, err = types.LongText.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +225,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = sql.LongText.Convert(ex)
+	ex, err = types.LongText.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +238,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = sql.Int64.Convert(ex)
+	ex, err = types.Int64.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +287,7 @@ func (s *SubstringIndex) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (*SubstringIndex) Type() sql.Type { return sql.LongText }
+func (*SubstringIndex) Type() sql.Type { return types.LongText }
 
 // WithChildren implements the Expression interface.
 func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -354,7 +355,7 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = sql.Int64.Convert(len)
+	len, err = types.Int64.Convert(len)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +387,7 @@ func (l Left) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (Left) Type() sql.Type { return sql.LongText }
+func (Left) Type() sql.Type { return types.LongText }
 
 // WithChildren implements the Expression interface.
 func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -454,7 +455,7 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = sql.Int64.Convert(len)
+	len, err = types.Int64.Convert(len)
 	if err != nil {
 		return nil, err
 	}
@@ -480,13 +481,24 @@ func (r Right) String() string {
 	return fmt.Sprintf("RIGHT(%s, %s)", r.str, r.len)
 }
 
+func (r Right) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("RIGHT")
+	children := []string{
+		fmt.Sprintf("str: %s", sql.DebugString(r.str)),
+		fmt.Sprintf("len: %s", sql.DebugString(r.len)),
+	}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
 // Resolved implements the Expression interface.
 func (r Right) Resolved() bool {
 	return r.str.Resolved() && r.len.Resolved()
 }
 
 // Type implements the Expression interface.
-func (Right) Type() sql.Type { return sql.LongText }
+func (Right) Type() sql.Type { return types.LongText }
 
 // WithChildren implements the Expression interface.
 func (r Right) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -592,7 +604,7 @@ func (i Instr) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (Instr) Type() sql.Type { return sql.Int64 }
+func (Instr) Type() sql.Type { return types.Int64 }
 
 // WithChildren implements the Expression interface.
 func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {

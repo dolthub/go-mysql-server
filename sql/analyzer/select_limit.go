@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // applyDefaultSelectLimit wraps the root node in a Limit clause
@@ -41,7 +42,7 @@ func applyDefaultSelectLimit(
 		// we only apply limit if the default has been modified
 		return n, transform.SameTree, nil
 	}
-	limit := expression.NewLiteral(mustCastNumToInt64(val), sql.Int64)
+	limit := expression.NewLiteral(mustCastNumToInt64(val), types.Int64)
 	ret, same := applyLimit(n, limit)
 	return ret, same, nil
 }

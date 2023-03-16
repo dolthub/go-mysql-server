@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CreateDB creates an in memory database that lasts the length of the process only.
@@ -45,7 +46,7 @@ func (c *CreateDB) String() string {
 }
 
 func (c *CreateDB) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (c *CreateDB) Children() []sql.Node {
@@ -54,7 +55,7 @@ func (c *CreateDB) Children() []sql.Node {
 
 func (c *CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := c.Catalog.HasDB(ctx, c.dbName)
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 
 	if exists {
 		if c.IfNotExists {
@@ -125,7 +126,7 @@ func (d *DropDB) String() string {
 }
 
 func (d *DropDB) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (d *DropDB) Children() []sql.Node {
@@ -142,7 +143,7 @@ func (d *DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
 			})
 
-			rows := []sql.Row{{sql.OkResult{RowsAffected: 0}}}
+			rows := []sql.Row{{types.OkResult{RowsAffected: 0}}}
 
 			return sql.RowsToRowIter(rows...), nil
 		} else {
@@ -158,9 +159,10 @@ func (d *DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Unsets the current database. Database name is case-insensitive.
 	if strings.ToLower(ctx.GetCurrentDatabase()) == strings.ToLower(d.dbName) {
 		ctx.SetCurrentDatabase("")
+		ctx.Session.SetTransactionDatabase("")
 	}
 
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -205,7 +207,7 @@ func (c *AlterDB) String() string {
 
 // Schema implements the interface sql.Node.
 func (c *AlterDB) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // Children implements the interface sql.Node.
@@ -237,7 +239,7 @@ func (c *AlterDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 	return sql.RowsToRowIter(rows...), nil
 }
 

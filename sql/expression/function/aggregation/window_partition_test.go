@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestWindowPartitionIter(t *testing.T) {
@@ -88,10 +89,10 @@ func TestWindowPartitionIter(t *testing.T) {
 
 func mustNewRowIter(t *testing.T, ctx *sql.Context) sql.RowIter {
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "w", Type: sql.Int64, Nullable: true},
-		{Name: "x", Type: sql.Text, Nullable: true},
-		{Name: "y", Type: sql.Text, Nullable: true},
-		{Name: "z", Type: sql.Int32, Nullable: true},
+		{Name: "w", Type: types.Int64, Nullable: true},
+		{Name: "x", Type: types.Text, Nullable: true},
+		{Name: "y", Type: types.Text, Nullable: true},
+		{Name: "z", Type: types.Int32, Nullable: true},
 	})
 	table := memory.NewTable("test", childSchema, nil)
 
@@ -231,7 +232,7 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 			&WindowPartition{
 				PartitionBy: nil,
 				Aggs: []*Aggregation{
-					NewAggregation(NewCountAgg(expression.NewGetField(0, sql.Int64, "z", true)), NewGroupByFramer()),
+					NewAggregation(NewCountAgg(expression.NewGetField(0, types.Int64, "z", true)), NewGroupByFramer()),
 				},
 			})
 		i.input = []sql.Row{}

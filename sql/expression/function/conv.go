@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Conv function converts numbers between different number bases. Returns a string representation of the number N, converted from base from_base to base to_base.
@@ -48,7 +49,7 @@ func (c *Conv) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Conv) Type() sql.Type { return sql.LongText }
+func (c *Conv) Type() sql.Type { return types.LongText }
 
 // IsNullable implements the Expression interface.
 func (c *Conv) IsNullable() bool {
@@ -85,7 +86,7 @@ func (c *Conv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err = sql.LongText.Convert(n)
+	n, err = types.LongText.Convert(n)
 	if err != nil {
 		return nil, nil
 	}
@@ -129,7 +130,7 @@ func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // This conversion truncates nVal as its first subpart that is convertable.
 // nVal is treated as unsigned except nVal is negative.
 func convertFromBase(nVal string, fromBase interface{}) interface{} {
-	fromBase, err := sql.Int64.Convert(fromBase)
+	fromBase, err := types.Int64.Convert(fromBase)
 	if err != nil {
 		return nil
 	}
@@ -191,7 +192,7 @@ func convertFromBase(nVal string, fromBase interface{}) interface{} {
 // convertToBase returns result of whole CONV function in string format, empty string if to input is invalid.
 // The sign of toBase decides whether result is formatted as signed or unsigned.
 func convertToBase(val interface{}, toBase interface{}) string {
-	toBase, err := sql.Int64.Convert(toBase)
+	toBase, err := types.Int64.Convert(toBase)
 	if err != nil {
 		return ""
 	}

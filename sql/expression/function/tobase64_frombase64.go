@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -62,7 +63,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var strBytes []byte
-	if sql.IsTextOnly(t.Child.Type()) {
+	if types.IsTextOnly(t.Child.Type()) {
 		val, err = t.Child.Type().Convert(val)
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
@@ -75,7 +76,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		strBytes = encodedBytes
 	} else {
-		val, err = sql.LongText.Convert(val)
+		val, err = types.LongText.Convert(val)
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
 		}
@@ -126,7 +127,7 @@ func (t *ToBase64) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 // Type implements the Expression interface.
 func (t *ToBase64) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
 }
 
 // FromBase64 is a function to decode a Base64-formatted string
@@ -164,7 +165,7 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -197,5 +198,5 @@ func (t *FromBase64) WithChildren(children ...sql.Expression) (sql.Expression, e
 
 // Type implements the Expression interface.
 func (t *FromBase64) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
 }

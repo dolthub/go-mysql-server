@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // StartPoint is a function that returns the first point of a LineString
@@ -45,7 +46,7 @@ func (s *StartPoint) Description() string {
 
 // Type implements the sql.Expression interface.
 func (s *StartPoint) Type() sql.Type {
-	return sql.PointType{}
+	return types.PointType{}
 }
 
 func (s *StartPoint) String() string {
@@ -60,7 +61,7 @@ func (s *StartPoint) WithChildren(children ...sql.Expression) (sql.Expression, e
 	return NewStartPoint(children[0]), nil
 }
 
-func startPoint(l sql.LineString) sql.Point {
+func startPoint(l types.LineString) types.Point {
 	return l.Points[0]
 }
 
@@ -75,11 +76,11 @@ func (s *StartPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := g.(sql.GeometryValue); !ok {
+	if _, ok := g.(types.GeometryValue); !ok {
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
 	}
 
-	l, ok := g.(sql.LineString)
+	l, ok := g.(types.LineString)
 	if !ok {
 		return nil, nil
 	}
@@ -111,7 +112,7 @@ func (e *EndPoint) Description() string {
 
 // Type implements the sql.Expression interface.
 func (e *EndPoint) Type() sql.Type {
-	return sql.PointType{}
+	return types.PointType{}
 }
 
 func (e *EndPoint) String() string {
@@ -126,7 +127,7 @@ func (e *EndPoint) WithChildren(children ...sql.Expression) (sql.Expression, err
 	return NewEndPoint(children[0]), nil
 }
 
-func endPoint(l sql.LineString) sql.Point {
+func endPoint(l types.LineString) types.Point {
 	return l.Points[len(l.Points)-1]
 }
 
@@ -141,11 +142,11 @@ func (e *EndPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := g.(sql.GeometryValue); !ok {
+	if _, ok := g.(types.GeometryValue); !ok {
 		return nil, sql.ErrInvalidGISData.New(e.FunctionName())
 	}
 
-	l, ok := g.(sql.LineString)
+	l, ok := g.(types.LineString)
 	if !ok {
 		return nil, nil
 	}
@@ -177,7 +178,7 @@ func (i *IsClosed) Description() string {
 
 // Type implements the sql.Expression interface.
 func (i *IsClosed) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 func (i *IsClosed) String() string {
@@ -192,11 +193,11 @@ func (i *IsClosed) WithChildren(children ...sql.Expression) (sql.Expression, err
 	return NewIsClosed(children[0]), nil
 }
 
-func isPointEqual(a, b sql.Point) bool {
+func isPointEqual(a, b types.Point) bool {
 	return a.X == b.X && a.Y == b.Y
 }
 
-func isClosed(l sql.LineString) bool {
+func isClosed(l types.LineString) bool {
 	return isPointEqual(startPoint(l), endPoint(l))
 }
 
@@ -211,14 +212,14 @@ func (i *IsClosed) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := g.(sql.GeometryValue); !ok {
+	if _, ok := g.(types.GeometryValue); !ok {
 		return nil, sql.ErrInvalidGISData.New(i.FunctionName())
 	}
 
 	switch g := g.(type) {
-	case sql.LineString:
+	case types.LineString:
 		return isClosed(g), nil
-	case sql.MultiLineString:
+	case types.MultiLineString:
 		for _, l := range g.Lines {
 			if !isClosed(l) {
 				return false, nil

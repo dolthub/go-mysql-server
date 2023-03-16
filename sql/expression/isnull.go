@@ -14,7 +14,10 @@
 
 package expression
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 // IsNull is an expression that checks if an expression is null.
 type IsNull struct {
@@ -28,7 +31,7 @@ func NewIsNull(child sql.Expression) *IsNull {
 
 // Type implements the Expression interface.
 func (e *IsNull) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // IsNullable implements the Expression interface.

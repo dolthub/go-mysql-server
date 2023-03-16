@@ -23,6 +23,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -111,7 +112,7 @@ func NewAlterDisableEnableKeys(db sql.Database, table sql.Node, disableKeys bool
 
 // Schema implements the Node interface.
 func (p *AlterIndex) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // Execute inserts the rows in the database.
@@ -279,7 +280,7 @@ func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // WithChildren implements the Node interface.

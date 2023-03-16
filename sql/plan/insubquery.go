@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // InSubquery is an expression that checks an expression is in the result of a subquery. It's in the plan package,
@@ -32,7 +33,7 @@ var _ sql.Expression = (*InSubquery)(nil)
 
 // Type implements sql.Expression
 func (in *InSubquery) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
 }
 
 // NewInSubquery creates an InSubquery expression.
@@ -64,8 +65,8 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch right := in.Right.(type) {
 	case *Subquery:
-		if sql.NumColumns(typ) != sql.NumColumns(right.Type()) {
-			return nil, sql.ErrInvalidOperandColumns.New(sql.NumColumns(typ), sql.NumColumns(right.Type()))
+		if types.NumColumns(typ) != types.NumColumns(right.Type()) {
+			return nil, sql.ErrInvalidOperandColumns.New(types.NumColumns(typ), types.NumColumns(right.Type()))
 		}
 
 		typ := right.Type()
@@ -86,7 +87,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		// convert left to right's type
 		nLeft, err := typ.Convert(left)
 		if err != nil {
-			return nil, err
+			return false, nil
 		}
 
 		key, err := sql.HashOf(sql.NewRow(nLeft))
@@ -104,7 +105,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		val, err = typ.Convert(val)
 		if err != nil {
-			return nil, err
+			return false, nil
 		}
 
 		cmp, err := typ.Compare(left, val)

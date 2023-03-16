@@ -23,9 +23,10 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var rangeType = sql.Uint8
+var rangeType = types.Uint8
 
 func TestRangeOverlapTwoColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()

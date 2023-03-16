@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Between checks a value is between two given values.
@@ -46,7 +47,7 @@ func (b *Between) Children() []sql.Expression {
 }
 
 // Type implements the Expression interface.
-func (*Between) Type() sql.Type { return sql.Boolean }
+func (*Between) Type() sql.Type { return types.Boolean }
 
 // IsNullable implements the Expression interface.
 func (b *Between) IsNullable() bool {

@@ -22,6 +22,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrDivisionByZero = errors.NewKind("division by zero")
@@ -99,7 +100,7 @@ func (p *Pad) IsNullable() bool {
 }
 
 // Type implements the Expression interface.
-func (p *Pad) Type() sql.Type { return sql.LongText }
+func (p *Pad) Type() sql.Type { return types.LongText }
 
 func (p *Pad) String() string {
 	if p.padType == lPadType {
@@ -127,7 +128,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -141,7 +142,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	length, err = sql.Int64.Convert(length)
+	length, err = types.Int64.Convert(length)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +156,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	padStr, err = sql.LongText.Convert(padStr)
+	padStr, err = types.LongText.Convert(padStr)
 	if err != nil {
 		return nil, err
 	}

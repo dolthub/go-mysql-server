@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`) // (?m)^\+|\-(\d{2}):(\d{2})$
@@ -65,7 +66,7 @@ func (c *ConvertTz) String() string {
 
 // Type implements the sql.Expression interface.
 func (c *ConvertTz) Type() sql.Type {
-	return sql.Datetime
+	return types.Datetime
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -91,7 +92,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If either the date, or the timezones/offsets are not correct types we return NULL.
-	datetime, err := sql.Datetime.ConvertWithoutRangeCheck(dt)
+	datetime, err := types.Datetime.ConvertWithoutRangeCheck(dt)
 	if err != nil {
 		return nil, nil
 	}
@@ -118,7 +119,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	converted, success := convertTimeZone(datetime, fromStr, toStr)
 	if success {
-		return sql.Datetime.ConvertWithoutRangeCheck(converted)
+		return types.Datetime.ConvertWithoutRangeCheck(converted)
 	}
 
 	// If we weren't successful converting by timezone try converting via offsets.
@@ -127,7 +128,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.Datetime.ConvertWithoutRangeCheck(converted)
+	return types.Datetime.ConvertWithoutRangeCheck(converted)
 }
 
 // convertTimeZone returns the conversion of t from timezone fromLocation to toLocation.

@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -67,8 +68,8 @@ func TestValidateGroupBy(t *testing.T) {
 	require.NoError(err)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: sql.Text},
-		{Name: "col2", Type: sql.Int64},
+		{Name: "col1", Type: types.Text},
+		{Name: "col2", Type: types.Int64},
 	})
 
 	child := memory.NewTable("test", childSchema, nil)
@@ -87,12 +88,12 @@ func TestValidateGroupBy(t *testing.T) {
 
 	p := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("alias", expression.NewGetField(0, sql.Text, "col1", true)),
-			expression.NewGetField(0, sql.Text, "col1", true),
-			aggregation.NewCount(expression.NewGetField(1, sql.Int64, "col2", true)),
+			expression.NewAlias("alias", expression.NewGetField(0, types.Text, "col1", true)),
+			expression.NewGetField(0, types.Text, "col1", true),
+			aggregation.NewCount(expression.NewGetField(1, types.Int64, "col2", true)),
 		},
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Text, "col1", true),
+			expression.NewGetField(0, types.Text, "col1", true),
 		},
 		plan.NewResolvedTable(child, nil, nil),
 	)
@@ -111,8 +112,8 @@ func TestValidateGroupByErr(t *testing.T) {
 	require.NoError(err)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "col1", Type: sql.Text},
-		{Name: "col2", Type: sql.Int64},
+		{Name: "col1", Type: types.Text},
+		{Name: "col2", Type: types.Int64},
 	})
 
 	child := memory.NewTable("test", childSchema, nil)
@@ -131,11 +132,11 @@ func TestValidateGroupByErr(t *testing.T) {
 
 	p := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Text, "col1", true),
-			expression.NewGetField(1, sql.Int64, "col2", true),
+			expression.NewGetField(0, types.Text, "col1", true),
+			expression.NewGetField(1, types.Int64, "col2", true),
 		},
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Text, "col1", true),
+			expression.NewGetField(0, types.Text, "col1", true),
 		},
 		plan.NewResolvedTable(child, nil, nil),
 	)
@@ -186,8 +187,8 @@ func TestValidateSchemaSource(t *testing.T) {
 				"foo",
 				plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "bar", false),
-						expression.NewGetField(1, sql.Int64, "baz", false),
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
 					},
 					nil,
 				),
@@ -213,11 +214,11 @@ func TestValidateSchemaSource(t *testing.T) {
 
 func TestValidateUnionSchemasMatch(t *testing.T) {
 	table := plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "foo", Source: "mytable", Type: sql.Text},
-		{Name: "bar", Source: "mytable", Type: sql.Int64},
-		{Name: "rab", Source: "mytable", Type: sql.Text},
-		{Name: "zab", Source: "mytable", Type: sql.Int64},
-		{Name: "quuz", Source: "mytable", Type: sql.Boolean},
+		{Name: "foo", Source: "mytable", Type: types.Text},
+		{Name: "bar", Source: "mytable", Type: types.Int64},
+		{Name: "rab", Source: "mytable", Type: types.Text},
+		{Name: "zab", Source: "mytable", Type: types.Int64},
+		{Name: "quuz", Source: "mytable", Type: types.Boolean},
 	}), nil), nil, nil)
 	testCases := []struct {
 		name string
@@ -228,8 +229,8 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			"some random node",
 			plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Text, "bar", false),
-					expression.NewGetField(1, sql.Int64, "baz", false),
+					expression.NewGetField(0, types.Text, "bar", false),
+					expression.NewGetField(1, types.Int64, "baz", false),
 				},
 				table,
 			),
@@ -239,14 +240,14 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			"top-level union with matching schemas",
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Text, "bar", false),
-					expression.NewGetField(1, sql.Int64, "baz", false),
+					expression.NewGetField(0, types.Text, "bar", false),
+					expression.NewGetField(1, types.Int64, "baz", false),
 				},
 				table,
 			), plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(2, sql.Text, "rab", false),
-					expression.NewGetField(3, sql.Int64, "zab", false),
+					expression.NewGetField(2, types.Text, "rab", false),
+					expression.NewGetField(3, types.Int64, "zab", false),
 				},
 				table,
 			), false, nil, nil),
@@ -256,15 +257,15 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			"top-level union with longer left schema",
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Text, "bar", false),
-					expression.NewGetField(1, sql.Int64, "baz", false),
-					expression.NewGetField(4, sql.Boolean, "quuz", false),
+					expression.NewGetField(0, types.Text, "bar", false),
+					expression.NewGetField(1, types.Int64, "baz", false),
+					expression.NewGetField(4, types.Boolean, "quuz", false),
 				},
 				table,
 			), plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(2, sql.Text, "rab", false),
-					expression.NewGetField(3, sql.Int64, "zab", false),
+					expression.NewGetField(2, types.Text, "rab", false),
+					expression.NewGetField(3, types.Int64, "zab", false),
 				},
 				table,
 			), false, nil, nil),
@@ -274,15 +275,15 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			"top-level union with longer right schema",
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Text, "bar", false),
-					expression.NewGetField(1, sql.Int64, "baz", false),
+					expression.NewGetField(0, types.Text, "bar", false),
+					expression.NewGetField(1, types.Int64, "baz", false),
 				},
 				table,
 			), plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(2, sql.Text, "rab", false),
-					expression.NewGetField(3, sql.Int64, "zab", false),
-					expression.NewGetField(4, sql.Boolean, "quuz", false),
+					expression.NewGetField(2, types.Text, "rab", false),
+					expression.NewGetField(3, types.Int64, "zab", false),
+					expression.NewGetField(4, types.Boolean, "quuz", false),
 				},
 				table,
 			), false, nil, nil),
@@ -292,14 +293,14 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			"top-level union with mismatched type in schema",
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(0, sql.Text, "bar", false),
-					expression.NewGetField(1, sql.Int64, "baz", false),
+					expression.NewGetField(0, types.Text, "bar", false),
+					expression.NewGetField(1, types.Int64, "baz", false),
 				},
 				table,
 			), plan.NewProject(
 				[]sql.Expression{
-					expression.NewGetField(2, sql.Text, "rab", false),
-					expression.NewGetField(3, sql.Boolean, "zab", false),
+					expression.NewGetField(2, types.Text, "rab", false),
+					expression.NewGetField(3, types.Boolean, "zab", false),
 				},
 				table,
 			), false, nil, nil),
@@ -311,14 +312,14 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 				"aliased", "select bar, baz from mytable union select rab, zab from mytable",
 				plan.NewUnion(plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(0, sql.Text, "bar", false),
-						expression.NewGetField(1, sql.Int64, "baz", false),
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
 					},
 					table,
 				), plan.NewProject(
 					[]sql.Expression{
-						expression.NewGetField(2, sql.Text, "rab", false),
-						expression.NewGetField(3, sql.Boolean, "zab", false),
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Boolean, "zab", false),
 					},
 					table,
 				), false, nil, nil),
@@ -351,7 +352,7 @@ func TestValidateOperands(t *testing.T) {
 		{
 			"project with no tuple",
 			plan.NewProject([]sql.Expression{
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(1, types.Int64),
 			}, nil),
 			true,
 		},
@@ -359,7 +360,7 @@ func TestValidateOperands(t *testing.T) {
 			"project with a 1 elem tuple",
 			plan.NewProject([]sql.Expression{
 				expression.NewTuple(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 				),
 			}, nil),
 			true,
@@ -368,8 +369,8 @@ func TestValidateOperands(t *testing.T) {
 			"project with a 2 elem tuple",
 			plan.NewProject([]sql.Expression{
 				expression.NewTuple(
-					expression.NewLiteral(1, sql.Int64),
-					expression.NewLiteral(2, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
+					expression.NewLiteral(2, types.Int64),
 				),
 			}, nil),
 			false,
@@ -379,8 +380,8 @@ func TestValidateOperands(t *testing.T) {
 			plan.NewDistinct(
 				plan.NewProject([]sql.Expression{
 					expression.NewTuple(
-						expression.NewLiteral(1, sql.Int64),
-						expression.NewLiteral(2, sql.Int64),
+						expression.NewLiteral(1, types.Int64),
+						expression.NewLiteral(2, types.Int64),
 					),
 				}, nil)),
 			false,
@@ -390,8 +391,8 @@ func TestValidateOperands(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("foo", expression.NewTuple(
-						expression.NewLiteral(1, sql.Int64),
-						expression.NewLiteral(2, sql.Int64),
+						expression.NewLiteral(1, types.Int64),
+						expression.NewLiteral(2, types.Int64),
 					)),
 				},
 				plan.NewUnresolvedTable("dual", ""),
@@ -401,7 +402,7 @@ func TestValidateOperands(t *testing.T) {
 		{
 			"groupby with no tuple",
 			plan.NewGroupBy([]sql.Expression{
-				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(1, types.Int64),
 			}, nil, nil),
 			true,
 		},
@@ -409,7 +410,7 @@ func TestValidateOperands(t *testing.T) {
 			"groupby with a 1 elem tuple",
 			plan.NewGroupBy([]sql.Expression{
 				expression.NewTuple(
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 				),
 			}, nil, nil),
 			true,
@@ -418,8 +419,8 @@ func TestValidateOperands(t *testing.T) {
 			"groupby with a 2 elem tuple",
 			plan.NewGroupBy([]sql.Expression{
 				expression.NewTuple(
-					expression.NewLiteral(1, sql.Int64),
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
+					expression.NewLiteral(1, types.Int64),
 				),
 			}, nil, nil),
 			false,
@@ -470,8 +471,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "bar", "b", false),
 				)},
 				"",
 				make(map[string]string),
@@ -483,8 +484,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", false),
 				)},
 				"",
 				make(map[string]string),
@@ -496,8 +497,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
+					expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 				)},
 				"",
 				make(map[string]string),
@@ -539,9 +540,9 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateAdd(
-						expression.NewLiteral("2018-05-01", sql.LongText),
+						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 							"DAY",
 						),
 					)),
@@ -555,9 +556,9 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateSub(
-						expression.NewLiteral("2018-05-01", sql.LongText),
+						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 							"DAY",
 						),
 					)),
@@ -571,9 +572,9 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewPlus(
-						expression.NewLiteral("2018-05-01", sql.LongText),
+						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 							"DAY",
 						),
 					),
@@ -587,9 +588,9 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewMinus(
-						expression.NewLiteral("2018-05-01", sql.LongText),
+						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(1), types.Int64),
 							"DAY",
 						),
 					),
@@ -603,7 +604,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewInterval(
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int64(1), types.Int64),
 						"DAY",
 					),
 				},
@@ -616,7 +617,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("foo", expression.NewInterval(
-						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int64(1), types.Int64),
 						"DAY",
 					)),
 				},
@@ -648,20 +649,20 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "foo", Type: sql.Text},
+		{Name: "foo", Type: types.Text},
 	}), nil)
 	subTable := memory.NewTable("subtest", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "bar", Type: sql.Text},
+		{Name: "bar", Type: types.Text},
 	}), nil)
 
 	var node sql.Node
 	node = plan.NewProject([]sql.Expression{
 		plan.NewSubquery(plan.NewFilter(expression.NewGreaterThan(
-			expression.NewGetField(0, sql.Boolean, "foo", false),
+			expression.NewGetField(0, types.Boolean, "foo", false),
 			lit(1),
 		), plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetField(1, sql.Boolean, "bar", false),
+				expression.NewGetField(1, types.Boolean, "bar", false),
 			},
 			plan.NewResolvedTable(subTable, nil, nil),
 		)), "select bar from subtest where foo > 1"),
@@ -672,11 +673,11 @@ func TestValidateSubqueryColumns(t *testing.T) {
 
 	node = plan.NewProject([]sql.Expression{
 		plan.NewSubquery(plan.NewFilter(expression.NewGreaterThan(
-			expression.NewGetField(1, sql.Boolean, "foo", false),
+			expression.NewGetField(1, types.Boolean, "foo", false),
 			lit(1),
 		), plan.NewProject(
 			[]sql.Expression{
-				expression.NewGetField(2, sql.Boolean, "bar", false),
+				expression.NewGetField(2, types.Boolean, "bar", false),
 			},
 			plan.NewResolvedTable(subTable, nil, nil),
 		)), "select bar from subtest where foo > 1"),
