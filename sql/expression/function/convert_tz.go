@@ -104,8 +104,11 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	t := time.Now()
+	_, offset := t.Zone()
+
 	if fromStr == globalTimeZone.Default {
-		fromStr = getSystemDelta()
+		fromStr = getSystemDelta(offset)
 	}
 
 	toStr, ok := to.(string)
@@ -114,7 +117,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if toStr == globalTimeZone.Default {
-		toStr = getSystemDelta()
+		toStr = getSystemDelta(offset)
 	}
 
 	converted, success := convertTimeZone(datetime, fromStr, toStr)
@@ -185,9 +188,7 @@ func getDeltaAsDuration(d string) (time.Duration, error) {
 	return time.ParseDuration(symbol + hours + "h" + mins + "m")
 }
 
-func getSystemDelta() string {
-	t := time.Now()
-	_, offset := t.Zone()
+func getSystemDelta(offset int) string {
 	seconds := offset % (60 * 60 * 24)
 	hours := math.Floor(float64(seconds) / 60 / 60)
 	seconds = offset % (60 * 60)
