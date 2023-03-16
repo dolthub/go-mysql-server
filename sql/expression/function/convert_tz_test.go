@@ -136,6 +136,7 @@ func TestConvertTz(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			// Set the system timezone to a known value so we can test convert_tz with the SYSTEM param
 			loc, err := time.LoadLocation("UTC")
 			time.Local = loc
 			fn := NewConvertTz(expression.NewLiteral(test.datetime, types.Text), expression.NewLiteral(test.fromTimeZone, types.Text), expression.NewLiteral(test.toTimeZone, types.Text))
