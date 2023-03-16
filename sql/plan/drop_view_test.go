@@ -36,16 +36,16 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 
 	db.AddTable("db", table)
 
-	subqueryAlias := NewSubqueryAlias("myview", "select i",
+	subqueryAlias := NewSubqueryAlias("myview", "select i from mytable",
 		NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
 			},
-			NewUnresolvedTable("dual", ""),
+			NewUnresolvedTable(table.Name(), ""),
 		),
 	)
 
-	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false)
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
 
 	ctx := sql.NewContext(context.Background())
 
@@ -112,7 +112,7 @@ func TestDropExistingViewNative(t *testing.T) {
 		_, err := dropView.RowIter(ctx, nil)
 		require.NoError(t, err)
 
-		_, ok, err := db.GetView(ctx, view.Name())
+		_, ok, err := db.GetViewDefinition(ctx, view.Name())
 		require.NoError(t, err)
 		require.False(t, ok)
 	}
@@ -133,7 +133,7 @@ func TestDropNonExistingViewNative(t *testing.T) {
 
 		_, dropErr := dropView.RowIter(ctx, nil)
 
-		_, ok, err := db.GetView(ctx, view.Name())
+		_, ok, err := db.GetViewDefinition(ctx, view.Name())
 		require.NoError(t, err)
 		require.True(t, ok)
 

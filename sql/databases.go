@@ -19,6 +19,11 @@ import (
 	"time"
 )
 
+const (
+	// InformationSchemaDatabaseName is the name of the information schema database.
+	InformationSchemaDatabaseName = "information_schema"
+)
+
 // DatabaseProvider is the fundamental interface to integrate with the engine. It provides access to all databases in
 // a given backend. A DatabaseProvider is provided to the Catalog when the engine is initialized.
 type DatabaseProvider interface {
@@ -219,14 +224,14 @@ type StoredProcedureDatabase interface {
 type ViewDatabase interface {
 	// CreateView persists the definition a view with the name and select statement given. If a view with that name
 	// already exists, should return ErrExistingView
-	CreateView(ctx *Context, name string, selectStatement string) error
+	CreateView(ctx *Context, name string, selectStatement, createViewStmt string) error
 
 	// DropView deletes the view named from persistent storage. If the view doesn't exist, should return
 	// ErrViewDoesNotExist
 	DropView(ctx *Context, name string) error
 
-	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
-	GetView(ctx *Context, viewName string) (string, bool, error)
+	// GetViewDefinition returns the ViewDefinition of the view with the name given, or false if it doesn't exist.
+	GetViewDefinition(ctx *Context, viewName string) (ViewDefinition, bool, error)
 
 	// AllViews returns the definitions of all views in the database
 	AllViews(ctx *Context) ([]ViewDefinition, error)
@@ -234,8 +239,9 @@ type ViewDatabase interface {
 
 // ViewDefinition is the named textual definition of a view
 type ViewDefinition struct {
-	Name           string
-	TextDefinition string
+	Name                string
+	TextDefinition      string
+	CreateViewStatement string
 }
 
 // GetTableInsensitive implements a case-insensitive map lookup for tables keyed off of the table name.

@@ -16,6 +16,7 @@ package information_schema
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -999,7 +1000,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					for j, colName := range fk.Columns {
 						ordinalPosition := j + 1
 
-						referencedSchema := db.Name()
+						referencedSchema := fk.ParentDatabase
 						referencedTableName := fk.ParentTable
 						referencedColumnName := strings.Replace(fk.ParentColumns[j], "`", "", -1) // get rid of backticks
 
@@ -1047,6 +1048,96 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// referentialConstraintsRowIter implements the sql.RowIter for the information_schema.REFERENTIAL_CONSTRAINTS table.
+func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases(ctx) {
+		tableNames, err := db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			// Get FKs
+			fkTable, ok := tbl.(ForeignKeyTable)
+			if ok {
+				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, fk := range fks {
+					var uniqueConstName interface{}
+					referencedSchema := fk.ParentDatabase
+					referencedTableName := fk.ParentTable
+					referencedCols := make(map[string]struct{})
+					for _, refCol := range fk.ParentColumns {
+						referencedCols[refCol] = struct{}{}
+					}
+
+					onUpdate := string(fk.OnUpdate)
+					if fk.OnUpdate == ForeignKeyReferentialAction_DefaultAction {
+						onUpdate = "NO ACTION"
+					}
+					onDelete := string(fk.OnDelete)
+					if fk.OnDelete == ForeignKeyReferentialAction_DefaultAction {
+						onDelete = "NO ACTION"
+					}
+
+					refTbl, _, rerr := c.Table(ctx, referencedSchema, referencedTableName)
+					if rerr != nil {
+						return nil, rerr
+					}
+
+					indexTable, iok := refTbl.(IndexAddressable)
+					if iok {
+						indexes, ierr := indexTable.GetIndexes(ctx)
+						if ierr != nil {
+
+						}
+						for _, index := range indexes {
+							if index.ID() != "PRIMARY" && !index.IsUnique() {
+								continue
+							}
+							colNames := getColumnNamesFromIndex(index, refTbl)
+							if len(colNames) == len(referencedCols) {
+								var hasAll = true
+								for _, colName := range colNames {
+									_, hasAll = referencedCols[colName]
+								}
+								if hasAll {
+									uniqueConstName = index.ID()
+								}
+							}
+						}
+					}
+
+					rows = append(rows, Row{
+						"def",               // constraint_catalog
+						db.Name(),           // constraint_schema
+						fk.Name,             // constraint_name
+						"def",               // unique_constraint_catalog
+						referencedSchema,    // unique_constraint_schema
+						uniqueConstName,     // unique_constraint_name
+						"NONE",              // match_option
+						onUpdate,            // update_rule
+						onDelete,            // delete_rule
+						tbl.Name(),          // table_name
+						referencedTableName, // referenced_table_name
+					})
+				}
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 // schemataRowIter implements the sql.RowIter for the information_schema.SCHEMATA table.
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases(ctx)
@@ -1055,11 +1146,12 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	for _, db := range dbs {
 		collation := plan.GetDatabaseCollation(ctx, db)
 		rows = append(rows, Row{
-			"def",
-			db.Name(),
-			collation.CharacterSet().String(),
-			collation.String(),
-			nil,
+			"def",                             // catalog_name
+			db.Name(),                         // schema_name
+			collation.CharacterSet().String(), // default_character_set_name
+			collation.String(),                // default_collation_name
+			nil,                               // sql_path
+			"NO",                              // default_encryption
 		})
 	}
 
@@ -1254,9 +1346,12 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var (
 		tableType      string
 		tableRows      uint64
+		avgRowLength   uint64
+		dataLength     uint64
 		engine         interface{}
 		rowFormat      interface{}
 		tableCollation interface{}
+		autoInc        interface{}
 	)
 
 	for _, db := range cat.AllDatabases(ctx) {
@@ -1277,6 +1372,33 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					if err != nil {
 						return false, err
 					}
+
+					// TODO: correct values for avg_row_length, data_length, max_data_length are missing (current values varies on gms vs Dolt)
+					//  index_length and data_free columns are not supported yet
+					//  the data length values differ from MySQL
+					// MySQL uses default page size (16384B) as data length, and it adds another page size, if table data fills the current page block.
+					// https://stackoverflow.com/questions/34211377/average-row-length-higher-than-possible has good explanation.
+					dataLength, err = st.DataLength(ctx)
+					if err != nil {
+						return false, err
+					}
+
+					if tableRows > uint64(0) {
+						avgRowLength = dataLength / tableRows
+					}
+				}
+
+				if ai, ok := t.(AutoIncrementTable); ok {
+					autoInc, err = ai.PeekNextAutoIncrementValue(ctx)
+					if !errors.Is(err, ErrNoAutoIncrementCol) && err != nil {
+						return false, err
+					}
+
+					// table with no auto incremented column is qualified as AutoIncrementTable, and the nextAutoInc value is 0
+					// table with auto incremented column and no rows, the nextAutoInc value is 1
+					if autoInc == uint64(0) || autoInc == uint64(1) {
+						autoInc = nil
+					}
 				}
 			}
 
@@ -1289,12 +1411,12 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				10,             // version (protocol, always 10)
 				rowFormat,      // row_format
 				tableRows,      // table_rows
-				0,              // avg_row_length
-				0,              // data_length
+				avgRowLength,   // avg_row_length
+				dataLength,     // data_length
 				0,              // max_data_length
-				0,              // max_data_length
+				0,              // index_length
 				0,              // data_free
-				nil,            // auto_increment (the next value)
+				autoInc,        // auto_increment
 				y2k,            // create_time
 				y2k,            // update_time
 				nil,            // check_time
@@ -1318,27 +1440,27 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		for _, view := range views {
 			rows = append(rows, Row{
-				"def",                      // table_catalog
-				db.Name(),                  // table_schema
-				view.Name,                  // table_name
-				"VIEW",                     // table_type
-				engine,                     // engine
-				10,                         // version (protocol, always 10)
-				rowFormat,                  // row_format
-				nil,                        // table_rows
-				nil,                        // avg_row_length
-				nil,                        // data_length
-				nil,                        // max_data_length
-				nil,                        // max_data_length
-				nil,                        // data_free
-				nil,                        // auto_increment
-				nil,                        // create_time
-				nil,                        // update_time
-				nil,                        // check_time
-				Collation_Default.String(), // table_collation
-				nil,                        // checksum
-				nil,                        // create_options
-				"VIEW",                     // table_comment
+				"def",     // table_catalog
+				db.Name(), // table_schema
+				view.Name, // table_name
+				"VIEW",    // table_type
+				nil,       // engine
+				nil,       // version (protocol, always 10)
+				nil,       // row_format
+				nil,       // table_rows
+				nil,       // avg_row_length
+				nil,       // data_length
+				nil,       // max_data_length
+				nil,       // max_data_length
+				nil,       // data_free
+				nil,       // auto_increment
+				y2k,       // create_time
+				nil,       // update_time
+				nil,       // check_time
+				nil,       // table_collation
+				nil,       // checksum
+				nil,       // create_options
+				"VIEW",    // table_comment
 			})
 		}
 	}
@@ -1349,13 +1471,42 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 // triggersRowIter implements the sql.RowIter for the information_schema.TRIGGERS table.
 func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+	if err != nil {
+		return nil, err
+	}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
+	}
+	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+	if err != nil {
+		return nil, err
+	}
+	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
+	if err != nil {
+		return nil, err
+	}
+	sqlMode, sok := sysVal.(string)
+	if !sok {
+		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
+	}
+	privSet, _ := ctx.GetPrivilegeSet()
+	hasGlobalTriggerPriv := privSet.Has(PrivilegeType_Trigger)
 	for _, db := range c.AllDatabases(ctx) {
 		triggerDb, ok := db.(TriggerDatabase)
 		if ok {
+			privDbSet := privSet.Database(db.Name())
+			hasDbTriggerPriv := privDbSet.Has(PrivilegeType_Trigger)
 			triggers, err := triggerDb.GetTriggers(ctx)
 			if err != nil {
 				return nil, err
 			}
+
+			if len(triggers) == 0 {
+				continue
+			}
+
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
 				parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
@@ -1405,42 +1556,37 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
 					triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
 					tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
-					characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-					if err != nil {
-						return nil, err
+
+					// triggers cannot be created on table that is not in current schema, so the trigger_name = event_object_schema
+					privTblSet := privDbSet.Table(tableName)
+
+					// To see information about a table's triggers, you must have the TRIGGER privilege for the table.
+					if hasGlobalTriggerPriv || hasDbTriggerPriv || privTblSet.Has(PrivilegeType_Trigger) {
+						rows = append(rows, Row{
+							"def",                   // trigger_catalog
+							triggerDb.Name(),        // trigger_schema
+							triggerPlan.TriggerName, // trigger_name
+							triggerEvent,            // event_manipulation
+							"def",                   // event_object_catalog
+							triggerDb.Name(),        // event_object_schema
+							tableName,               // event_object_table
+							int64(order + 1),        // action_order
+							nil,                     // action_condition
+							triggerPlan.BodyString,  // action_statement
+							"ROW",                   // action_orientation
+							triggerTime,             // action_timing
+							nil,                     // action_reference_old_table
+							nil,                     // action_reference_new_table
+							"OLD",                   // action_reference_old_row
+							"NEW",                   // action_reference_new_row
+							triggerPlan.CreatedAt,   // created
+							sqlMode,                 // sql_mode
+							triggerPlan.Definer,     // definer
+							characterSetClient,      // character_set_client
+							collationConnection,     // collation_connection
+							collationServer,         // database_collation
+						})
 					}
-					collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-					if err != nil {
-						return nil, err
-					}
-					collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-					if err != nil {
-						return nil, err
-					}
-					rows = append(rows, Row{
-						"def",                   // trigger_catalog
-						triggerDb.Name(),        // trigger_schema
-						triggerPlan.TriggerName, // trigger_name
-						triggerEvent,            // event_manipulation
-						"def",                   // event_object_catalog
-						triggerDb.Name(),        // event_object_schema //TODO: table may be in a different db
-						tableName,               // event_object_table
-						int64(order + 1),        // action_order
-						nil,                     // action_condition
-						triggerPlan.BodyString,  // action_statement
-						"ROW",                   // action_orientation
-						triggerTime,             // action_timing
-						nil,                     // action_reference_old_table
-						nil,                     // action_reference_new_table
-						"OLD",                   // action_reference_old_row
-						"NEW",                   // action_reference_new_row
-						triggerPlan.CreatedAt,   // created
-						"",                      // sql_mode
-						triggerPlan.Definer,     // definer
-						characterSetClient,      // character_set_client
-						collationConnection,     // collation_connection
-						collationServer,         // database_collation
-					})
 				}
 			}
 		}
@@ -1451,26 +1597,66 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // viewsRowIter implements the sql.RowIter for the information_schema.VIEWS table.
 func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
+	privSet, _ := ctx.GetPrivilegeSet()
+	hasGlobalShowViewPriv := privSet.Has(PrivilegeType_ShowView)
 	for _, db := range catalog.AllDatabases(ctx) {
 		dbName := db.Name()
+		privDbSet := privSet.Database(dbName)
+		hasDbShowViewPriv := privDbSet.Has(PrivilegeType_ShowView)
 
 		views, err := viewsInDatabase(ctx, db)
 		if err != nil {
 			return nil, err
 		}
 
+		charset := Collation_Default.CharacterSet().String()
+		collation := Collation_Default.String()
+
 		for _, view := range views {
+			privTblSet := privDbSet.Table(view.Name)
+			if !hasGlobalShowViewPriv && !hasDbShowViewPriv && !privTblSet.Has(PrivilegeType_ShowView) {
+				continue
+			}
+			parsedView, err := parse.Parse(ctx, view.CreateViewStatement)
+			if err != nil {
+				return nil, err
+			}
+			viewPlan, ok := parsedView.(*plan.CreateView)
+			if !ok {
+				return nil, ErrTriggerCreateStatementInvalid.New(view.CreateViewStatement)
+			}
+
+			viewDef := view.TextDefinition
+			definer := viewPlan.Definer
+
+			// TODO: WITH CHECK OPTION is not supported yet.
+			checkOpt := viewPlan.CheckOpt
+			if checkOpt == "" {
+				checkOpt = "NONE"
+			}
+
+			isUpdatable := "YES"
+			// TODO: this function call should be done at CREATE VIEW time, not here
+			if !plan.GetIsUpdatableFromCreateView(viewPlan) {
+				isUpdatable = "NO"
+			}
+
+			securityType := viewPlan.Security
+			if securityType == "" {
+				securityType = "DEFINER"
+			}
+
 			rows = append(rows, Row{
-				"def",
-				dbName,
-				view.Name,
-				view.TextDefinition,
-				"NONE",
-				"YES",
-				"",
-				"DEFINER",
-				Collation_Default.CharacterSet().String(),
-				Collation_Default.String(),
+				"def",        // table_catalog
+				dbName,       // table_schema
+				view.Name,    // table_name
+				viewDef,      // view_definition
+				checkOpt,     // check_option
+				isUpdatable,  // is_updatable
+				definer,      // definer
+				securityType, // security_type
+				charset,      // character_set_client
+				collation,    // collation_connection
 			})
 		}
 	}
@@ -1607,7 +1793,7 @@ func NewInformationSchemaDatabase() Database {
 			ReferentialConstraintsTableName: &informationSchemaTable{
 				name:   ReferentialConstraintsTableName,
 				schema: referentialConstraintsSchema,
-				reader: emptyRowIter,
+				reader: referentialConstraintsRowIter,
 			},
 			ResourceGroupsTableName: &informationSchemaTable{
 				name:   ResourceGroupsTableName,
@@ -2199,8 +2385,9 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 
 	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
 		views = append(views, ViewDefinition{
-			Name:           view.Name(),
-			TextDefinition: view.TextDefinition(),
+			Name:                view.Name(),
+			TextDefinition:      view.TextDefinition(),
+			CreateViewStatement: view.CreateStatement(),
 		})
 	}
 

@@ -43,9 +43,6 @@ const (
 	characterSetConnectionSysVarName = "character_set_connection"
 	characterSetResultsSysVarName    = "character_set_results"
 	collationConnectionSysVarName    = "collation_connection"
-
-	// InformationSchemaDatabaseName is the name of the information schema database.
-	InformationSchemaDatabaseName = "information_schema"
 )
 
 var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/dolthub/go-mysql-server/sql")

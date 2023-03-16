@@ -1271,6 +1271,7 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 	if err != nil {
 		return nil, err
 	}
+	definer := getCurrentUserForDefiner(ctx, c.TriggerSpec.Definer)
 
 	return plan.NewCreateTrigger(
 		sql.UnresolvedDatabase(c.TriggerSpec.TrigName.Qualifier.String()),
@@ -1283,7 +1284,7 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 		query,
 		bodyStr,
 		ctx.QueryTime(),
-		c.TriggerSpec.Definer,
+		definer,
 	), nil
 }
 
@@ -2107,9 +2108,10 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 
 	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryNode)
+	definer := getCurrentUserForDefiner(ctx, c.ViewSpec.Definer)
 
 	return plan.NewCreateView(
-		sql.UnresolvedDatabase(""), c.ViewSpec.ViewName.Name.String(), []string{}, queryAlias, c.OrReplace), nil
+		sql.UnresolvedDatabase(""), c.ViewSpec.ViewName.Name.String(), []string{}, queryAlias, c.OrReplace, query, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security), nil
 }
 
 func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
@@ -4223,4 +4225,12 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 	}
 
 	return node, nil
+}
+
+func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
+	if definer == "" {
+		client := ctx.Session.Client()
+		definer = fmt.Sprintf("`%s`@`%s`", client.User, client.Address)
+	}
+	return definer
 }
