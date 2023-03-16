@@ -26,8 +26,6 @@ import (
 )
 
 func TestConvertTz(t *testing.T) {
-	_, offset := time.Now().Zone()
-
 	tests := []struct {
 		name           string
 		datetime       interface{}
@@ -127,17 +125,18 @@ func TestConvertTz(t *testing.T) {
 			expectedResult: nil,
 		},
 		{
-			name:         "Test with @@GLOBAL.time_zone value: SYSTEM",
-			datetime:     time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
-			fromTimeZone: "SYSTEM",
-			toTimeZone:   "+01:00",
-			expectedResult: time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC).
-				Add(time.Duration(offset-3600) * time.Second), // offset-3600 because of +01:00
+			name:           "Test with @@GLOBAL.time_zone value: SYSTEM",
+			datetime:       time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
+			fromTimeZone:   "SYSTEM",
+			toTimeZone:     "+01:00",
+			expectedResult: time.Date(2010, 6, 3, 13, 12, 12, 0, time.UTC),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			loc, err := time.LoadLocation("UTC")
+			time.Local = loc
 			fn := NewConvertTz(expression.NewLiteral(test.datetime, sql.Text), expression.NewLiteral(test.fromTimeZone, sql.Text), expression.NewLiteral(test.toTimeZone, sql.Text))
 
 			res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})

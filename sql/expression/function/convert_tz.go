@@ -195,6 +195,8 @@ func getSystemDelta() string {
 	result := fmt.Sprintf("%02d:%02d", int(math.Abs(hours)), int(math.Abs(minutes)))
 	if offset >= 0 {
 		result = fmt.Sprintf("+%s", result)
+	} else {
+		result = fmt.Sprintf("-%s", result)
 	}
 
 	return result
