@@ -67,7 +67,11 @@ type AlterIndex struct {
 	Comment string
 	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
 	DisableKeys bool
+	// TargetSchema Analyzer state.
+	targetSchema sql.Schema
 }
+
+var _ sql.SchemaTarget = (*AlterIndex)(nil)
 
 func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
@@ -195,7 +199,8 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 		if !ok || p.Constraint != sql.IndexConstraint_Unique {
 			return nil
 		}
-		sch := sql.SchemaToPrimaryKeySchema(table, table.Schema())
+
+		sch := sql.SchemaToPrimaryKeySchema(table, p.targetSchema)
 		inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, p.Columns)
 		if err != nil {
 			return err
@@ -283,24 +288,28 @@ func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
-// WithChildren implements the Node interface.
-func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+// For plan.AlterIndex, one child is expected - The table.
+func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
 	switch p.Action {
-	case IndexAction_Create:
-		return NewAlterCreateIndex(p.db, children[0], p.IndexName, p.Using, p.Constraint, p.Columns, p.Comment), nil
-	case IndexAction_Drop:
-		return NewAlterDropIndex(p.db, children[0], p.IndexName), nil
-	case IndexAction_Rename:
-		return NewAlterRenameIndex(p.db, children[0], p.PreviousIndexName, p.IndexName), nil
-	case IndexAction_DisableEnableKeys:
-		return NewAlterDisableEnableKeys(p.db, children[0], p.DisableKeys), nil
+	case IndexAction_Create, IndexAction_Drop, IndexAction_Rename, IndexAction_DisableEnableKeys:
+		p.Table = children[0]
+		return &p, nil
 	default:
 		return nil, ErrIndexActionNotImplemented.New(p.Action)
 	}
+}
+
+func (p AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	p.targetSchema = schema
+	return &p, nil
+}
+
+func (p *AlterIndex) TargetSchema() sql.Schema {
+	return p.targetSchema
 }
 
 // CheckPrivileges implements the interface sql.Node.
