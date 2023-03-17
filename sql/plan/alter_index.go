@@ -326,7 +326,7 @@ func (p *AlterIndex) Expressions() []sql.Expression {
 
 // Update column defaults on the targetSchema instance - required to be the same number of columns on the target schema.
 func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	columns := p.TargetSchema()
+	columns := p.TargetSchema().Copy()
 
 	if len(columns) != len(expressions) {
 		return nil, fmt.Errorf("invariant failure: column count does not match expression count")
@@ -351,7 +351,11 @@ func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, er
 		columns[i].Default = newColDef
 	}
 
-	return &p, nil
+	newIdx, err := p.WithTargetSchema(columns)
+	if err != nil {
+		return nil, err
+	}
+	return newIdx, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
