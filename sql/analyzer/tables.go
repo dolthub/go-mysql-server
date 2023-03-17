@@ -150,8 +150,10 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			table = n
-			return false
+			if !plan.IsDualTable(n) {
+				table = n
+				return false
+			}
 		case *plan.IndexedTableAccess:
 			table = n.ResolvedTable
 			return false

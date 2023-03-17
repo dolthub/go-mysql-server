@@ -359,6 +359,9 @@ func resolveRecursiveCte(
 			newC.Name = rCte.Columns[i]
 		}
 		newC.Source = rCte.Name()
+		// the recursive part of the CTE may produce wider types than the left/non-recursive part
+		// we need to promote the type of the left part, so the final schema is the widest possible type
+		newC.Type = newC.Type.Promote()
 		recSch[i] = newC
 	}
 
