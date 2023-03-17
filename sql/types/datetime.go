@@ -337,7 +337,7 @@ func (t datetimeType) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -387,9 +387,9 @@ func (t datetimeType) String() string {
 	case sqltypes.Date:
 		return "date"
 	case sqltypes.Datetime:
-		return "datetime"
+		return "datetime(0)"
 	case sqltypes.Timestamp:
-		return "timestamp"
+		return "timestamp()"
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
