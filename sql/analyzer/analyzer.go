@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"os"
 	"reflect"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
