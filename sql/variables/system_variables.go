@@ -586,6 +586,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemStringType("datadir"),
 		Default:           "",
 	},
+	"debug_analyzer": {
+		Name:              "debug_analyzer",
+		Scope:             sql.SystemVariableScope_Session,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("debug_analyzer"),
+		Default:           "",
+	},
 	"debug_sync": {
 		Name:              "debug_sync",
 		Scope:             sql.SystemVariableScope_Session,

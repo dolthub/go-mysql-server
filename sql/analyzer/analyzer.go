@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"os"
 	"reflect"
 	"strings"
@@ -451,7 +452,15 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
-	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
+	value, err := ctx.GetSessionVariable(ctx, "debug_analyzer")
+	if err == nil {
+		enabled, err := types.ConvertToBool(value)
+		if err == nil {
+			a.Debug = enabled
+			a.Verbose = enabled
+		}
+	}
+	n, _, err = a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
 }
 
