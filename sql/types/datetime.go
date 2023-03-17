@@ -389,7 +389,7 @@ func (t datetimeType) String() string {
 	case sqltypes.Datetime:
 		return "datetime(0)"
 	case sqltypes.Timestamp:
-		return "timestamp()"
+		return "timestamp(0)"
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
