@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 	"strings"
 
@@ -72,6 +73,7 @@ type AlterIndex struct {
 }
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)
+var _ sql.Expressioner = (*AlterIndex)(nil)
 
 func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
@@ -310,6 +312,50 @@ func (p AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 
 func (p *AlterIndex) TargetSchema() sql.Schema {
 	return p.targetSchema
+}
+
+// Expressions on the AlterIndex object are specifically column default expresions, nothing else.
+func (p *AlterIndex) Expressions() []sql.Expression {
+	newExprs := make([]sql.Expression, len(p.TargetSchema()))
+	for i, col := range p.TargetSchema() {
+		if col.Default != nil {
+			newExprs[i] = expression.WrapExpression(col.Default)
+		} else {
+			newExprs[i] = expression.WrapExpression(nil)
+		}
+	}
+
+	return newExprs
+}
+
+// Update column defaults on the targetSchema instance - required to be the same number of columns on the target schema.
+func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+	columns := p.TargetSchema()
+
+	if len(columns) != len(expressions) {
+		return nil, fmt.Errorf("invariant failure: column count does not match expression count")
+	}
+
+	for i, expr := range expressions {
+		wrapper, ok := expr.(*expression.Wrapper)
+		if !ok {
+			return nil, fmt.Errorf("*expression.Wrapper cast failure unexpected: %v", expr)
+		}
+
+		wrapped := wrapper.Unwrap()
+		if wrapped == nil {
+			continue // No default for this column
+		}
+
+		newColDef, ok := wrapped.(*sql.ColumnDefaultValue)
+		if !ok {
+			return nil, fmt.Errorf("*sql.ColumnDefaultValue cast failure unexptected: %v", wrapped)
+		}
+
+		columns[i].Default = newColDef
+	}
+
+	return &p, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
