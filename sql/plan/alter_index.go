@@ -318,11 +318,7 @@ func (p *AlterIndex) TargetSchema() sql.Schema {
 func (p *AlterIndex) Expressions() []sql.Expression {
 	newExprs := make([]sql.Expression, len(p.TargetSchema()))
 	for i, col := range p.TargetSchema() {
-		if col.Default != nil {
-			newExprs[i] = expression.WrapExpression(col.Default)
-		} else {
-			newExprs[i] = expression.WrapExpression(nil)
-		}
+		newExprs[i] = expression.WrapExpression(col.Default)
 	}
 
 	return newExprs
