@@ -1122,6 +1122,113 @@ var joinCostTests = []struct {
       					AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
 				Expected: []sql.Row{{1, "first row"}},
 			},
+
+			{
+				Query: "select * from mytable where exists (select * from mytable where i = 1);",
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			// queries that test subquery hoisting
+			{
+				// EXISTS condition uses columns from both sides
+				Query: "/*case1*/ select * from ab where exists (select * from xy where ab.a = xy.x + 3)",
+				Expected: []sql.Row{
+					{3, 1},
+				},
+			},
+			{
+				// NOT EXISTS condition uses columns from both sides
+				Query: "/*case1N*/ select * from ab where not exists (select * from xy where ab.a = xy.x + 3)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+				},
+			},
+			{
+				// EXISTS condition uses columns from left side only
+				Query:    "/*case2*/ select * from ab where exists (select * from xy where a = 1)",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				// NOT EXISTS condition uses columns from left side only
+				Query: "/*case2N*/ select * from ab where not exists (select * from xy where a = 1)",
+				Expected: []sql.Row{
+					{0, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// EXISTS condition uses columns from right side only
+				Query: "/*case3*/ select * from ab where exists (select * from xy where 1 = xy.x)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// NOT EXISTS condition uses columns from right side only
+				Query: "/*case3N*/ select * from ab where not exists (select * from xy where 10 = xy.x)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// EXISTS condition uses no columns from either side, and condition is true
+				Query: "/*case4a*/ select * from ab where exists (select * from xy where 1 = 1)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// NOT EXISTS condition uses no columns from either side, and condition is true
+				Query:    "/*case4aN*/ select * from ab where not exists (select * from xy where 1 = 1)",
+				Expected: []sql.Row{},
+			},
+			{
+				// EXISTS condition uses no columns from either side, and condition is false
+				Query:    "/*case4b*/ select * from ab where exists (select * from xy where 1 = 0)",
+				Expected: []sql.Row{},
+			},
+			{
+				// NOT EXISTS condition uses no columns from either side, and condition is false
+				Query: "/*case4bN*/ select * from ab where not exists (select * from xy where 1 = 0)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// test more complex scopes
+				Query: "select x, 1 in (select a from ab where exists (select * from uv where a = u)) s from xy",
+				Expected: []sql.Row{
+					{0, true},
+					{1, true},
+					{2, true},
+					{3, true},
+				},
+			},
+			{
+				// multiple exists conditions
+				Query: `SELECT * FROM xy WHERE (
+          EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x - 3))
+          AND EXISTS (SELECT * FROM rs Alias2 WHERE Alias2.r = (xy.x + 2)));`,
+				Expected: []sql.Row{{3, 3}},
+			},
 		},
 	},
 }

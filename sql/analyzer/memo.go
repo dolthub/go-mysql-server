@@ -233,6 +233,9 @@ type relProps struct {
 	outputTables sql.FastIntSet
 
 	card float64
+
+	limit  sql.Expression
+	filter sql.Expression
 }
 
 func newRelProps(rel relExpr) *relProps {
@@ -447,6 +450,18 @@ func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
 		e.best = n
 		e.cost = grpCost
 	}
+}
+
+func (e *exprGroup) finalize(node sql.Node) sql.Node {
+	props := e.relProps
+	var result = node
+	if props.filter != nil {
+		result = plan.NewFilter(props.filter, result)
+	}
+	if props.limit != nil {
+		result = plan.NewLimit(props.limit, result)
+	}
+	return result
 }
 
 func (e *exprGroup) String() string {
