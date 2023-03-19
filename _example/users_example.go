@@ -15,9 +15,9 @@
 package main
 
 import (
-	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	sqle "github.com/gabereiser/go-mysql-server"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
 )
 
 // This file walks through how an application might add support for users through the inclusion of the "mysql" database.

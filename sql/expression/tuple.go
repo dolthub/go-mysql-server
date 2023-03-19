@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	types2 "github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql"
+	types2 "github.com/gabereiser/go-mysql-server/sql/types"
 )
 
 // Tuple is a fixed-size collection of expressions.

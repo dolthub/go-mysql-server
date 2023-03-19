@@ -17,7 +17,7 @@ package mysql_db
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // PrivilegedDatabaseProvider is a wrapper around a normal sql.DatabaseProvider that takes a context's client's

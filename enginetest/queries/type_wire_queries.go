@@ -14,7 +14,7 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import "github.com/gabereiser/go-mysql-server/sql"
 
 // TypeWireTest is used to ensure that types are properly represented over the wire (vs being directly returned from the
 // engine).

@@ -21,7 +21,7 @@ import (
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
-	"github.com/dolthub/go-mysql-server/sql/values"
+	"github.com/gabereiser/go-mysql-server/sql/values"
 )
 
 // Row is a tuple of values.

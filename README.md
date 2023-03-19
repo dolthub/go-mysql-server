@@ -51,7 +51,7 @@ Add **go-mysql-server** as a dependency to your project. In the
 directory with the `go.mod` file, run:
 
 ```
-go get github.com/dolthub/go-mysql-server@latest
+go get github.com/gabereiser/go-mysql-server@latest
 ```
 
 ## Using the in-memory test server
@@ -143,14 +143,14 @@ intended for use in tests. It has specific limitations that we know
 of:
 
 - [Not
-  threadsafe](https://github.com/dolthub/go-mysql-server/issues/1306). To
+  threadsafe](https://github.com/gabereiser/go-mysql-server/issues/1306). To
   avoid concurrency issues, limit DDL and DML statements (`CREATE
   TABLE`, `INSERT`, etc.) to a single goroutine.
 - [No transaction
-  support](https://github.com/dolthub/go-mysql-server/issues/1506). Statements
+  support](https://github.com/gabereiser/go-mysql-server/issues/1506). Statements
   like `START TRANSACTION`, `ROLLBACK`, and `COMMIT` are no-ops.
 - [Non-performant index
-  implementation](https://github.com/dolthub/go-mysql-server/issues/1347). Indexed
+  implementation](https://github.com/gabereiser/go-mysql-server/issues/1347). Indexed
   lookups and joins perform full table scans on the underlying tables.
 
 ## Custom backend implementations

@@ -24,10 +24,10 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 
-	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/enginetest"
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql"
+	sqle "github.com/gabereiser/go-mysql-server"
+	"github.com/gabereiser/go-mysql-server/enginetest"
+	"github.com/gabereiser/go-mysql-server/memory"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 type memoryHarness struct {

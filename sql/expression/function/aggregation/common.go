@@ -19,8 +19,8 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
 )
 
 var ErrEvalUnsupportedOnAggregation = errors.NewKind("Unimplemented %s.Eval(). The code should have used AggregationBuffer.Eval(ctx).")

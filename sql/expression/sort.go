@@ -17,7 +17,7 @@ package expression
 import (
 	"container/heap"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // Sorter is a sorter implementation for Row slices using SortFields for the comparison

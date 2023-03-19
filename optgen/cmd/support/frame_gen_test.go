@@ -13,8 +13,8 @@ func TestFrameGen(t *testing.T) {
 	}{
 		expected: `
 		import (
-		  "github.com/dolthub/go-mysql-server/sql"
-		  agg "github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+		  "github.com/gabereiser/go-mysql-server/sql"
+		  agg "github.com/gabereiser/go-mysql-server/sql/expression/function/aggregation"
 		)
 		
 		type RowsUnboundedPrecedingToNPrecedingFrame struct {

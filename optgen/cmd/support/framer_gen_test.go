@@ -13,8 +13,8 @@ func TestFramerGen(t *testing.T) {
 	}{
 		expected: `
 		import (
-		  "github.com/dolthub/go-mysql-server/sql"
-		  "github.com/dolthub/go-mysql-server/sql/expression"
+		  "github.com/gabereiser/go-mysql-server/sql"
+		  "github.com/gabereiser/go-mysql-server/sql/expression"
 		)
 		
 		type RowsUnboundedPrecedingToNPrecedingFramer struct {

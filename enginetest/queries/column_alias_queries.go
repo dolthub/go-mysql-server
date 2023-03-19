@@ -17,9 +17,9 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 var ColumnAliasQueries = []ScriptTest{
@@ -182,7 +182,7 @@ var ColumnAliasQueries = []ScriptTest{
 			},
 			{
 				// GMS currently returns {0, 0, 0} The second alias seems to get overwritten.
-				// https://github.com/dolthub/go-mysql-server/issues/1286
+				// https://github.com/gabereiser/go-mysql-server/issues/1286
 				Skip: true,
 
 				// When multiple aliases are defined with the same name, a subquery prefers the first definition

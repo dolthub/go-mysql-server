@@ -21,8 +21,8 @@ import (
 
 	"github.com/dolthub/sqllogictest/go/logictest"
 
-	"github.com/dolthub/go-mysql-server/enginetest"
-	"github.com/dolthub/go-mysql-server/enginetest/sqllogictest/harness"
+	"github.com/gabereiser/go-mysql-server/enginetest"
+	"github.com/gabereiser/go-mysql-server/enginetest/sqllogictest/harness"
 )
 
 type MemoryResultRecord struct {

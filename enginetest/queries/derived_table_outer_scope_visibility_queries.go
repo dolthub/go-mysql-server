@@ -14,7 +14,7 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import "github.com/gabereiser/go-mysql-server/sql"
 
 var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 	{
@@ -123,7 +123,7 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 		},
 	},
 	{
-		Name: "https://github.com/dolthub/go-mysql-server/issues/1282",
+		Name: "https://github.com/gabereiser/go-mysql-server/issues/1282",
 		SetUpScript: []string{
 			"CREATE TABLE `dcim_rackgroup` (`id` char(32) NOT NULL, `lft` int unsigned NOT NULL, `rght` int unsigned NOT NULL, `tree_id` int unsigned NOT NULL, `level` int unsigned NOT NULL, `parent_id` char(32), PRIMARY KEY (`id`), KEY `dcim_rackgroup_tree_id_9c2ad6f4` (`tree_id`), CONSTRAINT `dcim_rackgroup_parent_id_cc315105_fk_dcim_rackgroup_id` FOREIGN KEY (`parent_id`) REFERENCES `dcim_rackgroup` (`id`));",
 			"CREATE TABLE `dcim_rack` (`id` char(32) NOT NULL, `group_id` char(32), PRIMARY KEY (`id`), KEY `dcim_rack_group_id_44e90ea9` (`group_id`), CONSTRAINT `dcim_rack_group_id_44e90ea9_fk_dcim_rackgroup_id` FOREIGN KEY (`group_id`) REFERENCES `dcim_rackgroup` (`id`));",

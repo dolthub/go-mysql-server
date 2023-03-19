@@ -18,9 +18,9 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/gabereiser/go-mysql-server/sql/transform"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // RuleFunc is the function to be applied in a rule.

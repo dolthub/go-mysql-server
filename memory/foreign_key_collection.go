@@ -17,7 +17,7 @@ package memory
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // ForeignKeyCollection is a shareable container for a collection of foreign keys.

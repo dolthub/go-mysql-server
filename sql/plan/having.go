@@ -14,7 +14,7 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import "github.com/gabereiser/go-mysql-server/sql"
 
 // Having node is a filter that supports aggregate expressions. A having node
 // is identical to a filter node in behaviour. The difference is that some

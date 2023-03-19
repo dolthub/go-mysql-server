@@ -15,7 +15,7 @@
 package transform
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // Visitor visits nodes in the plan.

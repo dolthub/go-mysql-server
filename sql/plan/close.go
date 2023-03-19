@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // Close represents the CLOSE statement, which closes a cursor.

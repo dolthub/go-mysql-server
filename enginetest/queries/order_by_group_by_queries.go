@@ -15,8 +15,8 @@
 package queries
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/analyzer"
 )
 
 var OrderByGroupByScriptTests = []ScriptTest{
@@ -251,7 +251,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 	},
 	{
 		Name: "Group by null handling",
-		// https://github.com/dolthub/go-mysql-server/issues/1503
+		// https://github.com/gabereiser/go-mysql-server/issues/1503
 		SetUpScript: []string{
 			"create table t (pk int primary key, c1 varchar(10));",
 			"insert into t values (1, 'foo'), (2, 'foo'), (3, NULL);",

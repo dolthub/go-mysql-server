@@ -19,9 +19,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 //go:generate stringer -type=JoinType -linecomment

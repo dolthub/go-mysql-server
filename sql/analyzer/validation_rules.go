@@ -21,13 +21,13 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql/expression/function"
+	"github.com/gabereiser/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/gabereiser/go-mysql-server/sql/plan"
+	"github.com/gabereiser/go-mysql-server/sql/transform"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
 var (
@@ -820,7 +820,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // window aggregation functions that reference non-aggregated columns. Only GroupBy and Window
 // nodes know how to evaluate Aggregation expressions.
 //
-// See https://github.com/dolthub/go-mysql-server/issues/542 for some queries
+// See https://github.com/gabereiser/go-mysql-server/issues/542 for some queries
 // that should be supported but that currently trigger this validation because
 // aggregation expressions end up in the wrong place.
 func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

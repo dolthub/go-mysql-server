@@ -17,8 +17,8 @@ package mysql_db
 import (
 	"io"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/in_mem_table"
 )
 
 // mysqlTableShim acts as a kind of "view" on top of another Grant Table. It does not use its own underlying data

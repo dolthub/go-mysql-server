@@ -43,7 +43,7 @@ const (
 	collationConnectionSysVarName    = "collation_connection"
 )
 
-var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/dolthub/go-mysql-server/sql")
+var NoopTracer = trace.NewNoopTracerProvider().Tracer("github.com/gabereiser/go-mysql-server/sql")
 var _, noopSpan = NoopTracer.Start(context.Background(), "noop")
 
 // Client holds session user information.

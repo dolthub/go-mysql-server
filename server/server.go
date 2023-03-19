@@ -22,9 +22,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 
-	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/server/golden"
-	"github.com/dolthub/go-mysql-server/sql"
+	sqle "github.com/gabereiser/go-mysql-server"
+	"github.com/gabereiser/go-mysql-server/server/golden"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 type ServerEventListener interface {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/driver"
+	"github.com/gabereiser/go-mysql-server/driver"
 )
 
 var driverMu sync.Mutex

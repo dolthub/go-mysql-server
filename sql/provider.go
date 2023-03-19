@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/internal/similartext"
+	"github.com/gabereiser/go-mysql-server/internal/similartext"
 )
 
 // databaseProvider is a collection of Database.

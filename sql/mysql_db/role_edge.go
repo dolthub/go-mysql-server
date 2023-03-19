@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/in_mem_table"
 )
 
 // RoleEdge represents a role to user mapping from the roles_edges Grant Table.

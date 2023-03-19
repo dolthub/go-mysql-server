@@ -14,7 +14,7 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import "github.com/gabereiser/go-mysql-server/sql"
 
 var ExternalProcedureTests = []ScriptTest{
 	{

@@ -17,7 +17,7 @@ package function
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // NoArgFunc is a helper type to reduce boilerplate in functions that take no arguments. Implements most of

@@ -19,7 +19,7 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // CaseStatement represents CASE statements, which are different from CASE expressions. These are intended for use in

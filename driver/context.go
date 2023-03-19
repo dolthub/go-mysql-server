@@ -3,7 +3,7 @@ package driver
 import (
 	"context"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // A ContextBuilder creates SQL contexts.

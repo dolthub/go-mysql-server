@@ -1,4 +1,4 @@
-module github.com/dolthub/go-mysql-server/integration/go
+module github.com/gabereiser/go-mysql-server/integration/go
 
 go 1.14
 

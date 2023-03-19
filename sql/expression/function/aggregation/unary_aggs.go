@@ -1,6 +1,6 @@
 package aggregation
 
-import "github.com/dolthub/go-mysql-server/optgen/cmd/support"
+import "github.com/gabereiser/go-mysql-server/optgen/cmd/support"
 
 //go:generate go run ../../../../optgen/cmd/optgen/main.go -out unary_aggs.og.go -pkg aggregation aggs unary_aggs.go
 

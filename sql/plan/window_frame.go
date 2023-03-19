@@ -3,7 +3,7 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 //go:generate go run ../../optgen/cmd/optgen/main.go -out window_frame.og.go -pkg plan frame window_frame.go

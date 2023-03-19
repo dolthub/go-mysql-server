@@ -17,8 +17,8 @@ package mysql_db
 import (
 	flatbuffers "github.com/google/flatbuffers/go"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/mysql_db/serial"
 )
 
 // serializePrivilegeTypes writes the given PrivilegeTypes into the flatbuffer Builder using the given flatbuffer start function, and returns the offset

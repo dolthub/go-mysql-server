@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // mysqlIter wraps an iterator returned by the MySQL connection.

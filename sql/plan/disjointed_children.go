@@ -1,6 +1,6 @@
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import "github.com/gabereiser/go-mysql-server/sql"
 
 // DisjointedChildrenNode is a sql.Node that contains multiple, disjointed groupings of child nodes. This is a highly
 // specialized node that will not be applicable to the majority, as most nodes will return all children in the Children()

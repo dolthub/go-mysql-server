@@ -14,7 +14,7 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import "github.com/gabereiser/go-mysql-server/sql"
 
 // EmptyTable is a node representing an empty table.
 var EmptyTable = new(emptyTable)

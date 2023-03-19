@@ -3,9 +3,9 @@ package function
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse/dateparse"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/parse/dateparse"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
 // NewStrToDate constructs a new function expression from the given child expressions.

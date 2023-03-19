@@ -28,9 +28,9 @@ func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
 
 	fmt.Fprintf(g.w, "import (\n")
 	fmt.Fprintf(g.w, "    \"fmt\"\n")
-	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql\"\n")
-	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql/expression\"\n")
-	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql/transform\"\n")
+	fmt.Fprintf(g.w, "    \"github.com/gabereiser/go-mysql-server/sql\"\n")
+	fmt.Fprintf(g.w, "    \"github.com/gabereiser/go-mysql-server/sql/expression\"\n")
+	fmt.Fprintf(g.w, "    \"github.com/gabereiser/go-mysql-server/sql/transform\"\n")
 	fmt.Fprintf(g.w, ")\n\n")
 
 	for _, define := range g.defines {

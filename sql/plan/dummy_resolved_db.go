@@ -14,7 +14,7 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import "github.com/gabereiser/go-mysql-server/sql"
 
 // DummyResolvedDB is a transient database useful only for instances where a database is not available but required.
 // No tables are persisted, nor will be returned.

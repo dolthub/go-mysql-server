@@ -19,8 +19,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
 // NewHistogramMapFromTable will construct a HistogramMap given a Table

@@ -15,7 +15,7 @@
 package expression
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // NamedLiteral represents a literal value, but returns the name field rather than the value for String.

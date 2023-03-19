@@ -199,8 +199,8 @@ func (g *FrameGen) generate() {
 
 func (g *FrameGen) genImports() {
 	fmt.Fprintf(g.w, "import (\n")
-	fmt.Fprintf(g.w, "  \"github.com/dolthub/go-mysql-server/sql\"\n")
-	fmt.Fprintf(g.w, "  agg \"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation\"\n")
+	fmt.Fprintf(g.w, "  \"github.com/gabereiser/go-mysql-server/sql\"\n")
+	fmt.Fprintf(g.w, "  agg \"github.com/gabereiser/go-mysql-server/sql/expression/function/aggregation\"\n")
 	fmt.Fprintf(g.w, ")\n\n")
 }
 

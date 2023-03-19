@@ -17,7 +17,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // OkResult is a representation of the OK packet MySQL sends for non-select queries such as UPDATE, INSERT, etc. It

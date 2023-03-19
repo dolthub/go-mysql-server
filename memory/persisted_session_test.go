@@ -22,8 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	_ "github.com/dolthub/go-mysql-server/sql/variables"
+	"github.com/gabereiser/go-mysql-server/sql"
+	_ "github.com/gabereiser/go-mysql-server/sql/variables"
 )
 
 func newPersistedSqlContext() *sql.Context {

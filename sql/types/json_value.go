@@ -24,7 +24,7 @@ import (
 
 	"github.com/oliveagle/jsonpath"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // JSONValue is an integrator specific implementation of a JSON field value.

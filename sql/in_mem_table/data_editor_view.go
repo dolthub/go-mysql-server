@@ -17,7 +17,7 @@ package in_mem_table
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // ErrNoEntry is returned when an entry is required for the DataEditorView to work, however one cannot be found.

@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
 // TODO: Add from the following sources because MySQL likes to not have every variable on a single page:

@@ -17,8 +17,8 @@ package mysql_db
 import (
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/mysql_db/serial"
 )
 
 // loadPrivilegeTypes is a helper method that loads privilege types given the length and loading function

@@ -15,7 +15,7 @@
 package transform
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // NodeFunc is a function that given a node will return that node

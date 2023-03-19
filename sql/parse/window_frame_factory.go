@@ -3,7 +3,7 @@ package parse
 import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 //go:generate go run ../../optgen/cmd/optgen/main.go -out window_frame_factory.og.go -pkg parse frameFactory window_frame_factory.go

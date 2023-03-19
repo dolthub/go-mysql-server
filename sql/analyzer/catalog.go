@@ -19,11 +19,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/internal/similartext"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/gabereiser/go-mysql-server/internal/similartext"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/expression/function"
+	"github.com/gabereiser/go-mysql-server/sql/information_schema"
+	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
 )
 
 type Catalog struct {

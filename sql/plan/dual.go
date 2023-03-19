@@ -17,10 +17,10 @@ package plan
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 
-	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/gabereiser/go-mysql-server/memory"
 )
 
 // DualTableName is empty string because no table with empty name can be created

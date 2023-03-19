@@ -32,8 +32,8 @@ func (g *FramerGen) generate() {
 
 func (g *FramerGen) genImports() {
 	fmt.Fprintf(g.w, "import (\n")
-	fmt.Fprintf(g.w, "  \"github.com/dolthub/go-mysql-server/sql\"\n")
-	fmt.Fprintf(g.w, "  \"github.com/dolthub/go-mysql-server/sql/expression\"\n")
+	fmt.Fprintf(g.w, "  \"github.com/gabereiser/go-mysql-server/sql\"\n")
+	fmt.Fprintf(g.w, "  \"github.com/gabereiser/go-mysql-server/sql/expression\"\n")
 	fmt.Fprintf(g.w, ")\n\n")
 }
 

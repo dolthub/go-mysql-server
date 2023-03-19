@@ -20,11 +20,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/encodings"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql/encodings"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
 )
 
 // ToBase64 is a function to encode a string to the Base64 format

@@ -21,11 +21,11 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/analyzer"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql/plan"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
 type QueryTest struct {
@@ -7671,7 +7671,7 @@ var BrokenQueries = []QueryTest{
 			},
 		},
 	},
-	// https://github.com/dolthub/go-mysql-server/issues/600
+	// https://github.com/gabereiser/go-mysql-server/issues/600
 	{
 		Query:    `SELECT json_unquote(json_extract('{"hi":"there"}', '$.nope'))`,
 		Expected: []sql.Row{{nil}}, // currently returns string "null"
@@ -8192,7 +8192,7 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `alter table mytable add primary key (s)`,
 		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
 	},
-	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
+	// TODO: The following two queries should work. See https://github.com/gabereiser/go-mysql-server/issues/542.
 	{
 		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
 		ExpectedErr: analyzer.ErrAggregationUnsupported,

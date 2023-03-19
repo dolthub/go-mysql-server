@@ -18,7 +18,7 @@ import (
 	"context"
 	"database/sql/driver"
 
-	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql"
 )
 
 // Conn is a connection to a database.

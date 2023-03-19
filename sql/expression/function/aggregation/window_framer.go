@@ -21,8 +21,8 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	sqlerr "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
 )
 
 //go:generate go run ../../../../optgen/cmd/optgen/main.go -out window_framer.og.go -pkg aggregation framer window_framer.go

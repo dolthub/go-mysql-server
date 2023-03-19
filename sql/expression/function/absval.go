@@ -19,8 +19,8 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
 )
 
 // AbsVal is a function that takes the absolute value of a number

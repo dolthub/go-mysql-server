@@ -21,7 +21,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/dolthub/go-mysql-server/internal/similartext"
+	"github.com/gabereiser/go-mysql-server/internal/similartext"
 )
 
 // IndexRegistry keeps track of all driver-provided indexes in the engine.

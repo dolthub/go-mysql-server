@@ -17,8 +17,8 @@ package mysql_db
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/in_mem_table"
 )
 
 var errPrimaryKeyUnknownEntry = errors.NewKind("the primary key for the `%s` table was given an unknown entry")
