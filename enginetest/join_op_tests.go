@@ -1229,6 +1229,22 @@ var joinCostTests = []struct {
           AND EXISTS (SELECT * FROM rs Alias2 WHERE Alias2.r = (xy.x + 2)));`,
 				Expected: []sql.Row{{3, 3}},
 			},
+			{
+				Query: `SELECT *
+FROM ab A0
+WHERE EXISTS (
+    SELECT U0.a
+    FROM
+    (
+        ab U0
+        LEFT OUTER JOIN
+        xy U1
+        ON (U0.a = U1.x)
+    )
+    WHERE (U1.x IS NULL AND U0.a = A0.a)
+);`,
+				Expected: []sql.Row{},
+			},
 		},
 	},
 }

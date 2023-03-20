@@ -191,6 +191,8 @@ func (f fakeNameable) Name() string { return f.name }
 // If the subquery has aliases that conflict withoutside aliases, the internal aliases will be renamed to avoid
 // name collisions.
 func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
+	queryAliases, err := getTableAliases(e.Query, nil)
+
 	var outerFilters []sql.Expression
 	var innerFilters []sql.Expression
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -203,9 +205,12 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 			var outerRef bool
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				gf, ok := e.(*expression.GetField)
-				if ok && gf.Index() < scopeLen {
-					// has to be from out of scope
-					outerRef = true
+				if ok {
+					_, sourceInSubquery := queryAliases[gf.Table()]
+					if gf.Index() < scopeLen || sourceInSubquery {
+						// has to be from out of scope
+						outerRef = true
+					}
 					return true
 				}
 				return false

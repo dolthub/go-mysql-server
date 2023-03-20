@@ -273,7 +273,9 @@ func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string)
 
 // renameAliasesInExp returns a node where any table references are renamed to the new table name.
 func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(node, nil, func(ctx transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		node := ctx.Node
+		parent := ctx.Parent
 		newNode := node
 		allSame := transform.SameTree
 
@@ -282,6 +284,14 @@ func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node
 		if ok {
 			if strings.EqualFold(tableAlias.Name(), oldNameLower) {
 				newNode = tableAlias.WithName(newName)
+				allSame = transform.NewTree
+			}
+		}
+
+		// if the node is a table and its parent is not a table alias, add a table alias node
+		if _, ok := newNode.(sql.Table); ok {
+			if _, ok := parent.(*plan.TableAlias); !ok {
+				newNode = plan.NewTableAlias(newName, newNode)
 				allSame = transform.NewTree
 			}
 		}
