@@ -116,7 +116,7 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 		switch e := f.(type) {
 		case *plan.ExistsSubquery:
 			joinType = plan.JoinTypeSemi
-			s, err = decorrelateOuterCols(e.Query, scopeLen, aliasDisambig)
+			s, err = decorrelateOuterCols(a, e.Query, scopeLen, aliasDisambig)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -124,7 +124,7 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 		case *expression.Not:
 			if esq, ok := e.Child.(*plan.ExistsSubquery); ok {
 				joinType = plan.JoinTypeAnti
-				s, err = decorrelateOuterCols(esq.Query, scopeLen, aliasDisambig)
+				s, err = decorrelateOuterCols(a, esq.Query, scopeLen, aliasDisambig)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -190,7 +190,7 @@ func (f fakeNameable) Name() string { return f.name }
 // decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
 // If the subquery has aliases that conflict withoutside aliases, the internal aliases will be renamed to avoid
 // name collisions.
-func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
+func decorrelateOuterCols(a *Analyzer, e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
 	queryAliases, err := getTableAliases(e.Query, nil)
 
 	var outerFilters []sql.Expression
@@ -252,14 +252,17 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 
 	if len(conflicts) > 0 {
 		for _, conflict := range conflicts {
+			a.Log("found alias conflict: %s", conflict)
 
 			// conflict, need to rename
 			newAlias, err := aliasDisambig.Disambiguate(conflict)
 			if err != nil {
 				return nil, err
 			}
+			a.Log("renaming %s to %s", conflict, newAlias)
+
 			var tree transform.TreeIdentity
-			n, tree, err = renameAliases(n, conflict, newAlias)
+			n, tree, err = renameAliases(a, n, conflict, newAlias)
 			if err != nil {
 				return nil, err
 			}
@@ -268,11 +271,11 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 			}
 
 			// rename the aliases in the expressions
-			innerFilters, err = renameAliasesInExpressions(innerFilters, conflict, newAlias)
+			innerFilters, err = renameAliasesInExpressions(a, innerFilters, conflict, newAlias)
 			if err != nil {
 				return nil, err
 			}
-			outerFilters, err = renameAliasesInExpressions(outerFilters, conflict, newAlias)
+			outerFilters, err = renameAliasesInExpressions(a, outerFilters, conflict, newAlias)
 			if err != nil {
 				return nil, err
 			}

@@ -383,6 +383,11 @@ order by 1;`,
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
+				q:     "select * from xy Alias where (Alias.x,Alias.y+1) = (select u,v from uv Alias where Alias.v = 2 order by 1 limit 1) order by 1;",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{2, 1}},
+			},
+			{
 				q:     "select * from xy where x in (select cnt from (select count(u) as cnt from uv group by v having cnt > 0) sq) order by 1,2;",
 				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
 				exp:   []sql.Row{{2, 1}},
@@ -398,6 +403,13 @@ order by 1;`,
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{0, 2}, {1, 0}},
+			},
+			{
+				q: `SELECT * FROM xy WHERE (
+    EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+    AND EXISTS (SELECT * FROM (select * from uv) Alias1 WHERE Alias1.u = (xy.x + 2)));`,
 				types: []plan.JoinType{},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},

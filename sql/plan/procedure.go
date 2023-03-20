@@ -232,6 +232,11 @@ func (p *Procedure) IsExternal() bool {
 	return false
 }
 
+func (p *Procedure) WithName(newName string) sql.Node {
+	p.Name = newName
+	return p
+}
+
 // String returns the original SQL representation.
 func (pst ProcedureSecurityContext) String() string {
 	switch pst {

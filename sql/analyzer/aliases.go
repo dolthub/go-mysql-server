@@ -231,9 +231,9 @@ func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expres
 }
 
 // renameAliasesInExpressions returns expressions where any table references are renamed to the new table name.
-func renameAliasesInExpressions(expressions []sql.Expression, oldNameLower string, newName string) ([]sql.Expression, error) {
+func renameAliasesInExpressions(a *Analyzer, expressions []sql.Expression, oldNameLower string, newName string) ([]sql.Expression, error) {
 	for i, e := range expressions {
-		newExpression, same, err := renameAliasesInExp(e, oldNameLower, newName)
+		newExpression, same, err := renameAliasesInExp(a, e, oldNameLower, newName)
 		if err != nil {
 			return nil, err
 		}
@@ -245,20 +245,22 @@ func renameAliasesInExpressions(expressions []sql.Expression, oldNameLower strin
 }
 
 // renameAliasesInExp returns an expression where any table references are renamed to the new table name.
-func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string) (sql.Expression, transform.TreeIdentity, error) {
+func renameAliasesInExp(a *Analyzer, exp sql.Expression, oldNameLower string, newName string) (sql.Expression, transform.TreeIdentity, error) {
 	return transform.Expr(exp, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
 			if strings.EqualFold(e.Table(), oldNameLower) {
+				a.Log("renaming get field %s to %s", e, newName)
 				gf := e.WithTable(newName)
 				return gf, transform.NewTree, nil
 			}
 		case *expression.UnresolvedColumn:
 			if strings.EqualFold(e.Table(), oldNameLower) {
+				a.Log("renaming unresolved column %s to %s", e, newName)
 				return expression.NewUnresolvedQualifiedColumn(newName, e.Name()), transform.NewTree, nil
 			}
 		case *plan.Subquery:
-			newSubquery, tree, err := renameAliases(e.Query, oldNameLower, newName)
+			newSubquery, tree, err := renameAliases(a, e.Query, oldNameLower, newName)
 			if err != nil {
 				return nil, tree, err
 			}
@@ -272,38 +274,53 @@ func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string)
 }
 
 // renameAliasesInExp returns a node where any table references are renamed to the new table name.
-func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithCtx(node, nil, func(ctx transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		node := ctx.Node
-		parent := ctx.Parent
+func renameAliases(a *Analyzer, node sql.Node, oldNameLower string, newName string) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		newNode := node
 		allSame := transform.SameTree
+		var err error
 
-		// update TableAlias directly
-		tableAlias, ok := newNode.(*plan.TableAlias)
-		if ok {
-			if strings.EqualFold(tableAlias.Name(), oldNameLower) {
-				newNode = tableAlias.WithName(newName)
+		// update node directly
+		switch node := node.(type) {
+		case *plan.TableAlias:
+			if strings.EqualFold(node.Name(), oldNameLower) {
+				a.Log("renaming table alias %s to %s", node.Name(), newName)
+				newNode = node.WithName(newName)
+				allSame = transform.NewTree
+			}
+		case *plan.SubqueryAlias:
+			if strings.EqualFold(node.Name(), oldNameLower) {
+				a.Log("renaming subquery alias %s to %s", node.Name(), newName)
+				newNode = node.WithName(newName)
+				allSame = transform.NewTree
+			}
+		case *plan.Procedure:
+			if strings.EqualFold(node.Name, oldNameLower) {
+				a.Log("renaming procedure %s to %s", node.Name, newName)
+				newNode = node.WithName(newName)
 				allSame = transform.NewTree
 			}
 		}
 
-		// if the node is a table and its parent is not a table alias, add a table alias node
-		if _, ok := newNode.(sql.Table); ok {
-			if _, ok := parent.(*plan.TableAlias); !ok {
-				newNode = plan.NewTableAlias(newName, newNode)
+		// if parent was not updated, we may need to update children
+		if allSame == transform.SameTree {
+			nameable, ok := node.(sql.Nameable)
+			if ok && strings.EqualFold(nameable.Name(), oldNameLower) {
+				a.Log("renaming %s to %s", node, newName)
+				newNode = plan.NewTableAlias(newName, node)
 				allSame = transform.NewTree
 			}
 		}
 
 		// update expressions
 		newNode, same, err := transform.NodeExprs(newNode, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			return renameAliasesInExp(e, oldNameLower, newName)
+			return renameAliasesInExp(a, e, oldNameLower, newName)
 		})
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
+		// return results
 		allSame = allSame && same
 		if allSame {
 			return node, transform.SameTree, nil
