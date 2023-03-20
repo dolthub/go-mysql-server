@@ -115,7 +115,7 @@ func (conv GlobalGrantsConverter) EntryToRows(ctx *sql.Context, entry in_mem_tab
 	}
 
 	var rows []sql.Row
-	for dynamicPriv, _ := range user.PrivilegeSet.globalDynamic {
+	for dynamicPriv := range user.PrivilegeSet.globalDynamic {
 		row := make(sql.Row, len(globalGrantsTblSchema))
 		var err error
 		for i, col := range globalGrantsTblSchema {

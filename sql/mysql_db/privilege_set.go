@@ -260,7 +260,7 @@ func (ps PrivilegeSet) UnionWith(other PrivilegeSet) {
 		ps.globalStatic[priv] = struct{}{}
 	}
 	for priv, withGrantOption := range other.globalDynamic {
-		localWithGrantOption, _ := ps.globalDynamic[priv]
+		localWithGrantOption := ps.globalDynamic[priv]
 		ps.globalDynamic[priv] = localWithGrantOption || withGrantOption
 	}
 	for _, otherDbSet := range other.databases {

@@ -147,7 +147,7 @@ func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnec
 // pre-existing data.
 func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	// Do nothing if data file doesn't exist or is empty
-	if buf == nil || len(buf) == 0 {
+	if len(buf) == 0 {
 		return nil
 	}
 
@@ -300,6 +300,9 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 		}
 	}
 	return nil
+}
+func (db *MySQLDb) UpdateUser(ctx *sql.Context, user *User) error {
+	return db.user.data.Put(ctx, user)
 }
 
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
@@ -622,9 +625,6 @@ func (db *MySQLDb) ReplicaSourceInfoTable() *mysqlTable {
 // template.
 func columnTemplate(name string, source string, isPk bool, template *sql.Column) *sql.Column {
 	newCol := *template
-	if newCol.Default != nil {
-		newCol.Default = &(*newCol.Default)
-	}
 	newCol.Name = name
 	newCol.Source = source
 	newCol.PrimaryKey = isPk
