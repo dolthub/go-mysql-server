@@ -650,10 +650,10 @@ where u in (select * from rec);`,
 
 func TestJoinPlanning(t *testing.T, harness Harness) {
 	for _, tt := range JoinPlanningTests {
-		harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
-		e := mustNewEngine(t, harness)
-		defer e.Close()
 		t.Run(tt.name, func(t *testing.T) {
+			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
+			e := mustNewEngine(t, harness)
+			defer e.Close()
 			for _, tt := range tt.tests {
 				if tt.types != nil {
 					evalJoinTypeTest(t, harness, e, tt)
