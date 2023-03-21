@@ -23,6 +23,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/expression"
 	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
@@ -67,7 +68,12 @@ type AlterIndex struct {
 	Comment string
 	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
 	DisableKeys bool
+	// TargetSchema Analyzer state.
+	targetSchema sql.Schema
 }
+
+var _ sql.SchemaTarget = (*AlterIndex)(nil)
+var _ sql.Expressioner = (*AlterIndex)(nil)
 
 func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
@@ -195,7 +201,8 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 		if !ok || p.Constraint != sql.IndexConstraint_Unique {
 			return nil
 		}
-		sch := sql.SchemaToPrimaryKeySchema(table, table.Schema())
+
+		sch := sql.SchemaToPrimaryKeySchema(table, p.targetSchema)
 		inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, p.Columns)
 		if err != nil {
 			return err
@@ -283,24 +290,74 @@ func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
-// WithChildren implements the Node interface.
-func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+// WithChildren implements the Node interface. For AlterIndex, the only appropriate input is
+// a single child - The Table.
+func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
 	switch p.Action {
-	case IndexAction_Create:
-		return NewAlterCreateIndex(p.db, children[0], p.IndexName, p.Using, p.Constraint, p.Columns, p.Comment), nil
-	case IndexAction_Drop:
-		return NewAlterDropIndex(p.db, children[0], p.IndexName), nil
-	case IndexAction_Rename:
-		return NewAlterRenameIndex(p.db, children[0], p.PreviousIndexName, p.IndexName), nil
-	case IndexAction_DisableEnableKeys:
-		return NewAlterDisableEnableKeys(p.db, children[0], p.DisableKeys), nil
+	case IndexAction_Create, IndexAction_Drop, IndexAction_Rename, IndexAction_DisableEnableKeys:
+		p.Table = children[0]
+		return &p, nil
 	default:
 		return nil, ErrIndexActionNotImplemented.New(p.Action)
 	}
+}
+
+func (p AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	p.targetSchema = schema
+	return &p, nil
+}
+
+func (p *AlterIndex) TargetSchema() sql.Schema {
+	return p.targetSchema
+}
+
+// Expressions on the AlterIndex object are specifically column default expresions, nothing else.
+func (p *AlterIndex) Expressions() []sql.Expression {
+	newExprs := make([]sql.Expression, len(p.TargetSchema()))
+	for i, col := range p.TargetSchema() {
+		newExprs[i] = expression.WrapExpression(col.Default)
+	}
+
+	return newExprs
+}
+
+// WithExpressions implements the Node Interface. For AlterIndex, expressions represent  column defaults on the
+// targetSchema instance - required to be the same number of columns on the target schema.
+func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+	columns := p.TargetSchema().Copy()
+
+	if len(columns) != len(expressions) {
+		return nil, fmt.Errorf("invariant failure: column count does not match expression count")
+	}
+
+	for i, expr := range expressions {
+		wrapper, ok := expr.(*expression.Wrapper)
+		if !ok {
+			return nil, fmt.Errorf("*expression.Wrapper cast failure unexpected: %v", expr)
+		}
+
+		wrapped := wrapper.Unwrap()
+		if wrapped == nil {
+			continue // No default for this column
+		}
+
+		newColDef, ok := wrapped.(*sql.ColumnDefaultValue)
+		if !ok {
+			return nil, fmt.Errorf("*sql.ColumnDefaultValue cast failure unexptected: %v", wrapped)
+		}
+
+		columns[i].Default = newColDef
+	}
+
+	newIdx, err := p.WithTargetSchema(columns)
+	if err != nil {
+		return nil, err
+	}
+	return newIdx, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

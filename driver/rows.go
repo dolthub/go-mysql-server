@@ -16,6 +16,8 @@ package driver
 
 import (
 	"database/sql/driver"
+	"fmt"
+	"math"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -86,8 +88,7 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 
 	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
 		query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64,
-		query.Type_FLOAT32, query.Type_FLOAT64, query.Type_CHAR, query.Type_VARCHAR, query.Type_ENUM,
-		query.Type_BIT, query.Type_DATE, query.Type_DATETIME, query.Type_DECIMAL, query.Type_TEXT:
+		query.Type_FLOAT32, query.Type_FLOAT64, query.Type_ENUM, query.Type_BIT, query.Type_DECIMAL:
 		rv := reflect.ValueOf(v)
 		switch rv.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -96,10 +97,19 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 			return rv.Uint()
 		case reflect.Float32, reflect.Float64:
 			return rv.Float()
-		case reflect.String:
-			return rv.String()
+		case reflect.Slice:
+			return rv.Bytes
+		case reflect.TypeOf([]byte{}).Kind():
+			return rv.Bytes
+		default:
+			return nil
 		}
-
+	case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR:
+		rv := reflect.ValueOf(v)
+		return rv.String()
+	case query.Type_DATE, query.Type_DATETIME:
+		rv := reflect.ValueOf(v)
+		return rv.Int()
 	case query.Type_JSON:
 		var asObj, asStr bool
 		if r.options != nil {
@@ -138,4 +148,29 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 		return []byte(str)
 	}
 	return v
+}
+
+func (r *Rows) ColumnTypeDatabaseTypeName(i int) string {
+	return fmt.Sprintf("%v", r.cols[i].Type.Type())
+}
+
+func (r *Rows) ColumnTypeNullable(i int) (nullable, ok bool) {
+	return r.cols[i].Nullable, true
+}
+
+func (r *Rows) ColumnTypeScanType(i int) reflect.Type {
+	return r.cols[i].Type.ValueType()
+}
+
+func (r *Rows) ColumnTypeLength(i int) (int64, bool) {
+	stype := r.cols[i].Type
+	if types.IsText(stype) {
+		if st, ok := stype.(types.StringType); ok {
+			return st.MaxCharacterLength(), true
+		}
+	}
+	if types.IsBinaryType(stype) {
+		return math.MaxInt64, false
+	}
+	return math.MaxInt64, false
 }
