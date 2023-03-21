@@ -1,10 +1,12 @@
 package analyzer
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestHintParsing(t *testing.T) {
