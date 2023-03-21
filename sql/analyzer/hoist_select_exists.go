@@ -192,9 +192,9 @@ func (f fakeNameable) Name() string { return f.name }
 // name collisions.
 func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
 	queryAliases, err := getTableAliases(e.Query, nil)
-	var outerFilters []sql.Expression
-	var innerFilters []sql.Expression
-	var filtersToKeep []sql.Expression
+	var outerFilters []sql.Expression  // filters that will go on the JOIN
+	var innerFilters []sql.Expression  // filters that will go above the JOIN
+	var filtersToKeep []sql.Expression // filters that will stay in the subquery, below the JOIN
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
@@ -203,7 +203,7 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		filters := splitConjunction(f.Expression)
 		for _, f := range filters {
 			var outerRef bool
-			var usesQuerySources = false
+			var usesQuerySources bool
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				gf, ok := e.(*expression.GetField)
 				if ok {
@@ -215,17 +215,23 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 						// has to be from out of scope
 						outerRef = true
 					}
-					return true
 				}
 				return false
 			})
-			if usesQuerySources {
-				filtersToKeep = append(filtersToKeep, f)
-			} else if outerRef {
+
+			// based on the GetField analysis, decide where to put the filter
+			if outerRef {
 				outerFilters = append(outerFilters, f)
+			} else if usesQuerySources {
+				filtersToKeep = append(filtersToKeep, f)
 			} else {
 				innerFilters = append(innerFilters, f)
 			}
+		}
+
+		// avoid updating the tree if we don't move any filters
+		if len(filtersToKeep) == len(filters) {
+			return f, transform.SameTree, nil
 		}
 
 		return f.Child, transform.NewTree, nil

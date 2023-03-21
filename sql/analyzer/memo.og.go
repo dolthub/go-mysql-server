@@ -512,50 +512,60 @@ func formatRelExpr(r relExpr) string {
 }
 
 func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	var result sql.Node
+	var err error
+
 	switch r := r.(type) {
 	case *crossJoin:
-		return b.buildCrossJoin(r, input, children...)
+		result, err = b.buildCrossJoin(r, input, children...)
 	case *innerJoin:
-		return b.buildInnerJoin(r, input, children...)
+		result, err = b.buildInnerJoin(r, input, children...)
 	case *leftJoin:
-		return b.buildLeftJoin(r, input, children...)
+		result, err = b.buildLeftJoin(r, input, children...)
 	case *semiJoin:
-		return b.buildSemiJoin(r, input, children...)
+		result, err = b.buildSemiJoin(r, input, children...)
 	case *antiJoin:
-		return b.buildAntiJoin(r, input, children...)
+		result, err = b.buildAntiJoin(r, input, children...)
 	case *lookupJoin:
-		return b.buildLookupJoin(r, input, children...)
+		result, err = b.buildLookupJoin(r, input, children...)
 	case *concatJoin:
-		return b.buildConcatJoin(r, input, children...)
+		result, err = b.buildConcatJoin(r, input, children...)
 	case *hashJoin:
-		return b.buildHashJoin(r, input, children...)
+		result, err = b.buildHashJoin(r, input, children...)
 	case *mergeJoin:
-		return b.buildMergeJoin(r, input, children...)
+		result, err = b.buildMergeJoin(r, input, children...)
 	case *fullOuterJoin:
-		return b.buildFullOuterJoin(r, input, children...)
+		result, err = b.buildFullOuterJoin(r, input, children...)
 	case *tableScan:
-		return b.buildTableScan(r, input, children...)
+		result, err = b.buildTableScan(r, input, children...)
 	case *values:
-		return b.buildValues(r, input, children...)
+		result, err = b.buildValues(r, input, children...)
 	case *tableAlias:
-		return b.buildTableAlias(r, input, children...)
+		result, err = b.buildTableAlias(r, input, children...)
 	case *recursiveTable:
-		return b.buildRecursiveTable(r, input, children...)
+		result, err = b.buildRecursiveTable(r, input, children...)
 	case *recursiveCte:
-		return b.buildRecursiveCte(r, input, children...)
+		result, err = b.buildRecursiveCte(r, input, children...)
 	case *subqueryAlias:
-		return b.buildSubqueryAlias(r, input, children...)
+		result, err = b.buildSubqueryAlias(r, input, children...)
 	case *max1Row:
-		return b.buildMax1Row(r, input, children...)
+		result, err = b.buildMax1Row(r, input, children...)
 	case *tableFunc:
-		return b.buildTableFunc(r, input, children...)
+		result, err = b.buildTableFunc(r, input, children...)
 	case *selectSingleRel:
-		return b.buildSelectSingleRel(r, input, children...)
+		result, err = b.buildSelectSingleRel(r, input, children...)
 	case *project:
-		return b.buildProject(r, input, children...)
+		result, err = b.buildProject(r, input, children...)
 	case *distinct:
-		return b.buildDistinct(r, input, children...)
+		result, err = b.buildDistinct(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	result = r.group().finalize(result)
+	return result, nil
 }
