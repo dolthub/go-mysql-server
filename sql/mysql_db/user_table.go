@@ -235,7 +235,7 @@ func init() {
 	}
 }
 
-func addSuperUser(userTable *mysqlTable, username string, host string, password string) {
+func addSuperUser(userTable *mysqlTable, username string, host string, password string, identity string) {
 	err := userTable.data.Put(sql.NewEmptyContext(), &User{
 		User:                username,
 		Host:                host,
@@ -247,6 +247,7 @@ func addSuperUser(userTable *mysqlTable, username string, host string, password 
 		Attributes:          nil,
 		IsRole:              false,
 		IsSuperUser:         true,
+		Identity:            identity,
 	})
 	if err != nil {
 		panic(err) // Insertion should never fail so this should never be reached
