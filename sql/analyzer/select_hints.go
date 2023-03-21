@@ -201,9 +201,21 @@ func parseJoinHints(comment string) []Hint {
 	}
 }
 
-// joinOrderHint encodes a groups relational dependencies in a bitset.
-// This is equivalent to an expression group's base table inputs but
-// reordered by the join hint table order.
+// joinOrderHint encodes a groups relational dependencies in a bitset
+// by mapping group ids into join_order ordinals. Remapping source
+// relations from group -> join_order ordinal makes it easy to perform
+// ordering and compactness checks (see isOrdered and isCompact).
+//
+// Example:
+//
+//	G1 -> A
+//	G2 -> B
+//	G3 -> C
+//	G4 -> [G2 G1]
+//	G5 -> [G4 G3]
+//	JOIN_ORDER(B,A,C) = B = 1, A = 2, C = 3
+//	=>
+//	{1: 010, 2: 100, 3: 001, 4: 110, 5: 111}
 type joinOrderHint struct {
 	groups map[GroupId]vertexSet
 	cache  map[uint64]bool
@@ -250,7 +262,7 @@ func (o joinOrderHint) isValid() bool {
 	return true
 }
 
-func (o joinOrderHint) obeysOrder(n relExpr) bool {
+func (o joinOrderHint) satisfiesOrder(n relExpr) bool {
 	key := relKey(n)
 	if v, ok := o.cache[key]; ok {
 		return v
@@ -267,9 +279,9 @@ func (o joinOrderHint) obeysOrder(n relExpr) bool {
 		o.cache[key] = valid
 		return valid
 	case *project:
-		return o.obeysOrder(n.child.best)
+		return o.satisfiesOrder(n.child.best)
 	case *distinct:
-		return o.obeysOrder(n.child.best)
+		return o.satisfiesOrder(n.child.best)
 	case sourceRel:
 		return true
 	default:
@@ -280,14 +292,14 @@ func (o joinOrderHint) obeysOrder(n relExpr) bool {
 // isOrdered returns true if the vertex sets obey the table
 // order requested by the hint.
 //
-// Ex: JOIN_ORDER(a,b,c) is ordered on [b]x[c], and not on
-// on [c]x[b].
+// Ex: JOIN_ORDER(a,b,c) is ordered on [b]x[c], and
+// not on on [c]x[b].
 func (o joinOrderHint) isOrdered(s1, s2 vertexSet) bool {
 	return s1 < s2
 }
 
 // isCompact returns true if the tables in the joined result
-// set are a continuous subsection of the order hint.
+// set are a contiguous subsection of the order hint.
 //
 // Ex: JOIN_ORDER(a,b,c) is compact on [b]x[c], and not
 // on [a]x[c].
@@ -310,6 +322,8 @@ func (o joinOrderHint) isCompact(s1, s2 vertexSet) bool {
 	return true
 }
 
+// joinOpHint encodes a hint for a physical operator between
+// two relations.
 type joinOpHint struct {
 	op   HintType
 	l, r sql.FastIntSet
@@ -338,7 +352,7 @@ func (o joinOpHint) depsMatch(n relExpr) bool {
 			o.r.Intersects(base.right.relProps.InputTables()) ||
 			o.l.Intersects(base.right.relProps.InputTables()) &&
 				o.r.Intersects(base.left.relProps.InputTables()) {
-			// one of the sides of the join is missing the table dependency
+			// currently permit the permutation of the hint
 			return true
 		}
 	default:
@@ -409,18 +423,18 @@ func (o joinOpHint) typeMatches(n relExpr) bool {
 	return true
 }
 
-// joinHints wraps a collection of join hints, the memo
+// joinHints wraps a collection of join hints. The memo
 // interfaces with this object during costing.
 type joinHints struct {
 	ops   []joinOpHint
 	order *joinOrderHint
 }
 
-// satisfiedBy returns whether a relExpr satisfies all of the join
-// hints. This is binary, an expr that satisfies most of the join
-// hints but fails one returns |false| and is subject to genpop costing.
+// satisfiedBy returns whether a relExpr satisfies every join hint. This
+// is binary, an expr that satisfies most of the join hints but fails one
+// returns |false| and is subject to genpop costing.
 func (h joinHints) satisfiedBy(n relExpr) bool {
-	if h.order != nil && !h.order.obeysOrder(n) {
+	if h.order != nil && !h.order.satisfiesOrder(n) {
 		return false
 	}
 

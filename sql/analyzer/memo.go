@@ -456,7 +456,6 @@ func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
 	if e.best == nil || grpCost <= e.cost {
 		e.best = n
 		e.cost = grpCost
-		return
 	}
 }
 
