@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -169,7 +170,6 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 	if len(retFilters) > 0 {
 		ret = plan.NewFilter(expression.JoinAnd(retFilters...), ret)
 	}
-	log.Debug(sql.DebugString(ret))
 	return ret, transform.NewTree, nil
 }
 
@@ -191,6 +191,7 @@ func (f fakeNameable) Name() string { return f.name }
 // If the subquery has aliases that conflict withoutside aliases, the internal aliases will be renamed to avoid
 // name collisions.
 func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
+	queryAliases, err := getTableAliases(e.Query, nil)
 	var outerFilters []sql.Expression
 	var innerFilters []sql.Expression
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -201,16 +202,24 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		filters := splitConjunction(f.Expression)
 		for _, f := range filters {
 			var outerRef bool
+			var usesQuerySources = false
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				gf, ok := e.(*expression.GetField)
-				if ok && gf.Index() < scopeLen {
-					// has to be from out of scope
-					outerRef = true
-					return true
+				if ok {
+					_, sourceInSubquery := queryAliases[strings.ToLower(gf.Table())]
+					if sourceInSubquery {
+						usesQuerySources = true
+						return true
+					}
+					if gf.Index() < scopeLen {
+						// has to be from out of scope
+						outerRef = true
+						return true
+					}
 				}
 				return false
 			})
-			if outerRef {
+			if outerRef || usesQuerySources {
 				outerFilters = append(outerFilters, f)
 			} else {
 				innerFilters = append(innerFilters, f)

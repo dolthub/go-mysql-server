@@ -132,6 +132,10 @@ func TestJoinPlanningPrepared(t *testing.T) {
 	enginetest.TestJoinPlanningPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+func TestSingleQueryJoinPlanning(t *testing.T) {
+	enginetest.TestSingleQueryJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestJoinOps runs join-specific tests for merge
 func TestJoinOps(t *testing.T) {
 	enginetest.TestJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))

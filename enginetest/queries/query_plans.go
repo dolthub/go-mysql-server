@@ -813,16 +813,26 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select * from ab where exists (select * from ab where a = 1)`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ EXISTS Subquery\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ IndexedTableAccess(ab)\n" +
-			" │       ├─ index: [ab.a]\n" +
-			" │       ├─ filters: [{[1, 1]}]\n" +
-			" │       └─ columns: [a b]\n" +
-			" └─ Table\n" +
-			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ab.a:1!null, ab.b:2]\n" +
+			" └─ HashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ ab_1.a:0!null\n" +
+			"     │   └─ 1 (tinyint)\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [ab_1.a:0!null]\n" +
+			"     │       └─ TableAlias(ab_1)\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: ab\n" +
+			"     │               └─ columns: [a b]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ source: TUPLE(ab_1.a:0!null)\n" +
+			"         ├─ target: TUPLE(1 (tinyint))\n" +
+			"         └─ CachedResults\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: ab\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
 	},
 	{

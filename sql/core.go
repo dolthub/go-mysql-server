@@ -88,6 +88,12 @@ type Nameable interface {
 	Name() string
 }
 
+// RenameableNode is a Node that can be renamed.
+type RenameableNode interface {
+	// WithName returns a copy of the node with the name changed.
+	WithName(string) Node
+}
+
 // Tableable is something that has a table.
 type Tableable interface {
 	// Table returns the table name.

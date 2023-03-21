@@ -356,8 +356,12 @@ order by 1;`,
 	{
 		name: "unnest with scope filters",
 		setup: []string{
+			"create table ab (a int primary key, b int);",
+			"create table rs (r int primary key, s int);",
 			"CREATE table xy (x int primary key, y int);",
 			"CREATE table uv (u int primary key, v int);",
+			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
+			"insert into rs values (0,0), (1,0), (2,0), (4,4), (5,4);",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 		},
@@ -398,8 +402,29 @@ order by 1;`,
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
+			},
+			{
+				q: `SELECT *
+FROM ab A0
+WHERE EXISTS (
+    SELECT U0.a
+    FROM
+    (
+        ab U0
+        LEFT OUTER JOIN
+        rs U1
+        ON (U0.a = U1.s)
+    )
+    WHERE (U1.s IS NULL AND U0.a = A0.a)
+);`,
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeLeftOuterHash},
+				exp: []sql.Row{
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
 			},
 		},
 	},
@@ -623,9 +648,64 @@ where u in (select * from rec);`,
 	},
 }
 
+func TestSingleQueryJoinPlanning(t *testing.T, harness Harness) {
+	t.Skip()
+	t.Run("single query join planning", func(t *testing.T) {
+		harness.Setup([]setup.SetupScript{
+			setup.MydbData[0],
+			{
+				"create table ab (a int primary key, b int);",
+				"create table rs (r int primary key, s int);",
+				"create table uv (u int primary key, v int);",
+				"create table xy (x int primary key, y int);",
+				"insert into ab values (0,2), (1,2), (2,2), (3,1);",
+				"insert into rs values (0,0), (1,0), (2,0), (4,4), (5,4);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			},
+		})
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		e.Analyzer.Debug = true
+		e.Analyzer.Verbose = true
+
+		var test JoinPlanTest
+		test = JoinPlanTest{
+			q: `SELECT *
+FROM ab A0
+WHERE EXISTS (
+    SELECT U0.a
+    FROM
+    (
+        ab U0
+        LEFT OUTER JOIN
+        rs U1
+        ON (U0.a = U1.s)
+    )
+    WHERE (U1.s IS NULL AND U0.a = A0.a)
+);`,
+			types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeLeftOuterHash},
+			exp: []sql.Row{
+				{1, 2},
+				{2, 2},
+				{3, 1},
+			},
+		}
+
+		if test.types != nil {
+			evalJoinTypeTest(t, harness, e, test)
+		}
+		if test.exp != nil {
+			evalJoinCorrectness(t, harness, e, test.q, test.q, test.exp, test.skip)
+		}
+		if test.order != nil {
+			evalJoinOrder(t, harness, e, test.q, test.order, test.skip)
+		}
+	})
+}
+
 func TestJoinPlanning(t *testing.T, harness Harness) {
 	for _, tt := range JoinPlanningTests {
-		t.Run(tt.name, func(t *testing.T) {
 			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
 			e := mustNewEngine(t, harness)
 			defer e.Close()
