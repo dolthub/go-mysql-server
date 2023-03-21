@@ -86,7 +86,8 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 
 	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
 		query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64,
-		query.Type_FLOAT32, query.Type_FLOAT64, query.Type_CHAR, query.Type_VARCHAR:
+		query.Type_FLOAT32, query.Type_FLOAT64, query.Type_CHAR, query.Type_VARCHAR, query.Type_ENUM,
+		query.Type_BIT, query.Type_DATE, query.Type_DATETIME, query.Type_DECIMAL, query.Type_TEXT:
 		rv := reflect.ValueOf(v)
 		switch rv.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
