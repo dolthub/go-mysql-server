@@ -290,7 +290,8 @@ func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
-// For plan.AlterIndex, one child is expected - The table.
+// WithChildren implements the Node interface. For AlterIndex, the only appropriate input is
+// a single child - The Table.
 func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
@@ -324,7 +325,8 @@ func (p *AlterIndex) Expressions() []sql.Expression {
 	return newExprs
 }
 
-// Update column defaults on the targetSchema instance - required to be the same number of columns on the target schema.
+// WithExpressions implements the Node Interface. For AlterIndex, expressions represent  column defaults on the
+// targetSchema instance - required to be the same number of columns on the target schema.
 func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
 	columns := p.TargetSchema().Copy()
 
