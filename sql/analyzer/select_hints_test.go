@@ -1,15 +1,96 @@
 package analyzer
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/require"
+	"testing"
 )
 
-func TestHintIndicatedDeps(t *testing.T) {
+func TestHintParsing(t *testing.T) {
+	tests := []struct {
+		comment string
+		hints   []Hint
+	}{
+		{
+			comment: "join_order(a,b)",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "JOIN_ORDER(a,b)",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "NO_ICP",
+			hints:   []Hint{{Typ: HintTypeNoIndexConditionPushDown}},
+		},
+		{
+			comment: "JOIN_FIXED_ORDER",
+			hints:   []Hint{{Typ: HintTypeJoinFixedOrder}},
+		},
+		{
+			comment: "JOIN_FIXED_ORDER(a)",
+			hints:   []Hint{},
+		},
+		{
+			comment: "MERGE_JOIN(a,b)",
+			hints:   []Hint{{Typ: HintTypeMergeJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "MERGE_JOIN(a,b,c)",
+			hints:   []Hint{},
+		},
+		{
+			comment: "lookup_join(a,b)",
+			hints:   []Hint{{Typ: HintTypeLookupJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "hash_join(a,b)",
+			hints:   []Hint{{Typ: HintTypeHashJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "semi_join(a,b)",
+			hints:   []Hint{{Typ: HintTypeSemiJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "inner_join(a,b)",
+			hints:   []Hint{{Typ: HintTypeInnerJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "anti_join(a,b)",
+			hints:   []Hint{{Typ: HintTypeAntiJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "max_execution_time",
+			hints:   []Hint{{Typ: HintTypeMaxExecutionTime}},
+		},
+		{
+			comment: "hash_join(a,b) merge_join(b,c) lookup_join(a,d)",
+			hints: []Hint{
+				{Typ: HintTypeHashJoin, Args: []string{"a", "b"}},
+				{Typ: HintTypeMergeJoin, Args: []string{"b", "c"}},
+				{Typ: HintTypeLookupJoin, Args: []string{"a", "d"}},
+			},
+		},
+		{
+			comment: "max_execution_time merge_join(b,c) join_fixed_order",
+			hints: []Hint{
+				{Typ: HintTypeMaxExecutionTime},
+				{Typ: HintTypeMergeJoin, Args: []string{"b", "c"}},
+				{Typ: HintTypeJoinFixedOrder},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.comment, func(t *testing.T) {
+			res := parseJoinHints(tt.comment)
+			require.ElementsMatch(t, tt.hints, res)
+		})
+	}
+}
+
+func TestOrderHintBuilding(t *testing.T) {
 	p := plan.NewInnerJoin(
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
@@ -95,11 +176,11 @@ func TestHintIndicatedDeps(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			j := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
 			j.reorderJoin(tt.plan)
-			j.m.WithJoinOrder(JoinOrderHint{tables: tt.hint})
+			j.m.WithJoinOrder(tt.hint)
 			if tt.invalid {
-				require.Equal(t, j.m.orderHint, (*joinOrderDeps)(nil))
+				require.Equal(t, j.m.hints.order, (*joinOrderHint)(nil))
 			} else {
-				require.Equal(t, tt.exp, j.m.orderHint.groups)
+				require.Equal(t, tt.exp, j.m.hints.order.groups)
 			}
 		})
 	}

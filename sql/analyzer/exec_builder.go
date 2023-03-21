@@ -129,26 +129,12 @@ func (b *ExecBuilder) buildLookupJoin(j *lookupJoin, input sql.Schema, children 
 	if err != nil {
 		return nil, err
 	}
-
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeLookup
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterLookup
-	case plan.JoinTypeSemi:
-		newOp = plan.JoinTypeSemiLookup
-	case plan.JoinTypeRightSemi:
+	if j.op == plan.JoinTypeRightSemiLookup {
 		if _, ok := left.(*plan.Max1Row); !ok {
 			left = plan.NewDistinct(left)
 		}
-		newOp = plan.JoinTypeRightSemiLookup
-	case plan.JoinTypeAnti:
-		newOp = plan.JoinTypeAntiLookup
-	default:
-		panic(fmt.Sprintf("can only apply lookup to InnerJoin or LeftOuterJoin, found %s", j.op))
 	}
-	return plan.NewJoin(left, right, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(left, right, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildConcatJoin(j *concatJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -186,16 +172,7 @@ func (b *ExecBuilder) buildConcatJoin(j *concatJoin, input sql.Schema, children 
 		return nil, err
 	}
 
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeLookup
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterLookup
-	default:
-		panic("can only apply lookup to InnerJoin or LeftOuterJoin")
-	}
-	return plan.NewJoin(children[0], right, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(children[0], right, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -215,21 +192,7 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 	cr := plan.NewCachedResults(children[1])
 	outer := plan.NewHashLookup(cr, outerAttrs, innerAttrs)
 	inner := children[0]
-
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeHash
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterHash
-	case plan.JoinTypeSemi:
-		newOp = plan.JoinTypeSemiHash
-	case plan.JoinTypeAnti:
-		newOp = plan.JoinTypeAntiHash
-	default:
-		return nil, fmt.Errorf("can only apply hash join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
-	}
-	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(inner, outer, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -283,22 +246,7 @@ func (b *ExecBuilder) buildMergeJoin(j *mergeJoin, input sql.Schema, children ..
 	if err != nil {
 		return nil, err
 	}
-
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeMerge
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterMerge
-	case plan.JoinTypeSemi:
-		newOp = plan.JoinTypeSemiMerge
-	case plan.JoinTypeAnti:
-		newOp = plan.JoinTypeAntiMerge
-	default:
-		return nil, fmt.Errorf("can only apply merge join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
-	}
-
-	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(inner, outer, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildSubqueryAlias(r *subqueryAlias, input sql.Schema, children ...sql.Node) (sql.Node, error) {

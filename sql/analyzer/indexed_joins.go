@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -185,10 +184,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		return nil, err
 	}
 
-	if hint := extractJoinHint(n); !hint.IsEmpty() {
+	hints := extractJoinHint(n)
+	for _, h := range hints {
 		// this should probably happen earlier, but the root is not
 		// populated before reordering
-		m.WithJoinOrder(hint)
+		m.applyHint(h)
 	}
 
 	err = m.optimizeRoot()
@@ -261,6 +261,7 @@ func addLookupJoins(m *Memo) error {
 			for _, l := range concat {
 				l.parent = rel.joinBase
 			}
+			rel.op = rel.op.AsLookup()
 			e.group().prepend(rel)
 			return nil
 		}
@@ -280,6 +281,7 @@ func addLookupJoins(m *Memo) error {
 					nullmask: nullmask,
 				},
 			}
+			rel.op = rel.op.AsLookup()
 			rel.lookup.parent = rel.joinBase
 			e.group().prepend(rel)
 		}
@@ -419,7 +421,7 @@ func addRightSemiJoins(m *Memo) error {
 					nullmask: nullmask,
 				},
 			}
-			rel.op = plan.JoinTypeRightSemi
+			rel.op = plan.JoinTypeRightSemiLookup
 			rel.left, rel.right = rel.right, rel.left
 			rel.lookup.parent = rel.joinBase
 			e.group().prepend(rel)
@@ -671,6 +673,7 @@ func addHashJoins(m *Memo) error {
 			innerAttrs: innerExpr,
 			outerAttrs: outerExpr,
 		}
+		rel.op = rel.op.AsHash()
 		e.group().prepend(rel)
 		return nil
 	})
@@ -795,6 +798,7 @@ func addMergeJoins(m *Memo) error {
 			}
 
 			jb.filter = newFilters
+			jb.op = jb.op.AsMerge()
 			rel := &mergeJoin{
 				joinBase:  jb,
 				innerScan: lIdx,
@@ -880,169 +884,6 @@ func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
 		return invalid
 	})
 	return tc, !invalid && tc.table != ""
-}
-
-func extractJoinHint(n *plan.JoinNode) JoinOrderHint {
-	if n.Comment() != "" {
-		return parseJoinHint(n.Comment())
-	}
-	return EmptyJoinOrder
-}
-
-var hintRegex = regexp.MustCompile("(\\s*[a-z_]+\\([^\\(]+\\)\\s*)+")
-
-// TODO: this is pretty nasty. Should be done in the parser instead.
-func parseJoinHint(comment string) JoinOrderHint {
-	comment = strings.TrimPrefix(comment, "/*+")
-	comment = strings.TrimSuffix(comment, "*/")
-	comment = strings.ToLower(strings.TrimSpace(comment))
-
-	hints := hintRegex.FindAll([]byte(comment), -1)
-
-	for _, hint := range hints {
-		hintStr := strings.TrimSpace(string(hint))
-		if strings.HasPrefix(string(hintStr), "join_order(") {
-			var tables []string
-			var table strings.Builder
-			for _, b := range hintStr[len("join_order("):] {
-				switch b {
-				case ',', ')':
-					tables = append(tables, strings.TrimSpace(table.String()))
-					table = strings.Builder{}
-				default:
-					table.WriteRune(b)
-				}
-			}
-
-			return JoinOrderHint{
-				tables: tables,
-			}
-		}
-	}
-
-	return EmptyJoinOrder
-}
-
-type QueryHint interface {
-	fmt.Stringer
-	HintType() string
-}
-
-type JoinOrderHint struct {
-	tables []string
-}
-
-var EmptyJoinOrder = JoinOrderHint{}
-
-func (j JoinOrderHint) String() string {
-	return "JOIN_ORDER(" + strings.Join(j.tables, ",") + ")"
-
-}
-
-func (j JoinOrderHint) HintType() string {
-	return "JOIN_ORDER"
-}
-
-func (j JoinOrderHint) IsEmpty() bool {
-	return len(j.tables) == 0
-}
-
-// joinOrderDeps encodes a groups relational dependencies in a bitset.
-// This is equivalent to an expression group's base table inputs but
-// reordered by the join hint table order.
-type joinOrderDeps struct {
-	groups map[GroupId]vertexSet
-	cache  map[uint64]bool
-	order  map[GroupId]uint64
-}
-
-func newJoinOrderDeps(order map[GroupId]uint64) *joinOrderDeps {
-	return &joinOrderDeps{
-		groups: make(map[GroupId]vertexSet),
-		cache:  make(map[uint64]bool),
-		order:  order,
-	}
-}
-
-func (o joinOrderDeps) build(grp *exprGroup) {
-	s := vertexSet(0)
-	// convert global table order to hint order
-	inputs := grp.relProps.InputTables()
-	for idx, ok := inputs.Next(0); ok; idx, ok = inputs.Next(idx + 1) {
-		if i, ok := o.order[GroupId(idx+1)]; ok {
-			// If group |idx+1| is a dependency of this table, record the
-			// ordinal position of that group given by the hint order.
-			s = s.add(i)
-		}
-	}
-	o.groups[grp.id] = s
-
-	for _, g := range grp.children() {
-		if _, ok := o.groups[g.id]; !ok {
-			// avoid duplicate work
-			o.build(g)
-		}
-	}
-}
-
-func (o joinOrderDeps) isValid() bool {
-	for _, v := range o.groups {
-		if v == vertexSet(0) {
-			// invalid hint table name, fallback
-			return false
-		}
-	}
-	return true
-}
-
-func (o joinOrderDeps) obeysOrder(n relExpr) bool {
-	key := relKey(n)
-	if v, ok := o.cache[key]; ok {
-		return v
-	}
-	switch n := n.(type) {
-	case joinRel:
-		base := n.joinPrivate()
-		if !base.left.orderSatisfied || !base.right.orderSatisfied {
-			return false
-		}
-		l := o.groups[base.left.id]
-		r := o.groups[base.right.id]
-		valid := o.ordered(l, r) && o.compact(l, r)
-		o.cache[key] = valid
-		return valid
-	case *project:
-		return o.obeysOrder(n.child.best)
-	case *distinct:
-		return o.obeysOrder(n.child.best)
-	case sourceRel:
-		return true
-	default:
-		panic(fmt.Sprintf("missed type: %T", n))
-	}
-}
-
-func (o joinOrderDeps) ordered(s1, s2 vertexSet) bool {
-	return s1 < s2
-}
-
-func (o joinOrderDeps) compact(s1, s2 vertexSet) bool {
-	if s1 == 0 || s2 == 0 {
-		panic("unexpected nil vertex set")
-	}
-	union := s1.union(s2)
-	last, _ := union.next(0)
-	next, ok := union.next(last + 1)
-	for ok {
-		if last+1 != next {
-			return false
-		}
-		last = next
-		next, ok = union.next(next + 1)
-	}
-
-	// sets are compact, s1 higher than s2
-	return true
 }
 
 func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

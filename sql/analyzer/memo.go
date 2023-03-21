@@ -37,13 +37,14 @@ type Memo struct {
 	cnt  uint16
 	root *exprGroup
 
-	orderHint *joinOrderDeps
-	c         Coster
-	s         Carder
-	statsRw   sql.StatsReadWriter
-	ctx       *sql.Context
-	scope     *Scope
-	scopeLen  int
+	hints *joinHints
+
+	c        Coster
+	s        Carder
+	statsRw  sql.StatsReadWriter
+	ctx      *sql.Context
+	scope    *Scope
+	scopeLen int
 
 	tableProps *tableProps
 }
@@ -57,6 +58,7 @@ func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope, cost Coster,
 		scope:      s,
 		scopeLen:   len(s.Schema()),
 		tableProps: newTableProps(),
+		hints:      &joinHints{},
 	}
 }
 
@@ -124,22 +126,20 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 	return nil
 }
 
-// updateBest is given a logical expression group, a physical implementation
-// in the same group, and the estimated cost for the operator. We update best
-// plans for an expression group cognizant of join ordering; we pick either
-// the best hinted plan or the best overall plan if the hint corresponds to
-// no valid plan.
+// updateBest chooses the best hinted plan or the best overall plan if the
+// hint corresponds to  no valid plan. Ordering is applied as a global
+// rather than a local property.
 func (m *Memo) updateBest(grp *exprGroup, n relExpr, cost float64) {
-	if m.orderHint != nil {
-		if m.orderHint.obeysOrder(n) {
-			if !grp.orderSatisfied {
+	if m.hints != nil {
+		if m.hints.satisfiedBy(n) {
+			if !grp.hintOk {
 				grp.best = n
 				grp.cost = cost
-				grp.orderSatisfied = true
+				grp.hintOk = true
 				return
 			}
 			grp.updateBest(n, cost)
-		} else if grp.best == nil || !grp.orderSatisfied {
+		} else if grp.best == nil || !grp.hintOk {
 			grp.updateBest(n, cost)
 		}
 		return
@@ -171,22 +171,42 @@ func buildBestJoinPlan(b *ExecBuilder, grp *exprGroup, input sql.Schema) (sql.No
 	return b.buildRel(n, input, children...)
 }
 
-func (m *Memo) WithJoinOrder(hint JoinOrderHint) {
-	// order maps groupId ->
+func (m *Memo) applyHint(hint Hint) {
+	switch hint.Typ {
+	case HintTypeJoinOrder:
+		m.WithJoinOrder(hint.Args)
+	case HintTypeJoinFixedOrder:
+	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin:
+		m.WithJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
+	default:
+	}
+}
+
+func (m *Memo) WithJoinOrder(tables []string) {
+	// order maps groupId -> table dependencies
 	order := make(map[GroupId]uint64)
-	for i, t := range hint.tables {
+	for i, t := range tables {
 		id, ok := m.tableProps.getId(t)
 		if !ok {
 			return
 		}
 		order[id] = uint64(i)
 	}
-	m.orderHint = newJoinOrderDeps(order)
-	m.orderHint.build(m.root)
-	if !m.orderHint.isValid() {
-		// bad hint, fallback to default costing
-		m.orderHint = nil
+	hint := newJoinOrderHint(order)
+	hint.build(m.root)
+	if hint.isValid() {
+		m.hints.order = hint
 	}
+}
+
+func (m *Memo) WithJoinOp(op HintType, left, right string) {
+	lGrp, _ := m.tableProps.getId(left)
+	rGrp, _ := m.tableProps.getId(right)
+	hint := newjoinOpHint(op, lGrp, rGrp)
+	if !hint.isValid() {
+		return
+	}
+	m.hints.ops = append(m.hints.ops, hint)
 }
 
 func (m *Memo) String() string {
@@ -385,17 +405,17 @@ func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
 // exprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type exprGroup struct {
-	m        *Memo
-	relProps *relProps
-	first    relExpr
-	best     relExpr
+	m         *Memo
+	_children []*exprGroup
+	relProps  *relProps
+	first     relExpr
+	best      relExpr
 
 	id GroupId
 
-	cost           float64
-	done           bool
-	orderSatisfied bool
-	opHint         plan.JoinType
+	cost   float64
+	done   bool
+	hintOk bool
 }
 
 func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
@@ -409,19 +429,6 @@ func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
 	rel.setGroup(grp)
 	grp.relProps = newRelProps(rel)
 	return grp
-}
-
-func (e *exprGroup) obeysOpHint(n relExpr) bool {
-	switch n := n.(type) {
-	case joinRel:
-		return n.joinPrivate().op == e.opHint
-	case *distinct:
-		return e.obeysOpHint(n.child.best)
-	case *project:
-		return e.obeysOpHint(n.child.best)
-	default:
-		return true
-	}
 }
 
 // prepend adds a new plan to an expression group at the beginning of
@@ -442,10 +449,14 @@ func (e *exprGroup) children() []*exprGroup {
 	return children
 }
 
+// updateBest updates a group's best to the given expression or a hinted
+// operator if the hinted plan is not found. Join operator is applied as
+// a local rather than global property.
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
-	if e.best == nil || grpCost <= e.cost || (!e.obeysOpHint(e.best) && e.obeysOpHint(n)) {
+	if e.best == nil || grpCost <= e.cost {
 		e.best = n
 		e.cost = grpCost
+		return
 	}
 }
 
