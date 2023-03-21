@@ -188,12 +188,13 @@ var _ sql.Nameable = (*fakeNameable)(nil)
 func (f fakeNameable) Name() string { return f.name }
 
 // decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
-// If the subquery has aliases that conflict withoutside aliases, the internal aliases will be renamed to avoid
+// If the subquery has aliases that conflict with outside aliases, the internal aliases will be renamed to avoid
 // name collisions.
 func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
 	queryAliases, err := getTableAliases(e.Query, nil)
 	var outerFilters []sql.Expression
 	var innerFilters []sql.Expression
+	var filtersToKeep []sql.Expression
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
@@ -209,22 +210,24 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 					_, sourceInSubquery := queryAliases[strings.ToLower(gf.Table())]
 					if sourceInSubquery {
 						usesQuerySources = true
-						return true
 					}
 					if gf.Index() < scopeLen {
 						// has to be from out of scope
 						outerRef = true
-						return true
 					}
+					return true
 				}
 				return false
 			})
-			if outerRef || usesQuerySources {
+			if usesQuerySources {
+				filtersToKeep = append(filtersToKeep, f)
+			} else if outerRef {
 				outerFilters = append(outerFilters, f)
 			} else {
 				innerFilters = append(innerFilters, f)
 			}
 		}
+
 		return f.Child, transform.NewTree, nil
 	})
 
@@ -302,8 +305,13 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		}
 	}
 
+	n = simplifyPartialJoinParents(n)
+	if len(filtersToKeep) > 0 {
+		n = plan.NewFilter(expression.JoinAnd(filtersToKeep...), n)
+	}
+
 	return &hoistSubquery{
-		inner:        simplifyPartialJoinParents(n),
+		inner:        n,
 		innerFilters: innerFilters,
 		outerFilters: outerFilters,
 	}, nil
