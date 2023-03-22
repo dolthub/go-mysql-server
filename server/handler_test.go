@@ -41,9 +41,9 @@ func TestHandlerOutput(t *testing.T) {
 
 	e := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -51,12 +51,8 @@ func TestHandlerOutput(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		time.Second,
-		false,
-		0,
-		false,
-		nil,
-	)
+		readTimeout: time.Second,
+	}
 	handler.NewConnection(dummyConn)
 
 	type expectedValues struct {
@@ -165,9 +161,9 @@ func TestHandlerOutput(t *testing.T) {
 func TestHandlerComPrepare(t *testing.T) {
 	e := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -175,12 +171,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		0,
-		false,
-		nil,
-	)
+	}
 	handler.NewConnection(dummyConn)
 
 	type testcase struct {
@@ -240,9 +231,9 @@ func TestHandlerComPrepare(t *testing.T) {
 func TestHandlerComPrepareExecute(t *testing.T) {
 	e := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -250,12 +241,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		0,
-		false,
-		nil,
-	)
+	}
 	handler.NewConnection(dummyConn)
 
 	type testcase struct {
@@ -318,9 +304,9 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 	e := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -328,12 +314,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		0,
-		false,
-		nil,
-	)
+	}
 	handler.NewConnection(dummyConn)
 	analyzer.SetPreparedStmts(true)
 	defer func() {
@@ -428,9 +409,9 @@ func TestServerEventListener(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
 	listener := &TestListener{}
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
@@ -440,12 +421,8 @@ func TestServerEventListener(t *testing.T) {
 			e.ProcessList,
 			"foo",
 		),
-		0,
-		false,
-		0,
-		false,
-		listener,
-	)
+		sel: listener,
+	}
 
 	cb := func(res *sqltypes.Result, more bool) error {
 		return nil
@@ -512,9 +489,9 @@ func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
 
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
@@ -524,12 +501,7 @@ func TestHandlerKill(t *testing.T) {
 			e.ProcessList,
 			"foo",
 		),
-		0,
-		false,
-		0,
-		false,
-		nil,
-	)
+	}
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
@@ -697,33 +669,26 @@ func TestHandlerTimeout(t *testing.T) {
 	e := setupMemDB(require)
 	e2 := setupMemDB(require)
 
-	timeOutHandler := NewHandler(
-		e, NewSessionManager(testSessionBuilder,
+	timeOutHandler := &Handler{
+		e: e,
+		sm: NewSessionManager(testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		1*time.Second,
-		false,
-		0,
-		false,
-		nil,
-	)
+		readTimeout: 1 * time.Second,
+	}
 
-	noTimeOutHandler := NewHandler(
-		e2, NewSessionManager(testSessionBuilder,
+	noTimeOutHandler := &Handler{
+		e: e2,
+		sm: NewSessionManager(testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		0,
-		false,
-		0,
-		false,
-		nil,
-	)
+	}
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
 	require.Equal(0*time.Second, noTimeOutHandler.readTimeout)
 
@@ -766,9 +731,9 @@ func TestOkClosedConnection(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	h := NewHandler(
-		e,
-		NewSessionManager(
+	h := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -776,12 +741,7 @@ func TestOkClosedConnection(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		0,
-		false,
-		nil,
-	)
+	}
 	c := newConn(1)
 	h.NewConnection(c)
 
@@ -922,9 +882,9 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	dummyConn.Capabilities = mysql.CapabilityClientFoundRows
 
 	// Setup the handler
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -932,12 +892,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		0,
-		false,
-		nil,
-	)
+	}
 
 	tests := []struct {
 		name                 string

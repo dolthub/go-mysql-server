@@ -76,19 +76,6 @@ type Handler struct {
 
 var _ mysql.Handler = (*Handler)(nil)
 
-// NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, maxLoggedQueryLen int, encodeLoggedQuery bool, listener ServerEventListener) *Handler {
-	return &Handler{
-		e:                 e,
-		sm:                sm,
-		readTimeout:       rt,
-		disableMultiStmts: disableMultiStmts,
-		maxLoggedQueryLen: maxLoggedQueryLen,
-		encodeLoggedQuery: encodeLoggedQuery,
-		sel:               listener,
-	}
-}
-
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
 	if h.sel != nil {
