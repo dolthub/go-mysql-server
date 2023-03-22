@@ -159,15 +159,22 @@ func (j *joinOrderBuilder) reorderJoin(n sql.Node) {
 // populateSubgraph recursively tracks new join nodes as edges and new
 // leaf nodes as vertices to the joinOrderBuilder graph, returning
 // the subgraph's newly tracked vertices and edges.
-func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet) {
+func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *exprGroup) {
+	var group *exprGroup
 	startV := j.allVertices()
 	startE := j.allEdges()
 	// build operator
 	switch n := n.(type) {
+	case *plan.Filter:
+		_, _, group = j.populateSubgraph(n.Child)
+		group.relProps.filter = n.Expression
+	case *plan.Limit:
+		_, _, group = j.populateSubgraph(n.Child)
+		group.relProps.limit = n.Limit
 	case *plan.JoinNode:
-		j.buildJoinOp(n)
+		group = j.buildJoinOp(n)
 	case sql.Nameable:
-		j.buildJoinLeaf(n)
+		group = j.buildJoinLeaf(n)
 	case *plan.StripRowNode:
 		return j.populateSubgraph(n.Child)
 	case *plan.CachedResults:
@@ -175,12 +182,12 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet) {
 	default:
 		panic(fmt.Sprintf("expected Nameable node, found: %T", n))
 	}
-	return j.allVertices().difference(startV), j.allEdges().Difference(startE)
+	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
 }
 
-func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
-	leftV, leftE := j.populateSubgraph(n.Left())
-	rightV, rightE := j.populateSubgraph(n.Right())
+func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *exprGroup {
+	leftV, leftE, _ := j.populateSubgraph(n.Left())
+	rightV, rightE, _ := j.populateSubgraph(n.Right())
 	typ := n.JoinType()
 	var hint plan.JoinType
 	if typ.IsPhysical() {
@@ -214,9 +221,10 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
 
 	if !isInner {
 		j.buildNonInnerEdge(op, filters...)
-		return
+	} else {
+		j.buildInnerEdge(op, filters...)
 	}
-	j.buildInnerEdge(op, filters...)
+	return group
 }
 
 func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {

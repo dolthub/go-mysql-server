@@ -18,52 +18,52 @@ func TestMemoGen(t *testing.T) {
           "github.com/dolthub/go-mysql-server/sql"
           "github.com/dolthub/go-mysql-server/sql/plan"
         )
-
+        
         type hashJoin struct {
           *joinBase
           innerAttrs []sql.Expression
           outerAttrs []sql.Expression
         }
-
+        
         var _ relExpr = (*hashJoin)(nil)
         var _ joinRel = (*hashJoin)(nil)
-
+        
         func (r *hashJoin) String() string {
           return formatRelExpr(r)
         }
-
+        
         func (r *hashJoin) joinPrivate() *joinBase {
           return r.joinBase
         }
-
+        
         type tableScan struct {
           *relBase
           table *plan.ResolvedTable
         }
-
+        
         var _ relExpr = (*tableScan)(nil)
         var _ sourceRel = (*tableScan)(nil)
-
+        
         func (r *tableScan) String() string {
           return formatRelExpr(r)
         }
-
+        
         func (r *tableScan) name() string {
           return strings.ToLower(r.table.Name())
         }
-
+        
         func (r *tableScan) tableId() TableId {
           return tableIdForSource(r.g.id)
         }
-
+        
         func (r *tableScan) children() []*exprGroup {
           return nil
         }
-
+        
         func (r *tableScan) outputCols() sql.Schema {
           return r.table.Schema()
         }
-
+        
         func formatRelExpr(r relExpr) string {
           switch r := r.(type) {
           case *hashJoin:
@@ -74,16 +74,26 @@ func TestMemoGen(t *testing.T) {
             panic(fmt.Sprintf("unknown relExpr type: %T", r))
           }
         }
-
+        
         func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+          var result sql.Node
+          var err error
+        
           switch r := r.(type) {
           case *hashJoin:
-          return b.buildHashJoin(r, input, children...)
+          result, err = b.buildHashJoin(r, input, children...)
           case *tableScan:
-          return b.buildTableScan(r, input, children...)
+          result, err = b.buildTableScan(r, input, children...)
           default:
             panic(fmt.Sprintf("unknown relExpr type: %T", r))
           }
+        
+          if err != nil {
+            return nil, err
+          }
+        
+          result = r.group().finalize(result)
+          return result, nil
         }
 		`,
 	}

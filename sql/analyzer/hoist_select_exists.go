@@ -139,12 +139,10 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 
 		// if we reached here, |s| contains the state we need to
 		// decorrelate the subquery expression into a new node
-		outerFilters, _, err := FixFieldIndexesOnExpressions(scope, a, append(ret.Schema(), s.inner.Schema()...), s.outerFilters...)
+		outerFilters, _, err := FixFieldIndexesOnExpressions(scope, a, append(ret.Schema(), s.inner.Schema()...), s.joinFilters...)
 		if err != nil {
 			return filter, transform.SameTree, err
 		}
-
-		retFilters = append(retFilters, s.innerFilters...)
 
 		var comment string
 		if c, ok := ret.(sql.CommentedNode); ok {
@@ -169,14 +167,12 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 	if len(retFilters) > 0 {
 		ret = plan.NewFilter(expression.JoinAnd(retFilters...), ret)
 	}
-	log.Debug(sql.DebugString(ret))
 	return ret, transform.NewTree, nil
 }
 
 type hoistSubquery struct {
-	inner        sql.Node
-	innerFilters []sql.Expression
-	outerFilters []sql.Expression
+	inner       sql.Node
+	joinFilters []sql.Expression
 }
 
 type fakeNameable struct {
@@ -188,11 +184,11 @@ var _ sql.Nameable = (*fakeNameable)(nil)
 func (f fakeNameable) Name() string { return f.name }
 
 // decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
-// If the subquery has aliases that conflict withoutside aliases, the internal aliases will be renamed to avoid
+// If the subquery has aliases that conflict with outside aliases, the internal aliases will be renamed to avoid
 // name collisions.
 func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
-	var outerFilters []sql.Expression
-	var innerFilters []sql.Expression
+	var joinFilters []sql.Expression
+	var filtersToKeep []sql.Expression
 	n, same, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
@@ -201,25 +197,35 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		filters := splitConjunction(f.Expression)
 		for _, f := range filters {
 			var outerRef bool
+			//var usesQuerySources bool
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				gf, ok := e.(*expression.GetField)
-				if ok && gf.Index() < scopeLen {
-					// has to be from out of scope
-					outerRef = true
-					return true
+				if ok {
+					if gf.Index() < scopeLen {
+						// has to be from out of scope
+						outerRef = true
+					}
 				}
 				return false
 			})
+
+			// based on the GetField analysis, decide where to put the filter
 			if outerRef {
-				outerFilters = append(outerFilters, f)
+				joinFilters = append(joinFilters, f)
 			} else {
-				innerFilters = append(innerFilters, f)
+				filtersToKeep = append(filtersToKeep, f)
 			}
 		}
+
+		// avoid updating the tree if we don't move any filters
+		if len(filtersToKeep) == len(filters) {
+			return f, transform.SameTree, nil
+		}
+
 		return f.Child, transform.NewTree, nil
 	})
 
-	if same || len(outerFilters) == 0 {
+	if same || len(joinFilters) == 0 {
 		return nil, nil
 	}
 
@@ -263,11 +269,7 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 			}
 
 			// rename the aliases in the expressions
-			innerFilters, err = renameAliasesInExpressions(innerFilters, conflict, newAlias)
-			if err != nil {
-				return nil, err
-			}
-			outerFilters, err = renameAliasesInExpressions(outerFilters, conflict, newAlias)
+			joinFilters, err = renameAliasesInExpressions(joinFilters, conflict, newAlias)
 			if err != nil {
 				return nil, err
 			}
@@ -293,9 +295,13 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		}
 	}
 
+	n = simplifyPartialJoinParents(n)
+	if len(filtersToKeep) > 0 {
+		n = plan.NewFilter(expression.JoinAnd(filtersToKeep...), n)
+	}
+
 	return &hoistSubquery{
-		inner:        simplifyPartialJoinParents(n),
-		innerFilters: innerFilters,
-		outerFilters: outerFilters,
+		inner:       n,
+		joinFilters: joinFilters,
 	}, nil
 }

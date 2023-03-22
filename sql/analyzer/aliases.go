@@ -277,12 +277,13 @@ func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node
 		newNode := node
 		allSame := transform.SameTree
 
-		// update TableAlias directly
-		tableAlias, ok := newNode.(*plan.TableAlias)
-		if ok {
-			if strings.EqualFold(tableAlias.Name(), oldNameLower) {
-				newNode = tableAlias.WithName(newName)
-				allSame = transform.NewTree
+		// update node
+		if nameable, ok := node.(sql.Nameable); ok && strings.EqualFold(nameable.Name(), oldNameLower) {
+			allSame = transform.NewTree
+			if renameable, ok := node.(sql.RenameableNode); ok {
+				newNode = renameable.WithName(newName)
+			} else {
+				newNode = plan.NewTableAlias(newName, node)
 			}
 		}
 
