@@ -646,6 +646,81 @@ where u in (select * from rec);`,
 			},
 		},
 	},
+	{
+		name: "join order hint",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int);",
+			"CREATE table uv (u int primary key, v int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select /*+ LOOKUP_JOIN(xy,uv) */ 1 from xy join uv on x = u",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+			},
+			{
+				q:     "select /*+ MERGE_JOIN(xy,uv) */ 1 from xy join uv on x = u",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+			},
+			{
+				q:     "select /*+ INNER_JOIN(xy,uv) */ 1 from xy join uv on x = u",
+				types: []plan.JoinType{plan.JoinTypeInner},
+			},
+			{
+				q:     "select /*+ HASH_JOIN(xy,uv) */ 1 from xy join uv on x = u",
+				types: []plan.JoinType{plan.JoinTypeHash},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(a,b,c) HASH_JOIN(a,b) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				order: []string{"a", "b", "c"},
+			},
+			{
+				q:     "select /*+ LOOKUP_JOIN(b,a) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+			},
+			{
+				q:     "select /*+ LOOKUP_JOIN(b,a) MERGE_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(b,c,a) LOOKUP_JOIN(b,a) MERGE_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeMerge},
+				order: []string{"b", "c", "a"},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(a,b,c) LOOKUP_JOIN(b,a) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+				order: []string{"a", "b", "c"},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(c,a,b) MERGE_JOIN(a,b) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
+				order: []string{"c", "a", "b"},
+			},
+			{
+				q: `
+select /*+ JOIN_ORDER(d,c,b,a) MERGE_JOIN(d,c) MERGE_JOIN(b,a) INNER_JOIN(c,a)*/ 1
+from xy a
+join uv b on a.x = b.u
+join xy c on a.x = c.x
+join uv d on d.u = c.x`,
+				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeMerge, plan.JoinTypeMerge},
+				order: []string{"d", "c", "b", "a"},
+			},
+			{
+				q: `
+select /*+ JOIN_ORDER(a,b,c,d) LOOKUP_JOIN(d,c) MERGE_JOIN(b,a) HASH_JOIN(c,a)*/ 1
+from xy a
+join uv b on a.x = b.u
+join xy c on a.x = c.x
+join uv d on d.u = c.x`,
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge, plan.JoinTypeLookup},
+				order: []string{"a", "b", "c", "d"},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {

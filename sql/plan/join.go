@@ -81,7 +81,10 @@ func (i JoinType) IsFullOuter() bool {
 
 func (i JoinType) IsPhysical() bool {
 	switch i {
-	case JoinTypeLookup, JoinTypeLeftOuterLookup, JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeMerge, JoinTypeLeftOuterMerge:
+	case JoinTypeLookup, JoinTypeLeftOuterLookup,
+		JoinTypeSemiLookup, JoinTypeRightSemiLookup,
+		JoinTypeHash, JoinTypeLeftOuterHash,
+		JoinTypeMerge, JoinTypeLeftOuterMerge:
 		return true
 	default:
 		return false
@@ -89,8 +92,12 @@ func (i JoinType) IsPhysical() bool {
 }
 
 func (i JoinType) IsInner() bool {
-	return i == JoinTypeInner ||
-		i == JoinTypeCross
+	switch i {
+	case JoinTypeInner, JoinTypeCross:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsNatural() bool {
@@ -105,6 +112,15 @@ func (i JoinType) IsDegenerate() bool {
 func (i JoinType) IsMerge() bool {
 	switch i {
 	case JoinTypeMerge, JoinTypeSemiMerge, JoinTypeAntiMerge, JoinTypeLeftOuterMerge:
+		return true
+	default:
+		return false
+	}
+}
+
+func (i JoinType) IsHash() bool {
+	switch i {
+	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeLeftOuterHash:
 		return true
 	default:
 		return false
@@ -163,6 +179,53 @@ func (i JoinType) IsLookup() bool {
 
 func (i JoinType) IsCross() bool {
 	return i == JoinTypeCross
+}
+
+func (i JoinType) AsHash() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeHash
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterHash
+	case JoinTypeSemi:
+		return JoinTypeSemiHash
+	case JoinTypeAnti:
+		return JoinTypeAntiHash
+	default:
+		return i
+	}
+}
+
+func (i JoinType) AsMerge() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeMerge
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterMerge
+	case JoinTypeSemi:
+		return JoinTypeSemiMerge
+	case JoinTypeAnti:
+		return JoinTypeAntiMerge
+	default:
+		return i
+	}
+}
+
+func (i JoinType) AsLookup() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeLookup
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterLookup
+	case JoinTypeSemi:
+		return JoinTypeSemiLookup
+	case JoinTypeAnti:
+		return JoinTypeAntiLookup
+	case JoinTypeRightSemi:
+		return JoinTypeRightSemiLookup
+	default:
+		return i
+	}
 }
 
 func shouldUseMemoryJoinsByEnv() bool {

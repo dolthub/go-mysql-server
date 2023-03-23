@@ -189,9 +189,7 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *exprGroup {
 	leftV, leftE, _ := j.populateSubgraph(n.Left())
 	rightV, rightE, _ := j.populateSubgraph(n.Right())
 	typ := n.JoinType()
-	var hint plan.JoinType
 	if typ.IsPhysical() {
-		hint = typ
 		typ = plan.JoinTypeInner
 	}
 	isInner := typ.IsInner()
@@ -214,9 +212,6 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *exprGroup {
 		group = j.memoize(op.joinType, left, right, filters, nil)
 		j.plans[union] = group
 		j.m.root = group
-		if hint != plan.JoinTypeUnknown {
-			group.opHint = hint
-		}
 	}
 
 	if !isInner {
@@ -393,9 +388,8 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 
 	if addInnerJoin {
 		// Construct an inner join. Don't add in the case when a non-inner join has
-		// already been constructed, because doing so can lead to a case where a
-		// non-inner join operator 'disappears' because an inner join has replaced
-		// it.
+		// already been constructed, because doing so can lead to a case where an
+		// inner join replaces a non-inner join.
 		if innerJoinFilters == nil {
 			j.addJoin(plan.JoinTypeCross, s1, s2, nil, nil, isRedundant)
 		} else {
