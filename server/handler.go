@@ -15,6 +15,7 @@
 package server
 
 import (
+	"encoding/base64"
 	"io"
 	"net"
 	"regexp"
@@ -69,22 +70,11 @@ type Handler struct {
 	readTimeout       time.Duration
 	disableMultiStmts bool
 	maxLoggedQueryLen int
+	encodeLoggedQuery bool
 	sel               ServerEventListener
 }
 
 var _ mysql.Handler = (*Handler)(nil)
-
-// NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, maxLoggedQueryLen int, listener ServerEventListener) *Handler {
-	return &Handler{
-		e:                 e,
-		sm:                sm,
-		readTimeout:       rt,
-		disableMultiStmts: disableMultiStmts,
-		maxLoggedQueryLen: maxLoggedQueryLen,
-		sel:               listener,
-	}
-}
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
@@ -316,12 +306,17 @@ func (h *Handler) doQuery(
 	ctx = ctx.WithQuery(query)
 	more := remainder != ""
 
-	queryStr := string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
-	if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
-		queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
+	var queryStr string
+	if h.encodeLoggedQuery {
+		queryStr = base64.StdEncoding.EncodeToString([]byte(query))
+	} else {
+		queryStr = string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))
+		if h.maxLoggedQueryLen > 0 && len(queryStr) > h.maxLoggedQueryLen {
+			queryStr = queryStr[:h.maxLoggedQueryLen] + "..."
+		}
 	}
 
-	if h.maxLoggedQueryLen >= 0 {
+	if h.encodeLoggedQuery || h.maxLoggedQueryLen >= 0 {
 		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
 	}
 	ctx.GetLogger().Debugf("Starting query")

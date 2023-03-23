@@ -50,7 +50,16 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 	}
 
 	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDB, e.MemoryManager, e.ProcessList, cfg.Address)
-	handler := NewHandler(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, cfg.MaxLoggedQueryLen, listener)
+	handler := &Handler{
+		e:                 e,
+		sm:                sm,
+		readTimeout:       cfg.ConnReadTimeout,
+		disableMultiStmts: cfg.DisableClientMultiStatements,
+		maxLoggedQueryLen: cfg.MaxLoggedQueryLen,
+		encodeLoggedQuery: cfg.EncodeLoggedQuery,
+		sel:               listener,
+	}
+	//handler = NewHandler_(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, cfg.MaxLoggedQueryLen, cfg.EncodeLoggedQuery, listener)
 	return newServerFromHandler(cfg, e, sm, handler)
 }
 
@@ -71,7 +80,15 @@ func NewValidatingServer(
 	}
 
 	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDB, e.MemoryManager, e.ProcessList, cfg.Address)
-	h := NewHandler(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, cfg.MaxLoggedQueryLen, listener)
+	h := &Handler{
+		e:                 e,
+		sm:                sm,
+		readTimeout:       cfg.ConnReadTimeout,
+		disableMultiStmts: cfg.DisableClientMultiStatements,
+		maxLoggedQueryLen: cfg.MaxLoggedQueryLen,
+		encodeLoggedQuery: cfg.EncodeLoggedQuery,
+		sel:               listener,
+	}
 
 	handler, err := golden.NewValidatingHandler(h, mySqlConn, logrus.StandardLogger())
 	if err != nil {

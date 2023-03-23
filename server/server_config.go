@@ -70,6 +70,10 @@ type Config struct {
 	// MaxLoggedQueryLen sets the length at which queries written to the logs are truncated.  A value of 0 will
 	// result in no truncation. A value less than 0 will result in the queries being omitted from the logs completely
 	MaxLoggedQueryLen int
+	// EncodeLoggedQuery determines if logged queries are base64 encoded.
+	// If true, queries will be logged as base64 encoded strings.
+	// If false (default behavior), queries will be logged as strings, but newlines and tabs will be replaced with spaces.
+	EncodeLoggedQuery bool
 }
 
 func (c Config) NewConfig() (Config, error) {
