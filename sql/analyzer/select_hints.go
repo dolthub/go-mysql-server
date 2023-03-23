@@ -27,6 +27,7 @@ import (
 
 type HintType uint8
 
+// TODO implement NO_ICP and JOIN_FIXED_ORDER
 const (
 	HintTypeUnknown                  HintType = iota //
 	HintTypeJoinOrder                                // JOIN_ORDER
