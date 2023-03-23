@@ -15,59 +15,87 @@ func TestHintParsing(t *testing.T) {
 		hints   []Hint
 	}{
 		{
-			comment: "join_order(a,b)",
+			comment: "/*+ join_order(a,b) */",
 			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "JOIN_ORDER(a,b)",
+			comment: "/*+ JOIN_ORDER(a,b) */",
 			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "NO_ICP",
+			comment: "/*+ join_order(a, b) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+ join_order(a,    b) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+JOIN_ORDER(a,b)*/",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/* join_order(a,b) */",
+			hints:   []Hint{},
+		},
+		{
+			comment: "/*+ join_order(a_1, b_2) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a_1", "b_2"}}},
+		},
+		{
+			comment: "/*+ join_order(a1, b2) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a1", "b2"}}},
+		},
+		{
+			comment: "/*+ join_order( a1, b2 ) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a1", "b2"}}},
+		},
+		{
+			comment: "/*+ join_order(( a1, b2 )) */",
+			hints:   []Hint{},
+		},
+		{
+			comment: "/*+ NO_ICP */",
 			hints:   []Hint{{Typ: HintTypeNoIndexConditionPushDown}},
 		},
 		{
-			comment: "JOIN_FIXED_ORDER",
+			comment: "/*+ JOIN_FIXED_ORDER */",
 			hints:   []Hint{{Typ: HintTypeJoinFixedOrder}},
 		},
 		{
-			comment: "JOIN_FIXED_ORDER(a)",
+			comment: "/*+ JOIN_FIXED_ORDER(a) */",
 			hints:   []Hint{},
 		},
 		{
-			comment: "MERGE_JOIN(a,b)",
+			comment: "/*+ MERGE_JOIN(a,b) */",
 			hints:   []Hint{{Typ: HintTypeMergeJoin, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "MERGE_JOIN(a,b,c)",
+			comment: "/*+ MERGE_JOIN(a,b,c) */",
 			hints:   []Hint{},
 		},
 		{
-			comment: "lookup_join(a,b)",
+			comment: "/*+ lookup_join(a,b) */",
 			hints:   []Hint{{Typ: HintTypeLookupJoin, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "hash_join(a,b)",
+			comment: "/*+ hash_join(a,b) */",
 			hints:   []Hint{{Typ: HintTypeHashJoin, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "semi_join(a,b)",
+			comment: "/*+ semi_join(a,b) */",
 			hints:   []Hint{{Typ: HintTypeSemiJoin, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "inner_join(a,b)",
+			comment: "/*+ inner_join(a,b) */",
 			hints:   []Hint{{Typ: HintTypeInnerJoin, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "anti_join(a,b)",
+			comment: "/*+ anti_join(a,b) */",
 			hints:   []Hint{{Typ: HintTypeAntiJoin, Args: []string{"a", "b"}}},
 		},
 		{
-			comment: "max_execution_time",
-			hints:   []Hint{{Typ: HintTypeMaxExecutionTime}},
-		},
-		{
-			comment: "hash_join(a,b) merge_join(b,c) lookup_join(a,d)",
+			comment: "/*+ hash_join(a,b) merge_join(b,c) lookup_join(a,d) */",
 			hints: []Hint{
 				{Typ: HintTypeHashJoin, Args: []string{"a", "b"}},
 				{Typ: HintTypeMergeJoin, Args: []string{"b", "c"}},
@@ -75,11 +103,28 @@ func TestHintParsing(t *testing.T) {
 			},
 		},
 		{
-			comment: "max_execution_time merge_join(b,c) join_fixed_order",
+			comment: "/*+ max_execution_time merge_join(b,c) join_fixed_order */",
 			hints: []Hint{
-				{Typ: HintTypeMaxExecutionTime},
 				{Typ: HintTypeMergeJoin, Args: []string{"b", "c"}},
 				{Typ: HintTypeJoinFixedOrder},
+			},
+		},
+		{
+			comment: "/*+ JOIN_ORDER(a,b,c) LOOKUP_JOIN(a,b) MERGE_JOIN(b,c) NO_ICP ()KF)E)SFKK)SE)F_SE_F)E)S)KEFK */",
+			hints: []Hint{
+				{Typ: HintTypeJoinOrder, Args: []string{"a", "b", "c"}},
+				{Typ: HintTypeLookupJoin, Args: []string{"a", "b"}},
+				{Typ: HintTypeMergeJoin, Args: []string{"b", "c"}},
+				{Typ: HintTypeNoIndexConditionPushDown},
+			},
+		},
+		{
+			comment: "/*+ NOT_A_REAL_HINT JOIN_ORDER(a,b,c) ()KF)E)SFKK) SE)F_SE_F)E)S)KEFK LOOKUP_JOIN(a,b) JOIN_ORDER() MERGE_JOIN(b,c) NO_ICP */",
+			hints: []Hint{
+				{Typ: HintTypeJoinOrder, Args: []string{"a", "b", "c"}},
+				{Typ: HintTypeLookupJoin, Args: []string{"a", "b"}},
+				{Typ: HintTypeMergeJoin, Args: []string{"b", "c"}},
+				{Typ: HintTypeNoIndexConditionPushDown},
 			},
 		},
 	}

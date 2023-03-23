@@ -38,8 +38,6 @@ const (
 	HintTypeAntiJoin                                 // ANTI_JOIN
 	HintTypeInnerJoin                                // INNER_JOIN
 	HintTypeNoIndexConditionPushDown                 // NO_ICP
-	HintTypeMaxExecutionTime                         // MAX_EXECUTION_TIME
-	HintTypeSetVar                                   // SET_VAR
 )
 
 type Hint struct {
@@ -76,10 +74,6 @@ func newHint(joinTyp string, args []string) Hint {
 		typ = HintTypeAntiJoin
 	case "no_icp":
 		typ = HintTypeNoIndexConditionPushDown
-	case "max_execution_time":
-		typ = HintTypeMaxExecutionTime
-	case "set_var":
-		typ = HintTypeSetVar
 	default:
 		typ = HintTypeUnknown
 	}
@@ -106,27 +100,15 @@ func (h Hint) valid() bool {
 		return len(h.Args) == 2
 	case HintTypeNoIndexConditionPushDown:
 		return len(h.Args) == 0
-	case HintTypeMaxExecutionTime:
-		return len(h.Args) == 0
-	case HintTypeSetVar:
-		return len(h.Args) == 0
 	case HintTypeUnknown:
+		return false
 	default:
 	}
 	return true
 }
 
-var hintRegex = regexp.MustCompile("(\\s*[a-z_]+(\\([^\\(]+\\))?\\s*)")
-
-type hintState uint8
-
-const (
-	hsUnknown hintState = iota
-	hsNextHint
-	hsGetType
-	hsGetArgs
-	hsFinalizeHint
-)
+var hintRegex = regexp.MustCompile("([a-z_]+)(\\(([^\\(]+)\\))?")
+var argsRegex = regexp.MustCompile("\\s*([^\\(,\\s]+)\\s*[,\\s*]?")
 
 func extractJoinHint(n *plan.JoinNode) []Hint {
 	if n.Comment() != "" {
@@ -137,69 +119,25 @@ func extractJoinHint(n *plan.JoinNode) []Hint {
 
 // TODO: this is pretty nasty. Should be done in the parser instead.
 func parseJoinHints(comment string) []Hint {
-	comment = strings.TrimPrefix(comment, "/*+")
-	comment = strings.TrimSuffix(comment, "*/")
-	comment = strings.ToLower(strings.TrimSpace(comment))
-	comments := hintRegex.FindAll([]byte(comment), -1)
+	if !strings.HasPrefix(comment, "/*+") {
+		return nil
+	}
 	var hints []Hint
-	state := hsNextHint
-	var hintStr string
-	var hintType string
-	var args []string
-	for {
-		switch state {
-		case hsNextHint:
-			if len(comments) == 0 {
-				return hints
+	comments := hintRegex.FindAllStringSubmatch(strings.ToLower(comment), -1)
+	for _, c := range comments {
+		var args []string
+		if c[3] != "" {
+			argsParsed := argsRegex.FindAllStringSubmatch(c[3], -1)
+			for _, arg := range argsParsed {
+				args = append(args, arg[1])
 			}
-			hintStr = strings.TrimSpace(string(comments[0]))
-			comments = comments[1:]
-			state = hsGetType
-		case hsGetType:
-			i := 0
-			for hintType == "" {
-				if i >= len(hintStr) {
-					hintType = hintStr[:i]
-					break
-				}
-				switch hintStr[i] {
-				case '(', ' ':
-					hintType = hintStr[:i]
-				default:
-				}
-				i++
-			}
-			hintStr = hintStr[i:]
-			state = hsGetArgs
-		case hsGetArgs:
-			if hintStr == "" {
-				state = hsFinalizeHint
-				continue
-			}
-			var arg strings.Builder
-			for _, b := range hintStr {
-				switch b {
-				case ',', ')':
-					args = append(args, strings.TrimSpace(arg.String()))
-					arg = strings.Builder{}
-				case ' ':
-				default:
-					arg.WriteRune(b)
-				}
-			}
-			state = hsFinalizeHint
-		case hsFinalizeHint:
-			h := newHint(hintType, args)
-			if h.valid() {
-				hints = append(hints, h)
-			}
-			args = nil
-			hintType = ""
-			state = hsNextHint
-		case hsUnknown:
-		default:
+		}
+		hint := newHint(c[1], args)
+		if hint.valid() {
+			hints = append(hints, hint)
 		}
 	}
+	return hints
 }
 
 // joinOrderHint encodes a groups relational dependencies in a bitset
@@ -219,8 +157,9 @@ func parseJoinHints(comment string) []Hint {
 //	{1: 010, 2: 100, 3: 001, 4: 110, 5: 111}
 type joinOrderHint struct {
 	groups map[GroupId]vertexSet
-	cache  map[uint64]bool
 	order  map[GroupId]uint64
+	// cache avoids recomputing satisfiability for a relExpr
+	cache map[uint64]bool
 }
 
 func newJoinOrderHint(order map[GroupId]uint64) *joinOrderHint {
@@ -345,6 +284,9 @@ func (o joinOpHint) isValid() bool {
 
 // depsMatch returns whether this relExpr is a join with left/right inputs
 // that match the join hint.
+//
+// Ex: LOOKUP_JOIN(a,b) will match [a] x [b], and [ac] x [b],
+// but not [ab] x [c].
 func (o joinOpHint) depsMatch(n relExpr) bool {
 	switch n := n.(type) {
 	case joinRel:
@@ -360,39 +302,6 @@ func (o joinOpHint) depsMatch(n relExpr) bool {
 		return true
 	}
 	return false
-}
-
-// opMatch returns false when |n| is a join whose left/right
-// relations do not match the operator pattern.
-//
-// Ex: LOOKUP_JOIN(a,b) will match [a] x [b], [ac] x [b],
-// but not [ab] x [c].
-func (o joinOpHint) opMatch(n relExpr) (plan.JoinType, bool) {
-	switch n := n.(type) {
-	case joinRel:
-		base := n.joinPrivate()
-		var match bool
-		switch o.op {
-		case HintTypeLookupJoin:
-			_, match = n.(*lookupJoin)
-		case HintTypeMergeJoin:
-			_, match = n.(*mergeJoin)
-		case HintTypeInnerJoin:
-			_, match = n.(*innerJoin)
-		case HintTypeHashJoin:
-			_, match = n.(*hashJoin)
-		case HintTypeSemiJoin:
-			_, match = n.(*semiJoin)
-		case HintTypeAntiJoin:
-			_, match = n.(*antiJoin)
-		default:
-		}
-		if match {
-			return base.op, true
-		}
-	default:
-	}
-	return plan.JoinTypeUnknown, false
 }
 
 // typeMatches returns whether a relExpr implements

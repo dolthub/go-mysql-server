@@ -439,6 +439,8 @@ func (e *exprGroup) prepend(rel relExpr) {
 	rel.setNext(first)
 }
 
+// children returns a unioned list of child exprGroup for
+// every logical plan in this group.
 func (e *exprGroup) children() []*exprGroup {
 	n := e.first
 	children := make([]*exprGroup, 0)
