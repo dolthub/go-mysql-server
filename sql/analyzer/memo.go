@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+//go:generate go run ../../optgen/cmd/optgen/main.go -out memo.og.go -pkg analyzer memo memo.go
+
 type GroupId uint16
 type TableId uint16
 
@@ -669,8 +671,6 @@ type indexScan struct {
 
 	parent *joinBase
 }
-
-//go:generate go run ../../optgen/cmd/optgen/main.go -out memo.og.go -pkg analyzer memo memo.go
 
 var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
