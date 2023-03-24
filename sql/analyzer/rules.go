@@ -105,6 +105,7 @@ var OnceAfterDefault = []Rule{
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
+	{propagateEmptyJoinsId, propagateEmptyJoins},
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{pruneColumnsId, pruneColumns},
@@ -144,7 +145,6 @@ var DefaultValidationRules = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
-	{normalizeSelectSingleRelId, normalizeSelectSingleRel},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},

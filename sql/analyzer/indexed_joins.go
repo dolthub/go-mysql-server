@@ -439,14 +439,6 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 		return tableAliasLookupCand(ctx, n.table, aliases)
 	case *tableScan:
 		return tableScanLookupCand(ctx, n.table)
-	case *selectSingleRel:
-		switch t := n.table.Rel.(type) {
-		case *plan.TableAlias:
-			return tableAliasLookupCand(ctx, t, aliases)
-		case *plan.ResolvedTable:
-			return tableScanLookupCand(ctx, t)
-		default:
-		}
 	case *distinct:
 		if s, ok := n.child.first.(sourceRel); ok {
 			switch n := s.(type) {
@@ -890,8 +882,36 @@ func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.JoinNode:
-			if n.Op.IsRightOuter() {
+			if _, ok := n.Left().(*plan.EmptyTable); ok {
+				return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+			} else if _, ok := n.Right().(*plan.EmptyTable); ok {
+				return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+			} else if n.Op.IsRightOuter() {
 				return plan.NewLeftOuterJoin(n.Right(), n.Left(), n.Filter), transform.NewTree, nil
+			}
+		default:
+		}
+		return n, transform.SameTree, nil
+	})
+}
+
+func propagateEmptyJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var seenAnti bool
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *plan.JoinNode:
+			if n.Op.IsAnti() {
+				seenAnti = true
+			}
+			if seenAnti {
+				return n, transform.SameTree, nil
+			}
+			foundEmpty := transform.InspectUp(n, func(n sql.Node) bool {
+				_, ok := n.(*plan.EmptyTable)
+				return ok
+			})
+			if foundEmpty {
+				return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
 			}
 		default:
 		}

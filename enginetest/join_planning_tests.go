@@ -426,6 +426,11 @@ WHERE EXISTS (
 					{3, 1},
 				},
 			},
+			{
+				q:     `select * from xy where exists (select * from uv) and x = 0`,
+				types: []plan.JoinType{plan.JoinTypeCross},
+				exp:   []sql.Row{{0, 2}},
+			},
 		},
 	},
 	{

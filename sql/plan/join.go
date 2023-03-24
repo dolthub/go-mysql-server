@@ -252,7 +252,7 @@ func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 
 // Expressions implements sql.Expression
 func (j *JoinNode) Expressions() []sql.Expression {
-	if j.Op.IsDegenerate() {
+	if j.Op.IsDegenerate() || j.Filter == nil {
 		return nil
 	}
 	return []sql.Expression{j.Filter}
@@ -272,7 +272,7 @@ func (j *JoinNode) Resolved() bool {
 	switch {
 	case j.Op.IsNatural():
 		return false
-	case j.Op.IsDegenerate():
+	case j.Op.IsDegenerate() || j.Filter == nil:
 		return j.left.Resolved() && j.right.Resolved()
 	default:
 		return j.left.Resolved() && j.right.Resolved() && j.Filter.Resolved()
@@ -282,7 +282,7 @@ func (j *JoinNode) Resolved() bool {
 func (j *JoinNode) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	ret := *j
 	switch {
-	case j.Op.IsDegenerate():
+	case j.Op.IsDegenerate() || j.Filter == nil:
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 0)
 		}

@@ -513,7 +513,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 								[]sql.Expression{
 									expression.NewLiteral(1, types.Int32),
 								},
-								plan.EmptyTable,
+								plan.NewEmptyTableWithSchema(table.Schema()),
 							),
 							"SELECT 1 FROM DUAL",
 						),

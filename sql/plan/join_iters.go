@@ -233,7 +233,7 @@ func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, err
 		cond:              j.Filter,
 		scopeLen:          j.ScopeLen,
 		rowSize:           len(row) + len(j.left.Schema()) + len(j.right.Schema()),
-		nullRej:           IsNullRejecting(j.Filter),
+		nullRej:           !(j.Filter != nil && IsNullRejecting(j.Filter)),
 	}, nil
 }
 

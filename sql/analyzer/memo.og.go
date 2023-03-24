@@ -391,31 +391,31 @@ func (r *tableFunc) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
-type selectSingleRel struct {
+type emptyTable struct {
 	*relBase
-	table *plan.SelectSingleRel
+	table *plan.EmptyTable
 }
 
-var _ relExpr = (*selectSingleRel)(nil)
-var _ sourceRel = (*selectSingleRel)(nil)
+var _ relExpr = (*emptyTable)(nil)
+var _ sourceRel = (*emptyTable)(nil)
 
-func (r *selectSingleRel) String() string {
+func (r *emptyTable) String() string {
 	return formatRelExpr(r)
 }
 
-func (r *selectSingleRel) name() string {
+func (r *emptyTable) name() string {
 	return strings.ToLower(r.table.Name())
 }
 
-func (r *selectSingleRel) tableId() TableId {
+func (r *emptyTable) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *selectSingleRel) children() []*exprGroup {
+func (r *emptyTable) children() []*exprGroup {
 	return nil
 }
 
-func (r *selectSingleRel) outputCols() sql.Schema {
+func (r *emptyTable) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
@@ -500,8 +500,8 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("max1Row: %s", r.name())
 	case *tableFunc:
 		return fmt.Sprintf("tableFunc: %s", r.name())
-	case *selectSingleRel:
-		return fmt.Sprintf("selectSingleRel: %s", r.name())
+	case *emptyTable:
+		return fmt.Sprintf("emptyTable: %s", r.name())
 	case *project:
 		return fmt.Sprintf("project: %d", r.child.id)
 	case *distinct:
@@ -552,8 +552,8 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildMax1Row(r, input, children...)
 	case *tableFunc:
 		result, err = b.buildTableFunc(r, input, children...)
-	case *selectSingleRel:
-		result, err = b.buildSelectSingleRel(r, input, children...)
+	case *emptyTable:
+		result, err = b.buildEmptyTable(r, input, children...)
 	case *project:
 		result, err = b.buildProject(r, input, children...)
 	case *distinct:

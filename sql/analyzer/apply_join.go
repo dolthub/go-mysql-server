@@ -56,9 +56,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			case *plan.Filter:
 				child = n.Child
 				filters = splitConjunction(n.Expression)
-			case *plan.SelectSingleRel:
-				child = n.Rel
-				filters = n.Select
+			default:
 			}
 
 			if sel == nil {
@@ -145,10 +143,10 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					return nil, transform.SameTree, err
 				}
 
-				var newSubq sql.NameableNode = plan.NewSubqueryAlias(name, subq.QueryString, q)
+				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q)
 				newSubq = simplifySubqExpr(newSubq)
 				if m.max1 {
-					newSubq = plan.NewMax1Row(newSubq)
+					newSubq = plan.NewMax1Row(newSubq, name)
 				}
 
 				condSch := append(ret.Schema(), newSubq.Schema()...)
@@ -180,10 +178,9 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 }
 
 // simplifySubqExpr converts a subquery expression into a *plan.TableAlias
-// for scopes with only tables and getField projections, a
-// *plan.SelectSingleRel for the same scope with filters, or the original
+// for scopes with only tables and getField projections or the original
 // node failing simplification.
-func simplifySubqExpr(n sql.NameableNode) sql.NameableNode {
+func simplifySubqExpr(n sql.Node) sql.Node {
 	sq, ok := n.(*plan.SubqueryAlias)
 	if !ok {
 		return n
@@ -218,30 +215,12 @@ func simplifySubqExpr(n sql.NameableNode) sql.NameableNode {
 		return false
 	})
 	if tab != nil {
-		var ret sql.NameableNode = plan.NewTableAlias(sq.Name(), tab)
+		var ret sql.Node = plan.NewTableAlias(sq.Name(), tab)
 		if len(filters) > 0 {
-			ret = plan.NewSelectSingleRel(filters, ret).RequalifyFields(sq.Name())
+			filter := expression.JoinAnd(renameAliasesInExpressions(filters, tab.Name(), sq.Name())...)
+			ret = plan.NewFilter(filter, ret)
 		}
 		return ret
 	}
 	return n
-}
-
-func normalizeSelectSingleRel(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch n := c.Node.(type) {
-		case *plan.SelectSingleRel:
-			if _, ok := c.Parent.(*plan.Max1Row); ok {
-				return plan.NewTableAlias(n.Name(), plan.NewFilter(expression.JoinAnd(n.Select...), n.Rel)), transform.NewTree, nil
-			} else {
-				return plan.NewFilter(expression.JoinAnd(n.Select...), n.Rel), transform.NewTree, nil
-			}
-		case *plan.Filter:
-			if f, ok := n.Child.(*plan.Filter); ok {
-				return plan.NewFilter(expression.NewAnd(n.Expression, f.Expression), f.Child), transform.NewTree, nil
-			}
-		default:
-		}
-		return c.Node, transform.SameTree, nil
-	})
 }

@@ -451,6 +451,8 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	//a.Verbose = true
+	//a.Debug = true
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
 }
@@ -477,7 +479,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateOperandsId,
 
 		// OnceAfterAll
-		normalizeSelectSingleRelId,
 		TrackProcessId,
 		parallelizeId:
 		return false
@@ -534,7 +535,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		//validateUnionSchemasMatchId, // TODO: we never validate UnionSchemasMatchId :)
 
 		// OnceAfterAll
-		normalizeSelectSingleRelId,
 		parallelizeId,
 		TrackProcessId:
 		return true
@@ -563,7 +563,6 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 		subqueryIndexesId,
 		resolveInsertRowsId,
 
-		normalizeSelectSingleRelId,
 		AutocommitId,
 		TrackProcessId,
 		parallelizeId,

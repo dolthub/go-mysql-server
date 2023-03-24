@@ -266,14 +266,15 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 	}
 }
 
-func NewMax1Row(n sql.NameableNode) *Max1Row {
-	return &Max1Row{Child: n, mu: &sync.Mutex{}}
+func NewMax1Row(n sql.Node, name string) *Max1Row {
+	return &Max1Row{Child: n, name: name, mu: &sync.Mutex{}}
 }
 
 // Max1Row throws a runtime error if its child (usually subquery) tries
 // to return more than one row.
 type Max1Row struct {
-	Child       sql.NameableNode
+	Child       sql.Node
+	name        string
 	result      sql.Row
 	mu          *sync.Mutex
 	emptyResult bool
@@ -282,7 +283,7 @@ type Max1Row struct {
 var _ sql.Node = (*Max1Row)(nil)
 
 func (m *Max1Row) Name() string {
-	return m.Child.Name()
+	return m.name
 }
 
 func (m *Max1Row) Resolved() bool {
@@ -371,11 +372,7 @@ func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	ret := *m
 
-	nn, ok := children[0].(sql.NameableNode)
-	if !ok {
-		return nil, fmt.Errorf("expected *Max1Row child to be sql.NameableNode, found %T", children[0])
-	}
-	ret.Child = nn
+	ret.Child = children[0]
 
 	return &ret, nil
 }
