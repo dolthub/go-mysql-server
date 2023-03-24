@@ -290,7 +290,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 			if isEmptyIter(rIter) {
-				if i.nullRej {
+				if i.nullRej || i.typ.IsAnti() {
 					return nil, io.EOF
 				}
 				nextState = esCompare

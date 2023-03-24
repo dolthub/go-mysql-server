@@ -149,6 +149,8 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					newSubq = plan.NewMax1Row(newSubq, name)
 				}
 
+				//leftF := renameAliasesInExp(m.l, subq.Query.name)
+
 				condSch := append(ret.Schema(), newSubq.Schema()...)
 				filter, err := m.filter.WithChildren(m.l, rightF)
 				if err != nil {
@@ -185,13 +187,13 @@ func simplifySubqExpr(n sql.Node) sql.Node {
 	if !ok {
 		return n
 	}
-	var tab sql.NameableNode
+	var tab sql.RenameableNode
 	var filters []sql.Expression
 	transform.InspectUp(sq.Child, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Sort, *plan.Distinct:
 		case *plan.TableAlias:
-			tab, _ = n.Child.(sql.NameableNode)
+			tab = n
 		case *plan.ResolvedTable:
 			if !plan.IsDualTable(n.Table) {
 				tab = n
@@ -215,7 +217,7 @@ func simplifySubqExpr(n sql.Node) sql.Node {
 		return false
 	})
 	if tab != nil {
-		var ret sql.Node = plan.NewTableAlias(sq.Name(), tab)
+		ret := tab.WithName(sq.Name())
 		if len(filters) > 0 {
 			filter := expression.JoinAnd(renameAliasesInExpressions(filters, tab.Name(), sq.Name())...)
 			ret = plan.NewFilter(filter, ret)

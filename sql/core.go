@@ -90,6 +90,8 @@ type Nameable interface {
 
 // RenameableNode is a Node that can be renamed.
 type RenameableNode interface {
+	Nameable
+	Node
 	// WithName returns a copy of the node with the name changed.
 	WithName(string) Node
 }

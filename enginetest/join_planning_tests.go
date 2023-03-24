@@ -402,7 +402,7 @@ order by 1;`,
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -428,7 +428,7 @@ WHERE EXISTS (
 			},
 			{
 				q:     `select * from xy where exists (select * from uv) and x = 0`,
-				types: []plan.JoinType{plan.JoinTypeCross},
+				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{0, 2}},
 			},
 		},
