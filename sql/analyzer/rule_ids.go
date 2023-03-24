@@ -89,7 +89,7 @@ const (
 	removeUnnecessaryConvertsId  // removeUnnecessaryConverts
 	pruneColumnsId               // pruneColumns
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
-	propagateEmptyJoinsId        // propagateEmptyJoins
+	foldEmptyJoinsId             // foldEmptyJoins
 	optimizeJoinsId              // optimizeJoins
 	concatFiltersId              // concatFilters
 	pushdownFiltersId            // pushdownFilters

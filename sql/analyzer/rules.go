@@ -105,7 +105,7 @@ var OnceAfterDefault = []Rule{
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
-	{propagateEmptyJoinsId, propagateEmptyJoins},
+	{foldEmptyJoinsId, foldEmptyJoins},
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{pruneColumnsId, pruneColumns},

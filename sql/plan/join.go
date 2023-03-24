@@ -105,8 +105,7 @@ func (i JoinType) IsNatural() bool {
 }
 
 func (i JoinType) IsDegenerate() bool {
-	return i == JoinTypeNatural ||
-		i == JoinTypeCross
+	return i == JoinTypeCross
 }
 
 func (i JoinType) IsMerge() bool {

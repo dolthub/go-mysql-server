@@ -107,7 +107,24 @@ var joinCostTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
-				Query: "select * from mytable where exists (select * from mytable where i = 1);",
+				Query:    "select * from ab left join uv on a = u where exists (select * from uv where false)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ab left join (select * from uv where false) s on a = u order by 1;",
+				Expected: []sql.Row{
+					{0, 2, nil, nil},
+					{1, 2, nil, nil},
+					{2, 2, nil, nil},
+					{3, 1, nil, nil},
+				},
+			},
+			{
+				Query:    "select * from ab right join (select * from uv where false) s on a = u order by 1;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from mytable where exists (select * from mytable where i = 1) order by 1;",
 				Expected: []sql.Row{
 					{1, "first row"},
 					{2, "second row"},
@@ -180,13 +197,11 @@ var joinCostTests = []struct {
 				Query:    "/*case4aN*/ select * from ab where not exists (select * from xy where 1 = 1)",
 				Expected: []sql.Row{},
 			},
-			// TODO: uncomment after https://github.com/dolthub/dolt/issues/5522 is fixed
 			{
 				// case 4b: condition uses no columns from either side, and condition is false
 				Query:    "/*case4b*/ select * from ab where exists (select * from xy where 1 = 0)",
 				Expected: []sql.Row{},
 			},
-			// TODO: uncomment after https://github.com/dolthub/dolt/issues/5522 is fixed
 			{
 				// case 4bN: NOT EXISTS condition uses no columns from either side, and condition is false
 				Query:    "/*case4bN*/ select * from ab where not exists (select * from xy where 1 = 0)",
