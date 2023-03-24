@@ -147,7 +147,7 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 		if len(s.joinFilters) == 0 {
 			switch joinType {
 			case plan.JoinTypeAnti:
-				cond := expression.NewLiteral(false, types.Boolean)
+				cond := expression.NewLiteral(true, types.Boolean)
 				ret = plan.NewAntiJoin(ret, s.inner, cond).WithComment(comment)
 
 			case plan.JoinTypeSemi:
@@ -233,6 +233,7 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 
 		// avoid updating the tree if we don't move any filters
 		if len(filtersToKeep) == len(filters) {
+			filtersToKeep = nil
 			return f, transform.SameTree, nil
 		}
 
