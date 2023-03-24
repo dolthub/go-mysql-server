@@ -71,6 +71,7 @@ type StringType struct {
 
 var _ sql.StringType = StringType{}
 var _ sql.TypeWithCollation = StringType{}
+var _ sql.CollationCoercible = StringType{}
 
 // CreateString creates a new StringType based on the specified type, length, and collation. Length is interpreted as
 // the length of bytes in the new StringType for SQL types that are based on bytes (i.e. TEXT, BLOB, BINARY, and
@@ -563,6 +564,11 @@ func (t StringType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t StringType) Zero() interface{} {
 	return ""
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t StringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.collation, 4
 }
 
 func (t StringType) CharacterSet() sql.CharacterSetID {

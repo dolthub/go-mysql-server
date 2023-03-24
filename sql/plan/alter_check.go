@@ -38,10 +38,16 @@ type CreateCheck struct {
 	Check *sql.CheckConstraint
 }
 
+var _ sql.Node = (*CreateCheck)(nil)
+var _ sql.CollationCoercible = (*CreateCheck)(nil)
+
 type DropCheck struct {
 	UnaryNode
 	Name string
 }
+
+var _ sql.Node = (*DropCheck)(nil)
+var _ sql.CollationCoercible = (*DropCheck)(nil)
 
 func NewAlterAddCheck(table sql.Node, check *sql.CheckConstraint) *CreateCheck {
 	return &CreateCheck{
@@ -158,6 +164,11 @@ func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 		sql.NewPrivilegedOperation(GetDatabaseName(c.Child), getTableName(c.Child), "", sql.PrivilegeType_Alter))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *CreateCheck) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (c *CreateCheck) Schema() sql.Schema { return nil }
 
 func (c *CreateCheck) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -210,6 +221,11 @@ func (p *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 		sql.NewPrivilegedOperation(GetDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *DropCheck) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (p *DropCheck) Schema() sql.Schema { return nil }
 
 func (p DropCheck) String() string {
@@ -248,6 +264,9 @@ type DropConstraint struct {
 	Name string
 }
 
+var _ sql.Node = (*DropConstraint)(nil)
+var _ sql.CollationCoercible = (*DropConstraint)(nil)
+
 func (d *DropConstraint) String() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("DropConstraint(%s)", d.Name)
@@ -273,6 +292,11 @@ func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (d *DropConstraint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(GetDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (d *DropConstraint) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // NewDropConstraint returns a new DropConstraint node

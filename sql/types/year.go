@@ -196,3 +196,8 @@ func (t YearType_) ValueType() reflect.Type {
 func (t YearType_) Zero() interface{} {
 	return int16(0)
 }
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (YearType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}

@@ -26,6 +26,7 @@ import (
 )
 
 var _ ArithmeticOp = (*Mod)(nil)
+var _ sql.CollationCoercible = (*Mod)(nil)
 
 // Mod expression represents "%" arithmetic operation
 type Mod struct {
@@ -89,6 +90,11 @@ func (m *Mod) Type() sql.Type {
 	// for division operation, it's either float or decimal.Decimal type
 	// except invalid value will result it either 0 or nil
 	return floatOrDecimalType(m)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Mod) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.

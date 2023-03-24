@@ -31,6 +31,9 @@ type Into struct {
 	IntoVars []sql.Expression
 }
 
+var _ sql.Node = (*Into)(nil)
+var _ sql.CollationCoercible = (*Into)(nil)
+
 func NewInto(child sql.Node, variables []sql.Expression) *Into {
 	return &Into{
 		UnaryNode: UnaryNode{child},
@@ -123,6 +126,11 @@ func (i *Into) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (i *Into) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return i.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (i *Into) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, i.Child)
 }
 
 // WithExpressions implements the sql.Expressioner interface.

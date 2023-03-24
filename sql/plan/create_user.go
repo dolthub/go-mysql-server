@@ -39,6 +39,7 @@ type CreateUser struct {
 
 var _ sql.Node = (*CreateUser)(nil)
 var _ sql.Databaser = (*CreateUser)(nil)
+var _ sql.CollationCoercible = (*CreateUser)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *CreateUser) Schema() sql.Schema {
@@ -93,6 +94,11 @@ func (n *CreateUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateUser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

@@ -28,6 +28,7 @@ type deferredType struct {
 }
 
 var _ sql.DeferredType = (*deferredType)(nil)
+var _ sql.CollationCoercible = (*deferredType)(nil)
 
 func NewDeferredType(name string) sql.Type {
 	return &deferredType{bindVar: name}
@@ -95,6 +96,11 @@ func (t deferredType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t deferredType) Zero() interface{} {
 	return nil
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (deferredType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (t deferredType) IsDeferred() bool {

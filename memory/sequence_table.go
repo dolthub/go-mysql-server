@@ -10,6 +10,7 @@ import (
 )
 
 var _ sql.TableFunction = (*IntSequenceTable)(nil)
+var _ sql.CollationCoercible = (*IntSequenceTable)(nil)
 
 // IntSequenceTable a simple table function that returns a sequence
 // of integers.
@@ -86,6 +87,11 @@ func (s IntSequenceTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
 
 func (s IntSequenceTable) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (IntSequenceTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s IntSequenceTable) Expressions() []sql.Expression {

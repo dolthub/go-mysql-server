@@ -28,6 +28,7 @@ type Concat struct {
 }
 
 var _ sql.FunctionExpression = (*Concat)(nil)
+var _ sql.CollationCoercible = (*Concat)(nil)
 
 // NewConcat creates a new Concat UDF.
 func NewConcat(args ...sql.Expression) (sql.Expression, error) {
@@ -50,6 +51,19 @@ func (c *Concat) Description() string {
 
 // Type implements the Expression interface.
 func (c *Concat) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Concat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if len(c.args) == 0 {
+		return sql.Collation_binary, 6
+	}
+	collation, coercibility = sql.GetCoercibility(ctx, c.args[0])
+	for i := 1; i < len(c.args); i++ {
+		nextCollation, nextCoercibility := sql.GetCoercibility(ctx, c.args[i])
+		collation, coercibility = sql.ResolveCoercibility(collation, coercibility, nextCollation, nextCoercibility)
+	}
+	return collation, coercibility
+}
 
 // IsNullable implements the Expression interface.
 func (c *Concat) IsNullable() bool {

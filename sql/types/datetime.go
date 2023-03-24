@@ -90,6 +90,9 @@ type datetimeType struct {
 	baseType query.Type
 }
 
+var _ sql.DatetimeType = datetimeType{}
+var _ sql.CollationCoercible = datetimeType{}
+
 // CreateDatetimeType creates a Type dealing with all temporal types that are not TIME nor YEAR.
 func CreateDatetimeType(baseType query.Type) (sql.DatetimeType, error) {
 	switch baseType {
@@ -407,6 +410,11 @@ func (t datetimeType) ValueType() reflect.Type {
 
 func (t datetimeType) Zero() interface{} {
 	return zeroTime
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (datetimeType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // MaximumTime is the latest accepted time for this type.

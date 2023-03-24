@@ -36,6 +36,7 @@ type Ascii struct {
 }
 
 var _ sql.FunctionExpression = (*Ascii)(nil)
+var _ sql.CollationCoercible = (*Ascii)(nil)
 
 func NewAscii(arg sql.Expression) sql.Expression {
 	return &Ascii{NewUnaryFunc(arg, "ASCII", types.Uint8)}
@@ -44,6 +45,11 @@ func NewAscii(arg sql.Expression) sql.Expression {
 // Description implements sql.FunctionExpression
 func (a *Ascii) Description() string {
 	return "returns the numeric value of the leftmost character."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Ascii) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the sql.Expression interface
@@ -93,6 +99,7 @@ type Hex struct {
 }
 
 var _ sql.FunctionExpression = (*Hex)(nil)
+var _ sql.CollationCoercible = (*Hex)(nil)
 
 func NewHex(arg sql.Expression) sql.Expression {
 	// Although this may seem convoluted, the Collation_Default is NOT guaranteed to be the character set's default
@@ -105,6 +112,11 @@ func NewHex(arg sql.Expression) sql.Expression {
 // Description implements sql.FunctionExpression
 func (h *Hex) Description() string {
 	return "returns the hexadecimal representation of the string or numeric value."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Hex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 // Eval implements the sql.Expression interface
@@ -252,6 +264,7 @@ type Unhex struct {
 }
 
 var _ sql.FunctionExpression = (*Unhex)(nil)
+var _ sql.CollationCoercible = (*Unhex)(nil)
 
 func NewUnhex(arg sql.Expression) sql.Expression {
 	return &Unhex{NewUnaryFunc(arg, "UNHEX", types.LongBlob)}
@@ -260,6 +273,11 @@ func NewUnhex(arg sql.Expression) sql.Expression {
 // Description implements sql.FunctionExpression
 func (h *Unhex) Description() string {
 	return "returns a string containing hex representation of a number."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Unhex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 // Eval implements the sql.Expression interface
@@ -330,6 +348,7 @@ type Bin struct {
 }
 
 var _ sql.FunctionExpression = (*Bin)(nil)
+var _ sql.CollationCoercible = (*Bin)(nil)
 
 func NewBin(arg sql.Expression) sql.Expression {
 	return &Bin{NewUnaryFunc(arg, "BIN", types.Text)}
@@ -343,6 +362,11 @@ func (b *Bin) FunctionName() string {
 // Description implements sql.FunctionExpression
 func (b *Bin) Description() string {
 	return "returns the binary representation of a number."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Bin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 // Eval implements the sql.Expression interface
@@ -465,6 +489,7 @@ type Bitlength struct {
 }
 
 var _ sql.FunctionExpression = (*Bitlength)(nil)
+var _ sql.CollationCoercible = (*Bitlength)(nil)
 
 func NewBitlength(arg sql.Expression) sql.Expression {
 	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", types.Int32)}
@@ -478,6 +503,11 @@ func (b *Bitlength) FunctionName() string {
 // Description implements sql.FunctionExpression
 func (b *Bitlength) Description() string {
 	return "returns the data length of the argument in bits."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Bitlength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the sql.Expression interface

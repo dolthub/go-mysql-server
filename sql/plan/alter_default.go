@@ -32,8 +32,10 @@ type AlterDefaultSet struct {
 	targetSchema sql.Schema
 }
 
+var _ sql.Node = (*AlterDefaultSet)(nil)
 var _ sql.Expressioner = (*AlterDefaultSet)(nil)
 var _ sql.SchemaTarget = (*AlterDefaultSet)(nil)
+var _ sql.CollationCoercible = (*AlterDefaultSet)(nil)
 
 // AlterDefaultDrop represents the ALTER COLUMN DROP DEFAULT statement.
 type AlterDefaultDrop struct {
@@ -45,6 +47,7 @@ type AlterDefaultDrop struct {
 
 var _ sql.Node = (*AlterDefaultDrop)(nil)
 var _ sql.SchemaTarget = (*AlterDefaultDrop)(nil)
+var _ sql.CollationCoercible = (*AlterDefaultDrop)(nil)
 
 // NewAlterDefaultSet returns a *AlterDefaultSet node.
 func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
@@ -111,6 +114,11 @@ func (d *AlterDefaultSet) Children() []sql.Node {
 func (d *AlterDefaultSet) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(d.Database().Name(), getTableName(d.Table), "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (d *AlterDefaultSet) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Resolved implements the sql.Node interface.
@@ -240,6 +248,11 @@ func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 func (d *AlterDefaultDrop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(d.db.Name(), getTableName(d.Table), d.ColumnName, sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (d *AlterDefaultDrop) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithDatabase implements the sql.Databaser interface.

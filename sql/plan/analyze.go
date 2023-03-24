@@ -15,6 +15,9 @@ type AnalyzeTable struct {
 	Tables []sql.DbTable
 }
 
+var _ sql.Node = (*AnalyzeTable)(nil)
+var _ sql.CollationCoercible = (*AnalyzeTable)(nil)
+
 var analyzeSchema = sql.Schema{
 	{Name: "Table", Type: types.LongText},
 	{Name: "Op", Type: types.LongText},
@@ -82,6 +85,11 @@ func (n *AnalyzeTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *AnalyzeTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AnalyzeTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

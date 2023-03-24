@@ -27,6 +27,7 @@ type FlushPrivileges struct {
 }
 
 var _ sql.Node = (*FlushPrivileges)(nil)
+var _ sql.CollationCoercible = (*FlushPrivileges)(nil)
 var _ sql.Databaser = (*FlushPrivileges)(nil)
 
 // NewFlushPrivileges creates a new FlushPrivileges node.
@@ -70,6 +71,11 @@ func (f *FlushPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 		return true
 	}
 	return false
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*FlushPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Resolved implements the interface sql.Node.

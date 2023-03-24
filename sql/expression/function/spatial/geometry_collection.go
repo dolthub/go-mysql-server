@@ -30,6 +30,7 @@ type GeomColl struct {
 }
 
 var _ sql.FunctionExpression = (*GeomColl)(nil)
+var _ sql.CollationCoercible = (*GeomColl)(nil)
 
 // NewGeomColl creates a new geometrycollection expression.
 func NewGeomColl(args ...sql.Expression) (sql.Expression, error) {
@@ -49,6 +50,11 @@ func (g *GeomColl) Description() string {
 // Type implements the sql.Expression interface.
 func (g *GeomColl) Type() sql.Type {
 	return types.GeomCollType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomColl) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (g *GeomColl) String() string {

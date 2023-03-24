@@ -255,6 +255,7 @@ type DateFormat struct {
 }
 
 var _ sql.FunctionExpression = (*DateFormat)(nil)
+var _ sql.CollationCoercible = (*DateFormat)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (f *DateFormat) FunctionName() string {
@@ -320,6 +321,11 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // Type implements the Expression interface.
 func (f *DateFormat) Type() sql.Type {
 	return types.Text
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DateFormat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 // IsNullable implements the Expression interface.

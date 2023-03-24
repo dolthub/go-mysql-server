@@ -31,6 +31,9 @@ type Limit struct {
 	CalcFoundRows bool
 }
 
+var _ sql.Node = (*Limit)(nil)
+var _ sql.CollationCoercible = (*Limit)(nil)
+
 // NewLimit creates a new Limit node with the given size.
 func NewLimit(size sql.Expression, child sql.Node) *Limit {
 	return &Limit{
@@ -135,6 +138,11 @@ func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (l *Limit) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return l.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Limit) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, l.Child)
 }
 
 func (l Limit) String() string {

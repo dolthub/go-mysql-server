@@ -32,6 +32,7 @@ type ShowStatus struct {
 }
 
 var _ sql.Node = (*ShowStatus)(nil)
+var _ sql.CollationCoercible = (*ShowStatus)(nil)
 
 type ShowStatusModifier byte
 
@@ -102,4 +103,9 @@ func (s *ShowStatus) WithChildren(node ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (s *ShowStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

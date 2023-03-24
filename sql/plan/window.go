@@ -34,6 +34,7 @@ type Window struct {
 var _ sql.Expressioner = (*Window)(nil)
 var _ sql.Node = (*Window)(nil)
 var _ sql.Projector = (*Window)(nil)
+var _ sql.CollationCoercible = (*Window)(nil)
 
 func NewWindow(selectExprs []sql.Expression, node sql.Node) *Window {
 	return &Window{
@@ -92,6 +93,11 @@ func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (w *Window) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return w.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (w *Window) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, w.Child)
 }
 
 // Expressions implements sql.Expressioner

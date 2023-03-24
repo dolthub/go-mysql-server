@@ -47,6 +47,7 @@ var (
 
 var _ sql.Type = MultiLineStringType{}
 var _ sql.SpatialColumnType = MultiLineStringType{}
+var _ sql.CollationCoercible = MultiLineStringType{}
 var _ GeometryValue = MultiLineString{}
 
 // Compare implements Type interface.
@@ -127,6 +128,11 @@ func (t MultiLineStringType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t MultiLineStringType) Zero() interface{} {
 	return MultiLineString{Lines: []LineString{LineStringType{}.Zero().(LineString)}}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (MultiLineStringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

@@ -31,6 +31,7 @@ type systemStringType struct {
 }
 
 var _ sql.SystemVariableType = systemStringType{}
+var _ sql.CollationCoercible = systemStringType{}
 
 // NewSystemStringType returns a new systemStringType.
 func NewSystemStringType(varName string) sql.SystemVariableType {
@@ -133,6 +134,11 @@ func (t systemStringType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t systemStringType) Zero() interface{} {
 	return ""
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t systemStringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
 }
 
 // EncodeValue implements SystemVariableType interface.

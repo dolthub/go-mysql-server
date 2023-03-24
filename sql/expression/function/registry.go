@@ -50,6 +50,8 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "char_length", Fn: NewCharLength},
 	sql.Function1{Name: "character_length", Fn: NewCharLength},
 	sql.FunctionN{Name: "coalesce", Fn: NewCoalesce},
+	sql.Function1{Name: "coercibility", Fn: NewCoercibility},
+	sql.Function1{Name: "collation", Fn: NewCollation},
 	sql.FunctionN{Name: "concat", Fn: NewConcat},
 	sql.FunctionN{Name: "concat_ws", Fn: NewConcatWithSeparator},
 	sql.NewFunction0("connection_id", NewConnectionID),

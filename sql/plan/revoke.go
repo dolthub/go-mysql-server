@@ -35,6 +35,7 @@ type Revoke struct {
 
 var _ sql.Node = (*Revoke)(nil)
 var _ sql.Databaser = (*Revoke)(nil)
+var _ sql.CollationCoercible = (*Revoke)(nil)
 
 // NewRevoke returns a new Revoke node.
 func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, revoker string) (*Revoke, error) {
@@ -193,6 +194,11 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 			sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
 				convertToSqlPrivilegeType(true, n.Privileges...)...))
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Revoke) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.
@@ -477,6 +483,7 @@ type RevokeAll struct {
 }
 
 var _ sql.Node = (*RevokeAll)(nil)
+var _ sql.CollationCoercible = (*RevokeAll)(nil)
 
 // NewRevokeAll returns a new RevokeAll node.
 func NewRevokeAll(users []UserName) *RevokeAll {
@@ -527,6 +534,11 @@ func (n *RevokeAll) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 			sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Update))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RevokeAll) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the interface sql.Node.
 func (n *RevokeAll) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("not yet implemented")
@@ -541,6 +553,7 @@ type RevokeRole struct {
 
 var _ sql.Node = (*RevokeRole)(nil)
 var _ sql.Databaser = (*RevokeRole)(nil)
+var _ sql.CollationCoercible = (*RevokeRole)(nil)
 
 // NewRevokeRole returns a new RevokeRole node.
 func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
@@ -640,6 +653,11 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RevokeRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the interface sql.Node.
 func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
@@ -682,6 +700,7 @@ type RevokeProxy struct {
 }
 
 var _ sql.Node = (*RevokeProxy)(nil)
+var _ sql.CollationCoercible = (*RevokeProxy)(nil)
 
 // NewRevokeProxy returns a new RevokeProxy node.
 func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
@@ -727,6 +746,11 @@ func (n *RevokeProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *RevokeProxy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: add this when proxy support is added
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RevokeProxy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

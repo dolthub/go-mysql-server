@@ -33,6 +33,7 @@ type TimeDiff struct {
 }
 
 var _ sql.FunctionExpression = (*TimeDiff)(nil)
+var _ sql.CollationCoercible = (*TimeDiff)(nil)
 
 // NewTimeDiff creates a new NewTimeDiff expression.
 func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
@@ -56,6 +57,11 @@ func (td *TimeDiff) Description() string {
 
 // Type implements the Expression interface.
 func (td *TimeDiff) Type() sql.Type { return types.Time }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*TimeDiff) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 func (td *TimeDiff) String() string {
 	return fmt.Sprintf("%s(%s,%s)", td.FunctionName(), td.Left, td.Right)
@@ -146,6 +152,7 @@ type DateDiff struct {
 }
 
 var _ sql.FunctionExpression = (*DateDiff)(nil)
+var _ sql.CollationCoercible = (*DateDiff)(nil)
 
 // NewDateDiff creates a new DATEDIFF() function.
 func NewDateDiff(expr1, expr2 sql.Expression) sql.Expression {
@@ -169,6 +176,11 @@ func (d *DateDiff) Description() string {
 
 // Type implements the sql.Expression interface.
 func (d *DateDiff) Type() sql.Type { return types.Int64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DateDiff) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // WithChildren implements the Expression interface.
 func (d *DateDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -236,6 +248,7 @@ type TimestampDiff struct {
 }
 
 var _ sql.FunctionExpression = (*TimestampDiff)(nil)
+var _ sql.CollationCoercible = (*TimestampDiff)(nil)
 
 // NewTimestampDiff creates a new TIMESTAMPDIFF() function.
 func NewTimestampDiff(u, e1, e2 sql.Expression) sql.Expression {
@@ -269,6 +282,11 @@ func (t *TimestampDiff) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (t *TimestampDiff) Type() sql.Type { return types.Int64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*TimestampDiff) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // WithChildren implements the Expression interface.
 func (t *TimestampDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {

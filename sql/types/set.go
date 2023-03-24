@@ -49,6 +49,7 @@ type SetType struct {
 
 var _ sql.SetType = SetType{}
 var _ sql.TypeWithCollation = SetType{}
+var _ sql.CollationCoercible = SetType{}
 
 // CreateSetType creates a SetType.
 func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, error) {
@@ -265,6 +266,11 @@ func (t SetType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t SetType) Zero() interface{} {
 	return uint64(0)
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t SetType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.collation, 4
 }
 
 // CharacterSet implements SetType interface.

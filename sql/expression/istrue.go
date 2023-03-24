@@ -27,6 +27,9 @@ type IsTrue struct {
 	invert bool
 }
 
+var _ sql.Expression = (*IsTrue)(nil)
+var _ sql.CollationCoercible = (*IsTrue)(nil)
+
 const IsTrueStr = "IS TRUE"
 const IsFalseStr = "IS FALSE"
 
@@ -43,6 +46,11 @@ func NewIsFalse(child sql.Expression) *IsTrue {
 // Type implements the Expression interface.
 func (*IsTrue) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IsTrue) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.

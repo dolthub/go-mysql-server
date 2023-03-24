@@ -74,6 +74,8 @@ type AlterIndex struct {
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)
 var _ sql.Expressioner = (*AlterIndex)(nil)
+var _ sql.Node = (*AlterIndex)(nil)
+var _ sql.CollationCoercible = (*AlterIndex)(nil)
 
 func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
@@ -364,6 +366,11 @@ func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, er
 func (p *AlterIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(p.ddlNode.Database().Name(), getTableName(p.Table), "", sql.PrivilegeType_Index))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AlterIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithDatabase implements the sql.Databaser interface.

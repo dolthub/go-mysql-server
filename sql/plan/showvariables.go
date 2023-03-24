@@ -28,6 +28,9 @@ type ShowVariables struct {
 	global bool
 }
 
+var _ sql.Node = (*ShowVariables)(nil)
+var _ sql.CollationCoercible = (*ShowVariables)(nil)
+
 // NewShowVariables returns a new ShowVariables reference.
 func NewShowVariables(filter sql.Expression, isGlobal bool) *ShowVariables {
 	return &ShowVariables{
@@ -53,6 +56,11 @@ func (sv *ShowVariables) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (sv *ShowVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowVariables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the fmt.Stringer interface.

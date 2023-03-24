@@ -32,6 +32,7 @@ type JSONUnquote struct {
 }
 
 var _ sql.FunctionExpression = (*JSONUnquote)(nil)
+var _ sql.CollationCoercible = (*JSONUnquote)(nil)
 
 // NewJSONUnquote creates a new JSONUnquote UDF.
 func NewJSONUnquote(json sql.Expression) sql.Expression {
@@ -60,6 +61,11 @@ func (js *JSONUnquote) String() string {
 // Type implements the Expression interface.
 func (*JSONUnquote) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONUnquote) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 4
 }
 
 // WithChildren implements the Expression interface.

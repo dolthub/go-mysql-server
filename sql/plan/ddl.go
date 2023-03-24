@@ -137,6 +137,7 @@ var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 var _ sql.SchemaTarget = (*CreateTable)(nil)
+var _ sql.CollationCoercible = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
@@ -525,6 +526,11 @@ func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 	}
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (c *CreateTable) String() string {
 	ifNotExists := ""
 	if c.ifNotExists {
@@ -706,6 +712,7 @@ type DropTable struct {
 }
 
 var _ sql.Node = (*DropTable)(nil)
+var _ sql.CollationCoercible = (*DropTable)(nil)
 
 // NewDropTable creates a new DropTable node
 func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
@@ -846,6 +853,11 @@ func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 		}
 	}
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the sql.Node interface.

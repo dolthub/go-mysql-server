@@ -28,6 +28,7 @@ type PrepareQuery struct {
 }
 
 var _ sql.Node = (*PrepareQuery)(nil)
+var _ sql.CollationCoercible = (*PrepareQuery)(nil)
 
 // NewPrepareQuery creates a new PrepareQuery node.
 func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
@@ -75,6 +76,11 @@ func (p *PrepareQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return p.Child.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PrepareQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (p *PrepareQuery) String() string {
 	return fmt.Sprintf("Prepare(%s)", p.Child.String())
 }
@@ -86,6 +92,7 @@ type ExecuteQuery struct {
 }
 
 var _ sql.Node = (*ExecuteQuery)(nil)
+var _ sql.CollationCoercible = (*ExecuteQuery)(nil)
 
 // NewExecuteQuery executes a prepared statement
 func NewExecuteQuery(name string, bindVars ...sql.Expression) *ExecuteQuery {
@@ -121,6 +128,11 @@ func (p *ExecuteQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ExecuteQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (p *ExecuteQuery) String() string {
 	panic("ExecuteQuery methods shouldn't be used")
 }
@@ -131,6 +143,7 @@ type DeallocateQuery struct {
 }
 
 var _ sql.Node = (*DeallocateQuery)(nil)
+var _ sql.CollationCoercible = (*DeallocateQuery)(nil)
 
 // NewDeallocateQuery executes a prepared statement
 func NewDeallocateQuery(name string) *DeallocateQuery {
@@ -167,6 +180,11 @@ func (p *DeallocateQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *DeallocateQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeallocateQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p *DeallocateQuery) String() string {

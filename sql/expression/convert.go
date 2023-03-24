@@ -64,6 +64,9 @@ type Convert struct {
 	castToType string
 }
 
+var _ sql.Expression = (*Convert)(nil)
+var _ sql.CollationCoercible = (*Convert)(nil)
+
 // NewConvert creates a new Convert expression.
 func NewConvert(expr sql.Expression, castToType string) *Convert {
 	return &Convert{
@@ -108,6 +111,34 @@ func (c *Convert) Type() sql.Type {
 		return types.Uint64
 	default:
 		return types.Null
+	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	switch c.castToType {
+	case ConvertToBinary:
+		return sql.Collation_binary, 2
+	case ConvertToChar, ConvertToNChar:
+		return ctx.GetCollation(), 2
+	case ConvertToDate:
+		return sql.Collation_binary, 5
+	case ConvertToDatetime:
+		return sql.Collation_binary, 5
+	case ConvertToDecimal:
+		return sql.Collation_binary, 5
+	case ConvertToDouble, ConvertToReal:
+		return sql.Collation_binary, 5
+	case ConvertToJSON:
+		return ctx.GetCharacterSet().BinaryCollation(), 2
+	case ConvertToSigned:
+		return sql.Collation_binary, 5
+	case ConvertToTime:
+		return sql.Collation_binary, 5
+	case ConvertToUnsigned:
+		return sql.Collation_binary, 5
+	default:
+		return sql.Collation_binary, 7
 	}
 }
 

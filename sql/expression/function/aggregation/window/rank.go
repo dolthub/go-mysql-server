@@ -30,6 +30,7 @@ type Rank struct {
 var _ sql.FunctionExpression = (*Rank)(nil)
 var _ sql.WindowAggregation = (*Rank)(nil)
 var _ sql.WindowAdaptableExpression = (*Rank)(nil)
+var _ sql.CollationCoercible = (*Rank)(nil)
 
 func NewRank() sql.Expression {
 	return &Rank{}
@@ -77,6 +78,11 @@ func (p *Rank) FunctionName() string {
 // Type implements sql.Expression
 func (p *Rank) Type() sql.Type {
 	return types.Uint64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Rank) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression

@@ -35,6 +35,7 @@ type Lead struct {
 var _ sql.FunctionExpression = (*Lead)(nil)
 var _ sql.WindowAggregation = (*Lead)(nil)
 var _ sql.WindowAdaptableExpression = (*Lead)(nil)
+var _ sql.CollationCoercible = (*Lead)(nil)
 
 // NewLead accepts variadic arguments to create a new Lead node:
 // If 1 expression, use default values for [default] and [offset]
@@ -117,6 +118,15 @@ func (l *Lead) FunctionName() string {
 // Type implements sql.Expression
 func (l *Lead) Type() sql.Type {
 	return l.ChildExpressions[0].Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Lead) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// We use the first child for the Type, so we'll use the first child for the coercibility as well
+	if l == nil || len(l.ChildExpressions) == 0 {
+		return sql.Collation_binary, 6
+	}
+	return sql.GetCoercibility(ctx, l.ChildExpressions[0])
 }
 
 // IsNullable implements sql.Expression

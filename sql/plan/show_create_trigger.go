@@ -29,6 +29,7 @@ type ShowCreateTrigger struct {
 
 var _ sql.Databaser = (*ShowCreateTrigger)(nil)
 var _ sql.Node = (*ShowCreateTrigger)(nil)
+var _ sql.CollationCoercible = (*ShowCreateTrigger)(nil)
 
 var showCreateTriggerSchema = sql.Schema{
 	&sql.Column{Name: "Trigger", Type: types.LongText, Nullable: false},
@@ -116,6 +117,11 @@ func (s *ShowCreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error)
 func (s *ShowCreateTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: figure out what privileges are needed here
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCreateTrigger) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the sql.Databaser interface.

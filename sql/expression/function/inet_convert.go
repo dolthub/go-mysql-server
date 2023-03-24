@@ -32,6 +32,7 @@ type InetAton struct {
 }
 
 var _ sql.FunctionExpression = (*InetAton)(nil)
+var _ sql.CollationCoercible = (*InetAton)(nil)
 
 func NewInetAton(val sql.Expression) sql.Expression {
 	return &InetAton{expression.UnaryExpression{Child: val}}
@@ -53,6 +54,11 @@ func (i *InetAton) String() string {
 
 func (i *InetAton) Type() sql.Type {
 	return types.Uint32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*InetAton) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (i *InetAton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -106,6 +112,7 @@ type Inet6Aton struct {
 }
 
 var _ sql.FunctionExpression = (*Inet6Aton)(nil)
+var _ sql.CollationCoercible = (*Inet6Aton)(nil)
 
 func NewInet6Aton(val sql.Expression) sql.Expression {
 	return &Inet6Aton{expression.UnaryExpression{Child: val}}
@@ -127,6 +134,11 @@ func (i *Inet6Aton) String() string {
 
 func (i *Inet6Aton) Type() sql.Type {
 	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Inet6Aton) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (i *Inet6Aton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -180,6 +192,7 @@ type InetNtoa struct {
 }
 
 var _ sql.FunctionExpression = (*InetNtoa)(nil)
+var _ sql.CollationCoercible = (*InetNtoa)(nil)
 
 func NewInetNtoa(val sql.Expression) sql.Expression {
 	return &InetNtoa{expression.UnaryExpression{Child: val}}
@@ -201,6 +214,11 @@ func (i *InetNtoa) String() string {
 
 func (i *InetNtoa) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*InetNtoa) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 func (i *InetNtoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -247,6 +265,7 @@ type Inet6Ntoa struct {
 }
 
 var _ sql.FunctionExpression = (*Inet6Ntoa)(nil)
+var _ sql.CollationCoercible = (*Inet6Ntoa)(nil)
 
 func NewInet6Ntoa(val sql.Expression) sql.Expression {
 	return &Inet6Ntoa{expression.UnaryExpression{Child: val}}
@@ -268,6 +287,11 @@ func (i *Inet6Ntoa) String() string {
 
 func (i *Inet6Ntoa) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Inet6Ntoa) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 func (i *Inet6Ntoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {

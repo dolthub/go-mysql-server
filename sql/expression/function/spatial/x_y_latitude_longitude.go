@@ -31,6 +31,7 @@ type STX struct {
 }
 
 var _ sql.FunctionExpression = (*STX)(nil)
+var _ sql.CollationCoercible = (*STX)(nil)
 
 var ErrInvalidType = errors.NewKind("%s received non-point type")
 
@@ -59,6 +60,11 @@ func (s *STX) Type() sql.Type {
 	} else {
 		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*STX) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *STX) String() string {
@@ -125,6 +131,7 @@ type STY struct {
 }
 
 var _ sql.FunctionExpression = (*STY)(nil)
+var _ sql.CollationCoercible = (*STY)(nil)
 
 // NewSTY creates a new STY expression.
 func NewSTY(args ...sql.Expression) (sql.Expression, error) {
@@ -151,6 +158,11 @@ func (s *STY) Type() sql.Type {
 	} else {
 		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*STY) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *STY) String() string {
@@ -217,6 +229,7 @@ type Longitude struct {
 }
 
 var _ sql.FunctionExpression = (*Longitude)(nil)
+var _ sql.CollationCoercible = (*Longitude)(nil)
 
 var ErrNonGeographic = errors.NewKind("function %s is only defined for geographic spatial reference systems, but one of its argument is in SRID %v, which is not geographic")
 var ErrLatitudeOutOfRange = errors.NewKind("latitude %v is out of range in function %s. it must be within [-90.0, 90.0]")
@@ -247,6 +260,11 @@ func (l *Longitude) Type() sql.Type {
 	} else {
 		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Longitude) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *Longitude) String() string {
@@ -324,6 +342,7 @@ type Latitude struct {
 }
 
 var _ sql.FunctionExpression = (*Latitude)(nil)
+var _ sql.CollationCoercible = (*Latitude)(nil)
 
 // NewLatitude creates a new ST_LATITUDE expression.
 func NewLatitude(args ...sql.Expression) (sql.Expression, error) {
@@ -350,6 +369,11 @@ func (l *Latitude) Type() sql.Type {
 	} else {
 		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Latitude) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *Latitude) String() string {

@@ -32,6 +32,7 @@ type Conv struct {
 }
 
 var _ sql.FunctionExpression = (*Conv)(nil)
+var _ sql.CollationCoercible = (*Conv)(nil)
 
 // NewConv returns a new Conv expression.
 func NewConv(n, from, to sql.Expression) sql.Expression {
@@ -50,6 +51,11 @@ func (c *Conv) Description() string {
 
 // Type implements the Expression interface.
 func (c *Conv) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Conv) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
 
 // IsNullable implements the Expression interface.
 func (c *Conv) IsNullable() bool {

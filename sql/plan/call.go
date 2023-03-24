@@ -31,6 +31,7 @@ type Call struct {
 }
 
 var _ sql.Node = (*Call)(nil)
+var _ sql.CollationCoercible = (*Call)(nil)
 var _ sql.Expressioner = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
@@ -82,6 +83,11 @@ func (c *Call) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *Call) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(c.Database().Name(), "", "", sql.PrivilegeType_Execute))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Call) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return c.Procedure.CollationCoercibility(ctx)
 }
 
 // Expressions implements the sql.Expressioner interface.
