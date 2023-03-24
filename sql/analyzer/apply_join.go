@@ -149,8 +149,6 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					newSubq = plan.NewMax1Row(newSubq, name)
 				}
 
-				//leftF := renameAliasesInExp(m.l, subq.Query.name)
-
 				condSch := append(ret.Schema(), newSubq.Schema()...)
 				filter, err := m.filter.WithChildren(m.l, rightF)
 				if err != nil {

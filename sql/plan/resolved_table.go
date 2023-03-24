@@ -48,7 +48,6 @@ func NewResolvedDualTable() *ResolvedTable {
 }
 
 func (t *ResolvedTable) WithName(s string) sql.Node {
-	//TODO implement me
 	return NewTableAlias(s, t)
 }
 
