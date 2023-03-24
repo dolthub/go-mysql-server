@@ -190,7 +190,7 @@ var joinCostTests = []struct {
 			{
 				// case 4bN: NOT EXISTS condition uses no columns from either side, and condition is false
 				Query:    "/*case4bN*/ select * from ab where not exists (select * from xy where 1 = 0)",
-				Expected: []sql.Row{},
+				Expected: []sql.Row{{0, 2}, {1, 2}, {2, 2}, {3, 1}},
 			},
 			{
 				// test more complex scopes

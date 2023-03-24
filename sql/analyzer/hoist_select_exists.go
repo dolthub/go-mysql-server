@@ -144,6 +144,18 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 			comment = c.Comment()
 		}
 
+		if s.emptyScope {
+			switch joinType {
+			case plan.JoinTypeAnti:
+				// ret will be all rows
+			case plan.JoinTypeSemi:
+				ret = plan.NewEmptyTableWithSchema(ret.Schema())
+			default:
+				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
+			}
+			continue
+		}
+
 		if len(s.joinFilters) == 0 {
 			switch joinType {
 			case plan.JoinTypeAnti:
@@ -187,6 +199,7 @@ func hoistExistSubqueries(scope *Scope, a *Analyzer, filter *plan.Filter, scopeL
 type hoistSubquery struct {
 	inner       sql.Node
 	joinFilters []sql.Expression
+	emptyScope  bool
 }
 
 type fakeNameable struct {
@@ -203,7 +216,15 @@ func (f fakeNameable) Name() string { return f.name }
 func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
 	var joinFilters []sql.Expression
 	var filtersToKeep []sql.Expression
+	var emptyScope bool
 	n, _, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if emptyScope {
+			return n, transform.SameTree, nil
+		}
+		if _, ok := n.(*plan.EmptyTable); ok {
+			emptyScope = true
+			return n, transform.SameTree, nil
+		}
 		f, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -240,6 +261,11 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		return f.Child, transform.NewTree, nil
 	})
 
+	if emptyScope {
+		return &hoistSubquery{
+			emptyScope: true,
+		}, nil
+	}
 	nodeAliases, err := getTableAliases(n, nil)
 	if err != nil {
 		return nil, err

@@ -823,7 +823,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ Limit(1)\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ ab.a:2!null\n" +
+			"         │   ├─ ab_1.a:0!null\n" +
 			"         │   └─ 1 (tinyint)\n" +
 			"         └─ TableAlias(ab_1)\n" +
 			"             └─ Table\n" +
