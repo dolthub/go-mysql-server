@@ -144,7 +144,10 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				}
 
 				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q)
-				newSubq = simplifySubqExpr(newSubq)
+				newSubq, err = simplifySubqExpr(newSubq)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
 				if m.max1 {
 					newSubq = plan.NewMax1Row(newSubq, name)
 				}
@@ -180,10 +183,10 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 // simplifySubqExpr converts a subquery expression into a *plan.TableAlias
 // for scopes with only tables and getField projections or the original
 // node failing simplification.
-func simplifySubqExpr(n sql.Node) sql.Node {
+func simplifySubqExpr(n sql.Node) (sql.Node, error) {
 	sq, ok := n.(*plan.SubqueryAlias)
 	if !ok {
-		return n
+		return n, nil
 	}
 	var tab sql.RenameableNode
 	var filters []sql.Expression
@@ -217,10 +220,14 @@ func simplifySubqExpr(n sql.Node) sql.Node {
 	if tab != nil {
 		ret := tab.WithName(sq.Name())
 		if len(filters) > 0 {
-			filter := expression.JoinAnd(renameAliasesInExpressions(filters, tab.Name(), sq.Name())...)
+			filters, err := renameAliasesInExpressions(filters, tab.Name(), sq.Name())
+			if err != nil {
+				return nil, err
+			}
+			filter := expression.JoinAnd(filters...)
 			ret = plan.NewFilter(filter, ret)
 		}
-		return ret
+		return ret, nil
 	}
-	return n
+	return n, nil
 }

@@ -297,13 +297,20 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 				return nil, err
 			}
 			same := transform.SameTree
-			n, same = renameAliases(n, conflict, newAlias)
+			n, same, err = renameAliases(n, conflict, newAlias)
+			if err != nil {
+				return nil, err
+			}
+
 			if same {
 				return nil, fmt.Errorf("tree is unchanged after attempted rename")
 			}
 
 			// rename the aliases in the expressions
-			joinFilters = renameAliasesInExpressions(joinFilters, conflict, newAlias)
+			joinFilters, err = renameAliasesInExpressions(joinFilters, conflict, newAlias)
+			if err != nil {
+				return nil, err
+			}
 
 			// alias was renamed, need to get the renamed target before adding to the outside aliases collection
 			nodeAliases, err = getTableAliases(n, nil)

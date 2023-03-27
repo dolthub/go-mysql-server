@@ -231,19 +231,22 @@ func normalizeExpression(tableAliases TableAliases, e sql.Expression) sql.Expres
 }
 
 // renameAliasesInExpressions returns expressions where any table references are renamed to the new table name.
-func renameAliasesInExpressions(expressions []sql.Expression, oldNameLower string, newName string) []sql.Expression {
+func renameAliasesInExpressions(expressions []sql.Expression, oldNameLower string, newName string) ([]sql.Expression, error) {
 	for i, e := range expressions {
-		newExpression, same := renameAliasesInExp(e, oldNameLower, newName)
+		newExpression, same, err := renameAliasesInExp(e, oldNameLower, newName)
+		if err != nil {
+			return nil, err
+		}
 		if !same {
 			expressions[i] = newExpression
 		}
 	}
-	return expressions
+	return expressions, nil
 }
 
 // renameAliasesInExp returns an expression where any table references are renamed to the new table name.
-func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string) (sql.Expression, transform.TreeIdentity) {
-	n, same, _ := transform.Expr(exp, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(exp, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
 			if strings.EqualFold(e.Table(), oldNameLower) {
@@ -255,7 +258,10 @@ func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string)
 				return expression.NewUnresolvedQualifiedColumn(newName, e.Name()), transform.NewTree, nil
 			}
 		case *plan.Subquery:
-			newSubquery, tree := renameAliases(e.Query, oldNameLower, newName)
+			newSubquery, tree, err := renameAliases(e.Query, oldNameLower, newName)
+			if err != nil {
+				return nil, tree, err
+			}
 			if tree == transform.NewTree {
 				e.WithQuery(newSubquery)
 			}
@@ -263,12 +269,11 @@ func renameAliasesInExp(exp sql.Expression, oldNameLower string, newName string)
 		}
 		return e, transform.SameTree, nil
 	})
-	return n, same
 }
 
 // renameAliasesInExp returns a node where any table references are renamed to the new table name.
-func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node, transform.TreeIdentity) {
-	n, same, _ := transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		newNode := node
 		allSame := transform.SameTree
 
@@ -283,10 +288,12 @@ func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node
 		}
 
 		// update expressions
-		newNode, same, _ := transform.NodeExprs(newNode, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			n, same := renameAliasesInExp(e, oldNameLower, newName)
-			return n, same, nil
+		newNode, same, err := transform.NodeExprs(newNode, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			return renameAliasesInExp(e, oldNameLower, newName)
 		})
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
 
 		allSame = allSame && same
 		if allSame {
@@ -295,5 +302,4 @@ func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node
 			return newNode, transform.NewTree, nil
 		}
 	})
-	return n, same
 }
