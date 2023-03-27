@@ -409,7 +409,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 				return nil, err
 			}
 			for binding := range bindings {
-				if !usedBindings[binding] {
+				if !usedBindings[binding] && !plan.HasEmptyTable(analyzed) {
 					return nil, fmt.Errorf("unused binding %s", binding)
 				}
 			}
@@ -435,7 +435,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 			return nil, err
 		}
 		for binding := range bindings {
-			if !usedBindings[binding] {
+			if !usedBindings[binding] && !plan.HasEmptyTable(analyzed) {
 				return nil, fmt.Errorf("unused binding %s", binding)
 			}
 		}
@@ -464,7 +464,7 @@ func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, analyzed s
 			return nil, err
 		}
 		for binding := range bindings {
-			if !usedBindings[binding] {
+			if !usedBindings[binding] && !plan.HasEmptyTable(analyzed) {
 				return nil, fmt.Errorf("unused binding %s", binding)
 			}
 		}

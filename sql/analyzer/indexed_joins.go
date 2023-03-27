@@ -439,14 +439,6 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 		return tableAliasLookupCand(ctx, n.table, aliases)
 	case *tableScan:
 		return tableScanLookupCand(ctx, n.table)
-	case *selectSingleRel:
-		switch t := n.table.Rel.(type) {
-		case *plan.TableAlias:
-			return tableAliasLookupCand(ctx, t, aliases)
-		case *plan.ResolvedTable:
-			return tableScanLookupCand(ctx, t)
-		default:
-		}
 	case *distinct:
 		if s, ok := n.child.first.(sourceRel); ok {
 			switch n := s.(type) {
@@ -892,6 +884,31 @@ func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.JoinNode:
 			if n.Op.IsRightOuter() {
 				return plan.NewLeftOuterJoin(n.Right(), n.Left(), n.Filter), transform.NewTree, nil
+			}
+		default:
+		}
+		return n, transform.SameTree, nil
+	})
+}
+
+// foldEmptyJoins pulls EmptyJoins up the operator tree where valid.
+// LEFT_JOIN and ANTI_JOIN are two cases where an empty right-hand
+// relation must be preserved.
+func foldEmptyJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *plan.JoinNode:
+			_, leftEmpty := n.Left().(*plan.EmptyTable)
+			_, rightEmpty := n.Left().(*plan.EmptyTable)
+			switch {
+			case n.Op.IsAnti(), n.Op.IsLeftOuter():
+				if leftEmpty {
+					return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+				}
+			default:
+				if leftEmpty || rightEmpty {
+					return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+				}
 			}
 		default:
 		}

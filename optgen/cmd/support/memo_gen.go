@@ -178,7 +178,10 @@ func (g *MemoGen) genFormatters(defines []MemoDef) {
 	fmt.Fprintf(g.w, "  if err != nil {\n")
 	fmt.Fprintf(g.w, "    return nil, err\n")
 	fmt.Fprintf(g.w, "  }\n\n")
-	fmt.Fprintf(g.w, "  result = r.group().finalize(result)\n")
+	fmt.Fprintf(g.w, "  result, err = r.group().finalize(result, input)\n")
+	fmt.Fprintf(g.w, "  if err != nil {\n")
+	fmt.Fprintf(g.w, "    return nil, err\n")
+	fmt.Fprintf(g.w, "  }\n")
 	fmt.Fprintf(g.w, "  return result, nil\n")
 
 	fmt.Fprintf(g.w, "}\n\n")

@@ -89,6 +89,7 @@ const (
 	removeUnnecessaryConvertsId  // removeUnnecessaryConverts
 	pruneColumnsId               // pruneColumns
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
+	foldEmptyJoinsId             // foldEmptyJoins
 	optimizeJoinsId              // optimizeJoins
 	concatFiltersId              // concatFilters
 	pushdownFiltersId            // pushdownFilters
@@ -125,7 +126,6 @@ const (
 	validateDeleteFromId        // validateDeleteFrom
 
 	// after all
-	normalizeSelectSingleRelId    // normalizeSelectSingleRel
 	cacheSubqueryResultsId        // cacheSubqueryResults
 	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
 	AutocommitId                  // addAutocommitNode

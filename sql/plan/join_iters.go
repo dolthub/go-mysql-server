@@ -133,12 +133,14 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				if !i.foundMatch && i.joinType.IsLeftOuter() {
+					i.primaryRow = nil
 					row := i.buildRow(primary, nil)
 					return i.removeParentRow(row), nil
 				}
 				continue
 			} else if errors.Is(err, ErrEmptyCachedResult) {
 				if !i.foundMatch && i.joinType.IsLeftOuter() {
+					i.primaryRow = nil
 					row := i.buildRow(primary, nil)
 					return i.removeParentRow(row), nil
 				}
@@ -233,7 +235,7 @@ func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, err
 		cond:              j.Filter,
 		scopeLen:          j.ScopeLen,
 		rowSize:           len(row) + len(j.left.Schema()) + len(j.right.Schema()),
-		nullRej:           IsNullRejecting(j.Filter),
+		nullRej:           !(j.Filter != nil && IsNullRejecting(j.Filter)),
 	}, nil
 }
 
@@ -290,7 +292,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 			if isEmptyIter(rIter) {
-				if i.nullRej {
+				if i.nullRej || i.typ.IsAnti() {
 					return nil, io.EOF
 				}
 				nextState = esCompare

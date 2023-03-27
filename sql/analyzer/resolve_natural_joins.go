@@ -24,6 +24,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// resolveNaturalJoins simplifies a natural join into an inner join. The inner
+// join will include equality filters between all common schema attributes
+// of the same name between the two relations.
+//
+// Example:
+// NATURAL_JOIN(xyz,xyw)
+// =>
+// Project([a.x,a.y,a.z,b.w])-> InnerJoin(xyz->a, xyw->b, [a.x=b.x, a.y=b.y])
 func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_natural_joins")
 	defer span.End()
@@ -46,7 +54,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		return replaceExpressionsForNaturalJoin(ctx, e.(sql.Node), replacements)
+		return replaceExpressionsForNaturalJoin(e.(sql.Node), replacements)
 	})
 }
 
@@ -136,7 +144,6 @@ func findCol(s sql.Schema, name string) (int, *sql.Column) {
 }
 
 func replaceExpressionsForNaturalJoin(
-	ctx *sql.Context,
 	n sql.Node,
 	replacements map[tableCol]tableCol,
 ) (sql.Node, transform.TreeIdentity, error) {

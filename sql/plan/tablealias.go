@@ -29,6 +29,8 @@ type TableAlias struct {
 	name string
 }
 
+var _ sql.RenameableNode = (*TableAlias)(nil)
+
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
 	return &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
@@ -103,7 +105,7 @@ func (t TableAlias) DebugString() string {
 	return pr.String()
 }
 
-func (t TableAlias) WithName(name string) *TableAlias {
+func (t TableAlias) WithName(name string) sql.Node {
 	t.name = name
 	return &t
 }
