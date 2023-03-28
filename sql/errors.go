@@ -363,6 +363,9 @@ var (
 	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
 	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
 
+	// ErrAlterTableCollationNotSupported is thrown when the table doesn't support ALTER TABLE COLLATE statements
+	ErrAlterTableCollationNotSupported = errors.NewKind("table %s cannot have its collation altered")
+
 	// ErrPartitionNotFound is thrown when a partition key on a table is not found
 	ErrPartitionNotFound = errors.NewKind("partition not found %q")
 
