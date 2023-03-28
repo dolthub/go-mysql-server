@@ -107,6 +107,117 @@ var joinCostTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
+				Query:    "select * from ab left join uv on a = u where exists (select * from uv where false)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ab left join (select * from uv where false) s on a = u order by 1;",
+				Expected: []sql.Row{
+					{0, 2, nil, nil},
+					{1, 2, nil, nil},
+					{2, 2, nil, nil},
+					{3, 1, nil, nil},
+				},
+			},
+			{
+				Query:    "select * from ab right join (select * from uv where false) s on a = u order by 1;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from mytable where exists (select * from mytable where i = 1) order by 1;",
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			// queries that test subquery hoisting
+			{
+				// case 1: condition uses columns from both sides
+				Query: "/*case1*/ select * from ab where exists (select * from xy where ab.a = xy.x + 3)",
+				Expected: []sql.Row{
+					{3, 1},
+				},
+			},
+			{
+				// case 1N: NOT EXISTS condition uses columns from both sides
+				Query: "/*case1N*/ select * from ab where not exists (select * from xy where ab.a = xy.x + 3)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+				},
+			},
+			{
+				// case 2: condition uses columns from left side only
+				Query:    "/*case2*/ select * from ab where exists (select * from xy where a = 1)",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				// case 2N: NOT EXISTS condition uses columns from left side only
+				Query: "/*case2N*/ select * from ab where not exists (select * from xy where a = 1)",
+				Expected: []sql.Row{
+					{0, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 3: condition uses columns from right side only
+				Query: "/*case3*/ select * from ab where exists (select * from xy where 1 = xy.x)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 3N: NOT EXISTS condition uses columns from right side only
+				Query: "/*case3N*/ select * from ab where not exists (select * from xy where 10 = xy.x)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 4a: condition uses no columns from either side, and condition is true
+				Query: "/*case4a*/ select * from ab where exists (select * from xy where 1 = 1)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 4aN: NOT EXISTS condition uses no columns from either side, and condition is true
+				Query:    "/*case4aN*/ select * from ab where not exists (select * from xy where 1 = 1)",
+				Expected: []sql.Row{},
+			},
+			{
+				// case 4b: condition uses no columns from either side, and condition is false
+				Query:    "/*case4b*/ select * from ab where exists (select * from xy where 1 = 0)",
+				Expected: []sql.Row{},
+			},
+			{
+				// case 4bN: NOT EXISTS condition uses no columns from either side, and condition is false
+				Query:    "/*case4bN*/ select * from ab where not exists (select * from xy where 1 = 0)",
+				Expected: []sql.Row{{0, 2}, {1, 2}, {2, 2}, {3, 1}},
+			},
+			{
+				// test more complex scopes
+				Query: "select x, 1 in (select a from ab where exists (select * from uv where a = u)) s from xy",
+				Expected: []sql.Row{
+					{0, true},
+					{1, true},
+					{2, true},
+					{3, true},
+				},
+			},
+			{
 				Query:    `select a.i,a.f, b.i2 from niltable a left join niltable b on a.i = b.i2`,
 				Expected: []sql.Row{{1, nil, nil}, {2, nil, 2}, {3, nil, nil}, {4, 4.0, 4}, {5, 5.0, nil}, {6, 6.0, 6}},
 			},

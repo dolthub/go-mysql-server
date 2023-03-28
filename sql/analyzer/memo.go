@@ -464,16 +464,21 @@ func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
 	}
 }
 
-func (e *exprGroup) finalize(node sql.Node) sql.Node {
+func (e *exprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) {
 	props := e.relProps
 	var result = node
 	if props.filter != nil {
-		result = plan.NewFilter(props.filter, result)
+		sch := append(input, node.Schema()...)
+		filter, _, err := FixFieldIndexes(e.m.scope, nil, sch, props.filter)
+		if err != nil {
+			return nil, err
+		}
+		result = plan.NewFilter(filter, result)
 	}
 	if props.limit != nil {
 		result = plan.NewLimit(props.limit, result)
 	}
-	return result
+	return result, nil
 }
 
 func (e *exprGroup) String() string {
@@ -755,8 +760,8 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		SourceType: "sql.TableFunction",
 	},
 	{
-		Name:       "selectSingleRel",
-		SourceType: "*plan.SelectSingleRel",
+		Name:       "emptyTable",
+		SourceType: "*plan.EmptyTable",
 	},
 	{
 		Name:    "project",

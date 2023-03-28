@@ -84,12 +84,12 @@ func (c *coster) costRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float6
 		return c.costFullOuterJoin(ctx, n, s)
 	case *concatJoin:
 		return c.costConcatJoin(ctx, n, s)
-	case *selectSingleRel:
-		return c.costSelectSingleRel(ctx, n, s)
 	case *project:
 		return c.costProject(ctx, n, s)
 	case *distinct:
 		return c.costDistinct(ctx, n, s)
+	case *emptyTable:
+		return c.costEmptyTable(ctx, n, s)
 	default:
 		panic(fmt.Sprintf("coster does not support type: %T", n))
 	}
@@ -183,17 +183,6 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *concatJoin, _ sql.StatsReader
 	return l*mult*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.right.relProps.card*seqIOCostFactor, nil
 }
 
-func (c *coster) costSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sql.StatsReader) (float64, error) {
-	switch t := n.table.Rel.(type) {
-	case *plan.TableAlias:
-		return c.costTableAlias(ctx, &tableAlias{relBase: n.relBase, table: t}, s)
-	case *plan.ResolvedTable:
-		return c.costScan(ctx, &tableScan{relBase: n.relBase, table: t}, s)
-	default:
-		return 0, fmt.Errorf("expected *selectSingleRel child to be *tableAlias or *tableScan, found %T", t)
-	}
-}
-
 func (c *coster) costProject(_ *sql.Context, n *project, _ sql.StatsReader) (float64, error) {
 	return n.child.relProps.card * cpuCostFactor, nil
 }
@@ -253,6 +242,10 @@ func (c *coster) costTableFunc(_ *sql.Context, _ *tableFunc, _ sql.StatsReader) 
 	return 10 * seqIOCostFactor, nil
 }
 
+func (c *coster) costEmptyTable(_ *sql.Context, _ *emptyTable, _ sql.StatsReader) (float64, error) {
+	return 0, nil
+}
+
 func NewDefaultCarder() Carder {
 	return &carder{}
 }
@@ -286,8 +279,8 @@ func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float6
 		return c.statsMax1RowSubquery(ctx, n, s)
 	case *tableFunc:
 		return c.statsTableFunc(ctx, n, s)
-	case *selectSingleRel:
-		return c.statsSelectSingleRel(ctx, n, s)
+	case *emptyTable:
+		return c.statsEmptyTable(ctx, n, s)
 	case joinRel:
 		jp := n.joinPrivate()
 		switch n := n.(type) {
@@ -348,17 +341,6 @@ func (c *carder) statsRecursiveTable(_ *sql.Context, t *recursiveTable, _ sql.St
 	return float64(100) * seqIOCostFactor, nil
 }
 
-func (c *carder) statsSelectSingleRel(ctx *sql.Context, n *selectSingleRel, s sql.StatsReader) (float64, error) {
-	switch t := n.table.Rel.(type) {
-	case *plan.TableAlias:
-		return c.statsTableAlias(ctx, &tableAlias{relBase: n.relBase, table: t}, s)
-	case *plan.ResolvedTable:
-		return c.statsScan(ctx, &tableScan{relBase: n.relBase, table: t}, s)
-	default:
-		return 0, fmt.Errorf("expected *selectSingleRel child to be *tableAlias or *tableScan, found %T", t)
-	}
-}
-
 func (c *carder) statsSubqueryAlias(_ *sql.Context, _ *subqueryAlias, _ sql.StatsReader) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 1000, nil
@@ -371,6 +353,10 @@ func (c *carder) statsMax1RowSubquery(_ *sql.Context, _ *max1Row, _ sql.StatsRea
 func (c *carder) statsTableFunc(_ *sql.Context, _ *tableFunc, _ sql.StatsReader) (float64, error) {
 	// TODO: sql.TableFunction should expose RowCount()
 	return 10, nil
+}
+
+func (c *carder) statsEmptyTable(_ *sql.Context, _ *emptyTable, _ sql.StatsReader) (float64, error) {
+	return 0, nil
 }
 
 func NewInnerBiasedCoster() Coster {

@@ -492,58 +492,65 @@ func convertUse(n *sqlparser.Use) (sql.Node, error) {
 }
 
 func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
-	// Special case: SET NAMES expands to 3 different system variables.
-	if isSetNames(n.Exprs) {
-		return convertSet(ctx, &sqlparser.Set{
-			Exprs: sqlparser.SetVarExprs{
-				&sqlparser.SetVarExpr{
-					Name: sqlparser.NewColName("character_set_client"),
-					Expr: n.Exprs[0].Expr,
-				},
-				&sqlparser.SetVarExpr{
-					Name: sqlparser.NewColName("character_set_connection"),
-					Expr: n.Exprs[0].Expr,
-				},
-				&sqlparser.SetVarExpr{
-					Name: sqlparser.NewColName("character_set_results"),
-					Expr: n.Exprs[0].Expr,
-				},
-				// TODO: this should also set the collation_connection to the default collation for the character set named
-			},
-		})
-	}
-
-	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables.
-	if isCharset(n.Exprs) {
-		csd, err := ctx.GetSessionVariable(ctx, "character_set_database")
-		if err != nil {
-			return nil, err
+	var setVarExprs []*sqlparser.SetVarExpr
+	for _, setExpr := range n.Exprs {
+		switch strings.ToLower(setExpr.Name.String()) {
+		case "names":
+			// Special case: SET NAMES expands to 3 different system variables.
+			setVarExprs = append(setVarExprs, getSetVarExprsFromSetNamesExpr(setExpr)...)
+		case "charset":
+			// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables.
+			csd, err := ctx.GetSessionVariable(ctx, "character_set_database")
+			if err != nil {
+				return nil, err
+			}
+			setVarExprs = append(setVarExprs, getSetVarExprsFromSetCharsetExpr(setExpr, []byte(csd.(string)))...)
+		default:
+			setVarExprs = append(setVarExprs, setExpr)
 		}
-
-		return convertSet(ctx, &sqlparser.Set{
-			Exprs: sqlparser.SetVarExprs{
-				&sqlparser.SetVarExpr{
-					Name: sqlparser.NewColName("character_set_client"),
-					Expr: n.Exprs[0].Expr,
-				},
-				&sqlparser.SetVarExpr{
-					Name: sqlparser.NewColName("character_set_results"),
-					Expr: n.Exprs[0].Expr,
-				},
-				&sqlparser.SetVarExpr{
-					Name: sqlparser.NewColName("character_set_connection"),
-					Expr: &sqlparser.SQLVal{Type: sqlparser.StrVal, Val: []byte(csd.(string))},
-				},
-			},
-		})
 	}
 
-	exprs, err := setExprsToExpressions(ctx, n.Exprs)
+	exprs, err := setExprsToExpressions(ctx, setVarExprs)
 	if err != nil {
 		return nil, err
 	}
 
 	return plan.NewSet(exprs), nil
+}
+
+func getSetVarExprsFromSetNamesExpr(expr *sqlparser.SetVarExpr) []*sqlparser.SetVarExpr {
+	return []*sqlparser.SetVarExpr{
+		{
+			Name: sqlparser.NewColName("character_set_client"),
+			Expr: expr.Expr,
+		},
+		{
+			Name: sqlparser.NewColName("character_set_connection"),
+			Expr: expr.Expr,
+		},
+		{
+			Name: sqlparser.NewColName("character_set_results"),
+			Expr: expr.Expr,
+		},
+		// TODO (9/24/20 Zach): this should also set the collation_connection to the default collation for the character set named
+	}
+}
+
+func getSetVarExprsFromSetCharsetExpr(expr *sqlparser.SetVarExpr, csd []byte) []*sqlparser.SetVarExpr {
+	return []*sqlparser.SetVarExpr{
+		{
+			Name: sqlparser.NewColName("character_set_client"),
+			Expr: expr.Expr,
+		},
+		{
+			Name: sqlparser.NewColName("character_set_results"),
+			Expr: expr.Expr,
+		},
+		{
+			Name: sqlparser.NewColName("character_set_connection"),
+			Expr: &sqlparser.SQLVal{Type: sqlparser.StrVal, Val: csd},
+		},
+	}
 }
 
 func convertChangeReplicationSource(n *sqlparser.ChangeReplicationSource) (sql.Node, error) {
@@ -588,22 +595,6 @@ func convertChangeReplicationFilter(n *sqlparser.ChangeReplicationFilter) (sql.N
 		convertedOptions = append(convertedOptions, *convertedOption)
 	}
 	return plan.NewChangeReplicationFilter(convertedOptions), nil
-}
-
-func isSetNames(exprs sqlparser.SetVarExprs) bool {
-	if len(exprs) != 1 {
-		return false
-	}
-
-	return strings.ToLower(exprs[0].Name.String()) == "names"
-}
-
-func isCharset(exprs sqlparser.SetVarExprs) bool {
-	if len(exprs) != 1 {
-		return false
-	}
-
-	return strings.ToLower(exprs[0].Name.String()) == "charset"
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {

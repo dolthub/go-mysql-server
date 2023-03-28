@@ -92,7 +92,10 @@ func TestMemoGen(t *testing.T) {
             return nil, err
           }
         
-          result = r.group().finalize(result)
+          result, err = r.group().finalize(result, input)
+          if err != nil {
+            return nil, err
+          }
           return result, nil
         }
 		`,

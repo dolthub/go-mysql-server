@@ -103,6 +103,8 @@ func (lit *Literal) DebugString() string {
 		return fmt.Sprintf("%d (%s)", v, typeStr)
 	case float32, float64:
 		return fmt.Sprintf("%f (%s)", v, typeStr)
+	case bool:
+		return fmt.Sprintf("%t (%s)", v, typeStr)
 	default:
 		return fmt.Sprintf("%s (%s)", v, typeStr)
 	}

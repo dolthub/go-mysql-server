@@ -44,7 +44,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
-		plan.EmptyTable,
+		plan.NewEmptyTableWithSchema(table.Schema()),
 		1,
 		expression.NewGetField(0, types.Int32, "id", false),
 		false),
@@ -53,7 +53,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 	require.Len(t, rows, 0)
 
 	rows, err = sql.NodeToRows(ctx, plan.NewIndexedInSubqueryFilter(
-		plan.NewSubquery(plan.EmptyTable, "select from dual"),
+		plan.NewSubquery(plan.NewEmptyTableWithSchema(table.Schema()), "select from dual"),
 		plan.NewProject([]sql.Expression{
 			expression.NewGetField(1, types.Text, "t", true),
 		}, plan.NewResolvedTable(table, nil, nil)),
@@ -71,7 +71,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
-		plan.EmptyTable,
+		plan.NewEmptyTableWithSchema(table.Schema()),
 		1,
 		expression.NewGetField(0, types.Int32, "id", false),
 		true),
