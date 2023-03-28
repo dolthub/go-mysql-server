@@ -2380,6 +2380,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
+		Query:    `SELECT * FROM (select * from mytable) sq WHERE sq.i in (1, 1)`,
+		Expected: []sql.Row{{1, "first row"}},
+	},
+	{
+		Query:    `SELECT * FROM (select a.i from mytable a cross join mytable b) sq WHERE sq.i in (1, 1)`,
+		Expected: []sql.Row{{1}, {1}, {1}},
+	},
+	{
 		Query:    "SELECT * from mytable WHERE 4 IN (i + 2)",
 		Expected: []sql.Row{{2, "second row"}},
 	},
