@@ -323,9 +323,9 @@ func (o joinOpHint) typeMatches(n relExpr) bool {
 		case HintTypeHashJoin:
 			return base.op.IsHash()
 		case HintTypeSemiJoin:
-			return base.op.IsSemi()
+			return base.op.IsSemi() && !base.op.IsPhysical()
 		case HintTypeAntiJoin:
-			return base.op.IsAnti()
+			return base.op.IsAnti() && !base.op.IsPhysical()
 		default:
 			return false
 		}

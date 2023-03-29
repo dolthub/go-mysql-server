@@ -28,10 +28,12 @@ type ResolvedTable struct {
 	sql.Table
 	Database sql.Database
 	AsOf     interface{}
+	comment  string
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
+var _ sql.CommentedNode = (*ResolvedTable)(nil)
 
 // Can't embed Table2 like we do Table1 as it's an extension not everyone implements
 var _ sql.Table2 = (*ResolvedTable)(nil)
@@ -44,6 +46,16 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 // NewResolvedDualTable creates a new instance of ResolvedTable.
 func NewResolvedDualTable() *ResolvedTable {
 	return &ResolvedTable{Table: NewDualSqlTable(), Database: memory.NewDatabase(""), AsOf: nil}
+}
+
+func (t *ResolvedTable) WithComment(s string) sql.Node {
+	ret := *t
+	ret.comment = s
+	return &ret
+}
+
+func (t *ResolvedTable) Comment() string {
+	return t.comment
 }
 
 // Resolved implements the Resolvable interface.

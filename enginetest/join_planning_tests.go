@@ -647,10 +647,10 @@ where u in (select * from rec);`,
 		},
 	},
 	{
-		name: "join order hint",
+		name: "join op hint",
 		setup: []string{
 			"CREATE table xy (x int primary key, y int);",
-			"CREATE table uv (u int primary key, v int);",
+			"CREATE table uv (u int primary key, v int, key(v));",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
 		},
@@ -718,6 +718,34 @@ join xy c on a.x = c.x
 join uv d on d.u = c.x`,
 				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge, plan.JoinTypeLookup},
 				order: []string{"a", "b", "c", "d"},
+			},
+			{
+				q:     "select /*+ LOOKUP_JOIN(xy,applySubq0) */ 1 from xy where x not in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeAntiLookup},
+			},
+			{
+				// TODO implement anti merge join
+				q:     "select /*+ MERGE_JOIN(xy,applySubq0) */ 1 from xy where x not in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeAntiMerge},
+				skip:  true,
+			},
+			{
+				q:     "select /*+ ANTI_JOIN(xy,applySubq0) */ 1 from xy where x not in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeAnti},
+			},
+			{
+				q:     "select /*+ LOOKUP_JOIN(xy,applySubq0) */ 1 from xy where x in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+			},
+			{
+				// TODO implement semi merge join
+				q:     "select /*+ MERGE_JOIN(xy,applySubq0) */ 1 from xy where x in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeSemiMerge},
+				skip:  true,
+			},
+			{
+				q:     "select /*+ SEMI_JOIN(xy,applySubq0) */ 1 from xy where x in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeSemi},
 			},
 		},
 	},
