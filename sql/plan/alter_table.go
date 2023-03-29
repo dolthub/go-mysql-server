@@ -1667,6 +1667,87 @@ func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
 	return nil
 }
 
+type AlterTableCollation struct {
+	ddlNode
+	Table     sql.Node
+	Collation sql.CollationID
+}
+
+var _ sql.Node = (*AlterTableCollation)(nil)
+var _ sql.Databaser = (*AlterTableCollation)(nil)
+
+// NewAlterTableCollation returns a new *AlterTableCollation
+func NewAlterTableCollation(database sql.Database, table *UnresolvedTable, collation sql.CollationID) *AlterTableCollation {
+	return &AlterTableCollation{
+		ddlNode:   ddlNode{db: database},
+		Table:     table,
+		Collation: collation,
+	}
+}
+
+// WithDatabase implements the interface sql.Databaser.
+func (atc *AlterTableCollation) WithDatabase(db sql.Database) (sql.Node, error) {
+	natc := *atc
+	natc.db = db
+	return &natc, nil
+}
+
+// String implements the interface sql.Node.
+func (atc *AlterTableCollation) String() string {
+	return fmt.Sprintf("alter table %s collate %s", atc.Table.String(), atc.Collation.Name())
+}
+
+// DebugString implements the interface sql.Node.
+func (atc *AlterTableCollation) DebugString() string {
+	return atc.String()
+}
+
+// Resolved implements the interface sql.Node.
+func (atc *AlterTableCollation) Resolved() bool {
+	return atc.Table.Resolved() && atc.ddlNode.Resolved()
+}
+
+// Schema implements the interface sql.Node.
+func (atc *AlterTableCollation) Schema() sql.Schema {
+	return types.OkResultSchema
+}
+
+// RowIter implements the interface sql.Node.
+func (atc *AlterTableCollation) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	tbl, err := getTableFromDatabase(ctx, atc.Database(), atc.Table)
+	if err != nil {
+		return nil, err
+	}
+
+	alterable, ok := tbl.(sql.CollationAlterableTable)
+	if !ok {
+		return nil, sql.ErrAlterTableCollationNotSupported.New(tbl.Name())
+	}
+
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyDefaultCollation(ctx, atc.Collation)
+}
+
+// Children implements the interface sql.Node.
+func (atc *AlterTableCollation) Children() []sql.Node {
+	return []sql.Node{atc.Table}
+}
+
+// WithChildren implements the interface sql.Node.
+func (atc *AlterTableCollation) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(atc, len(children), 1)
+	}
+	natc := *atc
+	natc.Table = children[0]
+	return &natc, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (atc *AlterTableCollation) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(atc.db.Name(), getTableName(atc.Table), "", sql.PrivilegeType_Alter))
+}
+
 // updateDefaultsOnColumnRename updates each column that references the old column name within its default value.
 func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, schema sql.Schema, oldName, newName string) error {
 	if oldName == newName {

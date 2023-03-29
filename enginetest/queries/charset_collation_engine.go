@@ -342,6 +342,46 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
 				},
 			},
+			{
+				Query: "ALTER TABLE test2 CHARACTER SET latin1 COLLATE utf8mb4_bin;",
+				Error: true,
+			},
+			{
+				Query: "ALTER TABLE test2 COLLATE utf8mb4_bin;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "ALTER TABLE test2 ADD COLUMN v2 VARCHAR(255);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "REPLACE INTO test2 VALUES (1, 'abc', 'abc'), (2, 'ABC', 'ABC'), (3, 'aBc', 'aBc'), (4, 'AbC', 'AbC');",
+				Expected: []sql.Row{
+					{types.NewOkResult(8)},
+				},
+			},
+			{
+				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "SELECT v2, pk FROM test2 WHERE v2 <= 'aBc' ORDER BY v2, pk;",
+				Expected: []sql.Row{
+					{"ABC", int64(2)}, {"AbC", int64(4)}, {"aBc", int64(3)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2;",
+				Expected: []sql.Row{
+					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  `v2` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"},
+				},
+			},
 		},
 	},
 	{

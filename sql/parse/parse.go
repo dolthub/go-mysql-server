@@ -1808,6 +1808,9 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.DefaultSpec != nil {
 		return convertAlterDefault(ctx, ddl)
 	}
+	if ddl.AlterCollationSpec != nil {
+		return convertAlterCollationSpec(ctx, ddl)
+	}
 	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
 
@@ -1942,6 +1945,23 @@ func convertAlterDefault(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error)
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
+}
+
+func convertAlterCollationSpec(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := tableNameToUnresolvedTable(ddl.Table)
+	var charSetStr *string
+	var collationStr *string
+	if len(ddl.AlterCollationSpec.CharacterSet) > 0 {
+		charSetStr = &ddl.AlterCollationSpec.CharacterSet
+	}
+	if len(ddl.AlterCollationSpec.Collation) > 0 {
+		collationStr = &ddl.AlterCollationSpec.Collation
+	}
+	collation, err := sql.ParseCollation(charSetStr, collationStr, false)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewAlterTableCollation(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, collation), nil
 }
 
 func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
