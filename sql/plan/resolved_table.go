@@ -120,6 +120,9 @@ func (t *ResolvedTable) DebugString() string {
 		}
 	}
 	children = append(children, fmt.Sprintf("columns: %v", columns))
+	if t.comment != "" {
+		children = append(children, fmt.Sprintf("comment: %s", t.comment))
+	}
 
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string

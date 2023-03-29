@@ -752,6 +752,20 @@ join uv d on d.u = c.x`,
 				q:     "select /*+ SEMI_JOIN(xy,applySubq0) */ 1 from xy where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 			},
+			{
+				q:     "select /*+ LOOKUP_JOIN(s,applySubq0) */ 1 from xy s where x in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+			},
+			{
+				// TODO implement semi merge join
+				q:     "select /*+ MERGE_JOIN(s,applySubq0) */ 1 from xy s where x in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeSemiMerge},
+				skip:  true,
+			},
+			{
+				q:     "select /*+ SEMI_JOIN(s,applySubq0) */ 1 from xy s where x in (select u from uv)",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+			},
 		},
 	},
 }

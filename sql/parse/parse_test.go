@@ -3029,7 +3029,7 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewStar(),
 				},
-				plan.NewUnresolvedTable("foo", ""),
+				plan.NewUnresolvedTable("foo", "").WithComment("/* a comment */"),
 			),
 		},
 		{
@@ -3048,7 +3048,7 @@ CREATE TABLE t2
 				[]sql.Expression{
 					expression.NewStar(),
 				},
-				plan.NewUnresolvedTable("foo", ""),
+				plan.NewUnresolvedTable("foo", "").WithComment("/*+ JOIN_ORDER(a,b) */"),
 			),
 		},
 		{
