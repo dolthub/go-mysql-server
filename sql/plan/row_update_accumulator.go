@@ -44,6 +44,9 @@ type RowUpdateAccumulator struct {
 	RowUpdateType
 }
 
+var _ sql.Node = RowUpdateAccumulator{}
+var _ sql.CollationCoercible = RowUpdateAccumulator{}
+
 // NewRowUpdateResult returns a new RowUpdateResult with the given node to wrap.
 func NewRowUpdateAccumulator(n sql.Node, updateType RowUpdateType) *RowUpdateAccumulator {
 	return &RowUpdateAccumulator{
@@ -72,6 +75,11 @@ func (r RowUpdateAccumulator) WithChildren(children ...sql.Node) (sql.Node, erro
 // CheckPrivileges implements the interface sql.Node.
 func (r RowUpdateAccumulator) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return r.Child().CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r RowUpdateAccumulator) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, r.Child())
 }
 
 func (r RowUpdateAccumulator) String() string {

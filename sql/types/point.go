@@ -42,6 +42,7 @@ type Point struct {
 
 var _ sql.Type = PointType{}
 var _ sql.SpatialColumnType = PointType{}
+var _ sql.CollationCoercible = PointType{}
 var _ GeometryValue = Point{}
 
 var (
@@ -134,6 +135,11 @@ func (t PointType) Type() query.Type {
 // Zero implements Type interface.
 func (t PointType) Zero() interface{} {
 	return Point{X: 0.0, Y: 0.0}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (PointType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // ValueType implements Type interface.

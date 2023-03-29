@@ -33,6 +33,7 @@ type Soundex struct {
 }
 
 var _ sql.FunctionExpression = (*Soundex)(nil)
+var _ sql.CollationCoercible = (*Soundex)(nil)
 
 // NewSoundex creates a new Soundex expression.
 func NewSoundex(e sql.Expression) sql.Expression {
@@ -125,4 +126,9 @@ func (s *Soundex) WithChildren(children ...sql.Expression) (sql.Expression, erro
 // Type implements the Expression interface.
 func (s *Soundex) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Soundex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }

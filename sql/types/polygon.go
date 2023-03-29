@@ -41,6 +41,7 @@ type Polygon struct {
 
 var _ sql.Type = PolygonType{}
 var _ sql.SpatialColumnType = PolygonType{}
+var _ sql.CollationCoercible = PolygonType{}
 var _ GeometryValue = Polygon{}
 
 var (
@@ -127,6 +128,11 @@ func (t PolygonType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t PolygonType) Zero() interface{} {
 	return Polygon{Lines: []LineString{{Points: []Point{{}, {}, {}, {}}}}}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (PolygonType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

@@ -35,6 +35,9 @@ type Case struct {
 	Else     sql.Expression
 }
 
+var _ sql.Expression = (*Case)(nil)
+var _ sql.CollationCoercible = (*Case)(nil)
+
 // NewCase returns an new Case expression.
 func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression) *Case {
 	return &Case{expr, branches, elseExpr}
@@ -97,6 +100,13 @@ func (c *Case) Type() sql.Type {
 		curr = combinedCaseBranchType(curr, c.Else.Type())
 	}
 	return curr
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Case) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// This should be calculated during the expression's evaluation, but that's not possible with the
+	// current abstraction
+	return c.Type().CollationCoercibility(ctx)
 }
 
 // IsNullable implements the sql.Expression interface.

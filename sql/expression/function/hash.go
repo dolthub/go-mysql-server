@@ -36,6 +36,7 @@ type MD5 struct {
 }
 
 var _ sql.FunctionExpression = (*MD5)(nil)
+var _ sql.CollationCoercible = (*MD5)(nil)
 
 // NewMD5 returns a new MD5 function expression
 func NewMD5(arg sql.Expression) sql.Expression {
@@ -45,6 +46,11 @@ func NewMD5(arg sql.Expression) sql.Expression {
 // Description implements sql.FunctionExpression
 func (f *MD5) Description() string {
 	return "calculates MD5 checksum."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MD5) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 // Eval implements sql.Expression
@@ -85,6 +91,7 @@ type SHA1 struct {
 }
 
 var _ sql.FunctionExpression = (*SHA1)(nil)
+var _ sql.CollationCoercible = (*SHA1)(nil)
 
 // NewSHA1 returns a new SHA1 function expression
 func NewSHA1(arg sql.Expression) sql.Expression {
@@ -94,6 +101,11 @@ func NewSHA1(arg sql.Expression) sql.Expression {
 // Description implements sql.FunctionExpression
 func (f *SHA1) Description() string {
 	return "calculates an SHA-1 160-bit checksum."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SHA1) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 // Eval implements sql.Expression
@@ -134,6 +146,7 @@ type SHA2 struct {
 }
 
 var _ sql.FunctionExpression = (*SHA2)(nil)
+var _ sql.CollationCoercible = (*SHA2)(nil)
 
 // NewSHA2 returns a new SHA2 function expression
 func NewSHA2(arg, count sql.Expression) sql.Expression {
@@ -143,6 +156,11 @@ func NewSHA2(arg, count sql.Expression) sql.Expression {
 // Description implements sql.FunctionExpression
 func (f *SHA2) Description() string {
 	return "calculates an SHA-2 checksum."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SHA2) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 // Eval implements sql.Expression

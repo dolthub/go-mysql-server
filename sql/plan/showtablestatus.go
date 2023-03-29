@@ -25,7 +25,9 @@ type ShowTableStatus struct {
 	Catalog sql.Catalog
 }
 
+var _ sql.Node = (*ShowTableStatus)(nil)
 var _ sql.Databaser = (*ShowTableStatus)(nil)
+var _ sql.CollationCoercible = (*ShowTableStatus)(nil)
 
 // NewShowTableStatus creates a new ShowTableStatus node.
 func NewShowTableStatus(db sql.Database) *ShowTableStatus {
@@ -125,6 +127,11 @@ func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (s *ShowTableStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// Some tables won't be visible in RowIter if the user doesn't have the correct privileges
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowTableStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // cc here: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html

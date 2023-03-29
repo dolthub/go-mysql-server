@@ -77,6 +77,7 @@ type TimeFormat struct {
 }
 
 var _ sql.FunctionExpression = (*TimeFormat)(nil)
+var _ sql.CollationCoercible = (*TimeFormat)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (f *TimeFormat) FunctionName() string {
@@ -141,6 +142,11 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // Type implements the Expression interface.
 func (f *TimeFormat) Type() sql.Type {
 	return types.Text
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*TimeFormat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 // IsNullable implements the Expression interface.

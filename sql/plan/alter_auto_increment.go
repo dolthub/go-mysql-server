@@ -26,6 +26,9 @@ type AlterAutoIncrement struct {
 	autoVal uint64
 }
 
+var _ sql.Node = (*AlterAutoIncrement)(nil)
+var _ sql.CollationCoercible = (*AlterAutoIncrement)(nil)
+
 func NewAlterAutoIncrement(database sql.Database, table sql.Node, autoVal uint64) *AlterAutoIncrement {
 	return &AlterAutoIncrement{
 		ddlNode: ddlNode{db: database},
@@ -95,6 +98,11 @@ func (p *AlterAutoIncrement) Resolved() bool {
 func (p *AlterAutoIncrement) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(p.Database().Name(), getTableName(p.Table), "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *AlterAutoIncrement) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p *AlterAutoIncrement) Schema() sql.Schema { return nil }

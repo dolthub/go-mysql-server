@@ -36,6 +36,7 @@ type Project struct {
 var _ sql.Expressioner = (*Project)(nil)
 var _ sql.Node = (*Project)(nil)
 var _ sql.Projector = (*Project)(nil)
+var _ sql.CollationCoercible = (*Project)(nil)
 
 // NewProject creates a new projection.
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
@@ -131,6 +132,11 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *Project) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return p.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *Project) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Child)
 }
 
 // WithExpressions implements the Expressioner interface.

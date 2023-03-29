@@ -50,6 +50,7 @@ type ChangeReplicationSource struct {
 }
 
 var _ sql.Node = (*ChangeReplicationSource)(nil)
+var _ sql.CollationCoercible = (*ChangeReplicationSource)(nil)
 var _ BinlogReplicaControllerCommand = (*ChangeReplicationSource)(nil)
 
 func NewChangeReplicationSource(options []binlogreplication.ReplicationOption) *ChangeReplicationSource {
@@ -112,6 +113,11 @@ func (c *ChangeReplicationSource) CheckPrivileges(ctx *sql.Context, opChecker sq
 		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ChangeReplicationSource) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // ChangeReplicationFilter is a plan node for the "CHANGE REPLICATION FILTER" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-filter.html
 type ChangeReplicationFilter struct {
@@ -120,6 +126,7 @@ type ChangeReplicationFilter struct {
 }
 
 var _ sql.Node = (*ChangeReplicationFilter)(nil)
+var _ sql.CollationCoercible = (*ChangeReplicationFilter)(nil)
 var _ BinlogReplicaControllerCommand = (*ChangeReplicationFilter)(nil)
 
 func NewChangeReplicationFilter(options []binlogreplication.ReplicationOption) *ChangeReplicationFilter {
@@ -185,6 +192,11 @@ func (c *ChangeReplicationFilter) CheckPrivileges(ctx *sql.Context, opChecker sq
 		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ChangeReplicationFilter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // StartReplica is a plan node for the "START REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/start-replica.html
 type StartReplica struct {
@@ -192,6 +204,7 @@ type StartReplica struct {
 }
 
 var _ sql.Node = (*StartReplica)(nil)
+var _ sql.CollationCoercible = (*StartReplica)(nil)
 var _ BinlogReplicaControllerCommand = (*StartReplica)(nil)
 
 func NewStartReplica() *StartReplica {
@@ -244,6 +257,11 @@ func (s *StartReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*StartReplica) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // StopReplica is the plan node for the "STOP REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/stop-replica.html
 type StopReplica struct {
@@ -251,6 +269,7 @@ type StopReplica struct {
 }
 
 var _ sql.Node = (*StopReplica)(nil)
+var _ sql.CollationCoercible = (*StopReplica)(nil)
 var _ BinlogReplicaControllerCommand = (*StopReplica)(nil)
 
 func NewStopReplica() *StopReplica {
@@ -303,6 +322,11 @@ func (s *StopReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*StopReplica) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // ResetReplica is a plan node for the "RESET REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/reset-replica.html
 type ResetReplica struct {
@@ -311,6 +335,7 @@ type ResetReplica struct {
 }
 
 var _ sql.Node = (*ResetReplica)(nil)
+var _ sql.CollationCoercible = (*ResetReplica)(nil)
 var _ BinlogReplicaControllerCommand = (*ResetReplica)(nil)
 
 func NewResetReplica(all bool) *ResetReplica {
@@ -368,4 +393,9 @@ func (r *ResetReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (r *ResetReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Reload))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ResetReplica) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

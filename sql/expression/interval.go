@@ -33,6 +33,9 @@ type Interval struct {
 	Unit string
 }
 
+var _ sql.Expression = (*Interval)(nil)
+var _ sql.CollationCoercible = (*Interval)(nil)
+
 // NewInterval creates a new interval expression.
 func NewInterval(child sql.Expression, unit string) *Interval {
 	return &Interval{UnaryExpression{Child: child}, strings.ToUpper(unit)}
@@ -40,6 +43,11 @@ func NewInterval(child sql.Expression, unit string) *Interval {
 
 // Type implements the sql.Expression interface.
 func (i *Interval) Type() sql.Type { return types.Uint64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Interval) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // IsNullable implements the sql.Expression interface.
 func (i *Interval) IsNullable() bool { return i.Child.IsNullable() }

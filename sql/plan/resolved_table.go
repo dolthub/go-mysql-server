@@ -33,6 +33,7 @@ type ResolvedTable struct {
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
+var _ sql.CollationCoercible = (*ResolvedTable)(nil)
 
 // Can't embed Table2 like we do Table1 as it's an extension not everyone implements
 var _ sql.Table2 = (*ResolvedTable)(nil)
@@ -175,6 +176,11 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithTable returns this Node with the given table. The new table should have the same name as the previous table.

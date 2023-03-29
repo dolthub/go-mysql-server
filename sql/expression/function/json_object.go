@@ -32,6 +32,7 @@ type JSONObject struct {
 }
 
 var _ sql.FunctionExpression = JSONObject{}
+var _ sql.CollationCoercible = JSONObject{}
 
 // NewJSONObject creates a new JSONObject function.
 func NewJSONObject(exprs ...sql.Expression) (sql.Expression, error) {
@@ -80,6 +81,11 @@ func (j JSONObject) String() string {
 
 func (j JSONObject) Type() sql.Type {
 	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (JSONObject) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
 func (j JSONObject) IsNullable() bool {

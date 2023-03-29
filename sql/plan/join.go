@@ -232,7 +232,7 @@ func shouldUseMemoryJoinsByEnv() bool {
 	return v == "on" || v == "1"
 }
 
-// JoinNode contains all the common data fields and implements the commom sql.Node getters for all join types.
+// JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
 	Filter     sql.Expression
@@ -240,6 +240,9 @@ type JoinNode struct {
 	CommentStr string
 	ScopeLen   int
 }
+
+var _ sql.Node = (*JoinNode)(nil)
+var _ sql.CollationCoercible = (*JoinNode)(nil)
 
 func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 	return &JoinNode{
@@ -296,6 +299,12 @@ func (j *JoinNode) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 func (j *JoinNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JoinNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// Joins make use of coercibility, but they don't return anything themselves
+	return sql.Collation_binary, 7
 }
 
 func (j *JoinNode) JoinType() JoinType {

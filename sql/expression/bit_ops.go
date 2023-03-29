@@ -34,6 +34,9 @@ type BitOp struct {
 	Op string
 }
 
+var _ sql.Expression = (*BitOp)(nil)
+var _ sql.CollationCoercible = (*BitOp)(nil)
+
 // NewBitOp creates a new BitOp sql.Expression.
 func NewBitOp(left, right sql.Expression, op string) *BitOp {
 	return &BitOp{BinaryExpression{Left: left, Right: right}, op}
@@ -99,6 +102,11 @@ func (b *BitOp) Type() sql.Type {
 	}
 
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*BitOp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.

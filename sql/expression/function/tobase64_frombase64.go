@@ -34,6 +34,7 @@ type ToBase64 struct {
 }
 
 var _ sql.FunctionExpression = (*ToBase64)(nil)
+var _ sql.CollationCoercible = (*ToBase64)(nil)
 
 // NewToBase64 creates a new ToBase64 expression.
 func NewToBase64(e sql.Expression) sql.Expression {
@@ -130,6 +131,11 @@ func (t *ToBase64) Type() sql.Type {
 	return types.LongText
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ToBase64) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
 // FromBase64 is a function to decode a Base64-formatted string
 // using the same dialect that MySQL's FROM_BASE64 uses
 type FromBase64 struct {
@@ -137,6 +143,7 @@ type FromBase64 struct {
 }
 
 var _ sql.FunctionExpression = (*FromBase64)(nil)
+var _ sql.CollationCoercible = (*FromBase64)(nil)
 
 // NewFromBase64 creates a new FromBase64 expression.
 func NewFromBase64(e sql.Expression) sql.Expression {
@@ -199,4 +206,9 @@ func (t *FromBase64) WithChildren(children ...sql.Expression) (sql.Expression, e
 // Type implements the Expression interface.
 func (t *FromBase64) Type() sql.Type {
 	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*FromBase64) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }

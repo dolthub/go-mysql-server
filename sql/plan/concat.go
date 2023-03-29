@@ -22,13 +22,14 @@ import (
 
 // Concat is a node that returns everything in Left and then everything in
 // Right, but it excludes any results in Right that already appeared in Left.
-// Similar to Distinct(Union(...)) but allows Left to return return the same
-// row more than once.
+// Similar to Distinct(Union(...)) but allows Left to return the same row
+// more than once.
 type Concat struct {
 	BinaryNode
 }
 
 var _ sql.Node = (*Concat)(nil)
+var _ sql.CollationCoercible = (*Concat)(nil)
 
 // NewConcat creates a new Concat node with the given children.
 // See concatJoin memo expression for more details.
@@ -81,6 +82,12 @@ func (c *Concat) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (c *Concat) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return c.left.CheckPrivileges(ctx, opChecker) && c.right.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Concat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// As this is similar to UNION, it isn't possible to determine what the resulting coercibility may be
+	return sql.Collation_binary, 7
 }
 
 func (c Concat) String() string {

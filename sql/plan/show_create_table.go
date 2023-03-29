@@ -41,6 +41,7 @@ type ShowCreateTable struct {
 var _ sql.Node = (*ShowCreateTable)(nil)
 var _ sql.Expressioner = (*ShowCreateTable)(nil)
 var _ sql.SchemaTarget = (*ShowCreateTable)(nil)
+var _ sql.CollationCoercible = (*ShowCreateTable)(nil)
 var _ Versionable = (*ShowCreateTable)(nil)
 
 // NewShowCreateTable creates a new ShowCreateTable node.
@@ -92,6 +93,11 @@ func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (sc *ShowCreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCreateTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {

@@ -32,6 +32,7 @@ type DeclareVariables struct {
 }
 
 var _ sql.Node = (*DeclareVariables)(nil)
+var _ sql.CollationCoercible = (*DeclareVariables)(nil)
 var _ expression.ProcedureReferencable = (*DeclareVariables)(nil)
 
 // NewDeclareVariables returns a new *DeclareVariables node.
@@ -71,6 +72,11 @@ func (d *DeclareVariables) WithChildren(children ...sql.Node) (sql.Node, error) 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DeclareVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeclareVariables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

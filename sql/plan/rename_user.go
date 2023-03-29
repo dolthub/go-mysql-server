@@ -29,6 +29,7 @@ type RenameUser struct {
 }
 
 var _ sql.Node = (*RenameUser)(nil)
+var _ sql.CollationCoercible = (*RenameUser)(nil)
 
 // NewRenameUser returns a new RenameUser node.
 func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
@@ -75,6 +76,11 @@ func (n *RenameUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *RenameUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RenameUser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

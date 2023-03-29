@@ -36,6 +36,7 @@ func NewShowIndexes(table sql.Node) sql.Node {
 }
 
 var _ sql.Node = (*ShowIndexes)(nil)
+var _ sql.CollationCoercible = (*ShowIndexes)(nil)
 
 // WithChildren implements the Node interface.
 func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -53,6 +54,11 @@ func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *ShowIndexes) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: figure out what privileges are required
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowIndexes) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the fmt.Stringer interface.

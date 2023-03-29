@@ -61,6 +61,7 @@ type Pad struct {
 }
 
 var _ sql.FunctionExpression = (*Pad)(nil)
+var _ sql.CollationCoercible = (*Pad)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (p *Pad) FunctionName() string {
@@ -101,6 +102,13 @@ func (p *Pad) IsNullable() bool {
 
 // Type implements the Expression interface.
 func (p *Pad) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *Pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, p.str)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, p.padStr)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+}
 
 func (p *Pad) String() string {
 	if p.padType == lPadType {

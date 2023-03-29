@@ -26,6 +26,9 @@ type And struct {
 	BinaryExpression
 }
 
+var _ sql.Expression = (*And)(nil)
+var _ sql.CollationCoercible = (*And)(nil)
+
 // NewAnd creates a new And expression.
 func NewAnd(left, right sql.Expression) sql.Expression {
 	return &And{BinaryExpression{Left: left, Right: right}}
@@ -80,6 +83,11 @@ func (*And) Type() sql.Type {
 	return types.Boolean
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*And) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // Eval implements the Expression interface.
 func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	lval, err := a.Left.Eval(ctx, row)
@@ -124,6 +132,9 @@ type Or struct {
 	BinaryExpression
 }
 
+var _ sql.Expression = (*Or)(nil)
+var _ sql.CollationCoercible = (*Or)(nil)
+
 // NewOr creates a new Or expression.
 func NewOr(left, right sql.Expression) sql.Expression {
 	return &Or{BinaryExpression{Left: left, Right: right}}
@@ -144,6 +155,11 @@ func (o *Or) DebugString() string {
 // Type implements the Expression interface.
 func (*Or) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Or) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -192,6 +208,9 @@ type Xor struct {
 	BinaryExpression
 }
 
+var _ sql.Expression = (*Xor)(nil)
+var _ sql.CollationCoercible = (*Xor)(nil)
+
 // NewXor creates a new Xor expression.
 func NewXor(left, right sql.Expression) sql.Expression {
 	return &Xor{BinaryExpression{Left: left, Right: right}}
@@ -208,6 +227,11 @@ func (x *Xor) DebugString() string {
 // Type implements the Expression interface.
 func (*Xor) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Xor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.

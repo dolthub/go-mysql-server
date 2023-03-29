@@ -26,6 +26,7 @@ type NamedLiteral struct {
 
 var _ sql.Expression = NamedLiteral{}
 var _ sql.Expression2 = NamedLiteral{}
+var _ sql.CollationCoercible = NamedLiteral{}
 
 // NewNamedLiteral returns a new NamedLiteral.
 func NewNamedLiteral(name string, value interface{}, fieldType sql.Type) NamedLiteral {

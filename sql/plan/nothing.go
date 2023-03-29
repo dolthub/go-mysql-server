@@ -21,6 +21,9 @@ var Nothing nothing
 
 type nothing struct{}
 
+var _ sql.Node = nothing{}
+var _ sql.CollationCoercible = nothing{}
+
 func (nothing) String() string       { return "NOTHING" }
 func (nothing) Resolved() bool       { return true }
 func (nothing) Schema() sql.Schema   { return nil }
@@ -41,4 +44,9 @@ func (n nothing) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (nothing) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (nothing) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

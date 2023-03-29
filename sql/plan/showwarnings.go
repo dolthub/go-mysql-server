@@ -22,6 +22,9 @@ import (
 // ShowWarnings is a node that shows the session warnings
 type ShowWarnings []*sql.Warning
 
+var _ sql.Node = (*ShowWarnings)(nil)
+var _ sql.CollationCoercible = (*ShowWarnings)(nil)
+
 // Resolved implements sql.Node interface. The function always returns true.
 func (ShowWarnings) Resolved() bool {
 	return true
@@ -39,6 +42,11 @@ func (sw ShowWarnings) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (sw ShowWarnings) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (ShowWarnings) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the fmt.Stringer interface.

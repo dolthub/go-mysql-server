@@ -28,6 +28,9 @@ type SystemVar struct {
 	Scope sql.SystemVariableScope
 }
 
+var _ sql.Expression = (*SystemVar)(nil)
+var _ sql.CollationCoercible = (*SystemVar)(nil)
+
 // NewSystemVar creates a new SystemVar expression.
 func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
 	return &SystemVar{name, scope}
@@ -64,6 +67,16 @@ func (v *SystemVar) Type() sql.Type {
 	return types.Null
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (v *SystemVar) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	typ := v.Type()
+	if types.IsText(typ) {
+		collation, _ = typ.CollationCoercibility(ctx)
+		return collation, 3
+	}
+	return typ.CollationCoercibility(ctx)
+}
+
 // IsNullable implements the sql.Expression interface.
 func (v *SystemVar) IsNullable() bool { return false }
 
@@ -97,6 +110,9 @@ type UserVar struct {
 	exprType sql.Type
 }
 
+var _ sql.Expression = (*UserVar)(nil)
+var _ sql.CollationCoercible = (*UserVar)(nil)
+
 // NewUserVar creates a UserVar with a name, but no type information, for use as the left-hand value
 // in a SetField assignment Expression. This method should not be used when the user variable is
 // being used as a value, since the correct type information will not be available.
@@ -126,6 +142,12 @@ func (v *UserVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 // Type implements the sql.Expression interface.
 func (v *UserVar) Type() sql.Type {
 	return v.exprType
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (v *UserVar) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	collation, _ = v.exprType.CollationCoercibility(ctx)
+	return collation, 2
 }
 
 // IsNullable implements the sql.Expression interface.

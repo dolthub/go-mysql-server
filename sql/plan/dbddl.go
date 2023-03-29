@@ -33,6 +33,9 @@ type CreateDB struct {
 	Collation   sql.CollationID
 }
 
+var _ sql.Node = (*CreateDB)(nil)
+var _ sql.CollationCoercible = (*CreateDB)(nil)
+
 func (c *CreateDB) Resolved() bool {
 	return true
 }
@@ -93,6 +96,11 @@ func (c *CreateDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Create))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateDB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // Database returns the name of the database that will be used.
 func (c *CreateDB) Database() string {
 	return c.dbName
@@ -112,6 +120,9 @@ type DropDB struct {
 	dbName   string
 	IfExists bool
 }
+
+var _ sql.Node = (*DropDB)(nil)
+var _ sql.CollationCoercible = (*DropDB)(nil)
 
 func (d *DropDB) Resolved() bool {
 	return true
@@ -177,6 +188,11 @@ func (d *DropDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Drop))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropDB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func NewDropDatabase(dbName string, ifExists bool) *DropDB {
 	return &DropDB{
 		dbName:   dbName,
@@ -190,6 +206,9 @@ type AlterDB struct {
 	dbName    string
 	Collation sql.CollationID
 }
+
+var _ sql.Node = (*AlterDB)(nil)
+var _ sql.CollationCoercible = (*AlterDB)(nil)
 
 // Resolved implements the interface sql.Node.
 func (c *AlterDB) Resolved() bool {
@@ -252,6 +271,11 @@ func (c *AlterDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *AlterDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(c.Database(ctx), "", "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AlterDB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database returns the name of the database that will be used.

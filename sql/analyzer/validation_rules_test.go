@@ -703,6 +703,9 @@ func TestValidateSubqueryColumns(t *testing.T) {
 
 type dummyNode struct{ resolved bool }
 
+var _ sql.Node = dummyNode{}
+var _ sql.CollationCoercible = dummyNode{}
+
 func (n dummyNode) String() string                                   { return "dummynode" }
 func (n dummyNode) Resolved() bool                                   { return n.resolved }
 func (dummyNode) Schema() sql.Schema                                 { return nil }
@@ -711,6 +714,9 @@ func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return ni
 func (dummyNode) WithChildren(...sql.Node) (sql.Node, error)         { return nil, nil }
 func (dummyNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func getValidationRule(id RuleId) Rule {

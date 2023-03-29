@@ -29,6 +29,7 @@ type Sqrt struct {
 }
 
 var _ sql.FunctionExpression = (*Sqrt)(nil)
+var _ sql.CollationCoercible = (*Sqrt)(nil)
 
 // NewSqrt creates a new Sqrt expression.
 func NewSqrt(e sql.Expression) sql.Expression {
@@ -52,6 +53,11 @@ func (s *Sqrt) String() string {
 // Type implements the Expression interface.
 func (s *Sqrt) Type() sql.Type {
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Sqrt) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.
@@ -93,6 +99,7 @@ type Power struct {
 }
 
 var _ sql.FunctionExpression = (*Power)(nil)
+var _ sql.CollationCoercible = (*Power)(nil)
 
 // NewPower creates a new Power expression.
 func NewPower(e1, e2 sql.Expression) sql.Expression {
@@ -116,6 +123,11 @@ func (p *Power) Description() string {
 
 // Type implements the Expression interface.
 func (p *Power) Type() sql.Type { return types.Float64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Power) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // IsNullable implements the Expression interface.
 func (p *Power) IsNullable() bool { return p.Left.IsNullable() || p.Right.IsNullable() }

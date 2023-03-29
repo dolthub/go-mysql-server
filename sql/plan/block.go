@@ -53,6 +53,7 @@ type RepresentsScope interface {
 
 var _ sql.Node = (*Block)(nil)
 var _ sql.DebugStringer = (*Block)(nil)
+var _ sql.CollationCoercible = (*Block)(nil)
 var _ RepresentsBlock = (*Block)(nil)
 
 // NewBlock creates a new *Block node.
@@ -119,6 +120,22 @@ func (b *Block) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 		}
 	}
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (b *Block) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// The last SELECT used in the block takes priority
+	for i := len(b.statements) - 1; i >= 0; i-- {
+		if nodeRepresentsSelect(b.statements[i]) {
+			return sql.GetCoercibility(ctx, b.statements[i])
+		}
+	}
+	// If the block is empty then we return an ignorable coercibility
+	if len(b.statements) == 0 {
+		return sql.Collation_binary, 7
+	}
+	// If none of the above applies, we return the coercibility of the last statement in the block
+	return sql.GetCoercibility(ctx, b.statements[len(b.statements)-1])
 }
 
 // RowIter implements the sql.Node interface.

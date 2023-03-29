@@ -29,6 +29,7 @@ type DropTrigger struct {
 
 var _ sql.Databaser = (*DropTrigger)(nil)
 var _ sql.Node = (*DropTrigger)(nil)
+var _ sql.CollationCoercible = (*DropTrigger)(nil)
 
 // NewDropTrigger creates a new NewDropTrigger node for DROP TRIGGER statements.
 func NewDropTrigger(db sql.Database, trigger string, ifExists bool) *DropTrigger {
@@ -92,6 +93,11 @@ func (d *DropTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (d *DropTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(d.db.Name(), d.TriggerName, "", sql.PrivilegeType_Trigger))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropTrigger) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the sql.Databaser interface.

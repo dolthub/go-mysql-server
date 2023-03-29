@@ -49,6 +49,7 @@ type GeometryValue interface {
 
 var _ sql.Type = GeometryType{}
 var _ sql.SpatialColumnType = GeometryType{}
+var _ sql.CollationCoercible = GeometryType{}
 
 var (
 	ErrNotGeometry = errors.NewKind("Value of type %T is not a geometry")
@@ -505,6 +506,11 @@ func (t GeometryType) Zero() interface{} {
 	// ERROR 1416 (22003): Cannot get geometry object from data you send to the GEOMETRY field
 	// So, we don't implement a zero type for this function.
 	return nil
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (GeometryType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

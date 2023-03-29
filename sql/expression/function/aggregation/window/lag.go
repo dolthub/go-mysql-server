@@ -35,6 +35,7 @@ type Lag struct {
 var _ sql.FunctionExpression = (*Lag)(nil)
 var _ sql.WindowAggregation = (*Lag)(nil)
 var _ sql.WindowAdaptableExpression = (*Lag)(nil)
+var _ sql.CollationCoercible = (*Lag)(nil)
 
 // NewLag accepts variadic arguments to create a new Lag node:
 // If 1 expression, use default values for [default] and [offset]
@@ -117,6 +118,16 @@ func (l *Lag) FunctionName() string {
 // Type implements sql.Expression
 func (l *Lag) Type() sql.Type {
 	return l.ChildExpressions[0].Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Lag) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// We're returning the type of the first child, so we'll return the coercibility of the first child
+	// as well
+	if l == nil || len(l.ChildExpressions) == 0 {
+		return sql.Collation_binary, 6
+	}
+	return sql.GetCoercibility(ctx, l.ChildExpressions[0])
 }
 
 // IsNullable implements sql.Expression

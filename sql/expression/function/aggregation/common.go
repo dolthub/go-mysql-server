@@ -36,6 +36,7 @@ type unaryAggBase struct {
 }
 
 var _ sql.Aggregation = (*unaryAggBase)(nil)
+var _ sql.CollationCoercible = (*unaryAggBase)(nil)
 
 func (a *unaryAggBase) NewWindowFunction() (sql.WindowFunction, error) {
 	panic("unaryAggBase is a base type, type must implement NewWindowFunction")
@@ -62,6 +63,11 @@ func (a *unaryAggBase) String() string {
 
 func (a *unaryAggBase) Type() sql.Type {
 	return a.typ
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (a *unaryAggBase) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, a.Child)
 }
 
 func (a *unaryAggBase) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

@@ -30,6 +30,7 @@ type Open struct {
 }
 
 var _ sql.Node = (*Open)(nil)
+var _ sql.CollationCoercible = (*Open)(nil)
 var _ expression.ProcedureReferencable = (*Open)(nil)
 
 // NewOpen returns a new *Open node.
@@ -67,6 +68,11 @@ func (o *Open) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (o *Open) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Open) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

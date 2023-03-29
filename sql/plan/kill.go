@@ -45,6 +45,9 @@ type Kill struct {
 	connID uint32
 }
 
+var _ sql.Node = (*Kill)(nil)
+var _ sql.CollationCoercible = (*Kill)(nil)
+
 func NewKill(kt KillType, connID uint32) *Kill {
 	return &Kill{kt, connID}
 }
@@ -69,6 +72,11 @@ func (k *Kill) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 	//TODO: If the user doesn't have the SUPER privilege, they should still be able to kill their own threads
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Super))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Kill) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (k *Kill) Schema() sql.Schema {

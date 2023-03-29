@@ -59,6 +59,7 @@ func (u UUIDFunc) IsNonDeterministic() bool {
 }
 
 var _ sql.FunctionExpression = &UUIDFunc{}
+var _ sql.CollationCoercible = &UUIDFunc{}
 
 func NewUUIDFunc() sql.Expression {
 	return UUIDFunc{}
@@ -75,6 +76,11 @@ func (u UUIDFunc) String() string {
 
 func (u UUIDFunc) Type() sql.Type {
 	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (UUIDFunc) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 4
 }
 
 func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -120,6 +126,7 @@ type IsUUID struct {
 }
 
 var _ sql.FunctionExpression = &IsUUID{}
+var _ sql.CollationCoercible = &IsUUID{}
 
 func NewIsUUID(arg sql.Expression) sql.Expression {
 	return IsUUID{child: arg}
@@ -141,6 +148,11 @@ func (u IsUUID) String() string {
 
 func (u IsUUID) Type() sql.Type {
 	return types.Int8
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (IsUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -224,6 +236,7 @@ type UUIDToBin struct {
 }
 
 var _ sql.FunctionExpression = (*UUIDToBin)(nil)
+var _ sql.CollationCoercible = (*UUIDToBin)(nil)
 
 func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
@@ -251,6 +264,11 @@ func (ub UUIDToBin) String() string {
 
 func (ub UUIDToBin) Type() sql.Type {
 	return types.MustCreateBinary(query.Type_VARBINARY, int64(16))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (UUIDToBin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -379,6 +397,7 @@ type BinToUUID struct {
 }
 
 var _ sql.FunctionExpression = (*BinToUUID)(nil)
+var _ sql.CollationCoercible = (*BinToUUID)(nil)
 
 func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
@@ -411,6 +430,11 @@ func (bu BinToUUID) String() string {
 
 func (bu BinToUUID) Type() sql.Type {
 	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (BinToUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 4
 }
 
 func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

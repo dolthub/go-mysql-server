@@ -68,6 +68,9 @@ type TimeType interface {
 
 type TimespanType_ struct{}
 
+var _ TimeType = TimespanType_{}
+var _ sql.CollationCoercible = TimespanType_{}
+
 // MaxTextResponseByteLength implements the Type interface
 func (t TimespanType_) MaxTextResponseByteLength() uint32 {
 	// 10 digits are required for a text representation without microseconds, but with microseconds
@@ -292,6 +295,11 @@ func (t TimespanType_) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t TimespanType_) Zero() interface{} {
 	return Timespan(0)
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (TimespanType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // No built in for absolute values on int64

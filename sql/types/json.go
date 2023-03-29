@@ -31,6 +31,7 @@ var (
 )
 
 var JSON sql.Type = JsonType{}
+var _ sql.CollationCoercible = JsonType{}
 
 type JsonType struct{}
 
@@ -151,6 +152,11 @@ func (t JsonType) Zero() interface{} {
 	// MySQL throws an error for INSERT IGNORE, UPDATE IGNORE, etc. when bad json is encountered:
 	// ERROR 3140 (22032): Invalid JSON text: "Invalid value." at position 0 in value for column 'table.column'.
 	return nil
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (JsonType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_Default, 5
 }
 
 // DeepCopyJson implements deep copy of JSON document

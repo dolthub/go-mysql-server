@@ -14,7 +14,9 @@ type DistinctExpression struct {
 	Child   sql.Expression
 }
 
+var _ sql.Expression = (*DistinctExpression)(nil)
 var _ sql.Disposable = (*DistinctExpression)(nil)
+var _ sql.CollationCoercible = (*DistinctExpression)(nil)
 
 func NewDistinctExpression(e sql.Expression) *DistinctExpression {
 	return &DistinctExpression{
@@ -64,6 +66,11 @@ func (de *DistinctExpression) String() string {
 
 func (de *DistinctExpression) Type() sql.Type {
 	return de.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (de *DistinctExpression) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, de.Child)
 }
 
 func (de *DistinctExpression) IsNullable() bool {

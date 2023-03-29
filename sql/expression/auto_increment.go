@@ -36,6 +36,9 @@ type AutoIncrement struct {
 	autoCol *sql.Column
 }
 
+var _ sql.Expression = (*AutoIncrement)(nil)
+var _ sql.CollationCoercible = (*AutoIncrement)(nil)
+
 // NewAutoIncrement creates a new AutoIncrement expression.
 func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (*AutoIncrement, error) {
 	autoTbl, ok := table.(sql.AutoIncrementTable)
@@ -83,6 +86,11 @@ func (i *AutoIncrement) IsNullable() bool {
 // Type implements the Expression interface.
 func (i *AutoIncrement) Type() sql.Type {
 	return i.autoCol.Type
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (i *AutoIncrement) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, i.Child)
 }
 
 // Eval implements the Expression interface.

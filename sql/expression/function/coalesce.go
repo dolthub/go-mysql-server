@@ -27,6 +27,7 @@ type Coalesce struct {
 }
 
 var _ sql.FunctionExpression = (*Coalesce)(nil)
+var _ sql.CollationCoercible = (*Coalesce)(nil)
 
 // NewCoalesce creates a new Coalesce sql.Expression.
 func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
@@ -62,6 +63,15 @@ func (c *Coalesce) Type() sql.Type {
 	}
 
 	return nil
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Coalesce) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// Preferably, this would be done during evaluation, but that's not possible with the current abstraction
+	if typ := c.Type(); typ != nil {
+		return typ.CollationCoercibility(ctx)
+	}
+	return sql.Collation_binary, 6
 }
 
 // IsNullable implements the sql.Expression interface.

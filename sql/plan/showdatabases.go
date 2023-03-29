@@ -27,6 +27,9 @@ type ShowDatabases struct {
 	Catalog sql.Catalog
 }
 
+var _ sql.Node = (*ShowDatabases)(nil)
+var _ sql.CollationCoercible = (*ShowDatabases)(nil)
+
 // NewShowDatabases creates a new show databases node.
 func NewShowDatabases() *ShowDatabases {
 	return new(ShowDatabases)
@@ -83,6 +86,11 @@ func (p *ShowDatabases) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	//TODO: Having the "SHOW DATABASES" privilege should allow one to see all databases
 	// Currently, only shows databases that the user has access to
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowDatabases) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p ShowDatabases) String() string {
