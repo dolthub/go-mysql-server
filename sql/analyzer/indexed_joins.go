@@ -56,6 +56,8 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			case *plan.JoinNode:
 				reorder = false
 			}
+		case *plan.Union:
+			reorder = false
 		case *plan.JoinNode:
 			if n.JoinType().IsPhysical() {
 				// TODO: nested subqueries attempt to replan joins, which
