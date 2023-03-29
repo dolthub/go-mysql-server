@@ -300,7 +300,12 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	}
 
 	// For each filter node, we want to push its predicates as low as possible.
+	hasLimit := false
 	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// If there's a plan.Limit under this node, the filter can't be pushed any lower
+		if hasLimit {
+			return n, transform.SameTree, nil
+		}
 		switch n := node.(type) {
 		case *plan.Filter:
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
@@ -335,6 +340,9 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				return nil, transform.SameTree, err
 			}
 			return node, transform.NewTree, nil
+		case *plan.Limit:
+			hasLimit = true
+			return n, transform.SameTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -358,13 +366,21 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	}
 
 	// For each filter node, we want to push its predicates as low as possible.
+	hasLimit := false
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// If there's a plan.Limit under this node, the filter can't be pushed any lower
+		if hasLimit {
+			return n, transform.SameTree, nil
+		}
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
 			filtersByTable := getFiltersByTable(n)
 			filters = newFilterSet(n.Expression, filtersByTable, tableAliases)
 			return transformFilterNode(n)
+		case *plan.Limit:
+			hasLimit = true
+			return n, transform.SameTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -385,6 +401,9 @@ func convertFiltersToIndexedAccess(
 		switch n := c.Node.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
+			return false
+		// We can't/shouldn't push indexes down to a table that has a limit over it
+		case *plan.Limit:
 			return false
 		case *plan.RecursiveCte:
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt

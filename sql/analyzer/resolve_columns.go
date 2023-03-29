@@ -794,10 +794,17 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 	var idx int
 
 	indexColumn := func(col *sql.Column) {
-		columns[tableCol{
+		if col.Source == "" && col.Name == "" {
+			return
+		}
+		tblCol := tableCol{
 			table: strings.ToLower(col.Source),
 			col:   strings.ToLower(col.Name),
-		}] = indexedCol{col, idx}
+		}
+		if _, ok := columns[tblCol]; ok {
+			return
+		}
+		columns[tblCol] = indexedCol{col, idx}
 		idx++
 	}
 
