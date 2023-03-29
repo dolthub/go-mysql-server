@@ -514,15 +514,12 @@ func TestPointWithinGeometryCollection(t *testing.T) {
 }
 
 func TestWithin(t *testing.T) {
-	t.Skip("comptation geometry is too hard...")
+	t.Skip("these are all the cases that haven't been implemented yet")
 
 	// LineString vs Point
 	t.Run("linestring never within point", func(t *testing.T) {
 		require := require.New(t)
-		p := types.Point{X: 0, Y: 0}
-		l := types.LineString{Points: []types.Point{p, p}}
-
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.PointType{}))
+		f := NewWithin(expression.NewLiteral(emptyLineString, types.LineStringType{}), expression.NewLiteral(types.Point{}, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -545,10 +542,7 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring within itself", func(t *testing.T) {
 		require := require.New(t)
-		a := types.Point{X: 0, Y: 0}
-		b := types.Point{X: 1, Y: 1}
-		l := types.LineString{Points: []types.Point{a, b}}
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(simpleLineString, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -556,17 +550,11 @@ func TestWithin(t *testing.T) {
 
 	t.Run("many line segments within larger line segment", func(t *testing.T) {
 		require := require.New(t)
-
-		a := types.Point{X: 1, Y: 1}
-		b := types.Point{X: 2, Y: 2}
-		c := types.Point{X: 3, Y: 3}
-		l1 := types.LineString{Points: []types.Point{a, b, c}}
-
 		p := types.Point{X: 0, Y: 0}
 		q := types.Point{X: 4, Y: 4}
-		l2 := types.LineString{Points: []types.Point{p, q}}
+		l := types.LineString{Points: []types.Point{p, q}}
 
-		f := NewWithin(expression.NewLiteral(l1, types.LineStringType{}), expression.NewLiteral(l2, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(simpleLineString, types.LineStringType{}), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -661,17 +649,11 @@ func TestWithin(t *testing.T) {
 	// LineString vs Polygon
 	t.Run("linestring within polygon", func(t *testing.T) {
 		require := require.New(t)
-		a := types.Point{X: 4, Y: 4}
-		b := types.Point{X: 4, Y: -4}
-		c := types.Point{X: -4, Y: -4}
-		d := types.Point{X: -4, Y: 4}
-		p := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
-
 		i := types.Point{X: -1, Y: -1}
 		j := types.Point{X: 1, Y: 1}
 		l := types.LineString{Points: []types.Point{i, j}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -679,17 +661,13 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring touching boundary is within polygon", func(t *testing.T) {
 		require := require.New(t)
-		a := types.Point{X: 4, Y: 4}
-		b := types.Point{X: 4, Y: -4}
-		c := types.Point{X: -4, Y: -4}
+		a := types.Point{X: -1, Y: -1}
+		b := types.Point{X: 1, Y: 1}
+		c := types.Point{X: 4, Y: 4}
 		d := types.Point{X: -4, Y: 4}
-		p := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
+		l := types.LineString{Points: []types.Point{a, b, c, d}}
 
-		i := types.Point{X: -1, Y: -1}
-		j := types.Point{X: 1, Y: 1}
-		l := types.LineString{Points: []types.Point{i, j, a, b}}
-
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -697,17 +675,13 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring is not within polygon", func(t *testing.T) {
 		require := require.New(t)
-		a := types.Point{X: 4, Y: 4}
-		b := types.Point{X: 4, Y: -4}
-		c := types.Point{X: -4, Y: -4}
+		a := types.Point{X: -100, Y: 100}
+		b := types.Point{X: 100, Y: 100}
+		c := types.Point{X: 4, Y: 4}
 		d := types.Point{X: -4, Y: 4}
-		p := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
+		l := types.LineString{Points: []types.Point{a, b, c, d}}
 
-		i := types.Point{X: -100, Y: 100}
-		j := types.Point{X: 100, Y: 100}
-		l := types.LineString{Points: []types.Point{i, j, a, b}}
-
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -715,17 +689,11 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring crosses through polygon", func(t *testing.T) {
 		require := require.New(t)
-		a := types.Point{X: 4, Y: 4}
-		b := types.Point{X: 4, Y: -4}
-		c := types.Point{X: -4, Y: -4}
-		d := types.Point{X: -4, Y: 4}
-		p := types.Polygon{Lines: []types.LineString{{Points: []types.Point{a, b, c, d, a}}}}
-
 		i := types.Point{X: -100, Y: -100}
 		j := types.Point{X: 100, Y: 100}
-		l := types.LineString{Points: []types.Point{i, j, a, b}}
+		l := types.LineString{Points: []types.Point{i, j}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -733,14 +701,7 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring boundary is not within polygon", func(t *testing.T) {
 		require := require.New(t)
-		a := types.Point{X: 4, Y: 4}
-		b := types.Point{X: 4, Y: -4}
-		c := types.Point{X: -4, Y: -4}
-		d := types.Point{X: -4, Y: 4}
-		l := types.LineString{Points: []types.Point{a, b, c, d, a}}
-		p := types.Polygon{Lines: []types.LineString{l}}
-
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(square.Lines[0], types.LineStringType{}), expression.NewLiteral(square, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -748,24 +709,11 @@ func TestWithin(t *testing.T) {
 
 	t.Run("linestring in hole is not within polygon", func(t *testing.T) {
 		require := require.New(t)
-		a1 := types.Point{X: 4, Y: 4}
-		b1 := types.Point{X: 4, Y: -4}
-		c1 := types.Point{X: -4, Y: -4}
-		d1 := types.Point{X: -4, Y: 4}
-		l1 := types.LineString{Points: []types.Point{a1, b1, c1, d1, a1}}
-
-		a2 := types.Point{X: 2, Y: 2}
-		b2 := types.Point{X: 2, Y: -2}
-		c2 := types.Point{X: -2, Y: -2}
-		d2 := types.Point{X: -2, Y: 2}
-		l2 := types.LineString{Points: []types.Point{a2, b2, c2, d2, a2}}
-		p := types.Polygon{Lines: []types.LineString{l1, l2}}
-
 		i := types.Point{X: -1, Y: -1}
 		j := types.Point{X: 1, Y: 1}
 		l := types.LineString{Points: []types.Point{i, j}}
 
-		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(p, types.LineStringType{}))
+		f := NewWithin(expression.NewLiteral(l, types.LineStringType{}), expression.NewLiteral(squareWithHole, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -880,7 +828,7 @@ func TestWithin(t *testing.T) {
 		require.Equal(true, v)
 	})
 
-	t.Run("terminal line points not ", func(t *testing.T) {
+	t.Run("terminal line points not with in multilinestring", func(t *testing.T) {
 		require := require.New(t)
 		a := types.Point{X: 0, Y: 0}
 		b := types.Point{X: 1, Y: 1}
@@ -1023,16 +971,7 @@ func TestWithin(t *testing.T) {
 	t.Run("empty polygon within polygon", func(t *testing.T) {
 		require := require.New(t)
 
-		p1 := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{}, {}, {}, {}}}}}
-
-		a := types.Point{X: -1, Y: 1}
-		b := types.Point{X: 1, Y: 1}
-		c := types.Point{X: 1, Y: -1}
-		d := types.Point{X: -1, Y: -1}
-		l := types.LineString{Points: []types.Point{a, b, c, d, a}}
-		p2 := types.Polygon{Lines: []types.LineString{l}}
-
-		f := NewWithin(expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(p2, types.PolygonType{}))
+		f := NewWithin(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(square, types.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -1162,10 +1101,9 @@ func TestWithin(t *testing.T) {
 	t.Run("polygon within empty geometry collection returns null", func(t *testing.T) {
 		require := require.New(t)
 
-		p := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{}, {}, {}, {}}}}}
 		g := types.GeomColl{}
 
-		f := NewWithin(expression.NewLiteral(p, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
+		f := NewWithin(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -1173,18 +1111,8 @@ func TestWithin(t *testing.T) {
 
 	t.Run("empty polygon within geometry collection", func(t *testing.T) {
 		require := require.New(t)
-
-		p1 := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{}, {}, {}, {}}}}}
-
-		a := types.Point{X: -1, Y: 1}
-		b := types.Point{X: 1, Y: 1}
-		c := types.Point{X: 1, Y: -1}
-		d := types.Point{X: -1, Y: -1}
-		l := types.LineString{Points: []types.Point{a, b, c, d, a}}
-		p2 := types.Polygon{Lines: []types.LineString{l}}
-		g := types.GeomColl{Geoms: []types.GeometryValue{p2}}
-
-		f := NewWithin(expression.NewLiteral(p1, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
+		g := types.GeomColl{Geoms: []types.GeometryValue{square}}
+		f := NewWithin(expression.NewLiteral(emptyPolygon, types.PolygonType{}), expression.NewLiteral(g, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
