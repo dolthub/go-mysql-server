@@ -22,6 +22,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Literal represents a literal expression (string, number, bool, ...).
@@ -33,6 +34,7 @@ type Literal struct {
 
 var _ sql.Expression = &Literal{}
 var _ sql.Expression2 = &Literal{}
+var _ sql.CollationCoercible = &Literal{}
 
 // NewLiteral creates a new Literal expression.
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
@@ -57,6 +59,15 @@ func (lit *Literal) IsNullable() bool {
 // Type implements the Expression interface.
 func (lit *Literal) Type() sql.Type {
 	return lit.fieldType
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (lit *Literal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if types.IsText(lit.fieldType) {
+		collation, _ = lit.fieldType.CollationCoercibility(ctx)
+		return collation, 4
+	}
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -103,6 +114,8 @@ func (lit *Literal) DebugString() string {
 		return fmt.Sprintf("%d (%s)", v, typeStr)
 	case float32, float64:
 		return fmt.Sprintf("%f (%s)", v, typeStr)
+	case bool:
+		return fmt.Sprintf("%t (%s)", v, typeStr)
 	default:
 		return fmt.Sprintf("%s (%s)", v, typeStr)
 	}

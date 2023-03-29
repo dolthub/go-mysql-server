@@ -30,6 +30,7 @@ type InTuple struct {
 
 // We implement Comparer because we have a Left() and a Right(), but we can't be Compare()d
 var _ Comparer = (*InTuple)(nil)
+var _ sql.CollationCoercible = (*InTuple)(nil)
 
 func (in *InTuple) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	panic("Compare not implemented for InTuple")
@@ -37,6 +38,11 @@ func (in *InTuple) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 
 func (in *InTuple) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*InTuple) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (in *InTuple) Left() sql.Expression {
@@ -159,6 +165,7 @@ type HashInTuple struct {
 }
 
 var _ Comparer = (*InTuple)(nil)
+var _ sql.CollationCoercible = (*InTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
 func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple, error) {

@@ -37,6 +37,7 @@ type DeleteFrom struct {
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)
 var _ sql.Node = (*DeleteFrom)(nil)
+var _ sql.CollationCoercible = (*DeleteFrom)(nil)
 
 // NewDeleteFrom creates a DeleteFrom node.
 func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
@@ -152,7 +153,7 @@ func (p *DeleteFrom) Database() string {
 func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// If an empty table is passed in (potentially from a bad filter) return an empty row iter.
 	// Note: emptyTable could also implement sql.DetetableTable
-	if _, ok := p.Child.(*emptyTable); ok {
+	if _, ok := p.Child.(*EmptyTable); ok {
 		return sql.RowsToRowIter(), nil
 	}
 
@@ -331,6 +332,11 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	}
 
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeleteFrom) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p *DeleteFrom) String() string {

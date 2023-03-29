@@ -98,15 +98,14 @@ var PlanTests = []QueryPlanTest{
 			"     │   ├─ mytable.i:2!null\n" +
 			"     │   └─ applySubq0.i2:1!null\n" +
 			"     ├─ Max1Row\n" +
-			"     │   └─ TableAlias(applySubq0)\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ Eq\n" +
-			"     │           │   ├─ applySubq0.s2:0!null\n" +
-			"     │           │   └─ second (longtext)\n" +
-			"     │           └─ TableAlias(applySubq0)\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: othertable\n" +
-			"     │                   └─ columns: [s2 i2]\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ Eq\n" +
+			"     │       │   ├─ applySubq0.s2:0!null\n" +
+			"     │       │   └─ second (longtext)\n" +
+			"     │       └─ TableAlias(applySubq0)\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: othertable\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         └─ columns: [i s]\n" +
@@ -589,7 +588,7 @@ var PlanTests = []QueryPlanTest{
 			"                                                         │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
 			"                                                         └─ IndexedTableAccess(uv)\n" +
 			"                                                             ├─ index: [uv.u]\n" +
-			"                                                             ├─ static: [{[3, 3]}, {[2, 2]}]\n" +
+			"                                                             ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
 			"                                                             └─ columns: [u v]\n" +
 			"",
 	},
@@ -799,30 +798,37 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select * from ab where exists (select * from uv where a = 1)`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ EXISTS Subquery\n" +
-			" │   ├─ cacheable: true\n" +
+		ExpectedPlan: "SemiJoin\n" +
+			" ├─ true (tinyint)\n" +
+			" ├─ Filter\n" +
+			" │   ├─ Eq\n" +
+			" │   │   ├─ ab.a:0!null\n" +
+			" │   │   └─ 1 (tinyint)\n" +
 			" │   └─ Table\n" +
-			" │       ├─ name: uv\n" +
-			" │       └─ columns: [u v]\n" +
-			" └─ IndexedTableAccess(ab)\n" +
-			"     ├─ index: [ab.a]\n" +
-			"     ├─ static: [{[1, 1]}]\n" +
-			"     └─ columns: [a b]\n" +
+			" │       ├─ name: ab\n" +
+			" │       └─ columns: [a b]\n" +
+			" └─ Limit(1)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: uv\n" +
+			"         └─ columns: [u v]\n" +
 			"",
 	},
 	{
 		Query: `select * from ab where exists (select * from ab where a = 1)`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ EXISTS Subquery\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ IndexedTableAccess(ab)\n" +
-			" │       ├─ index: [ab.a]\n" +
-			" │       ├─ filters: [{[1, 1]}]\n" +
-			" │       └─ columns: [a b]\n" +
-			" └─ Table\n" +
-			"     ├─ name: ab\n" +
-			"     └─ columns: [a b]\n" +
+		ExpectedPlan: "SemiJoin\n" +
+			" ├─ true (tinyint)\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: ab\n" +
+			" │   └─ columns: [a b]\n" +
+			" └─ Limit(1)\n" +
+			"     └─ Filter\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ ab_1.a:0!null\n" +
+			"         │   └─ 1 (tinyint)\n" +
+			"         └─ TableAlias(ab_1)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: ab\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -2383,7 +2389,19 @@ inner join pq on true
 			" │   └─ TUPLE(1 (tinyint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[2, 2]}, {[3, 3]}, {[4, 4]}, {[1, 1]}]\n" +
+			"     ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			"     └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1)`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ HashIn\n" +
+			" │   ├─ mytable.i:0!null\n" +
+			" │   └─ TUPLE(1 (tinyint), 1 (tinyint))\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ static: [{[1, 1]}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
@@ -2395,7 +2413,7 @@ inner join pq on true
 			" │   └─ TUPLE(NULL (bigint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[3, 3]}, {[4, 4]}, {[2, 2]}]\n" +
+			"     ├─ static: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
 			"     └─ columns: [i s]\n" +
 			"",
 	},
@@ -2451,7 +2469,7 @@ inner join pq on true
 			" │   ├─ GreaterThan\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 2 (tinyint)\n" +
-			" │   └─ TUPLE(%!s(bool=true) (tinyint))\n" +
+			" │   └─ TUPLE(true (tinyint))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -2486,7 +2504,7 @@ inner join pq on true
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 1 (bigint)\n" +
-			" │   └─ TUPLE(%!s(bool=true) (tinyint))\n" +
+			" │   └─ TUPLE(true (tinyint))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -2499,7 +2517,7 @@ inner join pq on true
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
 			" │   │   └─ 0 (bigint)\n" +
-			" │   └─ TUPLE(%!s(bool=true) (tinyint))\n" +
+			" │   └─ TUPLE(true (tinyint))\n" +
 			" └─ Table\n" +
 			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
@@ -2566,7 +2584,7 @@ inner join pq on true
 		Query: `SELECT * from mytable where true IN (i > 3)`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ IN\n" +
-			" │   ├─ left: %!s(bool=true) (tinyint)\n" +
+			" │   ├─ left: true (tinyint)\n" +
 			" │   └─ right: TUPLE(GreaterThan\n" +
 			" │       ├─ mytable.i:0!null\n" +
 			" │       └─ 3 (tinyint)\n" +
@@ -2706,7 +2724,7 @@ inner join pq on true
 			" │   └─ TableAlias(a)\n" +
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
-			" │           ├─ static: [{[432, 432]}, {[7, 7]}, {[2, 2]}]\n" +
+			" │           ├─ static: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
 			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
 			"     └─ Table\n" +
@@ -7187,7 +7205,7 @@ With c as (
 			"             │       └─ TableAlias(t1)\n" +
 			"             │           └─ IndexedTableAccess(mytable)\n" +
 			"             │               ├─ index: [mytable.i]\n" +
-			"             │               ├─ static: [{[3, 3]}, {[2, 2]}]\n" +
+			"             │               ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
 			"             │               └─ columns: [i s]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ source: TUPLE(e.i:0!null)\n" +
@@ -7208,7 +7226,7 @@ With c as (
 			"                         │       └─ TableAlias(t2)\n" +
 			"                         │           └─ IndexedTableAccess(mytable)\n" +
 			"                         │               ├─ index: [mytable.i]\n" +
-			"                         │               ├─ static: [{[2, 2]}, {[1, 1]}]\n" +
+			"                         │               ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
 			"                         │               └─ columns: [i s]\n" +
 			"                         └─ HashLookup\n" +
 			"                             ├─ source: TUPLE(b.i:2!null)\n" +
@@ -10264,7 +10282,7 @@ WHERE
 			"                                             └─ Filter\n" +
 			"                                                 ├─ Eq\n" +
 			"                                                 │   ├─ ms.D237E:6\n" +
-			"                                                 │   └─ %!s(bool=true) (tinyint)\n" +
+			"                                                 │   └─ true (tinyint)\n" +
 			"                                                 └─ LeftOuterLookupJoin\n" +
 			"                                                     ├─ Eq\n" +
 			"                                                     │   ├─ nd.HPCMS:17\n" +
@@ -10677,7 +10695,7 @@ WHERE
 			"                                             └─ Filter\n" +
 			"                                                 ├─ Eq\n" +
 			"                                                 │   ├─ ms.D237E:6\n" +
-			"                                                 │   └─ %!s(bool=true) (tinyint)\n" +
+			"                                                 │   └─ true (tinyint)\n" +
 			"                                                 └─ LeftOuterLookupJoin\n" +
 			"                                                     ├─ Eq\n" +
 			"                                                     │   ├─ nd.HPCMS:17\n" +
@@ -13878,26 +13896,26 @@ ORDER BY cla.FTQLQ ASC`,
 			"             │   ├─ cla.id:4!null\n" +
 			"             │   └─ applySubq0.IXUXU:2\n" +
 			"             ├─ Distinct\n" +
-			"             │   └─ Filter\n" +
-			"             │       ├─ AND\n" +
-			"             │       │   ├─ InSubquery\n" +
-			"             │       │   │   ├─ left: applySubq0.id:0!null\n" +
-			"             │       │   │   └─ right: Subquery\n" +
-			"             │       │   │       ├─ cacheable: true\n" +
-			"             │       │   │       └─ Table\n" +
-			"             │       │   │           ├─ name: HGMQ6\n" +
-			"             │       │   │           └─ columns: [gxlub]\n" +
-			"             │       │   └─ InSubquery\n" +
-			"             │       │       ├─ left: applySubq0.id:0!null\n" +
-			"             │       │       └─ right: Subquery\n" +
-			"             │       │           ├─ cacheable: true\n" +
-			"             │       │           └─ Table\n" +
-			"             │       │               ├─ name: AMYXQ\n" +
-			"             │       │               └─ columns: [gxlub]\n" +
-			"             │       └─ TableAlias(applySubq0)\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: THNTS\n" +
-			"             │               └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"             │   └─ SemiLookupJoin\n" +
+			"             │       ├─ Eq\n" +
+			"             │       │   ├─ applySubq0.id:0!null\n" +
+			"             │       │   └─ applySubq1.GXLUB:4!null\n" +
+			"             │       ├─ SemiLookupJoin\n" +
+			"             │       │   ├─ Eq\n" +
+			"             │       │   │   ├─ applySubq0.id:0!null\n" +
+			"             │       │   │   └─ applySubq2.GXLUB:4!null\n" +
+			"             │       │   ├─ TableAlias(applySubq0)\n" +
+			"             │       │   │   └─ Table\n" +
+			"             │       │   │       ├─ name: THNTS\n" +
+			"             │       │   │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"             │       │   └─ TableAlias(applySubq2)\n" +
+			"             │       │       └─ IndexedTableAccess(AMYXQ)\n" +
+			"             │       │           ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
+			"             │       │           └─ columns: [gxlub]\n" +
+			"             │       └─ TableAlias(applySubq1)\n" +
+			"             │           └─ IndexedTableAccess(HGMQ6)\n" +
+			"             │               ├─ index: [HGMQ6.GXLUB]\n" +
+			"             │               └─ columns: [gxlub]\n" +
 			"             └─ TableAlias(cla)\n" +
 			"                 └─ IndexedTableAccess(YK2GW)\n" +
 			"                     ├─ index: [YK2GW.id]\n" +
@@ -14481,7 +14499,7 @@ WHERE id IN ('1','2','3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(QYWQD)\n" +
 			"             ├─ index: [QYWQD.id]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id wnunu hhvlx hvhrz ykssu fhcyt]\n" +
 			"",
 	},
@@ -14518,7 +14536,7 @@ WHERE id IN ('1', '2', '3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(QYWQD)\n" +
 			"             ├─ index: [QYWQD.id]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id wnunu hhvlx hvhrz ykssu fhcyt]\n" +
 			"",
 	},
@@ -14534,7 +14552,7 @@ WHERE LUEVY IN ('1', '2', '3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(AMYXQ)\n" +
 			"             ├─ index: [AMYXQ.LUEVY]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
 			"",
 	},
@@ -14550,7 +14568,7 @@ WHERE id IN ('1', '2', '3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(HGMQ6)\n" +
 			"             ├─ index: [HGMQ6.id]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id gxlub luevy m22qn tjpt7 arn5p xosd4 ide43 hmw4h zbt6r fsdy2 lt7k6 sppyd qcgts teuja qqv4m fhcyt]\n" +
 			"",
 	},
@@ -14566,7 +14584,7 @@ WHERE id IN ('1', '2', '3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(HDDVB)\n" +
 			"             ├─ index: [HDDVB.id]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
 			"",
 	},
@@ -14582,7 +14600,7 @@ WHERE LUEVY IN ('1', '2', '3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(FLQLP)\n" +
 			"             ├─ index: [FLQLP.LUEVY]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
 			"",
 	},
@@ -14598,7 +14616,7 @@ WHERE id IN ('1', '2', '3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(FLQLP)\n" +
 			"             ├─ index: [FLQLP.id]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
 			"",
 	},
@@ -14614,7 +14632,7 @@ WHERE id IN ('1', '2', '3')`,
 			"         │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"         └─ IndexedTableAccess(FLQLP)\n" +
 			"             ├─ index: [FLQLP.id]\n" +
-			"             ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             └─ columns: [id fz2r5 luevy m22qn ove3e nrurt oca7e xmm6q v5dpx s3q3y zrv3b fhcyt]\n" +
 			"",
 	},
@@ -14757,7 +14775,7 @@ WHERE
 			"             │           │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"             │           └─ IndexedTableAccess(YK2GW)\n" +
 			"             │               ├─ index: [YK2GW.id]\n" +
-			"             │               ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │               ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │               └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 └─ IF BLOCK\n" +
@@ -14940,7 +14958,7 @@ WHERE
 			"             │           │   └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext))\n" +
 			"             │           └─ IndexedTableAccess(TDRVG)\n" +
 			"             │               ├─ index: [TDRVG.id]\n" +
-			"             │               ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │               ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │               └─ columns: [id sshpj sfj6l]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 └─ IF BLOCK\n" +
@@ -15083,7 +15101,7 @@ WHERE
 			"             │           │   └─ TableAlias(ufc)\n" +
 			"             │           │       └─ IndexedTableAccess(SISUT)\n" +
 			"             │           │           ├─ index: [SISUT.id]\n" +
-			"             │           │           ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │           │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │           │           └─ columns: [id t4ibq zh72s amyxq ktnz2 hiid2 dn3oq vvknb sh7tp srzzo qz6vt]\n" +
 			"             │           └─ HashLookup\n" +
 			"             │               ├─ source: TUPLE(ufc.ZH72S:2)\n" +
@@ -15230,7 +15248,7 @@ WHERE
 			"             │           └─ TableAlias(ums)\n" +
 			"             │               └─ IndexedTableAccess(FG26Y)\n" +
 			"             │                   ├─ index: [FG26Y.id]\n" +
-			"             │                   ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                   ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │                   └─ columns: [id t4ibq ner ber hr mmr qz6vt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 ├─ IF BLOCK\n" +
@@ -15355,7 +15373,7 @@ WHERE
 			"             │           └─ TableAlias(ums)\n" +
 			"             │               └─ IndexedTableAccess(FG26Y)\n" +
 			"             │                   ├─ index: [FG26Y.id]\n" +
-			"             │                   ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                   ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │                   └─ columns: [id t4ibq ner ber hr mmr qz6vt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 ├─ IF BLOCK\n" +
@@ -15480,7 +15498,7 @@ WHERE
 			"             │           └─ TableAlias(ums)\n" +
 			"             │               └─ IndexedTableAccess(FG26Y)\n" +
 			"             │                   ├─ index: [FG26Y.id]\n" +
-			"             │                   ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                   ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │                   └─ columns: [id t4ibq ner ber hr mmr qz6vt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 ├─ IF BLOCK\n" +
@@ -15605,7 +15623,7 @@ WHERE
 			"             │           └─ TableAlias(ums)\n" +
 			"             │               └─ IndexedTableAccess(FG26Y)\n" +
 			"             │                   ├─ index: [FG26Y.id]\n" +
-			"             │                   ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                   ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │                   └─ columns: [id t4ibq ner ber hr mmr qz6vt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 ├─ IF BLOCK\n" +
@@ -15716,7 +15734,7 @@ WHERE
 			"             │                       └─ TableAlias(umf)\n" +
 			"             │                           └─ IndexedTableAccess(NZKPM)\n" +
 			"             │                               ├─ index: [NZKPM.id]\n" +
-			"             │                               ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                               ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │                               └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 └─ IF BLOCK\n" +
@@ -17403,7 +17421,7 @@ WHERE
 			"             │           └─ TableAlias(TVTJS)\n" +
 			"             │               └─ IndexedTableAccess(HU5A5)\n" +
 			"             │                   ├─ index: [HU5A5.id]\n" +
-			"             │                   ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                   ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │                   └─ columns: [id tofpn i3vta sfj6l v5dpx ljlum idpk7 no52d zrv3b vyo5e swcqv ykssu fhcyt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 ├─ IF BLOCK\n" +

@@ -52,6 +52,7 @@ type EnumType struct {
 }
 
 var _ sql.EnumType = EnumType{}
+var _ sql.CollationCoercible = EnumType{}
 var _ sql.TypeWithCollation = EnumType{}
 
 // CreateEnumType creates a EnumType.
@@ -270,6 +271,11 @@ func (t EnumType) Type() query.Type {
 // ValueType implements Type interface.
 func (t EnumType) ValueType() reflect.Type {
 	return enumValueType
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t EnumType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.collation, 4
 }
 
 // Zero implements Type interface.

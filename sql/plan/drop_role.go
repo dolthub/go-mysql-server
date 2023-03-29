@@ -41,6 +41,7 @@ func NewDropRole(ifExists bool, roles []UserName) *DropRole {
 
 var _ sql.Node = (*DropRole)(nil)
 var _ sql.Databaser = (*DropRole)(nil)
+var _ sql.CollationCoercible = (*DropRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *DropRole) Schema() sql.Schema {
@@ -98,6 +99,11 @@ func (n *DropRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_DropRole)) ||
 		opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -31,6 +30,7 @@ type CollatedExpression struct {
 }
 
 var _ sql.Expression = (*CollatedExpression)(nil)
+var _ sql.CollationCoercible = (*CollatedExpression)(nil)
 var _ sql.DebugStringer = (*CollatedExpression)(nil)
 
 // NewCollatedExpression creates a new CollatedExpression expression. If the given expression is already a
@@ -71,6 +71,11 @@ func (ce *CollatedExpression) Type() sql.Type {
 	// have a charset. We also can't check in the constructor, as expressions such as unresolved columns will not have
 	// the correct type until after analysis. Therefore, we'll have to check (and potentially fail) in the Eval function.
 	return typ
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (ce *CollatedExpression) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ce.collation, 0
 }
 
 // Eval implements the sql.Expression interface.
@@ -120,140 +125,4 @@ func (ce *CollatedExpression) Children() []sql.Expression {
 // Child returns the inner expression.
 func (ce *CollatedExpression) Child() sql.Expression {
 	return ce.expr
-}
-
-// GetCollationViaCoercion returns the collation and coercibility value that best represents the expression. This is
-// determined by the rules of coercibility as defined by MySQL
-// (https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html). In short, the lower the value of the
-// returned integer, the more explicit the defined collation. A value of 0 indicates that an explicit COLLATE was given.
-// Returns sql.Collation_Unspecified if the expression in invalid in some way.
-//
-// TODO: This function's implementation is extremely basic, and is sure to return an incorrect result in some cases. A
-// more accurate implementation would have each expression return its own collation and coercion values.
-func GetCollationViaCoercion(expr sql.Expression) (sql.CollationID, int) {
-	if expr == nil {
-		return sql.Collation_Default, 6
-	}
-	collation := sql.Collation_Default
-	if typeWithCollation, ok := expr.Type().(sql.TypeWithCollation); ok {
-		collation = typeWithCollation.Collation()
-	} else {
-		// From the docs (which seems applicable): The collation of a numeric or temporal value has a coercibility of 5.
-		return sql.Collation_Default, 5
-	}
-
-	switch expr.(type) {
-	case *CollatedExpression:
-		return collation, 0
-	case *GetField, *ProcedureParam, *UserVar, *SystemVar:
-		return collation, 2
-	case *Literal:
-		return collation, 4
-	default:
-		if funcExpr, ok := expr.(sql.FunctionExpression); ok {
-			switch funcExpr.FunctionName() {
-			case "concat":
-				coercibility := 6
-				var childrenWithCoercibility []sql.CollationID
-				for _, child := range funcExpr.Children() {
-					childCollation, childCoercibility := GetCollationViaCoercion(child)
-					if childCollation == sql.Collation_Unspecified {
-						continue
-					}
-					if childCoercibility < coercibility {
-						childrenWithCoercibility = childrenWithCoercibility[:0] // Reset slice while retaining array
-						coercibility = childCoercibility
-					}
-					if childCoercibility == coercibility {
-						childrenWithCoercibility = append(childrenWithCoercibility, childCollation)
-					}
-				}
-
-				if len(childrenWithCoercibility) == 0 {
-					return sql.Collation_Default, 1 // This should never happen, but we're checking just in case
-				}
-				// Check if all children have the same character set, and apply the _bin precedence rule
-				charset := childrenWithCoercibility[0].CharacterSet()
-				collation = childrenWithCoercibility[0]
-				for i := 1; i < len(childrenWithCoercibility); i++ {
-					childCollation := childrenWithCoercibility[i]
-					//TODO: If one character set is Unicode and the other is non-Unicode, we shouldn't error but should
-					// instead use the Unicode character set
-					if childCollation.CharacterSet() != charset {
-						return sql.Collation_Unspecified, 6
-					}
-					if !strings.HasSuffix(collation.Name(), "_bin") && strings.HasSuffix(childCollation.Name(), "_bin") {
-						collation = childCollation
-					}
-				}
-
-				return collation, 1
-			case "user", "current_user", "version":
-				return collation, 3
-			default:
-				// It appears that many functions return a value of 4, so it's the default value (using the function COERCIBILITY).
-				// As a special rule, we inspect the expression tree of unknown expressions. This is not what MySQL does,
-				// but it's a better approximation of the behavior than just checking the top of the tree at all times.
-				coercibility := 4
-				inspectExpression(funcExpr, func(expr sql.Expression) {
-					switch expr.(type) {
-					case *CollatedExpression:
-						coercibility = 0
-					case *GetField, *ProcedureParam, *UserVar, *SystemVar:
-						if coercibility > 2 {
-							coercibility = 2
-						}
-					}
-				})
-				return collation, coercibility
-			}
-		}
-		// Some general expressions returns a value of 5, so we just return 5 for all unmatched expressions.
-		return collation, 5
-	}
-}
-
-// ResolveCoercibility returns the collation to use by comparing coercibility, along with giving priority to binary
-// collations. This is an approximation of MySQL's coercibility rules:
-// https://dev.mysql.com/doc/refman/8.0/en/charset-collation-coercibility.html
-func ResolveCoercibility(leftCollation sql.CollationID, leftCoercibility int, rightCollation sql.CollationID, rightCoercibility int) (sql.CollationID, error) {
-	if leftCoercibility < rightCoercibility {
-		return leftCollation, nil
-	} else if leftCoercibility > rightCoercibility {
-		return rightCollation, nil
-	} else if leftCollation == rightCollation {
-		return leftCollation, nil
-	} else if leftCollation == sql.Collation_Unspecified {
-		return rightCollation, nil
-	} else if rightCollation == sql.Collation_Unspecified {
-		return leftCollation, nil
-	} else { // Collations are not equal
-		leftCharset := leftCollation.CharacterSet()
-		rightCharset := rightCollation.CharacterSet()
-		if leftCharset != rightCharset {
-			if leftCharset.MaxLength() == 1 && rightCharset.MaxLength() > 1 { // Left non-Unicode, Right Unicode
-				return rightCollation, nil
-			} else if leftCharset.MaxLength() > 1 && rightCharset.MaxLength() == 1 { // Left Unicode, Right non-Unicode
-				return leftCollation, nil
-			} else {
-				return sql.Collation_Unspecified, sql.ErrCollationIllegalMix.New(leftCollation.Name(), rightCollation.Name())
-			}
-		} else { // Character sets are equal
-			// If the right collation is not _bin, then we default to the left collation (regardless of whether it is
-			// or is not _bin).
-			if strings.HasSuffix(rightCollation.Name(), "_bin") {
-				return rightCollation, nil
-			} else {
-				return leftCollation, nil
-			}
-		}
-	}
-}
-
-// TODO: remove when finished with collation coercibility
-func inspectExpression(expr sql.Expression, exprFunc func(sql.Expression)) {
-	for _, child := range expr.Children() {
-		inspectExpression(child, exprFunc)
-	}
-	exprFunc(expr)
 }

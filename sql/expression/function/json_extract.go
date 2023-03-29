@@ -32,6 +32,7 @@ type JSONExtract struct {
 }
 
 var _ sql.FunctionExpression = (*JSONExtract)(nil)
+var _ sql.CollationCoercible = (*JSONExtract)(nil)
 
 // NewJSONExtract creates a new JSONExtract UDF.
 func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
@@ -69,6 +70,11 @@ func (j *JSONExtract) Resolved() bool {
 
 // Type implements the sql.Expression interface.
 func (j *JSONExtract) Type() sql.Type { return types.JSON }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONExtract) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
+}
 
 // Eval implements the sql.Expression interface.
 func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

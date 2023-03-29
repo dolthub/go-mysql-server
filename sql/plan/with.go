@@ -30,6 +30,7 @@ type With struct {
 }
 
 var _ sql.Node = (*With)(nil)
+var _ sql.CollationCoercible = (*With)(nil)
 var _ DisjointedChildrenNode = (*With)(nil)
 
 func NewWith(child sql.Node, ctes []*CommonTableExpression, recursive bool) *With {
@@ -83,6 +84,11 @@ func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (w *With) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return w.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (w *With) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, w.Child)
 }
 
 // DisjointedChildren implements the interface DisjointedChildrenNode.

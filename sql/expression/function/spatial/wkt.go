@@ -30,6 +30,7 @@ type AsWKT struct {
 }
 
 var _ sql.FunctionExpression = (*AsWKT)(nil)
+var _ sql.CollationCoercible = (*AsWKT)(nil)
 
 // NewAsWKT creates a new point expression.
 func NewAsWKT(e sql.Expression) sql.Expression {
@@ -54,6 +55,11 @@ func (p *AsWKT) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (p *AsWKT) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AsWKT) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 func (p *AsWKT) String() string {
@@ -198,6 +204,7 @@ type GeomFromText struct {
 }
 
 var _ sql.FunctionExpression = (*GeomFromText)(nil)
+var _ sql.CollationCoercible = (*GeomFromText)(nil)
 
 // NewGeomFromText creates a new point expression.
 func NewGeomFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -221,6 +228,11 @@ func (g *GeomFromText) Description() string {
 func (g *GeomFromText) Type() sql.Type {
 	// TODO: return type is determined after Eval, use Geometry for now?
 	return types.GeometryType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomFromText) String() string {
@@ -627,6 +639,7 @@ type PointFromText struct {
 }
 
 var _ sql.FunctionExpression = (*PointFromText)(nil)
+var _ sql.CollationCoercible = (*PointFromText)(nil)
 
 // NewPointFromText creates a new point expression.
 func NewPointFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -649,6 +662,11 @@ func (p *PointFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (p *PointFromText) Type() sql.Type {
 	return types.PointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PointFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PointFromText) String() string {
@@ -679,6 +697,7 @@ type LineFromText struct {
 }
 
 var _ sql.FunctionExpression = (*LineFromText)(nil)
+var _ sql.CollationCoercible = (*LineFromText)(nil)
 
 // NewLineFromText creates a new point expression.
 func NewLineFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -701,6 +720,11 @@ func (l *LineFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (l *LineFromText) Type() sql.Type {
 	return types.LineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LineFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *LineFromText) String() string {
@@ -731,6 +755,7 @@ type PolyFromText struct {
 }
 
 var _ sql.FunctionExpression = (*PolyFromText)(nil)
+var _ sql.CollationCoercible = (*PolyFromText)(nil)
 
 // NewPolyFromText creates a new polygon expression.
 func NewPolyFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -753,6 +778,11 @@ func (p *PolyFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (p *PolyFromText) Type() sql.Type {
 	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PolyFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PolyFromText) String() string {
@@ -783,6 +813,7 @@ type MPointFromText struct {
 }
 
 var _ sql.FunctionExpression = (*MPointFromText)(nil)
+var _ sql.CollationCoercible = (*MPointFromText)(nil)
 
 // NewMPointFromText creates a new MultiPoint expression.
 func NewMPointFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -805,6 +836,11 @@ func (p *MPointFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (p *MPointFromText) Type() sql.Type {
 	return types.MultiPointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPointFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPointFromText) String() string {
@@ -835,6 +871,7 @@ type MLineFromText struct {
 }
 
 var _ sql.FunctionExpression = (*MLineFromText)(nil)
+var _ sql.CollationCoercible = (*MLineFromText)(nil)
 
 // NewMLineFromText creates a new multilinestring expression.
 func NewMLineFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -857,6 +894,11 @@ func (l *MLineFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (l *MLineFromText) Type() sql.Type {
 	return types.MultiLineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MLineFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *MLineFromText) String() string {
@@ -887,6 +929,7 @@ type MPolyFromText struct {
 }
 
 var _ sql.FunctionExpression = (*MPolyFromText)(nil)
+var _ sql.CollationCoercible = (*MPolyFromText)(nil)
 
 // NewMPolyFromText creates a new multilinestring expression.
 func NewMPolyFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -909,6 +952,11 @@ func (p *MPolyFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (p *MPolyFromText) Type() sql.Type {
 	return types.MultiPolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPolyFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPolyFromText) String() string {
@@ -939,6 +987,7 @@ type GeomCollFromText struct {
 }
 
 var _ sql.FunctionExpression = (*GeomCollFromText)(nil)
+var _ sql.CollationCoercible = (*GeomCollFromText)(nil)
 
 // NewGeomCollFromText creates a new multilinestring expression.
 func NewGeomCollFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -961,6 +1010,11 @@ func (p *GeomCollFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (p *GeomCollFromText) Type() sql.Type {
 	return types.GeomCollType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomCollFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *GeomCollFromText) String() string {

@@ -30,6 +30,7 @@ type Close struct {
 }
 
 var _ sql.Node = (*Close)(nil)
+var _ sql.CollationCoercible = (*Close)(nil)
 var _ expression.ProcedureReferencable = (*Close)(nil)
 
 // NewClose returns a new *Close node.
@@ -67,6 +68,11 @@ func (c *Close) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (c *Close) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Close) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

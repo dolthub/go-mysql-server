@@ -30,10 +30,16 @@ type InSubquery struct {
 }
 
 var _ sql.Expression = (*InSubquery)(nil)
+var _ sql.CollationCoercible = (*InSubquery)(nil)
 
 // Type implements sql.Expression
 func (in *InSubquery) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*InSubquery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // NewInSubquery creates an InSubquery expression.

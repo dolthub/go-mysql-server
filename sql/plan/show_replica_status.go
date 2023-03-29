@@ -32,6 +32,7 @@ type ShowReplicaStatus struct {
 }
 
 var _ sql.Node = (*ShowReplicaStatus)(nil)
+var _ sql.CollationCoercible = (*ShowReplicaStatus)(nil)
 var _ BinlogReplicaControllerCommand = (*ShowReplicaStatus)(nil)
 
 func NewShowReplicaStatus() *ShowReplicaStatus {
@@ -217,4 +218,9 @@ func (s *ShowReplicaStatus) WithChildren(children ...sql.Node) (sql.Node, error)
 func (s *ShowReplicaStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationClient))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowReplicaStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

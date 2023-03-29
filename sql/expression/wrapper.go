@@ -28,6 +28,7 @@ type Wrapper struct {
 }
 
 var _ sql.Expression = (*Wrapper)(nil)
+var _ sql.CollationCoercible = (*Wrapper)(nil)
 
 // WrapExpression takes in an expression and wraps it, returning the resulting Wrapper expression. Useful for when
 // an expression is nil.
@@ -106,4 +107,12 @@ func (w *Wrapper) WithChildren(children ...sql.Expression) (sql.Expression, erro
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 1)
 	}
 	return WrapExpression(children[0]), nil
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (w *Wrapper) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if w.inner == nil {
+		return sql.Collation_binary, 6
+	}
+	return sql.GetCoercibility(ctx, w.inner)
 }

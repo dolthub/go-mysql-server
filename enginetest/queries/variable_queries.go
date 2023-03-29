@@ -226,6 +226,26 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set multiple variables including 'names'",
+		SetUpScript: []string{
+			`SET sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')), time_zone='+00:00', NAMES utf8mb3 COLLATE utf8mb3_bin;`,
+		},
+		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"NO_ENGINE_SUBSTITUTION,PIPES_AS_CONCAT,ANSI", "+00:00", "utf8mb3", "utf8mb3", "utf8mb3"},
+		},
+	},
+	{
+		Name: "set multiple variables including 'charset'",
+		SetUpScript: []string{
+			`SET sql_mode=ALLOW_INVALID_DATES, time_zone='+00:00', CHARSET 'utf8'`,
+		},
+		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"ALLOW_INVALID_DATES", "+00:00", "utf8", "utf8mb4", "utf8"},
+		},
+	},
+	{
 		Name: "set system variable to bareword",
 		SetUpScript: []string{
 			`set @@sql_mode = ALLOW_INVALID_DATES`,

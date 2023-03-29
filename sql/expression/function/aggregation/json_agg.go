@@ -44,6 +44,7 @@ type JSONObjectAgg struct {
 var _ sql.FunctionExpression = (*JSONObjectAgg)(nil)
 var _ sql.Aggregation = (*JSONObjectAgg)(nil)
 var _ sql.WindowAdaptableExpression = (*JSONObjectAgg)(nil)
+var _ sql.CollationCoercible = (*JSONObjectAgg)(nil)
 
 // NewJSONObjectAgg creates a new JSONObjectAgg function.
 func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
@@ -72,6 +73,11 @@ func (j *JSONObjectAgg) String() string {
 // Type implements the Expression interface.
 func (j *JSONObjectAgg) Type() sql.Type {
 	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONObjectAgg) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
 // IsNullable implements the Expression interface.

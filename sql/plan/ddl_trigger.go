@@ -45,6 +45,9 @@ type CreateTrigger struct {
 	Definer             string
 }
 
+var _ sql.Node = (*CreateTrigger)(nil)
+var _ sql.CollationCoercible = (*CreateTrigger)(nil)
+
 func NewCreateTrigger(triggerDb sql.Database,
 	triggerName,
 	triggerTime,
@@ -108,6 +111,11 @@ func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *CreateTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(GetDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Trigger))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateTrigger) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (c *CreateTrigger) String() string {

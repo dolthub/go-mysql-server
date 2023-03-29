@@ -328,14 +328,14 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 				eq(col(0, "foo", "bar"), lit(5)),
 			),
-			plan.EmptyTable,
+			plan.NewEmptyTableWithSchema(inner.Schema()),
 		},
 		{
 			and(
 				eq(col(0, "foo", "bar"), lit(5)),
 				eq(lit(5), lit(4)),
 			),
-			plan.EmptyTable,
+			plan.NewEmptyTableWithSchema(inner.Schema()),
 		},
 		{
 			and(
@@ -383,7 +383,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 				eq(lit(5), lit(4)),
 			),
-			plan.EmptyTable,
+			plan.NewEmptyTableWithSchema(inner.Schema()),
 		},
 	}
 

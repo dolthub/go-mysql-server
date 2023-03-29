@@ -30,6 +30,7 @@ type Perimeter struct {
 }
 
 var _ sql.FunctionExpression = (*Perimeter)(nil)
+var _ sql.CollationCoercible = (*Perimeter)(nil)
 
 // NewSTLength creates a new STX expression.
 func NewPerimeter(args ...sql.Expression) (sql.Expression, error) {
@@ -52,6 +53,11 @@ func (p *Perimeter) Description() string {
 // Type implements the sql.Expression interface.
 func (p *Perimeter) Type() sql.Type {
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Perimeter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *Perimeter) String() string {

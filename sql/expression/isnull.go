@@ -24,6 +24,9 @@ type IsNull struct {
 	UnaryExpression
 }
 
+var _ sql.Expression = (*IsNull)(nil)
+var _ sql.CollationCoercible = (*IsNull)(nil)
+
 // NewIsNull creates a new IsNull expression.
 func NewIsNull(child sql.Expression) *IsNull {
 	return &IsNull{UnaryExpression{child}}
@@ -32,6 +35,11 @@ func NewIsNull(child sql.Expression) *IsNull {
 // Type implements the Expression interface.
 func (e *IsNull) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IsNull) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.

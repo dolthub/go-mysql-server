@@ -60,6 +60,7 @@ type RecursiveCte struct {
 var _ sql.Node = (*RecursiveCte)(nil)
 var _ sql.Nameable = (*RecursiveCte)(nil)
 var _ sql.Expressioner = (*RecursiveCte)(nil)
+var _ sql.CollationCoercible = (*RecursiveCte)(nil)
 
 func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool, l sql.Expression, sf sql.SortFields) *RecursiveCte {
 	return &RecursiveCte{
@@ -165,6 +166,11 @@ func (r *RecursiveCte) Children() []sql.Node {
 
 func (r *RecursiveCte) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return r.union.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RecursiveCte) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (r *RecursiveCte) Expressions() []sql.Expression {
@@ -349,6 +355,9 @@ type RecursiveTable struct {
 	buf    []sql.Row
 }
 
+var _ sql.Node = (*RecursiveTable)(nil)
+var _ sql.CollationCoercible = (*RecursiveTable)(nil)
+
 func (r *RecursiveTable) Resolved() bool {
 	return true
 }
@@ -380,6 +389,11 @@ func (r *RecursiveTable) WithChildren(node ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (r *RecursiveTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RecursiveTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 var _ sql.Node = (*RecursiveTable)(nil)

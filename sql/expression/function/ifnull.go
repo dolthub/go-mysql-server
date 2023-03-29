@@ -28,6 +28,7 @@ type IfNull struct {
 }
 
 var _ sql.FunctionExpression = (*IfNull)(nil)
+var _ sql.CollationCoercible = (*IfNull)(nil)
 
 // NewIfNull returns a new IFNULL UDF
 func NewIfNull(ex, value sql.Expression) sql.Expression {
@@ -75,6 +76,17 @@ func (f *IfNull) Type() sql.Type {
 		return f.Right.Type()
 	}
 	return f.Left.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *IfNull) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if types.IsNull(f.Left) {
+		if types.IsNull(f.Right) {
+			return sql.Collation_binary, 6
+		}
+		return sql.GetCoercibility(ctx, f.Right)
+	}
+	return sql.GetCoercibility(ctx, f.Left)
 }
 
 // IsNullable implements the Expression interface.

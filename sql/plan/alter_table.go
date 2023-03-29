@@ -35,6 +35,7 @@ type RenameTable struct {
 
 var _ sql.Node = (*RenameTable)(nil)
 var _ sql.Databaser = (*RenameTable)(nil)
+var _ sql.CollationCoercible = (*RenameTable)(nil)
 
 // NewRenameTable creates a new RenameTable node
 func NewRenameTable(db sql.Database, oldNames, newNames []string) *RenameTable {
@@ -140,6 +141,11 @@ func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 	return opChecker.UserHasPrivileges(ctx, operations...)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RenameTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 type AddColumn struct {
 	ddlNode
 	Table     sql.Node
@@ -151,6 +157,7 @@ type AddColumn struct {
 var _ sql.Node = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 var _ sql.SchemaTarget = (*AddColumn)(nil)
+var _ sql.CollationCoercible = (*AddColumn)(nil)
 
 func (a *AddColumn) DebugString() string {
 	pr := sql.NewTreePrinter()
@@ -418,6 +425,11 @@ func (a *AddColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 		sql.NewPrivilegedOperation(a.db.Name(), getTableName(a.Table), "", sql.PrivilegeType_Alter))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AddColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (a *AddColumn) Children() []sql.Node {
 	return []sql.Node{a.Table}
 }
@@ -632,10 +644,19 @@ type colDefaultExpression struct {
 	column *sql.Column
 }
 
+var _ sql.Expression = colDefaultExpression{}
+var _ sql.CollationCoercible = colDefaultExpression{}
+
 func (c colDefaultExpression) Resolved() bool   { return true }
 func (c colDefaultExpression) String() string   { return "" }
 func (c colDefaultExpression) Type() sql.Type   { return c.column.Type }
 func (c colDefaultExpression) IsNullable() bool { return c.column.Default == nil }
+func (c colDefaultExpression) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if c.column != nil && c.column.Default != nil {
+		return c.column.Default.CollationCoercibility(ctx)
+	}
+	return sql.Collation_binary, 6
+}
 
 func (c colDefaultExpression) Children() []sql.Expression {
 	panic("colDefaultExpression is only meant for immediate evaluation and should never be modified")
@@ -675,6 +696,7 @@ type DropColumn struct {
 var _ sql.Node = (*DropColumn)(nil)
 var _ sql.Databaser = (*DropColumn)(nil)
 var _ sql.SchemaTarget = (*DropColumn)(nil)
+var _ sql.CollationCoercible = (*DropColumn)(nil)
 
 func NewDropColumn(database sql.Database, table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
@@ -956,6 +978,11 @@ func (d *DropColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		sql.NewPrivilegedOperation(d.Database().Name(), getTableName(d.Table), "", sql.PrivilegeType_Alter))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (d DropColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	d.targetSchema = schema
 	return &d, nil
@@ -990,6 +1017,7 @@ type RenameColumn struct {
 var _ sql.Node = (*RenameColumn)(nil)
 var _ sql.Databaser = (*RenameColumn)(nil)
 var _ sql.SchemaTarget = (*RenameColumn)(nil)
+var _ sql.CollationCoercible = (*RenameColumn)(nil)
 
 func NewRenameColumn(database sql.Database, table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
@@ -1126,6 +1154,11 @@ func (r *RenameColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 		sql.NewPrivilegedOperation(r.db.Name(), getTableName(r.Table), "", sql.PrivilegeType_Alter))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RenameColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 type ModifyColumn struct {
 	ddlNode
 	Table        sql.Node
@@ -1139,6 +1172,7 @@ var _ sql.Node = (*ModifyColumn)(nil)
 var _ sql.Expressioner = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
 var _ sql.SchemaTarget = (*ModifyColumn)(nil)
+var _ sql.CollationCoercible = (*ModifyColumn)(nil)
 
 func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	column.Source = table.name
@@ -1583,6 +1617,11 @@ func (m *ModifyColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 		sql.NewPrivilegedOperation(m.Database().Name(), getTableName(m.Table), "", sql.PrivilegeType_Alter))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ModifyColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (m *ModifyColumn) Expressions() []sql.Expression {
 	return append(transform.WrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
 }
@@ -1665,6 +1704,87 @@ func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
 	}
 
 	return nil
+}
+
+type AlterTableCollation struct {
+	ddlNode
+	Table     sql.Node
+	Collation sql.CollationID
+}
+
+var _ sql.Node = (*AlterTableCollation)(nil)
+var _ sql.Databaser = (*AlterTableCollation)(nil)
+
+// NewAlterTableCollation returns a new *AlterTableCollation
+func NewAlterTableCollation(database sql.Database, table *UnresolvedTable, collation sql.CollationID) *AlterTableCollation {
+	return &AlterTableCollation{
+		ddlNode:   ddlNode{db: database},
+		Table:     table,
+		Collation: collation,
+	}
+}
+
+// WithDatabase implements the interface sql.Databaser.
+func (atc *AlterTableCollation) WithDatabase(db sql.Database) (sql.Node, error) {
+	natc := *atc
+	natc.db = db
+	return &natc, nil
+}
+
+// String implements the interface sql.Node.
+func (atc *AlterTableCollation) String() string {
+	return fmt.Sprintf("alter table %s collate %s", atc.Table.String(), atc.Collation.Name())
+}
+
+// DebugString implements the interface sql.Node.
+func (atc *AlterTableCollation) DebugString() string {
+	return atc.String()
+}
+
+// Resolved implements the interface sql.Node.
+func (atc *AlterTableCollation) Resolved() bool {
+	return atc.Table.Resolved() && atc.ddlNode.Resolved()
+}
+
+// Schema implements the interface sql.Node.
+func (atc *AlterTableCollation) Schema() sql.Schema {
+	return types.OkResultSchema
+}
+
+// RowIter implements the interface sql.Node.
+func (atc *AlterTableCollation) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	tbl, err := getTableFromDatabase(ctx, atc.Database(), atc.Table)
+	if err != nil {
+		return nil, err
+	}
+
+	alterable, ok := tbl.(sql.CollationAlterableTable)
+	if !ok {
+		return nil, sql.ErrAlterTableCollationNotSupported.New(tbl.Name())
+	}
+
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyDefaultCollation(ctx, atc.Collation)
+}
+
+// Children implements the interface sql.Node.
+func (atc *AlterTableCollation) Children() []sql.Node {
+	return []sql.Node{atc.Table}
+}
+
+// WithChildren implements the interface sql.Node.
+func (atc *AlterTableCollation) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(atc, len(children), 1)
+	}
+	natc := *atc
+	natc.Table = children[0]
+	return &natc, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (atc *AlterTableCollation) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(atc.db.Name(), getTableName(atc.Table), "", sql.PrivilegeType_Alter))
 }
 
 // updateDefaultsOnColumnRename updates each column that references the old column name within its default value.

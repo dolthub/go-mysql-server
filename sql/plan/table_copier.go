@@ -20,6 +20,7 @@ type TableCopier struct {
 
 var _ sql.Databaser = (*TableCopier)(nil)
 var _ sql.Node = (*TableCopier)(nil)
+var _ sql.CollationCoercible = (*TableCopier)(nil)
 
 type CopierProps struct {
 	replace bool
@@ -154,6 +155,11 @@ func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(tc.db.Name(), "", "", sql.PrivilegeType_Create)) &&
 		tc.source.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*TableCopier) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (tc *TableCopier) Resolved() bool {

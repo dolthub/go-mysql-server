@@ -97,3 +97,8 @@ func (t nullType) ValueType() reflect.Type {
 func (t nullType) Zero() interface{} {
 	return nil
 }
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (nullType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 6
+}

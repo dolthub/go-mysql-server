@@ -35,6 +35,7 @@ type systemEnumType struct {
 }
 
 var _ sql.SystemVariableType = systemEnumType{}
+var _ sql.CollationCoercible = systemEnumType{}
 
 // NewSystemEnumType returns a new systemEnumType.
 func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType {
@@ -188,6 +189,11 @@ func (t systemEnumType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t systemEnumType) Zero() interface{} {
 	return ""
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (systemEnumType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
 }
 
 // EncodeValue implements SystemVariableType interface.

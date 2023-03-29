@@ -5346,19 +5346,26 @@ type customFunc struct {
 	expression.UnaryExpression
 }
 
-func (c customFunc) String() string {
+var _ sql.Expression = (*customFunc)(nil)
+var _ sql.CollationCoercible = (*customFunc)(nil)
+
+func (c *customFunc) String() string {
 	return "customFunc(" + c.Child.String() + ")"
 }
 
-func (c customFunc) Type() sql.Type {
+func (c *customFunc) Type() sql.Type {
 	return types.Uint32
 }
 
-func (c customFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (c *customFunc) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, c.Child)
+}
+
+func (c *customFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return int64(5), nil
 }
 
-func (c customFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *customFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return &customFunc{expression.UnaryExpression{children[0]}}, nil
 }
 

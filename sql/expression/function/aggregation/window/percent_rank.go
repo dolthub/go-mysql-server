@@ -30,6 +30,7 @@ type PercentRank struct {
 var _ sql.FunctionExpression = (*PercentRank)(nil)
 var _ sql.WindowAggregation = (*PercentRank)(nil)
 var _ sql.WindowAdaptableExpression = (*PercentRank)(nil)
+var _ sql.CollationCoercible = (*PercentRank)(nil)
 
 func NewPercentRank() sql.Expression {
 	return &PercentRank{}
@@ -77,6 +78,11 @@ func (p *PercentRank) FunctionName() string {
 // Type implements sql.Expression
 func (p *PercentRank) Type() sql.Type {
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PercentRank) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression

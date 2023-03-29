@@ -31,6 +31,7 @@ type SRID struct {
 }
 
 var _ sql.FunctionExpression = (*SRID)(nil)
+var _ sql.CollationCoercible = (*SRID)(nil)
 
 var ErrInvalidSRID = errors.NewKind("There's no spatial reference with SRID %d")
 
@@ -59,6 +60,11 @@ func (s *SRID) Type() sql.Type {
 	} else {
 		return s.ChildExpressions[0].Type()
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SRID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *SRID) String() string {

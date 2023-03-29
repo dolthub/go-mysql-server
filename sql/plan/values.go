@@ -26,6 +26,9 @@ type Values struct {
 	ExpressionTuples [][]sql.Expression
 }
 
+var _ sql.Node = (*Values)(nil)
+var _ sql.CollationCoercible = (*Values)(nil)
+
 // NewValues creates a Values node with the given tuples.
 func NewValues(tuples [][]sql.Expression) *Values {
 	return &Values{tuples}
@@ -152,6 +155,11 @@ func (p *Values) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *Values) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Values) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithExpressions implements the Expressioner interface.

@@ -36,6 +36,7 @@ func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJ
 }
 
 var _ sql.Node = (*UpdateJoin)(nil)
+var _ sql.CollationCoercible = (*UpdateJoin)(nil)
 
 // String implements the sql.Node interface.
 func (u *UpdateJoin) String() string {
@@ -82,6 +83,11 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (u *UpdateJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return u.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (u *UpdateJoin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, u.Child)
 }
 
 // updateJoinIter wraps the child UpdateSource projectIter and returns join row in such a way that updates per table row are

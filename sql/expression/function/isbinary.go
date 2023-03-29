@@ -29,6 +29,7 @@ type IsBinary struct {
 }
 
 var _ sql.FunctionExpression = (*IsBinary)(nil)
+var _ sql.CollationCoercible = (*IsBinary)(nil)
 
 // NewIsBinary creates a new IsBinary expression.
 func NewIsBinary(e sql.Expression) sql.Expression {
@@ -82,6 +83,11 @@ func (ib *IsBinary) WithChildren(children ...sql.Expression) (sql.Expression, er
 // Type implements the Expression interface.
 func (ib *IsBinary) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IsBinary) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 const sniffLen = 8000

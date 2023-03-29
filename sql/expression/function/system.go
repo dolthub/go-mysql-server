@@ -32,6 +32,7 @@ func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 }
 
 var _ sql.FunctionExpression = ConnectionID{}
+var _ sql.CollationCoercible = ConnectionID{}
 
 func NewConnectionID() sql.Expression {
 	return ConnectionID{
@@ -47,6 +48,11 @@ func (c ConnectionID) FunctionName() string {
 // Description implements sql.FunctionExpression
 func (c ConnectionID) Description() string {
 	return "returns the current connection ID."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (ConnectionID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
 }
 
 // Eval implements sql.Expression
@@ -76,10 +82,16 @@ func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 }
 
 var _ sql.FunctionExpression = User{}
+var _ sql.CollationCoercible = User{}
 
 // Description implements sql.FunctionExpression
 func (c User) Description() string {
 	return "returns the authenticated user name and host name."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (User) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
 }
 
 func NewUser() sql.Expression {
