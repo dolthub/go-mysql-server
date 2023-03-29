@@ -194,11 +194,6 @@ func (g GeomColl) SetSRID(srid uint32) GeometryValue {
 	}
 }
 
-// GetGeomType implements GeometryValue interface.
-func (g GeomColl) GetGeomType() uint32 {
-	return WKBGeomCollID
-}
-
 // CalculateSize is a helper method to determine how much space to allocate for geometry collections
 // TODO: recursion could be better; possible to expand to fit all types
 func (g GeomColl) CalculateSize() (numPoints int, numCounts int, numHeaders int) {
