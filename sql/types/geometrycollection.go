@@ -41,6 +41,7 @@ type GeomColl struct {
 
 var _ sql.Type = GeomCollType{}
 var _ sql.SpatialColumnType = GeomCollType{}
+var _ sql.CollationCoercible = GeomCollType{}
 var _ GeometryValue = GeomColl{}
 
 var (
@@ -140,6 +141,11 @@ func (t GeomCollType) Zero() interface{} {
 // ValueType implements Type interface.
 func (t GeomCollType) ValueType() reflect.Type {
 	return geomcollValueType
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (GeomCollType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

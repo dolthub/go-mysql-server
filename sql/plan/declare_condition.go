@@ -28,6 +28,7 @@ type DeclareCondition struct {
 }
 
 var _ sql.Node = (*DeclareCondition)(nil)
+var _ sql.CollationCoercible = (*DeclareCondition)(nil)
 
 // NewDeclareCondition returns a *DeclareCondition node.
 func NewDeclareCondition(name string, errCode int64, sqlStateValue string) *DeclareCondition {
@@ -72,6 +73,11 @@ func (d *DeclareCondition) WithChildren(children ...sql.Node) (sql.Node, error) 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DeclareCondition) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeclareCondition) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the sql.Node interface.

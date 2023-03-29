@@ -42,6 +42,7 @@ func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
 var _ sql.Expressioner = (*Sort)(nil)
 var _ sql.Node = (*Sort)(nil)
 var _ sql.Node2 = (*Sort)(nil)
+var _ sql.CollationCoercible = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
@@ -118,6 +119,11 @@ func (s *Sort) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (s *Sort) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return s.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *Sort) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Child)
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -282,7 +288,9 @@ func NewTopN(fields sql.SortFields, limit sql.Expression, child sql.Node) *TopN 
 	}
 }
 
+var _ sql.Node = (*TopN)(nil)
 var _ sql.Expressioner = (*TopN)(nil)
+var _ sql.CollationCoercible = (*TopN)(nil)
 
 // Resolved implements the Resolvable interface.
 func (n *TopN) Resolved() bool {
@@ -358,6 +366,11 @@ func (n *TopN) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *TopN) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (n *TopN) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, n.Child)
 }
 
 // WithExpressions implements the Expressioner interface.

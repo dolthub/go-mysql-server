@@ -33,6 +33,7 @@ type DropUser struct {
 
 var _ sql.Node = (*DropUser)(nil)
 var _ sql.Databaser = (*DropUser)(nil)
+var _ sql.CollationCoercible = (*DropUser)(nil)
 
 // NewDropUser returns a new DropUser node.
 func NewDropUser(ifExists bool, users []UserName) *DropUser {
@@ -96,6 +97,11 @@ func (n *DropUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *DropUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropUser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

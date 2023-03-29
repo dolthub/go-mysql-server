@@ -49,6 +49,7 @@ type CreateForeignKey struct {
 var _ sql.Node = (*CreateForeignKey)(nil)
 var _ sql.MultiDatabaser = (*CreateForeignKey)(nil)
 var _ sql.Databaseable = (*CreateForeignKey)(nil)
+var _ sql.CollationCoercible = (*CreateForeignKey)(nil)
 
 func NewAlterAddForeignKey(fkDef *sql.ForeignKeyConstraint) *CreateForeignKey {
 	return &CreateForeignKey{
@@ -80,6 +81,11 @@ func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) 
 func (p *CreateForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(p.FkDef.ParentDatabase, p.FkDef.ParentTable, "", sql.PrivilegeType_References))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Schema implements the interface sql.Node.
@@ -356,6 +362,7 @@ type DropForeignKey struct {
 var _ sql.Node = (*DropForeignKey)(nil)
 var _ sql.MultiDatabaser = (*DropForeignKey)(nil)
 var _ sql.Databaseable = (*DropForeignKey)(nil)
+var _ sql.CollationCoercible = (*DropForeignKey)(nil)
 
 func NewAlterDropForeignKey(db, table, name string) *DropForeignKey {
 	return &DropForeignKey{
@@ -404,6 +411,11 @@ func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p *DropForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(p.database, p.Table, "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Schema implements the interface sql.Node.

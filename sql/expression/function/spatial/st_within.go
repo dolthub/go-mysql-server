@@ -29,6 +29,7 @@ type Within struct {
 }
 
 var _ sql.FunctionExpression = (*Within)(nil)
+var _ sql.CollationCoercible = (*Within)(nil)
 
 // NewWithin creates a new Within expression.
 func NewWithin(g1, g2 sql.Expression) sql.Expression {
@@ -53,6 +54,11 @@ func (w *Within) Description() string {
 // Type implements the sql.Expression interface.
 func (w *Within) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Within) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (w *Within) String() string {

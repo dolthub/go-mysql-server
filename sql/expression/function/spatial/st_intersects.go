@@ -29,6 +29,7 @@ type Intersects struct {
 }
 
 var _ sql.FunctionExpression = (*Intersects)(nil)
+var _ sql.CollationCoercible = (*Intersects)(nil)
 
 // NewIntersects creates a new Intersects expression.
 func NewIntersects(g1, g2 sql.Expression) sql.Expression {
@@ -53,6 +54,11 @@ func (i *Intersects) Description() string {
 // Type implements the sql.Expression interface.
 func (i *Intersects) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Intersects) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (i *Intersects) String() string {

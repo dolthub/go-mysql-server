@@ -30,6 +30,7 @@ var tupleValueType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 type TupleType []sql.Type
 
 var _ sql.Type = TupleType{nil}
+var _ sql.CollationCoercible = TupleType{nil}
 
 // CreateTuple returns a new tuple type with the given element types.
 func CreateTuple(types ...sql.Type) sql.Type {
@@ -148,4 +149,9 @@ func (t TupleType) Zero() interface{} {
 		zeroes[i] = tt.Zero()
 	}
 	return zeroes
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (TupleType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

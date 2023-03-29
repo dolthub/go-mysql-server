@@ -32,6 +32,7 @@ func (f Version) IsNonDeterministic() bool {
 }
 
 var _ sql.FunctionExpression = (Version)("")
+var _ sql.CollationCoercible = (Version)("")
 
 // NewVersion creates a new Version UDF.
 func NewVersion(versionPostfix string) func(...sql.Expression) (sql.Expression, error) {
@@ -52,6 +53,11 @@ func (f Version) Description() string {
 
 // Type implements the Expression interface.
 func (f Version) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (Version) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
+}
 
 // IsNullable implements the Expression interface.
 func (f Version) IsNullable() bool {

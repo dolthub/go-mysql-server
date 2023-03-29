@@ -33,6 +33,7 @@ type Length struct {
 }
 
 var _ sql.FunctionExpression = (*Length)(nil)
+var _ sql.CollationCoercible = (*Length)(nil)
 
 // CountType is the kind of length count.
 type CountType bool
@@ -87,6 +88,11 @@ func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error
 
 // Type implements the sql.Expression interface.
 func (l *Length) Type() sql.Type { return types.Int32 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Length) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 func (l *Length) String() string {
 	if l.CountType == NumBytes {

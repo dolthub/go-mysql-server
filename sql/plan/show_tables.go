@@ -43,6 +43,7 @@ func NewShowTables(database sql.Database, full bool, asOf sql.Expression) *ShowT
 
 var _ sql.Databaser = (*ShowTables)(nil)
 var _ sql.Expressioner = (*ShowTables)(nil)
+var _ sql.CollationCoercible = (*ShowTables)(nil)
 var _ Versionable = (*ShowTables)(nil)
 
 // Database implements the sql.Databaser interface.
@@ -178,6 +179,11 @@ func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p *ShowTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// Some tables won't be visible during the resolution step if the user doesn't have the correct privileges
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p ShowTables) String() string {

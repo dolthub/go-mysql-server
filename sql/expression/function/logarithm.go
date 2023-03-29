@@ -44,6 +44,7 @@ type LogBase struct {
 }
 
 var _ sql.FunctionExpression = (*LogBase)(nil)
+var _ sql.CollationCoercible = (*LogBase)(nil)
 
 // NewLogBase creates a new LogBase expression.
 func NewLogBase(base float64, e sql.Expression) sql.Expression {
@@ -104,6 +105,11 @@ func (l *LogBase) Type() sql.Type {
 	return types.Float64
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LogBase) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // IsNullable implements the sql.Expression interface.
 func (l *LogBase) IsNullable() bool {
 	return l.base == float64(1) || l.base <= float64(0) || l.Child.IsNullable()
@@ -136,6 +142,7 @@ type Log struct {
 }
 
 var _ sql.FunctionExpression = (*Log)(nil)
+var _ sql.CollationCoercible = (*Log)(nil)
 
 // NewLog creates a new Log expression.
 func NewLog(args ...sql.Expression) (sql.Expression, error) {
@@ -178,6 +185,11 @@ func (l *Log) Children() []sql.Expression {
 // Type returns the resultant type of the function.
 func (l *Log) Type() sql.Type {
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Log) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.

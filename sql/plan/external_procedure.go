@@ -37,6 +37,7 @@ type ExternalProcedure struct {
 
 var _ sql.Node = (*ExternalProcedure)(nil)
 var _ sql.Expressioner = (*ExternalProcedure)(nil)
+var _ sql.CollationCoercible = (*ExternalProcedure)(nil)
 
 // Resolved implements the interface sql.Node.
 func (n *ExternalProcedure) Resolved() bool {
@@ -93,6 +94,11 @@ func (n *ExternalProcedure) WithExpressions(expressions ...sql.Expression) (sql.
 func (n *ExternalProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: when DEFINER is implemented for stored procedures then this should be added
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ExternalProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

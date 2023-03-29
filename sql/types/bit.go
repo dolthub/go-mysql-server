@@ -234,6 +234,11 @@ func (t BitType_) ValueType() reflect.Type {
 	return bitValueType
 }
 
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (BitType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // Zero implements Type interface. Returns a uint64 value.
 func (t BitType_) Zero() interface{} {
 	return uint64(0)

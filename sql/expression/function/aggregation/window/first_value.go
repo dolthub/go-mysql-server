@@ -34,6 +34,7 @@ type FirstValue struct {
 var _ sql.FunctionExpression = (*FirstValue)(nil)
 var _ sql.WindowAggregation = (*FirstValue)(nil)
 var _ sql.WindowAdaptableExpression = (*FirstValue)(nil)
+var _ sql.CollationCoercible = (*FirstValue)(nil)
 
 func NewFirstValue(e sql.Expression) sql.Expression {
 	return &FirstValue{nil, expression.UnaryExpression{Child: e}, 0}
@@ -82,6 +83,11 @@ func (f *FirstValue) FunctionName() string {
 // Type implements sql.Expression
 func (f *FirstValue) Type() sql.Type {
 	return f.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *FirstValue) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, f.Child)
 }
 
 // IsNullable implements sql.Expression

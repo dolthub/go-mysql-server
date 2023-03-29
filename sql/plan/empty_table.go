@@ -25,6 +25,7 @@ func NewEmptyTableWithSchema(schema sql.Schema) sql.Node {
 }
 
 var _ sql.Node = (*EmptyTable)(nil)
+var _ sql.CollationCoercible = (*EmptyTable)(nil)
 
 type EmptyTable struct {
 	schema sql.Schema
@@ -52,4 +53,9 @@ func (e *EmptyTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (e *EmptyTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*EmptyTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

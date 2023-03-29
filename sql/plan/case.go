@@ -34,6 +34,7 @@ type CaseStatement struct {
 var _ sql.Node = (*CaseStatement)(nil)
 var _ sql.DebugStringer = (*CaseStatement)(nil)
 var _ sql.Expressioner = (*CaseStatement)(nil)
+var _ sql.CollationCoercible = (*CaseStatement)(nil)
 
 // NewCaseStatement creates a new *NewCaseStatement or *IfElseBlock node.
 func NewCaseStatement(caseExpr sql.Expression, ifConditionals []*IfConditional, elseStatement sql.Node) sql.Node {
@@ -123,6 +124,11 @@ func (c *CaseStatement) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	return c.IfElse.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *CaseStatement) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return c.IfElse.CollationCoercibility(ctx)
+}
+
 // RowIter implements the interface sql.Node.
 func (c *CaseStatement) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	caseValue, err := c.Expr.Eval(ctx, row)
@@ -201,6 +207,11 @@ func (e elseCaseError) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (e elseCaseError) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e elseCaseError) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

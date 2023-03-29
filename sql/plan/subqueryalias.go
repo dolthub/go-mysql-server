@@ -32,6 +32,9 @@ type SubqueryAlias struct {
 	CanCacheResults      bool
 }
 
+var _ sql.Node = (*SubqueryAlias)(nil)
+var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
+
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
 	return &SubqueryAlias{
@@ -96,6 +99,11 @@ func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (sq *SubqueryAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return sq.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (sq *SubqueryAlias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, sq.Child)
 }
 
 func (sq *SubqueryAlias) WithChild(n sql.Node) *SubqueryAlias {

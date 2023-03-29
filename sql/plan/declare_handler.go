@@ -39,6 +39,7 @@ type DeclareHandler struct {
 }
 
 var _ sql.Node = (*DeclareHandler)(nil)
+var _ sql.CollationCoercible = (*DeclareHandler)(nil)
 var _ sql.DebugStringer = (*DeclareHandler)(nil)
 var _ expression.ProcedureReferencable = (*DeclareHandler)(nil)
 
@@ -110,6 +111,11 @@ func (d *DeclareHandler) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DeclareHandler) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeclareHandler) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

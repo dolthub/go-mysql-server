@@ -54,6 +54,7 @@ type JSONContains struct {
 }
 
 var _ sql.FunctionExpression = (*JSONContains)(nil)
+var _ sql.CollationCoercible = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
@@ -106,6 +107,11 @@ func (j *JSONContains) String() string {
 
 func (j *JSONContains) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONContains) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (j *JSONContains) IsNullable() bool {

@@ -33,6 +33,7 @@ type Ceil struct {
 }
 
 var _ sql.FunctionExpression = (*Ceil)(nil)
+var _ sql.CollationCoercible = (*Ceil)(nil)
 
 // NewCeil creates a new Ceil expression.
 func NewCeil(num sql.Expression) sql.Expression {
@@ -56,6 +57,11 @@ func (c *Ceil) Type() sql.Type {
 		return childType
 	}
 	return types.Int32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Ceil) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (c *Ceil) String() string {
@@ -111,6 +117,7 @@ type Floor struct {
 }
 
 var _ sql.FunctionExpression = (*Floor)(nil)
+var _ sql.CollationCoercible = (*Floor)(nil)
 
 // NewFloor returns a new Floor expression.
 func NewFloor(num sql.Expression) sql.Expression {
@@ -134,6 +141,11 @@ func (f *Floor) Type() sql.Type {
 		return childType
 	}
 	return types.Int32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Floor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (f *Floor) String() string {
@@ -192,6 +204,7 @@ type Round struct {
 }
 
 var _ sql.FunctionExpression = (*Round)(nil)
+var _ sql.CollationCoercible = (*Round)(nil)
 
 // NewRound returns a new Round expression.
 func NewRound(args ...sql.Expression) (sql.Expression, error) {
@@ -369,6 +382,11 @@ func (r *Round) Type() sql.Type {
 		return leftChildType
 	}
 	return types.Int32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Round) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.

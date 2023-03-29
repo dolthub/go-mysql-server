@@ -59,6 +59,11 @@ func (a AliasReference) Type() sql.Type {
 	return types.Null
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (AliasReference) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (a AliasReference) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return nil, fmt.Errorf("tried to call eval on an unresolved AliasReference")
 }
@@ -71,12 +76,16 @@ func (a AliasReference) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 var _ sql.Expression = (*AliasReference)(nil)
+var _ sql.CollationCoercible = (*AliasReference)(nil)
 
 // Alias is a node that gives a name to an expression.
 type Alias struct {
 	UnaryExpression
 	name string
 }
+
+var _ sql.Expression = (*Alias)(nil)
+var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.
 func NewAlias(name string, expr sql.Expression) *Alias {
@@ -86,6 +95,11 @@ func NewAlias(name string, expr sql.Expression) *Alias {
 // Type returns the type of the expression.
 func (e *Alias) Type() sql.Type {
 	return e.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e *Alias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, e.Child)
 }
 
 // Eval implements the Expression interface.

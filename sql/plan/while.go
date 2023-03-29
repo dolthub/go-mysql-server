@@ -26,6 +26,7 @@ type While struct {
 var _ sql.Node = (*While)(nil)
 var _ sql.DebugStringer = (*While)(nil)
 var _ sql.Expressioner = (*While)(nil)
+var _ sql.CollationCoercible = (*While)(nil)
 var _ RepresentsLabeledBlock = (*While)(nil)
 
 // NewWhile returns a new *While node.

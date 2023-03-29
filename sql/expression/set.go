@@ -30,6 +30,9 @@ type SetField struct {
 	BinaryExpression
 }
 
+var _ sql.Expression = (*SetField)(nil)
+var _ sql.CollationCoercible = (*SetField)(nil)
+
 // NewSetField creates a new SetField expression.
 func NewSetField(left, expr sql.Expression) sql.Expression {
 	return &SetField{BinaryExpression{Left: left, Right: expr}}
@@ -46,6 +49,11 @@ func (s *SetField) DebugString() string {
 // Type implements the Expression interface.
 func (s *SetField) Type() sql.Type {
 	return s.Left.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *SetField) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Left)
 }
 
 // Eval implements the Expression interface.

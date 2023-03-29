@@ -32,6 +32,7 @@ type Truncate struct {
 
 var _ sql.Node = (*Truncate)(nil)
 var _ sql.DebugStringer = (*Truncate)(nil)
+var _ sql.CollationCoercible = (*Truncate)(nil)
 
 // NewTruncate creates a Truncate node.
 func NewTruncate(db string, table sql.Node) *Truncate {
@@ -129,6 +130,11 @@ func (p *Truncate) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p *Truncate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(p.db, getTableName(p.Child), "", sql.PrivilegeType_Drop))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Truncate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the Node interface.

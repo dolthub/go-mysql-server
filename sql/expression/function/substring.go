@@ -36,6 +36,7 @@ type Substring struct {
 }
 
 var _ sql.FunctionExpression = (*Substring)(nil)
+var _ sql.CollationCoercible = (*Substring)(nil)
 
 // NewSubstring creates a new substring UDF.
 func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
@@ -169,6 +170,11 @@ func (s *Substring) Resolved() bool {
 // Type implements the Expression interface.
 func (s *Substring) Type() sql.Type { return s.str.Type() }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *Substring) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.str)
+}
+
 // WithChildren implements the Expression interface.
 func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewSubstring(children...)
@@ -185,6 +191,7 @@ type SubstringIndex struct {
 }
 
 var _ sql.FunctionExpression = (*SubstringIndex)(nil)
+var _ sql.CollationCoercible = (*SubstringIndex)(nil)
 
 // NewSubstringIndex creates a new SubstringIndex UDF.
 func NewSubstringIndex(str, delim, count sql.Expression) sql.Expression {
@@ -289,6 +296,11 @@ func (s *SubstringIndex) Resolved() bool {
 // Type implements the Expression interface.
 func (*SubstringIndex) Type() sql.Type { return types.LongText }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *SubstringIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.str)
+}
+
 // WithChildren implements the Expression interface.
 func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
@@ -304,6 +316,7 @@ type Left struct {
 }
 
 var _ sql.FunctionExpression = Left{}
+var _ sql.CollationCoercible = Left{}
 
 // NewLeft creates a new LEFT function.
 func NewLeft(str, len sql.Expression) sql.Expression {
@@ -389,6 +402,11 @@ func (l Left) Resolved() bool {
 // Type implements the Expression interface.
 func (Left) Type() sql.Type { return types.LongText }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l Left) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, l.str)
+}
+
 // WithChildren implements the Expression interface.
 func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
@@ -404,6 +422,7 @@ type Right struct {
 }
 
 var _ sql.FunctionExpression = Right{}
+var _ sql.CollationCoercible = Right{}
 
 // NewRight creates a new RIGHT function.
 func NewRight(str, len sql.Expression) sql.Expression {
@@ -500,6 +519,11 @@ func (r Right) Resolved() bool {
 // Type implements the Expression interface.
 func (Right) Type() sql.Type { return types.LongText }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r Right) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, r.str)
+}
+
 // WithChildren implements the Expression interface.
 func (r Right) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
@@ -514,6 +538,7 @@ type Instr struct {
 }
 
 var _ sql.FunctionExpression = Instr{}
+var _ sql.CollationCoercible = Instr{}
 
 // NewInstr creates a new instr UDF.
 func NewInstr(str, substr sql.Expression) sql.Expression {
@@ -605,6 +630,11 @@ func (i Instr) Resolved() bool {
 
 // Type implements the Expression interface.
 func (Instr) Type() sql.Type { return types.Int64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (Instr) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // WithChildren implements the Expression interface.
 func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {

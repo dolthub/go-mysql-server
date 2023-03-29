@@ -818,7 +818,56 @@ func TestCallAsOf(t *testing.T) {
 	}
 }
 
+func TestCollationCoercion(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.MydbData)
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+	defer engine.Close()
+
+	ctx := harness.NewContext()
+	ctx.SetCurrentDatabase("mydb")
+
+	for _, statement := range queries.CollationCoercionSetup {
+		enginetest.RunQueryWithContext(t, engine, harness, ctx, statement)
+	}
+
+	for _, test := range queries.CollationCoercionTests {
+		coercibilityQuery := fmt.Sprintf(`SELECT COERCIBILITY(%s) FROM temp_tbl LIMIT 1;`, test.Parameters)
+		collationQuery := fmt.Sprintf(`SELECT COLLATION(%s) FROM temp_tbl LIMIT 1;`, test.Parameters)
+		for i, query := range []string{coercibilityQuery, collationQuery} {
+			t.Run(query, func(t *testing.T) {
+				sch, iter, err := engine.Query(ctx, query)
+				if test.Error {
+					if err == nil {
+						_, err := sql.RowIterToRows(ctx, sch, iter)
+						require.Error(t, err)
+					} else {
+						require.Error(t, err)
+					}
+				} else {
+					require.NoError(t, err)
+					rows, err := sql.RowIterToRows(ctx, sch, iter)
+					require.NoError(t, err)
+					require.Equal(t, 1, len(rows))
+					require.Equal(t, 1, len(rows[0]))
+					if i == 0 {
+						num, err := types.Int64.Convert(rows[0][0])
+						require.NoError(t, err)
+						require.Equal(t, test.Coercibility, num.(int64))
+					} else {
+						str, err := types.LongText.Convert(rows[0][0])
+						require.NoError(t, err)
+						require.Equal(t, test.Collation.Name(), str.(string))
+					}
+				}
+			})
+		}
+	}
+}
+
 var _ sql.TableFunction = (*SimpleTableFunction)(nil)
+var _ sql.CollationCoercible = (*SimpleTableFunction)(nil)
 
 // SimpleTableFunction an extremely simple implementation of TableFunction for testing.
 // When evaluated, returns a single row: {"foo", 123}
@@ -873,6 +922,11 @@ func (s SimpleTableFunction) WithChildren(_ ...sql.Node) (sql.Node, error) {
 
 func (s SimpleTableFunction) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (SimpleTableFunction) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (s SimpleTableFunction) Expressions() []sql.Expression {

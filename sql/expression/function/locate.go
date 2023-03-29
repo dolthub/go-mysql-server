@@ -31,6 +31,7 @@ type Locate struct {
 }
 
 var _ sql.FunctionExpression = (*Locate)(nil)
+var _ sql.CollationCoercible = (*Locate)(nil)
 
 // NewLocate returns a new Locate function.
 func NewLocate(exprs ...sql.Expression) (sql.Expression, error) {
@@ -62,6 +63,11 @@ func (l *Locate) WithChildren(children ...sql.Expression) (sql.Expression, error
 
 // Type implements the sql.Expression interface.
 func (l *Locate) Type() sql.Type { return types.Int32 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Locate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 func (l *Locate) String() string {
 	switch len(l.ChildExpressions) {

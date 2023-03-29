@@ -31,6 +31,7 @@ type Reverse struct {
 }
 
 var _ sql.FunctionExpression = (*Reverse)(nil)
+var _ sql.CollationCoercible = (*Reverse)(nil)
 
 // NewReverse creates a new Reverse expression.
 func NewReverse(e sql.Expression) sql.Expression {
@@ -91,6 +92,11 @@ func (r *Reverse) Type() sql.Type {
 	return r.Child.Type()
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *Reverse) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, r.Child)
+}
+
 var ErrNegativeRepeatCount = errors.NewKind("negative Repeat count: %v")
 
 // Repeat is a function that returns the string repeated n times.
@@ -99,6 +105,7 @@ type Repeat struct {
 }
 
 var _ sql.FunctionExpression = (*Repeat)(nil)
+var _ sql.CollationCoercible = (*Repeat)(nil)
 
 // NewRepeat creates a new Repeat expression.
 func NewRepeat(str sql.Expression, count sql.Expression) sql.Expression {
@@ -122,6 +129,13 @@ func (r *Repeat) String() string {
 // Type implements the Expression interface.
 func (r *Repeat) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *Repeat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, r.Left)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, r.Right)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
 // WithChildren implements the Expression interface.
@@ -172,6 +186,7 @@ type Replace struct {
 }
 
 var _ sql.FunctionExpression = (*Replace)(nil)
+var _ sql.CollationCoercible = (*Replace)(nil)
 
 // NewReplace creates a new Replace expression.
 func NewReplace(str sql.Expression, fromStr sql.Expression, toStr sql.Expression) sql.Expression {
@@ -210,6 +225,15 @@ func (r *Replace) String() string {
 // Type implements the Expression interface.
 func (r *Replace) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *Replace) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	collation, coercibility = sql.GetCoercibility(ctx, r.str)
+	otherCollation, otherCoercibility := sql.GetCoercibility(ctx, r.fromStr)
+	collation, coercibility = sql.ResolveCoercibility(collation, coercibility, otherCollation, otherCoercibility)
+	otherCollation, otherCoercibility = sql.GetCoercibility(ctx, r.toStr)
+	return sql.ResolveCoercibility(collation, coercibility, otherCollation, otherCoercibility)
 }
 
 // WithChildren implements the Expression interface.

@@ -41,6 +41,7 @@ var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
 var _ sql.Node2 = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
+var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 
 // NewIndexedTableAccess returns a new IndexedTableAccess node that will use
 // the LookupBuilder to build lookups. An index lookup will be calculated and
@@ -152,6 +153,11 @@ func (i *IndexedTableAccess) Database() sql.Database {
 
 func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return i.ResolvedTable.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (i *IndexedTableAccess) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return i.ResolvedTable.CollationCoercibility(ctx)
 }
 
 func (i *IndexedTableAccess) Index() sql.Index {

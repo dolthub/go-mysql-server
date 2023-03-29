@@ -19,6 +19,7 @@ type AsGeoJSON struct {
 }
 
 var _ sql.FunctionExpression = (*AsGeoJSON)(nil)
+var _ sql.CollationCoercible = (*AsGeoJSON)(nil)
 
 // NewAsGeoJSON creates a new point expression.
 func NewAsGeoJSON(args ...sql.Expression) (sql.Expression, error) {
@@ -41,6 +42,11 @@ func (g *AsGeoJSON) Description() string {
 // Type implements the sql.Expression interface.
 func (g *AsGeoJSON) Type() sql.Type {
 	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *AsGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 2
 }
 
 func (g *AsGeoJSON) String() string {
@@ -380,6 +386,7 @@ type GeomFromGeoJSON struct {
 }
 
 var _ sql.FunctionExpression = (*GeomFromGeoJSON)(nil)
+var _ sql.CollationCoercible = (*GeomFromGeoJSON)(nil)
 
 // NewGeomFromGeoJSON creates a new point expression.
 func NewGeomFromGeoJSON(args ...sql.Expression) (sql.Expression, error) {
@@ -402,6 +409,11 @@ func (g *GeomFromGeoJSON) Description() string {
 // Type implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Type() sql.Type {
 	return types.GeometryType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomFromGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomFromGeoJSON) String() string {

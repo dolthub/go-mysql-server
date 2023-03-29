@@ -17,6 +17,9 @@ type ValueDerivedTable struct {
 	sch     sql.Schema
 }
 
+var _ sql.Node = (*ValueDerivedTable)(nil)
+var _ sql.CollationCoercible = (*ValueDerivedTable)(nil)
+
 func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
 	var s sql.Schema
 	if values.Resolved() && len(values.ExpressionTuples) != 0 {

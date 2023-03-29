@@ -61,6 +61,7 @@ type ArithmeticOp interface {
 }
 
 var _ ArithmeticOp = (*Arithmetic)(nil)
+var _ sql.CollationCoercible = (*Arithmetic)(nil)
 
 // Arithmetic expressions include plus, minus and multiplication (+, -, *) operations.
 type Arithmetic struct {
@@ -162,6 +163,11 @@ func (a *Arithmetic) Type() sql.Type {
 	}
 
 	return floatOrDecimalType(a)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Arithmetic) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.
@@ -570,6 +576,9 @@ type UnaryMinus struct {
 	UnaryExpression
 }
 
+var _ sql.Expression = (*UnaryMinus)(nil)
+var _ sql.CollationCoercible = (*UnaryMinus)(nil)
+
 // NewUnaryMinus creates a new UnaryMinus expression node.
 func NewUnaryMinus(child sql.Expression) *UnaryMinus {
 	return &UnaryMinus{UnaryExpression{Child: child}}
@@ -641,6 +650,11 @@ func (e *UnaryMinus) Type() sql.Type {
 	}
 
 	return e.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnaryMinus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (e *UnaryMinus) String() string {

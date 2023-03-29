@@ -49,6 +49,7 @@ type JSONMergePreserve struct {
 }
 
 var _ sql.FunctionExpression = (*JSONMergePreserve)(nil)
+var _ sql.CollationCoercible = (*JSONMergePreserve)(nil)
 
 // NewJSONMergePreserve creates a new JSONMergePreserve function.
 func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
@@ -99,6 +100,11 @@ func (j *JSONMergePreserve) String() string {
 // Type implements the Expression interface.
 func (j *JSONMergePreserve) Type() sql.Type {
 	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONMergePreserve) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
 // IsNullable implements the Expression interface.

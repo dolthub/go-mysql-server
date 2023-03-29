@@ -325,6 +325,11 @@ func (t DecimalType_) Zero() interface{} {
 	return decimal.NewFromInt(0)
 }
 
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (DecimalType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // ExclusiveUpperBound implements DecimalType interface.
 func (t DecimalType_) ExclusiveUpperBound() decimal.Decimal {
 	return t.exclusiveUpperBound

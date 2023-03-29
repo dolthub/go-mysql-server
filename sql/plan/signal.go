@@ -80,6 +80,8 @@ type SignalName struct {
 var _ sql.Node = (*Signal)(nil)
 var _ sql.Node = (*SignalName)(nil)
 var _ sql.Expressioner = (*Signal)(nil)
+var _ sql.CollationCoercible = (*Signal)(nil)
+var _ sql.CollationCoercible = (*SignalName)(nil)
 
 // NewSignal returns a *Signal node.
 func NewSignal(sqlstate string, info map[SignalConditionItemName]SignalInfo) *Signal {
@@ -252,6 +254,11 @@ func (s *Signal) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Signal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the sql.Node interface.
 func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	//TODO: implement CLASS_ORIGIN
@@ -331,6 +338,11 @@ func (s *SignalName) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (s *SignalName) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SignalName) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the sql.Node interface.

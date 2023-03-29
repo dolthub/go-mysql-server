@@ -40,6 +40,7 @@ type LineString struct {
 
 var _ sql.Type = LineStringType{}
 var _ sql.SpatialColumnType = LineStringType{}
+var _ sql.CollationCoercible = LineStringType{}
 var _ GeometryValue = LineString{}
 
 var (
@@ -124,6 +125,11 @@ func (t LineStringType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t LineStringType) Zero() interface{} {
 	return LineString{Points: []Point{{}, {}}}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (LineStringType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

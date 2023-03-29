@@ -32,6 +32,7 @@ type TriggerBeginEndBlock struct {
 
 var _ sql.Node = (*TriggerBeginEndBlock)(nil)
 var _ sql.DebugStringer = (*TriggerBeginEndBlock)(nil)
+var _ sql.CollationCoercible = (*TriggerBeginEndBlock)(nil)
 var _ RepresentsLabeledBlock = (*TriggerBeginEndBlock)(nil)
 var _ RepresentsScope = (*TriggerBeginEndBlock)(nil)
 

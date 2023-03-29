@@ -33,6 +33,7 @@ func NewUse(db sql.Database) *Use {
 
 var _ sql.Node = (*Use)(nil)
 var _ sql.Databaser = (*Use)(nil)
+var _ sql.CollationCoercible = (*Use)(nil)
 
 // Database implements the sql.Databaser interface.
 func (u *Use) Database() sql.Database {
@@ -84,6 +85,11 @@ func (u *Use) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperatio
 	// The given database will not be visible if the user does not have the appropriate privileges, so we can just
 	// return true here.
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Use) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the sql.Node interface.

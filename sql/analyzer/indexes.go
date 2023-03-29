@@ -149,6 +149,14 @@ func getIndexes(
 				if lookup.IsEmpty() {
 					return nil, nil
 				}
+				newRanges, err := sql.RemoveOverlappingRanges(lookup.Ranges...)
+				if err != nil {
+					return nil, nil
+				}
+				newLookup := sql.IndexLookup{Index: idx, Ranges: newRanges}
+				if err != nil {
+					return nil, err
+				}
 
 				getField := expression.ExtractGetField(cmp.Left())
 				if getField == nil {
@@ -158,7 +166,7 @@ func getIndexes(
 				result[getField.Table()] = &indexLookup{
 					fields:  []sql.Expression{e},
 					indexes: []sql.Index{idx},
-					lookup:  lookup,
+					lookup:  newLookup,
 					expr:    e,
 				}
 			}

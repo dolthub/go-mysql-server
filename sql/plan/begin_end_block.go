@@ -39,6 +39,7 @@ func NewBeginEndBlock(label string, block *Block) *BeginEndBlock {
 }
 
 var _ sql.Node = (*BeginEndBlock)(nil)
+var _ sql.CollationCoercible = (*BeginEndBlock)(nil)
 var _ sql.DebugStringer = (*BeginEndBlock)(nil)
 var _ expression.ProcedureReferencable = (*BeginEndBlock)(nil)
 var _ RepresentsLabeledBlock = (*BeginEndBlock)(nil)
@@ -88,6 +89,11 @@ func (b *BeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (b *BeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return b.Block.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (b *BeginEndBlock) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return b.Block.CollationCoercibility(ctx)
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.

@@ -30,6 +30,7 @@ type RowNumber struct {
 var _ sql.FunctionExpression = (*RowNumber)(nil)
 var _ sql.WindowAggregation = (*RowNumber)(nil)
 var _ sql.WindowAdaptableExpression = (*RowNumber)(nil)
+var _ sql.CollationCoercible = (*RowNumber)(nil)
 
 func NewRowNumber() sql.Expression {
 	return &RowNumber{}
@@ -78,6 +79,11 @@ func (r *RowNumber) FunctionName() string {
 // Type implements sql.Expression
 func (r *RowNumber) Type() sql.Type {
 	return types.Int64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RowNumber) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression

@@ -53,7 +53,9 @@ type CreateIndex struct {
 	CurrentDatabase string
 }
 
+var _ sql.Node = (*CreateIndex)(nil)
 var _ sql.Databaseable = (*CreateIndex)(nil)
+var _ sql.CollationCoercible = (*CreateIndex)(nil)
 
 // NewCreateIndex creates a new CreateIndex node.
 func NewCreateIndex(
@@ -290,6 +292,11 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *CreateIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(GetDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Index))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // GetColumnsAndPrepareExpressions extracts the unique columns required by all

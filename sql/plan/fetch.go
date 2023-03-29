@@ -35,6 +35,7 @@ type Fetch struct {
 }
 
 var _ sql.Node = (*Fetch)(nil)
+var _ sql.CollationCoercible = (*Fetch)(nil)
 var _ expression.ProcedureReferencable = (*Fetch)(nil)
 
 // NewFetch returns a new *Fetch node.
@@ -91,6 +92,11 @@ func (f *Fetch) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (f *Fetch) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Fetch) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

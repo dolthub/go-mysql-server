@@ -30,6 +30,7 @@ type STLength struct {
 }
 
 var _ sql.FunctionExpression = (*STLength)(nil)
+var _ sql.CollationCoercible = (*STLength)(nil)
 
 // NewSTLength creates a new STLength expression.
 func NewSTLength(args ...sql.Expression) (sql.Expression, error) {
@@ -52,6 +53,11 @@ func (s *STLength) Description() string {
 // Type implements the sql.Expression interface.
 func (s *STLength) Type() sql.Type {
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*STLength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *STLength) String() string {

@@ -56,11 +56,15 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
 var _ sql.ExpressionWithNodes = (*Subquery)(nil)
+var _ sql.CollationCoercible = (*Subquery)(nil)
 
 type StripRowNode struct {
 	UnaryNode
 	numCols int
 }
+
+var _ sql.Node = (*StripRowNode)(nil)
+var _ sql.CollationCoercible = (*StripRowNode)(nil)
 
 type stripRowIter struct {
 	sql.RowIter
@@ -118,11 +122,19 @@ func (srn *StripRowNode) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 	return srn.Child.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (srn *StripRowNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, srn.Child)
+}
+
 // prependNode wraps its child by prepending column values onto any result rows
 type prependNode struct {
 	UnaryNode
 	row sql.Row
 }
+
+var _ sql.Node = (*prependNode)(nil)
+var _ sql.CollationCoercible = (*prependNode)(nil)
 
 type prependRowIter struct {
 	row       sql.Row
@@ -177,6 +189,11 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *prependNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return p.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *prependNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Child)
 }
 
 // Eval implements the Expression interface.
@@ -281,6 +298,7 @@ type Max1Row struct {
 }
 
 var _ sql.Node = (*Max1Row)(nil)
+var _ sql.CollationCoercible = (*Max1Row)(nil)
 
 func (m *Max1Row) Name() string {
 	return m.name
@@ -379,6 +397,11 @@ func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (m *Max1Row) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return m.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (m *Max1Row) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, m.Child)
 }
 
 // EvalMultiple returns all rows returned by a subquery.
@@ -630,4 +653,9 @@ func (s *Subquery) Dispose() {
 		s.disposeFunc = nil
 	}
 	disposeNode(s.Query)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *Subquery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Query)
 }

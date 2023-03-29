@@ -64,6 +64,7 @@ func NewShowColumns(full bool, child sql.Node) *ShowColumns {
 var _ sql.Node = (*ShowColumns)(nil)
 var _ sql.Expressioner = (*ShowColumns)(nil)
 var _ sql.SchemaTarget = (*ShowColumns)(nil)
+var _ sql.CollationCoercible = (*ShowColumns)(nil)
 
 // Schema implements the sql.Node interface.
 func (s *ShowColumns) Schema() sql.Schema {
@@ -214,6 +215,11 @@ func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (s *ShowColumns) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowColumns) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (s *ShowColumns) String() string {
