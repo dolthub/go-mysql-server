@@ -1724,7 +1724,7 @@ func (atc *AlterTableCollation) RowIter(ctx *sql.Context, row sql.Row) (sql.RowI
 		return nil, sql.ErrAlterTableCollationNotSupported.New(tbl.Name())
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyCollation(ctx, atc.Collation)
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), alterable.ModifyDefaultCollation(ctx, atc.Collation)
 }
 
 // Children implements the interface sql.Node.

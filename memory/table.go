@@ -1534,8 +1534,13 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 	return nil
 }
 
-// ModifyCollation implements sql.CollationAlterableTable
-func (t *Table) ModifyCollation(ctx *sql.Context, collation sql.CollationID) error {
+// ModifyStoredCollation implements sql.CollationAlterableTable
+func (t *Table) ModifyStoredCollation(ctx *sql.Context, collation sql.CollationID) error {
+	return fmt.Errorf("converting the collations of columns is not yet supported")
+}
+
+// ModifyDefaultCollation implements sql.CollationAlterableTable
+func (t *Table) ModifyDefaultCollation(ctx *sql.Context, collation sql.CollationID) error {
 	t.collation = collation
 	return nil
 }
