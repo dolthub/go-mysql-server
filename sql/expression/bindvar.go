@@ -16,6 +16,7 @@ package expression
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type BindVar struct {
@@ -23,8 +24,11 @@ type BindVar struct {
 	Typ  sql.Type
 }
 
+var _ sql.Expression = (*BindVar)(nil)
+var _ sql.CollationCoercible = (*BindVar)(nil)
+
 func NewBindVar(name string) sql.Expression {
-	return &BindVar{Name: name, Typ: sql.NewDeferredType(name)}
+	return &BindVar{Name: name, Typ: types.NewDeferredType(name)}
 }
 
 func (bv *BindVar) Resolved() bool {
@@ -37,6 +41,11 @@ func (bv *BindVar) String() string {
 
 func (bv *BindVar) Type() sql.Type {
 	return bv.Typ
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (bv *BindVar) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return bv.Typ.CollationCoercibility(ctx)
 }
 
 func (bv *BindVar) IsNullable() bool {

@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -93,7 +94,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
-				if !sql.IsInteger(e.Type()) {
+				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
 				}
@@ -102,7 +103,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return false
 				}
 
-				i64, err = sql.Int64.Convert(i)
+				i64, err = types.Int64.Convert(i)
 				if err != nil {
 					return false
 				}
@@ -119,7 +120,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
-				if !sql.IsInteger(e.Type()) {
+				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
 				}
@@ -128,7 +129,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return false
 				}
 
-				i64, err = sql.Int64.Convert(i)
+				i64, err = types.Int64.Convert(i)
 				if err != nil {
 					return false
 				}
@@ -205,6 +206,89 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	}
 
 	return n, transform.SameTree, nil
+}
+
+// validateDeleteFrom checks for invalid settings, such as deleting from multiple databases, specifying a delete target
+// table multiple times, or using a DELETE FROM JOIN without specifying any explicit delete target tables, and returns
+// an error if any validation issues were detected.
+func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validate_order_by")
+	defer span.End()
+
+	var validationError error
+	transform.Inspect(n, func(n sql.Node) bool {
+		df, ok := n.(*plan.DeleteFrom)
+		if !ok {
+			return true
+		}
+
+		// Check that delete from join only targets tables that exist in the join
+		if df.HasExplicitTargets() {
+			sourceTables := make(map[string]struct{})
+			transform.Inspect(df.Child, func(node sql.Node) bool {
+				if t, ok := node.(sql.Table); ok {
+					sourceTables[t.Name()] = struct{}{}
+				}
+				return true
+			})
+
+			for _, target := range df.GetDeleteTargets() {
+				deletable, err := plan.GetDeletable(target)
+				if err != nil {
+					validationError = err
+				}
+				tableName := deletable.Name()
+				if _, ok := sourceTables[tableName]; !ok {
+					validationError = fmt.Errorf("table %q not found in DELETE FROM sources", tableName)
+				}
+			}
+		}
+
+		// Duplicate explicit target tables or from explicit target tables from multiple databases
+		databases := make(map[string]struct{})
+		tables := make(map[string]struct{})
+		if df.HasExplicitTargets() {
+			for _, target := range df.GetDeleteTargets() {
+				// Check for multiple databases
+				databases[plan.GetDatabaseName(target)] = struct{}{}
+				if len(databases) > 1 {
+					validationError = fmt.Errorf("multiple databases specified as delete from targets")
+				}
+
+				// Check for duplicate targets
+				if nameable, ok := target.(sql.Nameable); ok {
+					if _, ok := tables[nameable.Name()]; ok {
+						validationError = fmt.Errorf("duplicate tables specified as delete from targets")
+					}
+					tables[nameable.Name()] = struct{}{}
+				} else {
+					validationError = fmt.Errorf("target node does not implement sql.Nameable: %T", target)
+				}
+			}
+		}
+
+		// DELETE FROM JOIN with no target tables specified
+		deleteFromJoin := false
+		transform.Inspect(df.Child, func(node sql.Node) bool {
+			if _, ok := node.(*plan.JoinNode); ok {
+				deleteFromJoin = true
+				return false
+			}
+			return true
+		})
+		if deleteFromJoin {
+			if df.HasExplicitTargets() == false {
+				validationError = fmt.Errorf("delete from statement with join requires specifying explicit delete target tables")
+			}
+		}
+		return true
+	})
+
+	if validationError != nil {
+		return nil, transform.SameTree, validationError
+	} else {
+		return n, transform.SameTree, nil
+	}
 }
 
 // checkSqlMode checks if the option is set for the Session in ctx
@@ -453,7 +537,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
-				nc := sql.NumColumns(e.Type())
+				nc := types.NumColumns(e.Type())
 				if nc != 1 {
 					if _, ok := er.(*plan.HashLookup); ok {
 						// hash lookup expressions are tuples with >= 1 columns
@@ -472,21 +556,21 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 					switch e.(type) {
 					case *plan.InSubquery, *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 						*expression.LessThan, *expression.GreaterThanOrEqual, *expression.LessThanOrEqual:
-						err = sql.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+						err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
 					case *expression.InTuple, *expression.HashInTuple:
 						t, ok := e.Children()[1].(expression.Tuple)
 						if ok && len(t.Children()) == 1 {
 							// A single element Tuple treats itself like the element it contains.
-							err = sql.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+							err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
 						} else {
-							err = sql.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
+							err = types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
 						}
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
 							return false
 						}
 						for _, e := range e.Children() {
-							nc := sql.NumColumns(e.Type())
+							nc := types.NumColumns(e.Type())
 							if nc != 1 {
 								err = sql.ErrInvalidOperandColumns.New(1, nc)
 							}
@@ -497,7 +581,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						// Any number of columns are allowed.
 					default:
 						for _, e := range e.Children() {
-							nc := sql.NumColumns(e.Type())
+							nc := types.NumColumns(e.Type())
 							if nc != 1 {
 								err = sql.ErrInvalidOperandColumns.New(1, nc)
 							}
@@ -595,6 +679,7 @@ func tableColsContains(strs []tableCol, target tableCol) bool {
 func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	valid := true
 	var readOnlyDB sql.ReadOnlyDatabase
+	enforceReadOnly := scope.EnforcesReadOnly()
 
 	// if a ReadOnlyDatabase is found, invalidate the query
 	readOnlyDBSearch := func(node sql.Node) bool {
@@ -602,6 +687,8 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			if ro, ok := rt.Database.(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
+					valid = false
+				} else if enforceReadOnly {
 					valid = false
 				}
 			}
@@ -626,6 +713,8 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if ro.IsReadOnly() {
 					readOnlyDB = ro
 					valid = false
+				} else if enforceReadOnly {
+					valid = false
 				}
 			}
 			// "CREATE TABLE ... LIKE ..." and
@@ -646,7 +735,11 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return valid
 	})
 	if !valid {
-		return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+		if enforceReadOnly {
+			return nil, transform.SameTree, sql.ErrProcedureCallAsOfReadOnly.New()
+		} else {
+			return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+		}
 	}
 
 	return n, transform.SameTree, nil
@@ -661,7 +754,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	}
 
 	// If this is a normal read write transaction don't enforce read-only. Otherwise we must prevent an invalid query.
-	if !t.IsReadOnly() {
+	if !t.IsReadOnly() && !scope.EnforcesReadOnly() {
 		return n, transform.SameTree, nil
 	}
 
@@ -868,6 +961,6 @@ func fds(e sql.Expression) int {
 	case *expression.UnresolvedFunction:
 		return 1
 	default:
-		return sql.NumColumns(e.Type())
+		return types.NumColumns(e.Type())
 	}
 }

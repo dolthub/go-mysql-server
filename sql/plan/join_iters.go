@@ -24,6 +24,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func newJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -131,15 +133,18 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				if !i.foundMatch && i.joinType.IsLeftOuter() {
+					i.primaryRow = nil
 					row := i.buildRow(primary, nil)
 					return i.removeParentRow(row), nil
 				}
 				continue
 			} else if errors.Is(err, ErrEmptyCachedResult) {
 				if !i.foundMatch && i.joinType.IsLeftOuter() {
+					i.primaryRow = nil
 					row := i.buildRow(primary, nil)
 					return i.removeParentRow(row), nil
 				}
+
 				return nil, io.EOF
 			}
 			return nil, err
@@ -204,6 +209,19 @@ func (i *joinIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
+// IsNullRejecting returns whether the expression always returns false for
+// nil inputs.
+func IsNullRejecting(e sql.Expression) bool {
+	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e.(type) {
+		case *expression.NullSafeEquals, *expression.IsNull:
+			return true
+		default:
+			return false
+		}
+	})
+}
+
 func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
 	leftIter, err := j.left.RowIter(ctx, row)
 	if err != nil {
@@ -217,6 +235,7 @@ func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, err
 		cond:              j.Filter,
 		scopeLen:          j.ScopeLen,
 		rowSize:           len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+		nullRej:           !(j.Filter != nil && IsNullRejecting(j.Filter)),
 	}, nil
 }
 
@@ -231,84 +250,106 @@ type existsIter struct {
 	parentRow sql.Row
 	scopeLen  int
 	rowSize   int
+	nullRej   bool
 }
 
-func (i *existsIter) loadPrimary(ctx *sql.Context) error {
-	if i.primaryRow == nil {
-		r, err := i.primary.Next(ctx)
-		if err != nil {
-			return err
-		}
+type existsState uint8
 
-		i.primaryRow = i.parentRow.Append(r)
-	}
-
-	return nil
-}
-
-func (i *existsIter) loadSecondary(ctx *sql.Context, left sql.Row) (row sql.Row, err error) {
-	iter, err := i.secondaryProvider.RowIter(ctx, left)
-	return iter.Next(ctx)
-}
+const (
+	esIncLeft existsState = iota
+	esIncRight
+	esRightIterEOF
+	esCompare
+	esRet
+)
 
 func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
-	for {
-		r, err := i.primary.Next(ctx)
-		if err != nil {
-			return nil, err
-		}
-		left := i.parentRow.Append(r)
-		rIter, err := i.secondaryProvider.RowIter(ctx, left)
-		if err != nil {
-			return nil, err
-		}
-		if isEmptyIter(rIter) {
-			return nil, io.EOF
-		}
+	var row sql.Row
+	var matches bool
+	var right sql.Row
+	var left sql.Row
+	var rIter sql.RowIter
+	var err error
 
-		for {
-			right, err := rIter.Next(ctx)
+	// the common sequence is: LOAD_LEFT -> LOAD_RIGHT -> COMPARE -> RET
+	// notable exceptions are represented as goto jumps:
+	//  - non-null rejecting filters jump to COMPARE with a nil right row
+	//    when the secondaryProvider is empty
+	//  - antiJoin succeeds to RET when LOAD_RIGHT EOF's
+	//  - semiJoin fails when LOAD_RIGHT EOF's, falling back to LOAD_LEFT
+	//  - antiJoin fails when COMPARE returns true, falling back to LOAD_LEFT
+	nextState := esIncLeft
+	for {
+		switch nextState {
+		case esIncLeft:
+			r, err := i.primary.Next(ctx)
+			if err != nil {
+				return nil, err
+			}
+			left = i.parentRow.Append(r)
+			rIter, err = i.secondaryProvider.RowIter(ctx, left)
+			if err != nil {
+				return nil, err
+			}
+			if isEmptyIter(rIter) {
+				if i.nullRej || i.typ.IsAnti() {
+					return nil, io.EOF
+				}
+				nextState = esCompare
+			} else {
+				nextState = esIncRight
+			}
+		case esIncRight:
+			right, err = rIter.Next(ctx)
 			if err != nil {
 				iterErr := rIter.Close(ctx)
 				if iterErr != nil {
 					return nil, fmt.Errorf("%w; error on close: %s", err, iterErr)
 				}
 				if errors.Is(err, io.EOF) {
-					if i.typ.IsSemi() {
-						// reset iter, no match
-						break
-					}
-					if i.typ.IsRightPartial() {
-						return append(left[:i.scopeLen], right...), nil
-					}
-					return i.removeParentRow(left), nil
+					nextState = esRightIterEOF
+				} else {
+					return nil, err
 				}
-				return nil, err
+			} else {
+				nextState = esCompare
 			}
-
-			row := i.buildRow(left, right)
-			matches, err := conditionIsTrue(ctx, row, i.cond)
+		case esRightIterEOF:
+			if i.typ.IsSemi() {
+				// reset iter, no match
+				nextState = esIncLeft
+			} else {
+				nextState = esRet
+			}
+		case esCompare:
+			row = i.buildRow(left, right)
+			matches, err = conditionIsTrue(ctx, row, i.cond)
 			if err != nil {
 				return nil, err
 			}
 			if !matches {
-				continue
+				nextState = esIncRight
+			} else {
+				err = rIter.Close(ctx)
+				if err != nil {
+					return nil, err
+				}
+				if i.typ.IsAnti() {
+					// reset iter, found match -> no return row
+					nextState = esIncLeft
+				} else {
+					nextState = esRet
+				}
 			}
-			err = rIter.Close(ctx)
-			if err != nil {
-				return nil, err
-			}
-			if i.typ.IsAnti() {
-				// reset iter, found match -> no return row
-				break
-			}
+		case esRet:
 			if i.typ.IsRightPartial() {
 				return append(left[:i.scopeLen], right...), nil
 			}
 			return i.removeParentRow(left), nil
+		default:
+			return nil, fmt.Errorf("invalid exists join state")
 		}
 	}
-	return nil, io.EOF
 }
 
 func (i *existsIter) removeParentRow(r sql.Row) sql.Row {

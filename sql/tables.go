@@ -70,22 +70,25 @@ type FilteredTable interface {
 }
 
 // ProjectedTable is a table that can return only a subset of its columns from RowIter. This provides a very large
-// efficiency gain during table scans. Tables that implement this interface must return the projected column in future
-// calls to Schema
+// efficiency gain during table scans. Tables that implement this interface must return only the projected columns
+// in future calls to Schema.
 type ProjectedTable interface {
 	Table
 	// WithProjections returns a version of this table with only the subset of columns named. Calls to Schema must
-	// only include these columns.
+	// only include these columns. A zero-length slice of column names is valid and indicates that rows from this table
+	// should be spooled, but no columns should be returned. A nil slice will never be provided.
 	WithProjections(colNames []string) Table
-	// Projections returns the names of the column projections applied to this table.
+	// Projections returns the names of the column projections applied to this table, or nil if no projection is applied
+	// and all columns of the schema will be returned.
 	Projections() []string
 }
 
 // IndexAddressable is a table that can be scanned through a primary index
 type IndexAddressable interface {
 	// IndexedAccess returns a table that can perform scans constrained to
-	// an IndexLookup on the index given
-	IndexedAccess(Index) IndexedTable
+	// an IndexLookup on the index given, or nil if the index cannot support
+	// the lookup expression.
+	IndexedAccess(IndexLookup) IndexedTable
 	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
 }
@@ -161,6 +164,16 @@ type CheckAlterableTable interface {
 	CreateCheck(ctx *Context, check *CheckDefinition) error
 	// DropCheck removes a check constraint from the database.
 	DropCheck(ctx *Context, chName string) error
+}
+
+// CollationAlterableTable represents a table that supports the alteration of its collation.
+type CollationAlterableTable interface {
+	Table
+	// ModifyStoredCollation modifies the default collation that is set on the table, along with converting all columns
+	// to the given collation (ALTER TABLE ... CONVERT TO CHARACTER SET).
+	ModifyStoredCollation(ctx *Context, collation CollationID) error
+	// ModifyDefaultCollation modifies the default collation that is set on the table (ALTER TABLE ... COLLATE).
+	ModifyDefaultCollation(ctx *Context, collation CollationID) error
 }
 
 // PrimaryKeyTable is a table with a primary key.
@@ -244,6 +257,9 @@ type TruncateableTable interface {
 // AUTO_INCREMENT sequence. These methods should only be used for tables with and AUTO_INCREMENT column in their schema.
 type AutoIncrementTable interface {
 	Table
+	// PeekNextAutoIncrementValue returns the next AUTO_INCREMENT value without incrementing the current
+	// auto_increment counter.
+	PeekNextAutoIncrementValue(ctx *Context) (uint64, error)
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.

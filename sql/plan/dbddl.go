@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CreateDB creates an in memory database that lasts the length of the process only.
@@ -31,6 +32,9 @@ type CreateDB struct {
 	IfNotExists bool
 	Collation   sql.CollationID
 }
+
+var _ sql.Node = (*CreateDB)(nil)
+var _ sql.CollationCoercible = (*CreateDB)(nil)
 
 func (c *CreateDB) Resolved() bool {
 	return true
@@ -45,7 +49,7 @@ func (c *CreateDB) String() string {
 }
 
 func (c *CreateDB) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (c *CreateDB) Children() []sql.Node {
@@ -54,7 +58,7 @@ func (c *CreateDB) Children() []sql.Node {
 
 func (c *CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := c.Catalog.HasDB(ctx, c.dbName)
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 
 	if exists {
 		if c.IfNotExists {
@@ -92,6 +96,11 @@ func (c *CreateDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Create))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateDB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // Database returns the name of the database that will be used.
 func (c *CreateDB) Database() string {
 	return c.dbName
@@ -112,6 +121,9 @@ type DropDB struct {
 	IfExists bool
 }
 
+var _ sql.Node = (*DropDB)(nil)
+var _ sql.CollationCoercible = (*DropDB)(nil)
+
 func (d *DropDB) Resolved() bool {
 	return true
 }
@@ -125,7 +137,7 @@ func (d *DropDB) String() string {
 }
 
 func (d *DropDB) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (d *DropDB) Children() []sql.Node {
@@ -142,7 +154,7 @@ func (d *DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
 			})
 
-			rows := []sql.Row{{sql.OkResult{RowsAffected: 0}}}
+			rows := []sql.Row{{types.OkResult{RowsAffected: 0}}}
 
 			return sql.RowsToRowIter(rows...), nil
 		} else {
@@ -158,9 +170,10 @@ func (d *DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Unsets the current database. Database name is case-insensitive.
 	if strings.ToLower(ctx.GetCurrentDatabase()) == strings.ToLower(d.dbName) {
 		ctx.SetCurrentDatabase("")
+		ctx.Session.SetTransactionDatabase("")
 	}
 
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -173,6 +186,11 @@ func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (d *DropDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Drop))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropDB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func NewDropDatabase(dbName string, ifExists bool) *DropDB {
@@ -188,6 +206,9 @@ type AlterDB struct {
 	dbName    string
 	Collation sql.CollationID
 }
+
+var _ sql.Node = (*AlterDB)(nil)
+var _ sql.CollationCoercible = (*AlterDB)(nil)
 
 // Resolved implements the interface sql.Node.
 func (c *AlterDB) Resolved() bool {
@@ -205,7 +226,7 @@ func (c *AlterDB) String() string {
 
 // Schema implements the interface sql.Node.
 func (c *AlterDB) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // Children implements the interface sql.Node.
@@ -237,7 +258,7 @@ func (c *AlterDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 	return sql.RowsToRowIter(rows...), nil
 }
 
@@ -250,6 +271,11 @@ func (c *AlterDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *AlterDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(c.Database(ctx), "", "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AlterDB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database returns the name of the database that will be used.

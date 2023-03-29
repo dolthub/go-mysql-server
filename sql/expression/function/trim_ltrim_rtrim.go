@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type Trim struct {
@@ -32,6 +33,7 @@ type Trim struct {
 }
 
 var _ sql.FunctionExpression = (*Trim)(nil)
+var _ sql.CollationCoercible = (*Trim)(nil)
 
 func NewTrim(str sql.Expression, pat sql.Expression, dir string) sql.Expression {
 	return &Trim{str, pat, dir}
@@ -61,7 +63,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert pat into string
-	pat, err = sql.LongText.Convert(pat)
+	pat, err = types.LongText.Convert(pat)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
 	}
@@ -78,7 +80,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert pat into string
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
@@ -133,6 +135,13 @@ func (t Trim) Resolved() bool {
 
 func (t Trim) Type() sql.Type { return t.str.Type() }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t Trim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, t.str)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, t.pat)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+}
+
 func (t Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
@@ -149,6 +158,7 @@ func NewLeftTrim(str sql.Expression) sql.Expression {
 }
 
 var _ sql.FunctionExpression = (*LeftTrim)(nil)
+var _ sql.CollationCoercible = (*LeftTrim)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (t *LeftTrim) FunctionName() string {
@@ -161,6 +171,11 @@ func (t *LeftTrim) Description() string {
 }
 
 func (t *LeftTrim) Type() sql.Type { return t.Child.Type() }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t *LeftTrim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, t.Child)
+}
 
 func (t *LeftTrim) String() string {
 	return fmt.Sprintf("ltrim(%s)", t.Child)
@@ -187,7 +202,7 @@ func (t *LeftTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -206,6 +221,7 @@ func NewRightTrim(str sql.Expression) sql.Expression {
 }
 
 var _ sql.FunctionExpression = (*RightTrim)(nil)
+var _ sql.CollationCoercible = (*RightTrim)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (t *RightTrim) FunctionName() string {
@@ -218,6 +234,11 @@ func (t *RightTrim) Description() string {
 }
 
 func (t *RightTrim) Type() sql.Type { return t.Child.Type() }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t *RightTrim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, t.Child)
+}
 
 func (t *RightTrim) String() string {
 	return fmt.Sprintf("rtrim(%s)", t.Child)
@@ -244,7 +265,7 @@ func (t *RightTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}

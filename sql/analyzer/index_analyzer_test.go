@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestMatchingIndexes(t *testing.T) {
@@ -28,9 +29,9 @@ func TestMatchingIndexes(t *testing.T) {
 	const testDb = "mydb"
 	const testTable = "test"
 
-	v1 := expression.NewLiteral(1, sql.Int64)
-	v2 := expression.NewLiteral(2, sql.Int64)
-	v3 := expression.NewLiteral(3, sql.Int64)
+	v1 := expression.NewLiteral(1, types.Int64)
+	v2 := expression.NewLiteral(2, types.Int64)
+	v3 := expression.NewLiteral(3, types.Int64)
 
 	dummy1 := &dummyIdx{
 		id:       "dummy1",
@@ -81,15 +82,15 @@ func TestExpressionsWithIndexesPartialMatching(t *testing.T) {
 	const testDb = "mydb"
 	const testTable = "test"
 
-	v1 := expression.NewLiteral(1, sql.Int64)
-	v2 := expression.NewLiteral(2, sql.Int64)
-	v3 := expression.NewLiteral(3, sql.Int64)
-	v4 := expression.NewLiteral(4, sql.Int64)
+	v1 := expression.NewLiteral(1, types.Int64)
+	v2 := expression.NewLiteral(2, types.Int64)
+	v3 := expression.NewLiteral(3, types.Int64)
+	v4 := expression.NewLiteral(4, types.Int64)
 
-	gf1 := expression.NewGetField(0, sql.Int64, "1", false)
-	gf2 := expression.NewGetField(1, sql.Int64, "2", false)
+	gf1 := expression.NewGetField(0, types.Int64, "1", false)
+	gf2 := expression.NewGetField(1, types.Int64, "2", false)
 	//gf3 := expression.NewGetField(2, sql.Int64, "3", false)
-	gf4 := expression.NewGetField(3, sql.Int64, "4", false)
+	gf4 := expression.NewGetField(3, types.Int64, "4", false)
 
 	dummy1 := &dummyIdx{
 		id:       "dummy",
@@ -145,6 +146,7 @@ func (i *dummyIdx) ID() string              { return i.id }
 func (i *dummyIdx) Database() string        { return i.database }
 func (i *dummyIdx) Table() string           { return i.table }
 func (i *dummyIdx) IsUnique() bool          { return false }
+func (i *dummyIdx) IsSpatial() bool         { return false }
 func (i *dummyIdx) Comment() string         { return "" }
 func (i *dummyIdx) IsGenerated() bool       { return false }
 func (i *dummyIdx) IndexType() string       { return "BTREE" }

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Point is a function that returns a point type containing values Y and Y.
@@ -27,6 +28,7 @@ type Point struct {
 }
 
 var _ sql.FunctionExpression = (*Point)(nil)
+var _ sql.CollationCoercible = (*Point)(nil)
 
 // NewPoint creates a new point expression.
 func NewPoint(e1, e2 sql.Expression) sql.Expression {
@@ -60,7 +62,12 @@ func (p *Point) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *Point) Type() sql.Type {
-	return sql.PointType{}
+	return types.PointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Point) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *Point) String() string {
@@ -87,7 +94,7 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := sql.Float64.Convert(x)
+	_x, err := types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -102,10 +109,10 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := sql.Float64.Convert(y)
+	_y, err := types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.Point{X: _x.(float64), Y: _y.(float64)}, nil
+	return types.Point{X: _x.(float64), Y: _y.(float64)}, nil
 }

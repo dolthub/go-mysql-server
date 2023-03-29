@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -52,7 +53,9 @@ type CreateIndex struct {
 	CurrentDatabase string
 }
 
+var _ sql.Node = (*CreateIndex)(nil)
 var _ sql.Databaseable = (*CreateIndex)(nil)
+var _ sql.CollationCoercible = (*CreateIndex)(nil)
 
 // NewCreateIndex creates a new CreateIndex node.
 func NewCreateIndex(
@@ -142,7 +145,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 
 	for _, e := range exprs {
-		if sql.IsBlobType(e.Type()) || sql.IsJSON(e.Type()) {
+		if types.IsBlobType(e.Type()) || types.IsJSON(e.Type()) {
 			return nil, ErrExprTypeNotIndexable.New(e, e.Type())
 		}
 	}
@@ -288,7 +291,12 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Index))
+		sql.NewPrivilegedOperation(GetDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Index))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // GetColumnsAndPrepareExpressions extracts the unique columns required by all

@@ -5,6 +5,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TableCopier is a supporting node that allows for the optimization of copying tables. It should be used in two cases.
@@ -19,6 +20,7 @@ type TableCopier struct {
 
 var _ sql.Databaser = (*TableCopier)(nil)
 var _ sql.Node = (*TableCopier)(nil)
+var _ sql.CollationCoercible = (*TableCopier)(nil)
 
 type CopierProps struct {
 	replace bool
@@ -132,7 +134,7 @@ func (tc *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, desti
 		return sql.RowsToRowIter(), err
 	}
 
-	return sql.RowsToRowIter([]sql.Row{{sql.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
+	return sql.RowsToRowIter([]sql.Row{{types.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
 }
 
 func (tc *TableCopier) Schema() sql.Schema {
@@ -153,6 +155,11 @@ func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(tc.db.Name(), "", "", sql.PrivilegeType_Create)) &&
 		tc.source.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*TableCopier) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (tc *TableCopier) Resolved() bool {

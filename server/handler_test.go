@@ -19,11 +19,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -36,15 +34,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestHandlerOutput(t *testing.T) {
 
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	dummyConn := newConn(1)
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -52,10 +51,8 @@ func TestHandlerOutput(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		time.Second,
-		false,
-		nil,
-	)
+		readTimeout: time.Second,
+	}
 	handler.NewConnection(dummyConn)
 
 	type expectedValues struct {
@@ -163,10 +160,10 @@ func TestHandlerOutput(t *testing.T) {
 
 func TestHandlerComPrepare(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	dummyConn := newConn(1)
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -174,10 +171,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		nil,
-	)
+	}
 	handler.NewConnection(dummyConn)
 
 	type testcase struct {
@@ -236,10 +230,10 @@ func TestHandlerComPrepare(t *testing.T) {
 
 func TestHandlerComPrepareExecute(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	dummyConn := newConn(1)
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -247,10 +241,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		nil,
-	)
+	}
 	handler.NewConnection(dummyConn)
 
 	type testcase struct {
@@ -312,10 +303,10 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 
 func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	dummyConn := newConn(1)
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -323,10 +314,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		nil,
-	)
+	}
 	handler.NewConnection(dummyConn)
 	analyzer.SetPreparedStmts(true)
 	defer func() {
@@ -421,9 +409,9 @@ func TestServerEventListener(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
 	listener := &TestListener{}
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
@@ -433,10 +421,8 @@ func TestServerEventListener(t *testing.T) {
 			e.ProcessList,
 			"foo",
 		),
-		0,
-		false,
-		listener,
-	)
+		sel: listener,
+	}
 
 	cb := func(res *sqltypes.Result, more bool) error {
 		return nil
@@ -503,9 +489,9 @@ func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
 
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
@@ -515,10 +501,7 @@ func TestHandlerKill(t *testing.T) {
 			e.ProcessList,
 			"foo",
 		),
-		0,
-		false,
-		nil,
-	)
+	}
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
@@ -526,23 +509,24 @@ func TestHandlerKill(t *testing.T) {
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 
+	require.Len(handler.sm.connections, 2)
 	require.Len(handler.sm.sessions, 0)
 
 	handler.ComInitDB(conn2, "test")
 	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
-
 	require.NoError(err)
 
+	require.False(conn1.Conn.(*mockConn).closed)
+	require.Len(handler.sm.connections, 2)
 	require.Len(handler.sm.sessions, 1)
-	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
 	err = handler.sm.SetDB(conn1, "test")
 	require.NoError(err)
 	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
 	require.NoError(err)
-	ctx1, err = handler.e.ProcessList.AddProcess(ctx1, "SELECT 1")
+	ctx1, err = handler.e.ProcessList.BeginQuery(ctx1, "SELECT 1")
 	require.NoError(err)
 
 	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result, more bool) error {
@@ -550,18 +534,10 @@ func TestHandlerKill(t *testing.T) {
 	})
 	require.NoError(err)
 
+	require.Error(ctx1.Err())
+	require.True(conn1.Conn.(*mockConn).closed)
+	handler.ConnectionClosed(conn1)
 	require.Len(handler.sm.sessions, 1)
-	assertNoConnProcesses(t, e, conn1.ConnectionID)
-}
-
-func assertNoConnProcesses(t *testing.T, e *sqle.Engine, conn uint32) {
-	t.Helper()
-
-	for _, p := range e.ProcessList.Processes() {
-		if p.Connection == conn {
-			t.Errorf("expecting no processes with connection id %d", conn)
-		}
-	}
 }
 
 func TestSchemaToFields(t *testing.T) {
@@ -569,57 +545,57 @@ func TestSchemaToFields(t *testing.T) {
 
 	schema := sql.Schema{
 		// Blob, Text, and JSON Types
-		{Name: "tinyblob", Type: sql.TinyBlob},
-		{Name: "blob", Type: sql.Blob},
-		{Name: "mediumblob", Type: sql.MediumBlob},
-		{Name: "longblob", Type: sql.LongBlob},
-		{Name: "tinytext", Type: sql.TinyText},
-		{Name: "text", Type: sql.Text},
-		{Name: "mediumtext", Type: sql.MediumText},
-		{Name: "longtext", Type: sql.LongText},
-		{Name: "json", Type: sql.JSON},
+		{Name: "tinyblob", Type: types.TinyBlob},
+		{Name: "blob", Type: types.Blob},
+		{Name: "mediumblob", Type: types.MediumBlob},
+		{Name: "longblob", Type: types.LongBlob},
+		{Name: "tinytext", Type: types.TinyText},
+		{Name: "text", Type: types.Text},
+		{Name: "mediumtext", Type: types.MediumText},
+		{Name: "longtext", Type: types.LongText},
+		{Name: "json", Type: types.JSON},
 
 		// Geometry Types
-		{Name: "geometry", Type: sql.GeometryType{}},
-		{Name: "point", Type: sql.PointType{}},
-		{Name: "polygon", Type: sql.PolygonType{}},
-		{Name: "linestring", Type: sql.LineStringType{}},
+		{Name: "geometry", Type: types.GeometryType{}},
+		{Name: "point", Type: types.PointType{}},
+		{Name: "polygon", Type: types.PolygonType{}},
+		{Name: "linestring", Type: types.LineStringType{}},
 
 		// Integer Types
-		{Name: "uint8", Type: sql.Uint8},
-		{Name: "int8", Type: sql.Int8},
-		{Name: "uint16", Type: sql.Uint16},
-		{Name: "int16", Type: sql.Int16},
-		{Name: "uint24", Type: sql.Uint24},
-		{Name: "int24", Type: sql.Int24},
-		{Name: "uint32", Type: sql.Uint32},
-		{Name: "int32", Type: sql.Int32},
-		{Name: "uint64", Type: sql.Uint64},
-		{Name: "int64", Type: sql.Int64},
+		{Name: "uint8", Type: types.Uint8},
+		{Name: "int8", Type: types.Int8},
+		{Name: "uint16", Type: types.Uint16},
+		{Name: "int16", Type: types.Int16},
+		{Name: "uint24", Type: types.Uint24},
+		{Name: "int24", Type: types.Int24},
+		{Name: "uint32", Type: types.Uint32},
+		{Name: "int32", Type: types.Int32},
+		{Name: "uint64", Type: types.Uint64},
+		{Name: "int64", Type: types.Int64},
 
 		// Floating Point and Decimal Types
-		{Name: "float32", Type: sql.Float32},
-		{Name: "float64", Type: sql.Float64},
-		{Name: "decimal10_0", Type: sql.MustCreateDecimalType(10, 0)},
-		{Name: "decimal60_30", Type: sql.MustCreateDecimalType(60, 30)},
+		{Name: "float32", Type: types.Float32},
+		{Name: "float64", Type: types.Float64},
+		{Name: "decimal10_0", Type: types.MustCreateDecimalType(10, 0)},
+		{Name: "decimal60_30", Type: types.MustCreateDecimalType(60, 30)},
 
 		// Char, Binary, and Bit Types
-		{Name: "varchar50", Type: sql.MustCreateString(sqltypes.VarChar, 50, sql.Collation_Default)},
-		{Name: "varbinary12345", Type: sql.MustCreateBinary(sqltypes.VarBinary, 12345)},
-		{Name: "binary123", Type: sql.MustCreateBinary(sqltypes.Binary, 123)},
-		{Name: "char123", Type: sql.MustCreateString(sqltypes.Char, 123, sql.Collation_Default)},
-		{Name: "bit12", Type: sql.MustCreateBitType(12)},
+		{Name: "varchar50", Type: types.MustCreateString(sqltypes.VarChar, 50, sql.Collation_Default)},
+		{Name: "varbinary12345", Type: types.MustCreateBinary(sqltypes.VarBinary, 12345)},
+		{Name: "binary123", Type: types.MustCreateBinary(sqltypes.Binary, 123)},
+		{Name: "char123", Type: types.MustCreateString(sqltypes.Char, 123, sql.Collation_Default)},
+		{Name: "bit12", Type: types.MustCreateBitType(12)},
 
 		// Dates
-		{Name: "datetime", Type: sql.MustCreateDatetimeType(sqltypes.Datetime)},
-		{Name: "timestamp", Type: sql.MustCreateDatetimeType(sqltypes.Timestamp)},
-		{Name: "date", Type: sql.MustCreateDatetimeType(sqltypes.Date)},
-		{Name: "time", Type: sql.Time},
-		{Name: "year", Type: sql.Year},
+		{Name: "datetime", Type: types.MustCreateDatetimeType(sqltypes.Datetime)},
+		{Name: "timestamp", Type: types.MustCreateDatetimeType(sqltypes.Timestamp)},
+		{Name: "date", Type: types.MustCreateDatetimeType(sqltypes.Date)},
+		{Name: "time", Type: types.Time},
+		{Name: "year", Type: types.Year},
 
 		// Set and Enum Types
-		{Name: "set", Type: sql.MustCreateSetType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
-		{Name: "enum", Type: sql.MustCreateEnumType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
+		{Name: "set", Type: types.MustCreateSetType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
+		{Name: "enum", Type: types.MustCreateEnumType([]string{"one", "two", "three", "four"}, sql.Collation_Default)},
 	}
 
 	expected := []*query.Field{
@@ -693,29 +669,26 @@ func TestHandlerTimeout(t *testing.T) {
 	e := setupMemDB(require)
 	e2 := setupMemDB(require)
 
-	timeOutHandler := NewHandler(
-		e, NewSessionManager(testSessionBuilder,
+	timeOutHandler := &Handler{
+		e: e,
+		sm: NewSessionManager(testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		1*time.Second,
-		false,
-		nil,
-	)
+		readTimeout: 1 * time.Second,
+	}
 
-	noTimeOutHandler := NewHandler(
-		e2, NewSessionManager(testSessionBuilder,
+	noTimeOutHandler := &Handler{
+		e: e2,
+		sm: NewSessionManager(testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		0,
-		false,
-		nil,
-	)
+	}
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
 	require.Equal(0*time.Second, noTimeOutHandler.readTimeout)
 
@@ -758,9 +731,9 @@ func TestOkClosedConnection(t *testing.T) {
 		_ = conn.Close()
 	}()
 
-	h := NewHandler(
-		e,
-		NewSessionManager(
+	h := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -768,10 +741,7 @@ func TestOkClosedConnection(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		nil,
-	)
+	}
 	c := newConn(1)
 	h.NewConnection(c)
 
@@ -876,15 +846,15 @@ func TestBindingsToExprs(t *testing.T) {
 				"timestamp": &query.BindVariable{Type: query.Type_TIMESTAMP, Value: []byte("2020-10-20T12:00:00Z")},
 			},
 			map[string]sql.Expression{
-				"i8":        expression.NewLiteral(int64(12), sql.Int64),
-				"u64":       expression.NewLiteral(uint64(4096), sql.Uint64),
-				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, sql.MustCreateBinary(query.Type_VARBINARY, int64(3))),
-				"text":      expression.NewLiteral("four score and seven years ago...", sql.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
-				"bit":       expression.NewLiteral(uint64(0x0f), sql.MustCreateBitType(sql.BitTypeMaxBits)),
-				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), sql.Date),
-				"year":      expression.NewLiteral(int16(2020), sql.Year),
-				"datetime":  expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), sql.Datetime),
-				"timestamp": expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), sql.Timestamp),
+				"i8":        expression.NewLiteral(int64(12), types.Int64),
+				"u64":       expression.NewLiteral(uint64(4096), types.Uint64),
+				"bin":       expression.NewLiteral([]byte{byte(0xC0), byte(0x00), byte(0x10)}, types.MustCreateBinary(query.Type_VARBINARY, int64(3))),
+				"text":      expression.NewLiteral("four score and seven years ago...", types.MustCreateStringWithDefaults(query.Type_TEXT, 33)),
+				"bit":       expression.NewLiteral(uint64(0x0f), types.MustCreateBitType(types.BitTypeMaxBits)),
+				"date":      expression.NewLiteral(time.Date(2020, time.Month(10), 20, 0, 0, 0, 0, time.UTC), types.Date),
+				"year":      expression.NewLiteral(int16(2020), types.Year),
+				"datetime":  expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), types.Datetime),
+				"timestamp": expression.NewLiteral(time.Date(2020, time.Month(10), 20, 12, 0, 0, 0, time.UTC), types.Timestamp),
 			},
 			false,
 		},
@@ -906,15 +876,15 @@ func TestBindingsToExprs(t *testing.T) {
 // Tests the CLIENT_FOUND_ROWS capabilities flag
 func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	e := setupMemDB(require.New(t))
-	dummyConn := &mysql.Conn{ConnectionID: 1}
+	dummyConn := newConn(1)
 
 	// Set the capabilities to include found rows
 	dummyConn.Capabilities = mysql.CapabilityClientFoundRows
 
 	// Setup the handler
-	handler := NewHandler(
-		e,
-		NewSessionManager(
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
 			func(ctx *sql.Context, db string) bool { return db == "test" },
@@ -922,10 +892,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
-		false,
-		nil,
-	)
+	}
 
 	tests := []struct {
 		name                 string
@@ -984,7 +951,7 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
 
-	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}}), nil)
+	tableTest := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
 	tableTest.EnablePrimaryKeyIndexes()
 
 	for i := 0; i < 1010; i++ {
@@ -1053,20 +1020,31 @@ func testSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Se
 
 type mockConn struct {
 	net.Conn
+	closed bool
 }
 
-func (c *mockConn) Close() error { return nil }
+func (c *mockConn) Close() error {
+	c.closed = true
+	return nil
+}
+
+func (c *mockConn) RemoteAddr() net.Addr {
+	return mockAddr{}
+}
+
+type mockAddr struct{}
+
+func (mockAddr) Network() string {
+	return "tcp"
+}
+
+func (mockAddr) String() string {
+	return "localhost"
+}
 
 func newConn(id uint32) *mysql.Conn {
-	conn := &mysql.Conn{
+	return &mysql.Conn{
 		ConnectionID: id,
+		Conn:         new(mockConn),
 	}
-
-	// Set conn so it does not panic when we close it
-	val := reflect.ValueOf(conn).Elem()
-	field := val.FieldByName("Conn")
-	field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
-	field.Set(reflect.ValueOf(new(mockConn)))
-
-	return conn
 }

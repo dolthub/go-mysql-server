@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type PKAction byte
@@ -44,8 +45,10 @@ type AlterPK struct {
 	targetSchema sql.Schema
 }
 
+var _ sql.Node = (*AlterPK)(nil)
 var _ sql.Databaser = (*AlterPK)(nil)
 var _ sql.SchemaTarget = (*AlterPK)(nil)
+var _ sql.CollationCoercible = (*AlterPK)(nil)
 
 func NewAlterCreatePk(db sql.Database, table sql.Node, columns []sql.IndexColumn) *AlterPK {
 	return &AlterPK{
@@ -84,7 +87,7 @@ func (a *AlterPK) String() string {
 }
 
 func (a *AlterPK) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (a AlterPK) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
@@ -127,7 +130,7 @@ func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		return sql.NewRow(sql.NewOkResult(0)), nil
+		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
 	err := d.pkAlterable.DropPrimaryKey(ctx)
@@ -135,7 +138,7 @@ func (d *dropPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.NewRow(sql.NewOkResult(0)), nil
+	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
 func (d *dropPkIter) Close(context *sql.Context) error {
@@ -210,7 +213,7 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		return sql.NewRow(sql.NewOkResult(0)), nil
+		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
 	err := c.pkAlterable.CreatePrimaryKey(ctx, c.columns)
@@ -218,7 +221,7 @@ func (c *createPkIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.NewRow(sql.NewOkResult(0)), nil
+	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
 func (c createPkIter) Close(context *sql.Context) error {
@@ -362,4 +365,9 @@ func (a AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
 func (a *AlterPK) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(a.Database().Name(), getTableName(a.Table), "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AlterPK) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

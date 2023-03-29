@@ -78,6 +78,7 @@ func init() {
 		KeylessSetup,
 		FooSetup,
 		GraphSetup,
+		XySetup,
 	)
 	PlanSetup = concatenateSetupSources(
 		Mytable,

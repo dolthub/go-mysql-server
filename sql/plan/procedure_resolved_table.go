@@ -31,6 +31,7 @@ var _ sql.Node = (*ProcedureResolvedTable)(nil)
 var _ sql.DebugStringer = (*ProcedureResolvedTable)(nil)
 var _ sql.TableWrapper = (*ProcedureResolvedTable)(nil)
 var _ sql.Table = (*ProcedureResolvedTable)(nil)
+var _ sql.CollationCoercible = (*ProcedureResolvedTable)(nil)
 
 // NewProcedureResolvedTable returns a *ProcedureResolvedTable.
 func NewProcedureResolvedTable(rt *ResolvedTable) *ProcedureResolvedTable {
@@ -97,6 +98,11 @@ func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, e
 // CheckPrivileges implements the interface sql.Node.
 func (t *ProcedureResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return t.ResolvedTable.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t *ProcedureResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.ResolvedTable.CollationCoercibility(ctx)
 }
 
 // Underlying implements the sql.TableWrapper interface.

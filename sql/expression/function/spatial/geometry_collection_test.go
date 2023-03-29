@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestGeomColl(t *testing.T) {
@@ -31,33 +32,33 @@ func TestGeomColl(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.GeomColl{Geoms: []sql.GeometryValue{}}, v)
+		require.Equal(types.GeomColl{Geoms: []types.GeometryValue{}}, v)
 	})
 
 	t.Run("create valid geometrycollection with every geometry", func(t *testing.T) {
 		require := require.New(t)
-		point := sql.Point{X: 1, Y: 2}
-		line := sql.LineString{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
-		poly := sql.Polygon{Lines: []sql.LineString{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
-		mpoint := sql.MultiPoint{Points: []sql.Point{point, point}}
-		mline := sql.MultiLineString{Lines: []sql.LineString{line, line}}
-		mpoly := sql.MultiPolygon{Polygons: []sql.Polygon{poly, poly}}
-		gColl := sql.GeomColl{}
+		point := types.Point{X: 1, Y: 2}
+		line := types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}
+		poly := types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}
+		mpoint := types.MultiPoint{Points: []types.Point{point, point}}
+		mline := types.MultiLineString{Lines: []types.LineString{line, line}}
+		mpoly := types.MultiPolygon{Polygons: []types.Polygon{poly, poly}}
+		gColl := types.GeomColl{}
 
 		f, err := NewGeomColl(
-			expression.NewLiteral(point, sql.PointType{}),
-			expression.NewLiteral(line, sql.LineStringType{}),
-			expression.NewLiteral(poly, sql.PolygonType{}),
-			expression.NewLiteral(mpoint, sql.MultiPointType{}),
-			expression.NewLiteral(mline, sql.MultiLineStringType{}),
-			expression.NewLiteral(mpoly, sql.MultiPolygonType{}),
-			expression.NewLiteral(gColl, sql.GeomCollType{}),
+			expression.NewLiteral(point, types.PointType{}),
+			expression.NewLiteral(line, types.LineStringType{}),
+			expression.NewLiteral(poly, types.PolygonType{}),
+			expression.NewLiteral(mpoint, types.MultiPointType{}),
+			expression.NewLiteral(mline, types.MultiLineStringType{}),
+			expression.NewLiteral(mpoly, types.MultiPolygonType{}),
+			expression.NewLiteral(gColl, types.GeomCollType{}),
 		)
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.GeomColl{Geoms: []sql.GeometryValue{
+		require.Equal(types.GeomColl{Geoms: []types.GeometryValue{
 			point,
 			line,
 			poly,
@@ -71,6 +72,6 @@ func TestGeomColl(t *testing.T) {
 
 func TestNewGeomColl(t *testing.T) {
 	require := require.New(t)
-	_, err := NewGeomColl(expression.NewLiteral(nil, sql.GeometryType{}))
+	_, err := NewGeomColl(expression.NewLiteral(nil, types.GeometryType{}))
 	require.NoError(err)
 }

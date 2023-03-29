@@ -66,7 +66,8 @@ func (h *memoryHarness) ExecuteStatement(statement string) error {
 var pid uint32
 
 func (h *memoryHarness) newContext() *sql.Context {
-	ctx := h.harness.NewContext().WithCurrentDB("mydb")
+	ctx := h.harness.NewContext()
+	ctx.SetCurrentDatabase("mydb")
 	ctx.ApplyOpts(sql.WithPid(uint64(atomic.AddUint32(&pid, 1))))
 	return ctx
 }

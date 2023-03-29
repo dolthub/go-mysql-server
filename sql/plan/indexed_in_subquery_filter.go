@@ -57,6 +57,7 @@ type IndexedInSubqueryFilter struct {
 var _ sql.Node = (*IndexedInSubqueryFilter)(nil)
 var _ sql.Disposable = (*IndexedInSubqueryFilter)(nil)
 var _ sql.Expressioner = (*IndexedInSubqueryFilter)(nil)
+var _ sql.CollationCoercible = (*IndexedInSubqueryFilter)(nil)
 
 func (i *IndexedInSubqueryFilter) Resolved() bool {
 	return i.subquery.Resolved() && i.child.Resolved()
@@ -106,6 +107,13 @@ func (i *IndexedInSubqueryFilter) WithChildren(children ...sql.Node) (sql.Node, 
 // CheckPrivileges implements the interface sql.Node.
 func (i *IndexedInSubqueryFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return i.subquery.Query.CheckPrivileges(ctx, opChecker) && i.child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (i *IndexedInSubqueryFilter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// I truly have zero clue if this is the correct field to pull coercibility from (or if this needs to return
+	// coercibility at all), but I'll leave this here until we identify that it needs to be changed.
+	return sql.GetCoercibility(ctx, i.child)
 }
 
 // Expressions implements the interface sql.Expressioner.

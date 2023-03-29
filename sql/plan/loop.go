@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Loop represents the LOOP statement, which loops over a set of statements.
@@ -35,13 +36,14 @@ type Loop struct {
 var _ sql.Node = (*Loop)(nil)
 var _ sql.DebugStringer = (*Loop)(nil)
 var _ sql.Expressioner = (*Loop)(nil)
+var _ sql.CollationCoercible = (*Loop)(nil)
 var _ RepresentsLabeledBlock = (*Loop)(nil)
 
 // NewLoop returns a new *Loop node.
 func NewLoop(label string, block *Block) *Loop {
 	return &Loop{
 		Label:          label,
-		Condition:      expression.NewLiteral(true, sql.Boolean),
+		Condition:      expression.NewLiteral(true, types.Boolean),
 		OnceBeforeEval: true,
 		Block:          block,
 	}
@@ -118,6 +120,11 @@ func (l *Loop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 	return l.Block.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Loop) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return l.Block.CollationCoercibility(ctx)
+}
+
 // RowIter implements the interface sql.Node.
 func (l *Loop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var blockIter sql.RowIter
@@ -176,7 +183,7 @@ func (l *loopIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		conditionBool, err := sql.ConvertToBool(condition)
+		conditionBool, err := types.ConvertToBool(condition)
 		if err != nil {
 			return nil, err
 		}

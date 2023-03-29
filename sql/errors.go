@@ -50,6 +50,9 @@ var (
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
 
+	// ErrUnknownTable is returned when the non-table name is used for table actions.
+	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
+
 	// ErrTableColumnNotFound is thrown when a column named cannot be found in scope
 	ErrTableColumnNotFound = errors.NewKind("table %q does not have column %q")
 
@@ -169,6 +172,9 @@ var (
 	// ErrStoredProceduresNotSupported is returned when attempting to create a stored procedure on a database that doesn't support them.
 	ErrStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support stored procedures`)
 
+	// ErrVersionedStoredProceduresNotSupported is returned when attempting to retrieve a versioned stored procedure on a database that doesn't support them.
+	ErrVersionedStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support versioned stored procedures`)
+
 	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
 	ErrStoredProcedureAlreadyExists = errors.NewKind(`stored procedure "%s" already exists`)
 
@@ -180,6 +186,12 @@ var (
 
 	// ErrProcedureRecursiveCall is returned when a stored procedure has a CALL statement that refers to itself.
 	ErrProcedureRecursiveCall = errors.NewKind("recursive CALL on stored procedure `%s`")
+
+	// ErrProcedureNestedCallAsOf is returned when a stored procedure has a CALL ... AS OF statement, which is currently not allowed.
+	ErrProcedureNestedCallAsOf = errors.NewKind("CALL ... AS OF in stored procedure `%s`")
+
+	// ErrProcedureCallAsOfReadOnly is returned when a CALL ... AS OF statement attempts to modify a table.
+	ErrProcedureCallAsOfReadOnly = errors.NewKind("CALL ... AS OF converts databases to read only")
 
 	// ErrProcedureInvalidBodyStatement is returned when a stored procedure has a statement that is invalid inside of procedures.
 	ErrProcedureInvalidBodyStatement = errors.NewKind("`%s` statements are invalid inside of stored procedures")
@@ -351,6 +363,9 @@ var (
 	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
 	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
 
+	// ErrAlterTableCollationNotSupported is thrown when the table doesn't support ALTER TABLE COLLATE statements
+	ErrAlterTableCollationNotSupported = errors.NewKind("table %s cannot have its collation altered")
+
 	// ErrPartitionNotFound is thrown when a partition key on a table is not found
 	ErrPartitionNotFound = errors.NewKind("partition not found %q")
 
@@ -466,7 +481,7 @@ var (
 	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")
 
 	// ErrCantDropIndex is return when a table can't drop an index due to a foreign key relationship.
-	ErrCantDropIndex = errors.NewKind("error: can't drop index '%s': needed in a foreign key constraint")
+	ErrCantDropIndex = errors.NewKind("error: can't drop index '%s': needed in foreign key constraint %s")
 
 	// ErrImmutableDatabaseProvider is returned when attempting to edit an immutable database databaseProvider.
 	ErrImmutableDatabaseProvider = errors.NewKind("error: can't modify database databaseProvider")
@@ -546,6 +561,26 @@ var (
 	// ErrUnsupportedSRID is thrown for spatial functions over unsupported SRIDs
 	ErrUnsupportedSRID = errors.NewKind("SRID %v has not been implemented for geographic spatial reference systems.")
 
+	// ErrSRIDOnNonGeomCol is thrown when attempting to define SRID over a non-geometry column
+	ErrSRIDOnNonGeomCol = errors.NewKind("incorrect usage of SRID and non-geometry column")
+
+	// ErrTooManyKeyParts is thrown when creating an index with too many columns
+	ErrTooManyKeyParts = errors.NewKind("too many key parts specified; max %d parts allowed")
+
+	// ErrNullableSpatialIdx is thrown when creating a SPATIAL index with a nullable column
+	ErrNullableSpatialIdx = errors.NewKind("All parts of a SPATIAL index must be NOT NULL")
+
+	// ErrBadSpatialIdxCol is thrown when attempting to define a SPATIAL index over a non-geometry column
+	ErrBadSpatialIdxCol = errors.NewKind("a SPATIAL index may only contain a geometrical type column")
+
+	// ErrUnsupportedSpatialIdx is thrown when attempting to create a SPATIAL index
+	// TODO: remove this error when spatial index are created
+	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL")
+
+	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
+	// TODO: remove this error when all types are full supported by spatial type functions
+	ErrUnsupportedGISTypeForSpatialFunc = errors.NewKind("unsupported spatial type: %s for function %s")
+
 	// ErrUnsupportedGISType is thrown when attempting to convert an unsupported geospatial value to a geometry struct
 	ErrUnsupportedGISType = errors.NewKind("unsupported geospatial type: %s from value: 0x%s")
 
@@ -616,6 +651,10 @@ var (
 
 	// ErrGrantRevokeIllegalPrivilege is returned when a GRANT or REVOKE statement is malformed, or attempts to use privilege incorrectly.
 	ErrGrantRevokeIllegalPrivilege = errors.NewKind("Illegal GRANT/REVOKE command")
+
+	// ErrGrantRevokeIllegalPrivilegeWithMessage is returned when a GRANT or REVOKE statement is malformed, or attempts
+	// to use privilege incorrectly and an additional message needs to be provided to the user.
+	ErrGrantRevokeIllegalPrivilegeWithMessage = errors.NewKind("Illegal GRANT/REVOKE command: %s")
 
 	// ErrInvalidWindowInheritance is returned when a window and its dependency contains conflicting partitioning, ordering, or framing clauses
 	ErrInvalidWindowInheritance = errors.NewKind("window '%s' cannot inherit '%s' since %s")
@@ -714,6 +753,25 @@ var (
 
 	// ErrNoAutoIncrementCol is returned when there is no auto increment column defined on a table.
 	ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
+
+	// ErrValueOutOfRange is returned when a value is out of range for a type.
+	ErrValueOutOfRange = errors.NewKind("%v out of range for %v")
+
+	ErrConvertingToSet   = errors.NewKind("value %v is not valid for this set")
+	ErrDuplicateEntrySet = errors.NewKind("duplicate entry: %v")
+	ErrInvalidSetValue   = errors.NewKind("value %v was not found in the set")
+	ErrTooLargeForSet    = errors.NewKind(`value "%v" is too large for this set`)
+	ErrNotPoint          = errors.NewKind("value of type %T is not a point")
+	ErrNotLineString     = errors.NewKind("value of type %T is not a linestring")
+
+	// ErrMergeJoinExpectsComparerFilters is returned when we attempt to build a merge join with an invalid filter.
+	ErrMergeJoinExpectsComparerFilters = errors.NewKind("merge join expects expression.Comparer filters, found: %T")
+
+	// ErrNoJoinFilters is returned when we attempt to build a filtered join without filters
+	ErrNoJoinFilters = errors.NewKind("join expected non-nil filters")
+
+	// ErrDroppedJoinFilters is returned when we removed filters from a join, but failed to re-insert them
+	ErrDroppedJoinFilters = errors.NewKind("dropped filters from join, but failed to re-insert them")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

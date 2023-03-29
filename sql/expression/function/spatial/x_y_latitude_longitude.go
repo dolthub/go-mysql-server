@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // STX is a function that returns the x value from a given point.
@@ -30,6 +31,7 @@ type STX struct {
 }
 
 var _ sql.FunctionExpression = (*STX)(nil)
+var _ sql.CollationCoercible = (*STX)(nil)
 
 var ErrInvalidType = errors.NewKind("%s received non-point type")
 
@@ -54,10 +56,15 @@ func (s *STX) Description() string {
 // Type implements the sql.Expression interface.
 func (s *STX) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*STX) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *STX) String() string {
@@ -87,7 +94,7 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(s.FunctionName())
 	}
@@ -109,13 +116,13 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := sql.Float64.Convert(x)
+	_x, err := types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create point with new X and old Y
-	return sql.Point{SRID: _p.SRID, X: _x.(float64), Y: _p.Y}, nil
+	return types.Point{SRID: _p.SRID, X: _x.(float64), Y: _p.Y}, nil
 }
 
 // STY is a function that returns the y value from a given point.
@@ -124,6 +131,7 @@ type STY struct {
 }
 
 var _ sql.FunctionExpression = (*STY)(nil)
+var _ sql.CollationCoercible = (*STY)(nil)
 
 // NewSTY creates a new STY expression.
 func NewSTY(args ...sql.Expression) (sql.Expression, error) {
@@ -146,10 +154,15 @@ func (s *STY) Description() string {
 // Type implements the sql.Expression interface.
 func (s *STY) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*STY) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *STY) String() string {
@@ -179,7 +192,7 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(s.FunctionName())
 	}
@@ -201,13 +214,13 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := sql.Float64.Convert(y)
+	_y, err := types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create point with old X and new Ys
-	return sql.Point{SRID: _p.SRID, X: _p.X, Y: _y.(float64)}, nil
+	return types.Point{SRID: _p.SRID, X: _p.X, Y: _y.(float64)}, nil
 }
 
 // Longitude is a function that returns the x value from a given point.
@@ -216,6 +229,7 @@ type Longitude struct {
 }
 
 var _ sql.FunctionExpression = (*Longitude)(nil)
+var _ sql.CollationCoercible = (*Longitude)(nil)
 
 var ErrNonGeographic = errors.NewKind("function %s is only defined for geographic spatial reference systems, but one of its argument is in SRID %v, which is not geographic")
 var ErrLatitudeOutOfRange = errors.NewKind("latitude %v is out of range in function %s. it must be within [-90.0, 90.0]")
@@ -242,10 +256,15 @@ func (l *Longitude) Description() string {
 // Type implements the sql.Expression interface.
 func (l *Longitude) Type() sql.Type {
 	if len(l.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Longitude) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *Longitude) String() string {
@@ -275,13 +294,13 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(l.FunctionName())
 	}
 
 	// Point needs to have SRID 4326
-	if _p.SRID != sql.GeoSpatialSRID {
+	if _p.SRID != types.GeoSpatialSRID {
 		return nil, ErrNonGeographic.New(l.FunctionName(), _p.SRID)
 	}
 
@@ -302,7 +321,7 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	x, err = sql.Float64.Convert(x)
+	x, err = types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +333,7 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Create point with new X and old Y
-	return sql.Point{SRID: _p.SRID, X: _x, Y: _p.Y}, nil
+	return types.Point{SRID: _p.SRID, X: _x, Y: _p.Y}, nil
 }
 
 // Latitude is a function that returns the x value from a given point.
@@ -323,6 +342,7 @@ type Latitude struct {
 }
 
 var _ sql.FunctionExpression = (*Latitude)(nil)
+var _ sql.CollationCoercible = (*Latitude)(nil)
 
 // NewLatitude creates a new ST_LATITUDE expression.
 func NewLatitude(args ...sql.Expression) (sql.Expression, error) {
@@ -345,10 +365,15 @@ func (l *Latitude) Description() string {
 // Type implements the sql.Expression interface.
 func (l *Latitude) Type() sql.Type {
 	if len(l.ChildExpressions) == 1 {
-		return sql.Float64
+		return types.Float64
 	} else {
-		return sql.PointType{}
+		return types.PointType{}
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Latitude) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *Latitude) String() string {
@@ -378,14 +403,14 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(sql.Point)
+	_p, ok := p.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(l.FunctionName())
 	}
 
 	// Point needs to have SRID 4326
 	// TODO: might need to be == Cartesian instead for other SRIDs
-	if _p.SRID != sql.GeoSpatialSRID {
+	if _p.SRID != types.GeoSpatialSRID {
 		return nil, ErrNonGeographic.New(l.FunctionName(), _p.SRID)
 	}
 
@@ -406,7 +431,7 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	y, err = sql.Float64.Convert(y)
+	y, err = types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
@@ -418,5 +443,5 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Create point with old X and new Y
-	return sql.Point{SRID: _p.SRID, X: _p.X, Y: _y}, nil
+	return types.Point{SRID: _p.SRID, X: _p.X, Y: _y}, nil
 }

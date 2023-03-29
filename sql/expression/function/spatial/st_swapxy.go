@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // SwapXY is a function that returns a spatial type with their X and Y values swapped
@@ -27,6 +28,7 @@ type SwapXY struct {
 }
 
 var _ sql.FunctionExpression = (*SwapXY)(nil)
+var _ sql.CollationCoercible = (*SwapXY)(nil)
 
 // NewSwapXY creates a new point expression.
 func NewSwapXY(e sql.Expression) sql.Expression {
@@ -51,6 +53,11 @@ func (s *SwapXY) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (s *SwapXY) Type() sql.Type {
 	return s.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SwapXY) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (s *SwapXY) String() string {
@@ -80,7 +87,7 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Expect one of the geometry types
 	switch v := val.(type) {
-	case sql.GeometryValue:
+	case types.GeometryValue:
 		return v.Swap(), nil
 	default:
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())

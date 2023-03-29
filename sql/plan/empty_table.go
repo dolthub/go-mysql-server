@@ -16,22 +16,33 @@ package plan
 
 import "github.com/dolthub/go-mysql-server/sql"
 
-// EmptyTable is a node representing an empty table.
-var EmptyTable = new(emptyTable)
+func IsEmptyTable(n sql.Node) bool {
+	_, ok := n.(*EmptyTable)
+	return ok
+}
+func NewEmptyTableWithSchema(schema sql.Schema) sql.Node {
+	return &EmptyTable{schema: schema}
+}
 
-type emptyTable struct{}
+var _ sql.Node = (*EmptyTable)(nil)
+var _ sql.CollationCoercible = (*EmptyTable)(nil)
 
-func (emptyTable) Schema() sql.Schema   { return nil }
-func (emptyTable) Children() []sql.Node { return nil }
-func (emptyTable) Resolved() bool       { return true }
-func (e *emptyTable) String() string    { return "EmptyTable" }
+type EmptyTable struct {
+	schema sql.Schema
+}
 
-func (emptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (e *EmptyTable) Name() string       { return "__emptytable" }
+func (e *EmptyTable) Schema() sql.Schema { return e.schema }
+func (*EmptyTable) Children() []sql.Node { return nil }
+func (*EmptyTable) Resolved() bool       { return true }
+func (e *EmptyTable) String() string     { return "EmptyTable" }
+
+func (*EmptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
 // WithChildren implements the Node interface.
-func (e *emptyTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (e *EmptyTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
 	}
@@ -40,6 +51,11 @@ func (e *emptyTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // CheckPrivileges implements the interface sql.Node.
-func (e *emptyTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (e *EmptyTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*EmptyTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

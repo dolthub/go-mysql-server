@@ -27,6 +27,7 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -60,6 +61,7 @@ type ArithmeticOp interface {
 }
 
 var _ ArithmeticOp = (*Arithmetic)(nil)
+var _ sql.CollationCoercible = (*Arithmetic)(nil)
 
 // Arithmetic expressions include plus, minus and multiplication (+, -, *) operations.
 type Arithmetic struct {
@@ -117,7 +119,7 @@ func (a *Arithmetic) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (a *Arithmetic) IsNullable() bool {
-	if a.Type() == sql.Timestamp || a.Type() == sql.Datetime {
+	if a.Type() == types.Timestamp || a.Type() == types.Datetime {
 		return true
 	}
 
@@ -128,39 +130,44 @@ func (a *Arithmetic) IsNullable() bool {
 func (a *Arithmetic) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := a.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := a.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
 	// applies for + and - ops
 	if isInterval(a.Left) || isInterval(a.Right) {
-		return sql.Datetime
+		return types.Datetime
 	}
 
-	if sql.IsTime(lTyp) && sql.IsTime(rTyp) {
-		return sql.Int64
+	if types.IsTime(lTyp) && types.IsTime(rTyp) {
+		return types.Int64
 	}
 
-	if !sql.IsNumber(lTyp) || !sql.IsNumber(rTyp) {
-		return sql.Float64
+	if !types.IsNumber(lTyp) || !types.IsNumber(rTyp) {
+		return types.Float64
 	}
 
-	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
-		return sql.Uint64
-	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
-		return sql.Int64
+	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+		return types.Uint64
+	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
+		return types.Int64
 	}
 
 	// if one is uint and the other is int of any size, then use int64
-	if sql.IsInteger(lTyp) && sql.IsInteger(rTyp) {
-		return sql.Int64
+	if types.IsInteger(lTyp) && types.IsInteger(rTyp) {
+		return types.Int64
 	}
 
 	return floatOrDecimalType(a)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Arithmetic) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.
@@ -240,14 +247,14 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := a.Type()
 
-	lIsTimeType := sql.IsTime(a.Left.Type())
-	rIsTimeType := sql.IsTime(a.Right.Type())
+	lIsTimeType := types.IsTime(a.Left.Type())
+	rIsTimeType := types.IsTime(a.Right.Type())
 
 	if i, ok := left.(*TimeDelta); ok {
 		left = i
 	} else {
 		// these are the types we specifically want to capture from we get from Type()
-		if sql.IsInteger(typ) || sql.IsFloat(typ) || sql.IsTime(typ) {
+		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			left = convertValueToType(ctx, typ, left, lIsTimeType)
 		} else {
 			left = convertToDecimalValue(left, lIsTimeType)
@@ -258,7 +265,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 		right = i
 	} else {
 		// these are the types we specifically want to capture from we get from Type()
-		if sql.IsInteger(typ) || sql.IsFloat(typ) || sql.IsTime(typ) {
+		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			right = convertValueToType(ctx, typ, right, rIsTimeType)
 		} else {
 			right = convertToDecimalValue(right, rIsTimeType)
@@ -419,14 +426,14 @@ func plus(lval, rval interface{}) (interface{}, error) {
 	case time.Time:
 		switch r := rval.(type) {
 		case *TimeDelta:
-			return sql.ValidateTime(r.Add(l)), nil
+			return types.ValidateTime(r.Add(l)), nil
 		case time.Time:
 			return l.Unix() + r.Unix(), nil
 		}
 	case *TimeDelta:
 		switch r := rval.(type) {
 		case time.Time:
-			return sql.ValidateTime(l.Add(r)), nil
+			return types.ValidateTime(l.Add(r)), nil
 		}
 	}
 
@@ -493,7 +500,7 @@ func minus(lval, rval interface{}) (interface{}, error) {
 	case time.Time:
 		switch r := rval.(type) {
 		case *TimeDelta:
-			return sql.ValidateTime(r.Sub(l)), nil
+			return types.ValidateTime(r.Sub(l)), nil
 		case time.Time:
 			return l.Unix() - r.Unix(), nil
 		}
@@ -569,6 +576,9 @@ type UnaryMinus struct {
 	UnaryExpression
 }
 
+var _ sql.Expression = (*UnaryMinus)(nil)
+var _ sql.CollationCoercible = (*UnaryMinus)(nil)
+
 // NewUnaryMinus creates a new UnaryMinus expression node.
 func NewUnaryMinus(child sql.Expression) *UnaryMinus {
 	return &UnaryMinus{UnaryExpression{Child: child}}
@@ -585,7 +595,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if !sql.IsNumber(e.Child.Type()) {
+	if !types.IsNumber(e.Child.Type()) {
 		child, err = decimal.NewFromString(fmt.Sprintf("%v", child))
 		if err != nil {
 			child = 0.0
@@ -627,19 +637,24 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // Type implements the sql.Expression interface.
 func (e *UnaryMinus) Type() sql.Type {
 	typ := e.Child.Type()
-	if !sql.IsNumber(typ) {
-		return sql.Float64
+	if !types.IsNumber(typ) {
+		return types.Float64
 	}
 
-	if typ == sql.Uint32 {
-		return sql.Int32
+	if typ == types.Uint32 {
+		return types.Int32
 	}
 
-	if typ == sql.Uint64 {
-		return sql.Int64
+	if typ == types.Uint64 {
+		return types.Int64
 	}
 
 	return e.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnaryMinus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (e *UnaryMinus) String() string {

@@ -6,50 +6,50 @@ type RuleId int
 
 const (
 	// once before
-	applyDefaultSelectLimitId     RuleId = iota // applyDefaultSelectLimit
-	validateOffsetAndLimitId                    //validateOffsetAndLimit
-	validateCreateTableId                       // validateCreateTable
-	validateExprSemId                           // validateExprSem
-	resolveVariablesId                          // resolveVariables
-	resolveNamedWindowsId                       // resolveNamedWindows
-	resolveSetVariablesId                       // resolveSetVariables
-	resolveViewsId                              // resolveViews
-	liftCtesId                                  // liftCtes
-	resolveCtesId                               // resolveCtes
-	liftRecursiveCtesId                         // liftRecursiveCtes
-	resolveDatabasesId                          // resolveDatabases
-	resolveTablesId                             // resolveTables
-	loadStoredProceduresId                      // loadStoredProcedures
-	validateDropTablesId                        // validateDropTables
-	setTargetSchemasId                          // setTargetSchemas
-	resolveCreateLikeId                         // resolveCreateLike
-	parseColumnDefaultsId                       // parseColumnDefaults
-	resolveDropConstraintId                     // resolveDropConstraint
-	validateDropConstraintId                    // validateDropConstraint
-	loadCheckConstraintsId                      // loadCheckConstraints
-	assignCatalogId                             // assignCatalog
-	resolveAnalyzeTablesId                      //resolveAnalyzeTables
-	resolveCreateSelectId                       // resolveCreateSelect
-	resolveSubqueriesId                         // resolveSubqueries
-	setViewTargetSchemaId                       // setViewTargetSchema
-	resolveUnionsId                             // resolveUnions
-	resolveDescribeQueryId                      // resolveDescribeQuery
-	checkUniqueTableNamesId                     // checkUniqueTableNames
-	resolveTableFunctionsId                     // resolveTableFunctions
-	resolveDeclarationsId                       // resolveDeclarations
-	resolveColumnDefaultsId                     // resolveColumnDefaults
-	validateColumnDefaultsId                    // validateColumnDefaults
-	validateCreateTriggerId                     // validateCreateTrigger
-	validateCreateProcedureId                   // validateCreateProcedure
-	loadInfoSchemaId                            // loadInfoSchema
-	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
-	validateReadOnlyTransactionId               // validateReadOnlyTransaction
-	validateDatabaseSetId                       // validateDatabaseSet
-	validatePrivilegesId                        // validatePrivileges
-	reresolveTablesId                           // reresolveTables
-	transformJoinApplyId                        // transformJoinApply
-	setInsertColumnsId                          // setInsertColumns
-	validateJoinComplexityId                    // validateJoinComplexity
+	applyDefaultSelectLimitId      RuleId = iota // applyDefaultSelectLimit
+	validateOffsetAndLimitId                     //validateOffsetAndLimit
+	validateCreateTableId                        // validateCreateTable
+	validateExprSemId                            // validateExprSem
+	resolveVariablesId                           // resolveVariables
+	resolveNamedWindowsId                        // resolveNamedWindows
+	resolveSetVariablesId                        // resolveSetVariables
+	resolveViewsId                               // resolveViews
+	liftCtesId                                   // liftCtes
+	resolveCtesId                                // resolveCtes
+	liftRecursiveCtesId                          // liftRecursiveCtes
+	resolveDatabasesId                           // resolveDatabases
+	resolveTablesId                              // resolveTables
+	loadStoredProceduresId                       // loadStoredProcedures
+	validateDropTablesId                         // validateDropTables
+	setTargetSchemasId                           // setTargetSchemas
+	resolveCreateLikeId                          // resolveCreateLike
+	parseColumnDefaultsId                        // parseColumnDefaults
+	resolveDropConstraintId                      // resolveDropConstraint
+	validateDropConstraintId                     // validateDropConstraint
+	loadCheckConstraintsId                       // loadCheckConstraints
+	assignCatalogId                              // assignCatalog
+	resolveAnalyzeTablesId                       //resolveAnalyzeTables
+	resolveCreateSelectId                        // resolveCreateSelect
+	resolveSubqueriesId                          // resolveSubqueries
+	setViewTargetSchemaId                        // setViewTargetSchema
+	resolveUnionsId                              // resolveUnions
+	resolveDescribeQueryId                       // resolveDescribeQuery
+	checkUniqueTableNamesId                      // checkUniqueTableNames
+	resolveTableFunctionsId                      // resolveTableFunctions
+	resolveDeclarationsId                        // resolveDeclarations
+	resolveColumnDefaultsId                      // resolveColumnDefaults
+	validateColumnDefaultsId                     // validateColumnDefaults
+	validateCreateTriggerId                      // validateCreateTrigger
+	validateCreateProcedureId                    // validateCreateProcedure
+	loadInfoSchemaId                             // loadInfoSchema
+	validateReadOnlyDatabaseId                   // validateReadOnlyDatabase
+	validateReadOnlyTransactionId                // validateReadOnlyTransaction
+	validateDatabaseSetId                        // validateDatabaseSet
+	validatePrivilegesId                         // validatePrivileges
+	reresolveTablesId                            // reresolveTables
+	setInsertColumnsId                           // setInsertColumns
+	validateJoinComplexityId                     // validateJoinComplexity
+	applyBinlogReplicaControllerId               // applyBinlogReplicaController
 
 	// default
 	resolveNaturalJoinsId          // resolveNaturalJoins
@@ -63,6 +63,7 @@ const (
 	resolveColumnsId               // resolveColumns
 	validateCheckConstraintId      // validateCheckConstraint
 	resolveBarewordSetVariablesId  // resolveBarewordSetVariables
+	replaceCountStarId             // replaceCountStar
 	expandStarsId                  // expandStars
 	transposeRightJoinsId          // transposeRightJoins
 	resolveHavingId                // resolveHaving
@@ -76,36 +77,38 @@ const (
 	optimizeDistinctId             // optimizeDistinct
 
 	// after default
-	finalizeSubqueriesId          // finalizeSubqueries
-	finalizeUnionsId              // finalizeUnions
-	loadTriggersId                // loadTriggers
-	processTruncateId             // processTruncate
-	resolveAlterColumnId          // resolveAlterColumn
-	resolveGeneratorsId           // resolveGenerators
-	removeUnnecessaryConvertsId   // removeUnnecessaryConverts
-	pruneColumnsId                // pruneColumns
-	stripTableNameInDefaultsId    // stripTableNamesFromColumnDefaults
-	hoistSelectExistsId           // hoistSelectExists
-	optimizeJoinsId               // optimizeJoins
-	pushdownFiltersId             // pushdownFilters
-	subqueryIndexesId             // subqueryIndexes
-	pruneTablesId                 // pruneTables
-	setJoinScopeLenId             // setJoinScopeLen
-	eraseProjectionId             // eraseProjection
-	replaceSortPkId               // replaceSortPk
-	insertTopNId                  // insertTopN
-	cacheSubqueryResultsId        // cacheSubqueryResults
-	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
-	applyHashInId                 // applyHashIn
-	resolveInsertRowsId           // resolveInsertRows
-	resolvePreparedInsertId       // resolvePreparedInsert
-	applyTriggersId               // applyTriggers
-	applyProceduresId             // applyProcedures
-	assignRoutinesId              // assignRoutines
-	modifyUpdateExprsForJoinId    // modifyUpdateExprsForJoin
-	applyRowUpdateAccumulatorsId  // applyRowUpdateAccumulators
-	wrapWithRollbackId            // rollback triggers
-	applyFKsId                    // applyFKs
+	hoistOutOfScopeFiltersId     // hoistOutOfScopeFilters
+	transformJoinApplyId         // transformJoinApply
+	hoistSelectExistsId          // hoistSelectExists
+	finalizeSubqueriesId         // finalizeSubqueries
+	finalizeUnionsId             // finalizeUnions
+	loadTriggersId               // loadTriggers
+	processTruncateId            // processTruncate
+	resolveAlterColumnId         // resolveAlterColumn
+	resolveGeneratorsId          // resolveGenerators
+	removeUnnecessaryConvertsId  // removeUnnecessaryConverts
+	pruneColumnsId               // pruneColumns
+	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
+	foldEmptyJoinsId             // foldEmptyJoins
+	optimizeJoinsId              // optimizeJoins
+	concatFiltersId              // concatFilters
+	pushdownFiltersId            // pushdownFilters
+	subqueryIndexesId            // subqueryIndexes
+	pruneTablesId                // pruneTables
+	setJoinScopeLenId            // setJoinScopeLen
+	eraseProjectionId            // eraseProjection
+	replaceSortPkId              // replaceSortPk
+	insertTopNId                 // insertTopN
+	applyHashInId                // applyHashIn
+	resolveInsertRowsId          // resolveInsertRows
+	resolvePreparedInsertId      // resolvePreparedInsert
+	applyTriggersId              // applyTriggers
+	applyProceduresId            // applyProcedures
+	assignRoutinesId             // assignRoutines
+	modifyUpdateExprsForJoinId   // modifyUpdateExprsForJoin
+	applyRowUpdateAccumulatorsId // applyRowUpdateAccumulators
+	wrapWithRollbackId           // rollback triggers
+	applyFKsId                   // applyFKs
 
 	// validate
 	validateResolvedId          // validateResolved
@@ -120,10 +123,13 @@ const (
 	validateSubqueryColumnsId   // validateSubqueryColumns
 	validateUnionSchemasMatchId // validateUnionSchemasMatch
 	validateAggregationsId      // validateAggregations
+	validateDeleteFromId        // validateDeleteFrom
 
 	// after all
-	AutocommitId    // addAutocommitNode
-	TrackProcessId  // trackProcess
-	parallelizeId   // parallelize
-	clearWarningsId // clearWarnings
+	cacheSubqueryResultsId        // cacheSubqueryResults
+	cacheSubqueryAliasesInJoinsId // cacheSubqueryAliasesInJoins
+	AutocommitId                  // addAutocommitNode
+	TrackProcessId                // trackProcess
+	parallelizeId                 // parallelize
+	clearWarningsId               // clearWarnings
 )

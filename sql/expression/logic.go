@@ -18,12 +18,16 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // And checks whether two expressions are true.
 type And struct {
 	BinaryExpression
 }
+
+var _ sql.Expression = (*And)(nil)
+var _ sql.CollationCoercible = (*And)(nil)
 
 // NewAnd creates a new And expression.
 func NewAnd(left, right sql.Expression) sql.Expression {
@@ -46,6 +50,22 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 	}
 }
 
+// SplitConjunction breaks AND expressions into their left and right parts, recursively
+func SplitConjunction(expr sql.Expression) []sql.Expression {
+	if expr == nil {
+		return nil
+	}
+	and, ok := expr.(*And)
+	if !ok {
+		return []sql.Expression{expr}
+	}
+
+	return append(
+		SplitConjunction(and.Left),
+		SplitConjunction(and.Right)...,
+	)
+}
+
 func (a *And) String() string {
 	return fmt.Sprintf("(%s AND %s)", a.Left, a.Right)
 }
@@ -60,7 +80,12 @@ func (a *And) DebugString() string {
 
 // Type implements the Expression interface.
 func (*And) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*And) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -70,7 +95,7 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if lval != nil {
-		lvalBool, err := sql.ConvertToBool(lval)
+		lvalBool, err := types.ConvertToBool(lval)
 		if err == nil && lvalBool == false {
 			return false, nil
 		}
@@ -81,7 +106,7 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if rval != nil {
-		rvalBool, err := sql.ConvertToBool(rval)
+		rvalBool, err := types.ConvertToBool(rval)
 		if err == nil && rvalBool == false {
 			return false, nil
 		}
@@ -107,6 +132,9 @@ type Or struct {
 	BinaryExpression
 }
 
+var _ sql.Expression = (*Or)(nil)
+var _ sql.CollationCoercible = (*Or)(nil)
+
 // NewOr creates a new Or expression.
 func NewOr(left, right sql.Expression) sql.Expression {
 	return &Or{BinaryExpression{Left: left, Right: right}}
@@ -126,7 +154,12 @@ func (o *Or) DebugString() string {
 
 // Type implements the Expression interface.
 func (*Or) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Or) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -136,7 +169,7 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if lval != nil {
-		lval, err = sql.ConvertToBool(lval)
+		lval, err = types.ConvertToBool(lval)
 		if err == nil && lval.(bool) {
 			return true, nil
 		}
@@ -147,7 +180,7 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if rval != nil {
-		rval, err = sql.ConvertToBool(rval)
+		rval, err = types.ConvertToBool(rval)
 		if err == nil && rval.(bool) {
 			return true, nil
 		}
@@ -175,6 +208,9 @@ type Xor struct {
 	BinaryExpression
 }
 
+var _ sql.Expression = (*Xor)(nil)
+var _ sql.CollationCoercible = (*Xor)(nil)
+
 // NewXor creates a new Xor expression.
 func NewXor(left, right sql.Expression) sql.Expression {
 	return &Xor{BinaryExpression{Left: left, Right: right}}
@@ -190,7 +226,12 @@ func (x *Xor) DebugString() string {
 
 // Type implements the Expression interface.
 func (*Xor) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Xor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -202,7 +243,7 @@ func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if lval == nil {
 		return nil, nil
 	}
-	lvalue, err := sql.ConvertToBool(lval)
+	lvalue, err := types.ConvertToBool(lval)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +255,7 @@ func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if rval == nil {
 		return nil, nil
 	}
-	rvalue, err := sql.ConvertToBool(rval)
+	rvalue, err := types.ConvertToBool(rval)
 	if err != nil {
 		return nil, err
 	}

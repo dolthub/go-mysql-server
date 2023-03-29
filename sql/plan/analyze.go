@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type AnalyzeTable struct {
@@ -14,11 +15,14 @@ type AnalyzeTable struct {
 	Tables []sql.DbTable
 }
 
+var _ sql.Node = (*AnalyzeTable)(nil)
+var _ sql.CollationCoercible = (*AnalyzeTable)(nil)
+
 var analyzeSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-	{Name: "Op", Type: sql.LongText},
-	{Name: "Msg_type", Type: sql.LongText},
-	{Name: "Msg_text", Type: sql.LongText},
+	{Name: "Table", Type: types.LongText},
+	{Name: "Op", Type: types.LongText},
+	{Name: "Msg_type", Type: types.LongText},
+	{Name: "Msg_text", Type: types.LongText},
 }
 
 func NewAnalyze(names []sql.DbTable) *AnalyzeTable {
@@ -81,6 +85,11 @@ func (n *AnalyzeTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *AnalyzeTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AnalyzeTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

@@ -19,6 +19,7 @@ import (
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowIndexes is a node that shows the indexes on a table.
@@ -35,6 +36,7 @@ func NewShowIndexes(table sql.Node) sql.Node {
 }
 
 var _ sql.Node = (*ShowIndexes)(nil)
+var _ sql.CollationCoercible = (*ShowIndexes)(nil)
 
 // WithChildren implements the Node interface.
 func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -54,6 +56,11 @@ func (n *ShowIndexes) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowIndexes) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // String implements the fmt.Stringer interface.
 func (n *ShowIndexes) String() string {
 	return fmt.Sprintf("ShowIndexes(%s)", n.Child)
@@ -62,21 +69,21 @@ func (n *ShowIndexes) String() string {
 // Schema implements the Node interface.
 func (n *ShowIndexes) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Table", Type: sql.LongText},
-		&sql.Column{Name: "Non_unique", Type: sql.Int32},
-		&sql.Column{Name: "Key_name", Type: sql.LongText},
-		&sql.Column{Name: "Seq_in_index", Type: sql.Int32},
-		&sql.Column{Name: "Column_name", Type: sql.LongText, Nullable: true},
-		&sql.Column{Name: "Collation", Type: sql.LongText, Nullable: true},
-		&sql.Column{Name: "Cardinality", Type: sql.Int64},
-		&sql.Column{Name: "Sub_part", Type: sql.Int64, Nullable: true},
-		&sql.Column{Name: "Packed", Type: sql.LongText, Nullable: true},
-		&sql.Column{Name: "Null", Type: sql.LongText},
-		&sql.Column{Name: "Index_type", Type: sql.LongText},
-		&sql.Column{Name: "Comment", Type: sql.LongText},
-		&sql.Column{Name: "Index_comment", Type: sql.LongText},
-		&sql.Column{Name: "Visible", Type: sql.LongText},
-		&sql.Column{Name: "Expression", Type: sql.LongText, Nullable: true},
+		&sql.Column{Name: "Table", Type: types.LongText},
+		&sql.Column{Name: "Non_unique", Type: types.Int32},
+		&sql.Column{Name: "Key_name", Type: types.LongText},
+		&sql.Column{Name: "Seq_in_index", Type: types.Int32},
+		&sql.Column{Name: "Column_name", Type: types.LongText, Nullable: true},
+		&sql.Column{Name: "Collation", Type: types.LongText, Nullable: true},
+		&sql.Column{Name: "Cardinality", Type: types.Int64},
+		&sql.Column{Name: "Sub_part", Type: types.Int64, Nullable: true},
+		&sql.Column{Name: "Packed", Type: types.LongText, Nullable: true},
+		&sql.Column{Name: "Null", Type: types.LongText},
+		&sql.Column{Name: "Index_type", Type: types.LongText},
+		&sql.Column{Name: "Comment", Type: types.LongText},
+		&sql.Column{Name: "Index_comment", Type: types.LongText},
+		&sql.Column{Name: "Visible", Type: types.LongText},
+		&sql.Column{Name: "Expression", Type: types.LongText, Nullable: true},
 	}
 }
 

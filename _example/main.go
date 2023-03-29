@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // This is an example of how to implement a MySQL server.
@@ -79,18 +80,19 @@ func main() {
 
 func createTestDatabase(ctx *sql.Context) *memory.Database {
 	db := memory.NewDatabase(dbName)
+	db.EnablePrimaryKeyIndexes()
 	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
-		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
-		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
-		{Name: "created_at", Type: sql.Datetime, Nullable: false, Source: tableName},
+		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
+		{Name: "email", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
+		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},
+		{Name: "created_at", Type: types.Datetime, Nullable: false, Source: tableName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tableName, table)
 
 	creationTime := time.Unix(0, 1667304000000001000).UTC()
-	_ = table.Insert(ctx, sql.NewRow("Jane Deo", "janedeo@gmail.com", sql.MustJSON(`["556-565-566", "777-777-777"]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", sql.MustJSON(`[]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", sql.MustJSON(`["555-555-555"]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", sql.MustJSON(`[]`), creationTime))
+	_ = table.Insert(ctx, sql.NewRow("Jane Deo", "janedeo@gmail.com", types.MustJSON(`["556-565-566", "777-777-777"]`), creationTime))
+	_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", types.MustJSON(`[]`), creationTime))
+	_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", types.MustJSON(`["555-555-555"]`), creationTime))
+	_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", types.MustJSON(`[]`), creationTime))
 	return db
 }

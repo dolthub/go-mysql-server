@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestFirst(t *testing.T) {
@@ -34,7 +35,7 @@ func TestFirst(t *testing.T) {
 		{"three rows", []sql.Row{{"first"}, {"second"}, {"last"}}, "first"},
 	}
 
-	agg := NewFirst(expression.NewGetField(0, sql.Text, "", false))
+	agg := NewFirst(expression.NewGetField(0, types.Text, "", false))
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			result := aggregate(t, agg, tt.rows...)

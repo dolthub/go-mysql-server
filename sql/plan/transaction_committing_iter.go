@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const (
@@ -42,6 +43,7 @@ type TransactionCommittingNode struct {
 
 var _ sql.Node = (*TransactionCommittingNode)(nil)
 var _ sql.Node2 = (*TransactionCommittingNode)(nil)
+var _ sql.CollationCoercible = (*TransactionCommittingNode)(nil)
 
 // NewTransactionCommittingNode returns a TransactionCommittingNode.
 func NewTransactionCommittingNode(child sql.Node) *TransactionCommittingNode {
@@ -92,6 +94,11 @@ func (t *TransactionCommittingNode) WithChildren(children ...sql.Node) (sql.Node
 // CheckPrivileges implements the sql.Node interface.
 func (t *TransactionCommittingNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return t.Child().CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*TransactionCommittingNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Child implements the sql.UnaryNode interface.
@@ -165,7 +172,7 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return sql.ConvertToBool(autoCommitSessionVar)
+	return types.ConvertToBool(autoCommitSessionVar)
 }
 
 func ReadCommitted(ctx *sql.Context) bool {

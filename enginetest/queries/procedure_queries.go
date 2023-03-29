@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ProcedureLogicTests = []ScriptTest{
@@ -239,7 +240,7 @@ END;`,
 				Query: "CALL p1(2)",
 				Expected: []sql.Row{
 					{
-						sql.NewOkResult(2),
+						types.NewOkResult(2),
 					},
 				},
 			},
@@ -264,6 +265,56 @@ END;`,
 						int64(2003),
 					},
 				},
+			},
+		},
+	},
+	{
+		Name: "REPEAT loop over user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(p1 INT)
+BEGIN
+	SET @x = 0;
+	REPEAT SET @x = @x + 1; UNTIL @x > p1 END REPEAT;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1(0)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "CALL p1(1)",
+				Expected: []sql.Row{{}, {}}, // Next calls return an empty row, but progress the loop
+			},
+			{
+				Query:    "CALL p1(2)",
+				Expected: []sql.Row{{}, {}, {}},
+			},
+		},
+	},
+	{
+		Name: "WHILE loop over user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(p1 INT)
+BEGIN
+	SET @x = 0;
+	WHILE @x <= p1 DO
+		SET @x = @x + 1;
+	END WHILE;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1(0)",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "CALL p1(1)",
+				Expected: []sql.Row{{}, {}},
+			},
+			{
+				Query:    "CALL p1(2)",
+				Expected: []sql.Row{{}, {}, {}},
 			},
 		},
 	},
@@ -578,7 +629,7 @@ INSERT INTO items (item) VALUES (txt)`,
 			{
 				Query: "CALL add_item('A test item');",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1, InsertID: 1}},
+					{types.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
 			},
 			{
@@ -634,7 +685,7 @@ END`,
 			{
 				Query: "CALL add_item(6);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
@@ -1383,7 +1434,7 @@ END`,
 			{
 				Query: "call create_cal_entries_for_event('cb8ba301-6c27-4bf8-b99b-617082d72621');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -1568,7 +1619,7 @@ END;`,
 			},
 			{
 				Query:    "alter table t drop other;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1588,7 +1639,7 @@ END;`,
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN other INT",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1600,7 +1651,7 @@ END;`,
 			},
 			{
 				Query:    "INSERT INTO t VALUES (4, 4), (5, 5), (6, 6);",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1956,7 +2007,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CALL p1('hi')",
-				ExpectedErr: sql.ErrConvertingToTime,
+				ExpectedErr: types.ErrConvertingToTime,
 			},
 		},
 	},
@@ -2054,6 +2105,29 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
+
+	{
+		Name: "String literals with escaped chars",
+		SetUpScript: []string{
+			`CREATE PROCEDURE joe(IN str VARCHAR(15)) SELECT CONCAT('joe''s bar:', str);`,
+			`CREATE PROCEDURE jill(IN str VARCHAR(15)) SELECT CONCAT('jill\'s bar:', str);`,
+			`CREATE PROCEDURE stan(IN str VARCHAR(15)) SELECT CONCAT("stan\'s bar:", str);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL joe('open')",
+				Expected: []sql.Row{{"joe's bar:open"}},
+			},
+			{
+				Query:    "CALL jill('closed')",
+				Expected: []sql.Row{{"jill's bar:closed"}},
+			},
+			{
+				Query:    "CALL stan('quarantined')",
+				Expected: []sql.Row{{"stan's bar:quarantined"}},
+			},
+		},
+	},
 }
 
 var ProcedureDropTests = []ScriptTest{
@@ -2137,7 +2211,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2168,7 +2242,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2216,7 +2290,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2278,7 +2352,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2366,7 +2440,7 @@ var NoDbProcedureTests = []ScriptTestAssertion{
 	},
 	{
 		Query:    "CREATE PROCEDURE mydb.p5() SELECT 42;",
-		Expected: []sql.Row{{sql.NewOkResult(0)}},
+		Expected: []sql.Row{{types.NewOkResult(0)}},
 	},
 	{
 		Query:            "SHOW CREATE PROCEDURE mydb.p5;",

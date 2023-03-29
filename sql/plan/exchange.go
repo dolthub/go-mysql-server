@@ -41,6 +41,7 @@ type Exchange struct {
 
 var _ sql.Node = (*Exchange)(nil)
 var _ sql.Node2 = (*Exchange)(nil)
+var _ sql.CollationCoercible = (*Exchange)(nil)
 
 // NewExchange creates a new Exchange node.
 func NewExchange(
@@ -200,6 +201,11 @@ func (e *Exchange) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 	return e.Child.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e *Exchange) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, e.Child)
+}
+
 func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition) (sql.RowIter, error) {
 	return func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -324,6 +330,15 @@ func (p *exchangePartition) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 	// If the table is not a ResolvedTable or other such node, then I guess we'll return true as to not fail.
 	// This may not be the correct behavior though, as it's just a guess.
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *exchangePartition) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// This is inspired by CheckPrivileges, although it may not be the desired behavior in all circumstances
+	if node, ok := p.table.(sql.Node); ok {
+		return sql.GetCoercibility(ctx, node)
+	}
+	return sql.Collation_binary, 7
 }
 
 type rowIterPartitionFunc func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error)

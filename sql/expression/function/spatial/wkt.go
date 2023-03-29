@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AsWKT is a function that converts a spatial type into WKT format (alias for AsText)
@@ -29,6 +30,7 @@ type AsWKT struct {
 }
 
 var _ sql.FunctionExpression = (*AsWKT)(nil)
+var _ sql.CollationCoercible = (*AsWKT)(nil)
 
 // NewAsWKT creates a new point expression.
 func NewAsWKT(e sql.Expression) sql.Expression {
@@ -52,7 +54,12 @@ func (p *AsWKT) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *AsWKT) Type() sql.Type {
-	return sql.LongText
+	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AsWKT) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
 }
 
 func (p *AsWKT) String() string {
@@ -70,7 +77,7 @@ func (p *AsWKT) WithChildren(children ...sql.Expression) (sql.Expression, error)
 // TODO: these functions could be refactored to be inside the sql.GeometryValue interface
 
 // PointToWKT converts a sql.Point to a string
-func PointToWKT(p sql.Point, order bool) string {
+func PointToWKT(p types.Point, order bool) string {
 	x := strconv.FormatFloat(p.X, 'g', -1, 64)
 	y := strconv.FormatFloat(p.Y, 'g', -1, 64)
 	if order {
@@ -80,7 +87,7 @@ func PointToWKT(p sql.Point, order bool) string {
 }
 
 // LineToWKT converts a sql.LineString to a string
-func LineToWKT(l sql.LineString, order bool) string {
+func LineToWKT(l types.LineString, order bool) string {
 	points := make([]string, len(l.Points))
 	for i, p := range l.Points {
 		points[i] = PointToWKT(p, order)
@@ -89,7 +96,7 @@ func LineToWKT(l sql.LineString, order bool) string {
 }
 
 // PolygonToWKT converts a sql.Polygon to a string
-func PolygonToWKT(p sql.Polygon, order bool) string {
+func PolygonToWKT(p types.Polygon, order bool) string {
 	lines := make([]string, len(p.Lines))
 	for i, l := range p.Lines {
 		lines[i] = "(" + LineToWKT(l, order) + ")"
@@ -98,7 +105,7 @@ func PolygonToWKT(p sql.Polygon, order bool) string {
 }
 
 // MultiPointToWKT converts a sql.MultiPoint to a string
-func MultiPointToWKT(p sql.MultiPoint, order bool) string {
+func MultiPointToWKT(p types.MultiPoint, order bool) string {
 	points := make([]string, len(p.Points))
 	for i, p := range p.Points {
 		points[i] = PointToWKT(p, order)
@@ -107,7 +114,7 @@ func MultiPointToWKT(p sql.MultiPoint, order bool) string {
 }
 
 // MultiLineStringToWKT converts a sql.Polygon to a string
-func MultiLineStringToWKT(l sql.MultiLineString, order bool) string {
+func MultiLineStringToWKT(l types.MultiLineString, order bool) string {
 	lines := make([]string, len(l.Lines))
 	for i, line := range l.Lines {
 		lines[i] = "(" + LineToWKT(line, order) + ")"
@@ -116,7 +123,7 @@ func MultiLineStringToWKT(l sql.MultiLineString, order bool) string {
 }
 
 // MultiPolygonToWKT converts a sql.Polygon to a string
-func MultiPolygonToWKT(p sql.MultiPolygon, order bool) string {
+func MultiPolygonToWKT(p types.MultiPolygon, order bool) string {
 	polys := make([]string, len(p.Polygons))
 	for i, poly := range p.Polygons {
 		polys[i] = "(" + PolygonToWKT(poly, order) + ")"
@@ -125,23 +132,23 @@ func MultiPolygonToWKT(p sql.MultiPolygon, order bool) string {
 }
 
 // GeomCollToWKT converts a sql.Polygon to a string
-func GeomCollToWKT(g sql.GeomColl, order bool) string {
+func GeomCollToWKT(g types.GeomColl, order bool) string {
 	geoms := make([]string, len(g.Geoms))
 	for i, geom := range g.Geoms {
 		switch g := geom.(type) {
-		case sql.Point:
+		case types.Point:
 			geoms[i] = "POINT(" + PointToWKT(g, order) + ")"
-		case sql.LineString:
+		case types.LineString:
 			geoms[i] = "LINESTRING(" + LineToWKT(g, order) + ")"
-		case sql.Polygon:
+		case types.Polygon:
 			geoms[i] = "POLYGON(" + PolygonToWKT(g, order) + ")"
-		case sql.MultiPoint:
+		case types.MultiPoint:
 			geoms[i] = "MULTIPOINT(" + MultiPointToWKT(g, order) + ")"
-		case sql.MultiLineString:
+		case types.MultiLineString:
 			geoms[i] = "MULTILINESTRING(" + MultiLineStringToWKT(g, order) + ")"
-		case sql.MultiPolygon:
+		case types.MultiPolygon:
 			geoms[i] = "MULTIPOLYGON(" + MultiPolygonToWKT(g, order) + ")"
-		case sql.GeomColl:
+		case types.GeomColl:
 			geoms[i] = "GEOMETRYCOLLECTION(" + GeomCollToWKT(g, order) + ")"
 		}
 	}
@@ -163,27 +170,27 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var geomType string
 	var data string
 	switch v := val.(type) {
-	case sql.Point:
+	case types.Point:
 		geomType = "POINT"
-		data = PointToWKT(v, v.SRID == sql.GeoSpatialSRID)
-	case sql.LineString:
+		data = PointToWKT(v, v.SRID == types.GeoSpatialSRID)
+	case types.LineString:
 		geomType = "LINESTRING"
-		data = LineToWKT(v, v.SRID == sql.GeoSpatialSRID)
-	case sql.Polygon:
+		data = LineToWKT(v, v.SRID == types.GeoSpatialSRID)
+	case types.Polygon:
 		geomType = "POLYGON"
-		data = PolygonToWKT(v, v.SRID == sql.GeoSpatialSRID)
-	case sql.MultiPoint:
+		data = PolygonToWKT(v, v.SRID == types.GeoSpatialSRID)
+	case types.MultiPoint:
 		geomType = "MULTIPOINT"
-		data = MultiPointToWKT(v, v.SRID == sql.GeoSpatialSRID)
-	case sql.MultiLineString:
+		data = MultiPointToWKT(v, v.SRID == types.GeoSpatialSRID)
+	case types.MultiLineString:
 		geomType = "MULTILINESTRING"
-		data = MultiLineStringToWKT(v, v.SRID == sql.GeoSpatialSRID)
-	case sql.MultiPolygon:
+		data = MultiLineStringToWKT(v, v.SRID == types.GeoSpatialSRID)
+	case types.MultiPolygon:
 		geomType = "MULTIPOLYGON"
-		data = MultiPolygonToWKT(v, v.SRID == sql.GeoSpatialSRID)
-	case sql.GeomColl:
+		data = MultiPolygonToWKT(v, v.SRID == types.GeoSpatialSRID)
+	case types.GeomColl:
 		geomType = "GEOMETRYCOLLECTION"
-		data = GeomCollToWKT(v, v.SRID == sql.GeoSpatialSRID)
+		data = GeomCollToWKT(v, v.SRID == types.GeoSpatialSRID)
 	default:
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
@@ -197,6 +204,7 @@ type GeomFromText struct {
 }
 
 var _ sql.FunctionExpression = (*GeomFromText)(nil)
+var _ sql.CollationCoercible = (*GeomFromText)(nil)
 
 // NewGeomFromText creates a new point expression.
 func NewGeomFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -219,7 +227,12 @@ func (g *GeomFromText) Description() string {
 // Type implements the sql.Expression interface.
 func (g *GeomFromText) Type() sql.Type {
 	// TODO: return type is determined after Eval, use Geometry for now?
-	return sql.GeometryType{}
+	return types.GeometryType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomFromText) String() string {
@@ -287,71 +300,71 @@ func ParseWKTHeader(s string) (string, string, int, error) {
 }
 
 // WKTToPoint expects a string like this "1.2 3.4"
-func WKTToPoint(s string, srid uint32, order bool) (sql.Point, error) {
+func WKTToPoint(s string, srid uint32, order bool) (types.Point, error) {
 	if len(s) == 0 {
-		return sql.Point{}, sql.ErrInvalidGISData.New()
+		return types.Point{}, sql.ErrInvalidGISData.New()
 	}
 
 	// Get everything between spaces
 	args := strings.Fields(s)
 	if len(args) != 2 {
-		return sql.Point{}, sql.ErrInvalidGISData.New()
+		return types.Point{}, sql.ErrInvalidGISData.New()
 	}
 
 	x, err := strconv.ParseFloat(args[0], 64)
 	if err != nil {
-		return sql.Point{}, sql.ErrInvalidGISData.New()
+		return types.Point{}, sql.ErrInvalidGISData.New()
 	}
 
 	y, err := strconv.ParseFloat(args[1], 64)
 	if err != nil {
-		return sql.Point{}, sql.ErrInvalidGISData.New()
+		return types.Point{}, sql.ErrInvalidGISData.New()
 	}
 
 	if order {
 		x, y = y, x
 	}
 
-	return sql.Point{SRID: srid, X: x, Y: y}, nil
+	return types.Point{SRID: srid, X: x, Y: y}, nil
 }
 
 // WKTToLine expects a string like "1.2 3.4, 5.6 7.8, ..."
-func WKTToLine(s string, srid uint32, order bool) (sql.LineString, error) {
+func WKTToLine(s string, srid uint32, order bool) (types.LineString, error) {
 	if len(s) == 0 {
-		return sql.LineString{}, sql.ErrInvalidGISData.New()
+		return types.LineString{}, sql.ErrInvalidGISData.New()
 	}
 
 	pointStrs := strings.Split(s, ",")
-	var points = make([]sql.Point, len(pointStrs))
+	var points = make([]types.Point, len(pointStrs))
 	var err error
 	for i, ps := range pointStrs {
 		ps = strings.TrimSpace(ps)
 		if points[i], err = WKTToPoint(ps, srid, order); err != nil {
-			return sql.LineString{}, sql.ErrInvalidGISData.New()
+			return types.LineString{}, sql.ErrInvalidGISData.New()
 		}
 	}
 
 	// Create LineString object
-	return sql.LineString{SRID: srid, Points: points}, nil
+	return types.LineString{SRID: srid, Points: points}, nil
 }
 
 // WKTToPoly Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
-func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
-	var lines []sql.LineString
+func WKTToPoly(s string, srid uint32, order bool) (types.Polygon, error) {
+	var lines []types.LineString
 	for {
 		// Get first linestring
 		lineStr, end, err := TrimWKTData(s)
 		if err != nil {
-			return sql.Polygon{}, err
+			return types.Polygon{}, err
 		}
 
 		// Parse line
 		line, err := WKTToLine(lineStr, srid, order)
 		if err != nil {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New()
+			return types.Polygon{}, sql.ErrInvalidGISData.New()
 		}
 		if !isLinearRing(line) {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New()
+			return types.Polygon{}, sql.ErrInvalidGISData.New()
 		}
 		lines = append(lines, line)
 
@@ -366,7 +379,7 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 
 		// LineStrings must be comma-separated
 		if s[0] != ',' {
-			return sql.Polygon{}, sql.ErrInvalidGISData.New()
+			return types.Polygon{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Drop leading comma
@@ -374,42 +387,42 @@ func WKTToPoly(s string, srid uint32, order bool) (sql.Polygon, error) {
 		s = strings.TrimSpace(s)
 	}
 
-	return sql.Polygon{SRID: srid, Lines: lines}, nil
+	return types.Polygon{SRID: srid, Lines: lines}, nil
 }
 
 // WKTToMPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
-func WKTToMPoint(s string, srid uint32, order bool) (sql.MultiPoint, error) {
+func WKTToMPoint(s string, srid uint32, order bool) (types.MultiPoint, error) {
 	if len(s) == 0 {
-		return sql.MultiPoint{}, sql.ErrInvalidGISData.New()
+		return types.MultiPoint{}, sql.ErrInvalidGISData.New()
 	}
 
 	pointStrs := strings.Split(s, ",")
-	var points = make([]sql.Point, len(pointStrs))
+	var points = make([]types.Point, len(pointStrs))
 	var err error
 	for i, ps := range pointStrs {
 		ps = strings.TrimSpace(ps)
 		if points[i], err = WKTToPoint(ps, srid, order); err != nil {
-			return sql.MultiPoint{}, sql.ErrInvalidGISData.New()
+			return types.MultiPoint{}, sql.ErrInvalidGISData.New()
 		}
 	}
 
-	return sql.MultiPoint{SRID: srid, Points: points}, nil
+	return types.MultiPoint{SRID: srid, Points: points}, nil
 }
 
 // WKTToMLine Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
-func WKTToMLine(s string, srid uint32, order bool) (sql.MultiLineString, error) {
-	var lines []sql.LineString
+func WKTToMLine(s string, srid uint32, order bool) (types.MultiLineString, error) {
+	var lines []types.LineString
 	for {
 		// Get first linestring
 		lineStr, end, err := TrimWKTData(s)
 		if err != nil {
-			return sql.MultiLineString{}, err
+			return types.MultiLineString{}, err
 		}
 
 		// Parse line
 		line, err := WKTToLine(lineStr, srid, order)
 		if err != nil {
-			return sql.MultiLineString{}, sql.ErrInvalidGISData.New()
+			return types.MultiLineString{}, sql.ErrInvalidGISData.New()
 		}
 		lines = append(lines, line)
 
@@ -424,7 +437,7 @@ func WKTToMLine(s string, srid uint32, order bool) (sql.MultiLineString, error) 
 
 		// LineStrings must be comma-separated
 		if s[0] != ',' {
-			return sql.MultiLineString{}, sql.ErrInvalidGISData.New()
+			return types.MultiLineString{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Drop leading comma
@@ -432,23 +445,23 @@ func WKTToMLine(s string, srid uint32, order bool) (sql.MultiLineString, error) 
 		s = strings.TrimSpace(s)
 	}
 
-	return sql.MultiLineString{SRID: srid, Lines: lines}, nil
+	return types.MultiLineString{SRID: srid, Lines: lines}, nil
 }
 
 // WKTToMPoly Expects a string like "((1 2, 3 4), (5 6, 7 8), ...), ..."
-func WKTToMPoly(s string, srid uint32, order bool) (sql.MultiPolygon, error) {
-	var polys []sql.Polygon
+func WKTToMPoly(s string, srid uint32, order bool) (types.MultiPolygon, error) {
+	var polys []types.Polygon
 	for {
 		// Get first polygon
 		polyStr, end, err := TrimWKTData(s)
 		if err != nil {
-			return sql.MultiPolygon{}, err
+			return types.MultiPolygon{}, err
 		}
 
 		// Parse poly
 		poly, err := WKTToPoly(polyStr, srid, order)
 		if err != nil {
-			return sql.MultiPolygon{}, sql.ErrInvalidGISData.New()
+			return types.MultiPolygon{}, sql.ErrInvalidGISData.New()
 		}
 		polys = append(polys, poly)
 
@@ -463,7 +476,7 @@ func WKTToMPoly(s string, srid uint32, order bool) (sql.MultiPolygon, error) {
 
 		// Polygons must be comma-separated
 		if s[0] != ',' {
-			return sql.MultiPolygon{}, sql.ErrInvalidGISData.New()
+			return types.MultiPolygon{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Drop leading comma
@@ -471,24 +484,24 @@ func WKTToMPoly(s string, srid uint32, order bool) (sql.MultiPolygon, error) {
 		s = strings.TrimSpace(s)
 	}
 
-	return sql.MultiPolygon{SRID: srid, Polygons: polys}, nil
+	return types.MultiPolygon{SRID: srid, Polygons: polys}, nil
 }
 
 // WKTToGeomColl Expects a string like "((1 2, 3 4), (5 6, 7 8), ...), ..."
-func WKTToGeomColl(s string, srid uint32, order bool) (sql.GeomColl, error) {
+func WKTToGeomColl(s string, srid uint32, order bool) (types.GeomColl, error) {
 	// empty geometry collections
 	if len(s) == 0 {
-		return sql.GeomColl{SRID: srid, Geoms: []sql.GeometryValue{}}, nil
+		return types.GeomColl{SRID: srid, Geoms: []types.GeometryValue{}}, nil
 	}
 
-	var geoms []sql.GeometryValue
+	var geoms []types.GeometryValue
 	for {
 		// parse first type
 		geomType, data, end, err := ParseWKTHeader(s)
 		if err != nil {
-			return sql.GeomColl{}, sql.ErrInvalidGISData.New()
+			return types.GeomColl{}, sql.ErrInvalidGISData.New()
 		}
-		var geom sql.GeometryValue
+		var geom types.GeometryValue
 		switch geomType {
 		case "point":
 			geom, err = WKTToPoint(data, srid, order)
@@ -505,7 +518,7 @@ func WKTToGeomColl(s string, srid uint32, order bool) (sql.GeomColl, error) {
 		case "geometrycollection":
 			geom, err = WKTToGeomColl(data, srid, order)
 		default:
-			return sql.GeomColl{}, sql.ErrInvalidGISData.New()
+			return types.GeomColl{}, sql.ErrInvalidGISData.New()
 		}
 		geoms = append(geoms, geom)
 
@@ -520,7 +533,7 @@ func WKTToGeomColl(s string, srid uint32, order bool) (sql.GeomColl, error) {
 
 		// Geometries must be comma-separated
 		if s[0] != ',' {
-			return sql.GeomColl{}, sql.ErrInvalidGISData.New()
+			return types.GeomColl{}, sql.ErrInvalidGISData.New()
 		}
 
 		// Drop leading comma
@@ -528,11 +541,11 @@ func WKTToGeomColl(s string, srid uint32, order bool) (sql.GeomColl, error) {
 		s = strings.TrimSpace(s)
 	}
 
-	return sql.GeomColl{SRID: srid, Geoms: geoms}, nil
+	return types.GeomColl{SRID: srid, Geoms: geoms}, nil
 }
 
 // WKTToGeom expects a string in WKT format, and converts it to a geometry type
-func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGeomType string) (sql.GeometryValue, error) {
+func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGeomType string) (types.GeometryValue, error) {
 	val, err := exprs[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -566,7 +579,7 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 		if s == nil {
 			return nil, nil
 		}
-		s, err = sql.Uint32.Convert(s)
+		s, err = types.Uint32.Convert(s)
 		if err != nil {
 			return nil, err
 		}
@@ -576,7 +589,7 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 		return nil, err
 	}
 
-	order := srid == sql.GeoSpatialSRID
+	order := srid == types.GeoSpatialSRID
 	if len(exprs) == 3 {
 		o, err := exprs[2].Eval(ctx, row)
 		if err != nil {
@@ -626,6 +639,7 @@ type PointFromText struct {
 }
 
 var _ sql.FunctionExpression = (*PointFromText)(nil)
+var _ sql.CollationCoercible = (*PointFromText)(nil)
 
 // NewPointFromText creates a new point expression.
 func NewPointFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -647,7 +661,12 @@ func (p *PointFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *PointFromText) Type() sql.Type {
-	return sql.PointType{}
+	return types.PointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PointFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PointFromText) String() string {
@@ -678,6 +697,7 @@ type LineFromText struct {
 }
 
 var _ sql.FunctionExpression = (*LineFromText)(nil)
+var _ sql.CollationCoercible = (*LineFromText)(nil)
 
 // NewLineFromText creates a new point expression.
 func NewLineFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -699,7 +719,12 @@ func (l *LineFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *LineFromText) Type() sql.Type {
-	return sql.LineStringType{}
+	return types.LineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LineFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *LineFromText) String() string {
@@ -730,6 +755,7 @@ type PolyFromText struct {
 }
 
 var _ sql.FunctionExpression = (*PolyFromText)(nil)
+var _ sql.CollationCoercible = (*PolyFromText)(nil)
 
 // NewPolyFromText creates a new polygon expression.
 func NewPolyFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -751,7 +777,12 @@ func (p *PolyFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *PolyFromText) Type() sql.Type {
-	return sql.PolygonType{}
+	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PolyFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PolyFromText) String() string {
@@ -782,6 +813,7 @@ type MPointFromText struct {
 }
 
 var _ sql.FunctionExpression = (*MPointFromText)(nil)
+var _ sql.CollationCoercible = (*MPointFromText)(nil)
 
 // NewMPointFromText creates a new MultiPoint expression.
 func NewMPointFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -803,7 +835,12 @@ func (p *MPointFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *MPointFromText) Type() sql.Type {
-	return sql.MultiPointType{}
+	return types.MultiPointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPointFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPointFromText) String() string {
@@ -834,6 +871,7 @@ type MLineFromText struct {
 }
 
 var _ sql.FunctionExpression = (*MLineFromText)(nil)
+var _ sql.CollationCoercible = (*MLineFromText)(nil)
 
 // NewMLineFromText creates a new multilinestring expression.
 func NewMLineFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -855,7 +893,12 @@ func (l *MLineFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *MLineFromText) Type() sql.Type {
-	return sql.MultiLineStringType{}
+	return types.MultiLineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MLineFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *MLineFromText) String() string {
@@ -886,6 +929,7 @@ type MPolyFromText struct {
 }
 
 var _ sql.FunctionExpression = (*MPolyFromText)(nil)
+var _ sql.CollationCoercible = (*MPolyFromText)(nil)
 
 // NewMPolyFromText creates a new multilinestring expression.
 func NewMPolyFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -907,7 +951,12 @@ func (p *MPolyFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *MPolyFromText) Type() sql.Type {
-	return sql.MultiPolygonType{}
+	return types.MultiPolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPolyFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPolyFromText) String() string {
@@ -938,6 +987,7 @@ type GeomCollFromText struct {
 }
 
 var _ sql.FunctionExpression = (*GeomCollFromText)(nil)
+var _ sql.CollationCoercible = (*GeomCollFromText)(nil)
 
 // NewGeomCollFromText creates a new multilinestring expression.
 func NewGeomCollFromText(args ...sql.Expression) (sql.Expression, error) {
@@ -959,7 +1009,12 @@ func (p *GeomCollFromText) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *GeomCollFromText) Type() sql.Type {
-	return sql.GeomCollType{}
+	return types.GeomCollType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomCollFromText) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *GeomCollFromText) String() string {

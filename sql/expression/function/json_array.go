@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_ARRAY([val[, val] ...])
@@ -32,6 +33,7 @@ type JSONArray struct {
 }
 
 var _ sql.FunctionExpression = (*JSONArray)(nil)
+var _ sql.CollationCoercible = (*JSONArray)(nil)
 
 // NewJSONArray creates a new JSONArray function.
 func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
@@ -77,7 +79,12 @@ func (j *JSONArray) String() string {
 
 // Type implements the Expression interface.
 func (j *JSONArray) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (JSONArray) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
 // IsNullable implements the Expression interface.
@@ -93,7 +100,7 @@ func (j *JSONArray) IsNullable() bool {
 // Eval implements the Expression interface.
 func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if len(j.vals) == 0 {
-		return sql.JSONDocument{Val: make([]interface{}, 0)}, nil
+		return types.JSONDocument{Val: make([]interface{}, 0)}, nil
 	}
 
 	var resultArray = make([]interface{}, len(j.vals))
@@ -104,8 +111,8 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if json, ok := val.(sql.JSONValue); ok {
-			doc, err := json.(sql.JSONValue).Unmarshall(ctx)
+		if json, ok := val.(types.JSONValue); ok {
+			doc, err := json.(types.JSONValue).Unmarshall(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -114,7 +121,7 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		resultArray[i] = val
 	}
 
-	return sql.JSONDocument{Val: resultArray}, nil
+	return types.JSONDocument{Val: resultArray}, nil
 }
 
 // Children implements the Expression interface.

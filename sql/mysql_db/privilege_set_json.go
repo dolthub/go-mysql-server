@@ -50,7 +50,8 @@ type privilegeSetMarshalerColumn struct {
 var _ json.Marshaler = PrivilegeSet{}
 var _ json.Unmarshaler = (*PrivilegeSet)(nil)
 
-// MarshalJSON implements the interface json.Marshaler.
+// MarshalJSON implements the interface json.Marshaler. This is deprecated functionality, as serialization has been
+// replaced by flatbuffers.
 func (ps PrivilegeSet) MarshalJSON() ([]byte, error) {
 	globalStaticPrivs := ps.ToSlice()
 	psm := privilegeSetMarshaler{
@@ -101,10 +102,11 @@ func (ps PrivilegeSet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(psm)
 }
 
-// UnmarshalJSON implements the interface json.Unmarshaler.
+// UnmarshalJSON implements the interface json.Unmarshaler. This is deprecated functionality, as serialization has been
+// replaced by flatbuffers.
 func (ps *PrivilegeSet) UnmarshalJSON(jsonData []byte) error {
 	ps.globalStatic = make(map[sql.PrivilegeType]struct{})
-	ps.globalDynamic = make(map[string]struct{})
+	ps.globalDynamic = make(map[string]bool)
 	ps.databases = make(map[string]PrivilegeSetDatabase)
 	psm := privilegeSetMarshaler{}
 	err := json.Unmarshal(jsonData, &psm)

@@ -122,7 +122,7 @@ func generateSetup(setupDir string, buf *bytes.Buffer) error {
 
 			hasBacktick := strings.Contains(s.Data().Sql, "`")
 			if hasBacktick {
-				fmt.Fprintf(buf, "  \"%s\",\n", s.Data().Sql)
+				fmt.Fprintf(buf, "  \"%s\",\n", strings.ReplaceAll(s.Data().Sql, "\n", " "))
 			} else {
 				fmt.Fprintf(buf, "  `%s`,\n", s.Data().Sql)
 			}

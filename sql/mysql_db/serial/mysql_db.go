@@ -393,8 +393,34 @@ func (rcv *PrivilegeSet) DatabasesLength() int {
 	return 0
 }
 
+func (rcv *PrivilegeSet) GlobalDynamicWgo(j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.GetBool(a + flatbuffers.UOffsetT(j*1))
+	}
+	return false
+}
+
+func (rcv *PrivilegeSet) GlobalDynamicWgoLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *PrivilegeSet) MutateGlobalDynamicWgo(j int, n bool) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		a := rcv._tab.Vector(o)
+		return rcv._tab.MutateBool(a+flatbuffers.UOffsetT(j*1), n)
+	}
+	return false
+}
+
 func PrivilegeSetStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(4)
 }
 func PrivilegeSetAddGlobalStatic(builder *flatbuffers.Builder, globalStatic flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(globalStatic), 0)
@@ -413,6 +439,12 @@ func PrivilegeSetAddDatabases(builder *flatbuffers.Builder, databases flatbuffer
 }
 func PrivilegeSetStartDatabasesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
+}
+func PrivilegeSetAddGlobalDynamicWgo(builder *flatbuffers.Builder, globalDynamicWgo flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(globalDynamicWgo), 0)
+}
+func PrivilegeSetStartGlobalDynamicWgoVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(1, numElems, 1)
 }
 func PrivilegeSetEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
@@ -728,8 +760,32 @@ func (rcv *ReplicaSourceInfo) Uuid() []byte {
 	return nil
 }
 
+func (rcv *ReplicaSourceInfo) ConnectRetryInterval() uint32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
+	if o != 0 {
+		return rcv._tab.GetUint32(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ReplicaSourceInfo) MutateConnectRetryInterval(n uint32) bool {
+	return rcv._tab.MutateUint32Slot(14, n)
+}
+
+func (rcv *ReplicaSourceInfo) ConnectRetryCount() uint64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+	if o != 0 {
+		return rcv._tab.GetUint64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ReplicaSourceInfo) MutateConnectRetryCount(n uint64) bool {
+	return rcv._tab.MutateUint64Slot(16, n)
+}
+
 func ReplicaSourceInfoStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(7)
 }
 func ReplicaSourceInfoAddHost(builder *flatbuffers.Builder, host flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(host), 0)
@@ -745,6 +801,12 @@ func ReplicaSourceInfoAddPort(builder *flatbuffers.Builder, port uint16) {
 }
 func ReplicaSourceInfoAddUuid(builder *flatbuffers.Builder, uuid flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(uuid), 0)
+}
+func ReplicaSourceInfoAddConnectRetryInterval(builder *flatbuffers.Builder, connectRetryInterval uint32) {
+	builder.PrependUint32Slot(5, connectRetryInterval, 0)
+}
+func ReplicaSourceInfoAddConnectRetryCount(builder *flatbuffers.Builder, connectRetryCount uint64) {
+	builder.PrependUint64Slot(6, connectRetryCount, 0)
 }
 func ReplicaSourceInfoEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

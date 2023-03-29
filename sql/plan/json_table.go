@@ -22,6 +22,7 @@ import (
 	"github.com/oliveagle/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type jsonTablePartition struct {
@@ -104,6 +105,7 @@ type JSONTable struct {
 var _ sql.Table = &JSONTable{}
 var _ sql.Node = &JSONTable{}
 var _ sql.Expressioner = &JSONTable{}
+var _ sql.CollationCoercible = &JSONTable{}
 
 // Name implements the sql.Table interface
 func (t *JSONTable) Name() string {
@@ -155,7 +157,7 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	if err != nil {
 		return nil, err
 	}
-	strData, err := sql.LongBlob.Convert(data)
+	strData, err := types.LongBlob.Convert(data)
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}
@@ -196,6 +198,11 @@ func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the sql.Node interface
 func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Expressions implements the sql.Expressioner interface

@@ -55,19 +55,17 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			if privilegedDatabase, ok := maybeVdb.(mysql_db.PrivilegedDatabase); ok {
 				maybeVdb = privilegedDatabase.Unwrap()
 			}
-			if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {
-				viewDef, ok, err := vdb.GetView(ctx, viewName)
-				if err != nil {
-					return nil, transform.SameTree, err
+			if vdb, vok := maybeVdb.(sql.ViewDatabase); vok {
+				viewDef, vdok, verr := vdb.GetViewDefinition(ctx, viewName)
+				if verr != nil {
+					return nil, transform.SameTree, verr
 				}
-
-				if ok {
-					query, err := parse.Parse(ctx, viewDef)
-					if err != nil {
-						return nil, transform.SameTree, err
+				if vdok {
+					query, qerr := parse.Parse(ctx, viewDef.TextDefinition)
+					if qerr != nil {
+						return nil, transform.SameTree, qerr
 					}
-
-					view = plan.NewSubqueryAlias(viewName, viewDef, query).AsView()
+					view = plan.NewSubqueryAlias(viewName, viewDef.TextDefinition, query).AsView(viewDef.CreateViewStatement)
 				}
 			}
 		}

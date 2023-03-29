@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // TestPreparedStatementQueryTracking asserts that there is no process tracking done when preparing a statement, and
@@ -36,9 +37,9 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 		[]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("commits", ""))
 
 	commits := memory.NewTable("commits", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "commits", Type: sql.Text},
-		{Name: "commit_hash", Source: "commits", Type: sql.Text},
-		{Name: "commit_author_when", Source: "commits", Type: sql.Text},
+		{Name: "repository_id", Source: "commits", Type: types.Text},
+		{Name: "commit_hash", Source: "commits", Type: types.Text},
+		{Name: "commit_author_when", Source: "commits", Type: types.Text},
 	}), nil)
 
 	db := memory.NewDatabase("")

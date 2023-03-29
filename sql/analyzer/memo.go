@@ -37,22 +37,28 @@ type Memo struct {
 	cnt  uint16
 	root *exprGroup
 
-	orderHint *joinOrderDeps
-	c         *coster
-	ctx       *sql.Context
-	scope     *Scope
-	scopeLen  int
+	hints *joinHints
+
+	c        Coster
+	s        Carder
+	statsRw  sql.StatsReadWriter
+	ctx      *sql.Context
+	scope    *Scope
+	scopeLen int
 
 	tableProps *tableProps
 }
 
-func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope) *Memo {
+func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope, cost Coster, card Carder) *Memo {
 	return &Memo{
 		ctx:        ctx,
-		c:          &coster{ctx: ctx, s: stats},
+		c:          cost,
+		s:          card,
+		statsRw:    stats,
 		scope:      s,
 		scopeLen:   len(s.Schema()),
 		tableProps: newTableProps(),
+		hints:      &joinHints{},
 	}
 }
 
@@ -101,34 +107,39 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 			}
 			cost += g.cost
 		}
-		relCost, err := m.c.costRel(n)
+		relCost, err := m.c.EstimateCost(m.ctx, n, m.statsRw)
 		if err != nil {
 			return err
 		}
+		n.setCost(relCost)
 		cost += relCost
 		m.updateBest(grp, n, cost)
 		n = n.next()
 	}
+
 	grp.done = true
+	var err error
+	grp.relProps.card, err = m.s.EstimateCard(m.ctx, grp.best, m.statsRw)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-// updateBest is given a logical expression group, a physical implementation
-// in the same group, and the estimated cost for the operator. We update best
-// plans for an expression group cognizant of join ordering; we pick either
-// the best hinted plan or the best overall plan if the hint corresponds to
-// no valid plan.
+// updateBest chooses the best hinted plan or the best overall plan if the
+// hint corresponds to  no valid plan. Ordering is applied as a global
+// rather than a local property.
 func (m *Memo) updateBest(grp *exprGroup, n relExpr, cost float64) {
-	if m.orderHint != nil {
-		if m.orderHint.obeysOrder(n) {
-			if !grp.orderSatisfied {
+	if m.hints != nil {
+		if m.hints.satisfiedBy(n) {
+			if !grp.hintOk {
 				grp.best = n
 				grp.cost = cost
-				grp.orderSatisfied = true
+				grp.hintOk = true
 				return
 			}
 			grp.updateBest(n, cost)
-		} else if grp.best == nil || !grp.orderSatisfied {
+		} else if grp.best == nil || !grp.hintOk {
 			grp.updateBest(n, cost)
 		}
 		return
@@ -160,22 +171,42 @@ func buildBestJoinPlan(b *ExecBuilder, grp *exprGroup, input sql.Schema) (sql.No
 	return b.buildRel(n, input, children...)
 }
 
-func (m *Memo) WithJoinOrder(hint JoinOrderHint) {
-	// order maps groupId ->
+func (m *Memo) applyHint(hint Hint) {
+	switch hint.Typ {
+	case HintTypeJoinOrder:
+		m.WithJoinOrder(hint.Args)
+	case HintTypeJoinFixedOrder:
+	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin:
+		m.WithJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
+	default:
+	}
+}
+
+func (m *Memo) WithJoinOrder(tables []string) {
+	// order maps groupId -> table dependencies
 	order := make(map[GroupId]uint64)
-	for i, t := range hint.tables {
+	for i, t := range tables {
 		id, ok := m.tableProps.getId(t)
 		if !ok {
 			return
 		}
 		order[id] = uint64(i)
 	}
-	m.orderHint = newJoinOrderDeps(order)
-	m.orderHint.build(m.root)
-	if !m.orderHint.isValid() {
-		// bad hint, fallback to default costing
-		m.orderHint = nil
+	hint := newJoinOrderHint(order)
+	hint.build(m.root)
+	if hint.isValid() {
+		m.hints.order = hint
 	}
+}
+
+func (m *Memo) WithJoinOp(op HintType, left, right string) {
+	lGrp, _ := m.tableProps.getId(left)
+	rGrp, _ := m.tableProps.getId(right)
+	hint := newjoinOpHint(op, lGrp, rGrp)
+	if !hint.isValid() {
+		return
+	}
+	m.hints.ops = append(m.hints.ops, hint)
 }
 
 func (m *Memo) String() string {
@@ -218,7 +249,13 @@ type relProps struct {
 	grp *exprGroup
 
 	outputCols   sql.Schema
+	inputTables  sql.FastIntSet
 	outputTables sql.FastIntSet
+
+	card float64
+
+	limit  sql.Expression
+	filter sql.Expression
 }
 
 func newRelProps(rel relExpr) *relProps {
@@ -229,6 +266,8 @@ func newRelProps(rel relExpr) *relProps {
 		p.outputCols = r.outputCols()
 	}
 	p.populateOutputTables()
+	p.populateInputTables()
+
 	return p
 }
 
@@ -242,44 +281,86 @@ func (p *relProps) populateOutputTables() {
 		p.outputTables = n.left.relProps.OutputTables()
 	case *semiJoin:
 		p.outputTables = n.left.relProps.OutputTables()
+	case *distinct:
+		p.outputTables = n.child.relProps.OutputTables()
+	case *project:
+		p.outputTables = n.child.relProps.OutputTables()
 	case joinRel:
 		p.outputTables = n.joinPrivate().left.relProps.OutputTables().Union(n.joinPrivate().right.relProps.OutputTables())
+	default:
+		panic(fmt.Sprintf("unhandled type: %T", n))
+	}
+}
+
+// populateInputTables initializes the bitmap indicating which tables
+// are input into this exprGroup. This is used to enforce join order
+// hinting for semi joins.
+func (p *relProps) populateInputTables() {
+	switch n := p.grp.first.(type) {
+	case sourceRel:
+		p.inputTables = sql.NewFastIntSet(int(n.tableId()))
+	case *distinct:
+		p.inputTables = n.child.relProps.InputTables()
+	case *project:
+		p.inputTables = n.child.relProps.InputTables()
+	case joinRel:
+		p.inputTables = n.joinPrivate().left.relProps.InputTables().Union(n.joinPrivate().right.relProps.InputTables())
+	default:
+		panic(fmt.Sprintf("unhandled type: %T", n))
 	}
 }
 
 func (p *relProps) populateOutputCols() {
-	if !p.grp.done {
-		panic("expression group not fixed")
-	}
-	switch r := p.grp.best.(type) {
+	p.outputCols = p.outputColsForRel(p.grp.best)
+}
+
+func (p *relProps) outputColsForRel(r relExpr) sql.Schema {
+	switch r := r.(type) {
 	case *semiJoin:
-		p.outputCols = r.left.relProps.OutputCols()
+		return r.left.relProps.OutputCols()
 	case *antiJoin:
-		p.outputCols = r.left.relProps.OutputCols()
+		return r.left.relProps.OutputCols()
 	case *lookupJoin:
 		if r.op.IsRightPartial() {
-			p.outputCols = r.right.relProps.OutputCols()
+			return r.right.relProps.OutputCols()
 		} else if r.op.IsPartial() {
-			p.outputCols = r.left.relProps.OutputCols()
+			return r.left.relProps.OutputCols()
 		} else {
-			p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+			return append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
 		}
 	case joinRel:
-		p.outputCols = append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+		return append(r.joinPrivate().left.relProps.OutputCols(), r.joinPrivate().right.relProps.OutputCols()...)
+	case *distinct:
+		return r.child.relProps.OutputCols()
+	case *project:
+		return r.outputCols()
+	case sourceRel:
+		return r.outputCols()
+	default:
+		panic("unknown type")
 	}
+	return nil
 }
 
 // OutputCols returns the output schema of a node
 func (p *relProps) OutputCols() sql.Schema {
 	if p.outputCols == nil {
+		if p.grp.best == nil {
+			return p.outputColsForRel(p.grp.first)
+		}
 		p.populateOutputCols()
 	}
 	return p.outputCols
 }
 
-// OutputTables returns tables in the output schema of this node.
+// OutputTables returns a bitmap of tables in the output schema of this node.
 func (p *relProps) OutputTables() sql.FastIntSet {
 	return p.outputTables
+}
+
+// InputTables returns a bitmap of tables input into this node.
+func (p *relProps) InputTables() sql.FastIntSet {
+	return p.inputTables
 }
 
 type tableProps struct {
@@ -309,20 +390,35 @@ func (p *tableProps) getId(n string) (GroupId, bool) {
 	return id, ok
 }
 
+func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
+	var names []string
+	for idx, ok := f.Next(0); ok; idx, ok = f.Next(idx + 1) {
+		if ok {
+			groupId := GroupId(idx + 1)
+			table, ok := p.getTable(groupId)
+			if !ok {
+				panic(fmt.Sprintf("table not found for group %d", groupId))
+			}
+			names = append(names, table)
+		}
+	}
+	return names
+}
+
 // exprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type exprGroup struct {
-	m        *Memo
-	relProps *relProps
-	first    relExpr
-	best     relExpr
+	m         *Memo
+	_children []*exprGroup
+	relProps  *relProps
+	first     relExpr
+	best      relExpr
 
 	id GroupId
 
-	cost           float64
-	done           bool
-	orderSatisfied bool
-	opHint         plan.JoinType
+	cost   float64
+	done   bool
+	hintOk bool
 }
 
 func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
@@ -338,15 +434,6 @@ func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
 	return grp
 }
 
-func (e *exprGroup) obeysOpHint(n relExpr) bool {
-	switch n := n.(type) {
-	case joinRel:
-		return n.joinPrivate().op == e.opHint
-	default:
-		return true
-	}
-}
-
 // prepend adds a new plan to an expression group at the beginning of
 // the list, to avoid recursive exploration steps (like adding indexed joins).
 func (e *exprGroup) prepend(rel relExpr) {
@@ -355,6 +442,8 @@ func (e *exprGroup) prepend(rel relExpr) {
 	rel.setNext(first)
 }
 
+// children returns a unioned list of child exprGroup for
+// every logical plan in this group.
 func (e *exprGroup) children() []*exprGroup {
 	n := e.first
 	children := make([]*exprGroup, 0)
@@ -365,11 +454,31 @@ func (e *exprGroup) children() []*exprGroup {
 	return children
 }
 
+// updateBest updates a group's best to the given expression or a hinted
+// operator if the hinted plan is not found. Join operator is applied as
+// a local rather than global property.
 func (e *exprGroup) updateBest(n relExpr, grpCost float64) {
-	if e.best == nil || grpCost <= e.cost || (!e.obeysOpHint(e.best) && e.obeysOpHint(n)) {
+	if e.best == nil || grpCost <= e.cost {
 		e.best = n
 		e.cost = grpCost
 	}
+}
+
+func (e *exprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) {
+	props := e.relProps
+	var result = node
+	if props.filter != nil {
+		sch := append(input, node.Schema()...)
+		filter, _, err := FixFieldIndexes(e.m.scope, nil, sch, props.filter)
+		if err != nil {
+			return nil, err
+		}
+		result = plan.NewFilter(filter, result)
+	}
+	if props.limit != nil {
+		result = plan.NewLimit(props.limit, result)
+	}
+	return result, nil
 }
 
 func (e *exprGroup) String() string {
@@ -378,22 +487,56 @@ func (e *exprGroup) String() string {
 	sep := ""
 	for n != nil {
 		b.WriteString(sep)
-		b.WriteString(fmt.Sprintf("(%s)", formatRelExpr(n)))
+		b.WriteString(fmt.Sprintf("(%s", formatRelExpr(n)))
+		if e.best != nil {
+			b.WriteString(fmt.Sprintf(" %.1f", n.cost()))
+
+			childCost := 0.0
+			for _, c := range n.children() {
+				childCost += c.cost
+			}
+			if e.cost == n.cost()+childCost {
+				b.WriteString(")*")
+			} else {
+				b.WriteString(")")
+			}
+		} else {
+			b.WriteString(")")
+		}
 		sep = " "
 		n = n.next()
 	}
 	return b.String()
 }
 
+// Coster types can estimate the CPU and memory cost of physical execution
+// operators.
+type Coster interface {
+	// EstimateCost cost returns the incremental CPU and memory cost for an
+	// operator, or an error. Cost is dependent on physical operator type,
+	// and the cardinality of inputs.
+	EstimateCost(*sql.Context, relExpr, sql.StatsReader) (float64, error)
+}
+
+// Carder types can estimate the cardinality (row count) of relational
+// expressions.
+type Carder interface {
+	// EstimateCard returns the estimate row count outputs for a relational
+	// expression. Cardinality is an expression group property.
+	EstimateCard(*sql.Context, relExpr, sql.StatsReader) (float64, error)
+}
+
 // relExpr wraps a sql.Node for use as a exprGroup linked list node.
 // TODO: we need relExprs for every sql.Node and sql.Expression
 type relExpr interface {
+	fmt.Stringer
 	group() *exprGroup
 	next() relExpr
 	setNext(relExpr)
 	children() []*exprGroup
 	setGroup(g *exprGroup)
-	//constructTree(input sql.Schema, children ...sql.Node) (sql.Node, error)
+	setCost(c float64)
+	cost() float64
 }
 
 type relBase struct {
@@ -403,6 +546,8 @@ type relBase struct {
 	n relExpr
 	// c is this relation's cost while costing and plan reify are separate
 	c float64
+	// cnt is this relations output row count
+	cnt float64
 }
 
 // relKEy is a quick identifier for avoiding duplicate work on the same
@@ -435,12 +580,12 @@ func (r *relBase) setNext(rel relExpr) {
 	r.n = rel
 }
 
-func (r *relBase) cost(rel relExpr) float64 {
-	return r.c
-}
-
 func (r *relBase) setCost(c float64) {
 	r.c = c
+}
+
+func (r *relBase) cost() float64 {
+	return r.c
 }
 
 func tableIdForSource(id GroupId) TableId {
@@ -450,6 +595,7 @@ func tableIdForSource(id GroupId) TableId {
 // sourceRel represents a data source, like a tableScan, subqueryAlias,
 // or list of values.
 type sourceRel interface {
+	relExpr
 	// outputCols retuns the output schema of this data source.
 	// TODO: this is more useful as a relExpr property, but we need
 	// this to fix up expression indexes currently
@@ -550,21 +696,21 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
 		Name:   "lookupJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"lookup", "*lookup"},
 		},
 	},
 	{
 		Name:   "concatJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"concat", "[]*lookup"},
 		},
 	},
 	{
 		Name:   "hashJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"innerAttrs", "[]sql.Expression"},
 			{"outerAttrs", "[]sql.Expression"},
 		},
@@ -572,7 +718,7 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 	{
 		Name:   "mergeJoin",
 		IsJoin: true,
-		JoinAttrs: [][2]string{
+		Attrs: [][2]string{
 			{"innerScan", "*indexScan"},
 			{"outerScan", "*indexScan"},
 		},
@@ -606,11 +752,26 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		SourceType: "*plan.SubqueryAlias",
 	},
 	{
-		Name:       "max1RowSubquery",
-		SourceType: "*plan.SubqueryAlias",
+		Name:       "max1Row",
+		SourceType: "sql.NameableNode",
 	},
 	{
 		Name:       "tableFunc",
 		SourceType: "sql.TableFunction",
+	},
+	{
+		Name:       "emptyTable",
+		SourceType: "*plan.EmptyTable",
+	},
+	{
+		Name:    "project",
+		IsUnary: true,
+		Attrs: [][2]string{
+			{"projections", "[]sql.Expression"},
+		},
+	},
+	{
+		Name:    "distinct",
+		IsUnary: true,
 	},
 }

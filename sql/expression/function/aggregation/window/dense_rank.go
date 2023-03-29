@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type DenseRank struct {
@@ -29,6 +30,7 @@ type DenseRank struct {
 var _ sql.FunctionExpression = (*DenseRank)(nil)
 var _ sql.WindowAggregation = (*DenseRank)(nil)
 var _ sql.WindowAdaptableExpression = (*DenseRank)(nil)
+var _ sql.CollationCoercible = (*DenseRank)(nil)
 
 func NewDenseRank() sql.Expression {
 	return &DenseRank{}
@@ -75,7 +77,12 @@ func (p *DenseRank) FunctionName() string {
 
 // Type implements sql.Expression
 func (p *DenseRank) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DenseRank) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression

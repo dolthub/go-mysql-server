@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowStatus implements the SHOW STATUS MySQL command.
@@ -31,6 +32,7 @@ type ShowStatus struct {
 }
 
 var _ sql.Node = (*ShowStatus)(nil)
+var _ sql.CollationCoercible = (*ShowStatus)(nil)
 
 type ShowStatusModifier byte
 
@@ -57,8 +59,8 @@ func (s *ShowStatus) String() string {
 // Schema implements sql.Node interface.
 func (s *ShowStatus) Schema() sql.Schema {
 	return sql.Schema{
-		{Name: "Variable_name", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Value", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: "Variable_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Value", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
 	}
 }
 
@@ -101,4 +103,9 @@ func (s *ShowStatus) WithChildren(node ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (s *ShowStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

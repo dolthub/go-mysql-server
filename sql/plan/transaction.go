@@ -32,6 +32,11 @@ func (transactionNode) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*transactionNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // Resolved implements the sql.Node interface.
 func (transactionNode) Resolved() bool {
 	return true
@@ -50,6 +55,7 @@ type StartTransaction struct {
 }
 
 var _ sql.Node = (*StartTransaction)(nil)
+var _ sql.CollationCoercible = (*StartTransaction)(nil)
 
 // NewStartTransaction creates a new StartTransaction node.
 func NewStartTransaction(transactionChar sql.TransactionCharacteristic) *StartTransaction {
@@ -108,6 +114,7 @@ type Commit struct {
 }
 
 var _ sql.Node = (*Commit)(nil)
+var _ sql.CollationCoercible = (*Commit)(nil)
 
 // NewCommit creates a new Commit node.
 func NewCommit() *Commit {
@@ -156,6 +163,7 @@ type Rollback struct {
 }
 
 var _ sql.Node = (*Rollback)(nil)
+var _ sql.CollationCoercible = (*Rollback)(nil)
 
 // NewRollback creates a new Rollback node.
 func NewRollback() *Rollback {
@@ -206,6 +214,7 @@ type CreateSavepoint struct {
 }
 
 var _ sql.Node = (*CreateSavepoint)(nil)
+var _ sql.CollationCoercible = (*CreateSavepoint)(nil)
 
 // NewCreateSavepoint creates a new CreateSavepoint node.
 func NewCreateSavepoint(name string) *CreateSavepoint {
@@ -252,6 +261,7 @@ type RollbackSavepoint struct {
 }
 
 var _ sql.Node = (*RollbackSavepoint)(nil)
+var _ sql.CollationCoercible = (*RollbackSavepoint)(nil)
 
 // NewRollbackSavepoint creates a new RollbackSavepoint node.
 func NewRollbackSavepoint(name string) *RollbackSavepoint {
@@ -300,6 +310,7 @@ type ReleaseSavepoint struct {
 }
 
 var _ sql.Node = (*ReleaseSavepoint)(nil)
+var _ sql.CollationCoercible = (*ReleaseSavepoint)(nil)
 
 // NewReleaseSavepoint creates a new ReleaseSavepoint node.
 func NewReleaseSavepoint(name string) *ReleaseSavepoint {

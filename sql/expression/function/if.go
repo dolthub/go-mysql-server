@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // If function returns the second value if the first is true, the third value otherwise.
@@ -28,6 +29,7 @@ type If struct {
 }
 
 var _ sql.FunctionExpression = (*If)(nil)
+var _ sql.CollationCoercible = (*If)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (f *If) FunctionName() string {
@@ -36,7 +38,7 @@ func (f *If) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (f *If) Description() string {
-	return "if expr1 evaluates to true, retuns expr2. Otherwise returns expr3."
+	return "if expr evaluates to true, returns ifTrue. Otherwise returns ifFalse."
 }
 
 func (f *If) Resolved() bool {
@@ -69,7 +71,7 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if e == nil {
 		asBool = false
 	} else {
-		asBool, err = sql.ConvertToBool(e)
+		asBool, err = types.ConvertToBool(e)
 		if err != nil {
 			return nil, err
 		}
@@ -85,6 +87,13 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // Type implements the Expression interface.
 func (f *If) Type() sql.Type {
 	return f.ifTrue.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *If) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// We would need to evaluate the condition to return the correct result here, so we'll copy
+	// Type and just return the true result
+	return sql.GetCoercibility(ctx, f.ifTrue)
 }
 
 // IsNullable implements the Expression interface.

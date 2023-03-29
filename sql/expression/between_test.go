@@ -20,13 +20,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestBetween(t *testing.T) {
 	b := NewBetween(
-		NewGetField(0, sql.Int64, "val", true),
-		NewGetField(1, sql.Int64, "lower", true),
-		NewGetField(2, sql.Int64, "upper", true),
+		NewGetField(0, types.Int64, "val", true),
+		NewGetField(1, types.Int64, "lower", true),
+		NewGetField(2, types.Int64, "upper", true),
 	)
 
 	testCases := []struct {
@@ -72,36 +73,36 @@ func TestBetweenIsNullable(t *testing.T) {
 		{
 			"val is nullable",
 			NewBetween(
-				NewGetField(0, sql.Int64, "foo", true),
-				NewLiteral(1, sql.Int64),
-				NewLiteral(2, sql.Int64),
+				NewGetField(0, types.Int64, "foo", true),
+				NewLiteral(1, types.Int64),
+				NewLiteral(2, types.Int64),
 			),
 			true,
 		},
 		{
 			"lower is nullable",
 			NewBetween(
-				NewLiteral(1, sql.Int64),
-				NewGetField(0, sql.Int64, "foo", true),
-				NewLiteral(2, sql.Int64),
+				NewLiteral(1, types.Int64),
+				NewGetField(0, types.Int64, "foo", true),
+				NewLiteral(2, types.Int64),
 			),
 			true,
 		},
 		{
 			"upper is nullable",
 			NewBetween(
-				NewLiteral(1, sql.Int64),
-				NewLiteral(2, sql.Int64),
-				NewGetField(0, sql.Int64, "foo", true),
+				NewLiteral(1, types.Int64),
+				NewLiteral(2, types.Int64),
+				NewGetField(0, types.Int64, "foo", true),
 			),
 			true,
 		},
 		{
 			"all are not nullable",
 			NewBetween(
-				NewLiteral(1, sql.Int64),
-				NewLiteral(2, sql.Int64),
-				NewLiteral(3, sql.Int64),
+				NewLiteral(1, types.Int64),
+				NewLiteral(2, types.Int64),
+				NewLiteral(3, types.Int64),
 			),
 			false,
 		},
@@ -124,25 +125,25 @@ func TestBetweenResolved(t *testing.T) {
 			"val is unresolved",
 			NewBetween(
 				NewUnresolvedColumn("foo"),
-				NewLiteral(1, sql.Int64),
-				NewLiteral(2, sql.Int64),
+				NewLiteral(1, types.Int64),
+				NewLiteral(2, types.Int64),
 			),
 			false,
 		},
 		{
 			"lower is unresolved",
 			NewBetween(
-				NewLiteral(1, sql.Int64),
+				NewLiteral(1, types.Int64),
 				NewUnresolvedColumn("foo"),
-				NewLiteral(2, sql.Int64),
+				NewLiteral(2, types.Int64),
 			),
 			false,
 		},
 		{
 			"upper is unresolved",
 			NewBetween(
-				NewLiteral(1, sql.Int64),
-				NewLiteral(2, sql.Int64),
+				NewLiteral(1, types.Int64),
+				NewLiteral(2, types.Int64),
 				NewUnresolvedColumn("foo"),
 			),
 			false,
@@ -150,9 +151,9 @@ func TestBetweenResolved(t *testing.T) {
 		{
 			"all are resolved",
 			NewBetween(
-				NewLiteral(1, sql.Int64),
-				NewLiteral(2, sql.Int64),
-				NewLiteral(3, sql.Int64),
+				NewLiteral(1, types.Int64),
+				NewLiteral(2, types.Int64),
+				NewLiteral(3, types.Int64),
 			),
 			true,
 		},
@@ -167,9 +168,9 @@ func TestBetweenResolved(t *testing.T) {
 
 func TestNotBetween(t *testing.T) {
 	n := NewNot(NewBetween(
-		NewGetField(0, sql.Int64, "val", true),
-		NewGetField(1, sql.Int64, "lower", true),
-		NewGetField(2, sql.Int64, "upper", true),
+		NewGetField(0, types.Int64, "val", true),
+		NewGetField(1, types.Int64, "lower", true),
+		NewGetField(2, types.Int64, "upper", true),
 	))
 
 	testCases := []struct {

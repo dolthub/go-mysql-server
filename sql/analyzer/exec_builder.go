@@ -62,7 +62,8 @@ func (b *ExecBuilder) buildSemiJoin(j *semiJoin, input sql.Schema, children ...s
 	if err != nil {
 		return nil, err
 	}
-	return plan.NewJoin(children[0], children[1], j.op, filters), nil
+	left := children[0]
+	return plan.NewJoin(left, children[1], j.op, filters), nil
 }
 
 func (b *ExecBuilder) buildAntiJoin(j *antiJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -91,8 +92,26 @@ func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.N
 	case *plan.TableAlias:
 		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
+	case *plan.Distinct:
+		switch n := n.Child.(type) {
+		case *plan.ResolvedTable:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+		case *plan.TableAlias:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+			ret = plan.NewTableAlias(n.Name(), ret)
+		}
+		ret = plan.NewDistinct(ret)
+	case *plan.Filter:
+		switch n := n.Child.(type) {
+		case *plan.ResolvedTable:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+		case *plan.TableAlias:
+			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
+			ret = plan.NewTableAlias(n.Name(), ret)
+		}
+		ret = plan.NewFilter(n.Expression, ret)
 	default:
-		panic("unexpected lookup child")
+		panic(fmt.Sprintf("unexpected lookup child %T", n))
 	}
 	if err != nil {
 		return nil, err
@@ -101,6 +120,7 @@ func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.N
 }
 
 func (b *ExecBuilder) buildLookupJoin(j *lookupJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	left := children[0]
 	right, err := b.buildLookup(j.lookup, input, children[1])
 	if err != nil {
 		return nil, err
@@ -109,23 +129,12 @@ func (b *ExecBuilder) buildLookupJoin(j *lookupJoin, input sql.Schema, children 
 	if err != nil {
 		return nil, err
 	}
-
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeLookup
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterLookup
-	case plan.JoinTypeSemi:
-		newOp = plan.JoinTypeSemiLookup
-	case plan.JoinTypeRightSemi:
-		newOp = plan.JoinTypeRightSemiLookup
-	case plan.JoinTypeAnti:
-		newOp = plan.JoinTypeAntiLookup
-	default:
-		panic(fmt.Sprintf("can only apply lookup to InnerJoin or LeftOuterJoin, found %s", j.op))
+	if j.op == plan.JoinTypeRightSemiLookup {
+		if _, ok := left.(*plan.Max1Row); !ok {
+			left = plan.NewDistinct(left)
+		}
 	}
-	return plan.NewJoin(children[0], right, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(left, right, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildConcatJoin(j *concatJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -163,16 +172,7 @@ func (b *ExecBuilder) buildConcatJoin(j *concatJoin, input sql.Schema, children 
 		return nil, err
 	}
 
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeLookup
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterLookup
-	default:
-		panic("can only apply lookup to InnerJoin or LeftOuterJoin")
-	}
-	return plan.NewJoin(children[0], right, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(children[0], right, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -192,21 +192,7 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 	cr := plan.NewCachedResults(children[1])
 	outer := plan.NewHashLookup(cr, outerAttrs, innerAttrs)
 	inner := children[0]
-
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeHash
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterHash
-	case plan.JoinTypeSemi:
-		newOp = plan.JoinTypeSemiHash
-	case plan.JoinTypeAnti:
-		newOp = plan.JoinTypeAntiHash
-	default:
-		return nil, fmt.Errorf("can only apply hash join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
-	}
-	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(inner, outer, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -227,6 +213,17 @@ func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ..
 	case *plan.TableAlias:
 		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
+	case *plan.Distinct:
+		switch n := n.Child.(type) {
+		case *plan.ResolvedTable:
+			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
+		case *plan.TableAlias:
+			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
+			ret = plan.NewTableAlias(n.Name(), ret)
+		default:
+			return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
+		}
+		ret = plan.NewDistinct(ret)
 	default:
 		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
 	}
@@ -249,29 +246,15 @@ func (b *ExecBuilder) buildMergeJoin(j *mergeJoin, input sql.Schema, children ..
 	if err != nil {
 		return nil, err
 	}
-
-	var newOp plan.JoinType
-	switch j.op {
-	case plan.JoinTypeInner:
-		newOp = plan.JoinTypeMerge
-	case plan.JoinTypeLeftOuter:
-		newOp = plan.JoinTypeLeftOuterMerge
-	case plan.JoinTypeSemi:
-		newOp = plan.JoinTypeSemiMerge
-	case plan.JoinTypeAnti:
-		newOp = plan.JoinTypeAntiMerge
-	default:
-		return nil, fmt.Errorf("can only apply merge join to InnerJoin, LeftOuterJoin, SemiJoin, or AntiJoin")
-	}
-	return plan.NewJoin(inner, outer, newOp, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(inner, outer, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildSubqueryAlias(r *subqueryAlias, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	return r.table, nil
 }
 
-func (b *ExecBuilder) buildMax1RowSubquery(r *max1RowSubquery, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return plan.NewMax1Row(r.table), nil
+func (b *ExecBuilder) buildMax1Row(r *max1Row, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return r.table, nil
 }
 
 func (b *ExecBuilder) buildTableFunc(r *tableFunc, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -295,4 +278,20 @@ func (b *ExecBuilder) buildTableAlias(r *tableAlias, _ sql.Schema, _ ...sql.Node
 
 func (b *ExecBuilder) buildTableScan(r *tableScan, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
 	return r.table, nil
+}
+
+func (b *ExecBuilder) buildEmptyTable(r *emptyTable, _ sql.Schema, _ ...sql.Node) (sql.Node, error) {
+	return r.table, nil
+}
+
+func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, input, r.projections...)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewProject(p, children[0]), nil
+}
+
+func (b *ExecBuilder) buildDistinct(r *distinct, _ sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return plan.NewDistinct(children[0]), nil
 }

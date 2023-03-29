@@ -22,6 +22,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func Example() {
@@ -29,7 +30,8 @@ func Example() {
 	db := createTestDatabase()
 	e := sqle.NewDefault(sql.NewDatabaseProvider(db))
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("test")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("test")
 
 	_, r, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
 	WHERE name = 'John Doe'
@@ -62,8 +64,8 @@ func checkIfError(err error) {
 func createTestDatabase() sql.Database {
 	db := memory.NewDatabase("test")
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "name", Type: sql.Text, Source: "mytable"},
-		{Name: "email", Type: sql.Text, Source: "mytable"},
+		{Name: "name", Type: types.Text, Source: "mytable"},
+		{Name: "email", Type: types.Text, Source: "mytable"},
 	}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
 	ctx := sql.NewEmptyContext()

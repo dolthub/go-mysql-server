@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -41,10 +42,11 @@ func NewCreateRole(ifNotExists bool, roles []UserName) *CreateRole {
 }
 
 var _ sql.Node = (*CreateRole)(nil)
+var _ sql.CollationCoercible = (*CreateRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *CreateRole) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -100,6 +102,11 @@ func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the interface sql.Node.
 func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
@@ -143,5 +150,5 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }

@@ -35,6 +35,9 @@ type LockTables struct {
 	Locks   []*TableLock
 }
 
+var _ sql.Node = (*LockTables)(nil)
+var _ sql.CollationCoercible = (*LockTables)(nil)
+
 // NewLockTables creates a new LockTables node.
 func NewLockTables(locks []*TableLock) *LockTables {
 	return &LockTables{Locks: locks}
@@ -122,10 +125,15 @@ func (t *LockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (t *LockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	operations := make([]sql.PrivilegedOperation, len(t.Locks))
 	for i, tableLock := range t.Locks {
-		operations[i] = sql.NewPrivilegedOperation(getDatabaseName(tableLock.Table),
+		operations[i] = sql.NewPrivilegedOperation(GetDatabaseName(tableLock.Table),
 			getTableName(tableLock.Table), "", sql.PrivilegeType_Select, sql.PrivilegeType_LockTables)
 	}
 	return opChecker.UserHasPrivileges(ctx, operations...)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LockTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // ErrTableNotLockable is returned whenever a lockable table can't be found.
@@ -157,6 +165,9 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 type UnlockTables struct {
 	Catalog sql.Catalog
 }
+
+var _ sql.Node = (*UnlockTables)(nil)
+var _ sql.CollationCoercible = (*UnlockTables)(nil)
 
 // NewUnlockTables returns a new UnlockTables node.
 func NewUnlockTables() *UnlockTables {
@@ -203,4 +214,9 @@ func (t *UnlockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (t *UnlockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: Can't quite figure out the privileges for this one, needs more testing
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnlockTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

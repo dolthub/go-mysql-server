@@ -19,6 +19,7 @@ import (
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type KillType int
@@ -43,6 +44,9 @@ type Kill struct {
 	kt     KillType
 	connID uint32
 }
+
+var _ sql.Node = (*Kill)(nil)
+var _ sql.CollationCoercible = (*Kill)(nil)
 
 func NewKill(kt KillType, connID uint32) *Kill {
 	return &Kill{kt, connID}
@@ -70,8 +74,13 @@ func (k *Kill) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Super))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Kill) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (k *Kill) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (k *Kill) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -81,7 +90,7 @@ func (k *Kill) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if k.kt == KillType_Connection {
 				ctx.KillConnection(k.connID)
 			}
-			return sql.NewRow(sql.NewOkResult(0)), nil
+			return sql.NewRow(types.NewOkResult(0)), nil
 		},
 	}, nil
 }

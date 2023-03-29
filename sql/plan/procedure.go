@@ -88,6 +88,7 @@ type Procedure struct {
 
 var _ sql.Node = (*Procedure)(nil)
 var _ sql.DebugStringer = (*Procedure)(nil)
+var _ sql.CollationCoercible = (*Procedure)(nil)
 var _ RepresentsBlock = (*Procedure)(nil)
 
 // NewProcedure returns a *Procedure. All names contained within are lowercase, and all methods are case-insensitive.
@@ -165,6 +166,11 @@ func (p *Procedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *Procedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return p.Body.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *Procedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Body)
 }
 
 // RowIter implements the sql.Node interface.

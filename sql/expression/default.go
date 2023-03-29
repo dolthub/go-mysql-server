@@ -23,6 +23,9 @@ type DefaultColumn struct {
 	name string
 }
 
+var _ sql.Expression = (*DefaultColumn)(nil)
+var _ sql.CollationCoercible = (*DefaultColumn)(nil)
+
 // NewDefaultColumn creates a new NewDefaultColumn expression.
 func NewDefaultColumn(name string) *DefaultColumn {
 	return &DefaultColumn{name: name}
@@ -50,6 +53,11 @@ func (*DefaultColumn) IsNullable() bool {
 // The function always panics!
 func (*DefaultColumn) Type() sql.Type {
 	panic("default column is a placeholder node, but Type was called")
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DefaultColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Name implements the sql.Nameable interface.

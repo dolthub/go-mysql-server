@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type RowUpdateType int
@@ -43,6 +44,9 @@ type RowUpdateAccumulator struct {
 	RowUpdateType
 }
 
+var _ sql.Node = RowUpdateAccumulator{}
+var _ sql.CollationCoercible = RowUpdateAccumulator{}
+
 // NewRowUpdateResult returns a new RowUpdateResult with the given node to wrap.
 func NewRowUpdateAccumulator(n sql.Node, updateType RowUpdateType) *RowUpdateAccumulator {
 	return &RowUpdateAccumulator{
@@ -58,7 +62,7 @@ func (r RowUpdateAccumulator) Child() sql.Node {
 }
 
 func (r RowUpdateAccumulator) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (r RowUpdateAccumulator) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -71,6 +75,11 @@ func (r RowUpdateAccumulator) WithChildren(children ...sql.Node) (sql.Node, erro
 // CheckPrivileges implements the interface sql.Node.
 func (r RowUpdateAccumulator) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return r.Child().CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r RowUpdateAccumulator) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, r.Child())
 }
 
 func (r RowUpdateAccumulator) String() string {
@@ -86,7 +95,7 @@ func (r RowUpdateAccumulator) DebugString() string {
 
 type accumulatorRowHandler interface {
 	handleRowUpdate(row sql.Row) error
-	okResult() sql.OkResult
+	okResult() types.OkResult
 }
 
 // TODO: Extend this to UPDATE IGNORE JOIN
@@ -104,10 +113,10 @@ func (i *insertRowHandler) handleRowUpdate(_ sql.Row) error {
 	return nil
 }
 
-func (i *insertRowHandler) okResult() sql.OkResult {
+func (i *insertRowHandler) okResult() types.OkResult {
 	// TODO: the auto inserted id should be in this result. Needs to be passed up by the insert iter, which is a larger
 	//  change.
-	return sql.NewOkResult(i.rowsAffected)
+	return types.NewOkResult(i.rowsAffected)
 }
 
 type replaceRowHandler struct {
@@ -129,8 +138,8 @@ func (r *replaceRowHandler) handleRowUpdate(row sql.Row) error {
 	return nil
 }
 
-func (r *replaceRowHandler) okResult() sql.OkResult {
-	return sql.NewOkResult(r.rowsAffected)
+func (r *replaceRowHandler) okResult() types.OkResult {
+	return types.NewOkResult(r.rowsAffected)
 }
 
 type onDuplicateUpdateHandler struct {
@@ -166,8 +175,8 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	return nil
 }
 
-func (o *onDuplicateUpdateHandler) okResult() sql.OkResult {
-	return sql.NewOkResult(o.rowsAffected)
+func (o *onDuplicateUpdateHandler) okResult() types.OkResult {
+	return types.NewOkResult(o.rowsAffected)
 }
 
 type updateRowHandler struct {
@@ -200,12 +209,12 @@ func (u *updateRowHandler) handleRowUpdateWithIgnore(row sql.Row, ignore bool) e
 	return nil
 }
 
-func (u *updateRowHandler) okResult() sql.OkResult {
+func (u *updateRowHandler) okResult() types.OkResult {
 	affected := u.rowsAffected
 	if u.clientFoundRowsCapability {
 		affected = u.rowsMatched
 	}
-	return sql.OkResult{
+	return types.OkResult{
 		RowsAffected: uint64(affected),
 		Info: UpdateInfo{
 			Matched:  u.rowsMatched,
@@ -250,8 +259,8 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	return nil
 }
 
-func (u *updateJoinRowHandler) okResult() sql.OkResult {
-	return sql.OkResult{
+func (u *updateJoinRowHandler) okResult() types.OkResult {
+	return types.OkResult{
 		RowsAffected: uint64(u.rowsAffected),
 		Info: UpdateInfo{
 			Matched:  u.rowsMatched,
@@ -290,8 +299,8 @@ func (u *deleteRowHandler) handleRowUpdate(row sql.Row) error {
 	return nil
 }
 
-func (u *deleteRowHandler) okResult() sql.OkResult {
-	return sql.NewOkResult(u.rowsAffected)
+func (u *deleteRowHandler) okResult() types.OkResult {
+	return types.NewOkResult(u.rowsAffected)
 }
 
 type accumulatorIter struct {

@@ -33,6 +33,7 @@ table PrivilegeSet {
     global_static:[int];
     global_dynamic:[string];
     databases:[PrivilegeSetDatabase];
+    global_dynamic_wgo:[bool]; // WITH GRANT OPTION, separate as this was added later
 }
 
 // Entries in the user table
@@ -64,6 +65,8 @@ table ReplicaSourceInfo {
     password:string;
     port:uint16;
     uuid:string;
+    connect_retry_interval:uint32;
+    connect_retry_count:uint64;
 }
 
 // The MySQL Db containing all the tables

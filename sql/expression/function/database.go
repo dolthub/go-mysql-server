@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Database implements the DATABASE() function
@@ -28,6 +29,7 @@ func (db *Database) IsNonDeterministic() bool {
 }
 
 var _ sql.FunctionExpression = (*Database)(nil)
+var _ sql.CollationCoercible = (*Database)(nil)
 
 // NewDatabase returns a new Database function
 func NewDatabase() sql.Expression {
@@ -45,7 +47,12 @@ func (db *Database) Description() string {
 }
 
 // Type implements the sql.Expression (sql.LongText)
-func (db *Database) Type() sql.Type { return sql.LongText }
+func (db *Database) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Database) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
+}
 
 // IsNullable implements the sql.Expression interface.
 // The function returns always true

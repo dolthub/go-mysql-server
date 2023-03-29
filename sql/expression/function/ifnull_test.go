@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestIfNull(t *testing.T) {
@@ -38,10 +39,10 @@ func TestIfNull(t *testing.T) {
 	}
 
 	f := NewIfNull(
-		expression.NewGetField(0, sql.LongText, "expression", true),
-		expression.NewGetField(1, sql.LongText, "value", true),
+		expression.NewGetField(0, types.LongText, "expression", true),
+		expression.NewGetField(1, types.LongText, "value", true),
 	)
-	require.Equal(t, sql.LongText, f.Type())
+	require.Equal(t, types.LongText, f.Type())
 
 	for _, tc := range testCases {
 		v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tc.expression, tc.value))

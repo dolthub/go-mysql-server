@@ -19,6 +19,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -79,7 +81,10 @@ func (i JoinType) IsFullOuter() bool {
 
 func (i JoinType) IsPhysical() bool {
 	switch i {
-	case JoinTypeLookup, JoinTypeLeftOuterLookup, JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeMerge, JoinTypeLeftOuterMerge:
+	case JoinTypeLookup, JoinTypeLeftOuterLookup,
+		JoinTypeSemiLookup, JoinTypeRightSemiLookup,
+		JoinTypeHash, JoinTypeLeftOuterHash,
+		JoinTypeMerge, JoinTypeLeftOuterMerge:
 		return true
 	default:
 		return false
@@ -87,8 +92,12 @@ func (i JoinType) IsPhysical() bool {
 }
 
 func (i JoinType) IsInner() bool {
-	return i == JoinTypeInner ||
-		i == JoinTypeCross
+	switch i {
+	case JoinTypeInner, JoinTypeCross:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsNatural() bool {
@@ -96,8 +105,25 @@ func (i JoinType) IsNatural() bool {
 }
 
 func (i JoinType) IsDegenerate() bool {
-	return i == JoinTypeNatural ||
-		i == JoinTypeCross
+	return i == JoinTypeCross
+}
+
+func (i JoinType) IsMerge() bool {
+	switch i {
+	case JoinTypeMerge, JoinTypeSemiMerge, JoinTypeAntiMerge, JoinTypeLeftOuterMerge:
+		return true
+	default:
+		return false
+	}
+}
+
+func (i JoinType) IsHash() bool {
+	switch i {
+	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeLeftOuterHash:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsRightPartial() bool {
@@ -150,13 +176,55 @@ func (i JoinType) IsLookup() bool {
 		i == JoinTypeLeftOuterLookup
 }
 
-func (i JoinType) IsMerge() bool {
-	return i == JoinTypeMerge ||
-		i == JoinTypeLeftOuterMerge
-}
-
 func (i JoinType) IsCross() bool {
 	return i == JoinTypeCross
+}
+
+func (i JoinType) AsHash() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeHash
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterHash
+	case JoinTypeSemi:
+		return JoinTypeSemiHash
+	case JoinTypeAnti:
+		return JoinTypeAntiHash
+	default:
+		return i
+	}
+}
+
+func (i JoinType) AsMerge() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeMerge
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterMerge
+	case JoinTypeSemi:
+		return JoinTypeSemiMerge
+	case JoinTypeAnti:
+		return JoinTypeAntiMerge
+	default:
+		return i
+	}
+}
+
+func (i JoinType) AsLookup() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeLookup
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterLookup
+	case JoinTypeSemi:
+		return JoinTypeSemiLookup
+	case JoinTypeAnti:
+		return JoinTypeAntiLookup
+	case JoinTypeRightSemi:
+		return JoinTypeRightSemiLookup
+	default:
+		return i
+	}
 }
 
 func shouldUseMemoryJoinsByEnv() bool {
@@ -164,7 +232,7 @@ func shouldUseMemoryJoinsByEnv() bool {
 	return v == "on" || v == "1"
 }
 
-// JoinNode contains all the common data fields and implements the commom sql.Node getters for all join types.
+// JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
 	Filter     sql.Expression
@@ -172,6 +240,9 @@ type JoinNode struct {
 	CommentStr string
 	ScopeLen   int
 }
+
+var _ sql.Node = (*JoinNode)(nil)
+var _ sql.CollationCoercible = (*JoinNode)(nil)
 
 func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 	return &JoinNode{
@@ -183,7 +254,7 @@ func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 
 // Expressions implements sql.Expression
 func (j *JoinNode) Expressions() []sql.Expression {
-	if j.Op.IsDegenerate() {
+	if j.Op.IsDegenerate() || j.Filter == nil {
 		return nil
 	}
 	return []sql.Expression{j.Filter}
@@ -203,7 +274,7 @@ func (j *JoinNode) Resolved() bool {
 	switch {
 	case j.Op.IsNatural():
 		return false
-	case j.Op.IsDegenerate():
+	case j.Op.IsDegenerate() || j.Filter == nil:
 		return j.left.Resolved() && j.right.Resolved()
 	default:
 		return j.left.Resolved() && j.right.Resolved() && j.Filter.Resolved()
@@ -213,7 +284,7 @@ func (j *JoinNode) Resolved() bool {
 func (j *JoinNode) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	ret := *j
 	switch {
-	case j.Op.IsDegenerate():
+	case j.Op.IsDegenerate() || j.Filter == nil:
 		if len(exprs) != 0 {
 			return nil, sql.ErrInvalidChildrenNumber.New(j, len(exprs), 0)
 		}
@@ -228,6 +299,12 @@ func (j *JoinNode) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 func (j *JoinNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JoinNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// Joins make use of coercibility, but they don't return anything themselves
+	return sql.Collation_binary, 7
 }
 
 func (j *JoinNode) JoinType() JoinType {
@@ -311,7 +388,15 @@ func (j *JoinNode) String() string {
 	pr := sql.NewTreePrinter()
 	var children []string
 	if j.Filter != nil {
-		children = append(children, j.Filter.String())
+		if j.Op.IsMerge() {
+			filters := expression.SplitConjunction(j.Filter)
+			children = append(children, fmt.Sprintf("cmp: %s", filters[0]))
+			if len(filters) > 1 {
+				children = append(children, fmt.Sprintf("sel: %s", expression.JoinAnd(filters[1:]...)))
+			}
+		} else {
+			children = append(children, j.Filter.String())
+		}
 	}
 	children = append(children, j.left.String(), j.right.String())
 	pr.WriteNode("%s", j.Op)
@@ -323,7 +408,15 @@ func (j *JoinNode) DebugString() string {
 	pr := sql.NewTreePrinter()
 	var children []string
 	if j.Filter != nil {
-		children = append(children, sql.DebugString(j.Filter))
+		if j.Op.IsMerge() {
+			filters := expression.SplitConjunction(j.Filter)
+			children = append(children, fmt.Sprintf("cmp: %s", sql.DebugString(filters[0])))
+			if len(filters) > 1 {
+				children = append(children, fmt.Sprintf("sel: %s", sql.DebugString(expression.JoinAnd(filters[1:]...))))
+			}
+		} else {
+			children = append(children, sql.DebugString(j.Filter))
+		}
 	}
 	children = append(children, sql.DebugString(j.left), sql.DebugString(j.right))
 	pr.WriteNode("%s", j.Op)

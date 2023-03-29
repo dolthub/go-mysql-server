@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // IsTrue is an expression that checks if an expression is true.
@@ -25,6 +26,9 @@ type IsTrue struct {
 	UnaryExpression
 	invert bool
 }
+
+var _ sql.Expression = (*IsTrue)(nil)
+var _ sql.CollationCoercible = (*IsTrue)(nil)
 
 const IsTrueStr = "IS TRUE"
 const IsFalseStr = "IS FALSE"
@@ -41,7 +45,12 @@ func NewIsFalse(child sql.Expression) *IsTrue {
 
 // Type implements the Expression interface.
 func (*IsTrue) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IsTrue) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.
@@ -60,7 +69,7 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if v == nil {
 		return false, nil
 	} else {
-		boolVal, err = sql.ConvertToBool(v)
+		boolVal, err = types.ConvertToBool(v)
 		if err != nil {
 			return nil, err
 		}

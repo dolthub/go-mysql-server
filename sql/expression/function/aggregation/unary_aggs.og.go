@@ -8,6 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type AnyValue struct {
@@ -17,6 +18,7 @@ type AnyValue struct {
 var _ sql.FunctionExpression = (*AnyValue)(nil)
 var _ sql.Aggregation = (*AnyValue)(nil)
 var _ sql.WindowAdaptableExpression = (*AnyValue)(nil)
+var _ sql.CollationCoercible = (*AnyValue)(nil)
 
 func NewAnyValue(e sql.Expression) *AnyValue {
 	return &AnyValue{
@@ -91,6 +93,7 @@ type Avg struct {
 var _ sql.FunctionExpression = (*Avg)(nil)
 var _ sql.Aggregation = (*Avg)(nil)
 var _ sql.WindowAdaptableExpression = (*Avg)(nil)
+var _ sql.CollationCoercible = (*Avg)(nil)
 
 func NewAvg(e sql.Expression) *Avg {
 	return &Avg{
@@ -165,6 +168,7 @@ type BitAnd struct {
 var _ sql.FunctionExpression = (*BitAnd)(nil)
 var _ sql.Aggregation = (*BitAnd)(nil)
 var _ sql.WindowAdaptableExpression = (*BitAnd)(nil)
+var _ sql.CollationCoercible = (*BitAnd)(nil)
 
 func NewBitAnd(e sql.Expression) *BitAnd {
 	return &BitAnd{
@@ -177,7 +181,7 @@ func NewBitAnd(e sql.Expression) *BitAnd {
 }
 
 func (a *BitAnd) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
 }
 
 func (a *BitAnd) IsNullable() bool {
@@ -239,6 +243,7 @@ type BitOr struct {
 var _ sql.FunctionExpression = (*BitOr)(nil)
 var _ sql.Aggregation = (*BitOr)(nil)
 var _ sql.WindowAdaptableExpression = (*BitOr)(nil)
+var _ sql.CollationCoercible = (*BitOr)(nil)
 
 func NewBitOr(e sql.Expression) *BitOr {
 	return &BitOr{
@@ -251,7 +256,7 @@ func NewBitOr(e sql.Expression) *BitOr {
 }
 
 func (a *BitOr) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
 }
 
 func (a *BitOr) IsNullable() bool {
@@ -313,6 +318,7 @@ type BitXor struct {
 var _ sql.FunctionExpression = (*BitXor)(nil)
 var _ sql.Aggregation = (*BitXor)(nil)
 var _ sql.WindowAdaptableExpression = (*BitXor)(nil)
+var _ sql.CollationCoercible = (*BitXor)(nil)
 
 func NewBitXor(e sql.Expression) *BitXor {
 	return &BitXor{
@@ -325,7 +331,7 @@ func NewBitXor(e sql.Expression) *BitXor {
 }
 
 func (a *BitXor) Type() sql.Type {
-	return sql.Uint64
+	return types.Uint64
 }
 
 func (a *BitXor) IsNullable() bool {
@@ -387,6 +393,7 @@ type Count struct {
 var _ sql.FunctionExpression = (*Count)(nil)
 var _ sql.Aggregation = (*Count)(nil)
 var _ sql.WindowAdaptableExpression = (*Count)(nil)
+var _ sql.CollationCoercible = (*Count)(nil)
 
 func NewCount(e sql.Expression) *Count {
 	return &Count{
@@ -399,7 +406,7 @@ func NewCount(e sql.Expression) *Count {
 }
 
 func (a *Count) Type() sql.Type {
-	return sql.Int64
+	return types.Int64
 }
 
 func (a *Count) IsNullable() bool {
@@ -461,6 +468,7 @@ type First struct {
 var _ sql.FunctionExpression = (*First)(nil)
 var _ sql.Aggregation = (*First)(nil)
 var _ sql.WindowAdaptableExpression = (*First)(nil)
+var _ sql.CollationCoercible = (*First)(nil)
 
 func NewFirst(e sql.Expression) *First {
 	return &First{
@@ -535,6 +543,7 @@ type JsonArray struct {
 var _ sql.FunctionExpression = (*JsonArray)(nil)
 var _ sql.Aggregation = (*JsonArray)(nil)
 var _ sql.WindowAdaptableExpression = (*JsonArray)(nil)
+var _ sql.CollationCoercible = (*JsonArray)(nil)
 
 func NewJsonArray(e sql.Expression) *JsonArray {
 	return &JsonArray{
@@ -547,7 +556,7 @@ func NewJsonArray(e sql.Expression) *JsonArray {
 }
 
 func (a *JsonArray) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
 }
 
 func (a *JsonArray) IsNullable() bool {
@@ -609,6 +618,7 @@ type Last struct {
 var _ sql.FunctionExpression = (*Last)(nil)
 var _ sql.Aggregation = (*Last)(nil)
 var _ sql.WindowAdaptableExpression = (*Last)(nil)
+var _ sql.CollationCoercible = (*Last)(nil)
 
 func NewLast(e sql.Expression) *Last {
 	return &Last{
@@ -683,6 +693,7 @@ type Max struct {
 var _ sql.FunctionExpression = (*Max)(nil)
 var _ sql.Aggregation = (*Max)(nil)
 var _ sql.WindowAdaptableExpression = (*Max)(nil)
+var _ sql.CollationCoercible = (*Max)(nil)
 
 func NewMax(e sql.Expression) *Max {
 	return &Max{
@@ -757,6 +768,7 @@ type Min struct {
 var _ sql.FunctionExpression = (*Min)(nil)
 var _ sql.Aggregation = (*Min)(nil)
 var _ sql.WindowAdaptableExpression = (*Min)(nil)
+var _ sql.CollationCoercible = (*Min)(nil)
 
 func NewMin(e sql.Expression) *Min {
 	return &Min{
@@ -831,6 +843,7 @@ type Sum struct {
 var _ sql.FunctionExpression = (*Sum)(nil)
 var _ sql.Aggregation = (*Sum)(nil)
 var _ sql.WindowAdaptableExpression = (*Sum)(nil)
+var _ sql.CollationCoercible = (*Sum)(nil)
 
 func NewSum(e sql.Expression) *Sum {
 	return &Sum{

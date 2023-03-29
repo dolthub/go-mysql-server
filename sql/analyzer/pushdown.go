@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // filterHasBindVar looks for any BindVars found in filter nodes
@@ -27,18 +28,39 @@ func filterHasBindVar(filter sql.Node) bool {
 	transform.Inspect(filter, func(node sql.Node) bool {
 		if fn, ok := node.(*plan.Filter); ok {
 			for _, expr := range fn.Expressions() {
-				transform.InspectExpr(expr, func(e sql.Expression) bool {
-					if _, ok := e.(*expression.BindVar); ok {
-						hasBindVar = true
-						return true
-					}
+				if exprHasBindVar(expr) {
+					hasBindVar = true
 					return false
-				})
+				}
 			}
 		}
 		return !hasBindVar // stop recursing if bindvar already found
 	})
 	return hasBindVar
+}
+
+// exprHasBindVar looks for any BindVars found in expressions
+func exprHasBindVar(expr sql.Expression) bool {
+	var hasBindVar bool
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.BindVar); ok {
+			hasBindVar = true
+			return true
+		}
+		return false
+	})
+	return hasBindVar
+}
+
+func concatFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if f, ok := n.(*plan.Filter); ok {
+			if c, ok := f.Child.(*plan.Filter); ok {
+				return plan.NewFilter(expression.JoinAnd(f.Expression, c.Expression), c.Child), transform.NewTree, nil
+			}
+		}
+		return n, transform.SameTree, nil
+	})
 }
 
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
@@ -58,6 +80,9 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	}
 
 	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
 
 	if !filterHasBindVar(n) {
 		return node, same, err
@@ -216,10 +241,16 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 					return nil, transform.SameTree, err
 				}
 				filters.markFiltersHandled(handled...)
-				return node, len(handled) == 0, nil
+				ret, err := plan.NewStaticIndexedAccessForResolvedTable(node.ResolvedTable, lookup.lookup)
+				if err != nil {
+					return node, transform.SameTree, err
+				}
+				return ret, len(handled) == 0, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(sql.NameableNode), scope, filters, tableAliases)
-				if err != nil {
+				if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+					return node, transform.SameTree, nil
+				} else if err != nil {
 					return nil, transform.SameTree, err
 				}
 				n, sameFix, err := pushdownFixIndices(a, n, scope)
@@ -446,6 +477,10 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *p
 	if !ok {
 		return nil, nil
 	}
+	// Spatial Indexes are lossy, so do not remove filter node above the lookup
+	if filteredIdx.IsSpatial() {
+		return nil, nil
+	}
 
 	idxFilters := splitConjunction(lookup.expr)
 	if len(idxFilters) == 0 {
@@ -534,7 +569,11 @@ func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.Filtere
 	handledNormalizedFilters := ft.HandledFilters(normalizedFilters)
 	handledDenormalizedFilters := make([]sql.Expression, len(handledNormalizedFilters))
 	for i, handledFilter := range handledNormalizedFilters {
-		handledDenormalizedFilters[i] = normalizedToDenormalizedFilterMap[handledFilter]
+		if val, ok := normalizedToDenormalizedFilterMap[handledFilter]; ok {
+			handledDenormalizedFilters[i] = val
+		} else {
+			handledDenormalizedFilters[i] = handledFilter
+		}
 	}
 
 	return handledDenormalizedFilters
@@ -577,7 +616,9 @@ func pushdownFiltersToAboveTable(
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		node, _, err := withTable(tableNode, table)
-		if err != nil {
+		if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+			node = tableNode
+		} else if err != nil {
 			return nil, transform.SameTree, err
 		}
 
@@ -648,6 +689,9 @@ func pushdownIndexesToTable(a *Analyzer, tableNode sql.NameableNode, indexes map
 				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
 					ret, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
+					if plan.ErrInvalidLookupForIndexedTable.Is(err) {
+						return n, transform.SameTree, nil
+					}
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
@@ -667,16 +711,24 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 		return node, transform.SameTree, nil
 	}
 
-	unhandled := filters.unhandledPredicates(ctx)
+	// figure out if the filter's filters were all handled
+	filterExpressions := splitConjunction(node.Expression)
+	unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
 	if len(unhandled) == 0 {
 		a.Log("filter node has no unhandled filters, so it will be removed")
 		return node.Child, transform.NewTree, nil
 	}
 
+	if len(unhandled) == len(filterExpressions) {
+		a.Log("no filters removed from filter node")
+		return node, transform.SameTree, nil
+	}
+
 	a.Log(
-		"filters removed from filter node: %s\nfilter has now %d filters",
+		"filters removed from filter node: %s\nfilter has now %d filters: %s",
 		filters.handledFilters,
 		len(unhandled),
+		unhandled,
 	)
 
 	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child), transform.NewTree, nil
@@ -885,7 +937,7 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 		if !ok {
 			return e, transform.SameTree, nil
 		}
-		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
+		return expression.NewNullSafeEquals(isNull.Child, expression.NewLiteral(nil, types.Null)), transform.NewTree, nil
 	})
 	return expr
 }

@@ -24,6 +24,7 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Interval defines a time duration.
@@ -32,13 +33,21 @@ type Interval struct {
 	Unit string
 }
 
+var _ sql.Expression = (*Interval)(nil)
+var _ sql.CollationCoercible = (*Interval)(nil)
+
 // NewInterval creates a new interval expression.
 func NewInterval(child sql.Expression, unit string) *Interval {
 	return &Interval{UnaryExpression{Child: child}, strings.ToUpper(unit)}
 }
 
 // Type implements the sql.Expression interface.
-func (i *Interval) Type() sql.Type { return sql.Uint64 }
+func (i *Interval) Type() sql.Type { return types.Uint64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Interval) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // IsNullable implements the sql.Expression interface.
 func (i *Interval) IsNullable() bool { return i.Child.IsNullable() }
@@ -69,7 +78,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 	var td TimeDelta
 
 	if r, ok := unitTextFormats[i.Unit]; ok {
-		val, err = sql.LongText.Convert(val)
+		val, err = types.LongText.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +138,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 			return nil, errInvalidIntervalUnit.New(i.Unit)
 		}
 	} else {
-		val, err = sql.Int64.Convert(val)
+		val, err = types.Int64.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +202,7 @@ func textFormatParts(text string, r *regexp.Regexp) []int64 {
 	parts := r.FindStringSubmatch(text)
 	var result []int64
 	for _, p := range parts[1:] {
-		// It is safe to igore the error here, because at this point we know
+		// It is safe to ignore the error here, because at this point we know
 		// the string matches the regexp, and that means it can't be an
 		// invalid number.
 		n, _ := strconv.ParseInt(p, 10, 64)

@@ -33,7 +33,8 @@ func TestAssignCatalog(t *testing.T) {
 	provider := sql.NewDatabaseProvider(db)
 
 	a := NewDefault(provider)
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("foo")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("foo")
 
 	tbl := memory.NewTable("foo", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection())
 

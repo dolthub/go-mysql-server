@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type TriggerOrder struct {
@@ -43,6 +44,9 @@ type CreateTrigger struct {
 	CreatedAt           time.Time
 	Definer             string
 }
+
+var _ sql.Node = (*CreateTrigger)(nil)
+var _ sql.CollationCoercible = (*CreateTrigger)(nil)
 
 func NewCreateTrigger(triggerDb sql.Database,
 	triggerName,
@@ -106,7 +110,12 @@ func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Trigger))
+		sql.NewPrivilegedOperation(GetDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Trigger))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateTrigger) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (c *CreateTrigger) String() string {
@@ -152,7 +161,7 @@ func (c *createTriggerIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.Row{sql.NewOkResult(0)}, nil
+	return sql.Row{types.NewOkResult(0)}, nil
 }
 
 func (c *createTriggerIter) Close(*sql.Context) error {

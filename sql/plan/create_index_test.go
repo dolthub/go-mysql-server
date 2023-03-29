@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/test"
 
 	"github.com/stretchr/testify/require"
@@ -47,8 +48,8 @@ func TestCreateIndexAsync(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex("idx", NewResolvedTable(table, nil, nil), exprs, "mock", map[string]string{
@@ -71,8 +72,8 @@ func TestCreateIndexAsync(t *testing.T) {
 	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
 	require.Equal(&mockIndex{db: "foo", table: "foo", id: "idx", exprs: []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}}, idx)
 
 	found := false
@@ -90,9 +91,9 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Blob},
-		{Name: "b", Source: "foo", Type: sql.JSON},
-		{Name: "c", Source: "foo", Type: sql.Text},
+		{Name: "a", Source: "foo", Type: types.Blob},
+		{Name: "b", Source: "foo", Type: types.JSON},
+		{Name: "c", Source: "foo", Type: types.Text},
 	}), nil)
 
 	driver := new(mockDriver)
@@ -106,7 +107,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 		"idx",
 		NewResolvedTable(table, nil, nil),
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, sql.Blob, "foo", "a", true),
+			expression.NewGetFieldWithTable(0, types.Blob, "foo", "a", true),
 		},
 		"mock",
 		make(map[string]string),
@@ -125,7 +126,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 		"idx",
 		NewResolvedTable(table, nil, nil),
 		[]sql.Expression{
-			expression.NewGetFieldWithTable(1, sql.JSON, "foo", "a", true),
+			expression.NewGetFieldWithTable(1, types.JSON, "foo", "a", true),
 		},
 		"mock",
 		make(map[string]string),
@@ -155,8 +156,8 @@ func TestCreateIndexSync(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex(
@@ -179,8 +180,8 @@ func TestCreateIndexSync(t *testing.T) {
 	idx := idxReg.Index("foo", "idx")
 	require.NotNil(idx)
 	require.Equal(&mockIndex{db: "foo", table: "foo", id: "idx", exprs: []sql.Expression{
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(1, types.Int64, "foo", "a", true),
 	}}, idx)
 
 	found := false
@@ -214,8 +215,8 @@ func TestCreateIndexChecksum(t *testing.T) {
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex(
@@ -260,8 +261,8 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 
 	exprs := []sql.Expression{
-		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
-		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", true),
+		expression.NewGetFieldWithTable(2, types.Int64, "foo", "c", true),
+		expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", true),
 	}
 
 	ci := NewCreateIndex(
@@ -284,8 +285,8 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
 	foo := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "one", Source: "foo", Type: sql.Int64},
-		{Name: "two", Source: "foo", Type: sql.Int64},
+		{Name: "one", Source: "foo", Type: types.Int64},
+		{Name: "two", Source: "foo", Type: types.Int64},
 	}), nil, 2)
 
 	rows := [][2]int64{
@@ -300,8 +301,8 @@ func TestCreateIndexWithIter(t *testing.T) {
 	}
 
 	exprs := []sql.Expression{expression.NewPlus(
-		expression.NewGetField(0, sql.Int64, "one", false),
-		expression.NewGetField(0, sql.Int64, "two", false)),
+		expression.NewGetField(0, types.Int64, "one", false),
+		expression.NewGetField(0, types.Int64, "two", false)),
 	}
 
 	driver := new(mockDriver)
@@ -368,6 +369,7 @@ type mockIndex struct {
 	id      string
 	exprs   []sql.Expression
 	unique  bool
+	spatial bool
 	comment string
 }
 
@@ -378,6 +380,7 @@ func (i *mockIndex) ID() string                     { return i.id }
 func (i *mockIndex) Table() string                  { return i.table }
 func (i *mockIndex) Database() string               { return i.db }
 func (i *mockIndex) IsUnique() bool                 { return i.unique }
+func (i *mockIndex) IsSpatial() bool                { return i.spatial }
 func (i *mockIndex) Comment() string                { return i.comment }
 func (i *mockIndex) IndexType() string              { return "BTREE" }
 func (i *mockIndex) IsGenerated() bool              { return false }

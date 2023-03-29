@@ -26,22 +26,23 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestExchange(t *testing.T) {
 	children := NewProject(
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Text, "partition", false),
+			expression.NewGetField(0, types.Text, "partition", false),
 			expression.NewArithmetic(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(1), types.Int64),
 				"+",
 			),
 		},
 		NewFilter(
 			expression.NewLessThan(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(4), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(4), types.Int64),
 			),
 			&partitionable{nil, 3, 6},
 		),
@@ -78,17 +79,17 @@ func TestExchange(t *testing.T) {
 func TestExchangeCancelled(t *testing.T) {
 	children := NewProject(
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Text, "partition", false),
+			expression.NewGetField(0, types.Text, "partition", false),
 			expression.NewArithmetic(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(1), types.Int64),
 				"+",
 			),
 		},
 		NewFilter(
 			expression.NewLessThan(
-				expression.NewGetField(1, sql.Int64, "val", false),
-				expression.NewLiteral(int64(4), sql.Int64),
+				expression.NewGetField(1, types.Int64, "val", false),
+				expression.NewLiteral(int64(4), types.Int64),
 			),
 			&partitionable{nil, 3, 2048},
 		),
@@ -151,6 +152,7 @@ type partitionable struct {
 }
 
 var _ sql.Table = partitionable{}
+var _ sql.CollationCoercible = partitionable{}
 
 // WithChildren implements the Node interface.
 func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -166,6 +168,11 @@ func (p *partitionable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	return p.Node.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p partitionable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Node)
+}
+
 func (partitionable) Children() []sql.Node { return nil }
 
 func (p partitionable) Partitions(*sql.Context) (sql.PartitionIter, error) {
@@ -178,8 +185,8 @@ func (p partitionable) PartitionRows(_ *sql.Context, part sql.Partition) (sql.Ro
 
 func (partitionable) Schema() sql.Schema {
 	return sql.Schema{
-		{Name: "partition", Type: sql.Text, Source: "foo"},
-		{Name: "val", Type: sql.Int64, Source: "foo"},
+		{Name: "partition", Type: types.Text, Source: "foo"},
+		{Name: "val", Type: types.Int64, Source: "foo"},
 	}
 }
 

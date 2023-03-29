@@ -35,6 +35,7 @@ type GetField struct {
 
 var _ sql.Expression = (*GetField)(nil)
 var _ sql.Expression2 = (*GetField)(nil)
+var _ sql.CollationCoercible = (*GetField)(nil)
 
 // NewGetField creates a GetField expression.
 func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool) *GetField {
@@ -152,6 +153,12 @@ func (p *GetField) WithIndex(n int) sql.Expression {
 	p2 := *p
 	p2.fieldIndex = n
 	return &p2
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *GetField) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	collation, _ = p.fieldType.CollationCoercibility(ctx)
+	return collation, 2
 }
 
 // SchemaToGetFields takes a schema and returns an expression array of GetFields.

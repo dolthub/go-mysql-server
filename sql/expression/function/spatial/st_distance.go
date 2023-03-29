@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Distance is a function that returns the shortest distance between two geometries
@@ -31,6 +32,7 @@ type Distance struct {
 }
 
 var _ sql.FunctionExpression = (*Distance)(nil)
+var _ sql.CollationCoercible = (*Distance)(nil)
 
 // ErrNoUnits is thrown when the specified SRID does not have units
 var ErrNoUnits = errors.NewKind("the geometry passed to function st_distance is in SRID %v, which doesn't specify a length unit. Can't convert to '%v'.")
@@ -55,7 +57,12 @@ func (d *Distance) Description() string {
 
 // Type implements the sql.Expression interface.
 func (d *Distance) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Distance) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (d *Distance) String() string {
@@ -72,31 +79,31 @@ func (d *Distance) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 // flattenGeometry recursively "flattens" the geometry value into a map of its points
-func flattenGeometry(g sql.GeometryValue, points map[sql.Point]bool) {
+func flattenGeometry(g types.GeometryValue, points map[types.Point]bool) {
 	switch g := g.(type) {
-	case sql.Point:
+	case types.Point:
 		points[g] = true
-	case sql.LineString:
+	case types.LineString:
 		for _, p := range g.Points {
 			flattenGeometry(p, points)
 		}
-	case sql.Polygon:
+	case types.Polygon:
 		for _, l := range g.Lines {
 			flattenGeometry(l, points)
 		}
-	case sql.MultiPoint:
+	case types.MultiPoint:
 		for _, p := range g.Points {
 			flattenGeometry(p, points)
 		}
-	case sql.MultiLineString:
+	case types.MultiLineString:
 		for _, l := range g.Lines {
 			flattenGeometry(l, points)
 		}
-	case sql.MultiPolygon:
+	case types.MultiPolygon:
 		for _, p := range g.Polygons {
 			flattenGeometry(p, points)
 		}
-	case sql.GeomColl:
+	case types.GeomColl:
 		for _, gg := range g.Geoms {
 			flattenGeometry(gg, points)
 		}
@@ -105,15 +112,15 @@ func flattenGeometry(g sql.GeometryValue, points map[sql.Point]bool) {
 
 // calcPointDist calculates the distance between two points
 // Small Optimization: don't do square root
-func calcPointDist(a, b sql.Point) float64 {
+func calcPointDist(a, b types.Point) float64 {
 	dx := b.X - a.X
 	dy := b.Y - a.Y
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
 // calcDist finds the minimum distance from a Point in g1 to a Point g2
-func calcDist(g1, g2 sql.GeometryValue) interface{} {
-	points1, points2 := map[sql.Point]bool{}, map[sql.Point]bool{}
+func calcDist(g1, g2 types.GeometryValue) interface{} {
+	points1, points2 := map[types.Point]bool{}, map[types.Point]bool{}
 	flattenGeometry(g1, points1)
 	flattenGeometry(g2, points2)
 
@@ -147,12 +154,12 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	geom1, ok := g1.(sql.GeometryValue)
+	geom1, ok := g1.(types.GeometryValue)
 	if !ok {
 		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
 	}
 
-	geom2, ok := g2.(sql.GeometryValue)
+	geom2, ok := g2.(types.GeometryValue)
 	if !ok {
 		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
 	}
@@ -163,14 +170,14 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrDiffSRIDs.New(d.FunctionName(), srid1, srid2)
 	}
 
-	if srid1 == sql.GeoSpatialSRID {
+	if srid1 == types.GeoSpatialSRID {
 		return nil, sql.ErrUnsupportedSRID.New(srid1)
 	}
 
 	dist := calcDist(geom1, geom2)
 
 	if len(d.ChildExpressions) == 3 {
-		if srid1 == sql.CartesianSRID {
+		if srid1 == types.CartesianSRID {
 			return nil, ErrNoUnits.New(srid1)
 		}
 		// TODO: check valid unit arguments

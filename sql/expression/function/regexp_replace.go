@@ -21,6 +21,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // RegexpReplace implements the REGEXP_REPLACE function.
@@ -30,6 +31,7 @@ type RegexpReplace struct {
 }
 
 var _ sql.FunctionExpression = (*RegexpReplace)(nil)
+var _ sql.CollationCoercible = (*RegexpReplace)(nil)
 
 // NewRegexpReplace creates a new RegexpReplace expression.
 func NewRegexpReplace(args ...sql.Expression) (sql.Expression, error) {
@@ -51,7 +53,20 @@ func (r *RegexpReplace) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpReplace) Type() sql.Type { return sql.LongText }
+func (r *RegexpReplace) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *RegexpReplace) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if len(r.args) == 0 {
+		return sql.Collation_binary, 6
+	}
+	collation, coercibility = sql.GetCoercibility(ctx, r.args[0])
+	for i := 1; i < len(r.args); i++ {
+		nextCollation, nextCoercibility := sql.GetCoercibility(ctx, r.args[i])
+		collation, coercibility = sql.ResolveCoercibility(collation, coercibility, nextCollation, nextCoercibility)
+	}
+	return collation, coercibility
+}
 
 // IsNullable implements the sql.Expression interface.
 func (r *RegexpReplace) IsNullable() bool { return true }
@@ -98,7 +113,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if str == nil {
 		return nil, nil
 	}
-	str, err = sql.LongText.Convert(str)
+	str, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +144,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if replaceStr == nil {
 		return nil, nil
 	}
-	replaceStr, err = sql.LongText.Convert(replaceStr)
+	replaceStr, err = types.LongText.Convert(replaceStr)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +172,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 
 		// Convert to int32
-		pos, err = sql.Int32.Convert(pos)
+		pos, err = types.Int32.Convert(pos)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +204,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 
 		// Convert occurrence to int32
-		occ, err = sql.Int32.Convert(occ)
+		occ, err = types.Int32.Convert(occ)
 		if err != nil {
 			return nil, err
 		}

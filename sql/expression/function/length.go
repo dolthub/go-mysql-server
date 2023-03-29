@@ -19,6 +19,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -32,6 +33,7 @@ type Length struct {
 }
 
 var _ sql.FunctionExpression = (*Length)(nil)
+var _ sql.CollationCoercible = (*Length)(nil)
 
 // CountType is the kind of length count.
 type CountType bool
@@ -85,7 +87,12 @@ func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 // Type implements the sql.Expression interface.
-func (l *Length) Type() sql.Type { return sql.Int32 }
+func (l *Length) Type() sql.Type { return types.Int32 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Length) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 func (l *Length) String() string {
 	if l.CountType == NumBytes {
@@ -112,7 +119,7 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	content, collation, err := sql.ConvertToCollatedString(val, l.Child.Type())
+	content, collation, err := types.ConvertToCollatedString(val, l.Child.Type())
 	if err != nil {
 		return nil, err
 	}

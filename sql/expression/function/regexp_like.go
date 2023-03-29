@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // RegexpLike implements the REGEXP_LIKE function.
@@ -41,6 +42,7 @@ type RegexpLike struct {
 }
 
 var _ sql.FunctionExpression = (*RegexpLike)(nil)
+var _ sql.CollationCoercible = (*RegexpLike)(nil)
 
 // NewRegexpLike creates a new RegexpLike expression.
 func NewRegexpLike(args ...sql.Expression) (sql.Expression, error) {
@@ -74,7 +76,14 @@ func (r *RegexpLike) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (r *RegexpLike) Type() sql.Type { return sql.Int8 }
+func (r *RegexpLike) Type() sql.Type { return types.Int8 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *RegexpLike) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, r.Text)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, r.Pattern)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+}
 
 // IsNullable implements the sql.Expression interface.
 func (r *RegexpLike) IsNullable() bool { return true }
@@ -145,7 +154,7 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if text == nil {
 		return nil, nil
 	}
-	text, err = sql.LongText.Convert(text)
+	text, err = types.LongText.Convert(text)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +180,7 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 	if patternVal == nil {
 		return nil, nil
 	}
-	patternVal, err = sql.LongText.Convert(patternVal)
+	patternVal, err = types.LongText.Convert(patternVal)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +199,7 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 		if f == nil {
 			return nil, nil
 		}
-		f, err = sql.LongText.Convert(f)
+		f, err = types.LongText.Convert(f)
 		if err != nil {
 			return nil, err
 		}

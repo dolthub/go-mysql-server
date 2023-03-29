@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Perimeter is a function that returns the Perimeter of a Polygon
@@ -29,6 +30,7 @@ type Perimeter struct {
 }
 
 var _ sql.FunctionExpression = (*Perimeter)(nil)
+var _ sql.CollationCoercible = (*Perimeter)(nil)
 
 // NewSTLength creates a new STX expression.
 func NewPerimeter(args ...sql.Expression) (sql.Expression, error) {
@@ -50,7 +52,12 @@ func (p *Perimeter) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *Perimeter) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Perimeter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *Perimeter) String() string {
@@ -80,7 +87,7 @@ func (p *Perimeter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Argument must be a polygon
-	poly, ok := v1.(sql.Polygon)
+	poly, ok := v1.(types.Polygon)
 	if !ok {
 		return nil, sql.ErrInvalidArgument.New(p.FunctionName())
 	}

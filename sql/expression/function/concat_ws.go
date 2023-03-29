@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ConcatWithSeparator joins several strings together. The first argument is
@@ -30,6 +31,7 @@ type ConcatWithSeparator struct {
 }
 
 var _ sql.FunctionExpression = (*ConcatWithSeparator)(nil)
+var _ sql.CollationCoercible = (*ConcatWithSeparator)(nil)
 
 // NewConcatWithSeparator creates a new NewConcatWithSeparator UDF.
 func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
@@ -51,7 +53,20 @@ func (f *ConcatWithSeparator) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f *ConcatWithSeparator) Type() sql.Type { return sql.LongText }
+func (f *ConcatWithSeparator) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *ConcatWithSeparator) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if len(c.args) == 0 {
+		return sql.Collation_binary, 6
+	}
+	collation, coercibility = sql.GetCoercibility(ctx, c.args[0])
+	for i := 1; i < len(c.args); i++ {
+		nextCollation, nextCoercibility := sql.GetCoercibility(ctx, c.args[i])
+		collation, coercibility = sql.ResolveCoercibility(collation, coercibility, nextCollation, nextCoercibility)
+	}
+	return collation, coercibility
+}
 
 // IsNullable implements the Expression interface.
 func (f *ConcatWithSeparator) IsNullable() bool {
@@ -107,7 +122,7 @@ func (f *ConcatWithSeparator) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 			continue
 		}
 
-		val, err = sql.LongText.Convert(val)
+		val, err = types.LongText.Convert(val)
 		if err != nil {
 			return nil, err
 		}

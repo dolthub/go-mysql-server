@@ -26,6 +26,9 @@ type Describe struct {
 	UnaryNode
 }
 
+var _ sql.Node = (*Describe)(nil)
+var _ sql.CollationCoercible = (*Describe)(nil)
+
 // NewDescribe creates a new Describe node.
 func NewDescribe(child sql.Node) *Describe {
 	return &Describe{UnaryNode{child}}
@@ -61,6 +64,11 @@ func (d *Describe) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Describe) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (d Describe) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Describe")
@@ -93,6 +101,9 @@ type DescribeQuery struct {
 	Format string
 }
 
+var _ sql.Node = (*DescribeQuery)(nil)
+var _ sql.CollationCoercible = (*DescribeQuery)(nil)
+
 func (d *DescribeQuery) Resolved() bool {
 	return d.child.Resolved()
 }
@@ -111,6 +122,11 @@ func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return d.child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DescribeQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // DescribeSchema is the schema returned by a DescribeQuery node.

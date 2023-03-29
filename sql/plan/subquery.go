@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -55,11 +56,15 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
 var _ sql.ExpressionWithNodes = (*Subquery)(nil)
+var _ sql.CollationCoercible = (*Subquery)(nil)
 
 type StripRowNode struct {
 	UnaryNode
 	numCols int
 }
+
+var _ sql.Node = (*StripRowNode)(nil)
+var _ sql.CollationCoercible = (*StripRowNode)(nil)
 
 type stripRowIter struct {
 	sql.RowIter
@@ -117,11 +122,19 @@ func (srn *StripRowNode) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 	return srn.Child.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (srn *StripRowNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, srn.Child)
+}
+
 // prependNode wraps its child by prepending column values onto any result rows
 type prependNode struct {
 	UnaryNode
 	row sql.Row
 }
+
+var _ sql.Node = (*prependNode)(nil)
+var _ sql.CollationCoercible = (*prependNode)(nil)
 
 type prependRowIter struct {
 	row       sql.Row
@@ -176,6 +189,11 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *prependNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return p.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *prependNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Child)
 }
 
 // Eval implements the Expression interface.
@@ -265,48 +283,40 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 	}
 }
 
-func NewMax1Row(n sql.Node) *Max1RowSubquery {
-	return &Max1RowSubquery{Child: n, mu: &sync.Mutex{}}
+func NewMax1Row(n sql.Node, name string) *Max1Row {
+	return &Max1Row{Child: n, name: name, mu: &sync.Mutex{}}
 }
 
-// Max1RowSubquery throws a runtime error if its child (usually subquery) tries
+// Max1Row throws a runtime error if its child (usually subquery) tries
 // to return more than one row.
-type Max1RowSubquery struct {
+type Max1Row struct {
 	Child       sql.Node
+	name        string
 	result      sql.Row
 	mu          *sync.Mutex
 	emptyResult bool
 }
 
-var _ sql.Node = (*Max1RowSubquery)(nil)
+var _ sql.Node = (*Max1Row)(nil)
+var _ sql.CollationCoercible = (*Max1Row)(nil)
 
-func (m *Max1RowSubquery) Subquery() *SubqueryAlias {
-	ret := m.Child
-	sq, ok := ret.(*SubqueryAlias)
-	for !ok {
-		ret = ret.Children()[0]
-		sq, ok = ret.(*SubqueryAlias)
-	}
-	return sq
+func (m *Max1Row) Name() string {
+	return m.name
 }
 
-func (m *Max1RowSubquery) Name() string {
-	return m.Subquery().Name()
-}
-
-func (m *Max1RowSubquery) Resolved() bool {
+func (m *Max1Row) Resolved() bool {
 	return m.Child.Resolved()
 }
 
-func (m *Max1RowSubquery) Schema() sql.Schema {
+func (m *Max1Row) Schema() sql.Schema {
 	return m.Child.Schema()
 }
 
-func (m *Max1RowSubquery) Children() []sql.Node {
+func (m *Max1Row) Children() []sql.Node {
 	return []sql.Node{m.Child}
 }
 
-func (m *Max1RowSubquery) String() string {
+func (m *Max1Row) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Max1Row")
 	children := []string{m.Child.String()}
@@ -314,7 +324,7 @@ func (m *Max1RowSubquery) String() string {
 	return pr.String()
 }
 
-func (m *Max1RowSubquery) DebugString() string {
+func (m *Max1Row) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Max1Row")
 	children := []string{sql.DebugString(m.Child)}
@@ -322,7 +332,7 @@ func (m *Max1RowSubquery) DebugString() string {
 	return pr.String()
 }
 
-func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (m *Max1Row) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -346,7 +356,7 @@ func (m *Max1RowSubquery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 // populateResults loads and stores the state of its child iter:
 // 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
 // returned
-func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
+func (m *Max1Row) populateResults(ctx *sql.Context, row sql.Row) error {
 	i, err := m.Child.RowIter(ctx, row)
 	if err != nil {
 		return err
@@ -370,22 +380,28 @@ func (m *Max1RowSubquery) populateResults(ctx *sql.Context, row sql.Row) error {
 }
 
 // hasResults returns true after a successful call to populateResults()
-func (m *Max1RowSubquery) hasResults() bool {
+func (m *Max1Row) hasResults() bool {
 	return m.result != nil || m.emptyResult
 }
 
-func (m *Max1RowSubquery) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
 	ret := *m
+
 	ret.Child = children[0]
 
 	return &ret, nil
 }
 
-func (m *Max1RowSubquery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (m *Max1Row) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return m.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (m *Max1Row) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, m.Child)
 }
 
 // EvalMultiple returns all rows returned by a subquery.
@@ -579,7 +595,7 @@ func (s *Subquery) Type() sql.Type {
 	for i, c := range qs {
 		ts[i] = c.Type
 	}
-	return sql.CreateTuple(ts...)
+	return types.CreateTuple(ts...)
 }
 
 // WithChildren implements the Expression interface.
@@ -637,4 +653,9 @@ func (s *Subquery) Dispose() {
 		s.disposeFunc = nil
 	}
 	disposeNode(s.Query)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *Subquery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Query)
 }

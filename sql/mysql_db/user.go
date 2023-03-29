@@ -218,7 +218,7 @@ func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 			}
 		case userTblColIndex_Grant_priv:
 			if val.(uint16) == 2 {
-				privSet.AddGlobalStatic(sql.PrivilegeType_Grant)
+				privSet.AddGlobalStatic(sql.PrivilegeType_GrantOption)
 			}
 		case userTblColIndex_References_priv:
 			if val.(uint16) == 2 {
@@ -330,7 +330,7 @@ func (u *User) privSetToRow(ctx *sql.Context, row sql.Row) {
 			row[userTblColIndex_Process_priv] = uint16(2)
 		case sql.PrivilegeType_File:
 			row[userTblColIndex_File_priv] = uint16(2)
-		case sql.PrivilegeType_Grant:
+		case sql.PrivilegeType_GrantOption:
 			row[userTblColIndex_Grant_priv] = uint16(2)
 		case sql.PrivilegeType_References:
 			row[userTblColIndex_References_priv] = uint16(2)

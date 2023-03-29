@@ -17,6 +17,7 @@ package plan_test
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -24,17 +25,21 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
+
+	varChar3 := types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Default)
+	varChar6 := types.MustCreateString(sqltypes.VarChar, 6, sql.Collation_Default)
+
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: varChar3},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
-	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
 
 	project := func(expr sql.Expression) sql.Node {
 		return plan.NewProject([]sql.Expression{
@@ -52,9 +57,9 @@ func TestInSubquery(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow(nil),
 			nil,
@@ -63,11 +68,11 @@ func TestInSubquery(t *testing.T) {
 		{
 			"left and right don't have the same cols",
 			expression.NewTuple(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			nil,
 			nil,
@@ -75,9 +80,9 @@ func TestInSubquery(t *testing.T) {
 		},
 		{
 			"left is in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("two"),
 			true,
@@ -85,11 +90,31 @@ func TestInSubquery(t *testing.T) {
 		},
 		{
 			"left is not in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("four"),
+			false,
+			nil,
+		},
+		{
+			"big varchar successful cast to smaller varchar",
+			expression.NewGetField(0, varChar6, "foo", false),
+			project(
+				expression.NewGetField(1, varChar3, "foo", false),
+			),
+			sql.NewRow("one"),
+			true,
+			nil,
+		},
+		{
+			"big varchar unsuccessful cast to smaller varchar does not error",
+			expression.NewGetField(0, varChar6, "foo", false),
+			project(
+				expression.NewGetField(1, varChar3, "foo", false),
+			),
+			sql.NewRow("oneone"),
 			false,
 			nil,
 		},
@@ -117,7 +142,7 @@ func TestInSubquery(t *testing.T) {
 func TestNotInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "t", Source: "foo", Type: sql.Text},
+		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
@@ -140,9 +165,9 @@ func TestNotInSubquery(t *testing.T) {
 	}{
 		{
 			"left is nil",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow(nil),
 			nil,
@@ -151,11 +176,11 @@ func TestNotInSubquery(t *testing.T) {
 		{
 			"left and right don't have the same cols",
 			expression.NewTuple(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
+				expression.NewLiteral(int64(1), types.Int64),
 			),
 			project(
-				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(2), types.Int64),
 			),
 			nil,
 			nil,
@@ -163,9 +188,9 @@ func TestNotInSubquery(t *testing.T) {
 		},
 		{
 			"left is in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("two"),
 			false,
@@ -173,9 +198,9 @@ func TestNotInSubquery(t *testing.T) {
 		},
 		{
 			"left is not in right",
-			expression.NewGetField(0, sql.Text, "foo", false),
+			expression.NewGetField(0, types.Text, "foo", false),
 			project(
-				expression.NewGetField(1, sql.Text, "foo", false),
+				expression.NewGetField(1, types.Text, "foo", false),
 			),
 			sql.NewRow("four"),
 			true,

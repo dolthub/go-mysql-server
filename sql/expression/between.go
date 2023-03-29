@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Between checks a value is between two given values.
@@ -26,6 +27,9 @@ type Between struct {
 	Lower sql.Expression
 	Upper sql.Expression
 }
+
+var _ sql.Expression = (*Between)(nil)
+var _ sql.CollationCoercible = (*Between)(nil)
 
 // NewBetween creates a new Between expression.
 func NewBetween(val, lower, upper sql.Expression) *Between {
@@ -46,7 +50,12 @@ func (b *Between) Children() []sql.Expression {
 }
 
 // Type implements the Expression interface.
-func (*Between) Type() sql.Type { return sql.Boolean }
+func (*Between) Type() sql.Type { return types.Boolean }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (b *Between) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, b.Val)
+}
 
 // IsNullable implements the Expression interface.
 func (b *Between) IsNullable() bool {

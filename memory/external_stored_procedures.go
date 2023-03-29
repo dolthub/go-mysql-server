@@ -22,20 +22,21 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
 	externalSPSchemaInt = sql.Schema{&sql.Column{
 		Name: "a",
-		Type: sql.Int64,
+		Type: types.Int64,
 	}}
 	externalSPSchemaUint = sql.Schema{&sql.Column{
 		Name: "a",
-		Type: sql.Uint64,
+		Type: types.Uint64,
 	}}
 	externalSPSchemaText = sql.Schema{&sql.Column{
 		Name: "a",
-		Type: sql.LongText,
+		Type: types.LongText,
 	}}
 	ExternalStoredProcedures = []sql.ExternalStoredProcedureDetails{
 		{

@@ -367,7 +367,8 @@ const (
 	Collation_utf8_vietnamese_ci       = Collation_utf8mb3_vietnamese_ci
 	Collation_utf8_general_mysql500_ci = Collation_utf8mb3_general_mysql500_ci
 
-	Collation_Default = Collation_utf8mb4_0900_bin
+	Collation_Default                    = Collation_utf8mb4_0900_bin
+	Collation_Information_Schema_Default = Collation_utf8mb3_general_ci
 	// Collation_Unspecified is used when a collation has not been specified, either explicitly or implicitly. This is
 	// usually used as an intermediate collation to be later replaced by an analyzer pass or a plan, although it is
 	// valid to use it directly. When used, behaves identically to the default collation, although it will NOT match

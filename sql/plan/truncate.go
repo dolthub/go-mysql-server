@@ -17,6 +17,8 @@ package plan
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -30,6 +32,7 @@ type Truncate struct {
 
 var _ sql.Node = (*Truncate)(nil)
 var _ sql.DebugStringer = (*Truncate)(nil)
+var _ sql.CollationCoercible = (*Truncate)(nil)
 
 // NewTruncate creates a Truncate node.
 func NewTruncate(db string, table sql.Node) *Truncate {
@@ -105,12 +108,12 @@ func (p *Truncate) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 			break
 		}
 	}
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(removed))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(removed))), nil
 }
 
 // Schema implements the Node interface.
 func (p *Truncate) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface.
@@ -127,6 +130,11 @@ func (p *Truncate) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p *Truncate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(p.db, getTableName(p.Child), "", sql.PrivilegeType_Drop))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Truncate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the Node interface.

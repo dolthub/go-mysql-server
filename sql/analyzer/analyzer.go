@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -262,6 +263,8 @@ func (ab *Builder) Build() *Analyzer {
 		Batches:      batches,
 		Catalog:      NewCatalog(ab.provider),
 		Parallelism:  ab.parallelism,
+		Coster:       NewDefaultCoster(),
+		Carder:       NewDefaultCarder(),
 	}
 }
 
@@ -279,6 +282,13 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
+	// BinlogReplicaController holds an optional controller that receives forwarded binlog
+	// replication messages (e.g. "start replica").
+	BinlogReplicaController binlogreplication.BinlogReplicaController
+	// Carder estimates the number of rows returned by a relational expression.
+	Carder Carder
+	// Coster estimates the incremental CPU+memory cost for execution operators.
+	Coster Coster
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
@@ -404,6 +414,8 @@ func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 			resolveUnionsId,
 			// skip redundant finalize rules
 			finalizeSubqueriesId,
+			hoistOutOfScopeFiltersId,
+			cacheSubqueryResultsId,
 			TrackProcessId:
 			return false
 		}
@@ -465,7 +477,8 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateOperandsId,
 
 		// OnceAfterAll
-		TrackProcessId:
+		TrackProcessId,
+		parallelizeId:
 		return false
 	default:
 		return true
@@ -506,9 +519,12 @@ func postPrepareRuleSelector(id RuleId) bool {
 		flattenAggregationExprsId,
 
 		// OnceAfterDefault
+		pushdownFiltersId,
 		subqueryIndexesId,
 		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
+		finalizeSubqueriesId,
+		finalizeUnionsId,
 
 		// DefaultValidationRules
 		validateResolvedId,
@@ -517,6 +533,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		//validateUnionSchemasMatchId, // TODO: we never validate UnionSchemasMatchId :)
 
 		// OnceAfterAll
+		parallelizeId,
 		TrackProcessId:
 		return true
 	}

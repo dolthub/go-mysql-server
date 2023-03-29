@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func newDefaultLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
@@ -38,6 +39,9 @@ type Like struct {
 	once   sync.Once
 	cached bool
 }
+
+var _ sql.Expression = (*Like)(nil)
+var _ sql.CollationCoercible = (*Like)(nil)
 
 type likeMatcherErrTuple struct {
 	matcher LikeMatcher
@@ -64,7 +68,14 @@ func NewLike(left, right, escape sql.Expression) sql.Expression {
 }
 
 // Type implements the sql.Expression interface.
-func (l *Like) Type() sql.Type { return sql.Boolean }
+func (l *Like) Type() sql.Type { return types.Boolean }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Like) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, l.Left)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, l.Right)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+}
 
 // Eval implements the sql.Expression interface.
 func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -76,7 +87,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if _, ok := left.(string); !ok {
-		left, err = sql.LongText.Convert(left)
+		left, err = types.LongText.Convert(left)
 		if err != nil {
 			return nil, err
 		}
@@ -92,13 +103,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if right == nil {
 			return nil, nil
 		}
-		leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
-		rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
-		var collation sql.CollationID
-		collation, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
-		if err != nil {
-			return nil, err
-		}
+		collation, _ := l.CollationCoercibility(ctx)
 		lm, err = ConstructLikeMatcher(collation, *right, escape)
 	} else {
 		l.once.Do(func() {
@@ -108,12 +113,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 					if err != nil || right == nil {
 						return likeMatcherErrTuple{LikeMatcher{}, err}
 					}
-					leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
-					rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
-					collation, err := ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
-					if err != nil {
-						return likeMatcherErrTuple{LikeMatcher{}, err}
-					}
+					collation, _ := l.CollationCoercibility(ctx)
 					m, e := ConstructLikeMatcher(collation, *right, escape)
 					return likeMatcherErrTuple{m, e}
 				},
@@ -142,7 +142,7 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 		return nil, 0, err
 	}
 	if _, ok := rightVal.(string); !ok {
-		rightVal, err = sql.LongText.Convert(rightVal)
+		rightVal, err = types.LongText.Convert(rightVal)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -158,7 +158,7 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 			escapeVal = `\`
 		}
 		if _, ok := escapeVal.(string); !ok {
-			escapeVal, err = sql.LongText.Convert(escapeVal)
+			escapeVal, err = types.LongText.Convert(escapeVal)
 			if err != nil {
 				return nil, 0, err
 			}

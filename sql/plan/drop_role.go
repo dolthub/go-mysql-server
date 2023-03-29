@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // DropRole represents the statement DROP ROLE.
@@ -40,10 +41,11 @@ func NewDropRole(ifExists bool, roles []UserName) *DropRole {
 
 var _ sql.Node = (*DropRole)(nil)
 var _ sql.Databaser = (*DropRole)(nil)
+var _ sql.CollationCoercible = (*DropRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *DropRole) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -99,6 +101,11 @@ func (n *DropRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the interface sql.Node.
 func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
@@ -147,5 +154,5 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }

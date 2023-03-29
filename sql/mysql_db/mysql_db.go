@@ -58,10 +58,10 @@ type MySQLDb struct {
 	role_edges          *mysqlTable
 	replica_source_info *mysqlTable
 
-	db          *mysqlTableShim
-	tables_priv *mysqlTableShim
+	db            *mysqlTableShim
+	tables_priv   *mysqlTableShim
+	global_grants *mysqlTableShim
 	//TODO: add the rest of these tables
-	//global_grants    *mysqlTable
 	//columns_priv     *mysqlTable
 	//procs_priv       *mysqlTable
 	//proxies_priv     *mysqlTable
@@ -109,6 +109,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	// mysqlTable shims
 	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
 	mysqlDb.tables_priv = newMySQLTableShim(tablesPrivTblName, tablesPrivTblSchema, mysqlDb.user, TablesPrivConverter{})
+	mysqlDb.global_grants = newMySQLTableShim(globalGrantsTblName, globalGrantsTblSchema, mysqlDb.user, GlobalGrantsConverter{})
 
 	// Start the counter at 1, all new sessions will start at zero so this forces an update for any new session
 	mysqlDb.updateCounter = 1
@@ -117,7 +118,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 }
 
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
-// pre-existing data.
+// pre-existing data. This has been deprecated in favor of LoadData.
 func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
 	db.Enabled = true
 	for _, user := range users {
@@ -343,7 +344,7 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 	}
 	privSet := db.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
-		for _, operationPriv := range operation.Privileges {
+		for _, operationPriv := range operation.StaticPrivileges {
 			if privSet.Has(operationPriv) {
 				//TODO: Handle partial revokes
 				continue
@@ -364,6 +365,22 @@ func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.Privile
 			if !colSet.Has(operationPriv) {
 				return false
 			}
+		}
+
+		// Super users have all privileges, so if they have global super privs, then
+		// they have all dynamic privs and we don't need to check them.
+		if privSet.Has(sql.PrivilegeType_Super) {
+			continue
+		}
+
+		for _, operationPriv := range operation.DynamicPrivileges {
+			if privSet.HasDynamic(operationPriv) {
+				continue
+			}
+
+			// Dynamic privileges are only allowed at a global scope, so no need to check
+			// for database, table, or column privileges.
+			return false
 		}
 	}
 	return true

@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -41,11 +42,27 @@ const (
 	SignalConditionItemName_CursorName        SignalConditionItemName = "cursor_name"
 )
 
+var SignalItems = []SignalConditionItemName{
+	SignalConditionItemName_ClassOrigin,
+	SignalConditionItemName_SubclassOrigin,
+	SignalConditionItemName_MessageText,
+	SignalConditionItemName_MysqlErrno,
+	SignalConditionItemName_ConstraintCatalog,
+	SignalConditionItemName_ConstraintSchema,
+	SignalConditionItemName_ConstraintName,
+	SignalConditionItemName_CatalogName,
+	SignalConditionItemName_SchemaName,
+	SignalConditionItemName_TableName,
+	SignalConditionItemName_ColumnName,
+	SignalConditionItemName_CursorName,
+}
+
 // SignalInfo represents a piece of information for a SIGNAL statement.
 type SignalInfo struct {
 	ConditionItemName SignalConditionItemName
 	IntValue          int64
 	StrValue          string
+	ExprVal           sql.Expression
 }
 
 // Signal represents the SIGNAL statement with a set SQLSTATE.
@@ -62,6 +79,9 @@ type SignalName struct {
 
 var _ sql.Node = (*Signal)(nil)
 var _ sql.Node = (*SignalName)(nil)
+var _ sql.Expressioner = (*Signal)(nil)
+var _ sql.CollationCoercible = (*Signal)(nil)
+var _ sql.CollationCoercible = (*SignalName)(nil)
 
 // NewSignal returns a *Signal node.
 func NewSignal(sqlstate string, info map[SignalConditionItemName]SignalInfo) *Signal {
@@ -114,6 +134,11 @@ func NewSignalName(name string, info map[SignalConditionItemName]SignalInfo) *Si
 
 // Resolved implements the sql.Node interface.
 func (s *Signal) Resolved() bool {
+	for _, e := range s.Expressions() {
+		if !e.Resolved() {
+			return false
+		}
+	}
 	return true
 }
 
@@ -123,12 +148,35 @@ func (s *Signal) String() string {
 	if len(s.Info) > 0 {
 		infoStr = " SET"
 		i := 0
-		for _, info := range s.Info {
-			if i > 0 {
-				infoStr += ","
+		for _, k := range SignalItems {
+			// enforce deterministic ordering
+			if info, ok := s.Info[k]; ok {
+				if i > 0 {
+					infoStr += ","
+				}
+				infoStr += " " + info.String()
+				i++
 			}
-			infoStr += " " + info.String()
-			i++
+		}
+	}
+	return fmt.Sprintf("SIGNAL SQLSTATE '%s'%s", s.SqlStateValue, infoStr)
+}
+
+// DebugString implements the sql.DebugStringer interface.
+func (s *Signal) DebugString() string {
+	infoStr := ""
+	if len(s.Info) > 0 {
+		infoStr = " SET"
+		i := 0
+		for _, k := range SignalItems {
+			// enforce deterministic ordering
+			if info, ok := s.Info[k]; ok {
+				if i > 0 {
+					infoStr += ","
+				}
+				infoStr += " " + info.DebugString()
+				i++
+			}
 		}
 	}
 	return fmt.Sprintf("SIGNAL SQLSTATE '%s'%s", s.SqlStateValue, infoStr)
@@ -149,9 +197,66 @@ func (s *Signal) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 
+func (s *Signal) Expressions() []sql.Expression {
+	items := s.signalItemsWithExpressions()
+
+	var exprs []sql.Expression
+	for _, itemInfo := range items {
+		exprs = append(exprs, itemInfo.ExprVal)
+	}
+
+	return exprs
+}
+
+// signalItemsWithExpressions returns the subset of the Info map entries that have an expression value, sorted by
+// item name
+func (s *Signal) signalItemsWithExpressions() []SignalInfo {
+	var items []SignalInfo
+
+	for _, itemInfo := range s.Info {
+		if itemInfo.ExprVal != nil {
+			items = append(items, itemInfo)
+		}
+	}
+
+	// Very important to have a consistent sort order between here and the WithExpressions call
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].ConditionItemName < items[j].ConditionItemName
+	})
+
+	return items
+}
+
+func (s Signal) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	itemsWithExprs := s.signalItemsWithExpressions()
+	if len(itemsWithExprs) != len(exprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(itemsWithExprs))
+	}
+
+	mapCopy := make(map[SignalConditionItemName]SignalInfo)
+	for k, v := range s.Info {
+		mapCopy[k] = v
+	}
+
+	for i := range exprs {
+		// transfer the expression to the new info map
+		newInfo := itemsWithExprs[i]
+		newInfo.ExprVal = exprs[i]
+		mapCopy[itemsWithExprs[i].ConditionItemName] = newInfo
+	}
+
+	s.Info = mapCopy
+	return &s, nil
+}
+
 // CheckPrivileges implements the interface sql.Node.
 func (s *Signal) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Signal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the sql.Node interface.
@@ -170,10 +275,25 @@ func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		//TODO: implement warnings
 		return nil, fmt.Errorf("warnings not yet implemented")
 	} else {
+
+		messageItem := s.Info[SignalConditionItemName_MessageText]
+		strValue := messageItem.StrValue
+		if messageItem.ExprVal != nil {
+			exprResult, err := messageItem.ExprVal.Eval(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			s, ok := exprResult.(string)
+			if !ok {
+				return nil, fmt.Errorf("message text expression did not evaluate to a string")
+			}
+			strValue = s
+		}
+
 		return nil, mysql.NewSQLError(
 			int(s.Info[SignalConditionItemName_MysqlErrno].IntValue),
 			s.SqlStateValue,
-			s.Info[SignalConditionItemName_MessageText].StrValue,
+			strValue,
 		)
 	}
 }
@@ -220,6 +340,11 @@ func (s *SignalName) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SignalName) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the sql.Node interface.
 func (s *SignalName) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("may not iterate over unresolved node *SignalName")
@@ -227,7 +352,19 @@ func (s *SignalName) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 func (s SignalInfo) String() string {
 	itemName := strings.ToUpper(string(s.ConditionItemName))
-	if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
+	if s.ExprVal != nil {
+		return fmt.Sprintf("%s = %s", itemName, s.ExprVal.String())
+	} else if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
+		return fmt.Sprintf("%s = %d", itemName, s.IntValue)
+	}
+	return fmt.Sprintf("%s = %s", itemName, s.StrValue)
+}
+
+func (s SignalInfo) DebugString() string {
+	itemName := strings.ToUpper(string(s.ConditionItemName))
+	if s.ExprVal != nil {
+		return fmt.Sprintf("%s = %s", itemName, sql.DebugString(s.ExprVal))
+	} else if s.ConditionItemName == SignalConditionItemName_MysqlErrno {
 		return fmt.Sprintf("%s = %d", itemName, s.IntValue)
 	}
 	return fmt.Sprintf("%s = %s", itemName, s.StrValue)

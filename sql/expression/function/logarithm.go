@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrInvalidArgumentForLogarithm is returned when an invalid argument value is passed to a
@@ -43,6 +44,7 @@ type LogBase struct {
 }
 
 var _ sql.FunctionExpression = (*LogBase)(nil)
+var _ sql.CollationCoercible = (*LogBase)(nil)
 
 // NewLogBase creates a new LogBase expression.
 func NewLogBase(base float64, e sql.Expression) sql.Expression {
@@ -100,7 +102,12 @@ func (l *LogBase) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Type returns the resultant type of the function.
 func (l *LogBase) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LogBase) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -122,7 +129,7 @@ func (l *LogBase) Eval(
 		return nil, nil
 	}
 
-	val, err := sql.Float64.Convert(v)
+	val, err := types.Float64.Convert(v)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
 	}
@@ -135,6 +142,7 @@ type Log struct {
 }
 
 var _ sql.FunctionExpression = (*Log)(nil)
+var _ sql.CollationCoercible = (*Log)(nil)
 
 // NewLog creates a new Log expression.
 func NewLog(args ...sql.Expression) (sql.Expression, error) {
@@ -144,7 +152,7 @@ func NewLog(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	if argLen == 1 {
-		return &Log{expression.BinaryExpression{Left: expression.NewLiteral(math.E, sql.Float64), Right: args[0]}}, nil
+		return &Log{expression.BinaryExpression{Left: expression.NewLiteral(math.E, types.Float64), Right: args[0]}}, nil
 	} else {
 		return &Log{expression.BinaryExpression{Left: args[0], Right: args[1]}}, nil
 	}
@@ -176,7 +184,12 @@ func (l *Log) Children() []sql.Expression {
 
 // Type returns the resultant type of the function.
 func (l *Log) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Log) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.
@@ -198,7 +211,7 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 
-	lhs, err := sql.Float64.Convert(left)
+	lhs, err := types.Float64.Convert(left)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(left))
 	}
@@ -212,7 +225,7 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 
-	rhs, err := sql.Float64.Convert(right)
+	rhs, err := types.Float64.Convert(right)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(right))
 	}

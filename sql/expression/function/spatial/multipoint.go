@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -29,6 +30,7 @@ type MultiPoint struct {
 }
 
 var _ sql.FunctionExpression = (*MultiPoint)(nil)
+var _ sql.CollationCoercible = (*MultiPoint)(nil)
 
 // NewMultiPoint creates a new MultiPoint.
 func NewMultiPoint(args ...sql.Expression) (sql.Expression, error) {
@@ -50,7 +52,12 @@ func (l *MultiPoint) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *MultiPoint) Type() sql.Type {
-	return sql.MultiPointType{}
+	return types.MultiPointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MultiPoint) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *MultiPoint) String() string {
@@ -68,21 +75,21 @@ func (l *MultiPoint) WithChildren(children ...sql.Expression) (sql.Expression, e
 
 // Eval implements the sql.Expression interface.
 func (l *MultiPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var points = make([]sql.Point, len(l.ChildExpressions))
+	var points = make([]types.Point, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		switch v := val.(type) {
-		case sql.Point:
+		case types.Point:
 			points[i] = v
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.MultiPoint{Points: points}, nil
+	return types.MultiPoint{Points: points}, nil
 }

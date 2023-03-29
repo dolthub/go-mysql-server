@@ -17,6 +17,8 @@ package queries
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -49,15 +51,15 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		Queries: []CharsetCollationEngineTestQuery{
 			{
 				Query:    "INSERT INTO test VALUES ('hey');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (_utf16'\x00h\x00i');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (_utf8mb4'\x68\x65\x6c\x6c\x6f');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test ORDER BY 1;",
@@ -74,11 +76,11 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		Queries: []CharsetCollationEngineTestQuery{
 			{
 				Query:    "INSERT INTO test1 VALUES ('HEY2'), ('hey1');",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO test2 VALUES ('HEY2'), ('hey1');",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "SELECT * FROM test1 ORDER BY 1;",
@@ -116,7 +118,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf16);",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:   "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf16_croatian_ci;",
@@ -271,7 +273,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "ALTER TABLE test2 MODIFY COLUMN v1 VARCHAR(100);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(0)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{
@@ -319,7 +321,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "ALTER TABLE test3 ADD COLUMN v2 VARCHAR(255);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(0)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{
@@ -331,13 +333,53 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "ALTER TABLE test2 CHANGE COLUMN v1 v1 VARCHAR(220);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(0)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test2;",
 				Expected: []sql.Row{
 					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+				},
+			},
+			{
+				Query: "ALTER TABLE test2 CHARACTER SET latin1 COLLATE utf8mb4_bin;",
+				Error: true,
+			},
+			{
+				Query: "ALTER TABLE test2 COLLATE utf8mb4_bin;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "ALTER TABLE test2 ADD COLUMN v2 VARCHAR(255);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "REPLACE INTO test2 VALUES (1, 'abc', 'abc'), (2, 'ABC', 'ABC'), (3, 'aBc', 'aBc'), (4, 'AbC', 'AbC');",
+				Expected: []sql.Row{
+					{types.NewOkResult(8)},
+				},
+			},
+			{
+				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "SELECT v2, pk FROM test2 WHERE v2 <= 'aBc' ORDER BY v2, pk;",
+				Expected: []sql.Row{
+					{"ABC", int64(2)}, {"AbC", int64(4)}, {"aBc", int64(3)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2;",
+				Expected: []sql.Row{
+					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  `v2` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"},
 				},
 			},
 		},
@@ -378,7 +420,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'ABC');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -388,13 +430,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -421,7 +463,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'A');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -431,13 +473,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -1037,6 +1079,18 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				Expected: []sql.Row{
 					{[]byte("\x00a\x00b\x00c")},
 				},
+			},
+		},
+	},
+	{
+		Name: "Issue #5482",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: `SELECT T.TABLE_NAME AS label, 'connection.table' as type, T.TABLE_SCHEMA AS 'schema',
+T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
+0 AS isView FROM INFORMATION_SCHEMA.TABLES AS T WHERE T.TABLE_CATALOG = 'def' AND
+                                                      UPPER(T.TABLE_TYPE) = 'BASE TABLE' ORDER BY T.TABLE_NAME;`,
+				Expected: []sql.Row(nil),
 			},
 		},
 	},

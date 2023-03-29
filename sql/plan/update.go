@@ -34,7 +34,9 @@ type Update struct {
 	Ignore bool
 }
 
+var _ sql.Node = (*Update)(nil)
 var _ sql.Databaseable = (*Update)(nil)
+var _ sql.CollationCoercible = (*Update)(nil)
 
 // NewUpdate creates an Update node.
 func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
@@ -264,20 +266,20 @@ func newUpdateIter(
 	ignore bool,
 ) sql.RowIter {
 	if ignore {
-		return NewCheckpointingTableEditorIter(updater, &updateIter{
+		return NewCheckpointingTableEditorIter(&updateIter{
 			childIter: childIter,
 			updater:   updater,
 			schema:    schema,
 			checks:    checks,
 			ignore:    true,
-		})
+		}, updater)
 	} else {
-		return NewTableEditorIter(updater, &updateIter{
+		return NewTableEditorIter(&updateIter{
 			childIter: childIter,
 			updater:   updater,
 			schema:    schema,
 			checks:    checks,
-		})
+		}, updater)
 	}
 }
 
@@ -314,6 +316,11 @@ func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(u.Database(), getTableName(u.Child), "", sql.PrivilegeType_Update))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Update) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (u *Update) String() string {

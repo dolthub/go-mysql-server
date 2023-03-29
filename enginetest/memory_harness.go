@@ -138,7 +138,7 @@ func (m *MemoryHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MemoryHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	return NewEngineWithProviderSetup(t, m, m.setupData)
+	return NewEngine(t, m, m.getProvider(), m.setupData)
 }
 
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
@@ -211,16 +211,6 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return nil
 }
 
-func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
-	if m.provider != nil {
-		return m.provider
-	}
-
-	return memory.NewDBProviderWithOpts(
-		memory.NativeIndexProvider(m.nativeIndexSupport),
-		memory.HistoryProvider(true))
-}
-
 func (m *MemoryHarness) newDatabase(name string) sql.Database {
 	ctx := m.NewContext()
 
@@ -235,16 +225,21 @@ func (m *MemoryHarness) newDatabase(name string) sql.Database {
 
 func (m *MemoryHarness) getProvider() sql.MutableDatabaseProvider {
 	if m.provider == nil {
-		opts := []memory.ProviderOption{
-			memory.NativeIndexProvider(m.nativeIndexSupport),
-			memory.HistoryProvider(true),
-		}
-		m.provider = memory.NewDBProviderWithOpts(opts...)
+		return m.NewDatabaseProvider()
 	}
+
 	return m.provider
 }
 
+func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
+	return memory.NewDBProviderWithOpts(
+		memory.NativeIndexProvider(m.nativeIndexSupport),
+		memory.HistoryProvider(true))
+}
+
 func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
+	m.provider = m.NewDatabaseProvider()
+
 	var dbs []sql.Database
 	for _, name := range names {
 		dbs = append(dbs, m.newDatabase(name))

@@ -17,6 +17,7 @@ package plan
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // FlushPrivileges reads privileges from mysql tables and registers any unregistered privileges found.
@@ -26,6 +27,7 @@ type FlushPrivileges struct {
 }
 
 var _ sql.Node = (*FlushPrivileges)(nil)
+var _ sql.CollationCoercible = (*FlushPrivileges)(nil)
 var _ sql.Databaser = (*FlushPrivileges)(nil)
 
 // NewFlushPrivileges creates a new FlushPrivileges node.
@@ -47,7 +49,7 @@ func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, err
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // String implements the interface sql.Node.
@@ -71,6 +73,11 @@ func (f *FlushPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 	return false
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*FlushPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // Resolved implements the interface sql.Node.
 func (f *FlushPrivileges) Resolved() bool {
 	_, ok := f.mysqlDb.(sql.UnresolvedDatabase)
@@ -81,7 +88,7 @@ func (f *FlushPrivileges) Resolved() bool {
 func (*FlushPrivileges) Children() []sql.Node { return nil }
 
 // Schema implements the sql.Node interface.
-func (*FlushPrivileges) Schema() sql.Schema { return sql.OkResultSchema }
+func (*FlushPrivileges) Schema() sql.Schema { return types.OkResultSchema }
 
 // Database implements the sql.Databaser interface.
 func (f *FlushPrivileges) Database() sql.Database {

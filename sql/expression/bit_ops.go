@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // BitOp expressions include BIT -AND, -OR and -XOR (&, | and ^) operations
@@ -32,6 +33,9 @@ type BitOp struct {
 	BinaryExpression
 	Op string
 }
+
+var _ sql.Expression = (*BitOp)(nil)
+var _ sql.CollationCoercible = (*BitOp)(nil)
 
 // NewBitOp creates a new BitOp sql.Expression.
 func NewBitOp(left, right sql.Expression, op string) *BitOp {
@@ -79,25 +83,30 @@ func (b *BitOp) IsNullable() bool {
 // Type returns the greatest type for given operation.
 func (b *BitOp) Type() sql.Type {
 	rTyp := b.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := b.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
-		return sql.Float64
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		return types.Float64
 	}
 
-	if sql.IsUnsigned(lTyp) && sql.IsUnsigned(rTyp) {
-		return sql.Uint64
-	} else if sql.IsSigned(lTyp) && sql.IsSigned(rTyp) {
-		return sql.Int64
+	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+		return types.Uint64
+	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
+		return types.Int64
 	}
 
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*BitOp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.
@@ -161,8 +170,8 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := b.Type()
 
-	left = convertValueToType(ctx, typ, left, sql.IsTime(b.Left.Type()))
-	right = convertValueToType(ctx, typ, right, sql.IsTime(b.Right.Type()))
+	left = convertValueToType(ctx, typ, left, types.IsTime(b.Left.Type()))
+	right = convertValueToType(ctx, typ, right, types.IsTime(b.Right.Type()))
 
 	return left, right, nil
 }

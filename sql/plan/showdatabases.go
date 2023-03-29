@@ -19,12 +19,16 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowDatabases is a node that shows the databases.
 type ShowDatabases struct {
 	Catalog sql.Catalog
 }
+
+var _ sql.Node = (*ShowDatabases)(nil)
+var _ sql.CollationCoercible = (*ShowDatabases)(nil)
 
 // NewShowDatabases creates a new show databases node.
 func NewShowDatabases() *ShowDatabases {
@@ -45,7 +49,7 @@ func (*ShowDatabases) Children() []sql.Node {
 func (*ShowDatabases) Schema() sql.Schema {
 	return sql.Schema{{
 		Name:     "Database",
-		Type:     sql.LongText,
+		Type:     types.LongText,
 		Nullable: false,
 	}}
 }
@@ -82,6 +86,11 @@ func (p *ShowDatabases) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	//TODO: Having the "SHOW DATABASES" privilege should allow one to see all databases
 	// Currently, only shows databases that the user has access to
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowDatabases) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p ShowDatabases) String() string {

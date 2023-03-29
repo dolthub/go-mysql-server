@@ -16,10 +16,14 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowWarnings is a node that shows the session warnings
 type ShowWarnings []*sql.Warning
+
+var _ sql.Node = (*ShowWarnings)(nil)
+var _ sql.CollationCoercible = (*ShowWarnings)(nil)
 
 // Resolved implements sql.Node interface. The function always returns true.
 func (ShowWarnings) Resolved() bool {
@@ -40,6 +44,11 @@ func (sw ShowWarnings) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (ShowWarnings) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // String implements the fmt.Stringer interface.
 func (ShowWarnings) String() string {
 	return "SHOW WARNINGS"
@@ -48,9 +57,9 @@ func (ShowWarnings) String() string {
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (ShowWarnings) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Level", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Code", Type: sql.Int32, Nullable: true},
-		&sql.Column{Name: "Message", Type: sql.LongText, Nullable: false},
+		&sql.Column{Name: "Level", Type: types.LongText, Nullable: false},
+		&sql.Column{Name: "Code", Type: types.Int32, Nullable: true},
+		&sql.Column{Name: "Message", Type: types.LongText, Nullable: false},
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var _ sql.WindowFunction = (*SumAgg)(nil)
@@ -161,7 +162,7 @@ func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.Windo
 		if err != nil {
 			continue
 		}
-		val, err := sql.Float64.Convert(v)
+		val, err := types.Float64.Convert(v)
 		if err != nil || val == nil {
 			val = float64(0)
 			nullCnt += 1
@@ -315,7 +316,7 @@ func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 			continue
 		}
 
-		val, err := sql.Uint64.Convert(v)
+		val, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -382,7 +383,7 @@ func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sq
 			continue
 		}
 
-		val, err := sql.Uint64.Convert(v)
+		val, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -450,7 +451,7 @@ func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 		}
 
 		// TODO: handle strings
-		val, err := sql.Uint64.Convert(v)
+		val, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -956,10 +957,10 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 		}
 
 		var v interface{}
-		if retType == sql.Blob {
-			v, err = sql.Blob.Convert(evalRow[0])
+		if retType == types.Blob {
+			v, err = types.Blob.Convert(evalRow[0])
 		} else {
-			v, err = sql.LongText.Convert(evalRow[0])
+			v, err = types.LongText.Convert(evalRow[0])
 		}
 
 		if err != nil {
@@ -1036,7 +1037,7 @@ func (a *WindowedJSONArrayAgg) Compute(ctx *sql.Context, interval sql.WindowInte
 	if err != nil {
 		return nil
 	}
-	return sql.JSONDocument{Val: res}
+	return types.JSONDocument{Val: res}
 }
 
 func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) ([]interface{}, error) {
@@ -1048,7 +1049,7 @@ func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.Wind
 		}
 
 		// unwrap JSON values
-		if js, ok := v.(sql.JSONValue); ok {
+		if js, ok := v.(types.JSONValue); ok {
 			doc, err := js.Unmarshall(ctx)
 			if err != nil {
 				return nil, err
@@ -1114,7 +1115,7 @@ func (a *WindowedJSONObjectAgg) Compute(ctx *sql.Context, interval sql.WindowInt
 	if len(a.vals) == 0 {
 		return nil
 	}
-	return sql.JSONDocument{Val: a.vals}
+	return types.JSONDocument{Val: a.vals}
 }
 
 func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (map[string]interface{}, error) {
@@ -1136,7 +1137,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 		}
 
 		// unwrap JSON values
-		if js, ok := val.(sql.JSONValue); ok {
+		if js, ok := val.(types.JSONValue); ok {
 			doc, err := js.Unmarshall(ctx)
 			if err != nil {
 				return nil, err
@@ -1145,7 +1146,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 		}
 
 		// Update the map.
-		keyAsString, err := sql.LongText.Convert(key)
+		keyAsString, err := types.LongText.Convert(key)
 		if err != nil {
 			continue
 		}

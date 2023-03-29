@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -56,7 +57,7 @@ func (c *ddlNode) Database() sql.Database {
 
 // Schema implements the Node interface.
 func (*ddlNode) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // Children implements the Node interface.
@@ -136,6 +137,7 @@ var _ sql.Databaser = (*CreateTable)(nil)
 var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 var _ sql.SchemaTarget = (*CreateTable)(nil)
+var _ sql.CollationCoercible = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
@@ -205,7 +207,7 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 
 // Schema implements the sql.Node interface.
 func (c *CreateTable) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 func (c *CreateTable) PkSchema() sql.PrimaryKeySchema {
@@ -316,7 +318,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	vd, _ = maybePrivDb.(sql.ViewDatabase)
 	if vd != nil {
-		_, ok, err := vd.GetView(ctx, c.name)
+		_, ok, err := vd.GetViewDefinition(ctx, c.name)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +366,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // ForeignKeys returns any foreign keys that will be declared on this table.
@@ -435,24 +437,26 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 	if err != nil {
 		return err
 	}
+
 	for i, fkDef := range c.fkDefs {
 		if fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
 			return sql.ErrForeignKeySetDefault.New()
 		}
+
 		if fkChecks.(int8) == 1 {
-			// TODO this is panic-prone
 			fkParentTbl := c.fkParentTbls[i]
 			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist
 			if fkParentTbl == nil {
 				fkParentTbl = fkTbl
 			}
 			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true)
+			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true, true)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = fkTbl.AddForeignKey(ctx, *fkDef)
+			// If foreign_key_checks are true, then the referenced tables will be populated
+			err = ResolveForeignKey(ctx, fkTbl, nil, *fkDef, true, false)
 			if err != nil {
 				return err
 			}
@@ -520,6 +524,11 @@ func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 		return opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_Create))
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (c *CreateTable) String() string {
@@ -703,6 +712,7 @@ type DropTable struct {
 }
 
 var _ sql.Node = (*DropTable)(nil)
+var _ sql.CollationCoercible = (*DropTable)(nil)
 
 // NewDropTable creates a new DropTable node
 func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
@@ -797,7 +807,7 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		}
 	}
 
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // Children implements the Node interface.
@@ -818,7 +828,7 @@ func (d *DropTable) Resolved() bool {
 
 // Schema implements the sql.Expression interface.
 func (d *DropTable) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface.
@@ -838,11 +848,16 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	for _, tbl := range d.Tables {
 		if !opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(getDatabaseName(tbl), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
+			sql.NewPrivilegedOperation(GetDatabaseName(tbl), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
 			return false
 		}
 	}
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the sql.Node interface.

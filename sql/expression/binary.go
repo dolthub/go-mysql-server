@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // The BINARY operator converts the expression to a binary string (a string that has the binary character set and binary
@@ -30,6 +31,9 @@ type Binary struct {
 	UnaryExpression
 }
 
+var _ sql.Expression = (*Binary)(nil)
+var _ sql.CollationCoercible = (*Binary)(nil)
+
 func NewBinary(e sql.Expression) sql.Expression {
 	return &Binary{UnaryExpression{Child: e}}
 }
@@ -39,7 +43,12 @@ func (b *Binary) String() string {
 }
 
 func (b *Binary) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Binary) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 2
 }
 
 func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

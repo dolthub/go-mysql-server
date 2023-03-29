@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -29,6 +30,9 @@ type Into struct {
 	UnaryNode
 	IntoVars []sql.Expression
 }
+
+var _ sql.Node = (*Into)(nil)
+var _ sql.CollationCoercible = (*Into)(nil)
 
 func NewInto(child sql.Node, variables []sql.Expression) *Into {
 	return &Into{
@@ -93,12 +97,13 @@ func (i *Into) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	for j, v := range i.IntoVars {
 		switch variable := v.(type) {
 		case *expression.UserVar:
-			err = ctx.SetUserVariable(ctx, variable.Name, rowValues[j])
+			varType := types.ApproximateTypeFromValue(rowValues[j])
+			err = ctx.SetUserVariable(ctx, variable.Name, rowValues[j], varType)
 			if err != nil {
 				return nil, err
 			}
 		case *expression.ProcedureParam:
-			err = variable.Set(rowValues[j], sql.ApproximateTypeFromValue(rowValues[j]))
+			err = variable.Set(rowValues[j], types.ApproximateTypeFromValue(rowValues[j]))
 			if err != nil {
 				return nil, err
 			}
@@ -121,6 +126,11 @@ func (i *Into) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (i *Into) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return i.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (i *Into) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, i.Child)
 }
 
 // WithExpressions implements the sql.Expressioner interface.

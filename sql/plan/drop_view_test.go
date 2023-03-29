@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -30,22 +31,22 @@ import (
 // create the view.
 func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Source: "mytable", Type: sql.Int32},
-		{Name: "s", Source: "mytable", Type: sql.Text},
+		{Name: "i", Source: "mytable", Type: types.Int32},
+		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
 
 	db.AddTable("db", table)
 
-	subqueryAlias := NewSubqueryAlias("myview", "select i",
+	subqueryAlias := NewSubqueryAlias("myview", "select i from mytable",
 		NewProject(
 			[]sql.Expression{
-				expression.NewGetFieldWithTable(1, sql.Int32, table.Name(), "i", true),
+				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
 			},
-			NewUnresolvedTable("dual", ""),
+			NewUnresolvedTable(table.Name(), ""),
 		),
 	)
 
-	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false)
+	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
 
 	ctx := sql.NewContext(context.Background())
 
@@ -112,7 +113,7 @@ func TestDropExistingViewNative(t *testing.T) {
 		_, err := dropView.RowIter(ctx, nil)
 		require.NoError(t, err)
 
-		_, ok, err := db.GetView(ctx, view.Name())
+		_, ok, err := db.GetViewDefinition(ctx, view.Name())
 		require.NoError(t, err)
 		require.False(t, ok)
 	}
@@ -133,7 +134,7 @@ func TestDropNonExistingViewNative(t *testing.T) {
 
 		_, dropErr := dropView.RowIter(ctx, nil)
 
-		_, ok, err := db.GetView(ctx, view.Name())
+		_, ok, err := db.GetViewDefinition(ctx, view.Name())
 		require.NoError(t, err)
 		require.True(t, ok)
 

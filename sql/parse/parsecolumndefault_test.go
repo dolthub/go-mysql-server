@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestStringToColumnDefaultValue(t *testing.T) {
@@ -33,7 +34,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 		{
 			"2",
 			NewColumnDefaultValue(
-				expression.NewLiteral(int8(2), sql.Int8),
+				expression.NewLiteral(int8(2), types.Int8),
 				nil,
 				true,
 				false,
@@ -43,7 +44,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 		{
 			"(2)",
 			NewColumnDefaultValue(
-				expression.NewLiteral(int8(2), sql.Int8),
+				expression.NewLiteral(int8(2), types.Int8),
 				nil,
 				false,
 				true,
@@ -55,7 +56,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 			NewColumnDefaultValue(
 				expression.NewArithmetic(
 					expression.NewUnresolvedFunction("rand", false, nil),
-					expression.NewLiteral(int8(5), sql.Int8),
+					expression.NewLiteral(int8(5), types.Int8),
 					"+",
 				),
 				nil,

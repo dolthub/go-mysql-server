@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestAsciiFunc(t *testing.T) {
@@ -89,13 +90,13 @@ func TestHexRoundTrip(t *testing.T) {
 		typ sql.Type
 		out string
 	}{
-		{"1B", sql.Text, "1B"},
-		{"C", sql.Text, "0C"},
-		{"8F", sql.Text, "8F"},
-		{"ABCD", sql.Text, "ABCD"},
-		{int64(1), sql.Int64, "01"},
-		{int8(11), sql.Int64, "11"},
-		{uint16(375), sql.Int64, "0375"},
+		{"1B", types.Text, "1B"},
+		{"C", types.Text, "0C"},
+		{"8F", types.Text, "8F"},
+		{"ABCD", types.Text, "ABCD"},
+		{int64(1), types.Int64, "01"},
+		{int8(11), types.Int64, "11"},
+		{uint16(375), types.Int64, "0375"},
 	}
 
 	for _, test := range tests {

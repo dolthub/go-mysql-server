@@ -32,6 +32,9 @@ type SubqueryAlias struct {
 	CanCacheResults      bool
 }
 
+var _ sql.Node = (*SubqueryAlias)(nil)
+var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
+
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
 	return &SubqueryAlias{
@@ -42,9 +45,9 @@ func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias
 	}
 }
 
-// Returns the view wrapper for this subquery
-func (sq *SubqueryAlias) AsView() *sql.View {
-	return sql.NewView(sq.Name(), sq, sq.TextDefinition)
+// AsView returns the view wrapper for this subquery
+func (sq *SubqueryAlias) AsView(createViewStmt string) *sql.View {
+	return sql.NewView(sq.Name(), sq, sq.TextDefinition, createViewStmt)
 }
 
 // Name implements the Table interface.
@@ -98,14 +101,27 @@ func (sq *SubqueryAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 	return sq.Child.CheckPrivileges(ctx, opChecker)
 }
 
-func (sq SubqueryAlias) WithName(name string) *SubqueryAlias {
-	sq.name = name
-	return &sq
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (sq *SubqueryAlias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, sq.Child)
 }
 
-func (sq SubqueryAlias) WithCachedResults() *SubqueryAlias {
-	sq.CanCacheResults = true
-	return &sq
+func (sq *SubqueryAlias) WithChild(n sql.Node) *SubqueryAlias {
+	ret := *sq
+	ret.Child = n
+	return &ret
+}
+
+func (sq *SubqueryAlias) WithName(name string) *SubqueryAlias {
+	ret := *sq
+	ret.name = name
+	return &ret
+}
+
+func (sq *SubqueryAlias) WithCachedResults() *SubqueryAlias {
+	ret := *sq
+	ret.CanCacheResults = true
+	return &ret
 }
 
 // Opaque implements the OpaqueNode interface.
@@ -113,7 +129,7 @@ func (sq *SubqueryAlias) Opaque() bool {
 	return true
 }
 
-func (sq SubqueryAlias) String() string {
+func (sq *SubqueryAlias) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
 	children := make([]string, 4)
@@ -125,7 +141,7 @@ func (sq SubqueryAlias) String() string {
 	return pr.String()
 }
 
-func (sq SubqueryAlias) DebugString() string {
+func (sq *SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
 	children := make([]string, 4)
@@ -137,7 +153,8 @@ func (sq SubqueryAlias) DebugString() string {
 	return pr.String()
 }
 
-func (sq SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
-	sq.Columns = columns
-	return &sq
+func (sq *SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
+	ret := *sq
+	ret.Columns = columns
+	return &ret
 }

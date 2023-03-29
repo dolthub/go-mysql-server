@@ -109,6 +109,20 @@ func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
 	return errors.Is(err, stop)
 }
 
+// InspectUp traverses the given node tree from the bottom up, breaking if
+// stop = true. Returns a bool indicating whether traversal was interrupted.
+func InspectUp(node sql.Node, f func(sql.Node) bool) bool {
+	stop := errors.New("stop")
+	_, _, err := Node(node, func(e sql.Node) (sql.Node, TreeIdentity, error) {
+		ok := f(e)
+		if ok {
+			return nil, SameTree, stop
+		}
+		return e, SameTree, nil
+	})
+	return errors.Is(err, stop)
+}
+
 // Clone duplicates an existing sql.Expression, returning new nodes with the
 // same structure and internal values. It can be useful when dealing with
 // stateful expression nodes where an evaluation needs to create multiple

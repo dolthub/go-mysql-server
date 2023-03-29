@@ -20,6 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrUnsupportedJSONFunction is returned when a unsupported JSON function is called.
@@ -43,6 +44,7 @@ type JSONObjectAgg struct {
 var _ sql.FunctionExpression = (*JSONObjectAgg)(nil)
 var _ sql.Aggregation = (*JSONObjectAgg)(nil)
 var _ sql.WindowAdaptableExpression = (*JSONObjectAgg)(nil)
+var _ sql.CollationCoercible = (*JSONObjectAgg)(nil)
 
 // NewJSONObjectAgg creates a new JSONObjectAgg function.
 func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
@@ -70,7 +72,12 @@ func (j *JSONObjectAgg) String() string {
 
 // Type implements the Expression interface.
 func (j *JSONObjectAgg) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONObjectAgg) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
 // IsNullable implements the Expression interface.
@@ -143,7 +150,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := val.(sql.JSONValue); ok {
+	if js, ok := val.(types.JSONValue); ok {
 		doc, err := js.Unmarshall(ctx)
 		if err != nil {
 			return err
@@ -152,7 +159,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// Update the map.
-	keyAsString, err := sql.LongText.Convert(key)
+	keyAsString, err := types.LongText.Convert(key)
 	if err != nil {
 		return nil
 	}
@@ -168,7 +175,7 @@ func (j *jsonObjectBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.JSONDocument{Val: j.vals}, nil
+	return types.JSONDocument{Val: j.vals}, nil
 }
 
 // Dispose implements the Disposable interface.

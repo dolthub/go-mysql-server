@@ -96,6 +96,27 @@ func TestExampleLoadedUser(t *testing.T) {
 	require.NoError(t, conn.Close())
 }
 
+func TestIssue1621(t *testing.T) {
+	// This is an issue that is specific to using the example server, as this is not a logic issue but a setup issue
+	useUnusedPort(t)
+	go func() {
+		main()
+	}()
+
+	conn, err := dbr.Open("mysql",
+		fmt.Sprintf("root:@tcp(localhost:%d)/mydb", port), nil)
+	require.NoError(t, err)
+	require.NoError(t, conn.Ping())
+
+	rows, err := conn.Query("CREATE TABLE `users` (`id` int(10) unsigned NOT NULL, `name` varchar(100) NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
+	require.NoError(t, err)
+	require.NoError(t, rows.Close())
+	rows, err = conn.Query("CREATE TABLE `managers` (`id` int(10) unsigned NOT NULL, `user_id` int(10) unsigned NOT NULL, PRIMARY KEY (`id`), FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
+	require.NoError(t, err)
+	require.NoError(t, rows.Close())
+	require.NoError(t, conn.Close())
+}
+
 func checkRows(t *testing.T, expectedRows [][]string, actualRows *sql.Rows) {
 	rowIdx := -1
 	for actualRows.Next() {

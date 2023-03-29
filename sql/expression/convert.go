@@ -24,6 +24,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrConvertExpression is returned when a conversion is not possible.
@@ -63,6 +64,9 @@ type Convert struct {
 	castToType string
 }
 
+var _ sql.Expression = (*Convert)(nil)
+var _ sql.CollationCoercible = (*Convert)(nil)
+
 // NewConvert creates a new Convert expression.
 func NewConvert(expr sql.Expression, castToType string) *Convert {
 	return &Convert{
@@ -85,28 +89,56 @@ func (c *Convert) IsNullable() bool {
 func (c *Convert) Type() sql.Type {
 	switch c.castToType {
 	case ConvertToBinary:
-		return sql.LongBlob
+		return types.LongBlob
 	case ConvertToChar, ConvertToNChar:
-		return sql.LongText
+		return types.LongText
 	case ConvertToDate:
-		return sql.Date
+		return types.Date
 	case ConvertToDatetime:
-		return sql.Datetime
+		return types.Datetime
 	case ConvertToDecimal:
 		//TODO: these values are completely arbitrary, we need to get the given precision/scale and store it
-		return sql.MustCreateDecimalType(65, 10)
+		return types.MustCreateDecimalType(65, 10)
 	case ConvertToDouble, ConvertToReal:
-		return sql.Float64
+		return types.Float64
 	case ConvertToJSON:
-		return sql.JSON
+		return types.JSON
 	case ConvertToSigned:
-		return sql.Int64
+		return types.Int64
 	case ConvertToTime:
-		return sql.Time
+		return types.Time
 	case ConvertToUnsigned:
-		return sql.Uint64
+		return types.Uint64
 	default:
-		return sql.Null
+		return types.Null
+	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	switch c.castToType {
+	case ConvertToBinary:
+		return sql.Collation_binary, 2
+	case ConvertToChar, ConvertToNChar:
+		return ctx.GetCollation(), 2
+	case ConvertToDate:
+		return sql.Collation_binary, 5
+	case ConvertToDatetime:
+		return sql.Collation_binary, 5
+	case ConvertToDecimal:
+		return sql.Collation_binary, 5
+	case ConvertToDouble, ConvertToReal:
+		return sql.Collation_binary, 5
+	case ConvertToJSON:
+		return ctx.GetCharacterSet().BinaryCollation(), 2
+	case ConvertToSigned:
+		return sql.Collation_binary, 5
+	case ConvertToTime:
+		return sql.Collation_binary, 5
+	case ConvertToUnsigned:
+		return sql.Collation_binary, 5
+	default:
+		return sql.Collation_binary, 7
 	}
 }
 
@@ -165,11 +197,11 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func convertValue(val interface{}, castTo string, originType sql.Type) (interface{}, error) {
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		b, err := sql.LongBlob.Convert(val)
+		b, err := types.LongBlob.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
-		if sql.IsTextOnly(originType) {
+		if types.IsTextOnly(originType) {
 			// For string types we need to re-encode the string as we want the binary representation of the character set
 			encoder := originType.(sql.StringType).Collation().CharacterSet().Encoder()
 			encodedBytes, ok := encoder.Encode(b.([]byte))
@@ -180,7 +212,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
-		s, err := sql.LongText.Convert(val)
+		s, err := types.LongText.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
@@ -192,7 +224,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, err := sql.Date.Convert(val)
+		d, err := types.Date.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +236,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, err := sql.Datetime.Convert(val)
+		d, err := types.Datetime.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -214,7 +246,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		d, err := sql.InternalDecimalType.Convert(value)
+		d, err := types.InternalDecimalType.Convert(value)
 		if err != nil {
 			return "0", nil
 		}
@@ -224,13 +256,13 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		d, err := sql.Float64.Convert(value)
+		d, err := types.Float64.Convert(value)
 		if err != nil {
-			return sql.Float64.Zero(), nil
+			return types.Float64.Zero(), nil
 		}
 		return d, nil
 	case ConvertToJSON:
-		js, err := sql.JSON.Convert(val)
+		js, err := types.JSON.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -240,14 +272,14 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		num, err := sql.Int64.Convert(value)
+		num, err := types.Int64.Convert(value)
 		if err != nil {
-			return sql.Int64.Zero(), nil
+			return types.Int64.Zero(), nil
 		}
 
 		return num, nil
 	case ConvertToTime:
-		t, err := sql.Time.Convert(val)
+		t, err := types.Time.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
@@ -257,11 +289,11 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		num, err := sql.Uint64.Convert(value)
+		num, err := types.Uint64.Convert(value)
 		if err != nil {
-			num, err = sql.Int64.Convert(value)
+			num, err = types.Int64.Convert(value)
 			if err != nil {
-				return sql.Uint64.Zero(), nil
+				return types.Uint64.Zero(), nil
 			}
 			return uint64(num.(int64)), nil
 		}
@@ -276,7 +308,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 // binary string as default, but for numeric context, the value should be a number.
 // Byte arrays of other SQL types are not handled here.
 func convertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) (interface{}, error) {
-	if bin, isBinary := val.([]byte); isBinary && sql.IsBlobType(originType) {
+	if bin, isBinary := val.([]byte); isBinary && types.IsBlobType(originType) {
 		stringVal := hex.EncodeToString(bin)
 		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
 		if err != nil {

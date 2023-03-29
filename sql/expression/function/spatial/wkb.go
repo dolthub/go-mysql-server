@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AsWKB is a function that converts a spatial type into WKB format (alias for AsBinary)
@@ -28,6 +29,7 @@ type AsWKB struct {
 }
 
 var _ sql.FunctionExpression = (*AsWKB)(nil)
+var _ sql.CollationCoercible = (*AsWKB)(nil)
 
 // NewAsWKB creates a new point expression.
 func NewAsWKB(e sql.Expression) sql.Expression {
@@ -51,7 +53,12 @@ func (a *AsWKB) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (a *AsWKB) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AsWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (a *AsWKB) String() string {
@@ -78,11 +85,11 @@ func (a *AsWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	switch v := val.(type) {
-	case sql.GeometryValue:
-		if v.GetSRID() == sql.GeoSpatialSRID {
+	case types.GeometryValue:
+		if v.GetSRID() == types.GeoSpatialSRID {
 			v = v.Swap()
 		}
-		return v.Serialize()[sql.SRIDSize:], nil
+		return v.Serialize()[types.SRIDSize:], nil
 	default:
 		return nil, sql.ErrInvalidGISData.New(a.FunctionName())
 	}
@@ -94,6 +101,7 @@ type GeomFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*GeomFromWKB)(nil)
+var _ sql.CollationCoercible = (*GeomFromWKB)(nil)
 
 // NewGeomFromWKB creates a new geometry expression.
 func NewGeomFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -115,7 +123,12 @@ func (g *GeomFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *GeomFromWKB) Type() sql.Type {
-	return sql.PointType{} // TODO: replace with generic geometry type
+	return types.PointType{} // TODO: replace with generic geometry type
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomFromWKB) String() string {
@@ -146,7 +159,7 @@ func ParseAxisOrder(s string) (bool, error) {
 }
 
 func ValidateSRID(srid uint32) error {
-	if srid != sql.CartesianSRID && srid != sql.GeoSpatialSRID {
+	if srid != types.CartesianSRID && srid != types.GeoSpatialSRID {
 		return ErrInvalidSRID.New(srid)
 	}
 	return nil
@@ -168,13 +181,13 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		return nil, sql.ErrInvalidGISData.New()
 	}
 
-	isBig, geomType, err := sql.DeserializeWKBHeader(buf)
+	isBig, geomType, err := types.DeserializeWKBHeader(buf)
 	if err != nil {
 		return nil, err
 	}
-	buf = buf[sql.WKBHeaderSize:]
+	buf = buf[types.WKBHeaderSize:]
 
-	if expectedGeomType != sql.WKBUnknown && int(geomType) != expectedGeomType {
+	if expectedGeomType != types.WKBUnknown && int(geomType) != expectedGeomType {
 		return nil, sql.ErrInvalidGISData.New()
 	}
 
@@ -187,7 +200,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		if s == nil {
 			return nil, nil
 		}
-		s, err = sql.Uint32.Convert(s)
+		s, err = types.Uint32.Convert(s)
 		if err != nil {
 			return nil, err
 		}
@@ -197,22 +210,22 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		return nil, err
 	}
 
-	var geom sql.GeometryValue
+	var geom types.GeometryValue
 	switch geomType {
-	case sql.WKBPointID:
-		geom, _, err = sql.DeserializePoint(buf, isBig, srid)
-	case sql.WKBLineID:
-		geom, _, err = sql.DeserializeLine(buf, isBig, srid)
-	case sql.WKBPolyID:
-		geom, _, err = sql.DeserializePoly(buf, isBig, srid)
-	case sql.WKBMultiPointID:
-		geom, _, err = sql.DeserializeMPoint(buf, isBig, srid)
-	case sql.WKBMultiLineID:
-		geom, _, err = sql.DeserializeMLine(buf, isBig, srid)
-	case sql.WKBMultiPolyID:
-		geom, _, err = sql.DeserializeMPoly(buf, isBig, srid)
-	case sql.WKBGeomCollID:
-		geom, _, err = sql.DeserializeGeomColl(buf, isBig, srid)
+	case types.WKBPointID:
+		geom, _, err = types.DeserializePoint(buf, isBig, srid)
+	case types.WKBLineID:
+		geom, _, err = types.DeserializeLine(buf, isBig, srid)
+	case types.WKBPolyID:
+		geom, _, err = types.DeserializePoly(buf, isBig, srid)
+	case types.WKBMultiPointID:
+		geom, _, err = types.DeserializeMPoint(buf, isBig, srid)
+	case types.WKBMultiLineID:
+		geom, _, err = types.DeserializeMLine(buf, isBig, srid)
+	case types.WKBMultiPolyID:
+		geom, _, err = types.DeserializeMPoly(buf, isBig, srid)
+	case types.WKBGeomCollID:
+		geom, _, err = types.DeserializeGeomColl(buf, isBig, srid)
 	default:
 		return nil, sql.ErrInvalidGISData.New()
 	}
@@ -243,7 +256,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 
 // Eval implements the sql.Expression interface.
 func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, sql.WKBUnknown)
+	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, types.WKBUnknown)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
 	}
@@ -256,6 +269,7 @@ type PointFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*PointFromWKB)(nil)
+var _ sql.CollationCoercible = (*PointFromWKB)(nil)
 
 // NewPointFromWKB creates a new point expression.
 func NewPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -277,7 +291,12 @@ func (p *PointFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *PointFromWKB) Type() sql.Type {
-	return sql.PointType{}
+	return types.PointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PointFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PointFromWKB) String() string {
@@ -295,7 +314,7 @@ func (p *PointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // Eval implements the sql.Expression interface.
 func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	point, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPointID)
+	point, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBPointID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
@@ -308,6 +327,7 @@ type LineFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*LineFromWKB)(nil)
+var _ sql.CollationCoercible = (*LineFromWKB)(nil)
 
 // NewLineFromWKB creates a new point expression.
 func NewLineFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -329,7 +349,12 @@ func (l *LineFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *LineFromWKB) Type() sql.Type {
-	return sql.LineStringType{}
+	return types.LineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LineFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *LineFromWKB) String() string {
@@ -347,7 +372,7 @@ func (l *LineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 
 // Eval implements the sql.Expression interface.
 func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	line, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBLineID)
+	line, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, types.WKBLineID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
 	}
@@ -360,6 +385,7 @@ type PolyFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*PolyFromWKB)(nil)
+var _ sql.CollationCoercible = (*PolyFromWKB)(nil)
 
 // NewPolyFromWKB creates a new point expression.
 func NewPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -381,7 +407,12 @@ func (p *PolyFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *PolyFromWKB) Type() sql.Type {
-	return sql.PolygonType{}
+	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PolyFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PolyFromWKB) String() string {
@@ -399,7 +430,7 @@ func (p *PolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 
 // Eval implements the sql.Expression interface.
 func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	poly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPolyID)
+	poly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBPolyID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
@@ -412,6 +443,7 @@ type MPointFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*MPointFromWKB)(nil)
+var _ sql.CollationCoercible = (*MPointFromWKB)(nil)
 
 // NewMPointFromWKB creates a new point expression.
 func NewMPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -433,7 +465,12 @@ func (p *MPointFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *MPointFromWKB) Type() sql.Type {
-	return sql.MultiPointType{}
+	return types.MultiPointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPointFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPointFromWKB) String() string {
@@ -451,7 +488,7 @@ func (p *MPointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression
 
 // Eval implements the sql.Expression interface.
 func (p *MPointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mPoint, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBMultiPointID)
+	mPoint, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBMultiPointID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
@@ -464,6 +501,7 @@ type MLineFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*MLineFromWKB)(nil)
+var _ sql.CollationCoercible = (*MLineFromWKB)(nil)
 
 // NewMLineFromWKB creates a new point expression.
 func NewMLineFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -485,7 +523,12 @@ func (l *MLineFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *MLineFromWKB) Type() sql.Type {
-	return sql.PolygonType{}
+	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MLineFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *MLineFromWKB) String() string {
@@ -503,7 +546,7 @@ func (l *MLineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // Eval implements the sql.Expression interface.
 func (l *MLineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, sql.WKBMultiLineID)
+	mline, err := EvalGeomFromWKB(ctx, row, l.ChildExpressions, types.WKBMultiLineID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(l.FunctionName())
 	}
@@ -516,6 +559,7 @@ type MPolyFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*MPolyFromWKB)(nil)
+var _ sql.CollationCoercible = (*MPolyFromWKB)(nil)
 
 // NewMPolyFromWKB creates a new multipolygon expression.
 func NewMPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -537,7 +581,12 @@ func (p *MPolyFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *MPolyFromWKB) Type() sql.Type {
-	return sql.MultiPolygonType{}
+	return types.MultiPolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPolyFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPolyFromWKB) String() string {
@@ -555,7 +604,7 @@ func (p *MPolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // Eval implements the sql.Expression interface.
 func (p *MPolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mpoly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, sql.WKBPolyID)
+	mpoly, err := EvalGeomFromWKB(ctx, row, p.ChildExpressions, types.WKBPolyID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
 	}
@@ -568,6 +617,7 @@ type GeomCollFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*GeomCollFromWKB)(nil)
+var _ sql.CollationCoercible = (*GeomCollFromWKB)(nil)
 
 // NewGeomCollFromWKB creates a new geometrycollection expression.
 func NewGeomCollFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -589,7 +639,12 @@ func (g *GeomCollFromWKB) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *GeomCollFromWKB) Type() sql.Type {
-	return sql.GeomCollType{}
+	return types.GeomCollType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomCollFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomCollFromWKB) String() string {
@@ -607,7 +662,7 @@ func (g *GeomCollFromWKB) WithChildren(children ...sql.Expression) (sql.Expressi
 
 // Eval implements the sql.Expression interface.
 func (g *GeomCollFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, sql.WKBGeomCollID)
+	geom, err := EvalGeomFromWKB(ctx, row, g.ChildExpressions, types.WKBGeomCollID)
 	if sql.ErrInvalidGISData.Is(err) {
 		return nil, sql.ErrInvalidGISData.New(g.FunctionName())
 	}

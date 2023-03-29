@@ -136,3 +136,30 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 	})
 	return newN, same, usedBindings, err
 }
+
+func HasEmptyTable(n sql.Node) bool {
+	found := transform.InspectUp(n, func(n sql.Node) bool {
+		_, ok := n.(*EmptyTable)
+		return ok
+	})
+	if found {
+		return true
+	}
+	ne, ok := n.(sql.Expressioner)
+	if !ok {
+		return false
+	}
+	for _, e := range ne.Expressions() {
+		found := transform.InspectExpr(e, func(e sql.Expression) bool {
+			sq, ok := e.(*Subquery)
+			if ok {
+				return HasEmptyTable(sq.Query)
+			}
+			return false
+		})
+		if found {
+			return true
+		}
+	}
+	return false
+}

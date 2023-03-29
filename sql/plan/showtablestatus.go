@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowTableStatus returns the status of the tables in a database.
@@ -24,7 +25,9 @@ type ShowTableStatus struct {
 	Catalog sql.Catalog
 }
 
+var _ sql.Node = (*ShowTableStatus)(nil)
 var _ sql.Databaser = (*ShowTableStatus)(nil)
+var _ sql.CollationCoercible = (*ShowTableStatus)(nil)
 
 // NewShowTableStatus creates a new ShowTableStatus node.
 func NewShowTableStatus(db sql.Database) *ShowTableStatus {
@@ -42,24 +45,24 @@ func (s *ShowTableStatus) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 var showTableStatusSchema = sql.Schema{
-	{Name: "Name", Type: sql.LongText},
-	{Name: "Engine", Type: sql.LongText},
-	{Name: "Version", Type: sql.LongText},
-	{Name: "Row_format", Type: sql.LongText},
-	{Name: "Rows", Type: sql.Uint64},
-	{Name: "Avg_row_length", Type: sql.Uint64},
-	{Name: "Data_length", Type: sql.Uint64},
-	{Name: "Max_data_length", Type: sql.Uint64},
-	{Name: "Index_length", Type: sql.Int64},
-	{Name: "Data_free", Type: sql.Int64},
-	{Name: "Auto_increment", Type: sql.Int64},
-	{Name: "Create_time", Type: sql.Datetime, Nullable: true},
-	{Name: "Update_time", Type: sql.Datetime, Nullable: true},
-	{Name: "Check_time", Type: sql.Datetime, Nullable: true},
-	{Name: "Collation", Type: sql.LongText},
-	{Name: "Checksum", Type: sql.LongText, Nullable: true},
-	{Name: "Create_options", Type: sql.LongText, Nullable: true},
-	{Name: "Comments", Type: sql.LongText, Nullable: true},
+	{Name: "Name", Type: types.LongText},
+	{Name: "Engine", Type: types.LongText},
+	{Name: "Version", Type: types.LongText},
+	{Name: "Row_format", Type: types.LongText},
+	{Name: "Rows", Type: types.Uint64},
+	{Name: "Avg_row_length", Type: types.Uint64},
+	{Name: "Data_length", Type: types.Uint64},
+	{Name: "Max_data_length", Type: types.Uint64},
+	{Name: "Index_length", Type: types.Int64},
+	{Name: "Data_free", Type: types.Int64},
+	{Name: "Auto_increment", Type: types.Int64},
+	{Name: "Create_time", Type: types.Datetime, Nullable: true},
+	{Name: "Update_time", Type: types.Datetime, Nullable: true},
+	{Name: "Check_time", Type: types.Datetime, Nullable: true},
+	{Name: "Collation", Type: types.LongText},
+	{Name: "Checksum", Type: types.LongText, Nullable: true},
+	{Name: "Create_options", Type: types.LongText, Nullable: true},
+	{Name: "Comments", Type: types.LongText, Nullable: true},
 }
 
 // Children implements the sql.Node interface.
@@ -124,6 +127,11 @@ func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (s *ShowTableStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// Some tables won't be visible in RowIter if the user doesn't have the correct privileges
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowTableStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // cc here: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html

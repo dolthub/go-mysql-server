@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestLength(t *testing.T) {
@@ -34,70 +35,70 @@ func TestLength(t *testing.T) {
 		{
 			"length string",
 			"fóo",
-			sql.Text,
+			types.Text,
 			NewLength,
 			int32(4),
 		},
 		{
 			"length binary",
 			[]byte("fóo"),
-			sql.Blob,
+			types.Blob,
 			NewLength,
 			int32(4),
 		},
 		{
 			"length empty",
 			"",
-			sql.Blob,
+			types.Blob,
 			NewLength,
 			int32(0),
 		},
 		{
 			"length empty binary",
 			[]byte{},
-			sql.Blob,
+			types.Blob,
 			NewLength,
 			int32(0),
 		},
 		{
 			"length nil",
 			nil,
-			sql.Blob,
+			types.Blob,
 			NewLength,
 			nil,
 		},
 		{
 			"char_length string",
 			"fóo",
-			sql.LongText,
+			types.LongText,
 			NewCharLength,
 			int32(3),
 		},
 		{
 			"char_length binary",
 			[]byte("fóo"),
-			sql.Blob,
+			types.Blob,
 			NewCharLength,
 			int32(4),
 		},
 		{
 			"char_length empty",
 			"",
-			sql.Blob,
+			types.Blob,
 			NewCharLength,
 			int32(0),
 		},
 		{
 			"char_length empty binary",
 			[]byte{},
-			sql.Blob,
+			types.Blob,
 			NewCharLength,
 			int32(0),
 		},
 		{
 			"char_length nil",
 			nil,
-			sql.Blob,
+			types.Blob,
 			NewCharLength,
 			nil,
 		},

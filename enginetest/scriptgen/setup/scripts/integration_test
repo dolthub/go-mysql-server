@@ -1131,3 +1131,1840 @@ update information_schema.statistics set cardinality = 36 where table_name = 'D3
 exec
 update information_schema.statistics set cardinality = 64 where table_name = 'ZTFET' and table_schema = 'mydb';
 ----
+
+exec
+CREATE TRIGGER SZW6V_on_insert BEFORE INSERT ON SZW6V
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.T4IBQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.V7UFH IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SYPKF IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.H4DMT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER SZW6V_on_update BEFORE UPDATE ON SZW6V
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.T4IBQ IS NOT NULL AND (NEW.T4IBQ <> OLD.T4IBQ)
+    OR
+    NEW.V7UFH IS NOT NULL AND (NEW.V7UFH <> OLD.V7UFH)
+    OR
+    NEW.SYPKF IS NOT NULL AND (NEW.SYPKF <> OLD.SYPKF)
+  THEN
+    -- SET @custom_error_message = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+  END IF;
+  IF
+    NEW.H4DMT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER SZW6V_on_delete BEFORE DELETE ON SZW6V
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//
+----
+
+exec
+CREATE TRIGGER WGSDC_on_insert BEFORE INSERT ON WGSDC
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NOHHR IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.AVPYF IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SYPKF IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDUT2 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FZXV5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.DQYGV IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  IF NEW.FZXV5 IS NULL AND NEW.DQYGV IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either the mutant or partner overridden field must have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either the mutant or partner overridden field must have value!';
+  END IF;
+  IF NEW.FZXV5 IS NOT NULL AND NEW.DQYGV IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'Only one of the mutant or partner overridden field can have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only one of the mutant or partner overridden field can have value!';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER WGSDC_on_update BEFORE UPDATE ON WGSDC
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NOHHR IS NOT NULL AND (NEW.NOHHR <> OLD.NOHHR)
+    OR
+    NEW.AVPYF IS NOT NULL AND (NEW.AVPYF <> OLD.AVPYF)
+    OR
+    NEW.SYPKF IS NOT NULL AND (NEW.SYPKF <> OLD.SYPKF)
+    OR
+    NEW.IDUT2 IS NOT NULL AND (NEW.IDUT2 <> OLD.IDUT2)
+  THEN
+    -- SET @custom_error_message = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+  END IF;
+  IF
+    NEW.FZXV5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.DQYGV IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  IF NEW.FZXV5 IS NULL AND NEW.DQYGV IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either the mutant or partner overridden field must have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either the mutant or partner overridden field must have value!';
+  END IF;
+  IF NEW.FZXV5 IS NOT NULL AND NEW.DQYGV IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'Only one of the mutant or partner overridden field can have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only one of the mutant or partner overridden field can have value!';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER WGSDC_on_delete BEFORE DELETE ON WGSDC
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//
+----
+
+exec
+CREATE TRIGGER EPZU6_on_insert BEFORE INSERT ON EPZU6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SJYN2 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FVUCX IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.BTXC5 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER EPZU6_on_update BEFORE UPDATE ON EPZU6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IS NOT NULL AND (NEW.TOFPN <> OLD.TOFPN)
+    OR
+    NEW.SJYN2 IS NOT NULL AND (NEW.SJYN2 <> OLD.SJYN2)
+    OR
+    NEW.BTXC5 IS NOT NULL AND (NEW.BTXC5 <> OLD.BTXC5)
+  THEN
+    -- SET @custom_error_message = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+  END IF;
+  IF
+    NEW.FVUCX IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER EPZU6_on_delete BEFORE DELETE ON EPZU6
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//
+----
+
+exec
+CREATE TRIGGER HU5A5_on_insert BEFORE INSERT ON HU5A5
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.I3VTA IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SFJ6L IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.V5DPX IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.LJLUM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDPK7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.NO52D IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZRV3B IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.VYO5E IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER HU5A5_on_update BEFORE UPDATE ON HU5A5
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IS NOT NULL AND (NEW.TOFPN <> OLD.TOFPN)
+    OR
+    NEW.I3VTA IS NOT NULL AND (NEW.I3VTA <> OLD.I3VTA)
+    OR
+    NEW.V5DPX IS NOT NULL AND (NEW.V5DPX <> OLD.V5DPX)
+    OR
+    NEW.LJLUM IS NOT NULL AND (NEW.LJLUM <> OLD.LJLUM)
+    OR
+    NEW.IDPK7 IS NOT NULL AND (NEW.IDPK7 <> OLD.IDPK7)
+    OR
+    NEW.NO52D IS NOT NULL AND (NEW.NO52D <> OLD.NO52D)
+    OR
+    NEW.ZRV3B IS NOT NULL AND (NEW.ZRV3B <> OLD.ZRV3B)
+    OR
+    NEW.VYO5E IS NOT NULL AND (NEW.VYO5E <> OLD.VYO5E)
+  THEN
+    -- SET @custom_error_message = 'Only the SWCQV, SFJ6L, YKSSU and user RNVLS field can be changed of additionals. Please use that field and add a new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only the SWCQV and non functional fields can be changed of additionals.';
+  END IF;
+  IF
+    NEW.SFJ6L IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER HU5A5_on_delete BEFORE DELETE ON HU5A5
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//
+----
+
+exec
+CREATE TRIGGER WE72E_on_insert BEFORE INSERT ON WE72E
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.QZ7E7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SSHPJ IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER WE72E_on_update BEFORE UPDATE ON WE72E
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.QZ7E7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SSHPJ IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER WE72E_on_delete BEFORE DELETE ON WE72E
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A WE72E can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A WE72E can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER F35MI_on_insert BEFORE INSERT ON F35MI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER F35MI_on_update BEFORE UPDATE ON F35MI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER F35MI_on_delete BEFORE DELETE ON F35MI
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A F35MI can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A F35MI can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER TNMXI_on_insert BEFORE INSERT ON TNMXI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER TNMXI_on_update BEFORE UPDATE ON TNMXI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER TNMXI_on_delete BEFORE DELETE ON TNMXI
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A TNMXI can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A TNMXI can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER XGSJM_on_insert BEFORE INSERT ON XGSJM
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER XGSJM_on_update BEFORE UPDATE ON XGSJM
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER XGSJM_on_delete BEFORE DELETE ON XGSJM
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A XGSJM can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A XGSJM can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER IIISV_on_insert BEFORE INSERT ON IIISV
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER IIISV_on_update BEFORE UPDATE ON IIISV
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER TTGWX_on_insert BEFORE INSERT ON TTGWX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CBVKT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER TTGWX_on_update BEFORE UPDATE ON TTGWX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CBVKT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER FEVH4_on_insert BEFORE INSERT ON FEVH4
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER FEVH4_on_update BEFORE UPDATE ON FEVH4
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER FEVH4_on_delete BEFORE DELETE ON FEVH4
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'An FEVH4 can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An FEVH4 can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER T52LX_on_insert BEFORE INSERT ON T52LX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER T52LX_on_update BEFORE UPDATE ON T52LX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER NOXN3_on_insert BEFORE INSERT ON NOXN3
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NUMK2 = 1 AND NEW.ECDKM IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+  END IF;
+  IF
+    NEW.NUMK2 <> 1 AND NEW.ECDKM IS NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER NOXN3_on_update BEFORE UPDATE ON NOXN3
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NUMK2 = 1 AND NEW.ECDKM IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+  END IF;
+  IF
+    NEW.NUMK2 <> 1 AND NEW.ECDKM IS NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+  END IF;
+  IF
+    NEW.BRQP2 IS NOT NULL AND (NEW.BRQP2 <> OLD.BRQP2)
+    OR
+    NEW.FFTBJ IS NOT NULL AND (NEW.FFTBJ <> OLD.FFTBJ)
+    OR
+    (NEW.NUMK2 IS NOT NULL) AND (NEW.NUMK2 <> OLD.NUMK2) AND (NEW.NUMK2 = 1 OR OLD.NUMK2 = 1)
+  THEN
+    UPDATE S3FQX SET ADWYM = 1;
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER QYWQD_on_insert BEFORE INSERT ON QYWQD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT FFTBJ FROM NOXN3 WHERE id = NEW.WNUNU) <> (SELECT BRQP2 FROM NOXN3 WHERE id = NEW.HHVLX)
+  THEN
+    -- SET @custom_error_message = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER QYWQD_on_update BEFORE UPDATE ON QYWQD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT FFTBJ FROM NOXN3 WHERE id = NEW.WNUNU) <> (SELECT BRQP2 FROM NOXN3 WHERE id = NEW.HHVLX)
+  THEN
+    -- SET @custom_error_message = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER RLOHD_on_insert BEFORE INSERT ON RLOHD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DKCAJ FROM E2I7U WHERE id = NEW.LUEVY) NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'extra_cellular' OR DZLIM = 'OROPK')
+  THEN
+    -- SET @custom_error_message = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+  END IF;
+  IF
+    NEW.KLMAU IS NULL AND NEW.ecm IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either KLMAU or ecm must be set.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either KLMAU or ecm must be set.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER RLOHD_on_update BEFORE UPDATE ON RLOHD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DKCAJ FROM E2I7U WHERE id = NEW.LUEVY) NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'extra_cellular' OR DZLIM = 'OROPK')
+  THEN
+    -- SET @custom_error_message = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+  END IF;
+  IF
+    NEW.KLMAU IS NULL AND NEW.ecm IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either KLMAU or ecm must be set.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either KLMAU or ecm must be set.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER YK2GW_on_insert BEFORE INSERT ON YK2GW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TUXML IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.PAEF5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RUCY4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TPNJ6 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1, FPUYA = 1;
+END//
+----
+
+exec
+CREATE TRIGGER YK2GW_on_update BEFORE UPDATE ON YK2GW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IS NOT NULL AND (NEW.FTQLQ <> OLD.FTQLQ)
+  THEN
+    -- SET @custom_error_message = 'The FTQLQ of a cell line can not be modified. Delete and re-add if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The FTQLQ of a cell line can not be modified. Delete and re-add if necessary.';
+  END IF;
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TUXML IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.PAEF5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RUCY4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TPNJ6 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER IJLXP_on_insert BEFORE INSERT ON IJLXP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER IJLXP_on_update BEFORE UPDATE ON IJLXP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER JMRQL_on_insert BEFORE INSERT ON JMRQL
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER JMRQL_on_update BEFORE UPDATE ON JMRQL
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER JMRQL_on_delete BEFORE DELETE ON JMRQL
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A JMRQL can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A JMRQL can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER AMYXQ_on_insert BEFORE INSERT ON AMYXQ
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT FGG57 FROM E2I7U WHERE id = NEW.LUEVY) IS NULL
+  THEN
+    -- SET @custom_error_message = 'The given UWBAI can not be connected to a AMYXQ record as it does not have IYDZV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The given UWBAI can not be connected to a AMYXQ record as it does not have IYDZV.';
+  END IF;
+  IF
+    NEW.AMYXQ < 0 OR NEW.OZTQF < 0 OR NEW.Z35GY < 0
+  THEN
+    -- SET @custom_error_message = 'All values in AMYXQ must ne non-negative.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'All values in AMYXQ must ne non-negative.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER AMYXQ_on_update BEFORE UPDATE ON AMYXQ
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.GXLUB IS NOT NULL AND (NEW.GXLUB <> OLD.GXLUB)
+    OR
+    NEW.LUEVY IS NOT NULL AND (NEW.LUEVY <> OLD.LUEVY)
+    OR
+    NEW.KKGN5 IS NOT NULL AND (NEW.KKGN5 <> OLD.KKGN5)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    NEW.AMYXQ < 0 OR NEW.OZTQF < 0 OR NEW.Z35GY < 0
+  THEN
+    -- SET @custom_error_message = 'All values in AMYXQ must ne non-negative.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'All values in AMYXQ must ne non-negative.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER D34QP_on_insert BEFORE INSERT ON D34QP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TWMSR IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.QHMGE IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.MLNPU IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FI3GA IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZNP4P IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER D34QP_on_update BEFORE UPDATE ON D34QP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TWMSR IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.QHMGE IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.MLNPU IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FI3GA IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZNP4P IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER HGMQ6_on_insert BEFORE INSERT ON HGMQ6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TJPT7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ARN5P IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.XOSD4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDE43 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.HMW4H IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSDY2 NOT IN ('benign', 'VUS', 'SRARY', 'UBQWG')
+  THEN
+    -- SET @custom_error_message = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+  END IF;
+  IF NEW.LT7K6 IS NOT NULL AND NEW.SPPYD IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 has value, SPPYD must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 has value, SPPYD must be NULL.';
+  END IF;
+  IF NEW.LT7K6 IS NULL AND (NEW.SPPYD IS NULL OR NEW.SPPYD <> 0.5)
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER HGMQ6_on_update BEFORE UPDATE ON HGMQ6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.GXLUB IS NOT NULL AND (NEW.GXLUB <> OLD.GXLUB)
+    OR
+    NEW.LUEVY IS NOT NULL AND (NEW.LUEVY <> OLD.LUEVY)
+    OR
+    NEW.M22QN IS NOT NULL AND (NEW.M22QN <> OLD.M22QN)
+    OR
+    NEW.TEUJA IS NOT NULL AND (NEW.TEUJA <> OLD.TEUJA)
+    OR
+    NEW.QQV4M IS NOT NULL AND (NEW.QQV4M <> OLD.QQV4M)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    NEW.TJPT7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ARN5P IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.XOSD4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDE43 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.HMW4H IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSDY2 NOT IN ('benign', 'VUS', 'SRARY', 'UBQWG')
+  THEN
+    -- SET @custom_error_message = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+  END IF;
+  IF NEW.LT7K6 IS NOT NULL AND NEW.SPPYD IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 has value, SPPYD must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 has value, SPPYD must be NULL.';
+  END IF;
+  IF NEW.LT7K6 IS NULL AND (NEW.SPPYD IS NULL OR NEW.SPPYD <> 0.5)
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER TPXBU_on_insert BEFORE INSERT ON TPXBU
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.BTXC5 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER TPXBU_on_update BEFORE UPDATE ON TPXBU
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.BTXC5 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER YYBCX_on_insert BEFORE INSERT ON YYBCX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.ESFVY IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SL76B IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER YYBCX_on_update BEFORE UPDATE ON YYBCX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.ESFVY IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SL76B IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER YYBCX_on_delete BEFORE DELETE ON YYBCX
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'An YYBCX can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An YYBCX can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER HDDVB_on_update BEFORE UPDATE ON HDDVB
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FV24E IS NOT NULL AND (NEW.FV24E <> OLD.FV24E)
+    OR
+    NEW.UJ6XY IS NOT NULL AND (NEW.UJ6XY <> OLD.UJ6XY)
+    OR
+    NEW.M22QN IS NOT NULL AND (NEW.M22QN <> OLD.M22QN)
+    OR
+    NEW.ETPQV IS NOT NULL AND (NEW.ETPQV <> OLD.ETPQV)
+    OR
+    NEW.PRUV2 IS NOT NULL AND (NEW.PRUV2 <> OLD.PRUV2)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER ZYGMF_on_insert BEFORE INSERT ON ZYGMF
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER ZYGMF_on_update BEFORE UPDATE ON ZYGMF
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER ZYGMF_on_delete BEFORE DELETE ON ZYGMF
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A ZYGMF can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A ZYGMF can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER JDLNA_on_insert BEFORE INSERT ON JDLNA
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FWWIQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.O3QXW IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//
+----
+
+exec
+CREATE TRIGGER JDLNA_on_update BEFORE UPDATE ON JDLNA
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IS NOT NULL AND (NEW.FTQLQ <> OLD.FTQLQ)
+  THEN
+    -- SET @custom_error_message = 'The FTQLQ of a VCGT3 can not be modified. Delete and re-add if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The FTQLQ of a VCGT3 can not be modified. Delete and re-add if necessary.';
+  END IF;
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FWWIQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.O3QXW IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER BACOW_on_insert BEFORE INSERT ON BACOW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER BACOW_on_update BEFORE UPDATE ON BACOW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER SFEGG_on_insert BEFORE INSERT ON SFEGG
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NO52D IN (SELECT SVAZ4 FROM TPXHZ)
+    OR NEW.VYO5E IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ADURZ <= 0
+  THEN
+    -- SET @custom_error_message = 'ADURZ must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ADURZ must be positive.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER SFEGG_on_update BEFORE UPDATE ON SFEGG
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NO52D IN (SELECT SVAZ4 FROM TPXHZ)
+    OR NEW.VYO5E IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ADURZ <= 0
+  THEN
+    -- SET @custom_error_message = 'ADURZ must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ADURZ must be positive.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER FLQLP_on_insert BEFORE INSERT ON FLQLP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.V5DPX IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ZRV3B NOT IN ('=', '<=', '>=', '<', '>')
+  THEN
+    -- SET @custom_error_message = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER FLQLP_on_update BEFORE UPDATE ON FLQLP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FZ2R5 IS NOT NULL AND (NEW.FZ2R5 <> OLD.FZ2R5)
+    OR
+    NEW.LUEVY IS NOT NULL AND (NEW.LUEVY <> OLD.LUEVY)
+    OR
+    NEW.M22QN IS NOT NULL AND (NEW.M22QN <> OLD.M22QN)
+    OR
+    NEW.NRURT IS NOT NULL AND (NEW.NRURT <> OLD.NRURT)
+    OR
+    NEW.OCA7E IS NOT NULL AND (NEW.OCA7E <> OLD.OCA7E)
+    OR
+    NEW.XMM6Q IS NOT NULL AND (NEW.XMM6Q <> OLD.XMM6Q)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    NEW.V5DPX IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ZRV3B NOT IN ('=', '<=', '>=', '<', '>')
+  THEN
+    -- SET @custom_error_message = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER XOAOP_on_insert BEFORE INSERT ON XOAOP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER XOAOP_on_update BEFORE UPDATE ON XOAOP
+FOR EACH ROW
+BEGIN
+  IF
+    OLD.DZLIM = 'NER' AND NEW.DZLIM <> 'NER'
+    OR
+    OLD.DZLIM = 'BER' AND NEW.DZLIM <> 'BER'
+    OR
+    OLD.DZLIM = 'HR' AND NEW.DZLIM <> 'HR'
+    OR
+    OLD.DZLIM = 'MMR' AND NEW.DZLIM <> 'MMR'
+  THEN
+    -- SET @custom_error_message = 'NER, BER, HR and MMR ECUWUs can not be modified to another PV2SV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NER, BER, HR and MMR ECUWUs can not be modified to another PV2SV.';
+  END IF;
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER XOAOP_on_delete BEFORE DELETE ON XOAOP
+FOR EACH ROW
+BEGIN
+  IF
+    OLD.DZLIM IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'NER, BER, HR and MMR ECUWUs can not be deleted.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NER, BER, HR and MMR ECUWUs can not be deleted.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER PG27A_on_insert BEFORE INSERT ON PG27A
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER PG27A_on_update BEFORE UPDATE ON PG27A
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER NPCYY_on_insert BEFORE INSERT ON NPCYY
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.B5OUF <= 0
+  THEN
+    -- SET @custom_error_message = 'B5OUF must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'B5OUF must be positive.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER NPCYY_on_update BEFORE UPDATE ON NPCYY
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.B5OUF <= 0
+  THEN
+    -- SET @custom_error_message = 'B5OUF must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'B5OUF must be positive.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER FEIOE_on_insert BEFORE INSERT ON FEIOE
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FVGD2 NOT IN (0, 1)
+    OR
+    NEW.YP2CR NOT IN (0, 1)
+    OR
+    NEW.TQ7W3 NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER FEIOE_on_update BEFORE UPDATE ON FEIOE
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FVGD2 NOT IN (0, 1)
+    OR
+    NEW.YP2CR NOT IN (0, 1)
+    OR
+    NEW.TQ7W3 NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER SZQWJ_on_insert BEFORE INSERT ON SZQWJ
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+  IF
+    NEW.D237E NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The D237E field must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The D237E field must be either 0 or 1.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER SZQWJ_on_update BEFORE UPDATE ON SZQWJ
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CH3FR IS NOT NULL AND (NEW.CH3FR <> OLD.CH3FR)
+    OR
+    NEW.GXLUB IS NOT NULL AND (NEW.GXLUB <> OLD.GXLUB)
+    OR
+    NEW.JOGI6 IS NOT NULL AND (NEW.JOGI6 <> OLD.JOGI6)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+  IF
+    NEW.D237E NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The D237E field must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The D237E field must be either 0 or 1.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER JJGQT_on_insert BEFORE INSERT ON JJGQT
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER JJGQT_on_update BEFORE UPDATE ON JJGQT
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER moa_on_insert BEFORE INSERT ON moa
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER moa_on_update BEFORE UPDATE ON moa
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER ZTFET_on_insert BEFORE INSERT ON ZTFET
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CYZU6 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.AERTL IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SIJCN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RTLWN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZMABC IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER ZTFET_on_update BEFORE UPDATE ON ZTFET
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CYZU6 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.AERTL IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SIJCN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RTLWN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZMABC IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER S3FQX_on_insert BEFORE INSERT ON S3FQX
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Insertion is forbidden to S3FQX.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insertion is forbidden to S3FQX.';
+END//
+----
+
+exec
+CREATE TRIGGER S3FQX_on_update BEFORE UPDATE ON S3FQX
+FOR EACH ROW
+BEGIN
+  IF NEW.ADWYM NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The ADWYM field is an int boolean (0/1).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ADWYM field is an int boolean (0/1).';
+  END IF;
+  IF NEW.FPUYA NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The FPUYA field is an int boolean (0/1).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The FPUYA field is an int boolean (0/1).';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER S3FQX_on_delete BEFORE DELETE ON S3FQX
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from S3FQX.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from S3FQX.';
+END//
+----
+
+exec
+CREATE TRIGGER TPXBU_on_delete BEFORE DELETE ON TPXBU
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'An TPXBU can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An TPXBU can not be deleted now. If it is a use-case please contact platform team.';
+END//
+----
+
+exec
+CREATE TRIGGER THNTS_on_insert BEFORE INSERT ON THNTS
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.IXUXU IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The IXUXU field is mandatory.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER THNTS_on_update BEFORE UPDATE ON THNTS
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.IXUXU IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The IXUXU field is mandatory.';
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER E2I7U_on_insert BEFORE INSERT ON E2I7U
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TW55N IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FGG57 IS NOT NULL AND NEW.FGG57 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZH72S IS NOT NULL AND NEW.ZH72S IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSK67 NOT IN ('zero_based', 'one_based', 'O7VZD')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSK67 must be either zero_based, one_based, or O7VZD.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein' OR DZLIM = 'micro_rna')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein or micro_rna TAFAX UWBAIs can have IYDZV.';
+  END IF;
+  IF
+    NEW.ZH72S IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein TAFAX UWBAIs can have ZH72S.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.TCE7A IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'TCE7A is mandatory if UWBAI has IYDZV.';
+  END IF;
+  IF
+    NEW.KNG7T IS NOT NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'On insertion KNG7T must be null. The build-in process will find a correspondig for it.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL OR NEW.ZH72S IS NOT NULL
+  THEN
+    UPDATE S3FQX SET ADWYM = 1, FPUYA = 1;
+  END IF;
+END//
+----
+
+exec
+CREATE TRIGGER E2I7U_on_update BEFORE UPDATE ON E2I7U
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TW55N IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FGG57 IS NOT NULL AND NEW.FGG57 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZH72S IS NOT NULL AND NEW.ZH72S IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSK67 NOT IN ('zero_based', 'one_based', 'O7VZD')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSK67 must be either zero_based, one_based, or O7VZD.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein' OR DZLIM = 'micro_rna')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein or micro_rna TAFAX UWBAIs can have IYDZV.';
+  END IF;
+  IF
+    NEW.ZH72S IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein TAFAX UWBAIs can have ZH72S.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.TCE7A IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'TCE7A is mandatory if UWBAI has IYDZV.';
+  END IF;
+END//
+----

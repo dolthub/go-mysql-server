@@ -20,12 +20,16 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Set represents a set statement. This can be variables, but in some instances can also refer to row values.
 type Set struct {
 	Exprs []sql.Expression
 }
+
+var _ sql.Node = (*Set)(nil)
+var _ sql.CollationCoercible = (*Set)(nil)
 
 // NewSet creates a new Set node.
 func NewSet(vars []sql.Expression) *Set {
@@ -58,6 +62,11 @@ func (s *Set) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (s *Set) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: determine which variables cannot be set without a privilege check
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Set) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithExpressions implements the sql.Expressioner interface.
@@ -131,7 +140,9 @@ func setUserVar(ctx *sql.Context, userVar *expression.UserVar, right sql.Express
 	if err != nil {
 		return err
 	}
-	err = ctx.SetUserVariable(ctx, userVar.Name, val)
+	typ := types.ApproximateTypeFromValue(val)
+
+	err = ctx.SetUserVariable(ctx, userVar.Name, val, typ)
 	if err != nil {
 		return err
 	}
@@ -200,7 +211,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 			Scope: sysVar.Scope,
 		}
 		if val == nil {
-			err = setSystemVar(ctx, newSysVar, expression.NewLiteral("", sql.LongText), row)
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral("", types.LongText), row)
 			if err != nil {
 				return err
 			}
@@ -214,7 +225,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 				return err
 			}
 			charset = charset
-			err = setSystemVar(ctx, newSysVar, expression.NewLiteral(charset.DefaultCollation().Name(), sql.LongText), row)
+			err = setSystemVar(ctx, newSysVar, expression.NewLiteral(charset.DefaultCollation().Name(), types.LongText), row)
 			if err != nil {
 				return err
 			}

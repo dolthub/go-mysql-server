@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type LoadFile struct {
@@ -27,6 +28,7 @@ type LoadFile struct {
 }
 
 var _ sql.FunctionExpression = (*LoadFile)(nil)
+var _ sql.CollationCoercible = (*LoadFile)(nil)
 
 // NewLoadFile returns a LoadFile object for the LOAD_FILE() function.
 func NewLoadFile(fileName sql.Expression) sql.Expression {
@@ -52,7 +54,12 @@ func (l *LoadFile) String() string {
 
 // Type implements sql.Expression.
 func (l *LoadFile) Type() sql.Type {
-	return sql.LongBlob
+	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LoadFile) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression.
