@@ -209,7 +209,6 @@ func isPointWithin(p types.Point, g types.GeometryValue) bool {
 	return false
 }
 
-// TODO: consider parallelization
 func isWithin(g1, g2 types.GeometryValue) bool {
 	switch g1 := g1.(type) {
 	case types.Point:
@@ -222,7 +221,7 @@ func isWithin(g1, g2 types.GeometryValue) bool {
 	case types.GeomColl:
 		// TODO (james): implement these
 	}
-	return true
+	return false
 }
 
 // Eval implements the sql.Expression interface.
