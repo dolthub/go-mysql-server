@@ -28,6 +28,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Rand returns a random float 0 <= x < 1. If it has an argument, that argument will be used to seed the random number
@@ -39,6 +40,7 @@ type Rand struct {
 var _ sql.Expression = (*Rand)(nil)
 var _ sql.NonDeterministicExpression = (*Rand)(nil)
 var _ sql.FunctionExpression = (*Rand)(nil)
+var _ sql.CollationCoercible = (*Rand)(nil)
 
 // NewRand creates a new Rand expression.
 func NewRand(exprs ...sql.Expression) (sql.Expression, error) {
@@ -63,7 +65,12 @@ func (r *Rand) Description() string {
 
 // Type implements sql.Expression.
 func (r *Rand) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Rand) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNonDeterministic implements sql.NonDeterministicExpression
@@ -123,8 +130,8 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var seed int64
-	if sql.IsNumber(r.Child.Type()) {
-		e, err = sql.Int64.Convert(e)
+	if types.IsNumber(r.Child.Type()) {
+		e, err = types.Int64.Convert(e)
 		if err == nil {
 			seed = e.(int64)
 		}
@@ -139,15 +146,21 @@ type Sin struct {
 }
 
 var _ sql.FunctionExpression = (*Sin)(nil)
+var _ sql.CollationCoercible = (*Sin)(nil)
 
 // NewSin returns a new SIN function expression
 func NewSin(arg sql.Expression) sql.Expression {
-	return &Sin{NewUnaryFunc(arg, "SIN", sql.Float64)}
+	return &Sin{NewUnaryFunc(arg, "SIN", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (s *Sin) Description() string {
 	return "returns the sine of the expression given."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Sin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -161,7 +174,7 @@ func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -182,15 +195,21 @@ type Cos struct {
 }
 
 var _ sql.FunctionExpression = (*Cos)(nil)
+var _ sql.CollationCoercible = (*Cos)(nil)
 
 // NewCos returns a new COS function expression
 func NewCos(arg sql.Expression) sql.Expression {
-	return &Cos{NewUnaryFunc(arg, "COS", sql.Float64)}
+	return &Cos{NewUnaryFunc(arg, "COS", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (s *Cos) Description() string {
 	return "returns the cosine of an expression."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Cos) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -204,7 +223,7 @@ func (s *Cos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -225,15 +244,21 @@ type Tan struct {
 }
 
 var _ sql.FunctionExpression = (*Tan)(nil)
+var _ sql.CollationCoercible = (*Tan)(nil)
 
 // NewTan returns a new TAN function expression
 func NewTan(arg sql.Expression) sql.Expression {
-	return &Tan{NewUnaryFunc(arg, "TAN", sql.Float64)}
+	return &Tan{NewUnaryFunc(arg, "TAN", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (t *Tan) Description() string {
 	return "returns the tangent of the expression given."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Tan) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -247,7 +272,7 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -268,15 +293,21 @@ type Asin struct {
 }
 
 var _ sql.FunctionExpression = (*Asin)(nil)
+var _ sql.CollationCoercible = (*Asin)(nil)
 
 // NewAsin returns a new ASIN function expression
 func NewAsin(arg sql.Expression) sql.Expression {
-	return &Asin{NewUnaryFunc(arg, "ASIN", sql.Float64)}
+	return &Asin{NewUnaryFunc(arg, "ASIN", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (a *Asin) Description() string {
 	return "returns the arcsin of an expression."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Asin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -290,7 +321,7 @@ func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -311,15 +342,21 @@ type Acos struct {
 }
 
 var _ sql.FunctionExpression = (*Acos)(nil)
+var _ sql.CollationCoercible = (*Acos)(nil)
 
 // NewAcos returns a new ACOS function expression
 func NewAcos(arg sql.Expression) sql.Expression {
-	return &Acos{NewUnaryFunc(arg, "ACOS", sql.Float64)}
+	return &Acos{NewUnaryFunc(arg, "ACOS", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (a *Acos) Description() string {
 	return "returns the arccos of an expression."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Acos) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -333,7 +370,7 @@ func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -354,15 +391,21 @@ type Atan struct {
 }
 
 var _ sql.FunctionExpression = (*Atan)(nil)
+var _ sql.CollationCoercible = (*Atan)(nil)
 
 // NewAtan returns a new ATAN function expression
 func NewAtan(arg sql.Expression) sql.Expression {
-	return &Atan{NewUnaryFunc(arg, "ATAN", sql.Float64)}
+	return &Atan{NewUnaryFunc(arg, "ATAN", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (a *Atan) Description() string {
 	return "returns the arctan of an expression."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Atan) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -376,7 +419,7 @@ func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -397,15 +440,21 @@ type Cot struct {
 }
 
 var _ sql.FunctionExpression = (*Cot)(nil)
+var _ sql.CollationCoercible = (*Cot)(nil)
 
 // NewCot returns a new COT function expression
 func NewCot(arg sql.Expression) sql.Expression {
-	return &Cot{NewUnaryFunc(arg, "COT", sql.Float64)}
+	return &Cot{NewUnaryFunc(arg, "COT", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (c *Cot) Description() string {
 	return "returns the arctangent of an expression."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Cot) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -419,7 +468,7 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -440,10 +489,11 @@ type Degrees struct {
 }
 
 var _ sql.FunctionExpression = (*Degrees)(nil)
+var _ sql.CollationCoercible = (*Degrees)(nil)
 
 // NewDegrees returns a new DEGREES function expression
 func NewDegrees(arg sql.Expression) sql.Expression {
-	return &Degrees{NewUnaryFunc(arg, "DEGREES", sql.Float64)}
+	return &Degrees{NewUnaryFunc(arg, "DEGREES", types.Float64)}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -454,6 +504,11 @@ func (d *Degrees) FunctionName() string {
 // Description implements sql.FunctionExpression
 func (d *Degrees) Description() string {
 	return "returns the number of degrees in the radian expression given."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Degrees) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -467,7 +522,7 @@ func (d *Degrees) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -488,15 +543,21 @@ type Radians struct {
 }
 
 var _ sql.FunctionExpression = (*Radians)(nil)
+var _ sql.CollationCoercible = (*Radians)(nil)
 
 // NewRadians returns a new RADIANS function expression
 func NewRadians(arg sql.Expression) sql.Expression {
-	return &Radians{NewUnaryFunc(arg, "RADIANS", sql.Float64)}
+	return &Radians{NewUnaryFunc(arg, "RADIANS", types.Float64)}
 }
 
 // Description implements sql.FunctionExpression
 func (r *Radians) Description() string {
 	return "returns the radian value of the degrees argument given."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Radians) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -510,7 +571,7 @@ func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := sql.Float64.Convert(val)
+	n, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -531,15 +592,21 @@ type Crc32 struct {
 }
 
 var _ sql.FunctionExpression = (*Crc32)(nil)
+var _ sql.CollationCoercible = (*Crc32)(nil)
 
 // NewCrc32 returns a new CRC32 function expression
 func NewCrc32(arg sql.Expression) sql.Expression {
-	return &Crc32{NewUnaryFunc(arg, "CRC32", sql.Uint32)}
+	return &Crc32{NewUnaryFunc(arg, "CRC32", types.Uint32)}
 }
 
 // Description implements sql.FunctionExpression
 func (c *Crc32) Description() string {
 	return "returns the cyclic redundancy check value of a given string as a 32-bit unsigned value."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Crc32) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -558,7 +625,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case string:
 		bytes = []byte(val)
 	case int8, int16, int32, int64, int:
-		val, err := sql.Int64.Convert(arg)
+		val, err := types.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -566,7 +633,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		bytes = []byte(strconv.FormatInt(val.(int64), 10))
 	case uint8, uint16, uint32, uint64, uint:
-		val, err := sql.Uint64.Convert(arg)
+		val, err := types.Uint64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -616,10 +683,11 @@ type Sign struct {
 }
 
 var _ sql.FunctionExpression = (*Sign)(nil)
+var _ sql.CollationCoercible = (*Sign)(nil)
 
 // NewSign returns a new SIGN function expression
 func NewSign(arg sql.Expression) sql.Expression {
-	return &Sign{NewUnaryFunc(arg, "SIGN", sql.Int8)}
+	return &Sign{NewUnaryFunc(arg, "SIGN", types.Int8)}
 }
 
 var negativeSignRegex = regexp.MustCompile(`^-[0-9]*\.?[0-9]*[1-9]`)
@@ -628,6 +696,11 @@ var positiveSignRegex = regexp.MustCompile(`^+?[0-9]*\.?[0-9]*[1-9]`)
 // Description implements sql.FunctionExpression
 func (s *Sign) Description() string {
 	return "returns the sign of the argument."
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Sign) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements sql.Expression
@@ -643,7 +716,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch typedVal := arg.(type) {
 	case int8, int16, int32, int64, float64, float32, int, decimal.Decimal:
-		val, err := sql.Int64.Convert(arg)
+		val, err := types.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -659,7 +732,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int8(1), nil
 
 	case uint8, uint16, uint32, uint64, uint:
-		val, err := sql.Uint64.Convert(arg)
+		val, err := types.Uint64.Convert(arg)
 
 		if err != nil {
 			return nil, err

@@ -31,6 +31,7 @@ type ForeignKeyHandler struct {
 }
 
 var _ sql.Node = (*ForeignKeyHandler)(nil)
+var _ sql.CollationCoercible = (*ForeignKeyHandler)(nil)
 var _ sql.Table = (*ForeignKeyHandler)(nil)
 var _ sql.InsertableTable = (*ForeignKeyHandler)(nil)
 var _ sql.ReplaceableTable = (*ForeignKeyHandler)(nil)
@@ -49,6 +50,10 @@ func (n *ForeignKeyHandler) Resolved() bool {
 // String implements the interface sql.Node.
 func (n *ForeignKeyHandler) String() string {
 	return n.OriginalNode.String()
+}
+
+func (n *ForeignKeyHandler) DebugString() string {
+	return sql.DebugString(n.OriginalNode)
 }
 
 // Schema implements the interface sql.Node.
@@ -90,9 +95,14 @@ func (n *ForeignKeyHandler) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 	return n.OriginalNode.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ForeignKeyHandler) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // Name implements the interface sql.Table.
 func (n *ForeignKeyHandler) Name() string {
-	return n.Name()
+	return n.Table.Name()
 }
 
 // Partitions implements the interface sql.Table.

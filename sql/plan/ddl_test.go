@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestCreateTable(t *testing.T) {
@@ -33,8 +34,8 @@ func TestCreateTable(t *testing.T) {
 	require.False(ok)
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c1", Type: sql.Text},
-		{Name: "c2", Type: sql.Int32},
+		{Name: "c1", Type: types.Text},
+		{Name: "c2", Type: types.Int32},
 	})
 
 	require.NoError(createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent))
@@ -61,8 +62,8 @@ func TestDropTable(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c1", Type: sql.Text},
-		{Name: "c2", Type: sql.Int32},
+		{Name: "c1", Type: types.Text},
+		{Name: "c2", Type: types.Int32},
 	})
 
 	require.NoError(createTable(t, db, "testTable1", s, IfNotExistsAbsent, IsTempTableAbsent))
@@ -75,7 +76,7 @@ func TestDropTable(t *testing.T) {
 
 	r, err := rows.Next(ctx)
 	require.Nil(err)
-	require.Equal(sql.NewRow(sql.NewOkResult(0)), r)
+	require.Equal(sql.NewRow(types.NewOkResult(0)), r)
 
 	r, err = rows.Next(ctx)
 	require.Equal(io.EOF, err)
@@ -110,7 +111,7 @@ func createTable(t *testing.T, db sql.Database, name string, schema sql.PrimaryK
 	ctx := sql.NewEmptyContext()
 	r, err := rows.Next(ctx)
 	require.Nil(t, err)
-	require.Equal(t, sql.NewRow(sql.NewOkResult(0)), r)
+	require.Equal(t, sql.NewRow(types.NewOkResult(0)), r)
 
 	r, err = rows.Next(ctx)
 	require.Equal(t, io.EOF, err)

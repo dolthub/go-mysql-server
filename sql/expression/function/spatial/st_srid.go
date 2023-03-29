@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // SRID is a function that returns SRID of Geometry object or returns a new object with altered SRID.
@@ -30,6 +31,7 @@ type SRID struct {
 }
 
 var _ sql.FunctionExpression = (*SRID)(nil)
+var _ sql.CollationCoercible = (*SRID)(nil)
 
 var ErrInvalidSRID = errors.NewKind("There's no spatial reference with SRID %d")
 
@@ -54,10 +56,15 @@ func (s *SRID) Description() string {
 // Type implements the sql.Expression interface.
 func (s *SRID) Type() sql.Type {
 	if len(s.ChildExpressions) == 1 {
-		return sql.Int32
+		return types.Int32
 	} else {
 		return s.ChildExpressions[0].Type()
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SRID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *SRID) String() string {
@@ -87,7 +94,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// If just one argument, return SRID
 	if len(s.ChildExpressions) == 1 {
 		switch g := g.(type) {
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return g.GetSRID(), nil
 		default:
 			return nil, sql.ErrIllegalGISValue.New(g)
@@ -103,7 +110,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := sql.Uint32.Convert(v)
+	val, err := types.Uint32.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +122,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Create new geometry object with matching SRID
 	switch g := g.(type) {
-	case sql.GeometryValue:
+	case types.GeometryValue:
 		return g.SetSRID(srid), nil
 	default:
 		return nil, sql.ErrIllegalGISValue.New(g)

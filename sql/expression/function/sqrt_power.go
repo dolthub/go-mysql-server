@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Sqrt is a function that returns the square value of the number provided.
@@ -28,6 +29,7 @@ type Sqrt struct {
 }
 
 var _ sql.FunctionExpression = (*Sqrt)(nil)
+var _ sql.CollationCoercible = (*Sqrt)(nil)
 
 // NewSqrt creates a new Sqrt expression.
 func NewSqrt(e sql.Expression) sql.Expression {
@@ -50,7 +52,12 @@ func (s *Sqrt) String() string {
 
 // Type implements the Expression interface.
 func (s *Sqrt) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Sqrt) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.
@@ -78,7 +85,7 @@ func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	child, err = sql.Float64.Convert(child)
+	child, err = types.Float64.Convert(child)
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +99,7 @@ type Power struct {
 }
 
 var _ sql.FunctionExpression = (*Power)(nil)
+var _ sql.CollationCoercible = (*Power)(nil)
 
 // NewPower creates a new Power expression.
 func NewPower(e1, e2 sql.Expression) sql.Expression {
@@ -114,7 +122,12 @@ func (p *Power) Description() string {
 }
 
 // Type implements the Expression interface.
-func (p *Power) Type() sql.Type { return sql.Float64 }
+func (p *Power) Type() sql.Type { return types.Float64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Power) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // IsNullable implements the Expression interface.
 func (p *Power) IsNullable() bool { return p.Left.IsNullable() || p.Right.IsNullable() }
@@ -142,7 +155,7 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	left, err = sql.Float64.Convert(left)
+	left, err = types.Float64.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +169,7 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	right, err = sql.Float64.Convert(right)
+	right, err = types.Float64.Convert(right)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ProcedureLogicTests = []ScriptTest{
@@ -239,7 +240,7 @@ END;`,
 				Query: "CALL p1(2)",
 				Expected: []sql.Row{
 					{
-						sql.NewOkResult(2),
+						types.NewOkResult(2),
 					},
 				},
 			},
@@ -263,6 +264,213 @@ END;`,
 					{
 						int64(2003),
 					},
+				},
+			},
+		},
+	},
+	{
+		Name: "REPEAT loop over user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(p1 INT)
+BEGIN
+	SET @x = 0;
+	REPEAT SET @x = @x + 1; UNTIL @x > p1 END REPEAT;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1(0)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "CALL p1(1)",
+				Expected: []sql.Row{{}, {}}, // Next calls return an empty row, but progress the loop
+			},
+			{
+				Query:    "CALL p1(2)",
+				Expected: []sql.Row{{}, {}, {}},
+			},
+		},
+	},
+	{
+		Name: "WHILE loop over user variable",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(p1 INT)
+BEGIN
+	SET @x = 0;
+	WHILE @x <= p1 DO
+		SET @x = @x + 1;
+	END WHILE;
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL p1(0)",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "CALL p1(1)",
+				Expected: []sql.Row{{}, {}},
+			},
+			{
+				Query:    "CALL p1(2)",
+				Expected: []sql.Row{{}, {}, {}},
+			},
+		},
+	},
+	{
+		Name: "CASE statements",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE
+			WHEN a < 4 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+			WHEN a < 8 THEN
+				SET b = CONCAT(b, "b");
+				SET a = a + 1;
+			ELSE
+				LEAVE tloop;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p2(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE a
+			WHEN 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+			WHEN 2 THEN
+				SET b = CONCAT(b, "b");
+				SET a = a + 1;
+			WHEN 3 THEN
+				SET b = CONCAT(b, "c");
+				SET a = a + 1;
+			ELSE
+				LEAVE tloop;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p3(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE a
+			WHEN 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p4(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	tloop: LOOP
+		CASE
+			WHEN a = 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+		END CASE;
+	END LOOP;
+	SELECT b;
+END;`,
+			`CREATE PROCEDURE p5(IN a BIGINT)
+BEGIN
+	DECLARE b VARCHAR(200) DEFAULT "";
+	REPEAT
+		CASE
+			WHEN a <= 1 THEN
+				SET b = CONCAT(b, "a");
+				SET a = a + 1;
+		END CASE;
+	UNTIL a > 1
+	END REPEAT;
+	SELECT b;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(0)",
+				Expected: []sql.Row{
+					{"aaaabbbb"},
+				},
+			},
+			{
+				Query: "CALL p1(3)",
+				Expected: []sql.Row{
+					{"abbbb"},
+				},
+			},
+			{
+				Query: "CALL p1(6)",
+				Expected: []sql.Row{
+					{"bb"},
+				},
+			},
+			{
+				Query: "CALL p1(9)",
+				Expected: []sql.Row{
+					{""},
+				},
+			},
+			{
+				Query: "CALL p2(1)",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "CALL p2(2)",
+				Expected: []sql.Row{
+					{"bc"},
+				},
+			},
+			{
+				Query: "CALL p2(3)",
+				Expected: []sql.Row{
+					{"c"},
+				},
+			},
+			{
+				Query: "CALL p2(4)",
+				Expected: []sql.Row{
+					{""},
+				},
+			},
+			{
+				Query:          "CALL p3(1)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query:          "CALL p3(2)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query:          "CALL p4(1)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query:          "CALL p4(-1)",
+				ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+			},
+			{
+				Query: "CALL p5(0)",
+				Expected: []sql.Row{
+					{"aa"},
+				},
+			},
+			{
+				Query: "CALL p5(1)",
+				Expected: []sql.Row{
+					{"a"},
 				},
 			},
 		},
@@ -421,7 +629,7 @@ INSERT INTO items (item) VALUES (txt)`,
 			{
 				Query: "CALL add_item('A test item');",
 				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1, InsertID: 1}},
+					{types.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
 			},
 			{
@@ -477,7 +685,7 @@ END`,
 			{
 				Query: "CALL add_item(6);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(3)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
@@ -996,7 +1204,78 @@ END;`,
 		},
 	},
 	{
-		Name: "ITERATE and LEAVE loops",
+		Name: "Labeled BEGIN...END",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT DEFAULT 1;
+	tblock: BEGIN
+		LOOP
+			SET a = a + 3;
+			LEAVE tblock;
+		END LOOP;
+	END;
+	SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+			{
+				Query:       `CREATE PROCEDURE p2() BEGIN tblock: BEGIN ITERATE tblock; END; END;`,
+				ExpectedErr: sql.ErrLoopLabelNotFound,
+			},
+		},
+	},
+	{
+		Name: "REPEAT runs loop before first evaluation",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT DEFAULT 10;
+	REPEAT
+		SET a = a * 5;
+	UNTIL a > 0
+	END REPEAT;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+		},
+	},
+	{
+		Name: "WHILE runs evaluation before first loop",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a INT DEFAULT 10;
+	WHILE a < 10 DO
+		SET a = a * 10;
+	END WHILE;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE LOOP",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
 			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
@@ -1016,6 +1295,77 @@ BEGIN
 				LEAVE tloop;
             END IF;
 		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{2230},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE REPEAT",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND BEGIN END;
+    OPEN cur1;
+    BEGIN
+		tloop: REPEAT
+			FETCH cur1 INTO b;
+			SET a = (a + b) * 10;
+            IF a < 1000 THEN
+				ITERATE tloop;
+			ELSE
+				LEAVE tloop;
+            END IF;
+		UNTIL false
+		END REPEAT;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1();",
+				Expected: []sql.Row{
+					{2230},
+				},
+			},
+		},
+	},
+	{
+		Name: "ITERATE and LEAVE WHILE",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9)`,
+			`CREATE PROCEDURE p1()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+	DECLARE EXIT HANDLER FOR NOT FOUND BEGIN END;
+    OPEN cur1;
+    BEGIN
+		tloop: WHILE true DO
+			FETCH cur1 INTO b;
+			SET a = (a + b) * 10;
+            IF a < 1000 THEN
+				ITERATE tloop;
+			ELSE
+				LEAVE tloop;
+            END IF;
+		END WHILE;
     END;
     CLOSE cur1;
     SELECT a;
@@ -1084,7 +1434,7 @@ END`,
 			{
 				Query: "call create_cal_entries_for_event('cb8ba301-6c27-4bf8-b99b-617082d72621');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -1269,7 +1619,7 @@ END;`,
 			},
 			{
 				Query:    "alter table t drop other;",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1289,7 +1639,7 @@ END;`,
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN other INT",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1301,7 +1651,7 @@ END;`,
 			},
 			{
 				Query:    "INSERT INTO t VALUES (4, 4), (5, 5), (6, 6);",
-				Expected: []sql.Row{{sql.NewOkResult(3)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "CALL stable();",
@@ -1657,7 +2007,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CALL p1('hi')",
-				ExpectedErr: sql.ErrConvertingToTime,
+				ExpectedErr: types.ErrConvertingToTime,
 			},
 		},
 	},
@@ -1755,6 +2105,29 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
+
+	{
+		Name: "String literals with escaped chars",
+		SetUpScript: []string{
+			`CREATE PROCEDURE joe(IN str VARCHAR(15)) SELECT CONCAT('joe''s bar:', str);`,
+			`CREATE PROCEDURE jill(IN str VARCHAR(15)) SELECT CONCAT('jill\'s bar:', str);`,
+			`CREATE PROCEDURE stan(IN str VARCHAR(15)) SELECT CONCAT("stan\'s bar:", str);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL joe('open')",
+				Expected: []sql.Row{{"joe's bar:open"}},
+			},
+			{
+				Query:    "CALL jill('closed')",
+				Expected: []sql.Row{{"jill's bar:closed"}},
+			},
+			{
+				Query:    "CALL stan('quarantined')",
+				Expected: []sql.Row{{"stan's bar:quarantined"}},
+			},
+		},
+	},
 }
 
 var ProcedureDropTests = []ScriptTest{
@@ -1838,7 +2211,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -1869,7 +2242,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -1917,7 +2290,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -1979,7 +2352,7 @@ var ProcedureShowStatus = []ScriptTest{
 						"mydb",                // Db
 						"p2",                  // Name
 						"PROCEDURE",           // Type
-						"`user`@`%`",          // Definer
+						"user@%",              // Definer
 						time.Unix(0, 0).UTC(), // Modified
 						time.Unix(0, 0).UTC(), // Created
 						"INVOKER",             // Security_type
@@ -2067,7 +2440,7 @@ var NoDbProcedureTests = []ScriptTestAssertion{
 	},
 	{
 		Query:    "CREATE PROCEDURE mydb.p5() SELECT 42;",
-		Expected: []sql.Row{{sql.NewOkResult(0)}},
+		Expected: []sql.Row{{types.NewOkResult(0)}},
 	},
 	{
 		Query:            "SHOW CREATE PROCEDURE mydb.p5;",

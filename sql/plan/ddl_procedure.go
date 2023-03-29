@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type CreateProcedure struct {
@@ -32,6 +33,7 @@ type CreateProcedure struct {
 var _ sql.Node = (*CreateProcedure)(nil)
 var _ sql.Databaser = (*CreateProcedure)(nil)
 var _ sql.DebugStringer = (*CreateProcedure)(nil)
+var _ sql.CollationCoercible = (*CreateProcedure)(nil)
 
 // NewCreateProcedure returns a *CreateProcedure node.
 func NewCreateProcedure(
@@ -109,6 +111,11 @@ func (c *CreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *CreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_CreateRoutine))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the sql.Node interface.
@@ -201,7 +208,7 @@ func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.Row{sql.NewOkResult(0)}, nil
+	return sql.Row{types.NewOkResult(0)}, nil
 }
 
 // Close implements the sql.RowIter interface.

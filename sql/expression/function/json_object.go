@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_OBJECT([key, val[, key, val] ...])
@@ -31,6 +32,7 @@ type JSONObject struct {
 }
 
 var _ sql.FunctionExpression = JSONObject{}
+var _ sql.CollationCoercible = JSONObject{}
 
 // NewJSONObject creates a new JSONObject function.
 func NewJSONObject(exprs ...sql.Expression) (sql.Expression, error) {
@@ -78,7 +80,12 @@ func (j JSONObject) String() string {
 }
 
 func (j JSONObject) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (JSONObject) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
 func (j JSONObject) IsNullable() bool {
@@ -95,13 +102,13 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			val, err := sql.LongText.Convert(val)
+			val, err := types.LongText.Convert(val)
 			if err != nil {
 				return nil, err
 			}
 			key = val.(string)
 		} else {
-			if json, ok := val.(sql.JSONValue); ok {
+			if json, ok := val.(types.JSONValue); ok {
 				doc, err := json.Unmarshall(ctx)
 				if err != nil {
 					return nil, err
@@ -112,7 +119,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	return sql.JSONDocument{Val: obj}, nil
+	return types.JSONDocument{Val: obj}, nil
 }
 
 func (j JSONObject) Children() []sql.Expression {

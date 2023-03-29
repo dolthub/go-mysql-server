@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrUnsupportedType is returned when a query argument of an unsupported type is passed to a statement
@@ -32,24 +33,24 @@ var ErrUnsupportedType = errors.New("unsupported type")
 
 func valueToExpr(v driver.Value) (sql.Expression, error) {
 	if v == nil {
-		return expression.NewLiteral(nil, sql.Null), nil
+		return expression.NewLiteral(nil, types.Null), nil
 	}
 
 	var typ sql.Type
 	var err error
 	switch v := v.(type) {
 	case int64:
-		typ = sql.Int64
+		typ = types.Int64
 	case float64:
-		typ = sql.Float64
+		typ = types.Float64
 	case bool:
-		typ = sql.Boolean
+		typ = types.Boolean
 	case []byte:
-		typ, err = sql.CreateStringWithDefaults(sqltypes.Blob, int64(len(v)))
+		typ, err = types.CreateStringWithDefaults(sqltypes.Blob, int64(len(v)))
 	case string:
-		typ, err = sql.CreateStringWithDefaults(sqltypes.Text, int64(len(v)))
+		typ, err = types.CreateStringWithDefaults(sqltypes.Text, int64(len(v)))
 	case time.Time:
-		typ = sql.Datetime
+		typ = types.Datetime
 	default:
 		return nil, fmt.Errorf("%w: %T", ErrUnsupportedType, v)
 	}
@@ -93,7 +94,7 @@ func namedValuesToBindings(v []driver.NamedValue) (map[string]sql.Expression, er
 	for _, v := range v {
 		name := v.Name
 		if name == "" {
-			name = strconv.FormatInt(int64(v.Ordinal), 10)
+			name = "v" + strconv.FormatInt(int64(v.Ordinal), 10)
 		}
 
 		b[name], err = valueToExpr(v.Value)

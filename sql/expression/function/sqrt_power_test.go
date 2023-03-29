@@ -22,11 +22,12 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestSqrt(t *testing.T) {
 	f := NewSqrt(
-		expression.NewGetField(0, sql.Float64, "n", false),
+		expression.NewGetField(0, types.Float64, "n", false),
 	)
 	testCases := []struct {
 		name     string
@@ -58,7 +59,7 @@ func TestSqrt(t *testing.T) {
 
 	// Test negative number
 	f = NewSqrt(
-		expression.NewGetField(0, sql.Float64, "n", false),
+		expression.NewGetField(0, types.Float64, "n", false),
 	)
 	require := require.New(t)
 	v, err := f.Eval(sql.NewEmptyContext(), []interface{}{float64(-4)})
@@ -75,17 +76,17 @@ func TestPower(t *testing.T) {
 		expected interface{}
 		err      bool
 	}{
-		{"Base and exp are nil", sql.Float64, sql.NewRow(nil, nil), nil, false},
-		{"Base is nil", sql.Float64, sql.NewRow(2, nil), nil, false},
-		{"Exp is nil", sql.Float64, sql.NewRow(nil, 2), nil, false},
+		{"Base and exp are nil", types.Float64, sql.NewRow(nil, nil), nil, false},
+		{"Base is nil", types.Float64, sql.NewRow(2, nil), nil, false},
+		{"Exp is nil", types.Float64, sql.NewRow(nil, 2), nil, false},
 
-		{"Base is 0", sql.Float64, sql.NewRow(0, 2), float64(0), false},
-		{"Base and exp is 0", sql.Float64, sql.NewRow(0, 0), float64(1), false},
-		{"Exp is 0", sql.Float64, sql.NewRow(2, 0), float64(1), false},
-		{"Base is negative", sql.Float64, sql.NewRow(-2, 2), float64(4), false},
-		{"Exp is negative", sql.Float64, sql.NewRow(2, -2), float64(0.25), false},
-		{"Base and exp are invalid strings", sql.Float64, sql.NewRow("a", "b"), nil, true},
-		{"Base and exp are valid strings", sql.Float64, sql.NewRow("2", "2"), float64(4), false},
+		{"Base is 0", types.Float64, sql.NewRow(0, 2), float64(0), false},
+		{"Base and exp is 0", types.Float64, sql.NewRow(0, 0), float64(1), false},
+		{"Exp is 0", types.Float64, sql.NewRow(2, 0), float64(1), false},
+		{"Base is negative", types.Float64, sql.NewRow(-2, 2), float64(4), false},
+		{"Exp is negative", types.Float64, sql.NewRow(2, -2), float64(0.25), false},
+		{"Base and exp are invalid strings", types.Float64, sql.NewRow("a", "b"), nil, true},
+		{"Base and exp are valid strings", types.Float64, sql.NewRow("2", "2"), float64(4), false},
 	}
 	for _, tt := range testCases {
 		f := NewPower(
@@ -109,8 +110,8 @@ func TestPower(t *testing.T) {
 
 	// Test inf numbers
 	f := NewPower(
-		expression.NewGetField(0, sql.Float64, "", false),
-		expression.NewGetField(1, sql.Float64, "", false),
+		expression.NewGetField(0, types.Float64, "", false),
+		expression.NewGetField(1, types.Float64, "", false),
 	)
 	require := require.New(t)
 	v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(2, math.Inf(1)))

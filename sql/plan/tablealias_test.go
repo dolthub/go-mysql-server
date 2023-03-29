@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestTableAlias(t *testing.T) {
@@ -29,8 +30,8 @@ func TestTableAlias(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	table := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Text, Nullable: true},
-		{Name: "b", Type: sql.Text, Nullable: true},
+		{Name: "a", Type: types.Text, Nullable: true},
+		{Name: "b", Type: types.Text, Nullable: true},
 	}), nil)
 	alias := NewTableAlias("foo", NewResolvedTable(table, nil, nil))
 
@@ -45,8 +46,8 @@ func TestTableAlias(t *testing.T) {
 	}
 
 	require.Equal(sql.Schema{
-		{Name: "a", Source: "foo", Type: sql.Text, Nullable: true},
-		{Name: "b", Source: "foo", Type: sql.Text, Nullable: true},
+		{Name: "a", Source: "foo", Type: types.Text, Nullable: true},
+		{Name: "b", Source: "foo", Type: types.Text, Nullable: true},
 	}, alias.Schema())
 	iter, err := alias.RowIter(ctx, nil)
 	require.NoError(err)

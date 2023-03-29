@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/memory"
 )
@@ -28,7 +29,7 @@ const DualTableName = ""
 // DualTableSchema has a single column with empty name because no table can be created with empty string column name or
 // no alias name can be empty string. This avoids any alias name to be considered as GetField of dual table.
 var DualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "", Source: DualTableName, Type: sql.LongText, Nullable: false},
+	{Name: "", Source: DualTableName, Type: types.LongText, Nullable: false},
 })
 
 // IsDualTable returns whether the given table is the "dual" table.

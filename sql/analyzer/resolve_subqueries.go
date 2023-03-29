@@ -353,6 +353,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		_, isOp := n.(sql.OpaqueNode)
 		var isCacheableSq bool
 		var isCachedRs bool
+		var isMax1Row bool
 		switch n := n.(type) {
 		case *plan.JoinNode:
 			if !inJoin {
@@ -365,6 +366,8 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			}
 		case *plan.CachedResults:
 			isCachedRs = true
+		case *plan.Max1Row:
+			isMax1Row = true
 		default:
 		}
 
@@ -383,7 +386,7 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		children := n.Children()
 		var newChildren []sql.Node
 		for i, c := range children {
-			child, same, _ := recurse(c, doCache || isCachedRs, childInJoin, foundFirstRel)
+			child, same, _ := recurse(c, doCache || isCachedRs || isMax1Row, childInJoin, foundFirstRel)
 			if !same {
 				if newChildren == nil {
 					newChildren = make([]sql.Node, len(children))

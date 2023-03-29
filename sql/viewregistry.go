@@ -25,11 +25,12 @@ type View struct {
 	name           string
 	definition     Node
 	textDefinition string
+	createViewStmt string
 }
 
 // NewView creates a View with the specified name and definition.
-func NewView(name string, definition Node, textDefinition string) *View {
-	return &View{name, definition, textDefinition}
+func NewView(name string, definition Node, textDefinition, createViewStmt string) *View {
+	return &View{name, definition, textDefinition, createViewStmt}
 }
 
 // Name returns the name of the view.
@@ -45,6 +46,11 @@ func (v *View) Definition() Node {
 // TextDefinition returns the text definition of the view as originally defined.
 func (v *View) TextDefinition() string {
 	return v.textDefinition
+}
+
+// CreateStatement returns the text create view statement of the view as originally defined.
+func (v *View) CreateStatement() string {
+	return v.createViewStmt
 }
 
 // ViewKey is the key used to store view definitions

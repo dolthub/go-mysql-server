@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestBitAnd(t *testing.T) {
@@ -29,15 +30,15 @@ func TestBitAnd(t *testing.T) {
 		leftType, rightType sql.Type
 		expected            uint64
 	}{
-		{"1 & 1", 1, 1, sql.Uint64, sql.Uint64, 1},
-		{"8 & 1", 8, 1, sql.Uint64, sql.Uint64, 0},
-		{"3 & 1", 3, 1, sql.Uint64, sql.Uint64, 1},
-		{"1024 & 0", 1024, 0, sql.Uint64, sql.Uint64, 0},
-		{"0 & 1024", 0, 1024, sql.Uint64, sql.Uint64, 0},
-		{"-1 & -12", -1, -12, sql.Int64, sql.Int64, 18446744073709551604},
-		{"0.6 & 10.24", 0.6, 10.24, sql.Float64, sql.Float64, 0},
-		{"0.6 & -10.24", 0.6, -10.24, sql.Float64, sql.Float64, 0},
-		{"-0.6 & -10.24", -0.6, -10.24, sql.Float64, sql.Float64, 18446744073709551606},
+		{"1 & 1", 1, 1, types.Uint64, types.Uint64, 1},
+		{"8 & 1", 8, 1, types.Uint64, types.Uint64, 0},
+		{"3 & 1", 3, 1, types.Uint64, types.Uint64, 1},
+		{"1024 & 0", 1024, 0, types.Uint64, types.Uint64, 0},
+		{"0 & 1024", 0, 1024, types.Uint64, types.Uint64, 0},
+		{"-1 & -12", -1, -12, types.Int64, types.Int64, 18446744073709551604},
+		{"0.6 & 10.24", 0.6, 10.24, types.Float64, types.Float64, 0},
+		{"0.6 & -10.24", 0.6, -10.24, types.Float64, types.Float64, 0},
+		{"-0.6 & -10.24", -0.6, -10.24, types.Float64, types.Float64, 18446744073709551606},
 	}
 
 	for _, tt := range testCases {
@@ -60,15 +61,15 @@ func TestBitOr(t *testing.T) {
 		leftType, rightType sql.Type
 		expected            uint64
 	}{
-		{"1 | 1", 1, 1, sql.Uint64, sql.Uint64, 1},
-		{"8 | 1", 8, 1, sql.Uint64, sql.Uint64, 9},
-		{"3 | 1", 3, 1, sql.Uint64, sql.Uint64, 3},
-		{"1024 | 0", 1024, 0, sql.Uint64, sql.Uint64, 1024},
-		{"0 | 1024", 0, 1024, sql.Uint64, sql.Uint64, 1024},
-		{"-1 | -12", -1, -12, sql.Int64, sql.Int64, 18446744073709551615},
-		{"0.6 | 10.24", 0.6, 10.24, sql.Float64, sql.Float64, 11},
-		{"0.6 | -10.24", 0.6, -10.24, sql.Float64, sql.Float64, 18446744073709551607},
-		{"-0.6 | -10.24", -0.6, -10.24, sql.Float64, sql.Float64, 18446744073709551615},
+		{"1 | 1", 1, 1, types.Uint64, types.Uint64, 1},
+		{"8 | 1", 8, 1, types.Uint64, types.Uint64, 9},
+		{"3 | 1", 3, 1, types.Uint64, types.Uint64, 3},
+		{"1024 | 0", 1024, 0, types.Uint64, types.Uint64, 1024},
+		{"0 | 1024", 0, 1024, types.Uint64, types.Uint64, 1024},
+		{"-1 | -12", -1, -12, types.Int64, types.Int64, 18446744073709551615},
+		{"0.6 | 10.24", 0.6, 10.24, types.Float64, types.Float64, 11},
+		{"0.6 | -10.24", 0.6, -10.24, types.Float64, types.Float64, 18446744073709551607},
+		{"-0.6 | -10.24", -0.6, -10.24, types.Float64, types.Float64, 18446744073709551615},
 	}
 
 	for _, tt := range testCases {
@@ -91,15 +92,15 @@ func TestBitXor(t *testing.T) {
 		leftType, rightType sql.Type
 		expected            uint64
 	}{
-		{"1 ^ 1", 1, 1, sql.Uint64, sql.Uint64, 0},
-		{"8 ^ 1", 8, 1, sql.Uint64, sql.Uint64, 9},
-		{"3 ^ 1", 3, 1, sql.Uint64, sql.Uint64, 2},
-		{"1024 ^ 0", 1024, 0, sql.Uint64, sql.Uint64, 1024},
-		{"0 ^ -1024", 0, -1024, sql.Int64, sql.Int64, 18446744073709550592},
-		{"-1 ^ -12", -1, -12, sql.Int64, sql.Int64, 11},
-		{"0.6 ^ 10.24", 0.6, 10.24, sql.Float64, sql.Float64, 11},
-		{"0.6 ^ -10.24", 0.6, -10.24, sql.Float64, sql.Float64, 18446744073709551607},
-		{"-0.6 ^ -10.24", -0.6, -10.24, sql.Float64, sql.Float64, 9},
+		{"1 ^ 1", 1, 1, types.Uint64, types.Uint64, 0},
+		{"8 ^ 1", 8, 1, types.Uint64, types.Uint64, 9},
+		{"3 ^ 1", 3, 1, types.Uint64, types.Uint64, 2},
+		{"1024 ^ 0", 1024, 0, types.Uint64, types.Uint64, 1024},
+		{"0 ^ -1024", 0, -1024, types.Int64, types.Int64, 18446744073709550592},
+		{"-1 ^ -12", -1, -12, types.Int64, types.Int64, 11},
+		{"0.6 ^ 10.24", 0.6, 10.24, types.Float64, types.Float64, 11},
+		{"0.6 ^ -10.24", 0.6, -10.24, types.Float64, types.Float64, 18446744073709551607},
+		{"-0.6 ^ -10.24", -0.6, -10.24, types.Float64, types.Float64, 9},
 	}
 
 	for _, tt := range testCases {
@@ -131,8 +132,8 @@ func TestShiftLeft(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewShiftLeft(
-				NewLiteral(tt.left, sql.Uint64),
-				NewLiteral(tt.right, sql.Uint64),
+				NewLiteral(tt.left, types.Uint64),
+				NewLiteral(tt.right, types.Uint64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)
@@ -157,8 +158,8 @@ func TestShiftRight(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewShiftRight(
-				NewLiteral(tt.left, sql.Uint64),
-				NewLiteral(tt.right, sql.Uint64),
+				NewLiteral(tt.left, types.Uint64),
+				NewLiteral(tt.right, types.Uint64),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)
@@ -173,15 +174,15 @@ func TestAllUint64(t *testing.T) {
 		valueType sql.Type
 		expected  uint64
 	}{
-		{"|", 1, sql.Uint64, 1},
-		{"&", 3.4, sql.Float64, 1},
-		{"^", -1024, sql.Int64, 18446744073709550593},
-		{"<<", 50, sql.Uint64, 17294948469009547264},
-		{">>", 50, sql.Uint64, 15361},
+		{"|", 1, types.Uint64, 1},
+		{"&", 3.4, types.Float64, 1},
+		{"^", -1024, types.Int64, 18446744073709550593},
+		{"<<", 50, types.Uint64, 17294948469009547264},
+		{">>", 50, types.Uint64, 15361},
 	}
 
 	// (((((0 | 1) & 3.4) ^ -1024) << 50) >> 50) == 15361
-	lval := NewLiteral(int64(0), sql.Uint64)
+	lval := NewLiteral(int64(0), types.Uint64)
 	for _, tt := range testCases {
 		t.Run(tt.op, func(t *testing.T) {
 			require := require.New(t)
@@ -191,7 +192,7 @@ func TestAllUint64(t *testing.T) {
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 
-			lval = NewLiteral(result, sql.Uint64)
+			lval = NewLiteral(result, types.Uint64)
 		})
 	}
 }

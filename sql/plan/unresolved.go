@@ -35,6 +35,8 @@ type UnresolvedTable struct {
 var _ sql.Node = (*UnresolvedTable)(nil)
 var _ sql.Expressioner = (*UnresolvedTable)(nil)
 var _ sql.UnresolvedTable = (*UnresolvedTable)(nil)
+var _ sql.CollationCoercible = (*UnresolvedTable)(nil)
+var _ Versionable = (*UnresolvedTable)(nil)
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name, db string) *UnresolvedTable {
@@ -92,6 +94,11 @@ func (t *UnresolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 		sql.NewPrivilegedOperation(t.Database(), t.name, "", sql.PrivilegeType_Select))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnresolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // WithAsOf implements sql.UnresolvedTable
 func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
 	t2 := *t
@@ -141,6 +148,8 @@ type DeferredAsOfTable struct {
 var _ sql.Node = (*DeferredAsOfTable)(nil)
 var _ sql.Expressioner = (*DeferredAsOfTable)(nil)
 var _ sql.UnresolvedTable = (*DeferredAsOfTable)(nil)
+var _ sql.CollationCoercible = (*DeferredAsOfTable)(nil)
+var _ Versionable = (*DeferredAsOfTable)(nil)
 
 func NewDeferredAsOfTable(t *ResolvedTable, asOf sql.Expression) *DeferredAsOfTable {
 	if asOf == nil {
@@ -198,6 +207,7 @@ type DeferredFilteredTable struct {
 }
 
 var _ sql.Node = (*DeferredFilteredTable)(nil)
+var _ sql.CollationCoercible = (*DeferredFilteredTable)(nil)
 
 func NewDeferredFilteredTable(t *ResolvedTable) *DeferredFilteredTable {
 	return &DeferredFilteredTable{

@@ -26,6 +26,9 @@ type Releaser struct {
 	Release func()
 }
 
+var _ sql.Node = (*Releaser)(nil)
+var _ sql.CollationCoercible = (*Releaser)(nil)
+
 func (r *Releaser) Resolved() bool {
 	return r.Child.Resolved()
 }
@@ -58,6 +61,11 @@ func (r *Releaser) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (r *Releaser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return r.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *Releaser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, r.Child)
 }
 
 func (r *Releaser) String() string {

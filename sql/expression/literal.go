@@ -16,10 +16,13 @@ package expression
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Literal represents a literal expression (string, number, bool, ...).
@@ -31,6 +34,7 @@ type Literal struct {
 
 var _ sql.Expression = &Literal{}
 var _ sql.Expression2 = &Literal{}
+var _ sql.CollationCoercible = &Literal{}
 
 // NewLiteral creates a new Literal expression.
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
@@ -57,25 +61,43 @@ func (lit *Literal) Type() sql.Type {
 	return lit.fieldType
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (lit *Literal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if types.IsText(lit.fieldType) {
+		collation, _ = lit.fieldType.CollationCoercibility(ctx)
+		return collation, 4
+	}
+	return sql.Collation_binary, 5
+}
+
 // Eval implements the Expression interface.
 func (lit *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return lit.value, nil
 }
 
 func (lit *Literal) String() string {
-	switch v := lit.value.(type) {
+	switch litVal := lit.value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		return fmt.Sprintf("%d", v)
+		return fmt.Sprintf("%d", litVal)
 	case string:
-		return fmt.Sprintf("'%s'", v)
+		switch lit.fieldType.Type() {
+		// utf8 charset cannot encode binary string
+		case query.Type_VARBINARY, query.Type_BINARY:
+			return fmt.Sprintf("'0x%X'", litVal)
+		}
+		// Conversion of \' to \'\' required as this string will be interpreted by the sql engine.
+		// Backslash chars also need to be replaced.
+		escaped := strings.ReplaceAll(litVal, "'", "''")
+		escaped = strings.ReplaceAll(escaped, "\\", "\\\\")
+		return fmt.Sprintf("'%s'", escaped)
 	case decimal.Decimal:
-		return v.StringFixed(v.Exponent() * -1)
+		return litVal.StringFixed(litVal.Exponent() * -1)
 	case []byte:
 		return "BLOB"
 	case nil:
 		return "NULL"
 	default:
-		return fmt.Sprint(v)
+		return fmt.Sprint(litVal)
 	}
 }
 
@@ -92,6 +114,8 @@ func (lit *Literal) DebugString() string {
 		return fmt.Sprintf("%d (%s)", v, typeStr)
 	case float32, float64:
 		return fmt.Sprintf("%f (%s)", v, typeStr)
+	case bool:
+		return fmt.Sprintf("%t (%s)", v, typeStr)
 	default:
 		return fmt.Sprintf("%s (%s)", v, typeStr)
 	}

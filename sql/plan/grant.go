@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -36,6 +37,7 @@ type Grant struct {
 
 var _ sql.Node = (*Grant)(nil)
 var _ sql.Databaser = (*Grant)(nil)
+var _ sql.CollationCoercible = (*Grant)(nil)
 
 // NewGrant returns a new Grant node.
 func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, withGrant bool, as *GrantUserAssumption, granter string) (*Grant, error) {
@@ -55,7 +57,7 @@ func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level
 
 // Schema implements the interface sql.Node.
 func (n *Grant) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -137,7 +139,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 				sql.PrivilegeType_CreateTablespace,
 				sql.PrivilegeType_CreateRole,
 				sql.PrivilegeType_DropRole,
-				sql.PrivilegeType_Grant,
+				sql.PrivilegeType_GrantOption,
 			))
 		}
 		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
@@ -167,7 +169,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 				sql.PrivilegeType_ShowView,
 				sql.PrivilegeType_Trigger,
 				sql.PrivilegeType_Update,
-				sql.PrivilegeType_Grant,
+				sql.PrivilegeType_GrantOption,
 			))
 		}
 		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
@@ -189,13 +191,18 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 					sql.PrivilegeType_ShowView,
 					sql.PrivilegeType_Trigger,
 					sql.PrivilegeType_Update,
-					sql.PrivilegeType_Grant,
+					sql.PrivilegeType_GrantOption,
 				))
 		}
 		return opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
 				convertToSqlPrivilegeType(true, n.Privileges...)...))
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Grant) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.
@@ -220,7 +227,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				return nil, err
 			}
 			if n.WithGrantOption {
-				user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_Grant)
+				user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_GrantOption)
 			}
 		}
 	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
@@ -246,7 +253,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				return nil, err
 			}
 			if n.WithGrantOption {
-				user.PrivilegeSet.AddDatabase(database, sql.PrivilegeType_Grant)
+				user.PrivilegeSet.AddDatabase(database, sql.PrivilegeType_GrantOption)
 			}
 		}
 	} else {
@@ -273,7 +280,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				return nil, err
 			}
 			if n.WithGrantOption {
-				user.PrivilegeSet.AddTable(database, n.PrivilegeLevel.TableRoutine, sql.PrivilegeType_Grant)
+				user.PrivilegeSet.AddTable(database, n.PrivilegeLevel.TableRoutine, sql.PrivilegeType_GrantOption)
 			}
 		}
 	}
@@ -281,7 +288,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // grantAllGlobalPrivileges adds all global static privileges to the given user, except for the grant privilege (which
@@ -413,6 +420,8 @@ func (n *Grant) handleGlobalPrivileges(user *mysql_db.User) error {
 			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_Execute)
 		case PrivilegeType_File:
 			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_File)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:
@@ -446,7 +455,10 @@ func (n *Grant) handleGlobalPrivileges(user *mysql_db.User) error {
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
 		case PrivilegeType_Dynamic:
-			return fmt.Errorf("GRANT does not yet support dynamic privileges")
+			if !priv.IsValidDynamic() {
+				return fmt.Errorf(`GRANT does not yet support the dynamic privilege: "%s"`, priv.Dynamic)
+			}
+			user.PrivilegeSet.AddGlobalDynamic(n.WithGrantOption, priv.Dynamic)
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
@@ -489,6 +501,8 @@ func (n *Grant) handleDatabasePrivileges(user *mysql_db.User, dbName string) err
 			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_Event)
 		case PrivilegeType_Execute:
 			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_Execute)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:
@@ -507,6 +521,9 @@ func (n *Grant) handleDatabasePrivileges(user *mysql_db.User, dbName string) err
 			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_Update)
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
+		case PrivilegeType_Dynamic:
+			return sql.ErrGrantRevokeIllegalPrivilegeWithMessage.New(
+				"dynamic privileges may only operate at a global scope")
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
@@ -539,6 +556,8 @@ func (n *Grant) handleTablePrivileges(user *mysql_db.User, dbName string, tblNam
 			user.PrivilegeSet.AddTable(dbName, tblName, sql.PrivilegeType_Delete)
 		case PrivilegeType_Drop:
 			user.PrivilegeSet.AddTable(dbName, tblName, sql.PrivilegeType_Drop)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.AddTable(dbName, tblName, sql.PrivilegeType_GrantOption)
 		case PrivilegeType_Index:
 			user.PrivilegeSet.AddTable(dbName, tblName, sql.PrivilegeType_Index)
 		case PrivilegeType_Insert:
@@ -555,6 +574,9 @@ func (n *Grant) handleTablePrivileges(user *mysql_db.User, dbName string, tblNam
 			user.PrivilegeSet.AddTable(dbName, tblName, sql.PrivilegeType_Update)
 		case PrivilegeType_Usage:
 			// Usage is equal to no privilege
+		case PrivilegeType_Dynamic:
+			return sql.ErrGrantRevokeIllegalPrivilegeWithMessage.New(
+				"dynamic privileges may only operate at a global scope")
 		default:
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
@@ -572,6 +594,7 @@ type GrantRole struct {
 
 var _ sql.Node = (*GrantRole)(nil)
 var _ sql.Databaser = (*GrantRole)(nil)
+var _ sql.CollationCoercible = (*GrantRole)(nil)
 
 // NewGrantRole returns a new GrantRole node.
 func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole {
@@ -585,7 +608,7 @@ func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole
 
 // Schema implements the interface sql.Node.
 func (n *GrantRole) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -672,6 +695,11 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GrantRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the interface sql.Node.
 func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
@@ -704,7 +732,7 @@ func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // GrantProxy represents the statement GRANT PROXY.
@@ -715,6 +743,7 @@ type GrantProxy struct {
 }
 
 var _ sql.Node = (*GrantProxy)(nil)
+var _ sql.CollationCoercible = (*GrantProxy)(nil)
 
 // NewGrantProxy returns a new GrantProxy node.
 func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
@@ -727,7 +756,7 @@ func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
 
 // Schema implements the interface sql.Node.
 func (n *GrantProxy) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -761,6 +790,11 @@ func (n *GrantProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *GrantProxy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: add this when proxy support is added
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GrantProxy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

@@ -26,6 +26,7 @@ type Leave struct {
 }
 
 var _ sql.Node = (*Leave)(nil)
+var _ sql.CollationCoercible = (*Leave)(nil)
 
 // NewLeave returns a new *Leave node.
 func NewLeave(label string) *Leave {
@@ -62,6 +63,11 @@ func (l *Leave) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (l *Leave) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Leave) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

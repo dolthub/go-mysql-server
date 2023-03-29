@@ -29,6 +29,9 @@ type TableAlias struct {
 	name string
 }
 
+var _ sql.RenameableNode = (*TableAlias)(nil)
+var _ sql.CollationCoercible = (*TableAlias)(nil)
+
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
 	return &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
@@ -69,6 +72,14 @@ func (t *TableAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t *TableAlias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	if t.UnaryNode != nil {
+		return sql.GetCoercibility(ctx, t.UnaryNode.Child)
+	}
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the Node interface.
 func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var table string
@@ -103,7 +114,7 @@ func (t TableAlias) DebugString() string {
 	return pr.String()
 }
 
-func (t TableAlias) WithName(name string) *TableAlias {
+func (t TableAlias) WithName(name string) sql.Node {
 	t.name = name
 	return &t
 }

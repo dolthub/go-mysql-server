@@ -441,7 +441,7 @@ func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
 	for scopeLevel, n := range scopeNodes {
 		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveCte, *plan.IndexedTableAccess, *plan.JSONTable:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.RecursiveCte, *plan.IndexedTableAccess, *plan.JSONTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				symbols.indexTable(name, name, scopeLevel)
 				return false
@@ -832,6 +832,12 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		default:
 			indexSchema(n.Schema())
 		}
+	}
+
+	if scope.OuterRelUnresolved() {
+		// the columns in this relation will be mis-indexed, skip
+		// until outer rel is resolved
+		return nil, nil
 	}
 
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer

@@ -84,7 +84,7 @@ func (r *RoleEdge) Copy(ctx *sql.Context) in_mem_table.Entry {
 }
 
 // FromJson implements the interface in_mem_table.Entry.
-func (r RoleEdge) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+func (r *RoleEdge) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
 	newRoleEdge := &RoleEdge{}
 	if err := json.Unmarshal([]byte(jsonStr), newRoleEdge); err != nil {
 		return nil, err

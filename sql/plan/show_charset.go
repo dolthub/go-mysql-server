@@ -17,12 +17,17 @@ package plan
 import (
 	"github.com/dolthub/vitess/go/sqltypes"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type ShowCharset struct {
 	CharacterSetTable sql.Node
 }
+
+var _ sql.Node = (*ShowCharset)(nil)
+var _ sql.CollationCoercible = (*ShowCharset)(nil)
 
 // NewShowCharset returns a new ShowCharset reference.
 func NewShowCharset() *ShowCharset {
@@ -49,6 +54,11 @@ func (sc *ShowCharset) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCharset) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (sc *ShowCharset) String() string {
 	return "SHOW CHARSET"
 }
@@ -56,10 +66,10 @@ func (sc *ShowCharset) String() string {
 // Note how this Schema differs in order from the information_schema.character_sets table.
 func (sc *ShowCharset) Schema() sql.Schema {
 	return sql.Schema{
-		{Name: "Charset", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Description", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
-		{Name: "Default collation", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Maxlen", Type: sql.Uint64, Default: nil, Nullable: false},
+		{Name: "Charset", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Description", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: "Default collation", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Maxlen", Type: types.Uint64, Default: nil, Nullable: false},
 	}
 }
 

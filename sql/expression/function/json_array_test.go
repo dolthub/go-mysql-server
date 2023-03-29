@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONArray(t *testing.T) {
@@ -28,28 +29,28 @@ func TestJSONArray(t *testing.T) {
 	require.NoError(t, err)
 
 	f1, err := NewJSONArray(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
 	)
 	require.NoError(t, err)
 
 	f2, err := NewJSONArray(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
 	f3, err := NewJSONArray(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 
 	f4, err := NewJSONArray(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
-		expression.NewGetField(3, sql.LongText, "arg4", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
+		expression.NewGetField(3, types.LongText, "arg4", false),
 	)
 	require.NoError(t, err)
 
@@ -59,15 +60,15 @@ func TestJSONArray(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f0, sql.Row{}, sql.JSONDocument{Val: []interface{}{}}, nil},
-		{f1, sql.Row{[]interface{}{1, 2}}, sql.JSONDocument{Val: []interface{}{[]interface{}{1, 2}}}, nil},
-		{f2, sql.Row{[]interface{}{1, 2}, "second item"}, sql.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, "second item"}}, nil},
-		{f2, sql.Row{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}, sql.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}}, nil},
-		{f2, sql.Row{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}, sql.JSONDocument{Val: []interface{}{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}}, nil},
-		{f3, sql.Row{"foo", -44, "b"}, sql.JSONDocument{Val: []interface{}{"foo", -44, "b"}}, nil},
-		{f4, sql.Row{100, true, nil, "four"}, sql.JSONDocument{Val: []interface{}{100, true, nil, "four"}}, nil},
+		{f0, sql.Row{}, types.JSONDocument{Val: []interface{}{}}, nil},
+		{f1, sql.Row{[]interface{}{1, 2}}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}}}, nil},
+		{f2, sql.Row{[]interface{}{1, 2}, "second item"}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, "second item"}}, nil},
+		{f2, sql.Row{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}}, nil},
+		{f2, sql.Row{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}, types.JSONDocument{Val: []interface{}{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}}, nil},
+		{f3, sql.Row{"foo", -44, "b"}, types.JSONDocument{Val: []interface{}{"foo", -44, "b"}}, nil},
+		{f4, sql.Row{100, true, nil, "four"}, types.JSONDocument{Val: []interface{}{100, true, nil, "four"}}, nil},
 		{f4, sql.Row{100.44, `{"name":null,"id":{"number":998,"type":"A"}}`, nil, `four`},
-			sql.JSONDocument{Val: []interface{}{100.44, "{\"name\":null,\"id\":{\"number\":998,\"type\":\"A\"}}", nil, "four"}}, nil},
+			types.JSONDocument{Val: []interface{}{100.44, "{\"name\":null,\"id\":{\"number\":998,\"type\":\"A\"}}", nil, "four"}}, nil},
 	}
 
 	for _, tt := range testCases {

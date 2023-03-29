@@ -15,10 +15,15 @@
 package analyzer
 
 import (
+	"fmt"
+
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -33,27 +38,46 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		}
 
 		switch p := c.Node.(type) {
-		case *plan.DropTable:
-			// *plan.DropTable is special cased to account
-			// for when we explicitly remove nonexistent
-			// child tables. In this case, the output node
-			// will have fewer children. The UnresolvedNode
-			// case is modified to skip those undesired children
-			// lower in the tree.
-			var resolvedTables []sql.Node
-			for _, t := range p.Children() {
-				if _, ok := t.(*plan.ResolvedTable); ok {
-					resolvedTables = append(resolvedTables, t)
-				}
-			}
-			newn, _ := p.WithChildren(resolvedTables...)
-			return newn, transform.NewTree, nil
 		case *plan.UnresolvedTable:
 			r, err := resolveTable(ctx, p, a)
 			if sql.ErrTableNotFound.Is(err) && ignore {
 				return p, transform.SameTree, nil
 			}
 			return r, transform.NewTree, err
+		case *plan.DeleteFrom:
+			// DeleteFrom may contain explicitly specified target tables that are not modeled as child nodes
+			if p.HasExplicitTargets() {
+				targets := p.GetDeleteTargets()
+				resolvedTargets := make([]sql.Node, len(targets))
+				allSame := transform.SameTree
+
+				aliases, err := getTableAliases(p.Child, scope)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				for i, target := range targets {
+					aliasedName := getTableName(target)
+					if aliasedTarget, ok := aliases[aliasedName]; ok {
+						if aliasedNode, ok := aliasedTarget.(sql.Node); ok {
+							target = plan.NewTableAlias(aliasedName, aliasedNode)
+						} else {
+							return nil, transform.SameTree, fmt.Errorf("unexpected target type "+
+								"doesn't implement sql.Node: %T", aliasedTarget)
+						}
+					}
+
+					new, same, err := resolveTables(ctx, a, target, scope, sel)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					allSame = same && allSame
+					resolvedTargets[i] = new
+				}
+				return p.WithExplicitTargets(resolvedTargets), allSame, nil
+			} else {
+				return p, transform.SameTree, nil
+			}
 		case *plan.InsertInto:
 			if with, ok := p.Source.(*plan.With); ok {
 				newSrc, same, err := resolveCommonTableExpressions(ctx, a, with, scope, sel)
@@ -107,7 +131,7 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 
 			// special case for AsOf's that use naked identifiers; they are interpreted as UnresolvedColumns
 			if col, ok := asOfExpr.(*expression.UnresolvedColumn); ok {
-				asOfExpr = expression.NewLiteral(col.String(), sql.LongText)
+				asOfExpr = expression.NewLiteral(col.String(), types.LongText)
 			}
 
 			if !asOfExpr.Resolved() {
@@ -292,12 +316,20 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 		return to
 	}
 
-	if _, ok := toTable.(sql.FilteredTable); ok {
+	changed := false
+
+	if _, ok := toTable.(sql.FilteredTable); ok && filters != nil {
 		toTable = toTable.(sql.FilteredTable).WithFilters(ctx, filters)
+		changed = true
 	}
 
-	if _, ok := toTable.(sql.ProjectedTable); ok {
+	if _, ok := toTable.(sql.ProjectedTable); ok && projections != nil {
 		toTable = toTable.(sql.ProjectedTable).WithProjections(projections)
+		changed = true
+	}
+
+	if !changed {
+		return to
 	}
 
 	return plan.NewResolvedTable(toTable, to.Database, to.AsOf)
@@ -312,16 +344,31 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 
 	// validates that each table in DropTable is ResolvedTable and each database of
 	// each table is TableDropper (each table can be of different database later on)
+	var resolvedTables []sql.Node
 	for _, table := range dt.Tables {
-		rt, ok := table.(*plan.ResolvedTable)
-		if !ok {
-			return nil, transform.SameTree, plan.ErrUnresolvedTable.New(rt.String())
-		}
-		_, ok = rt.Database.(sql.TableDropper)
-		if !ok {
-			return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(rt.Database.Name())
+		switch t := table.(type) {
+		case *plan.ResolvedTable:
+			_, ok = t.Database.(sql.TableDropper)
+			if !ok {
+				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database.Name())
+			}
+			resolvedTables = append(resolvedTables, table)
+		case *plan.UnresolvedTable:
+			if dt.IfExists() {
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    mysql.ERBadTable,
+					Message: sql.ErrUnknownTable.New(t.Name()).Error(),
+				})
+			} else {
+				return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
+			}
+		default:
+			return nil, transform.SameTree, sql.ErrUnknownTable.New(getTableName(table))
 		}
 	}
 
-	return n, transform.SameTree, nil
+	newn, _ := n.WithChildren(resolvedTables...)
+	return newn, transform.NewTree, nil
+
 }

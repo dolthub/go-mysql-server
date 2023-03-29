@@ -29,6 +29,9 @@ type SingleDropView struct {
 	viewName string
 }
 
+var _ sql.Node = (*SingleDropView)(nil)
+var _ sql.CollationCoercible = (*SingleDropView)(nil)
+
 // NewSingleDropView creates a SingleDropView.
 func NewSingleDropView(
 	database sql.Database,
@@ -82,6 +85,11 @@ func (dv *SingleDropView) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 		sql.NewPrivilegedOperation(dv.database.Name(), "", "", sql.PrivilegeType_Drop))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SingleDropView) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // Database implements the sql.Databaser interface. It returns the node's database.
 func (dv *SingleDropView) Database() sql.Database {
 	return dv.database
@@ -105,6 +113,9 @@ type DropView struct {
 	children []sql.Node
 	ifExists bool
 }
+
+var _ sql.Node = (*DropView)(nil)
+var _ sql.CollationCoercible = (*DropView)(nil)
 
 // NewDropView creates a DropView node with the specified parameters,
 // setting its catalog to nil.
@@ -193,4 +204,9 @@ func (dvs *DropView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		}
 	}
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropView) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

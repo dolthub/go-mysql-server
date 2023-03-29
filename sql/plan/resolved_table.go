@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/memory"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -30,6 +32,8 @@ type ResolvedTable struct {
 
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
+var _ sql.RenameableNode = (*ResolvedTable)(nil)
+var _ sql.CollationCoercible = (*ResolvedTable)(nil)
 
 // Can't embed Table2 like we do Table1 as it's an extension not everyone implements
 var _ sql.Table2 = (*ResolvedTable)(nil)
@@ -41,7 +45,11 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 
 // NewResolvedDualTable creates a new instance of ResolvedTable.
 func NewResolvedDualTable() *ResolvedTable {
-	return &ResolvedTable{Table: NewDualSqlTable(), Database: nil, AsOf: nil}
+	return &ResolvedTable{Table: NewDualSqlTable(), Database: memory.NewDatabase(""), AsOf: nil}
+}
+
+func (t *ResolvedTable) WithName(s string) sql.Node {
+	return NewTableAlias(s, t)
 }
 
 // Resolved implements the Resolvable interface.
@@ -54,15 +62,18 @@ func (t *ResolvedTable) String() string {
 	pr.WriteNode("Table")
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
+
 	if pt, ok := table.(sql.ProjectedTable); ok {
-		var columns []string
-		for _, c := range pt.Projections() {
-			columns = append(columns, strings.ToLower(c))
-		}
-		if len(columns) > 0 {
+		projections := pt.Projections()
+		if projections != nil {
+			columns := make([]string, len(projections))
+			for i, c := range projections {
+				columns[i] = strings.ToLower(c)
+			}
 			children = append(children, fmt.Sprintf("columns: %v", columns))
 		}
 	}
+
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
@@ -72,6 +83,7 @@ func (t *ResolvedTable) String() string {
 			children = append(children, fmt.Sprintf("filters: %v", filters))
 		}
 	}
+
 	pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -81,15 +93,22 @@ func (t *ResolvedTable) DebugString() string {
 	pr.WriteNode("Table")
 	table := seethroughTableWrapper(t)
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
-	if pt, ok := table.(sql.ProjectedTable); ok {
-		var columns []string
-		for _, c := range pt.Projections() {
-			columns = append(columns, strings.ToLower(c))
+
+	var columns []string
+	if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() != nil {
+		projections := pt.Projections()
+		columns = make([]string, len(projections))
+		for i, c := range projections {
+			columns[i] = strings.ToLower(c)
 		}
-		if len(columns) > 0 {
-			children = append(children, fmt.Sprintf("columns: %v", columns))
+	} else {
+		columns = make([]string, len(table.Schema()))
+		for i, c := range table.Schema() {
+			columns[i] = strings.ToLower(c.Name)
 		}
 	}
+	children = append(children, fmt.Sprintf("columns: %v", columns))
+
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
@@ -99,8 +118,8 @@ func (t *ResolvedTable) DebugString() string {
 			children = append(children, fmt.Sprintf("filters: %v", filters))
 		}
 	}
-	pr.WriteChildren(children...)
 
+	pr.WriteChildren(children...)
 	return pr.String()
 }
 
@@ -157,6 +176,11 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithTable returns this Node with the given table. The new table should have the same name as the previous table.

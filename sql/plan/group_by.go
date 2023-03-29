@@ -42,6 +42,7 @@ type GroupBy struct {
 var _ sql.Expressioner = (*GroupBy)(nil)
 var _ sql.Node = (*GroupBy)(nil)
 var _ sql.Projector = (*GroupBy)(nil)
+var _ sql.CollationCoercible = (*GroupBy)(nil)
 
 // NewGroupBy creates a new GroupBy node. Like Project, GroupBy is a top-level node, and contains all the fields that
 // will appear in the output of the query. Some of these fields may be aggregate functions, some may be columns or
@@ -126,6 +127,11 @@ func (g *GroupBy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOper
 	return g.Child.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (g *GroupBy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, g.Child)
+}
+
 // WithExpressions implements the Node interface.
 func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	expected := len(g.SelectedExprs) + len(g.GroupByExprs)
@@ -179,8 +185,8 @@ func (g *GroupBy) DebugString() string {
 	}
 
 	_ = pr.WriteChildren(
-		fmt.Sprintf("SelectedExprs(%s)", strings.Join(selectedExprs, ", ")),
-		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
+		fmt.Sprintf("select: %s", strings.Join(selectedExprs, ", ")),
+		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
 		sql.DebugString(g.Child),
 	)
 	return pr.String()

@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -32,6 +33,7 @@ type DropUser struct {
 
 var _ sql.Node = (*DropUser)(nil)
 var _ sql.Databaser = (*DropUser)(nil)
+var _ sql.CollationCoercible = (*DropUser)(nil)
 
 // NewDropUser returns a new DropUser node.
 func NewDropUser(ifExists bool, users []UserName) *DropUser {
@@ -44,7 +46,7 @@ func NewDropUser(ifExists bool, users []UserName) *DropUser {
 
 // Schema implements the interface sql.Node.
 func (n *DropUser) Schema() sql.Schema {
-	return sql.OkResultSchema
+	return types.OkResultSchema
 }
 
 // String implements the interface sql.Node.
@@ -97,6 +99,11 @@ func (n *DropUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropUser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the interface sql.Node.
 func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
@@ -140,5 +147,5 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err := mysqlDb.Persist(ctx); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }

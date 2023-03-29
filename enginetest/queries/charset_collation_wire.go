@@ -14,7 +14,10 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 // CharsetCollationWireTest is used to test character sets.
 type CharsetCollationWireTest struct {
@@ -42,15 +45,15 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "INSERT INTO test VALUES ('hey');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (_utf16'\x00h\x00i');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (_utf8mb4'\x68\x65\x6c\x6c\x6f');",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test ORDER BY 1;",
@@ -68,11 +71,11 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "INSERT INTO test1 VALUES ('HEY2'), ('hey1');",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO test2 VALUES ('HEY2'), ('hey1');",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "SELECT * FROM test1 ORDER BY 1;",
@@ -240,7 +243,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
@@ -259,7 +262,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'ABC');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -269,13 +272,13 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -303,7 +306,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'A');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -313,13 +316,13 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
@@ -350,7 +353,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SET character_set_results = 'utf8mb4';",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -358,7 +361,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SET character_set_results = 'utf32';",
-				Expected: []sql.Row{{sql.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -1237,19 +1240,19 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "CREATE TABLE test_a (pk VARCHAR(20) PRIMARY KEY);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(0)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{ // LIKE should inherit the table's collation, NOT the database's collation
 				Query: "CREATE TABLE test_b LIKE other;",
 				Expected: []sql.Row{
-					{sql.NewOkResult(0)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{ // AS SELECT should inherit the database's collation, but the column retains the original collation
 				Query: "CREATE TABLE test_c AS SELECT * FROM other;",
 				Expected: []sql.Row{
-					{sql.NewOkResult(0)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{
@@ -1277,7 +1280,7 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "CREATE TABLE test_d (pk VARCHAR(20) PRIMARY KEY);",
 				Expected: []sql.Row{
-					{sql.NewOkResult(0)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{
@@ -1332,6 +1335,18 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query:    "DROP DATABASE test_db_b;",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "Issue #5482",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: `SELECT T.TABLE_NAME AS label, 'connection.table' as type, T.TABLE_SCHEMA AS 'schema',
+T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
+0 AS isView FROM INFORMATION_SCHEMA.TABLES AS T WHERE T.TABLE_CATALOG = 'def' AND
+                                                      UPPER(T.TABLE_TYPE) = 'BASE TABLE' ORDER BY T.TABLE_NAME;`,
+				Expected: []sql.Row(nil),
 			},
 		},
 	},

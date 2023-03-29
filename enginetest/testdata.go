@@ -23,12 +23,14 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // wrapInTransaction runs the function given surrounded in a transaction. If the db provided doesn't implement
 // sql.TransactionDatabase, then the function is simply run and the transaction logic is a no-op.
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
-	ctx := NewContext(harness).WithCurrentDB(db.Name())
+	ctx := NewContext(harness)
+	ctx.SetCurrentDatabase(db.Name())
 	if privilegedDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
 		db = privilegedDatabase.Unwrap()
 	}
@@ -61,13 +63,13 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok {
 		versionedDb, ok := myDb.(sql.VersionedDatabase)
 		if !ok {
-			panic("VersionedDbTestHarness must provide a VersionedDatabase implementation")
+			require.Failf(t, "expected a sql.VersionedDatabase", "%T is not a sql.VersionedDatabase", myDb)
 		}
 
 		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
-				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "s", Type: types.Text, Source: "myhistorytable"},
 			}), "2019-01-01")
 
 			if err == nil {
@@ -86,8 +88,8 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 
 		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
-				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "s", Type: types.Text, Source: "myhistorytable"},
 			}), "2019-01-02")
 
 			if err == nil {
@@ -110,8 +112,8 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 
 		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
-				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+				{Name: "i", Type: types.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "s", Type: types.Text, Source: "myhistorytable"},
 			}), "2019-01-03")
 
 			if err == nil {
@@ -119,7 +121,7 @@ func createVersionedTables(t *testing.T, harness Harness, myDb, foo sql.Database
 					sql.NewRow(int64(1), "first row, 2"),
 					sql.NewRow(int64(2), "second row, 2"),
 					sql.NewRow(int64(3), "third row, 2"))
-				column := sql.Column{Name: "c", Type: sql.Text}
+				column := sql.Column{Name: "c", Type: types.Text}
 				AddColumn(t, NewContext(harness), mustAlterableTable(t, table), &column)
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
 					sql.NewRow(int64(1), "first row, 3", "1"),

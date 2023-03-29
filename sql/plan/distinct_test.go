@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestDistinct(t *testing.T) {
@@ -30,8 +31,8 @@ func TestDistinct(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "name", Type: sql.Text, Nullable: true},
-		{Name: "email", Type: sql.Text, Nullable: true},
+		{Name: "name", Type: types.Text, Nullable: true},
+		{Name: "email", Type: types.Text, Nullable: true},
 	})
 	child := memory.NewTable("test", childSchema, nil)
 
@@ -48,7 +49,7 @@ func TestDistinct(t *testing.T) {
 	}
 
 	p := NewProject([]sql.Expression{
-		expression.NewGetField(0, sql.Text, "name", true),
+		expression.NewGetField(0, types.Text, "name", true),
 	}, NewResolvedTable(child, nil, nil))
 	d := NewDistinct(p)
 
@@ -77,8 +78,8 @@ func TestOrderedDistinct(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "name", Type: sql.Text, Nullable: true},
-		{Name: "email", Type: sql.Text, Nullable: true},
+		{Name: "name", Type: types.Text, Nullable: true},
+		{Name: "email", Type: types.Text, Nullable: true},
 	})
 	child := memory.NewTable("test", childSchema, nil)
 
@@ -95,7 +96,7 @@ func TestOrderedDistinct(t *testing.T) {
 	}
 
 	p := NewProject([]sql.Expression{
-		expression.NewGetField(0, sql.Text, "name", true),
+		expression.NewGetField(0, types.Text, "name", true),
 	}, NewResolvedTable(child, nil, nil))
 	d := NewOrderedDistinct(p)
 
@@ -125,12 +126,12 @@ func BenchmarkDistinct(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		p := NewProject([]sql.Expression{
-			expression.NewGetField(0, sql.Text, "strfield", true),
-			expression.NewGetField(1, sql.Float64, "floatfield", true),
-			expression.NewGetField(2, sql.Boolean, "boolfield", false),
-			expression.NewGetField(3, sql.Int32, "intfield", false),
-			expression.NewGetField(4, sql.Int64, "bigintfield", false),
-			expression.NewGetField(5, sql.Blob, "blobfield", false),
+			expression.NewGetField(0, types.Text, "strfield", true),
+			expression.NewGetField(1, types.Float64, "floatfield", true),
+			expression.NewGetField(2, types.Boolean, "boolfield", false),
+			expression.NewGetField(3, types.Int32, "intfield", false),
+			expression.NewGetField(4, types.Int64, "bigintfield", false),
+			expression.NewGetField(5, types.Blob, "blobfield", false),
 		}, NewResolvedTable(benchtable, nil, nil))
 		d := NewDistinct(p)
 
@@ -158,12 +159,12 @@ func BenchmarkOrderedDistinct(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		p := NewProject([]sql.Expression{
-			expression.NewGetField(0, sql.Text, "strfield", true),
-			expression.NewGetField(1, sql.Float64, "floatfield", true),
-			expression.NewGetField(2, sql.Boolean, "boolfield", false),
-			expression.NewGetField(3, sql.Int32, "intfield", false),
-			expression.NewGetField(4, sql.Int64, "bigintfield", false),
-			expression.NewGetField(5, sql.Blob, "blobfield", false),
+			expression.NewGetField(0, types.Text, "strfield", true),
+			expression.NewGetField(1, types.Float64, "floatfield", true),
+			expression.NewGetField(2, types.Boolean, "boolfield", false),
+			expression.NewGetField(3, types.Int32, "intfield", false),
+			expression.NewGetField(4, types.Int64, "bigintfield", false),
+			expression.NewGetField(5, types.Blob, "blobfield", false),
 		}, NewResolvedTable(benchtable, nil, nil))
 		d := NewOrderedDistinct(p)
 

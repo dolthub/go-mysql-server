@@ -29,7 +29,9 @@ type Union struct {
 	SortFields sql.SortFields
 }
 
+var _ sql.Node = (*Union)(nil)
 var _ sql.Expressioner = (*Union)(nil)
+var _ sql.CollationCoercible = (*Union)(nil)
 
 // NewUnion creates a new Union node with the given children.
 func NewUnion(left, right sql.Node, distinct bool, limit sql.Expression, sortFields sql.SortFields) *Union {
@@ -165,6 +167,12 @@ func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (u *Union) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return u.left.CheckPrivileges(ctx, opChecker) && u.right.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Union) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// Unions are able to return differing values, therefore they cannot be used to determine coercibility
+	return sql.Collation_binary, 7
 }
 
 func (u Union) String() string {

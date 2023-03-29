@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowColumns shows the columns details of a table.
@@ -31,7 +32,7 @@ type ShowColumns struct {
 	targetSchema sql.Schema
 }
 
-var VarChar25000 = sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
+var VarChar25000 = types.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)
 var (
 	showColumnsSchema = sql.Schema{
 		{Name: "Field", Type: VarChar25000},
@@ -63,6 +64,7 @@ func NewShowColumns(full bool, child sql.Node) *ShowColumns {
 var _ sql.Node = (*ShowColumns)(nil)
 var _ sql.Expressioner = (*ShowColumns)(nil)
 var _ sql.SchemaTarget = (*ShowColumns)(nil)
+var _ sql.CollationCoercible = (*ShowColumns)(nil)
 
 // Schema implements the sql.Node interface.
 func (s *ShowColumns) Schema() sql.Schema {
@@ -124,7 +126,7 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	for i, col := range schema {
 		var row sql.Row
 		var collation interface{}
-		if sql.IsTextOnly(col.Type) {
+		if types.IsTextOnly(col.Type) {
 			collation = sql.Collation_Default.String()
 		}
 
@@ -213,6 +215,11 @@ func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (s *ShowColumns) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowColumns) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (s *ShowColumns) String() string {

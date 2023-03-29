@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	types2 "github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Tuple is a fixed-size collection of expressions.
@@ -96,7 +97,7 @@ func (t Tuple) Type() sql.Type {
 		types[i] = e.Type()
 	}
 
-	return sql.CreateTuple(types...)
+	return types2.CreateTuple(types...)
 }
 
 // WithChildren implements the Expression interface.

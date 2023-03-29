@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -29,6 +30,7 @@ type GeomColl struct {
 }
 
 var _ sql.FunctionExpression = (*GeomColl)(nil)
+var _ sql.CollationCoercible = (*GeomColl)(nil)
 
 // NewGeomColl creates a new geometrycollection expression.
 func NewGeomColl(args ...sql.Expression) (sql.Expression, error) {
@@ -47,7 +49,12 @@ func (g *GeomColl) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *GeomColl) Type() sql.Type {
-	return sql.GeomCollType{}
+	return types.GeomCollType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomColl) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (g *GeomColl) String() string {
@@ -65,19 +72,19 @@ func (g *GeomColl) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 // Eval implements the sql.Expression interface.
 func (g *GeomColl) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var geoms = make([]sql.GeometryValue, len(g.ChildExpressions))
+	var geoms = make([]types.GeometryValue, len(g.ChildExpressions))
 	for i, arg := range g.ChildExpressions {
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		switch v := val.(type) {
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			geoms[i] = v
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.GeomColl{Geoms: geoms}, nil
+	return types.GeomColl{Geoms: geoms}, nil
 }

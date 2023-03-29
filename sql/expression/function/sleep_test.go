@@ -22,11 +22,12 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestSleep(t *testing.T) {
 	f := NewSleep(
-		expression.NewGetField(0, sql.LongText, "n", false),
+		expression.NewGetField(0, types.LongText, "n", false),
 	)
 	testCases := []struct {
 		name     string

@@ -18,12 +18,16 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Not is a node that negates an expression.
 type Not struct {
 	UnaryExpression
 }
+
+var _ sql.Expression = (*Not)(nil)
+var _ sql.CollationCoercible = (*Not)(nil)
 
 // NewNot returns a new Not node.
 func NewNot(child sql.Expression) *Not {
@@ -32,7 +36,12 @@ func NewNot(child sql.Expression) *Not {
 
 // Type implements the Expression interface.
 func (e *Not) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Not) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -47,7 +56,7 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	b, ok := v.(bool)
 	if !ok {
-		b, err = sql.ConvertToBool(v)
+		b, err = types.ConvertToBool(v)
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +70,11 @@ func (e *Not) String() string {
 }
 
 func (e *Not) DebugString() string {
-	return fmt.Sprintf("(NOT(%s))", sql.DebugString(e.Child))
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("NOT")
+	children := []string{sql.DebugString(e.Child)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }
 
 // WithChildren implements the Expression interface.

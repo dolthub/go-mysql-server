@@ -91,7 +91,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
-func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
+func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
@@ -104,7 +104,16 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode NameableNode,
 			}
 			if iat, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				ret := plan.NewIndexedTableAccess(n, iat.IndexedAccess(index), plan.NewLookupBuilder(index, keyExpr, nullmask))
+				lb := plan.NewLookupBuilder(index, keyExpr, nullmask)
+				lookup, err := lb.GetLookup(lb.GetZeroKey())
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				if !index.CanSupport(lookup.Ranges...) {
+					return n, transform.SameTree, nil
+				}
+				ia := iat.IndexedAccess(lookup)
+				ret := plan.NewIndexedTableAccess(n, ia, lb)
 				return ret, transform.NewTree, nil
 			}
 		}

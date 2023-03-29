@@ -47,7 +47,9 @@ type HashLookup struct {
 	lookup map[interface{}][]sql.Row
 }
 
+var _ sql.Node = (*HashLookup)(nil)
 var _ sql.Expressioner = (*HashLookup)(nil)
+var _ sql.CollationCoercible = (*HashLookup)(nil)
 
 func (n *HashLookup) Expressions() []sql.Expression {
 	return []sql.Expression{n.inner, n.outer}
@@ -100,6 +102,11 @@ func (n *HashLookup) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *HashLookup) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (n *HashLookup) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, n.Child)
 }
 
 func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {

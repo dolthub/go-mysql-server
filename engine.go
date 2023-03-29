@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // Config for the Engine.
@@ -326,10 +327,10 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 }
 
 // CloseSession deletes session specific prepared statement data
-func (e *Engine) CloseSession(ctx *sql.Context) {
+func (e *Engine) CloseSession(connID uint32) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.PreparedDataCache.DeleteSessionData(ctx.Session.ID())
+	e.PreparedDataCache.DeleteSessionData(connID)
 }
 
 // Count number of BindVars in given tree
@@ -408,7 +409,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 				return nil, err
 			}
 			for binding := range bindings {
-				if !usedBindings[binding] {
+				if !usedBindings[binding] && !plan.HasEmptyTable(analyzed) {
 					return nil, fmt.Errorf("unused binding %s", binding)
 				}
 			}
@@ -434,7 +435,7 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 			return nil, err
 		}
 		for binding := range bindings {
-			if !usedBindings[binding] {
+			if !usedBindings[binding] && !plan.HasEmptyTable(analyzed) {
 				return nil, fmt.Errorf("unused binding %s", binding)
 			}
 		}
@@ -463,7 +464,7 @@ func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, analyzed s
 			return nil, err
 		}
 		for binding := range bindings {
-			if !usedBindings[binding] {
+			if !usedBindings[binding] && !plan.HasEmptyTable(analyzed) {
 				return nil, fmt.Errorf("unused binding %s", binding)
 			}
 		}

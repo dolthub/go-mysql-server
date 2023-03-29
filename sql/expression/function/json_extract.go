@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_EXTRACT(json_doc, path[, path] ...)
@@ -31,6 +32,7 @@ type JSONExtract struct {
 }
 
 var _ sql.FunctionExpression = (*JSONExtract)(nil)
+var _ sql.CollationCoercible = (*JSONExtract)(nil)
 
 // NewJSONExtract creates a new JSONExtract UDF.
 func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
@@ -67,7 +69,12 @@ func (j *JSONExtract) Resolved() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (j *JSONExtract) Type() sql.Type { return sql.JSON }
+func (j *JSONExtract) Type() sql.Type { return types.JSON }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONExtract) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
+}
 
 // Eval implements the sql.Expression interface.
 func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -88,22 +95,22 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	searchable, ok := js.(sql.SearchableJSONValue)
+	searchable, ok := js.(types.SearchableJSONValue)
 	if !ok {
-		searchable, err = js.(sql.JSONValue).Unmarshall(ctx)
+		searchable, err = js.(types.JSONValue).Unmarshall(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	var results = make([]sql.JSONValue, len(j.Paths))
+	var results = make([]types.JSONValue, len(j.Paths))
 	for i, p := range j.Paths {
 		path, err := p.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 
-		path, err = sql.LongText.Convert(path)
+		path, err = types.LongText.Convert(path)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +125,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return results[0], nil
 	}
 
-	return sql.ConcatenateJSONValues(ctx, results...)
+	return types.ConcatenateJSONValues(ctx, results...)
 }
 
 // IsNullable implements the sql.Expression interface.

@@ -4,20 +4,43 @@ package setup
 
 var AutoincrementData = []SetupScript{{
 	`drop table if exists auto_increment_tbl`,
-	"CREATE TABLE `auto_increment_tbl` (  `pk` bigint NOT NULL AUTO_INCREMENT,  `c0` bigint,  PRIMARY KEY (`pk`))",
-	`INSERT INTO auto_increment_tbl values    (1, 11),    (2, 22),    (3, 33)`,
+	"CREATE TABLE `auto_increment_tbl` (   `pk` bigint NOT NULL AUTO_INCREMENT,   `c0` bigint,   PRIMARY KEY (`pk`) )",
+	`INSERT INTO auto_increment_tbl values
+    (1, 11),
+    (2, 22),
+    (3, 33)`,
 }}
 
 var BigtableData = []SetupScript{{
 	`create table bigtable (t varchar(1) primary key, n bigint)`,
-	`insert into bigtable values	('a', 1),	('s', 2),	('f', 3),	('g', 1),	('h', 2),	('j', 3),	('k', 1),	('l', 2),	('ñ', 4),	('z', 5),	('x', 6),	('c', 7),	('v', 8),	('b', 9)`,
+	`insert into bigtable values
+	('a', 1),
+	('s', 2),
+	('f', 3),
+	('g', 1),
+	('h', 2),
+	('j', 3),
+	('k', 1),
+	('l', 2),
+	('ñ', 4),
+	('z', 5),
+	('x', 6),
+	('c', 7),
+	('v', 8),
+	('b', 9)`,
 }}
 
 var BlobData = []SetupScript{{
 	`create table blobt (i bigint primary key, b longblob);`,
 	`create table textt (i bigint primary key, t text);`,
-	`insert into blobt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
-	`insert into textt values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+	`insert into blobt values
+    (1, 'first row'),
+    (2, 'second row'),
+    (3, 'third row')`,
+	`insert into textt values
+    (1, 'first row'),
+    (2, 'second row'),
+    (3, 'third row')`,
 }}
 
 var Check_constraintData = []SetupScript{{
@@ -31,13 +54,48 @@ var Check_constraintData = []SetupScript{{
 var Comp_index_tablesData = []SetupScript{{
 	`CREATE TABLE comp_index_t0 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT)`,
 	`create INDEX v_idx on comp_index_t0 (v1, v2)`,
-	`INSERT INTO comp_index_t0 VALUES (0,0,48),(1,0,52),(2,2,4),(3,2,10),(4,3,35),(5,5,36),(6,5,60),(7,6,1),(8,6,51),(9,6,60),(10,6,73),(11,9,44),(12,9,97),(13,13,44),(14,14,53),(15,14,57),(16,14,98),(17,16,19),(18,16,53),(19,16,95),(20,18,31),(21,19,48),(22,19,75),(23,19,97),(24,24,60),(25,25,14),(26,25,31),(27,27,9),(28,27,24),(29,28,24),(30,28,83),(31,31,14),(32,33,39),(33,34,22),(34,34,91),(35,35,89),(36,38,20),(37,38,66),(38,39,55),(39,39,86),(40,40,97),(41,42,0),(42,42,82),(43,43,63),(44,44,48),(45,44,67),(46,45,22),(47,45,31),(48,45,63),(49,45,86),(50,46,46),(51,47,5),(52,48,22),(53,49,0),(54,50,0),(55,50,14),(56,51,35),(57,54,38),(58,56,0),(59,56,60),(60,57,29),(61,57,49),(62,58,12),(63,58,32),(64,59,29),(65,59,45),(66,59,54),(67,60,66),(68,61,3),(69,61,34),(70,63,19),(71,63,69),(72,65,80),(73,65,97),(74,67,95),(75,68,11),(76,69,34),(77,72,52),(78,74,81),(79,76,39),(80,78,0),(81,78,90),(82,79,36),(83,80,61),(84,80,88),(85,81,4),(86,82,16),(87,83,30),(88,83,74),(89,84,9),(90,84,45),(91,86,56),(92,86,88),(93,87,51),(94,89,3),(95,93,19),(96,93,21),(97,93,96),(98,98,0),(99,98,51),(100,98,61);`,
+	`INSERT INTO comp_index_t0 VALUES (0,0,48),(1,0,52),(2,2,4),(3,2,10),(4,3,35),(5,5,36),(6,5,60),(7,6,1),(8,6,51),
+(9,6,60),(10,6,73),(11,9,44),(12,9,97),(13,13,44),(14,14,53),(15,14,57),(16,14,98),(17,16,19),(18,16,53),(19,16,95),
+(20,18,31),(21,19,48),(22,19,75),(23,19,97),(24,24,60),(25,25,14),(26,25,31),(27,27,9),(28,27,24),(29,28,24),(30,28,83),
+(31,31,14),(32,33,39),(33,34,22),(34,34,91),(35,35,89),(36,38,20),(37,38,66),(38,39,55),(39,39,86),(40,40,97),(41,42,0),
+(42,42,82),(43,43,63),(44,44,48),(45,44,67),(46,45,22),(47,45,31),(48,45,63),(49,45,86),(50,46,46),(51,47,5),(52,48,22),
+(53,49,0),(54,50,0),(55,50,14),(56,51,35),(57,54,38),(58,56,0),(59,56,60),(60,57,29),(61,57,49),(62,58,12),(63,58,32),
+(64,59,29),(65,59,45),(66,59,54),(67,60,66),(68,61,3),(69,61,34),(70,63,19),(71,63,69),(72,65,80),(73,65,97),(74,67,95),
+(75,68,11),(76,69,34),(77,72,52),(78,74,81),(79,76,39),(80,78,0),(81,78,90),(82,79,36),(83,80,61),(84,80,88),(85,81,4),
+(86,82,16),(87,83,30),(88,83,74),(89,84,9),(90,84,45),(91,86,56),(92,86,88),(93,87,51),(94,89,3),(95,93,19),(96,93,21),
+(97,93,96),(98,98,0),(99,98,51),(100,98,61);`,
 	`CREATE TABLE comp_index_t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, v3 BIGINT)`,
 	`create INDEX v_idx on comp_index_t1 (v1, v2, v3)`,
-	`INSERT INTO comp_index_t1 VALUES (0,0,3,16),(1,2,65,9),(2,3,38,37),(3,3,99,99),(4,5,17,42),(5,6,6,76),(6,6,81,33),(7,7,33,51),(8,7,37,42),(9,8,9,21),(10,8,37,90),(11,9,39,20),(12,9,71,82),(13,10,16,21),(14,10,32,46),(15,10,47,36),(16,12,44,84),(17,12,66,40),(18,13,47,30),(19,13,56,41),(20,14,38,24),(21,14,91,1),(22,15,2,69),(23,16,40,36),(24,20,29,93),(25,21,9,89),(26,21,42,76),(27,23,13,53),(28,23,28,68),(29,23,28,90),(30,23,30,44),(31,24,20,8),(32,25,49,88),(33,26,15,28),(34,27,35,12),(35,28,39,84),(36,29,7,38),(37,29,21,74),(38,29,27,48),(39,29,77,46),(40,31,47,21),(41,31,47,91),(42,32,40,76),(43,33,70,50),(44,34,27,58),(45,35,32,36),(46,36,4,36),(47,36,84,75),(48,37,27,32),(49,38,88,68),(50,41,17,68),(51,41,77,26),(52,42,80,85),(53,45,1,57),(54,46,58,8),(55,49,26,11),(56,50,49,20),(57,50,86,6),(58,54,13,78),(59,54,57,83),(60,55,45,46),(61,55,81,80),(62,56,0,97),(63,56,8,78),(64,56,58,4),(65,56,66,33),(66,57,7,52),(67,59,77,53),(68,60,8,70),(69,61,11,25),(70,63,85,23),(71,65,17,9),(72,66,46,46),(73,66,73,4),(74,67,55,27),(75,70,8,54),(76,70,58,33),(77,71,39,15),(78,72,65,64),(79,74,78,26),(80,75,91,35),(81,76,40,52),(82,76,44,87),(83,81,32,4),(84,82,11,6),(85,82,46,32),(86,84,40,8),(87,84,93,37),(88,85,53,50),(89,86,63,79),(90,87,22,34),(91,87,57,62),(92,88,88,42),(93,90,30,67),(94,91,15,15),(95,93,7,26),(96,94,92,38),(97,95,89,66),(98,97,63,19),(99,98,31,21),(100,98,42,22)`,
+	`INSERT INTO comp_index_t1 VALUES (0,0,3,16),(1,2,65,9),(2,3,38,37),(3,3,99,99),(4,5,17,42),(5,6,6,76),(6,6,81,33),
+(7,7,33,51),(8,7,37,42),(9,8,9,21),(10,8,37,90),(11,9,39,20),(12,9,71,82),(13,10,16,21),(14,10,32,46),(15,10,47,36),
+(16,12,44,84),(17,12,66,40),(18,13,47,30),(19,13,56,41),(20,14,38,24),(21,14,91,1),(22,15,2,69),(23,16,40,36),
+(24,20,29,93),(25,21,9,89),(26,21,42,76),(27,23,13,53),(28,23,28,68),(29,23,28,90),(30,23,30,44),(31,24,20,8),
+(32,25,49,88),(33,26,15,28),(34,27,35,12),(35,28,39,84),(36,29,7,38),(37,29,21,74),(38,29,27,48),(39,29,77,46),
+(40,31,47,21),(41,31,47,91),(42,32,40,76),(43,33,70,50),(44,34,27,58),(45,35,32,36),(46,36,4,36),(47,36,84,75),
+(48,37,27,32),(49,38,88,68),(50,41,17,68),(51,41,77,26),(52,42,80,85),(53,45,1,57),(54,46,58,8),(55,49,26,11),
+(56,50,49,20),(57,50,86,6),(58,54,13,78),(59,54,57,83),(60,55,45,46),(61,55,81,80),(62,56,0,97),(63,56,8,78),
+(64,56,58,4),(65,56,66,33),(66,57,7,52),(67,59,77,53),(68,60,8,70),(69,61,11,25),(70,63,85,23),(71,65,17,9),
+(72,66,46,46),(73,66,73,4),(74,67,55,27),(75,70,8,54),(76,70,58,33),(77,71,39,15),(78,72,65,64),(79,74,78,26),
+(80,75,91,35),(81,76,40,52),(82,76,44,87),(83,81,32,4),(84,82,11,6),(85,82,46,32),(86,84,40,8),(87,84,93,37),
+(88,85,53,50),(89,86,63,79),(90,87,22,34),(91,87,57,62),(92,88,88,42),(93,90,30,67),(94,91,15,15),(95,93,7,26),
+(96,94,92,38),(97,95,89,66),(98,97,63,19),(99,98,31,21),(100,98,42,22)`,
 	`CREATE TABLE comp_index_t2 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, v3 BIGINT, v4 BIGINT)`,
 	`create INDEX v_idx on comp_index_t2 (v1, v2, v3, v4)`,
-	`INSERT INTO comp_index_t2 VALUES (0,0,33,2,67),(1,0,55,14,32),(2,1,43,13,36),(3,1,72,29,21),(4,2,27,1,75),(5,3,31,22,81),(6,4,6,67,80),(7,4,10,53,69),(8,4,27,77,5),(9,5,17,52,13),(10,5,32,30,48),(11,5,76,70,46),(12,7,7,66,62),(13,7,21,75,70),(14,7,76,26,47),(15,8,54,46,87),(16,8,99,43,1),(17,9,7,74,92),(18,9,19,38,35),(19,10,36,27,5),(20,12,0,33,62),(21,12,42,15,31),(22,12,46,43,23),(23,15,42,17,60),(24,17,49,14,7),(25,17,75,86,18),(26,20,30,34,71),(27,21,21,32,8),(28,22,21,28,78),(29,22,98,22,21),(30,23,43,13,11),(31,24,26,69,25),(32,24,45,96,0),(33,29,72,97,93),(34,32,16,97,29),(35,33,29,69,6),(36,33,53,56,88),(37,33,86,12,22),(38,34,55,37,34),(39,34,87,13,51),(40,34,89,27,90),(41,35,6,86,74),(42,36,7,40,16),(43,37,35,6,44),(44,37,41,36,10),(45,38,71,22,37),(46,39,45,75,55),(47,41,1,85,9),(48,41,21,82,54),(49,43,23,15,0),(50,43,66,85,66),(51,45,9,76,9),(52,47,94,56,21),(53,48,3,11,18),(54,50,26,23,71),(55,50,36,73,58),(56,50,39,26,37),(57,50,79,10,12),(58,50,97,0,79),(59,51,97,39,36),(60,52,72,44,2),(61,53,6,53,89),(62,53,48,19,36),(63,55,31,29,92),(64,57,25,97,65),(65,63,50,20,43),(66,64,23,33,5),(67,64,26,77,97),(68,64,41,74,85),(69,64,77,41,17),(70,66,97,6,39),(71,67,39,87,15),(72,69,81,70,37),(73,70,40,19,5),(74,70,56,21,22),(75,71,3,49,55),(76,71,48,89,99),(77,73,10,2,0),(78,73,91,56,0),(79,74,22,42,16),(80,74,35,72,97),(81,76,74,97,18),(82,82,29,66,71),(83,82,31,22,99),(84,82,70,5,47),(85,83,37,36,16),(86,83,41,53,57),(87,84,56,78,18),(88,85,2,3,88),(89,86,7,57,96),(90,87,23,16,63),(91,87,66,8,22),(92,88,57,12,88),(93,89,1,27,50),(94,89,91,7,45),(95,90,25,0,17),(96,91,23,2,9),(97,93,56,71,53),(98,94,43,71,43),(99,94,79,53,73),(100,96,73,38,38)`,
+	`INSERT INTO comp_index_t2 VALUES (0,0,33,2,67),(1,0,55,14,32),(2,1,43,13,36),(3,1,72,29,21),(4,2,27,1,75),
+(5,3,31,22,81),(6,4,6,67,80),(7,4,10,53,69),(8,4,27,77,5),(9,5,17,52,13),(10,5,32,30,48),(11,5,76,70,46),(12,7,7,66,62),
+(13,7,21,75,70),(14,7,76,26,47),(15,8,54,46,87),(16,8,99,43,1),(17,9,7,74,92),(18,9,19,38,35),(19,10,36,27,5),
+(20,12,0,33,62),(21,12,42,15,31),(22,12,46,43,23),(23,15,42,17,60),(24,17,49,14,7),(25,17,75,86,18),(26,20,30,34,71),
+(27,21,21,32,8),(28,22,21,28,78),(29,22,98,22,21),(30,23,43,13,11),(31,24,26,69,25),(32,24,45,96,0),(33,29,72,97,93),
+(34,32,16,97,29),(35,33,29,69,6),(36,33,53,56,88),(37,33,86,12,22),(38,34,55,37,34),(39,34,87,13,51),(40,34,89,27,90),
+(41,35,6,86,74),(42,36,7,40,16),(43,37,35,6,44),(44,37,41,36,10),(45,38,71,22,37),(46,39,45,75,55),(47,41,1,85,9),
+(48,41,21,82,54),(49,43,23,15,0),(50,43,66,85,66),(51,45,9,76,9),(52,47,94,56,21),(53,48,3,11,18),(54,50,26,23,71),
+(55,50,36,73,58),(56,50,39,26,37),(57,50,79,10,12),(58,50,97,0,79),(59,51,97,39,36),(60,52,72,44,2),(61,53,6,53,89),
+(62,53,48,19,36),(63,55,31,29,92),(64,57,25,97,65),(65,63,50,20,43),(66,64,23,33,5),(67,64,26,77,97),(68,64,41,74,85),
+(69,64,77,41,17),(70,66,97,6,39),(71,67,39,87,15),(72,69,81,70,37),(73,70,40,19,5),(74,70,56,21,22),(75,71,3,49,55),
+(76,71,48,89,99),(77,73,10,2,0),(78,73,91,56,0),(79,74,22,42,16),(80,74,35,72,97),(81,76,74,97,18),(82,82,29,66,71),
+(83,82,31,22,99),(84,82,70,5,47),(85,83,37,36,16),(86,83,41,53,57),(87,84,56,78,18),(88,85,2,3,88),(89,86,7,57,96),
+(90,87,23,16,63),(91,87,66,8,22),(92,88,57,12,88),(93,89,1,27,50),(94,89,91,7,45),(95,90,25,0,17),(96,91,23,2,9),
+(97,93,56,71,53),(98,94,43,71,43),(99,94,79,53,73),(100,96,73,38,38)`,
 	`CREATE TABLE comp_index_t3 (pk BIGINT PRIMARY KEY, v1 BLOB, v2 BLOB)`,
 	`create INDEX v_idx on comp_index_t3 (v1(3))`,
 	`INSERT INTO comp_index_t3 VALUES (0, 'a', 'a'), (1, 'ab', 'ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')`,
@@ -48,8 +106,11 @@ var Comp_index_tablesData = []SetupScript{{
 }}
 
 var DatetimetableData = []SetupScript{{
-	"CREATE TABLE `datetime_table` (  `i` bigint NOT NULL,  `date_col` date,  `datetime_col` datetime,  `timestamp_col` timestamp,  `time_col` time(6),  PRIMARY KEY (`i`))",
-	`insert into datetime_table values    (1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:0'),    (2, '2020-01-03T12:00:00Z', '2020-01-04T12:00:00Z', '2020-01-05T12:00:00Z', '04:00:44'),    (3, '2020-01-07T00:00:00Z', '2020-01-07T12:00:00Z', '2020-01-07T12:00:01Z', '15:00:00.005000')`,
+	"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `date_col` date,   `datetime_col` datetime,   `timestamp_col` timestamp,   `time_col` time(6),   PRIMARY KEY (`i`) )",
+	`insert into datetime_table values
+    (1, '2019-12-31T12:00:00Z', '2020-01-01T12:00:00Z', '2020-01-02T12:00:00Z', '03:10:0'),
+    (2, '2020-01-03T12:00:00Z', '2020-01-04T12:00:00Z', '2020-01-05T12:00:00Z', '04:00:44'),
+    (3, '2020-01-07T00:00:00Z', '2020-01-07T12:00:00Z', '2020-01-07T12:00:01Z', '15:00:00.005000')`,
 	`create index datetime_table_d on datetime_table (date_col)`,
 	`create index datetime_table_dt on datetime_table (datetime_col)`,
 	`create index datetime_table_ts on datetime_table (timestamp_col)`,
@@ -61,90 +122,799 @@ var EmptytableData = []SetupScript{{
 
 var ExplodeData = []SetupScript{{
 	`create table explode (a bigint, b JSON, c varchar(20))`,
-	`insert into explode values    (1, '["a", "b"]', 'first'),    (2, '["c", "d"]', 'second'),    (3, '["e", "f"]', 'third')`,
+	`insert into explode values
+    (1, '["a", "b"]', 'first'),
+    (2, '["c", "d"]', 'second'),
+    (3, '["e", "f"]', 'third')`,
 }}
 
 var Fk_tblData = []SetupScript{{
-	"CREATE TABLE `fk_tbl` (  `pk` bigint NOT NULL,  `a` bigint,  `b` varchar(20),  PRIMARY KEY (`pk`))",
+	"CREATE TABLE `fk_tbl` (   `pk` bigint NOT NULL,   `a` bigint,   `b` varchar(20),   PRIMARY KEY (`pk`) )",
 	`ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE`,
 }}
 
 var FloattableData = []SetupScript{{
-	"CREATE TABLE `floattable` (  `i` bigint NOT NULL,  `f32` float NOT NULL,  `f64` double NOT NULL,  PRIMARY KEY (`i`))",
-	`insert into floattable values    (1, 1.0, 1.0),    (2, 1.5, 1.5),    (3, 2.0, 2.0),    (4, 2.5, 2.5),    (-1, -1.0, -1.0),    (-2, -1.5, -1.5)`,
+	"CREATE TABLE `floattable` (   `i` bigint NOT NULL,   `f32` float NOT NULL,   `f64` double NOT NULL,   PRIMARY KEY (`i`) )",
+	`insert into floattable values
+    (1, 1.0, 1.0),
+    (2, 1.5, 1.5),
+    (3, 2.0, 2.0),
+    (4, 2.5, 2.5),
+    (-1, -1.0, -1.0),
+    (-2, -1.5, -1.5)`,
 	`create index floattable_f on floattable (f64)`,
 }}
 
 var FooData = []SetupScript{{
 	`create database if not exists foo`,
 	`create table foo.other_table (text varchar(20) primary key, number mediumint)`,
-	`insert into foo.other_table values    ('a', 4),    ('b', 2),    ('c', 0)`,
+	`insert into foo.other_table values
+    ('a', 4),
+    ('b', 2),
+    ('c', 0)`,
 }}
 
 var Graph_tablesData = []SetupScript{{
-	"CREATE TABLE `bus_routes` (  `origin` varchar(20) NOT NULL,  `dst` varchar(20) NOT NULL,  PRIMARY KEY (`origin`,`dst`))",
-	`insert into bus_routes values    ('New York', 'Boston'),    ('Boston', 'New York'),    ('New York', 'Washington'),    ('Washington', 'Boston'),    ('Washington', 'Raleigh')`,
-	"CREATE TABLE `parts` (  `part` varchar(20) NOT NULL,  `sub_part` varchar(20) NOT NULL,  `quantity` bigint NOT NULL,  PRIMARY KEY (`part`,`sub_part`))",
-	`insert into parts values	('pie', 'crust', 1),	('pie', 'filling', 2),	('crust', 'flour', 20),	('crust', 'sugar', 2),	('crust', 'butter', 15),	('crust', 'salt', 15),	('filling', 'sugar', 5),	('filling', 'fruit', 9),	('filling', 'salt', 3),	('filling', 'butter', 3)`,
+	"CREATE TABLE `bus_routes` (   `origin` varchar(20) NOT NULL,   `dst` varchar(20) NOT NULL,   PRIMARY KEY (`origin`,`dst`) )",
+	`insert into bus_routes values
+    ('New York', 'Boston'),
+    ('Boston', 'New York'),
+    ('New York', 'Washington'),
+    ('Washington', 'Boston'),
+    ('Washington', 'Raleigh')`,
+	"CREATE TABLE `parts` (   `part` varchar(20) NOT NULL,   `sub_part` varchar(20) NOT NULL,   `quantity` bigint NOT NULL,   PRIMARY KEY (`part`,`sub_part`) )",
+	`insert into parts values
+	('pie', 'crust', 1),
+	('pie', 'filling', 2),
+	('crust', 'flour', 20),
+	('crust', 'sugar', 2),
+	('crust', 'butter', 15),
+	('crust', 'salt', 15),
+	('filling', 'sugar', 5),
+	('filling', 'fruit', 9),
+	('filling', 'salt', 3),
+	('filling', 'butter', 3)`,
 }}
 
 var Integration_testData = []SetupScript{{
-	`create table T52LX (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY VAEXO (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table YYBCX (	id varchar(24) not null,	ESFVY varchar(100) not null,	SL76B varchar(100) not null,	GE5EL double,	F7A4Q double,	TUV25 double,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY WITSV (ESFVY),	UNIQUE KEY CEAF3 (SL76B)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table XGSJM (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY CQIIE (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table WE72E (	id varchar(24) not null,	QZ7E7 varchar(100) not null,	SSHPJ varchar(100) not null,	FHCYT varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY SOCSM (SSHPJ),	UNIQUE KEY LOW5B (QZ7E7)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table TNMXI (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY TCKRP (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table F35MI (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY FTWOK (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table E2I7U (	id varchar(24) not null,	DKCAJ varchar(24) not null,	KNG7T varchar(24),	TW55N varchar(100) not null,	QRQXW double not null,	ECXAJ double not null,	FGG57 varchar(100),	ZH72S varchar(100),	FSK67 varchar(100) not null,	XQDYT varchar(24) not null,	TCE7A double,	IWV2H double,	HPCMS varchar(24) not null,	N5CC2 varchar(1000),	FHCYT varchar(1000),	ETAQ7 double,	A75X7 double,	PRIMARY KEY (id),	KEY XQDYT (XQDYT),	KEY KNG7T (KNG7T),	KEY URBSA (ZH72S),	KEY HPCMS (HPCMS),	KEY DKCAJ (DKCAJ),	UNIQUE KEY TKKOQ (FGG57),	UNIQUE KEY SFMWS (TW55N),	constraint NEPLHKGH foreign key (XQDYT) references XGSJM (id) on delete cascade on update cascade,	constraint ZANIGGZJ foreign key (KNG7T) references WE72E (id) on delete cascade on update cascade,	constraint GYIuPKNP foreign key (HPCMS) references TNMXI (id) on delete cascade on update cascade,	constraint VOLFAYOL foreign key (DKCAJ) references F35MI (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table IIISV (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY PGYTV (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table ARLV5 (	id varchar(24) not null,	LUEVY varchar(24) not null,	F6NSZ varchar(24) not null,	PRIMARY KEY (id),	KEY F6NSZ (F6NSZ),	KEY LUEVY (LUEVY),	UNIQUE KEY G3AVB (LUEVY, F6NSZ),	constraint MPYOIDMG foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade,	constraint RMWuWBGS foreign key (F6NSZ) references IIISV (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table EPZU6 (	id varchar(24) not null,	TOFPN varchar(100) not null,	SJYN2 varchar(100) not null,	BTXC5 varchar(100) not null,	FVUCX varchar(100) not null,	SWCQV int not null,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY EUOFY (BTXC5),	KEY SZ5IY (TOFPN),	KEY LJD63 (SJYN2),	KEY LP75T (FVUCX)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table S3FQX (	id varchar(24) not null,	ADWYM tinyint not null,	FPUYA tinyint not null,	PRIMARY KEY (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table RLOHD (	id varchar(24) not null,	LUEVY varchar(24) not null,	LIILR double,	KSFXH double,	KLMAU double,	ecm double,	RQI4M varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY HVHB5 (LUEVY),	constraint BPWTWuWC foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table SFEGG (	id varchar(24) not null,	NO52D varchar(100) not null,	VYO5E varchar(100),	DKCAJ varchar(24) not null,	ADURZ int not null,	FHCYT varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY DKRQA (NO52D, VYO5E, DKCAJ),	KEY DKCAJ (DKCAJ),	constraint TLBCIFRR foreign key (DKCAJ) references F35MI (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table OUBDL (	id varchar(24) not null,	FTQLQ varchar(100),	ZH72S varchar(200),	SFJ6L varchar(2500),	V5DPX varchar(100),	LJLUM varchar(100),	IDPK7 varchar(100),	NO52D varchar(100),	ZRV3B varchar(100),	VYO5E varchar(100),	YKSSU text,	FHCYT text,	QZ6VT varchar(1000),	PRIMARY KEY (id),	KEY IRMAC (NO52D),	KEY SVIT7 (FTQLQ),	KEY CZWS6 (V5DPX),	KEY JFRPY (ZH72S)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table SISUT (	id varchar(24) not null,	T4IBQ varchar(100),	ZH72S varchar(100),	AMYXQ varchar(100),	KTNZ2 varchar(100),	HIID2 varchar(100),	DN3OQ varchar(100),	VVKNB varchar(100),	SH7TP varchar(100),	SRZZO varchar(100),	QZ6VT varchar(100),	PRIMARY KEY (id),	KEY TTQYJ (T4IBQ),	KEY Z7LT5 (ZH72S)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table NZKPM (	id varchar(24) not null,	T4IBQ varchar(100),	FGG57 varchar(100),	SSHPJ varchar(100),	NLA6O varchar(100),	SFJ6L varchar(100),	TJPT7 varchar(100),	ARN5P varchar(200),	SYPKF varchar(100),	IVFMK varchar(100),	IDE43 varchar(500),	AZ6SP varchar(500),	FSDY2 varchar(100),	XOSD4 varchar(200),	HMW4H varchar(100),	S76OM varchar(100),	vaf varchar(100),	ZROH6 varchar(100),	QCGTS varchar(100),	LNFM6 varchar(100),	TVAWL varchar(100),	HDLCL varchar(100),	BHHW6 varchar(100),	FHCYT varchar(1000),	QZ6VT varchar(1000),	PRIMARY KEY (id),	KEY UFF3F (T4IBQ),	KEY FXQHW (FGG57)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table JMRQL (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY LYX3G (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table SZW6V (	id varchar(24) not null,	T4IBQ varchar(100) not null,	V7UFH varchar(100) not null,	SYPKF varchar(100) not null,	H4DMT varchar(100) not null,	SWCQV int not null,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY SPZMU (T4IBQ),	KEY GGI5L (SYPKF),	KEY UTKLA (V7UFH),	KEY EMW6Y (H4DMT)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table XOAOP (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY THCUL (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table JJGQT (	id varchar(24) not null,	CH3FR varchar(24) not null,	LUEVY varchar(24) not null,	PRIMARY KEY (id),	KEY CH3FR (CH3FR),	UNIQUE KEY QHY76 (LUEVY),	constraint DRBJBJAI foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade,	constraint HZHLDWSR foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table TPXHZ (	id varchar(24) not null,	SVAZ4 varchar(100) not null,	PRIMARY KEY (id),	UNIQUE KEY SVAZ4 (SVAZ4)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table YK2GW (	id varchar(24) not null,	FTQLQ varchar(100) not null,	TUXML varchar(100),	PAEF5 varchar(100),	RUCY4 varchar(100),	TPNJ6 varchar(100) not null,	LBL53 varchar(100),	NB3QS varchar(100),	EO7IV varchar(100),	MUHJF varchar(100),	FM34L text,	TY5RF text,	ZHTLH text,	NPB7W text,	SX3HH text,	ISBNF text,	YA7YB text,	C5YKB text,	QK7KT text,	FFGE6 text,	FIIGJ text,	SH3NC text,	NTENA text,	M4AUB text,	X5AIR text,	SAB6M text,	G5QI5 text,	ZVQVD text,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY TU5AX (LBL53),	KEY C7DFM (NB3QS),	KEY NFJNB (EO7IV),	KEY TWFWA (MUHJF),	UNIQUE KEY FEGLT (PAEF5),	UNIQUE KEY T3X5H (TUXML),	UNIQUE KEY EZCTT (FTQLQ)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table IJLXP (	id varchar(24) not null,	WZP3R varchar(100) not null,	IXUXU varchar(24) not null,	PRIMARY KEY (id),	KEY IXUXU (IXUXU),	UNIQUE KEY IFQUF (WZP3R, IXUXU),	constraint YWSOXPJG foreign key (IXUXU) references YK2GW (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table HU5A5 (	id varchar(24) not null,	TOFPN varchar(100) not null,	I3VTA varchar(200) not null,	SFJ6L varchar(2500),	V5DPX varchar(100) not null,	LJLUM varchar(100) not null,	IDPK7 varchar(100) not null,	NO52D varchar(100) not null,	ZRV3B varchar(100) not null,	VYO5E varchar(100),	SWCQV int not null,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY UYQR2 (TOFPN),	KEY Z2WXS (I3VTA)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table JDLNA (	id varchar(24) not null,	FTQLQ varchar(100) not null,	FWWIQ varchar(100),	O3QXW varchar(100),	FHCYT text,	PRIMARY KEY (id),	UNIQUE KEY XDW7Z (FTQLQ)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table FCBVZ (	id varchar(24) not null,	FZ2R5 varchar(24) not null,	J6B7H double not null,	BMNNY double not null,	PRIMARY KEY (id),	UNIQUE KEY IC4BT (FZ2R5),	constraint XDGOFPLT foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table IMJ6V (	id varchar(24) not null,	FTQLQ varchar(100),	BACOW varchar(100),	PRIMARY KEY (id),	KEY EUAEL (BACOW),	KEY C7XE4 (FTQLQ)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table TPXBU (	id varchar(24) not null,	BTXC5 varchar(100),	FHCYT varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY UZ6GK (BTXC5)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table THNTS (	id varchar(24) not null,	NFRYN varchar(24) not null,	IXUXU varchar(24),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY NFRYN (NFRYN),	KEY IXUXU (IXUXU),	constraint PVRKLKKQ foreign key (NFRYN) references JMRQL (id) on delete cascade on update cascade,	constraint uIRGWEWQ foreign key (IXUXU) references YK2GW (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table HGMQ6 (	id varchar(24) not null,	GXLUB varchar(24) not null,	LUEVY varchar(24) not null,	M22QN varchar(24) not null,	TJPT7 varchar(100) not null,	ARN5P varchar(200) not null,	XOSD4 varchar(200) not null,	IDE43 varchar(500),	HMW4H varchar(100),	ZBT6R int,	FSDY2 varchar(100) not null,	LT7K6 double,	SPPYD double,	QCGTS double,	TEUJA varchar(24),	QQV4M varchar(24),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY M22QN (M22QN),	KEY GXLUB (GXLUB),	KEY QQV4M (QQV4M),	KEY LUEVY (LUEVY),	KEY TEUJA (TEUJA),	constraint ZTDIWKIu foreign key (TEUJA) references NZKPM (id) on delete cascade on update cascade,	constraint OPENAEGM foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade,	constraint GRXCIZOK foreign key (QQV4M) references SZW6V (id) on delete cascade on update cascade,	constraint VMJAAVNQ foreign key (M22QN) references TPXBU (id) on delete cascade on update cascade,	constraint XOVPPACH foreign key (GXLUB) references THNTS (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table D34QP (	id varchar(24) not null,	TWMSR varchar(100) not null,	QHMGE varchar(1000),	MLNPU varchar(100) not null,	FI3GA varchar(100) not null,	ZNP4P varchar(100) not null,	PRIMARY KEY (id),	UNIQUE KEY LZLGJ (FI3GA),	UNIQUE KEY F2C6B (TWMSR)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table SEQS3 (	id varchar(24) not null,	Z7CP5 varchar(24) not null,	YH4XB varchar(24) not null,	PRIMARY KEY (id),	KEY Z7CP5 (Z7CP5),	UNIQUE KEY SQKGT (Z7CP5, YH4XB),	KEY YH4XB (YH4XB),	constraint OCPWMCFX foreign key (YH4XB) references D34QP (id) on delete cascade on update cascade,	constraint CROMXATM foreign key (Z7CP5) references HGMQ6 (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table FEVH4 (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY QPADP (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table NOXN3 (	id varchar(24) not null,	BRQP2 varchar(24) not null,	FFTBJ varchar(24) not null,	A7XO2 varchar(24),	KBO7R double not null,	ECDKM double,	NUMK2 int not null,	LETOE int not null,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY A7XO2 (A7XO2),	KEY BRQP2 (BRQP2),	KEY FFTBJ (FFTBJ),	constraint YHuJBJOA foreign key (BRQP2) references E2I7U (id) on delete cascade on update cascade,	constraint MZZLFWKV foreign key (FFTBJ) references E2I7U (id) on delete cascade on update cascade,	constraint OOIIJMRS foreign key (A7XO2) references FEVH4 (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table FLQLP (	id varchar(24) not null,	FZ2R5 varchar(24) not null,	LUEVY varchar(24) not null,	M22QN varchar(24) not null,	OVE3E varchar(24) not null,	NRURT varchar(24),	OCA7E varchar(24),	XMM6Q varchar(24),	V5DPX varchar(100) not null,	S3Q3Y double not null,	ZRV3B varchar(100) not null,	FHCYT text,	PRIMARY KEY (id),	KEY M22QN (M22QN),	KEY XMM6Q (XMM6Q),	KEY OCA7E (OCA7E),	KEY OVE3E (OVE3E),	KEY FZ2R5 (FZ2R5),	KEY LUEVY (LUEVY),	KEY NRURT (NRURT),	constraint RSSVKRQV foreign key (OVE3E) references SFEGG (id) on delete cascade on update cascade,	constraint EXBYRKVB foreign key (XMM6Q) references HU5A5 (id) on delete cascade on update cascade,	constraint HCEKFTJK foreign key (M22QN) references TPXBU (id) on delete cascade on update cascade,	constraint KWNRRXuP foreign key (NRURT) references OUBDL (id) on delete cascade on update cascade,	constraint RQuDOGQu foreign key (OCA7E) references EPZU6 (id) on delete cascade on update cascade,	constraint uIRDRBRV foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade,	constraint MSMuETPN foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table AMYXQ (	id varchar(24) not null,	GXLUB varchar(24) not null,	LUEVY varchar(24) not null,	XQDYT varchar(24) not null,	AMYXQ double not null,	OZTQF double not null,	Z35GY double not null,	KKGN5 varchar(24),	PRIMARY KEY (id),	KEY GXLUB (GXLUB),	KEY XQDYT (XQDYT),	KEY LUEVY (LUEVY),	UNIQUE KEY VN3QP (GXLUB, LUEVY),	KEY KKGN5 (KKGN5),	constraint AVDTHRGA foreign key (XQDYT) references XGSJM (id) on delete cascade on update cascade,	constraint TTJXJHYD foreign key (GXLUB) references THNTS (id) on delete cascade on update cascade,	constraint uVMOASBI foreign key (KKGN5) references SISUT (id) on delete cascade on update cascade,	constraint RYPGYAZH foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table ZTFET (	id varchar(24) not null,	CYZU6 varchar(200) not null,	AERTL varchar(200) not null,	PMM7A tinyint not null,	SIJCN varchar(200) not null,	RTLWN varchar(200) not null,	ZMABC varchar(200) not null,	W3GHO text not null,	U7IJ3 text,	PRIMARY KEY (id),	UNIQUE KEY CIMX7 (CYZU6, AERTL),	KEY BRPXE (CYZU6),	KEY SSO2T (AERTL)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table WRZVO (	id varchar(24) not null,	TVNW2 varchar(100),	ZHITY varchar(100),	SYPKF varchar(100),	IDUT2 varchar(200),	O6QJ3 varchar(1000),	NO2JA varchar(1000),	YKSSU text,	FHCYT text,	QZ6VT varchar(1000),	PRIMARY KEY (id),	KEY QKJKS (SYPKF),	KEY GAG3S (TVNW2),	KEY JH666 (ZHITY)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table WGSDC (	id varchar(24) not null,	NOHHR varchar(100) not null,	AVPYF varchar(100) not null,	SYPKF varchar(100) not null,	IDUT2 varchar(200) not null,	FZXV5 varchar(100),	DQYGV varchar(100),	SWCQV int not null,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY X6K5N (IDUT2),	KEY M5B5R (SYPKF),	KEY XW5IP (NOHHR),	KEY F7H3Y (AVPYF),	KEY T65YI (FZXV5),	KEY XRKQ4 (DQYGV)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table HDDVB (	id varchar(24) not null,	FV24E varchar(24) not null,	UJ6XY varchar(24) not null,	M22QN varchar(24) not null,	NZ4MQ varchar(24) not null,	ETPQV varchar(24),	PRUV2 varchar(24),	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY M22QN (M22QN),	KEY PRUV2 (PRUV2),	KEY NZ4MQ (NZ4MQ),	KEY FV24E (FV24E),	KEY UJ6XY (UJ6XY),	KEY ETPQV (ETPQV),	constraint XDHAOISE foreign key (NZ4MQ) references YYBCX (id) on delete cascade on update cascade,	constraint CYXIDCXY foreign key (FV24E) references E2I7U (id) on delete cascade on update cascade,	constraint ZKROQGGX foreign key (ETPQV) references WRZVO (id) on delete cascade on update cascade,	constraint NTEDELZZ foreign key (PRUV2) references WGSDC (id) on delete cascade on update cascade,	constraint QCVKLYAS foreign key (UJ6XY) references E2I7U (id) on delete cascade on update cascade,	constraint LOQSITZQ foreign key (M22QN) references TPXBU (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table PG27A (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY S4YPB (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table NPCYY (	id varchar(24) not null,	CH3FR varchar(24) not null,	XVSBH varchar(24),	B5OUF int,	PRIMARY KEY (id),	KEY CH3FR (CH3FR),	KEY XVSBH (XVSBH),	UNIQUE KEY S2DGA (CH3FR, XVSBH),	constraint LKKuNSTQ foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade,	constraint ZDHFJuOJ foreign key (XVSBH) references PG27A (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table SR2I6 (	id varchar(24) not null,	A7XO2 varchar(24) not null,	SSWZH varchar(24) not null,	PRIMARY KEY (id),	KEY SSWZH (SSWZH),	KEY A7XO2 (A7XO2),	UNIQUE KEY ZKOHZ (A7XO2, SSWZH),	constraint LXOBZQWX foreign key (A7XO2) references FEVH4 (id) on delete cascade on update cascade,	constraint PDDMDJJW foreign key (SSWZH) references T52LX (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table TTGWX (	id varchar(24) not null,	LUEVY varchar(24) not null,	CBVKT varchar(100) not null,	PRIMARY KEY (id),	KEY F7YYM (LUEVY),	UNIQUE KEY GKL7R (CBVKT),	constraint GWWPGJWX foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table TDRVG (	id varchar(24) not null,	FGG57 varchar(100) not null,	SSHPJ varchar(100) not null,	SFJ6L varchar(100) not null,	ZH72S varchar(100) not null,	PRIMARY KEY (id),	KEY P62K5 (SSHPJ),	KEY XEGEF (SFJ6L),	KEY WJM3Z (ZH72S),	UNIQUE KEY TK2R2 (FGG57)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table ZYGMF (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY JVSQT (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table FG26Y (	id varchar(24) not null,	T4IBQ varchar(100),	ner varchar(100),	ber varchar(100),	hr varchar(100),	mmr varchar(100),	QZ6VT varchar(1000),	PRIMARY KEY (id),	KEY SPAIF (T4IBQ)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table SZQWJ (	id varchar(24) not null,	GXLUB varchar(24) not null,	CH3FR varchar(24) not null,	D237E int not null,	JOGI6 varchar(24),	PRIMARY KEY (id),	KEY GXLUB (GXLUB),	KEY CH3FR (CH3FR),	UNIQUE KEY ZRLKW (GXLUB, CH3FR),	KEY JOGI6 (JOGI6),	constraint TJNEMQOD foreign key (GXLUB) references THNTS (id) on delete cascade on update cascade,	constraint HWEBZOML foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade,	constraint XVMMFQXM foreign key (JOGI6) references FG26Y (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table QYWQD (	id varchar(24) not null,	WNUNU varchar(24) not null,	HHVLX varchar(24) not null,	HVHRZ double not null,	YKSSU varchar(1000),	FHCYT varchar(1000),	PRIMARY KEY (id),	KEY HHVLX (HHVLX),	KEY WNUNU (WNUNU),	constraint DSGZOCYH foreign key (HHVLX) references NOXN3 (id) on delete cascade on update cascade,	constraint ZWNuDBuB foreign key (WNUNU) references NOXN3 (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table I66GN (	id varchar(24) not null,	FZ2R5 varchar(24),	GJBJC varchar(24),	PRIMARY KEY (id),	KEY FZ2R5 (FZ2R5),	UNIQUE KEY TBOZS (FZ2R5, GJBJC),	KEY GJBJC (GJBJC),	constraint RHXJuQZJ foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade,	constraint OOTILHEG foreign key (GJBJC) references ZYGMF (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table BACOW (	id varchar(24) not null,	WZP3R varchar(100) not null,	FZ2R5 varchar(24) not null,	PRIMARY KEY (id),	KEY FZ2R5 (FZ2R5),	UNIQUE KEY CYVZQ (WZP3R),	constraint NDCWQFVN foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table moa (	id varchar(24) not null,	DZLIM varchar(100) not null,	F3YUE varchar(1000),	PRIMARY KEY (id),	UNIQUE KEY TTHMB (DZLIM)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table TA5EB (	id varchar(24) not null,	V34C7 varchar(24) not null,	GJBJC varchar(24) not null,	PRIMARY KEY (id),	KEY V34C7 (V34C7),	KEY GJBJC (GJBJC),	UNIQUE KEY B3QPZ (V34C7, GJBJC),	constraint HBCXAVLB foreign key (GJBJC) references ZYGMF (id) on delete cascade on update cascade,	constraint ZLSVFLDM foreign key (V34C7) references moa (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table NMYH3 (	id varchar(24) not null,	FTQLQ varchar(100),	RCRDD varchar(100),	FWWIQ varchar(100),	O3QXW varchar(100),	FHCYT text,	PRIMARY KEY (id),	KEY DQQLF (FTQLQ)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table FEIOE (	id varchar(24) not null,	LUEVY varchar(24) not null,	GMSGA varchar(24) not null,	FVGD2 int not null,	YP2CR int not null,	TQ7W3 int not null,	PRIMARY KEY (id),	KEY LUEVY (LUEVY),	KEY GMSGA (GMSGA),	UNIQUE KEY A7XUS (LUEVY, GMSGA),	constraint ILKPBIJV foreign key (GMSGA) references NPCYY (id) on delete cascade on update cascade,	constraint GDBYYSTF foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
-	`create table FBPKL (	id varchar(24) not null,	V34C7 varchar(24) not null,	CH3FR varchar(24) not null,	PRIMARY KEY (id),	KEY V34C7 (V34C7),	KEY CH3FR (CH3FR),	UNIQUE KEY ANGG7 (V34C7, CH3FR),	constraint AJZVSJXW foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade,	constraint ZFEIKGRF foreign key (V34C7) references moa (id) on delete cascade on update cascade) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table T52LX (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY VAEXO (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table YYBCX (
+	id varchar(24) not null,
+	ESFVY varchar(100) not null,
+	SL76B varchar(100) not null,
+	GE5EL double,
+	F7A4Q double,
+	TUV25 double,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY WITSV (ESFVY),
+	UNIQUE KEY CEAF3 (SL76B)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table XGSJM (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY CQIIE (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table WE72E (
+	id varchar(24) not null,
+	QZ7E7 varchar(100) not null,
+	SSHPJ varchar(100) not null,
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY SOCSM (SSHPJ),
+	UNIQUE KEY LOW5B (QZ7E7)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table TNMXI (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY TCKRP (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table F35MI (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY FTWOK (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table E2I7U (
+	id varchar(24) not null,
+	DKCAJ varchar(24) not null,
+	KNG7T varchar(24),
+	TW55N varchar(100) not null,
+	QRQXW double not null,
+	ECXAJ double not null,
+	FGG57 varchar(100),
+	ZH72S varchar(100),
+	FSK67 varchar(100) not null,
+	XQDYT varchar(24) not null,
+	TCE7A double,
+	IWV2H double,
+	HPCMS varchar(24) not null,
+	N5CC2 varchar(1000),
+	FHCYT varchar(1000),
+	ETAQ7 double,
+	A75X7 double,
+	PRIMARY KEY (id),
+	KEY XQDYT (XQDYT),
+	KEY KNG7T (KNG7T),
+	KEY URBSA (ZH72S),
+	KEY HPCMS (HPCMS),
+	KEY DKCAJ (DKCAJ),
+	UNIQUE KEY TKKOQ (FGG57),
+	UNIQUE KEY SFMWS (TW55N),
+	constraint NEPLHKGH foreign key (XQDYT) references XGSJM (id) on delete cascade on update cascade,
+	constraint ZANIGGZJ foreign key (KNG7T) references WE72E (id) on delete cascade on update cascade,
+	constraint GYIuPKNP foreign key (HPCMS) references TNMXI (id) on delete cascade on update cascade,
+	constraint VOLFAYOL foreign key (DKCAJ) references F35MI (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table IIISV (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY PGYTV (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table ARLV5 (
+	id varchar(24) not null,
+	LUEVY varchar(24) not null,
+	F6NSZ varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY F6NSZ (F6NSZ),
+	KEY LUEVY (LUEVY),
+	UNIQUE KEY G3AVB (LUEVY, F6NSZ),
+	constraint MPYOIDMG foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade,
+	constraint RMWuWBGS foreign key (F6NSZ) references IIISV (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table EPZU6 (
+	id varchar(24) not null,
+	TOFPN varchar(100) not null,
+	SJYN2 varchar(100) not null,
+	BTXC5 varchar(100) not null,
+	FVUCX varchar(100) not null,
+	SWCQV int not null,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY EUOFY (BTXC5),
+	KEY SZ5IY (TOFPN),
+	KEY LJD63 (SJYN2),
+	KEY LP75T (FVUCX)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table S3FQX (
+	id varchar(24) not null,
+	ADWYM tinyint not null,
+	FPUYA tinyint not null,
+	PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table RLOHD (
+	id varchar(24) not null,
+	LUEVY varchar(24) not null,
+	LIILR double,
+	KSFXH double,
+	KLMAU double,
+	ecm double,
+	RQI4M varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY HVHB5 (LUEVY),
+	constraint BPWTWuWC foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table SFEGG (
+	id varchar(24) not null,
+	NO52D varchar(100) not null,
+	VYO5E varchar(100),
+	DKCAJ varchar(24) not null,
+	ADURZ int not null,
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY DKRQA (NO52D, VYO5E, DKCAJ),
+	KEY DKCAJ (DKCAJ),
+	constraint TLBCIFRR foreign key (DKCAJ) references F35MI (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table OUBDL (
+	id varchar(24) not null,
+	FTQLQ varchar(100),
+	ZH72S varchar(200),
+	SFJ6L varchar(2500),
+	V5DPX varchar(100),
+	LJLUM varchar(100),
+	IDPK7 varchar(100),
+	NO52D varchar(100),
+	ZRV3B varchar(100),
+	VYO5E varchar(100),
+	YKSSU text,
+	FHCYT text,
+	QZ6VT varchar(1000),
+	PRIMARY KEY (id),
+	KEY IRMAC (NO52D),
+	KEY SVIT7 (FTQLQ),
+	KEY CZWS6 (V5DPX),
+	KEY JFRPY (ZH72S)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table SISUT (
+	id varchar(24) not null,
+	T4IBQ varchar(100),
+	ZH72S varchar(100),
+	AMYXQ varchar(100),
+	KTNZ2 varchar(100),
+	HIID2 varchar(100),
+	DN3OQ varchar(100),
+	VVKNB varchar(100),
+	SH7TP varchar(100),
+	SRZZO varchar(100),
+	QZ6VT varchar(100),
+	PRIMARY KEY (id),
+	KEY TTQYJ (T4IBQ),
+	KEY Z7LT5 (ZH72S)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table NZKPM (
+	id varchar(24) not null,
+	T4IBQ varchar(100),
+	FGG57 varchar(100),
+	SSHPJ varchar(100),
+	NLA6O varchar(100),
+	SFJ6L varchar(100),
+	TJPT7 varchar(100),
+	ARN5P varchar(200),
+	SYPKF varchar(100),
+	IVFMK varchar(100),
+	IDE43 varchar(500),
+	AZ6SP varchar(500),
+	FSDY2 varchar(100),
+	XOSD4 varchar(200),
+	HMW4H varchar(100),
+	S76OM varchar(100),
+	vaf varchar(100),
+	ZROH6 varchar(100),
+	QCGTS varchar(100),
+	LNFM6 varchar(100),
+	TVAWL varchar(100),
+	HDLCL varchar(100),
+	BHHW6 varchar(100),
+	FHCYT varchar(1000),
+	QZ6VT varchar(1000),
+	PRIMARY KEY (id),
+	KEY UFF3F (T4IBQ),
+	KEY FXQHW (FGG57)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table JMRQL (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY LYX3G (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table SZW6V (
+	id varchar(24) not null,
+	T4IBQ varchar(100) not null,
+	V7UFH varchar(100) not null,
+	SYPKF varchar(100) not null,
+	H4DMT varchar(100) not null,
+	SWCQV int not null,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY SPZMU (T4IBQ),
+	KEY GGI5L (SYPKF),
+	KEY UTKLA (V7UFH),
+	KEY EMW6Y (H4DMT)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table XOAOP (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY THCUL (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table JJGQT (
+	id varchar(24) not null,
+	CH3FR varchar(24) not null,
+	LUEVY varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY CH3FR (CH3FR),
+	UNIQUE KEY QHY76 (LUEVY),
+	constraint DRBJBJAI foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade,
+	constraint HZHLDWSR foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table TPXHZ (
+	id varchar(24) not null,
+	SVAZ4 varchar(100) not null,
+	PRIMARY KEY (id),
+	UNIQUE KEY SVAZ4 (SVAZ4)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table YK2GW (
+	id varchar(24) not null,
+	FTQLQ varchar(100) not null,
+	TUXML varchar(100),
+	PAEF5 varchar(100),
+	RUCY4 varchar(100),
+	TPNJ6 varchar(100) not null,
+	LBL53 varchar(100),
+	NB3QS varchar(100),
+	EO7IV varchar(100),
+	MUHJF varchar(100),
+	FM34L text,
+	TY5RF text,
+	ZHTLH text,
+	NPB7W text,
+	SX3HH text,
+	ISBNF text,
+	YA7YB text,
+	C5YKB text,
+	QK7KT text,
+	FFGE6 text,
+	FIIGJ text,
+	SH3NC text,
+	NTENA text,
+	M4AUB text,
+	X5AIR text,
+	SAB6M text,
+	G5QI5 text,
+	ZVQVD text,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY TU5AX (LBL53),
+	KEY C7DFM (NB3QS),
+	KEY NFJNB (EO7IV),
+	KEY TWFWA (MUHJF),
+	UNIQUE KEY FEGLT (PAEF5),
+	UNIQUE KEY T3X5H (TUXML),
+	UNIQUE KEY EZCTT (FTQLQ)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table IJLXP (
+	id varchar(24) not null,
+	WZP3R varchar(100) not null,
+	IXUXU varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY IXUXU (IXUXU),
+	UNIQUE KEY IFQUF (WZP3R, IXUXU),
+	constraint YWSOXPJG foreign key (IXUXU) references YK2GW (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table HU5A5 (
+	id varchar(24) not null,
+	TOFPN varchar(100) not null,
+	I3VTA varchar(200) not null,
+	SFJ6L varchar(2500),
+	V5DPX varchar(100) not null,
+	LJLUM varchar(100) not null,
+	IDPK7 varchar(100) not null,
+	NO52D varchar(100) not null,
+	ZRV3B varchar(100) not null,
+	VYO5E varchar(100),
+	SWCQV int not null,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY UYQR2 (TOFPN),
+	KEY Z2WXS (I3VTA)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table JDLNA (
+	id varchar(24) not null,
+	FTQLQ varchar(100) not null,
+	FWWIQ varchar(100),
+	O3QXW varchar(100),
+	FHCYT text,
+	PRIMARY KEY (id),
+	UNIQUE KEY XDW7Z (FTQLQ)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table FCBVZ (
+	id varchar(24) not null,
+	FZ2R5 varchar(24) not null,
+	J6B7H double not null,
+	BMNNY double not null,
+	PRIMARY KEY (id),
+	UNIQUE KEY IC4BT (FZ2R5),
+	constraint XDGOFPLT foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table IMJ6V (
+	id varchar(24) not null,
+	FTQLQ varchar(100),
+	BACOW varchar(100),
+	PRIMARY KEY (id),
+	KEY EUAEL (BACOW),
+	KEY C7XE4 (FTQLQ)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table TPXBU (
+	id varchar(24) not null,
+	BTXC5 varchar(100),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY UZ6GK (BTXC5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table THNTS (
+	id varchar(24) not null,
+	NFRYN varchar(24) not null,
+	IXUXU varchar(24),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY NFRYN (NFRYN),
+	KEY IXUXU (IXUXU),
+	constraint PVRKLKKQ foreign key (NFRYN) references JMRQL (id) on delete cascade on update cascade,
+	constraint uIRGWEWQ foreign key (IXUXU) references YK2GW (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table HGMQ6 (
+	id varchar(24) not null,
+	GXLUB varchar(24) not null,
+	LUEVY varchar(24) not null,
+	M22QN varchar(24) not null,
+	TJPT7 varchar(100) not null,
+	ARN5P varchar(200) not null,
+	XOSD4 varchar(200) not null,
+	IDE43 varchar(500),
+	HMW4H varchar(100),
+	ZBT6R int,
+	FSDY2 varchar(100) not null,
+	LT7K6 double,
+	SPPYD double,
+	QCGTS double,
+	TEUJA varchar(24),
+	QQV4M varchar(24),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY M22QN (M22QN),
+	KEY GXLUB (GXLUB),
+	KEY QQV4M (QQV4M),
+	KEY LUEVY (LUEVY),
+	KEY TEUJA (TEUJA),
+	constraint ZTDIWKIu foreign key (TEUJA) references NZKPM (id) on delete cascade on update cascade,
+	constraint OPENAEGM foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade,
+	constraint GRXCIZOK foreign key (QQV4M) references SZW6V (id) on delete cascade on update cascade,
+	constraint VMJAAVNQ foreign key (M22QN) references TPXBU (id) on delete cascade on update cascade,
+	constraint XOVPPACH foreign key (GXLUB) references THNTS (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table D34QP (
+	id varchar(24) not null,
+	TWMSR varchar(100) not null,
+	QHMGE varchar(1000),
+	MLNPU varchar(100) not null,
+	FI3GA varchar(100) not null,
+	ZNP4P varchar(100) not null,
+	PRIMARY KEY (id),
+	UNIQUE KEY LZLGJ (FI3GA),
+	UNIQUE KEY F2C6B (TWMSR)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table SEQS3 (
+	id varchar(24) not null,
+	Z7CP5 varchar(24) not null,
+	YH4XB varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY Z7CP5 (Z7CP5),
+	UNIQUE KEY SQKGT (Z7CP5, YH4XB),
+	KEY YH4XB (YH4XB),
+	constraint OCPWMCFX foreign key (YH4XB) references D34QP (id) on delete cascade on update cascade,
+	constraint CROMXATM foreign key (Z7CP5) references HGMQ6 (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table FEVH4 (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY QPADP (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table NOXN3 (
+	id varchar(24) not null,
+	BRQP2 varchar(24) not null,
+	FFTBJ varchar(24) not null,
+	A7XO2 varchar(24),
+	KBO7R double not null,
+	ECDKM double,
+	NUMK2 int not null,
+	LETOE int not null,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY A7XO2 (A7XO2),
+	KEY BRQP2 (BRQP2),
+	KEY FFTBJ (FFTBJ),
+	constraint YHuJBJOA foreign key (BRQP2) references E2I7U (id) on delete cascade on update cascade,
+	constraint MZZLFWKV foreign key (FFTBJ) references E2I7U (id) on delete cascade on update cascade,
+	constraint OOIIJMRS foreign key (A7XO2) references FEVH4 (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table FLQLP (
+	id varchar(24) not null,
+	FZ2R5 varchar(24) not null,
+	LUEVY varchar(24) not null,
+	M22QN varchar(24) not null,
+	OVE3E varchar(24) not null,
+	NRURT varchar(24),
+	OCA7E varchar(24),
+	XMM6Q varchar(24),
+	V5DPX varchar(100) not null,
+	S3Q3Y double not null,
+	ZRV3B varchar(100) not null,
+	FHCYT text,
+	PRIMARY KEY (id),
+	KEY M22QN (M22QN),
+	KEY XMM6Q (XMM6Q),
+	KEY OCA7E (OCA7E),
+	KEY OVE3E (OVE3E),
+	KEY FZ2R5 (FZ2R5),
+	KEY LUEVY (LUEVY),
+	KEY NRURT (NRURT),
+	constraint RSSVKRQV foreign key (OVE3E) references SFEGG (id) on delete cascade on update cascade,
+	constraint EXBYRKVB foreign key (XMM6Q) references HU5A5 (id) on delete cascade on update cascade,
+	constraint HCEKFTJK foreign key (M22QN) references TPXBU (id) on delete cascade on update cascade,
+	constraint KWNRRXuP foreign key (NRURT) references OUBDL (id) on delete cascade on update cascade,
+	constraint RQuDOGQu foreign key (OCA7E) references EPZU6 (id) on delete cascade on update cascade,
+	constraint uIRDRBRV foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade,
+	constraint MSMuETPN foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table AMYXQ (
+	id varchar(24) not null,
+	GXLUB varchar(24) not null,
+	LUEVY varchar(24) not null,
+	XQDYT varchar(24) not null,
+	AMYXQ double not null,
+	OZTQF double not null,
+	Z35GY double not null,
+	KKGN5 varchar(24),
+	PRIMARY KEY (id),
+	KEY GXLUB (GXLUB),
+	KEY XQDYT (XQDYT),
+	KEY LUEVY (LUEVY),
+	UNIQUE KEY VN3QP (GXLUB, LUEVY),
+	KEY KKGN5 (KKGN5),
+	constraint AVDTHRGA foreign key (XQDYT) references XGSJM (id) on delete cascade on update cascade,
+	constraint TTJXJHYD foreign key (GXLUB) references THNTS (id) on delete cascade on update cascade,
+	constraint uVMOASBI foreign key (KKGN5) references SISUT (id) on delete cascade on update cascade,
+	constraint RYPGYAZH foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table ZTFET (
+	id varchar(24) not null,
+	CYZU6 varchar(200) not null,
+	AERTL varchar(200) not null,
+	PMM7A tinyint not null,
+	SIJCN varchar(200) not null,
+	RTLWN varchar(200) not null,
+	ZMABC varchar(200) not null,
+	W3GHO text not null,
+	U7IJ3 text,
+	PRIMARY KEY (id),
+	UNIQUE KEY CIMX7 (CYZU6, AERTL),
+	KEY BRPXE (CYZU6),
+	KEY SSO2T (AERTL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table WRZVO (
+	id varchar(24) not null,
+	TVNW2 varchar(100),
+	ZHITY varchar(100),
+	SYPKF varchar(100),
+	IDUT2 varchar(200),
+	O6QJ3 varchar(1000),
+	NO2JA varchar(1000),
+	YKSSU text,
+	FHCYT text,
+	QZ6VT varchar(1000),
+	PRIMARY KEY (id),
+	KEY QKJKS (SYPKF),
+	KEY GAG3S (TVNW2),
+	KEY JH666 (ZHITY)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table WGSDC (
+	id varchar(24) not null,
+	NOHHR varchar(100) not null,
+	AVPYF varchar(100) not null,
+	SYPKF varchar(100) not null,
+	IDUT2 varchar(200) not null,
+	FZXV5 varchar(100),
+	DQYGV varchar(100),
+	SWCQV int not null,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY X6K5N (IDUT2),
+	KEY M5B5R (SYPKF),
+	KEY XW5IP (NOHHR),
+	KEY F7H3Y (AVPYF),
+	KEY T65YI (FZXV5),
+	KEY XRKQ4 (DQYGV)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table HDDVB (
+	id varchar(24) not null,
+	FV24E varchar(24) not null,
+	UJ6XY varchar(24) not null,
+	M22QN varchar(24) not null,
+	NZ4MQ varchar(24) not null,
+	ETPQV varchar(24),
+	PRUV2 varchar(24),
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY M22QN (M22QN),
+	KEY PRUV2 (PRUV2),
+	KEY NZ4MQ (NZ4MQ),
+	KEY FV24E (FV24E),
+	KEY UJ6XY (UJ6XY),
+	KEY ETPQV (ETPQV),
+	constraint XDHAOISE foreign key (NZ4MQ) references YYBCX (id) on delete cascade on update cascade,
+	constraint CYXIDCXY foreign key (FV24E) references E2I7U (id) on delete cascade on update cascade,
+	constraint ZKROQGGX foreign key (ETPQV) references WRZVO (id) on delete cascade on update cascade,
+	constraint NTEDELZZ foreign key (PRUV2) references WGSDC (id) on delete cascade on update cascade,
+	constraint QCVKLYAS foreign key (UJ6XY) references E2I7U (id) on delete cascade on update cascade,
+	constraint LOQSITZQ foreign key (M22QN) references TPXBU (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table PG27A (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY S4YPB (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table NPCYY (
+	id varchar(24) not null,
+	CH3FR varchar(24) not null,
+	XVSBH varchar(24),
+	B5OUF int,
+	PRIMARY KEY (id),
+	KEY CH3FR (CH3FR),
+	KEY XVSBH (XVSBH),
+	UNIQUE KEY S2DGA (CH3FR, XVSBH),
+	constraint LKKuNSTQ foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade,
+	constraint ZDHFJuOJ foreign key (XVSBH) references PG27A (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table SR2I6 (
+	id varchar(24) not null,
+	A7XO2 varchar(24) not null,
+	SSWZH varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY SSWZH (SSWZH),
+	KEY A7XO2 (A7XO2),
+	UNIQUE KEY ZKOHZ (A7XO2, SSWZH),
+	constraint LXOBZQWX foreign key (A7XO2) references FEVH4 (id) on delete cascade on update cascade,
+	constraint PDDMDJJW foreign key (SSWZH) references T52LX (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table TTGWX (
+	id varchar(24) not null,
+	LUEVY varchar(24) not null,
+	CBVKT varchar(100) not null,
+	PRIMARY KEY (id),
+	KEY F7YYM (LUEVY),
+	UNIQUE KEY GKL7R (CBVKT),
+	constraint GWWPGJWX foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table TDRVG (
+	id varchar(24) not null,
+	FGG57 varchar(100) not null,
+	SSHPJ varchar(100) not null,
+	SFJ6L varchar(100) not null,
+	ZH72S varchar(100) not null,
+	PRIMARY KEY (id),
+	KEY P62K5 (SSHPJ),
+	KEY XEGEF (SFJ6L),
+	KEY WJM3Z (ZH72S),
+	UNIQUE KEY TK2R2 (FGG57)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table ZYGMF (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY JVSQT (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table FG26Y (
+	id varchar(24) not null,
+	T4IBQ varchar(100),
+	ner varchar(100),
+	ber varchar(100),
+	hr varchar(100),
+	mmr varchar(100),
+	QZ6VT varchar(1000),
+	PRIMARY KEY (id),
+	KEY SPAIF (T4IBQ)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table SZQWJ (
+	id varchar(24) not null,
+	GXLUB varchar(24) not null,
+	CH3FR varchar(24) not null,
+	D237E int not null,
+	JOGI6 varchar(24),
+	PRIMARY KEY (id),
+	KEY GXLUB (GXLUB),
+	KEY CH3FR (CH3FR),
+	UNIQUE KEY ZRLKW (GXLUB, CH3FR),
+	KEY JOGI6 (JOGI6),
+	constraint TJNEMQOD foreign key (GXLUB) references THNTS (id) on delete cascade on update cascade,
+	constraint HWEBZOML foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade,
+	constraint XVMMFQXM foreign key (JOGI6) references FG26Y (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table QYWQD (
+	id varchar(24) not null,
+	WNUNU varchar(24) not null,
+	HHVLX varchar(24) not null,
+	HVHRZ double not null,
+	YKSSU varchar(1000),
+	FHCYT varchar(1000),
+	PRIMARY KEY (id),
+	KEY HHVLX (HHVLX),
+	KEY WNUNU (WNUNU),
+	constraint DSGZOCYH foreign key (HHVLX) references NOXN3 (id) on delete cascade on update cascade,
+	constraint ZWNuDBuB foreign key (WNUNU) references NOXN3 (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table I66GN (
+	id varchar(24) not null,
+	FZ2R5 varchar(24),
+	GJBJC varchar(24),
+	PRIMARY KEY (id),
+	KEY FZ2R5 (FZ2R5),
+	UNIQUE KEY TBOZS (FZ2R5, GJBJC),
+	KEY GJBJC (GJBJC),
+	constraint RHXJuQZJ foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade,
+	constraint OOTILHEG foreign key (GJBJC) references ZYGMF (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table BACOW (
+	id varchar(24) not null,
+	WZP3R varchar(100) not null,
+	FZ2R5 varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY FZ2R5 (FZ2R5),
+	UNIQUE KEY CYVZQ (WZP3R),
+	constraint NDCWQFVN foreign key (FZ2R5) references JDLNA (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table moa (
+	id varchar(24) not null,
+	DZLIM varchar(100) not null,
+	F3YUE varchar(1000),
+	PRIMARY KEY (id),
+	UNIQUE KEY TTHMB (DZLIM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table TA5EB (
+	id varchar(24) not null,
+	V34C7 varchar(24) not null,
+	GJBJC varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY V34C7 (V34C7),
+	KEY GJBJC (GJBJC),
+	UNIQUE KEY B3QPZ (V34C7, GJBJC),
+	constraint HBCXAVLB foreign key (GJBJC) references ZYGMF (id) on delete cascade on update cascade,
+	constraint ZLSVFLDM foreign key (V34C7) references moa (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table NMYH3 (
+	id varchar(24) not null,
+	FTQLQ varchar(100),
+	RCRDD varchar(100),
+	FWWIQ varchar(100),
+	O3QXW varchar(100),
+	FHCYT text,
+	PRIMARY KEY (id),
+	KEY DQQLF (FTQLQ)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table FEIOE (
+	id varchar(24) not null,
+	LUEVY varchar(24) not null,
+	GMSGA varchar(24) not null,
+	FVGD2 int not null,
+	YP2CR int not null,
+	TQ7W3 int not null,
+	PRIMARY KEY (id),
+	KEY LUEVY (LUEVY),
+	KEY GMSGA (GMSGA),
+	UNIQUE KEY A7XUS (LUEVY, GMSGA),
+	constraint ILKPBIJV foreign key (GMSGA) references NPCYY (id) on delete cascade on update cascade,
+	constraint GDBYYSTF foreign key (LUEVY) references E2I7U (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
+	`create table FBPKL (
+	id varchar(24) not null,
+	V34C7 varchar(24) not null,
+	CH3FR varchar(24) not null,
+	PRIMARY KEY (id),
+	KEY V34C7 (V34C7),
+	KEY CH3FR (CH3FR),
+	UNIQUE KEY ANGG7 (V34C7, CH3FR),
+	constraint AJZVSJXW foreign key (CH3FR) references XOAOP (id) on delete cascade on update cascade,
+	constraint ZFEIKGRF foreign key (V34C7) references moa (id) on delete cascade on update cascade
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;`,
 	`update information_schema.statistics set cardinality = 123867 where table_name = 'TPXBU' and table_schema = 'mydb';`,
 	`update information_schema.statistics set cardinality = 2498 where table_name = 'THNTS' and table_schema = 'mydb';`,
 	`update information_schema.statistics set cardinality = 3 where table_name = 'JMRQL' and table_schema = 'mydb';`,
@@ -202,23 +972,1592 @@ var Integration_testData = []SetupScript{{
 	`update information_schema.statistics set cardinality = 1001 where table_name = 'FG26Y' and table_schema = 'mydb';`,
 	`update information_schema.statistics set cardinality = 36 where table_name = 'D34QP' and table_schema = 'mydb';`,
 	`update information_schema.statistics set cardinality = 64 where table_name = 'ZTFET' and table_schema = 'mydb';`,
+	`CREATE TRIGGER SZW6V_on_insert BEFORE INSERT ON SZW6V
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.T4IBQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.V7UFH IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SYPKF IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.H4DMT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER SZW6V_on_update BEFORE UPDATE ON SZW6V
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.T4IBQ IS NOT NULL AND (NEW.T4IBQ <> OLD.T4IBQ)
+    OR
+    NEW.V7UFH IS NOT NULL AND (NEW.V7UFH <> OLD.V7UFH)
+    OR
+    NEW.SYPKF IS NOT NULL AND (NEW.SYPKF <> OLD.SYPKF)
+  THEN
+    -- SET @custom_error_message = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+  END IF;
+  IF
+    NEW.H4DMT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER SZW6V_on_delete BEFORE DELETE ON SZW6V
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//`,
+	`CREATE TRIGGER WGSDC_on_insert BEFORE INSERT ON WGSDC
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NOHHR IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.AVPYF IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SYPKF IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDUT2 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FZXV5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.DQYGV IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  IF NEW.FZXV5 IS NULL AND NEW.DQYGV IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either the mutant or partner overridden field must have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either the mutant or partner overridden field must have value!';
+  END IF;
+  IF NEW.FZXV5 IS NOT NULL AND NEW.DQYGV IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'Only one of the mutant or partner overridden field can have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only one of the mutant or partner overridden field can have value!';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER WGSDC_on_update BEFORE UPDATE ON WGSDC
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NOHHR IS NOT NULL AND (NEW.NOHHR <> OLD.NOHHR)
+    OR
+    NEW.AVPYF IS NOT NULL AND (NEW.AVPYF <> OLD.AVPYF)
+    OR
+    NEW.SYPKF IS NOT NULL AND (NEW.SYPKF <> OLD.SYPKF)
+    OR
+    NEW.IDUT2 IS NOT NULL AND (NEW.IDUT2 <> OLD.IDUT2)
+  THEN
+    -- SET @custom_error_message = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+  END IF;
+  IF
+    NEW.FZXV5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.DQYGV IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  IF NEW.FZXV5 IS NULL AND NEW.DQYGV IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either the mutant or partner overridden field must have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either the mutant or partner overridden field must have value!';
+  END IF;
+  IF NEW.FZXV5 IS NOT NULL AND NEW.DQYGV IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'Only one of the mutant or partner overridden field can have value!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only one of the mutant or partner overridden field can have value!';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER WGSDC_on_delete BEFORE DELETE ON WGSDC
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//`,
+	`CREATE TRIGGER EPZU6_on_insert BEFORE INSERT ON EPZU6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SJYN2 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FVUCX IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.BTXC5 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER EPZU6_on_update BEFORE UPDATE ON EPZU6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IS NOT NULL AND (NEW.TOFPN <> OLD.TOFPN)
+    OR
+    NEW.SJYN2 IS NOT NULL AND (NEW.SJYN2 <> OLD.SJYN2)
+    OR
+    NEW.BTXC5 IS NOT NULL AND (NEW.BTXC5 <> OLD.BTXC5)
+  THEN
+    -- SET @custom_error_message = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The fields identifying what to override can not be changed! Please use the ignore field and create new one if necessary.';
+  END IF;
+  IF
+    NEW.FVUCX IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER EPZU6_on_delete BEFORE DELETE ON EPZU6
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//`,
+	`CREATE TRIGGER HU5A5_on_insert BEFORE INSERT ON HU5A5
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.I3VTA IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SFJ6L IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.V5DPX IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.LJLUM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDPK7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.NO52D IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZRV3B IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.VYO5E IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER HU5A5_on_update BEFORE UPDATE ON HU5A5
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TOFPN IS NOT NULL AND (NEW.TOFPN <> OLD.TOFPN)
+    OR
+    NEW.I3VTA IS NOT NULL AND (NEW.I3VTA <> OLD.I3VTA)
+    OR
+    NEW.V5DPX IS NOT NULL AND (NEW.V5DPX <> OLD.V5DPX)
+    OR
+    NEW.LJLUM IS NOT NULL AND (NEW.LJLUM <> OLD.LJLUM)
+    OR
+    NEW.IDPK7 IS NOT NULL AND (NEW.IDPK7 <> OLD.IDPK7)
+    OR
+    NEW.NO52D IS NOT NULL AND (NEW.NO52D <> OLD.NO52D)
+    OR
+    NEW.ZRV3B IS NOT NULL AND (NEW.ZRV3B <> OLD.ZRV3B)
+    OR
+    NEW.VYO5E IS NOT NULL AND (NEW.VYO5E <> OLD.VYO5E)
+  THEN
+    -- SET @custom_error_message = 'Only the SWCQV, SFJ6L, YKSSU and user RNVLS field can be changed of additionals. Please use that field and add a new one if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only the SWCQV and non functional fields can be changed of additionals.';
+  END IF;
+  IF
+    NEW.SFJ6L IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF NEW.SWCQV NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The SWCQV field is an int boolean (0/1) meaning if record is fully SWCQV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The SWCQV field is an int boolean (0/1) meaning if fully SWCQV.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER HU5A5_on_delete BEFORE DELETE ON HU5A5
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from override and additional tables. Please use the SWCQV field instead.';
+END//`,
+	`CREATE TRIGGER WE72E_on_insert BEFORE INSERT ON WE72E
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.QZ7E7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SSHPJ IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER WE72E_on_update BEFORE UPDATE ON WE72E
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.QZ7E7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SSHPJ IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER WE72E_on_delete BEFORE DELETE ON WE72E
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A WE72E can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A WE72E can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER F35MI_on_insert BEFORE INSERT ON F35MI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER F35MI_on_update BEFORE UPDATE ON F35MI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER F35MI_on_delete BEFORE DELETE ON F35MI
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A F35MI can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A F35MI can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER TNMXI_on_insert BEFORE INSERT ON TNMXI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER TNMXI_on_update BEFORE UPDATE ON TNMXI
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER TNMXI_on_delete BEFORE DELETE ON TNMXI
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A TNMXI can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A TNMXI can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER XGSJM_on_insert BEFORE INSERT ON XGSJM
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER XGSJM_on_update BEFORE UPDATE ON XGSJM
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER XGSJM_on_delete BEFORE DELETE ON XGSJM
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A XGSJM can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A XGSJM can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER IIISV_on_insert BEFORE INSERT ON IIISV
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER IIISV_on_update BEFORE UPDATE ON IIISV
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER TTGWX_on_insert BEFORE INSERT ON TTGWX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CBVKT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER TTGWX_on_update BEFORE UPDATE ON TTGWX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CBVKT IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER FEVH4_on_insert BEFORE INSERT ON FEVH4
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER FEVH4_on_update BEFORE UPDATE ON FEVH4
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER FEVH4_on_delete BEFORE DELETE ON FEVH4
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'An FEVH4 can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An FEVH4 can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER T52LX_on_insert BEFORE INSERT ON T52LX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER T52LX_on_update BEFORE UPDATE ON T52LX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER NOXN3_on_insert BEFORE INSERT ON NOXN3
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NUMK2 = 1 AND NEW.ECDKM IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+  END IF;
+  IF
+    NEW.NUMK2 <> 1 AND NEW.ECDKM IS NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER NOXN3_on_update BEFORE UPDATE ON NOXN3
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NUMK2 = 1 AND NEW.ECDKM IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is activity (1), ECDKM must be NULL.';
+  END IF;
+  IF
+    NEW.NUMK2 <> 1 AND NEW.ECDKM IS NULL
+  THEN
+    -- SET @custom_error_message = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If the edge TAFAX is not activity (1), ECDKM must have value.';
+  END IF;
+  IF
+    NEW.BRQP2 IS NOT NULL AND (NEW.BRQP2 <> OLD.BRQP2)
+    OR
+    NEW.FFTBJ IS NOT NULL AND (NEW.FFTBJ <> OLD.FFTBJ)
+    OR
+    (NEW.NUMK2 IS NOT NULL) AND (NEW.NUMK2 <> OLD.NUMK2) AND (NEW.NUMK2 = 1 OR OLD.NUMK2 = 1)
+  THEN
+    UPDATE S3FQX SET ADWYM = 1;
+  END IF;
+END//`,
+	`CREATE TRIGGER QYWQD_on_insert BEFORE INSERT ON QYWQD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT FFTBJ FROM NOXN3 WHERE id = NEW.WNUNU) <> (SELECT BRQP2 FROM NOXN3 WHERE id = NEW.HHVLX)
+  THEN
+    -- SET @custom_error_message = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+  END IF;
+END//`,
+	`CREATE TRIGGER QYWQD_on_update BEFORE UPDATE ON QYWQD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT FFTBJ FROM NOXN3 WHERE id = NEW.WNUNU) <> (SELECT BRQP2 FROM NOXN3 WHERE id = NEW.HHVLX)
+  THEN
+    -- SET @custom_error_message = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The target UWBAI of the upstream edge must be the same as the source UWBAI of the downstream edge (the enzyme UWBAI).';
+  END IF;
+END//`,
+	`CREATE TRIGGER RLOHD_on_insert BEFORE INSERT ON RLOHD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DKCAJ FROM E2I7U WHERE id = NEW.LUEVY) NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'extra_cellular' OR DZLIM = 'OROPK')
+  THEN
+    -- SET @custom_error_message = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+  END IF;
+  IF
+    NEW.KLMAU IS NULL AND NEW.ecm IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either KLMAU or ecm must be set.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either KLMAU or ecm must be set.';
+  END IF;
+END//`,
+	`CREATE TRIGGER RLOHD_on_update BEFORE UPDATE ON RLOHD
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DKCAJ FROM E2I7U WHERE id = NEW.LUEVY) NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'extra_cellular' OR DZLIM = 'OROPK')
+  THEN
+    -- SET @custom_error_message = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The choosen UWBAI is not TAFAX of extra_cellular or OROPK. Input layer is only defined for these.';
+  END IF;
+  IF
+    NEW.KLMAU IS NULL AND NEW.ecm IS NULL
+  THEN
+    -- SET @custom_error_message = 'Either KLMAU or ecm must be set.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Either KLMAU or ecm must be set.';
+  END IF;
+END//`,
+	`CREATE TRIGGER YK2GW_on_insert BEFORE INSERT ON YK2GW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TUXML IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.PAEF5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RUCY4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TPNJ6 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1, FPUYA = 1;
+END//`,
+	`CREATE TRIGGER YK2GW_on_update BEFORE UPDATE ON YK2GW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IS NOT NULL AND (NEW.FTQLQ <> OLD.FTQLQ)
+  THEN
+    -- SET @custom_error_message = 'The FTQLQ of a cell line can not be modified. Delete and re-add if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The FTQLQ of a cell line can not be modified. Delete and re-add if necessary.';
+  END IF;
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TUXML IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.PAEF5 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RUCY4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.TPNJ6 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER IJLXP_on_insert BEFORE INSERT ON IJLXP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER IJLXP_on_update BEFORE UPDATE ON IJLXP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER JMRQL_on_insert BEFORE INSERT ON JMRQL
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER JMRQL_on_update BEFORE UPDATE ON JMRQL
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER JMRQL_on_delete BEFORE DELETE ON JMRQL
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A JMRQL can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A JMRQL can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER AMYXQ_on_insert BEFORE INSERT ON AMYXQ
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT FGG57 FROM E2I7U WHERE id = NEW.LUEVY) IS NULL
+  THEN
+    -- SET @custom_error_message = 'The given UWBAI can not be connected to a AMYXQ record as it does not have IYDZV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The given UWBAI can not be connected to a AMYXQ record as it does not have IYDZV.';
+  END IF;
+  IF
+    NEW.AMYXQ < 0 OR NEW.OZTQF < 0 OR NEW.Z35GY < 0
+  THEN
+    -- SET @custom_error_message = 'All values in AMYXQ must ne non-negative.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'All values in AMYXQ must ne non-negative.';
+  END IF;
+END//`,
+	`CREATE TRIGGER AMYXQ_on_update BEFORE UPDATE ON AMYXQ
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.GXLUB IS NOT NULL AND (NEW.GXLUB <> OLD.GXLUB)
+    OR
+    NEW.LUEVY IS NOT NULL AND (NEW.LUEVY <> OLD.LUEVY)
+    OR
+    NEW.KKGN5 IS NOT NULL AND (NEW.KKGN5 <> OLD.KKGN5)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    NEW.AMYXQ < 0 OR NEW.OZTQF < 0 OR NEW.Z35GY < 0
+  THEN
+    -- SET @custom_error_message = 'All values in AMYXQ must ne non-negative.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'All values in AMYXQ must ne non-negative.';
+  END IF;
+END//`,
+	`CREATE TRIGGER D34QP_on_insert BEFORE INSERT ON D34QP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TWMSR IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.QHMGE IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.MLNPU IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FI3GA IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZNP4P IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER D34QP_on_update BEFORE UPDATE ON D34QP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TWMSR IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.QHMGE IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.MLNPU IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FI3GA IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZNP4P IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER HGMQ6_on_insert BEFORE INSERT ON HGMQ6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TJPT7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ARN5P IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.XOSD4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDE43 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.HMW4H IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSDY2 NOT IN ('benign', 'VUS', 'SRARY', 'UBQWG')
+  THEN
+    -- SET @custom_error_message = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+  END IF;
+  IF NEW.LT7K6 IS NOT NULL AND NEW.SPPYD IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 has value, SPPYD must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 has value, SPPYD must be NULL.';
+  END IF;
+  IF NEW.LT7K6 IS NULL AND (NEW.SPPYD IS NULL OR NEW.SPPYD <> 0.5)
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+  END IF;
+END//`,
+	`CREATE TRIGGER HGMQ6_on_update BEFORE UPDATE ON HGMQ6
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.GXLUB IS NOT NULL AND (NEW.GXLUB <> OLD.GXLUB)
+    OR
+    NEW.LUEVY IS NOT NULL AND (NEW.LUEVY <> OLD.LUEVY)
+    OR
+    NEW.M22QN IS NOT NULL AND (NEW.M22QN <> OLD.M22QN)
+    OR
+    NEW.TEUJA IS NOT NULL AND (NEW.TEUJA <> OLD.TEUJA)
+    OR
+    NEW.QQV4M IS NOT NULL AND (NEW.QQV4M <> OLD.QQV4M)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    NEW.TJPT7 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ARN5P IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.XOSD4 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.IDE43 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.HMW4H IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSDY2 NOT IN ('benign', 'VUS', 'SRARY', 'UBQWG')
+  THEN
+    -- SET @custom_error_message = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSDY2 must be either ''benign'', ''VUS'', ''SRARY'' or ''UBQWG''.';
+  END IF;
+  IF NEW.LT7K6 IS NOT NULL AND NEW.SPPYD IS NOT NULL
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 has value, SPPYD must be NULL.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 has value, SPPYD must be NULL.';
+  END IF;
+  IF NEW.LT7K6 IS NULL AND (NEW.SPPYD IS NULL OR NEW.SPPYD <> 0.5)
+  THEN
+    -- SET @custom_error_message = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'If LT7K6 does not have value, SPPYD must be 0.5.';
+  END IF;
+END//`,
+	`CREATE TRIGGER TPXBU_on_insert BEFORE INSERT ON TPXBU
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.BTXC5 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER TPXBU_on_update BEFORE UPDATE ON TPXBU
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.BTXC5 IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER YYBCX_on_insert BEFORE INSERT ON YYBCX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.ESFVY IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SL76B IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER YYBCX_on_update BEFORE UPDATE ON YYBCX
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.ESFVY IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SL76B IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER YYBCX_on_delete BEFORE DELETE ON YYBCX
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'An YYBCX can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An YYBCX can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER HDDVB_on_update BEFORE UPDATE ON HDDVB
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FV24E IS NOT NULL AND (NEW.FV24E <> OLD.FV24E)
+    OR
+    NEW.UJ6XY IS NOT NULL AND (NEW.UJ6XY <> OLD.UJ6XY)
+    OR
+    NEW.M22QN IS NOT NULL AND (NEW.M22QN <> OLD.M22QN)
+    OR
+    NEW.ETPQV IS NOT NULL AND (NEW.ETPQV <> OLD.ETPQV)
+    OR
+    NEW.PRUV2 IS NOT NULL AND (NEW.PRUV2 <> OLD.PRUV2)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+END//`,
+	`CREATE TRIGGER ZYGMF_on_insert BEFORE INSERT ON ZYGMF
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER ZYGMF_on_update BEFORE UPDATE ON ZYGMF
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER ZYGMF_on_delete BEFORE DELETE ON ZYGMF
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'A ZYGMF can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'A ZYGMF can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER JDLNA_on_insert BEFORE INSERT ON JDLNA
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FWWIQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.O3QXW IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  UPDATE S3FQX SET ADWYM = 1;
+END//`,
+	`CREATE TRIGGER JDLNA_on_update BEFORE UPDATE ON JDLNA
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FTQLQ IS NOT NULL AND (NEW.FTQLQ <> OLD.FTQLQ)
+  THEN
+    -- SET @custom_error_message = 'The FTQLQ of a VCGT3 can not be modified. Delete and re-add if necessary.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The FTQLQ of a VCGT3 can not be modified. Delete and re-add if necessary.';
+  END IF;
+  IF
+    NEW.FTQLQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FWWIQ IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.O3QXW IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER BACOW_on_insert BEFORE INSERT ON BACOW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER BACOW_on_update BEFORE UPDATE ON BACOW
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.WZP3R IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER SFEGG_on_insert BEFORE INSERT ON SFEGG
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NO52D IN (SELECT SVAZ4 FROM TPXHZ)
+    OR NEW.VYO5E IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ADURZ <= 0
+  THEN
+    -- SET @custom_error_message = 'ADURZ must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ADURZ must be positive.';
+  END IF;
+END//`,
+	`CREATE TRIGGER SFEGG_on_update BEFORE UPDATE ON SFEGG
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.NO52D IN (SELECT SVAZ4 FROM TPXHZ)
+    OR NEW.VYO5E IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ADURZ <= 0
+  THEN
+    -- SET @custom_error_message = 'ADURZ must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ADURZ must be positive.';
+  END IF;
+END//`,
+	`CREATE TRIGGER FLQLP_on_insert BEFORE INSERT ON FLQLP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.V5DPX IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ZRV3B NOT IN ('=', '<=', '>=', '<', '>')
+  THEN
+    -- SET @custom_error_message = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+  END IF;
+END//`,
+	`CREATE TRIGGER FLQLP_on_update BEFORE UPDATE ON FLQLP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FZ2R5 IS NOT NULL AND (NEW.FZ2R5 <> OLD.FZ2R5)
+    OR
+    NEW.LUEVY IS NOT NULL AND (NEW.LUEVY <> OLD.LUEVY)
+    OR
+    NEW.M22QN IS NOT NULL AND (NEW.M22QN <> OLD.M22QN)
+    OR
+    NEW.NRURT IS NOT NULL AND (NEW.NRURT <> OLD.NRURT)
+    OR
+    NEW.OCA7E IS NOT NULL AND (NEW.OCA7E <> OLD.OCA7E)
+    OR
+    NEW.XMM6Q IS NOT NULL AND (NEW.XMM6Q <> OLD.XMM6Q)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    NEW.V5DPX IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.ZRV3B NOT IN ('=', '<=', '>=', '<', '>')
+  THEN
+    -- SET @custom_error_message = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ZRV3B must be on of the following: ''='', ''<='', ''>='', ''<'', ''>''.';
+  END IF;
+END//`,
+	`CREATE TRIGGER XOAOP_on_insert BEFORE INSERT ON XOAOP
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER XOAOP_on_update BEFORE UPDATE ON XOAOP
+FOR EACH ROW
+BEGIN
+  IF
+    OLD.DZLIM = 'NER' AND NEW.DZLIM <> 'NER'
+    OR
+    OLD.DZLIM = 'BER' AND NEW.DZLIM <> 'BER'
+    OR
+    OLD.DZLIM = 'HR' AND NEW.DZLIM <> 'HR'
+    OR
+    OLD.DZLIM = 'MMR' AND NEW.DZLIM <> 'MMR'
+  THEN
+    -- SET @custom_error_message = 'NER, BER, HR and MMR ECUWUs can not be modified to another PV2SV.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NER, BER, HR and MMR ECUWUs can not be modified to another PV2SV.';
+  END IF;
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER XOAOP_on_delete BEFORE DELETE ON XOAOP
+FOR EACH ROW
+BEGIN
+  IF
+    OLD.DZLIM IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'NER, BER, HR and MMR ECUWUs can not be deleted.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NER, BER, HR and MMR ECUWUs can not be deleted.';
+  END IF;
+END//`,
+	`CREATE TRIGGER PG27A_on_insert BEFORE INSERT ON PG27A
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER PG27A_on_update BEFORE UPDATE ON PG27A
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER NPCYY_on_insert BEFORE INSERT ON NPCYY
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.B5OUF <= 0
+  THEN
+    -- SET @custom_error_message = 'B5OUF must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'B5OUF must be positive.';
+  END IF;
+END//`,
+	`CREATE TRIGGER NPCYY_on_update BEFORE UPDATE ON NPCYY
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.B5OUF <= 0
+  THEN
+    -- SET @custom_error_message = 'B5OUF must be positive.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'B5OUF must be positive.';
+  END IF;
+END//`,
+	`CREATE TRIGGER FEIOE_on_insert BEFORE INSERT ON FEIOE
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FVGD2 NOT IN (0, 1)
+    OR
+    NEW.YP2CR NOT IN (0, 1)
+    OR
+    NEW.TQ7W3 NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+  END IF;
+END//`,
+	`CREATE TRIGGER FEIOE_on_update BEFORE UPDATE ON FEIOE
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.FVGD2 NOT IN (0, 1)
+    OR
+    NEW.YP2CR NOT IN (0, 1)
+    OR
+    NEW.TQ7W3 NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FVGD2, YP2CR, and TQ7W3 fields must be either 0 or 1.';
+  END IF;
+END//`,
+	`CREATE TRIGGER SZQWJ_on_insert BEFORE INSERT ON SZQWJ
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+  IF
+    NEW.D237E NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The D237E field must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The D237E field must be either 0 or 1.';
+  END IF;
+END//`,
+	`CREATE TRIGGER SZQWJ_on_update BEFORE UPDATE ON SZQWJ
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CH3FR IS NOT NULL AND (NEW.CH3FR <> OLD.CH3FR)
+    OR
+    NEW.GXLUB IS NOT NULL AND (NEW.GXLUB <> OLD.GXLUB)
+    OR
+    NEW.JOGI6 IS NOT NULL AND (NEW.JOGI6 <> OLD.JOGI6)
+  THEN
+    -- SET @custom_error_message = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'For a built-in table, fields identifying where to apply and from where it originates can not be changed!';
+  END IF;
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+  IF
+    NEW.D237E NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The D237E field must be either 0 or 1.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The D237E field must be either 0 or 1.';
+  END IF;
+END//`,
+	`CREATE TRIGGER JJGQT_on_insert BEFORE INSERT ON JJGQT
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+END//`,
+	`CREATE TRIGGER JJGQT_on_update BEFORE UPDATE ON JJGQT
+FOR EACH ROW
+BEGIN
+  IF
+    (SELECT DZLIM FROM XOAOP WHERE id = NEW.CH3FR) NOT IN ('NER', 'BER', 'HR', 'MMR')
+  THEN
+    -- SET @custom_error_message = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ECUWU must be one of the following: ''NER'', ''BER'', ''HR'', ''MMR''.';
+  END IF;
+END//`,
+	`CREATE TRIGGER moa_on_insert BEFORE INSERT ON moa
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER moa_on_update BEFORE UPDATE ON moa
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.DZLIM IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.F3YUE IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER ZTFET_on_insert BEFORE INSERT ON ZTFET
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CYZU6 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.AERTL IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SIJCN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RTLWN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZMABC IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER ZTFET_on_update BEFORE UPDATE ON ZTFET
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.CYZU6 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.AERTL IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.SIJCN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.RTLWN IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZMABC IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    -- SET @custom_error_message = (SELECT error_message FROM trigger_helper_error_message WHERE DZLIM = 'SVAZ4');
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+END//`,
+	`CREATE TRIGGER S3FQX_on_insert BEFORE INSERT ON S3FQX
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Insertion is forbidden to S3FQX.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insertion is forbidden to S3FQX.';
+END//`,
+	`CREATE TRIGGER S3FQX_on_update BEFORE UPDATE ON S3FQX
+FOR EACH ROW
+BEGIN
+  IF NEW.ADWYM NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The ADWYM field is an int boolean (0/1).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The ADWYM field is an int boolean (0/1).';
+  END IF;
+  IF NEW.FPUYA NOT IN (0, 1)
+  THEN
+    -- SET @custom_error_message = 'The FPUYA field is an int boolean (0/1).';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The FPUYA field is an int boolean (0/1).';
+  END IF;
+END//`,
+	`CREATE TRIGGER S3FQX_on_delete BEFORE DELETE ON S3FQX
+FOR EACH ROW
+BEGIN
+  -- SET @custom_error_message = 'Deletion is forbidden from S3FQX.';
+  -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Deletion is forbidden from S3FQX.';
+END//`,
+	`CREATE TRIGGER TPXBU_on_delete BEFORE DELETE ON TPXBU
+FOR EACH ROW
+BEGIN
+    -- SET @custom_error_message = 'An TPXBU can not be deleted now. If it is a use-case please contact platform team.';
+    -- SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @custom_error_message;
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An TPXBU can not be deleted now. If it is a use-case please contact platform team.';
+END//`,
+	`CREATE TRIGGER THNTS_on_insert BEFORE INSERT ON THNTS
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.IXUXU IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The IXUXU field is mandatory.';
+  END IF;
+END//`,
+	`CREATE TRIGGER THNTS_on_update BEFORE UPDATE ON THNTS
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.IXUXU IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The IXUXU field is mandatory.';
+  END IF;
+END//`,
+	`CREATE TRIGGER E2I7U_on_insert BEFORE INSERT ON E2I7U
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TW55N IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FGG57 IS NOT NULL AND NEW.FGG57 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZH72S IS NOT NULL AND NEW.ZH72S IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSK67 NOT IN ('zero_based', 'one_based', 'O7VZD')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSK67 must be either zero_based, one_based, or O7VZD.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein' OR DZLIM = 'micro_rna')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein or micro_rna TAFAX UWBAIs can have IYDZV.';
+  END IF;
+  IF
+    NEW.ZH72S IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein TAFAX UWBAIs can have ZH72S.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.TCE7A IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'TCE7A is mandatory if UWBAI has IYDZV.';
+  END IF;
+  IF
+    NEW.KNG7T IS NOT NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'On insertion KNG7T must be null. The build-in process will find a correspondig for it.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL OR NEW.ZH72S IS NOT NULL
+  THEN
+    UPDATE S3FQX SET ADWYM = 1, FPUYA = 1;
+  END IF;
+END//`,
+	`CREATE TRIGGER E2I7U_on_update BEFORE UPDATE ON E2I7U
+FOR EACH ROW
+BEGIN
+  IF
+    NEW.TW55N IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.FGG57 IS NOT NULL AND NEW.FGG57 IN (SELECT SVAZ4 FROM TPXHZ)
+    OR
+    NEW.ZH72S IS NOT NULL AND NEW.ZH72S IN (SELECT SVAZ4 FROM TPXHZ)
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';
+  END IF;
+  IF
+    NEW.FSK67 NOT IN ('zero_based', 'one_based', 'O7VZD')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSK67 must be either zero_based, one_based, or O7VZD.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein' OR DZLIM = 'micro_rna')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein or micro_rna TAFAX UWBAIs can have IYDZV.';
+  END IF;
+  IF
+    NEW.ZH72S IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein')
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein TAFAX UWBAIs can have ZH72S.';
+  END IF;
+  IF
+    NEW.FGG57 IS NOT NULL AND NEW.TCE7A IS NULL
+  THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'TCE7A is mandatory if UWBAI has IYDZV.';
+  END IF;
+END//`,
 }}
 
 var Invert_pkData = []SetupScript{{
-	"CREATE TABLE `invert_pk` (  `x` bigint NOT NULL,  `y` bigint NOT NULL,  `z` bigint NOT NULL,  PRIMARY KEY (`y`,`z`,`x`))",
-	`insert into invert_pk values    (0, 2, 2),    (1, 1, 0),    (2, 0, 1)`,
+	"CREATE TABLE `invert_pk` (   `x` bigint NOT NULL,   `y` bigint NOT NULL,   `z` bigint NOT NULL,   PRIMARY KEY (`y`,`z`,`x`) )",
+	`insert into invert_pk values
+    (0, 2, 2),
+    (1, 1, 0),
+    (2, 0, 1)`,
 }}
 
 var JsontableData = []SetupScript{{
 	`create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)`,
-	`insert into jsontable values    (1, 'row one', '[1,2]', '{"a": 2}'),    (2, 'row two', '[3,4]', '{"b": 2}'),    (3, 'row three', '[5,6]', '{"c": 2}'),    (4, 'row four', '[7,8]', '{"d": 2}')`,
+	`insert into jsontable values
+    (1, 'row one', '[1,2]', '{"a": 2}'),
+    (2, 'row two', '[3,4]', '{"b": 2}'),
+    (3, 'row three', '[5,6]', '{"c": 2}'),
+    (4, 'row four', '[7,8]', '{"d": 2}')`,
 }}
 
 var KeylessData = []SetupScript{{
-	"CREATE TABLE `unique_keyless` (  `c0` bigint,  `c1` bigint)",
-	`insert into unique_keyless values    (0,0),    (1,1),    (2,2)`,
-	"CREATE TABLE `keyless` (  `c0` bigint,  `c1` bigint)",
-	`insert into keyless values    (0,0),    (1,1),    (1,1),    (2,2)`,
+	"CREATE TABLE `unique_keyless` (   `c0` bigint,   `c1` bigint )",
+	`insert into unique_keyless values
+    (0,0),
+    (1,1),
+    (2,2)`,
+	"CREATE TABLE `keyless` (   `c0` bigint,   `c1` bigint )",
+	`insert into keyless values
+    (0,0),
+    (1,1),
+    (1,1),
+    (2,2)`,
 }}
 
 var Keyless_idxData = []SetupScript{{
@@ -237,12 +2576,15 @@ var MydbData = []SetupScript{{
 }}
 
 var MyhistorytableData = []SetupScript{{
-	"CREATE TABLE `myhistorytable` (  `i` bigint NOT NULL,  `s` varchar(20) NOT NULL,  `c` varchar(20) NOT NULL,  PRIMARY KEY (`i`))",
+	"CREATE TABLE `myhistorytable` (   `i` bigint NOT NULL,   `s` varchar(20) NOT NULL,   `c` varchar(20) NOT NULL,   PRIMARY KEY (`i`) )",
 }}
 
 var MytableData = []SetupScript{{
 	`create table mytable (i bigint primary key, s varchar(20) comment 'column s' NOT NULL)`,
-	`insert into mytable values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+	`insert into mytable values
+    (1, 'first row'),
+    (2, 'second row'),
+    (3, 'third row')`,
 	`create unique index mytable_s on mytable (s)`,
 	`create index mytable_i_s on mytable (i,s)`,
 	"create index `idx_si` on mytable (`s`,`i`)",
@@ -255,20 +2597,36 @@ var Mytable_del_idxData = []SetupScript{{
 }}
 
 var NewlinetableData = []SetupScript{{
-	"CREATE TABLE `newlinetable` (  `i` bigint NOT NULL,  `s` varchar(32) NOT NULL,  PRIMARY KEY (`i`))",
-	`insert into newlinetable values    (1, '\nthere is some text in here'),	(2, 'there is some\ntext in here'),	(3, 'there is some text\nin here'),	(4, 'there is some text in here\n'),	(5, 'there is some text in here')`,
+	"CREATE TABLE `newlinetable` (   `i` bigint NOT NULL,   `s` varchar(32) NOT NULL,   PRIMARY KEY (`i`) )",
+	`insert into newlinetable values
+    (1, '\nthere is some text in here'),
+	(2, 'there is some\ntext in here'),
+	(3, 'there is some text\nin here'),
+	(4, 'there is some text in here\n'),
+	(5, 'there is some text in here')`,
 }}
 
 var NiltableData = []SetupScript{{
-	"CREATE TABLE `niltable` (  `i` bigint NOT NULL,  `i2` bigint,  `b` tinyint,  `f` double,  PRIMARY KEY (`i`))",
-	`insert into niltable values    (1,null,null,null),    (2,2,1,null),    (3,null,0,null),    (4,4,null,4.0),    (5,null,1,5.0),    (6,6,0,6.0)`,
+	"CREATE TABLE `niltable` (   `i` bigint NOT NULL,   `i2` bigint,   `b` tinyint,   `f` double,   PRIMARY KEY (`i`) )",
+	`insert into niltable values
+    (1,null,null,null),
+    (2,2,1,null),
+    (3,null,0,null),
+    (4,4,null,4.0),
+    (5,null,1,5.0),
+    (6,6,0,6.0)`,
 	`create index niltable_i2 on niltable (i2)`,
 }}
 
 var Null_rangesData = []SetupScript{{
 	`create table null_ranges (x int primary key, y int)`,
 	`create index idx1 on null_ranges (y);`,
-	`insert into null_ranges values    (0,0),    (1,1),    (2,2),    (3,null),    (4,null)`,
+	`insert into null_ranges values
+    (0,0),
+    (1,1),
+    (2,2),
+    (3,null),
+    (4,null)`,
 }}
 
 var Ordinals_ddlData = []SetupScript{{
@@ -281,7 +2639,10 @@ var Ordinals_ddlData = []SetupScript{{
 
 var OthertableData = []SetupScript{{
 	`create table othertable (s2 varchar(20) not null, i2 bigint primary key)`,
-	`insert into othertable values    ('first', 3),    ('second', 2),    ('third', 1)`,
+	`insert into othertable values
+    ('first', 3),
+    ('second', 2),
+    ('third', 1)`,
 	`create index othertable_s2 on othertable (s2)`,
 	`create index othertable_s2_i2 on othertable (s2,i2)`,
 }}
@@ -299,64 +2660,176 @@ var Parent_childData = []SetupScript{{
 }}
 
 var PeopleData = []SetupScript{{
-	"CREATE TABLE `people` (  `dob` date NOT NULL,  `first_name` varchar(20) NOT NULL,  `last_name` varchar(20) NOT NULL,  `middle_name` varchar(20) NOT NULL,  `height_inches` bigint NOT NULL,  `gender` bigint NOT NULL,  PRIMARY KEY (`dob`,`first_name`,`last_name`,`middle_name`))",
-	`insert into people values    ('1970-12-1', 'jon', 'smith', '', 72, 0),    ('1980-1-11', 'jon', 'smith', '', 67, 0),    ('1990-2-21', 'jane', 'doe', '', 68, 1),    ('2000-12-31', 'frank', 'franklin', '', 70, 2),    ('2010-3-15', 'jane', 'doe', '', 69, 1)`,
+	"CREATE TABLE `people` (   `dob` date NOT NULL,   `first_name` varchar(20) NOT NULL,   `last_name` varchar(20) NOT NULL,   `middle_name` varchar(20) NOT NULL,   `height_inches` bigint NOT NULL,   `gender` bigint NOT NULL,   PRIMARY KEY (`dob`,`first_name`,`last_name`,`middle_name`) )",
+	`insert into people values
+    ('1970-12-1', 'jon', 'smith', '', 72, 0),
+    ('1980-1-11', 'jon', 'smith', '', 67, 0),
+    ('1990-2-21', 'jane', 'doe', '', 68, 1),
+    ('2000-12-31', 'frank', 'franklin', '', 70, 2),
+    ('2010-3-15', 'jane', 'doe', '', 69, 1)`,
 	`create index people_l_f on people (last_name,first_name)`,
 }}
 
 var Pk_tablesData = []SetupScript{{
 	`create table one_pk (pk smallint primary key, c1 smallint, c2 smallint, c3 smallint, c4 smallint, c5 smallint)`,
-	`insert into one_pk values    (0,0,1,2,3,4),    (1,10,11,12,13,14),    (2,20,21,22,23,24),    (3,30,31,32,33,34)`,
-	`create table two_pk (    pk1 tinyint,    pk2 tinyint,    c1 tinyint NOT NULL,    c2 tinyint NOT NULL,    c3 tinyint NOT NULL,    c4 tinyint NOT NULL,    c5 tinyint NOT NULL,    primary key (pk1, pk2))`,
-	`insert into two_pk values    (0,0,0,1,2,3,4),    (0,1,10,11,12,13,14),    (1,0,20,21,22,23,24),    (1,1,30,31,32,33,34)`,
-	`create table one_pk_two_idx (    pk bigint primary key,    v1 bigint,    v2 bigint)`,
-	`insert into one_pk_two_idx values    (0,0,0),    (1,1,1),    (2,2,2),    (3,3,3),    (4,4,4),    (5,5,5),    (6,6,6),    (7,7,7)`,
-	`create table one_pk_three_idx (    pk bigint primary key,    v1 bigint,    v2 bigint,    v3 bigint)`,
-	`insert into one_pk_three_idx values    (0,0,0,0),    (1,0,0,1),    (2,0,1,0),    (3,0,2,2),    (4,1,0,0),    (5,2,0,3),    (6,3,3,0),    (7,4,4,4)`,
+	`insert into one_pk values
+    (0,0,1,2,3,4),
+    (1,10,11,12,13,14),
+    (2,20,21,22,23,24),
+    (3,30,31,32,33,34)`,
+	`create table two_pk (
+    pk1 tinyint,
+    pk2 tinyint,
+    c1 tinyint NOT NULL,
+    c2 tinyint NOT NULL,
+    c3 tinyint NOT NULL,
+    c4 tinyint NOT NULL,
+    c5 tinyint NOT NULL,
+    primary key (pk1, pk2)
+)`,
+	`insert into two_pk values
+    (0,0,0,1,2,3,4),
+    (0,1,10,11,12,13,14),
+    (1,0,20,21,22,23,24),
+    (1,1,30,31,32,33,34)`,
+	`create table one_pk_two_idx (
+    pk bigint primary key,
+    v1 bigint,
+    v2 bigint
+)`,
+	`insert into one_pk_two_idx values
+    (0,0,0),
+    (1,1,1),
+    (2,2,2),
+    (3,3,3),
+    (4,4,4),
+    (5,5,5),
+    (6,6,6),
+    (7,7,7)`,
+	`create table one_pk_three_idx (
+    pk bigint primary key,
+    v1 bigint,
+    v2 bigint,
+    v3 bigint
+)`,
+	`insert into one_pk_three_idx values
+    (0,0,0,0),
+    (1,0,0,1),
+    (2,0,1,0),
+    (3,0,2,2),
+    (4,1,0,0),
+    (5,2,0,3),
+    (6,3,3,0),
+    (7,4,4,4)`,
 	`create index one_pk_two_idx_1 on one_pk_two_idx (v1)`,
 	`create index one_pk_two_idx_2 on one_pk_two_idx (v1, v2)`,
 	`create index one_pk_three_idx_idx on one_pk_three_idx (v1, v2, v3)`,
 }}
 
 var Reserved_keywordsData = []SetupScript{{
-	"CREATE TABLE `reservedWordsTable` (  `Timestamp` varchar(20) NOT NULL,  `and` varchar(20),  `or` varchar(20),  `select` varchar(20),  PRIMARY KEY (`Timestamp`))",
-	`insert into reservedWordsTable values    ('1', '1.1', 'aaa', 'create')`,
+	"CREATE TABLE `reservedWordsTable` (   `Timestamp` varchar(20) NOT NULL,   `and` varchar(20),   `or` varchar(20),   `select` varchar(20),   PRIMARY KEY (`Timestamp`) )",
+	`insert into reservedWordsTable values
+    ('1', '1.1', 'aaa', 'create')`,
 }}
 
 var SpatialData = []SetupScript{{
 	`create table stringtogeojson_table (i bigint primary key, s blob)`,
-	`insert into stringtogeojson_table values        (0, '{"type": "Point", "coordinates": [1,2]}'),        (1, '{"type": "Point", "coordinates": [123.45,56.789]}'),        (2, '{"type": "LineString", "coordinates": [[1,2],[3,4]]}'),        (3, '{"type": "LineString", "coordinates": [[1.23,2.345],[3.56789,4.56]]}'),        (4, '{"type": "Polygon", "coordinates": [[[1.1,2.2],[3.3,4.4],[5.5,6.6],[1.1,2.2]]]}'),        (5, '{"type": "Polygon", "coordinates": [[[0,0],[1,1],[2,2],[0,0]]]}'),        (6, '{"type": "MultiPoint", "coordinates": [[1,2],[3,4]]}'),        (7, '{"type": "MultiPoint", "coordinates": [[1.23,2.345],[3.56789,4.56]]}'),        (8, '{"type": "MultiLineString", "coordinates": [[[1.1,2.2],[3.3,4.4]],[[5.5,6.6],[7.7,8.8]]]}'),        (9, '{"type": "MultiPolygon", "coordinates": [[[[0.0, 0.0],[1.1,2.2],[3.3,4.4],[0.0,0.0]]],[[[1.1,1.1],[1.1,2.2],[3.3,4.4],[1.1,1.1]]]]}'),        (10, '{"type": "GeometryCollection", "geometries": [{"type": "GeometryCollection", "geometries":[]}]}')`,
+	`insert into stringtogeojson_table values
+        (0, '{"type": "Point", "coordinates": [1,2]}'),
+        (1, '{"type": "Point", "coordinates": [123.45,56.789]}'),
+        (2, '{"type": "LineString", "coordinates": [[1,2],[3,4]]}'),
+        (3, '{"type": "LineString", "coordinates": [[1.23,2.345],[3.56789,4.56]]}'),
+        (4, '{"type": "Polygon", "coordinates": [[[1.1,2.2],[3.3,4.4],[5.5,6.6],[1.1,2.2]]]}'),
+        (5, '{"type": "Polygon", "coordinates": [[[0,0],[1,1],[2,2],[0,0]]]}'),
+        (6, '{"type": "MultiPoint", "coordinates": [[1,2],[3,4]]}'),
+        (7, '{"type": "MultiPoint", "coordinates": [[1.23,2.345],[3.56789,4.56]]}'),
+        (8, '{"type": "MultiLineString", "coordinates": [[[1.1,2.2],[3.3,4.4]],[[5.5,6.6],[7.7,8.8]]]}'),
+        (9, '{"type": "MultiPolygon", "coordinates": [[[[0.0, 0.0],[1.1,2.2],[3.3,4.4],[0.0,0.0]]],[[[1.1,1.1],[1.1,2.2],[3.3,4.4],[1.1,1.1]]]]}'),
+        (10, '{"type": "GeometryCollection", "geometries": [{"type": "GeometryCollection", "geometries":[]}]}')`,
 	`create table geometry_table (i bigint primary key, g geometry NOT NULL)`,
-	`insert into geometry_table values        (1, ST_GeomFromText('Point(1 2)')),        (2, ST_SRID(ST_GeomFromText('Point(1 2)'), 4326)),		(3, ST_GeomFromText('Linestring(1 2,3 4)')),		(4, ST_SRID(ST_GeomFromText('Linestring(1 2,3 4)'), 4326)),        (5, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),        (6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),        (7, ST_GeomFromText('MultiPoint(1 2,3 4)')),		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326)),		(9, ST_GeomFromText('MULTILINESTRING((1 2,3 4))')),        (10, ST_SRID(ST_GeomFromText('MULTILINESTRING((1 2,3 4))'), 4326)),        (11, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))')),        (12, ST_SRID(ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))'), 4326)),        (13, ST_GeomFromText('GeometryCollection(GeometryCollection())')),        (14, ST_SRID(ST_GeomFromText('GeometryCollection(GeometryCollection())'), 4326))`,
+	`insert into geometry_table values
+        (1, ST_GeomFromText('Point(1 2)')),
+        (2, ST_SRID(ST_GeomFromText('Point(1 2)'), 4326)),
+		(3, ST_GeomFromText('Linestring(1 2,3 4)')),
+		(4, ST_SRID(ST_GeomFromText('Linestring(1 2,3 4)'), 4326)),
+        (5, ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))')),
+        (6, ST_SRID(ST_GeomFromText('POLYGON((0 0,0 1,1 1,0 0))'), 4326)),
+        (7, ST_GeomFromText('MultiPoint(1 2,3 4)')),
+		(8, ST_SRID(ST_GeomFromText('MultiPoint(1 2,3 4)'), 4326)),
+		(9, ST_GeomFromText('MULTILINESTRING((1 2,3 4))')),
+        (10, ST_SRID(ST_GeomFromText('MULTILINESTRING((1 2,3 4))'), 4326)),
+        (11, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))')),
+        (12, ST_SRID(ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))'), 4326)),
+        (13, ST_GeomFromText('GeometryCollection(GeometryCollection())')),
+        (14, ST_SRID(ST_GeomFromText('GeometryCollection(GeometryCollection())'), 4326))`,
 	`create table point_table (i bigint primary key, p point NOT NULL);`,
 	`insert into point_table values (5, ST_GeomFromText('Point(1 2)'))`,
 	`create table line_table (i bigint primary key, l linestring NOT NULL);`,
-	`insert into line_table values    (0, ST_GeomFromText('Linestring(1 2,3 4)')),    (1, ST_GeomFromText('Linestring(1 2,3 4,5 6)'))`,
+	`insert into line_table values
+    (0, ST_GeomFromText('Linestring(1 2,3 4)')),
+    (1, ST_GeomFromText('Linestring(1 2,3 4,5 6)'))`,
 	`create table polygon_table (i bigint primary key, p polygon NOT NULL);`,
-	`insert into polygon_table values    (0, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0))')),    (1, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))'))`,
+	`insert into polygon_table values
+    (0, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0))')),
+    (1, ST_GeomFromText('Polygon((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))'))`,
 	`create table mpoint_table (i bigint primary key, p multipoint NOT NULL);`,
-	`insert into mpoint_table values    (0, ST_GeomFromText('MultiPoint(1 2,3 4)')),    (1, ST_GeomFromText('MultiPoint(1 2,3 4,5 6)'))`,
+	`insert into mpoint_table values
+    (0, ST_GeomFromText('MultiPoint(1 2,3 4)')),
+    (1, ST_GeomFromText('MultiPoint(1 2,3 4,5 6)'))`,
 	`create table mline_table (i bigint primary key, l multilinestring NOT NULL);`,
-	`insert into mline_table values    (0, ST_GeomFromText('MultiLineString((1 2,3 4))')),    (1, ST_GeomFromText('MultiLineString((1 2,3 4,5 6))'))`,
+	`insert into mline_table values
+    (0, ST_GeomFromText('MultiLineString((1 2,3 4))')),
+    (1, ST_GeomFromText('MultiLineString((1 2,3 4,5 6))'))`,
 	`create table mpoly_table (i bigint primary key, p multipolygon NOT NULL);`,
-	`insert into mpoly_table values    (0, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))')),    (1, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)),((1 1,2 3,4 5,1 1)))'))`,
+	`insert into mpoly_table values
+    (0, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)))')),
+    (1, ST_GeomFromText('MultiPolygon(((0 0,1 2,3 4,0 0)),((1 1,2 3,4 5,1 1)))'))`,
 	`create table geom_coll_table (i bigint primary key, g geometrycollection NOT NULL);`,
-	`insert into geom_coll_table values    (0, ST_GeomFromText('GeometryCollection(GeometryCollection())'))`,
+	`insert into geom_coll_table values
+    (0, ST_GeomFromText('GeometryCollection(GeometryCollection())'))`,
 }}
 
 var SpecialtableData = []SetupScript{{
 	`create table specialtable (id bigint primary key, name varchar(20))`,
-	`insert into specialtable values    (1, 'first_row'),    (2, 'second_row'),    (3, 'third_row'),    (4, '%'),    (5, '\''),    (6, '\"'),    (7, '\t'),    (8, '\n'),    (9, "\v"),    (10, 'test%test'),    (11, 'test\'test'),    (12, 'test\"test'),    (13, 'test\ttest'),    (14, 'test\ntest'),    (15, 'test\vtest')`,
+	`insert into specialtable values
+    (1, 'first_row'),
+    (2, 'second_row'),
+    (3, 'third_row'),
+    (4, '%'),
+    (5, '\''),
+    (6, '\"'),
+    (7, '\t'),
+    (8, '\n'),
+    (9, "\v"),
+    (10, 'test%test'),
+    (11, 'test\'test'),
+    (12, 'test\"test'),
+    (13, 'test\ttest'),
+    (14, 'test\ntest'),
+    (15, 'test\vtest')`,
 }}
 
 var StringandtableData = []SetupScript{{
-	"CREATE TABLE `stringandtable` (   `k` bigint NOT NULL,   `i` bigint,   `v` varchar(20),   PRIMARY KEY (`k`));",
-	`insert into stringandtable values    (0, 0, '0'),    (1, 1, '1'),    (2, 2, ''),    (3, 3, 'true'),    (4, 4, 'false'),    (5, 5, null),    (6, null, '2');`,
+	"CREATE TABLE `stringandtable` (    `k` bigint NOT NULL,    `i` bigint,    `v` varchar(20),    PRIMARY KEY (`k`) );",
+	`insert into stringandtable values
+    (0, 0, '0'),
+    (1, 1, '1'),
+    (2, 2, ''),
+    (3, 3, 'true'),
+    (4, 4, 'false'),
+    (5, 5, null),
+    (6, null, '2');`,
 }}
 
 var TabletestData = []SetupScript{{
-	`create table tabletest (    i int primary key,    s varchar(20) not null)`,
-	`insert into tabletest values    (1, 'first row'),    (2, 'second row'),    (3, 'third row')`,
+	`create table tabletest (
+    i int primary key,
+    s varchar(20) not null
+)`,
+	`insert into tabletest values
+    (1, 'first row'),
+    (2, 'second row'),
+    (3, 'third row')`,
 }}
 
 var TestdbData = []SetupScript{{
@@ -364,8 +2837,9 @@ var TestdbData = []SetupScript{{
 }}
 
 var TypestableData = []SetupScript{{
-	"CREATE TABLE `typestable` (  `id` bigint NOT NULL,  `i8` tinyint,  `i16` smallint,  `i32` int,  `i64` bigint,  `u8` tinyint unsigned,  `u16` smallint unsigned,  `u32` int unsigned,  `u64` bigint unsigned,  `f32` float,  `f64` double,  `ti` timestamp,  `da` date,  `te` varchar(20),  `bo` tinyint,  `js` json,  `bl` blob,  `e1` enum('', 'v1', 'v2'),  `s1` set('', 'v1', 'v2'),  PRIMARY KEY (`id`))",
-	`insert into typestable values    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null, '', '')`,
+	"CREATE TABLE `typestable` (   `id` bigint NOT NULL,   `i8` tinyint,   `i16` smallint,   `i32` int,   `i64` bigint,   `u8` tinyint unsigned,   `u16` smallint unsigned,   `u32` int unsigned,   `u64` bigint unsigned,   `f32` float,   `f64` double,   `ti` timestamp,   `da` date,   `te` varchar(20),   `bo` tinyint,   `js` json,   `bl` blob,   `e1` enum('', 'v1', 'v2'),   `s1` set('', 'v1', 'v2'),   PRIMARY KEY (`id`) )",
+	`insert into typestable values
+    (1,2,3,4,5,6,7,8,9,10.0,11.0,'2019-12-31T12:00:00Z','2019-12-31T00:00:00Z','fourteen', 0,null,null, '', '')`,
 }}
 
 var ViewsData = []SetupScript{{
@@ -380,12 +2854,38 @@ var XyData = []SetupScript{{
 	`CREATE table pq (p int primary key, q int);`,
 	`CREATE table mn (m int primary key, n int);`,
 	`create table rs (r int primary key, s int, index s_idx(s));`,
-	`insert into xy values  (1,0),  (2,1),  (0,2),  (3,3);`,
-	`insert into uv values  (0,1),  (1,1),  (2,2),  (3,2);`,
-	`insert into ab values  (0,2),  (1,2),  (2,2),  (3,1);`,
-	`insert into pq values  (0,0),  (1,1),  (2,2),  (3,3);`,
-	`insert into mn values  (2,0),  (3,1),  (4,2),  (5,3);`,
-	`insert into rs values  (0,0),  (1,0),  (2,0),  (4,4),  (5,4);`,
-	`update information_schema.statistics set cardinality = 1000000000 where table_name = 'ab';`,
-	`update information_schema.statistics set cardinality = 1000000000 where table_name = 'rs'`,
+	`insert into xy values
+  (1,0),
+  (2,1),
+  (0,2),
+  (3,3);`,
+	`insert into uv values
+  (0,1),
+  (1,1),
+  (2,2),
+  (3,2);`,
+	`insert into ab values
+  (0,2),
+  (1,2),
+  (2,2),
+  (3,1);`,
+	`insert into pq values
+  (0,0),
+  (1,1),
+  (2,2),
+  (3,3);`,
+	`insert into mn values
+  (2,0),
+  (3,1),
+  (4,2),
+  (5,3);`,
+	`insert into rs values
+  (0,0),
+  (1,0),
+  (2,0),
+  (4,4),
+  (5,4);`,
+	`update information_schema.statistics set cardinality = 1000 where table_name = 'ab';`,
+	`update information_schema.statistics set cardinality = 1000 where table_name = 'xy';`,
+	`update information_schema.statistics set cardinality = 1000 where table_name = 'rs'`,
 }}

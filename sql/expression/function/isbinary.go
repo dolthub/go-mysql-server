@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // IsBinary is a function that returns whether a blob is binary or not.
@@ -28,6 +29,7 @@ type IsBinary struct {
 }
 
 var _ sql.FunctionExpression = (*IsBinary)(nil)
+var _ sql.CollationCoercible = (*IsBinary)(nil)
 
 // NewIsBinary creates a new IsBinary expression.
 func NewIsBinary(e sql.Expression) sql.Expression {
@@ -58,7 +60,7 @@ func (ib *IsBinary) Eval(
 		return false, nil
 	}
 
-	blob, err := sql.LongBlob.Convert(v)
+	blob, err := types.LongBlob.Convert(v)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +82,12 @@ func (ib *IsBinary) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 // Type implements the Expression interface.
 func (ib *IsBinary) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IsBinary) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 const sniffLen = 8000

@@ -252,7 +252,11 @@ const (
 	Collation_utf8mb4_0900_as_ci          CollationID = 305
 	Collation_utf8mb4_0900_as_cs          CollationID = 278
 	Collation_utf8mb4_0900_bin            CollationID = 309
+	Collation_utf8mb4_bg_0900_ai_ci       CollationID = 318
+	Collation_utf8mb4_bg_0900_as_cs       CollationID = 319
 	Collation_utf8mb4_bin                 CollationID = 46
+	Collation_utf8mb4_bs_0900_ai_ci       CollationID = 316
+	Collation_utf8mb4_bs_0900_as_cs       CollationID = 317
 	Collation_utf8mb4_croatian_ci         CollationID = 245
 	Collation_utf8mb4_cs_0900_ai_ci       CollationID = 266
 	Collation_utf8mb4_cs_0900_as_cs       CollationID = 289
@@ -274,6 +278,8 @@ const (
 	Collation_utf8mb4_et_0900_as_cs       CollationID = 285
 	Collation_utf8mb4_general_ci          CollationID = 45
 	Collation_utf8mb4_german2_ci          CollationID = 244
+	Collation_utf8mb4_gl_0900_ai_ci       CollationID = 320
+	Collation_utf8mb4_gl_0900_as_cs       CollationID = 321
 	Collation_utf8mb4_hr_0900_ai_ci       CollationID = 275
 	Collation_utf8mb4_hr_0900_as_cs       CollationID = 298
 	Collation_utf8mb4_hu_0900_ai_ci       CollationID = 274
@@ -292,6 +298,12 @@ const (
 	Collation_utf8mb4_lt_0900_as_cs       CollationID = 291
 	Collation_utf8mb4_lv_0900_ai_ci       CollationID = 258
 	Collation_utf8mb4_lv_0900_as_cs       CollationID = 281
+	Collation_utf8mb4_mn_cyrl_0900_ai_ci  CollationID = 322
+	Collation_utf8mb4_mn_cyrl_0900_as_cs  CollationID = 323
+	Collation_utf8mb4_nb_0900_ai_ci       CollationID = 310
+	Collation_utf8mb4_nb_0900_as_cs       CollationID = 311
+	Collation_utf8mb4_nn_0900_ai_ci       CollationID = 312
+	Collation_utf8mb4_nn_0900_as_cs       CollationID = 313
 	Collation_utf8mb4_persian_ci          CollationID = 240
 	Collation_utf8mb4_pl_0900_ai_ci       CollationID = 261
 	Collation_utf8mb4_pl_0900_as_cs       CollationID = 284
@@ -311,6 +323,8 @@ const (
 	Collation_utf8mb4_slovenian_ci        CollationID = 228
 	Collation_utf8mb4_spanish2_ci         CollationID = 238
 	Collation_utf8mb4_spanish_ci          CollationID = 231
+	Collation_utf8mb4_sr_latn_0900_ai_ci  CollationID = 314
+	Collation_utf8mb4_sr_latn_0900_as_cs  CollationID = 315
 	Collation_utf8mb4_sv_0900_ai_ci       CollationID = 264
 	Collation_utf8mb4_sv_0900_as_cs       CollationID = 287
 	Collation_utf8mb4_swedish_ci          CollationID = 232
@@ -353,7 +367,8 @@ const (
 	Collation_utf8_vietnamese_ci       = Collation_utf8mb3_vietnamese_ci
 	Collation_utf8_general_mysql500_ci = Collation_utf8mb3_general_mysql500_ci
 
-	Collation_Default = Collation_utf8mb4_0900_bin
+	Collation_Default                    = Collation_utf8mb4_0900_bin
+	Collation_Information_Schema_Default = Collation_utf8mb3_general_ci
 	// Collation_Unspecified is used when a collation has not been specified, either explicitly or implicitly. This is
 	// usually used as an intermediate collation to be later replaced by an analyzer pass or a plan, although it is
 	// valid to use it directly. When used, behaves identically to the default collation, although it will NOT match
@@ -365,7 +380,7 @@ const (
 // efficiently passed around (since only an uint16 is needed), while still being able to quickly access all of their
 // properties (index lookups are significantly faster than map lookups). Not all IDs are used, which is why there are
 // gaps in the array.
-var collationArray = [310]Collation{
+var collationArray = [324]Collation{
 	/*000*/ {Collation_Unspecified, "", CharacterSet_Unspecified, true, true, 0, "", nil},
 	/*001*/ {Collation_big5_chinese_ci, "big5_chinese_ci", CharacterSet_big5, true, true, 1, "PAD SPACE", nil},
 	/*002*/ {Collation_latin2_czech_cs, "latin2_czech_cs", CharacterSet_latin2, false, true, 4, "PAD SPACE", nil},
@@ -676,6 +691,20 @@ var collationArray = [310]Collation{
 	/*307*/ {Collation_utf8mb4_ru_0900_as_cs, "utf8mb4_ru_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*308*/ {Collation_utf8mb4_zh_0900_as_cs, "utf8mb4_zh_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 	/*309*/ {Collation_utf8mb4_0900_bin, "utf8mb4_0900_bin", CharacterSet_utf8mb4, false, true, 1, "NO PAD", encodings.Utf8mb4_0900_bin_RuneWeight},
+	/*310*/ {Collation_utf8mb4_nb_0900_ai_ci, "utf8mb4_nb_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*311*/ {Collation_utf8mb4_nb_0900_as_cs, "utf8mb4_nb_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*312*/ {Collation_utf8mb4_nn_0900_ai_ci, "utf8mb4_nn_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*313*/ {Collation_utf8mb4_nn_0900_as_cs, "utf8mb4_nn_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*314*/ {Collation_utf8mb4_sr_latn_0900_ai_ci, "utf8mb4_sr_latn_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*315*/ {Collation_utf8mb4_sr_latn_0900_as_cs, "utf8mb4_sr_latn_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*316*/ {Collation_utf8mb4_bs_0900_ai_ci, "utf8mb4_bs_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*317*/ {Collation_utf8mb4_bs_0900_as_cs, "utf8mb4_bs_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*318*/ {Collation_utf8mb4_bg_0900_ai_ci, "utf8mb4_bg_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*319*/ {Collation_utf8mb4_bg_0900_as_cs, "utf8mb4_bg_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*320*/ {Collation_utf8mb4_gl_0900_ai_ci, "utf8mb4_gl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*321*/ {Collation_utf8mb4_gl_0900_as_cs, "utf8mb4_gl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*322*/ {Collation_utf8mb4_mn_cyrl_0900_ai_ci, "utf8mb4_mn_cyrl_0900_ai_ci", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
+	/*323*/ {Collation_utf8mb4_mn_cyrl_0900_as_cs, "utf8mb4_mn_cyrl_0900_as_cs", CharacterSet_utf8mb4, false, true, 0, "NO PAD", nil},
 }
 
 func init() {
@@ -795,8 +824,8 @@ func (c CollationID) IsCompiled() string {
 }
 
 // SortLength returns the sort length of the collation.
-func (c CollationID) SortLength() int64 {
-	return int64(collationArray[c].SortLength)
+func (c CollationID) SortLength() uint32 {
+	return uint32(collationArray[c].SortLength)
 }
 
 // PadAttribute returns a string representing the pad attribute of the collation.

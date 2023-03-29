@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestTimeDelta(t *testing.T) {
@@ -157,127 +158,127 @@ func TestIntervalEvalDelta(t *testing.T) {
 		expected TimeDelta
 	}{
 		{
-			NewGetField(0, sql.Int64, "foo", false),
+			NewGetField(0, types.Int64, "foo", false),
 			"DAY",
 			sql.Row{int64(2)},
 			TimeDelta{Days: 2},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"DAY",
 			nil,
 			TimeDelta{Days: 2},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"MONTH",
 			nil,
 			TimeDelta{Months: 2},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"YEAR",
 			nil,
 			TimeDelta{Years: 2},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"QUARTER",
 			nil,
 			TimeDelta{Months: 6},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"WEEK",
 			nil,
 			TimeDelta{Days: 14},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"HOUR",
 			nil,
 			TimeDelta{Hours: 2},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"MINUTE",
 			nil,
 			TimeDelta{Minutes: 2},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"SECOND",
 			nil,
 			TimeDelta{Seconds: 2},
 		},
 		{
-			NewLiteral(int64(2), sql.Int64),
+			NewLiteral(int64(2), types.Int64),
 			"MICROSECOND",
 			nil,
 			TimeDelta{Microseconds: 2},
 		},
 		{
-			NewLiteral("2 3", sql.LongText),
+			NewLiteral("2 3", types.LongText),
 			"DAY_HOUR",
 			nil,
 			TimeDelta{Days: 2, Hours: 3},
 		},
 		{
-			NewLiteral("2 3:04:05.06", sql.LongText),
+			NewLiteral("2 3:04:05.06", types.LongText),
 			"DAY_MICROSECOND",
 			nil,
 			TimeDelta{Days: 2, Hours: 3, Minutes: 4, Seconds: 5, Microseconds: 6},
 		},
 		{
-			NewLiteral("2 3:04:05", sql.LongText),
+			NewLiteral("2 3:04:05", types.LongText),
 			"DAY_SECOND",
 			nil,
 			TimeDelta{Days: 2, Hours: 3, Minutes: 4, Seconds: 5},
 		},
 		{
-			NewLiteral("2 3:04", sql.LongText),
+			NewLiteral("2 3:04", types.LongText),
 			"DAY_MINUTE",
 			nil,
 			TimeDelta{Days: 2, Hours: 3, Minutes: 4},
 		},
 		{
-			NewLiteral("3:04:05.06", sql.LongText),
+			NewLiteral("3:04:05.06", types.LongText),
 			"HOUR_MICROSECOND",
 			nil,
 			TimeDelta{Hours: 3, Minutes: 4, Seconds: 5, Microseconds: 6},
 		},
 		{
-			NewLiteral("3:04:05", sql.LongText),
+			NewLiteral("3:04:05", types.LongText),
 			"HOUR_SECOND",
 			nil,
 			TimeDelta{Hours: 3, Minutes: 4, Seconds: 5},
 		},
 		{
-			NewLiteral("3:04", sql.LongText),
+			NewLiteral("3:04", types.LongText),
 			"HOUR_MINUTE",
 			nil,
 			TimeDelta{Hours: 3, Minutes: 4},
 		},
 		{
-			NewLiteral("04:05.06", sql.LongText),
+			NewLiteral("04:05.06", types.LongText),
 			"MINUTE_MICROSECOND",
 			nil,
 			TimeDelta{Minutes: 4, Seconds: 5, Microseconds: 6},
 		},
 		{
-			NewLiteral("04:05", sql.LongText),
+			NewLiteral("04:05", types.LongText),
 			"MINUTE_SECOND",
 			nil,
 			TimeDelta{Minutes: 4, Seconds: 5},
 		},
 		{
-			NewLiteral("04.05", sql.LongText),
+			NewLiteral("04.05", types.LongText),
 			"SECOND_MICROSECOND",
 			nil,
 			TimeDelta{Seconds: 4, Microseconds: 5},
 		},
 		{
-			NewLiteral("1-5", sql.LongText),
+			NewLiteral("1-5", types.LongText),
 			"YEAR_MONTH",
 			nil,
 			TimeDelta{Years: 1, Months: 5},

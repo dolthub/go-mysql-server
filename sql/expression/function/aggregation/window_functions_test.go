@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestGroupedAggFuncs(t *testing.T) {
@@ -38,201 +39,201 @@ func TestGroupedAggFuncs(t *testing.T) {
 		},
 		{
 			Name:     "count without nulls",
-			Agg:      NewCountAgg(expression.NewGetField(1, sql.LongText, "x", true)),
+			Agg:      NewCountAgg(expression.NewGetField(1, types.LongText, "x", true)),
 			Expected: sql.Row{int64(4), int64(4), int64(6)},
 		},
 		{
 			Name:     "count with nulls",
-			Agg:      NewCountAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:      NewCountAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{int64(3), int64(3), int64(4)},
 		},
 		{
 			Name:     "max ints",
-			Agg:      NewMaxAgg(expression.NewGetField(1, sql.LongText, "x", true)),
+			Agg:      NewMaxAgg(expression.NewGetField(1, types.LongText, "x", true)),
 			Expected: sql.Row{4, 4, 6},
 		},
 		{
 			Name:     "max int64",
-			Agg:      NewMaxAgg(expression.NewGetField(2, sql.LongText, "x", true)),
+			Agg:      NewMaxAgg(expression.NewGetField(2, types.LongText, "x", true)),
 			Expected: sql.Row{int64(3), int64(3), int64(5)},
 		},
 		{
 			Name:     "max w/ nulls",
-			Agg:      NewMaxAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:      NewMaxAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{4, 4, 6},
 		},
 		{
 			Name:     "max w/ float",
-			Agg:      NewMaxAgg(expression.NewGetField(3, sql.LongText, "x", true)),
+			Agg:      NewMaxAgg(expression.NewGetField(3, types.LongText, "x", true)),
 			Expected: sql.Row{float64(4), float64(4), float64(6)},
 		},
 		{
 			Name:     "min ints",
-			Agg:      NewMinAgg(expression.NewGetField(1, sql.LongText, "x", true)),
+			Agg:      NewMinAgg(expression.NewGetField(1, types.LongText, "x", true)),
 			Expected: sql.Row{1, 1, 1},
 		},
 		{
 			Name:     "min int64",
-			Agg:      NewMinAgg(expression.NewGetField(2, sql.LongText, "x", true)),
+			Agg:      NewMinAgg(expression.NewGetField(2, types.LongText, "x", true)),
 			Expected: sql.Row{int64(1), int64(1), int64(1)},
 		},
 		{
 			Name:     "min w/ nulls",
-			Agg:      NewMinAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:      NewMinAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{1, 1, 1},
 		},
 		{
 			Name:     "min w/ float",
-			Agg:      NewMinAgg(expression.NewGetField(3, sql.LongText, "x", true)),
+			Agg:      NewMinAgg(expression.NewGetField(3, types.LongText, "x", true)),
 			Expected: sql.Row{float64(1), float64(1), float64(1)},
 		},
 		{
 			Name:     "avg nulls",
-			Agg:      NewAvgAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:      NewAvgAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{float64(8) / float64(3), float64(8) / float64(3), float64(14) / float64(4)},
 		},
 		{
 			Name:     "avg int",
-			Agg:      NewAvgAgg(expression.NewGetField(1, sql.LongText, "x", true)),
+			Agg:      NewAvgAgg(expression.NewGetField(1, types.LongText, "x", true)),
 			Expected: sql.Row{float64(10) / float64(4), float64(10) / float64(4), float64(21) / float64(6)},
 		},
 		{
 			Name:     "avg int64",
-			Agg:      NewAvgAgg(expression.NewGetField(2, sql.LongText, "x", true)),
+			Agg:      NewAvgAgg(expression.NewGetField(2, types.LongText, "x", true)),
 			Expected: sql.Row{float64(8) / float64(4), float64(8) / float64(4), float64(17) / float64(6)},
 		},
 		{
 			Name:     "avg float",
-			Agg:      NewAvgAgg(expression.NewGetField(3, sql.LongText, "x", true)),
+			Agg:      NewAvgAgg(expression.NewGetField(3, types.LongText, "x", true)),
 			Expected: sql.Row{float64(10) / float64(4), float64(10) / float64(4), float64(21) / float64(6)},
 		},
 		{
 			Name:     "sum nulls",
-			Agg:      NewSumAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:      NewSumAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{float64(8), float64(8), float64(14)},
 		},
 		{
 			Name:     "sum ints",
-			Agg:      NewSumAgg(expression.NewGetField(1, sql.LongText, "x", true)),
+			Agg:      NewSumAgg(expression.NewGetField(1, types.LongText, "x", true)),
 			Expected: sql.Row{float64(10), float64(10), float64(21)},
 		},
 		{
 			Name:     "sum int64",
-			Agg:      NewSumAgg(expression.NewGetField(2, sql.LongText, "x", true)),
+			Agg:      NewSumAgg(expression.NewGetField(2, types.LongText, "x", true)),
 			Expected: sql.Row{float64(8), float64(8), float64(17)},
 		},
 		{
 			Name:     "sum float64",
-			Agg:      NewSumAgg(expression.NewGetField(3, sql.LongText, "x", true)),
+			Agg:      NewSumAgg(expression.NewGetField(3, types.LongText, "x", true)),
 			Expected: sql.Row{float64(10), float64(10), float64(21)},
 		},
 		{
 			Name:     "first",
-			Agg:      NewFirstAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:      NewFirstAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{1, 1, 1},
 		},
 		{
 			Name:     "last",
-			Agg:      NewLastAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:      NewLastAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{4, 4, 6},
 		},
 		// list aggregations
 		{
 			Name:     "group concat null",
-			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, sql.LongText, "x", true)}, 1042)),
+			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, types.LongText, "x", true)}, 1042)),
 			Expected: sql.Row{"1,3,4", "1,3,4", "1,2,5,6"},
 		},
 		{
 			Name:     "group concat int",
-			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(1, sql.LongText, "x", true)}, 1042)),
+			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(1, types.LongText, "x", true)}, 1042)),
 			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
 		},
 		{
 			Name:     "group concat float",
-			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(3, sql.LongText, "x", true)}, 1042)),
+			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(3, types.LongText, "x", true)}, 1042)),
 			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
 		},
 		{
 			Name: "json array null",
-			Agg:  NewJsonArrayAgg(expression.NewGetField(0, sql.LongText, "x", true)),
+			Agg:  NewJsonArrayAgg(expression.NewGetField(0, types.LongText, "x", true)),
 			Expected: sql.Row{
-				sql.JSONDocument{Val: []interface{}{1, nil, 3, 4}},
-				sql.JSONDocument{Val: []interface{}{1, nil, 3, 4}},
-				sql.JSONDocument{Val: []interface{}{1, 2, nil, nil, 5, 6}},
+				types.JSONDocument{Val: []interface{}{1, nil, 3, 4}},
+				types.JSONDocument{Val: []interface{}{1, nil, 3, 4}},
+				types.JSONDocument{Val: []interface{}{1, 2, nil, nil, 5, 6}},
 			},
 		},
 		{
 			Name: "json array int",
-			Agg:  NewJsonArrayAgg(expression.NewGetField(1, sql.LongText, "x", true)),
+			Agg:  NewJsonArrayAgg(expression.NewGetField(1, types.LongText, "x", true)),
 			Expected: sql.Row{
-				sql.JSONDocument{Val: []interface{}{1, 2, 3, 4}},
-				sql.JSONDocument{Val: []interface{}{1, 2, 3, 4}},
-				sql.JSONDocument{Val: []interface{}{1, 2, 3, 4, 5, 6}},
+				types.JSONDocument{Val: []interface{}{1, 2, 3, 4}},
+				types.JSONDocument{Val: []interface{}{1, 2, 3, 4}},
+				types.JSONDocument{Val: []interface{}{1, 2, 3, 4, 5, 6}},
 			},
 		},
 		{
 			Name: "json array float",
-			Agg:  NewJsonArrayAgg(expression.NewGetField(3, sql.LongText, "x", true)),
+			Agg:  NewJsonArrayAgg(expression.NewGetField(3, types.LongText, "x", true)),
 			Expected: sql.Row{
-				sql.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4)}},
-				sql.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4)}},
-				sql.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4), float64(5), float64(6)}},
+				types.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4)}},
+				types.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4)}},
+				types.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4), float64(5), float64(6)}},
 			},
 		},
 		{
 			Name: "json object null",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
-					expression.NewGetField(1, sql.LongText, "x", true),
-					expression.NewGetField(0, sql.LongText, "y", true),
+					expression.NewGetField(1, types.LongText, "x", true),
+					expression.NewGetField(0, types.LongText, "y", true),
 				).(*JSONObjectAgg),
 			),
 			Expected: sql.Row{
-				sql.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": 1, "2": 2, "3": nil, "4": nil, "5": 5, "6": 6}},
+				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
+				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
+				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": 2, "3": nil, "4": nil, "5": 5, "6": 6}},
 			},
 		},
 		{
 			Name: "json object int",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
-					expression.NewGetField(1, sql.LongText, "x", true),
-					expression.NewGetField(0, sql.LongText, "x", true),
+					expression.NewGetField(1, types.LongText, "x", true),
+					expression.NewGetField(0, types.LongText, "x", true),
 				).(*JSONObjectAgg),
 			),
 			Expected: sql.Row{
-				sql.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": 1, "2": 2, "3": nil, "4": nil, "5": 5, "6": 6}},
+				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
+				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
+				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": 2, "3": nil, "4": nil, "5": 5, "6": 6}},
 			},
 		},
 		{
 			Name: "json object float",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
-					expression.NewGetField(1, sql.LongText, "x", true),
-					expression.NewGetField(3, sql.LongText, "x", true),
+					expression.NewGetField(1, types.LongText, "x", true),
+					expression.NewGetField(3, types.LongText, "x", true),
 				).(*JSONObjectAgg),
 			),
 			Expected: sql.Row{
-				sql.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4), "5": float64(5), "6": float64(6)}},
+				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
+				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
+				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4), "5": float64(5), "6": float64(6)}},
 			},
 		},
 		{
 			Name: "json object float",
 			Agg: NewWindowedJSONObjectAgg(
 				NewJSONObjectAgg(
-					expression.NewGetField(1, sql.LongText, "x", true),
-					expression.NewGetField(3, sql.LongText, "x", true),
+					expression.NewGetField(1, types.LongText, "x", true),
+					expression.NewGetField(3, types.LongText, "x", true),
 				).(*JSONObjectAgg),
 			),
 			Expected: sql.Row{
-				sql.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
-				sql.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4), "5": float64(5), "6": float64(6)}},
+				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
+				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
+				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4), "5": float64(5), "6": float64(6)}},
 			},
 		},
 	}
@@ -282,14 +283,14 @@ func TestWindowedAggFuncs(t *testing.T) {
 	}{
 		{
 			Name:     "lag",
-			Agg:      NewLag(expression.NewGetField(1, sql.LongText, "x", true), nil, 2),
+			Agg:      NewLag(expression.NewGetField(1, types.LongText, "x", true), nil, 2),
 			Expected: sql.Row{nil, nil, 1, 2, nil, nil, 1, 2, nil, nil, 1, 2, 3, 4},
 		},
 		{
 			Name: "lag w/ default",
 			Agg: NewLag(
-				expression.NewGetField(1, sql.LongText, "x", true),
-				expression.NewGetField(1, sql.LongText, "x", true),
+				expression.NewGetField(1, types.LongText, "x", true),
+				expression.NewGetField(1, types.LongText, "x", true),
 				2,
 			),
 			Expected: sql.Row{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4},
@@ -297,7 +298,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		{
 			Name: "lag nil",
 			Agg: NewLag(
-				expression.NewGetField(0, sql.LongText, "x", true),
+				expression.NewGetField(0, types.LongText, "x", true),
 				nil,
 				1,
 			),
@@ -305,14 +306,14 @@ func TestWindowedAggFuncs(t *testing.T) {
 		},
 		{
 			Name:     "lead",
-			Agg:      NewLead(expression.NewGetField(1, sql.LongText, "x", true), nil, 2),
+			Agg:      NewLead(expression.NewGetField(1, types.LongText, "x", true), nil, 2),
 			Expected: sql.Row{3, 4, nil, nil, 3, 4, nil, nil, 3, 4, 5, 6, nil, nil},
 		},
 		{
 			Name: "lead w/ default",
 			Agg: NewLead(
-				expression.NewGetField(1, sql.LongText, "x", true),
-				expression.NewGetField(1, sql.LongText, "x", true),
+				expression.NewGetField(1, types.LongText, "x", true),
+				expression.NewGetField(1, types.LongText, "x", true),
 				2,
 			),
 			Expected: sql.Row{3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6},
@@ -333,7 +334,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		},
 		{
 			Name: "percent rank peer groups",
-			Agg:  NewPercentRank([]sql.Expression{expression.NewGetField(5, sql.LongText, "x", true)}),
+			Agg:  NewPercentRank([]sql.Expression{expression.NewGetField(5, types.LongText, "x", true)}),
 			Expected: sql.Row{
 				float64(0), float64(0) / float64(3), float64(2) / float64(3), float64(3) / float64(3),
 				float64(0), float64(1) / float64(3), float64(1) / float64(3), float64(3) / float64(3),

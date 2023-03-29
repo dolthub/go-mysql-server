@@ -52,7 +52,7 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	return enginetest.NewEngineWithProviderSetup(t, m, m.setupData)
+	return enginetest.NewEngine(t, m, m.Provider(), m.setupData)
 }
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {

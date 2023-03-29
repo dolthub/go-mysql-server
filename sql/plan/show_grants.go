@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -33,6 +34,7 @@ type ShowGrants struct {
 
 var _ sql.Node = (*ShowGrants)(nil)
 var _ sql.Databaser = (*ShowGrants)(nil)
+var _ sql.CollationCoercible = (*ShowGrants)(nil)
 
 // NewShowGrants returns a new ShowGrants node.
 func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *ShowGrants {
@@ -56,7 +58,7 @@ func (n *ShowGrants) Schema() sql.Schema {
 	}
 	return sql.Schema{{
 		Name: fmt.Sprintf("Grants for %s", user.String("")),
-		Type: sql.LongText,
+		Type: types.LongText,
 	}}
 }
 
@@ -114,14 +116,21 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	}
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowGrants) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // generatePrivStrings creates a formatted GRANT <privilege_list> on <global/database/table> to <user@host> string
 func generatePrivStrings(db, tbl, user string, privs []sql.PrivilegeType) string {
 	sb := strings.Builder{}
 	withGrantOption := ""
 	for i, priv := range privs {
 		privStr := priv.String()
-		if privStr == sql.PrivilegeType_Grant.String() {
-			withGrantOption = " WITH GRANT OPTION"
+		if privStr == sql.PrivilegeType_GrantOption.String() {
+			if len(privs) > 1 {
+				withGrantOption = " WITH GRANT OPTION"
+			}
 		} else {
 			if i > 0 {
 				sb.WriteString(", ")
@@ -193,6 +202,27 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 	if sb.Len() > 0 {
 		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})
+	}
+
+	sb.Reset()
+	for i, dynamicPrivWithWgo := range user.PrivilegeSet.ToSliceDynamic(true) {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(dynamicPrivWithWgo)
+	}
+	if sb.Len() > 0 {
+		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s WITH GRANT OPTION", sb.String(), user.UserHostToString("`"))})
+	}
+	sb.Reset()
+	for i, dynamicPrivWithoutWgo := range user.PrivilegeSet.ToSliceDynamic(false) {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(dynamicPrivWithoutWgo)
+	}
+	if sb.Len() > 0 {
+		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s", sb.String(), user.UserHostToString("`"))})
 	}
 	return sql.RowsToRowIter(rows...), nil
 }

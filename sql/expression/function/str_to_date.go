@@ -5,6 +5,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse/dateparse"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // NewStrToDate constructs a new function expression from the given child expressions.
@@ -25,6 +26,7 @@ type StrToDate struct {
 }
 
 var _ sql.FunctionExpression = (*StrToDate)(nil)
+var _ sql.CollationCoercible = (*StrToDate)(nil)
 
 // Description implements sql.FunctionExpression
 func (s StrToDate) Description() string {
@@ -44,7 +46,12 @@ func (s StrToDate) String() string {
 
 // Type returns the expression type.
 func (s StrToDate) Type() sql.Type {
-	return sql.Datetime
+	return types.Datetime
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (StrToDate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable returns whether the expression can be null.

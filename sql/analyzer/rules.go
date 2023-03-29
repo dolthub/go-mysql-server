@@ -22,6 +22,7 @@ import (
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
+	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
@@ -71,6 +72,7 @@ var DefaultRules = []Rule{
 	{qualifyColumnsId, qualifyColumns},
 	{resolveOrderbyLiteralsId, resolveOrderByLiterals},
 	{resolveFunctionsId, resolveFunctions},
+	{replaceCountStarId, replaceCountStar},
 	{flattenTableAliasesId, flattenTableAliases},
 	{pushdownSortId, pushdownSort},
 	{pushdownGroupbyAliasesId, pushdownGroupByAliases},
@@ -95,13 +97,15 @@ var DefaultRules = []Rule{
 // OnceAfterDefault contains the rules to be applied just once after the
 // DefaultRules.
 var OnceAfterDefault = []Rule{
+	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
+	{transformJoinApplyId, transformJoinApply},
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
-	{hoistSelectExistsId, hoistSelectExists},
+	{foldEmptyJoinsId, foldEmptyJoins},
 	{optimizeJoinsId, constructJoinPlan},
 	{pushdownFiltersId, pushdownFilters},
 	{pruneColumnsId, pruneColumns},
@@ -135,6 +139,7 @@ var DefaultValidationRules = []Rule{
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
 	{validateAggregationsId, validateAggregations},
+	{validateDeleteFromId, validateDeleteFrom},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other
@@ -142,7 +147,6 @@ var DefaultValidationRules = []Rule{
 var OnceAfterAll = []Rule{
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-	{inSubqueryIndexesId, applyIndexesForSubqueryComparisons},
 	{AutocommitId, addAutocommitNode},
 	{TrackProcessId, trackProcess},
 	{parallelizeId, parallelize},

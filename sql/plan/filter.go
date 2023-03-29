@@ -24,6 +24,9 @@ type Filter struct {
 	Expression sql.Expression
 }
 
+var _ sql.Node = (*Filter)(nil)
+var _ sql.CollationCoercible = (*Filter)(nil)
+
 // NewFilter creates a new filter node.
 func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	return &Filter{
@@ -62,6 +65,11 @@ func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (f *Filter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return f.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *Filter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, f.UnaryNode.Child)
 }
 
 // WithExpressions implements the Expressioner interface.

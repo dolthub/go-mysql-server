@@ -17,12 +17,12 @@ package plan
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrNotView = errors.NewKind("'%' is not VIEW")
@@ -35,12 +35,14 @@ type ShowCreateTable struct {
 	Checks           sql.CheckConstraints
 	targetSchema     sql.Schema
 	primaryKeySchema sql.PrimaryKeySchema
-	AsOf             sql.Expression
+	asOf             sql.Expression
 }
 
 var _ sql.Node = (*ShowCreateTable)(nil)
 var _ sql.Expressioner = (*ShowCreateTable)(nil)
 var _ sql.SchemaTarget = (*ShowCreateTable)(nil)
+var _ sql.CollationCoercible = (*ShowCreateTable)(nil)
+var _ Versionable = (*ShowCreateTable)(nil)
 
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
@@ -52,7 +54,7 @@ func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
-		AsOf:      asOf,
+		asOf:      asOf,
 	}
 }
 
@@ -93,6 +95,11 @@ func (sc *ShowCreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privi
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCreateTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	sc.targetSchema = schema
 	return &sc, nil
@@ -125,15 +132,15 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 	switch sc.Child.(type) {
 	case *SubqueryAlias:
 		return sql.Schema{
-			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "Create View", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "View", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "Create View", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "character_set_client", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "collation_connection", Type: types.LongText, Nullable: false},
 		}
 	case *ResolvedTable, sql.UnresolvedTable:
 		return sql.Schema{
-			&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
-			&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
+			&sql.Column{Name: "Table", Type: types.LongText, Nullable: false},
+			&sql.Column{Name: "Create Table", Type: types.LongText, Nullable: false},
 		}
 	default:
 		panic(fmt.Sprintf("unexpected type %T", sc.Child))
@@ -143,6 +150,18 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 // GetTargetSchema returns the final resolved target schema of show create table.
 func (sc *ShowCreateTable) GetTargetSchema() sql.Schema {
 	return sc.targetSchema
+}
+
+// WithAsOf implements the Versionable interface.
+func (sc *ShowCreateTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+	nsc := *sc
+	nsc.asOf = asOf
+	return &nsc, nil
+}
+
+// AsOf implements the Versionable interface.
+func (sc *ShowCreateTable) AsOf() sql.Expression {
+	return sc.asOf
 }
 
 // RowIter implements the Node interface
@@ -170,8 +189,8 @@ func (sc *ShowCreateTable) String() string {
 	}
 
 	asOfClause := ""
-	if sc.AsOf != nil {
-		asOfClause = fmt.Sprintf("as of %v", sc.AsOf)
+	if sc.asOf != nil {
+		asOfClause = fmt.Sprintf("as of %v", sc.asOf)
 	}
 
 	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)
@@ -248,45 +267,26 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	// Statement creation parts for each column
 	for i, col := range schema {
-		stmt := fmt.Sprintf("  %s %s", quoteIdentifier(col.Name), col.Type.String())
 
-		if !col.Nullable {
-			stmt = fmt.Sprintf("%s NOT NULL", stmt)
-		}
-
-		if col.AutoIncrement {
-			stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
-		}
-
-		if c, ok := col.Type.(sql.SpatialColumnType); ok {
-			if v, d := c.GetSpatialTypeSRID(); d {
-				stmt = fmt.Sprintf("%s SRID %v", stmt, v)
-			}
-		}
-
+		var colDefault string
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
 			// TODO : string literals should have character set introducer
-			defStr := col.Default.String()
-			if defStr != "NULL" && col.Default.IsLiteral() && !sql.IsTime(col.Default.Type()) && !sql.IsText(col.Default.Type()) {
+			colDefault = col.Default.String()
+			if colDefault != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {
 				v, err := col.Default.Eval(ctx, nil)
 				if err != nil {
 					return "", err
 				}
-				defStr = fmt.Sprintf("'%v'", v)
+				colDefault = fmt.Sprintf("'%v'", v)
 			}
-			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, defStr)
-		}
-
-		if col.Comment != "" {
-			stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, col.Comment)
 		}
 
 		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
 			pkOrdinals = append(pkOrdinals, i)
 		}
 
-		colStmts[i] = stmt
+		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col.Name, col.Type, col.Nullable, col.AutoIncrement, col.Default != nil, colDefault, col.Comment)
 	}
 
 	for _, i := range pkOrdinals {
@@ -294,8 +294,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	if len(primaryKeyCols) > 0 {
-		primaryKey := fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(quoteIdentifiers(primaryKeyCols), ","))
-		colStmts = append(colStmts, primaryKey)
+		colStmts = append(colStmts, sql.GenerateCreateTablePrimaryKeyDefinition(primaryKeyCols))
 	}
 
 	for _, index := range i.indexes {
@@ -309,7 +308,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		for i, expr := range index.Expressions() {
 			col := GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexDef := quoteIdentifier(col.Name)
+				indexDef := sql.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > i && prefixLengths[i] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
 				}
@@ -317,17 +316,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			}
 		}
 
-		unique := ""
-		if index.IsUnique() {
-			unique = "UNIQUE "
-		}
-
-		key := fmt.Sprintf("  %sKEY %s (%s)", unique, quoteIdentifier(index.ID()), strings.Join(indexCols, ","))
-		if index.Comment() != "" {
-			key = fmt.Sprintf("%s COMMENT '%s'", key, index.Comment())
-		}
-
-		colStmts = append(colStmts, key)
+		colStmts = append(colStmts, sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(), index.ID(), indexCols, index.Comment()))
 	}
 
 	fkt, err := getForeignKeyTable(table)
@@ -337,56 +326,25 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			return "", err
 		}
 		for _, fk := range fks {
-			keyCols := strings.Join(quoteIdentifiers(fk.Columns), ",")
-			refCols := strings.Join(quoteIdentifiers(fk.ParentColumns), ",")
 			onDelete := ""
 			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferentialAction_DefaultAction {
-				onDelete = " ON DELETE " + string(fk.OnDelete)
+				onDelete = string(fk.OnDelete)
 			}
 			onUpdate := ""
 			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
-				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
+				onUpdate = string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)%s%s", quoteIdentifier(fk.Name), keyCols, quoteIdentifier(fk.ParentTable), refCols, onDelete, onUpdate))
+			colStmts = append(colStmts, sql.GenerateCreateTableForiegnKeyDefinition(fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
 		}
 	}
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			fmted := fmt.Sprintf("  CONSTRAINT %s CHECK (%s)", quoteIdentifier(check.Name), check.Expr.String())
-
-			if !check.Enforced {
-				fmted += " /*!80016 NOT ENFORCED */"
-			}
-
-			colStmts = append(colStmts, fmted)
+			colStmts = append(colStmts, sql.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
 		}
 	}
 
-	return fmt.Sprintf(
-		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s",
-		quoteIdentifier(table.Name()),
-		strings.Join(colStmts, ",\n"),
-		table.Collation().CharacterSet().Name(),
-		table.Collation().Name(),
-	), nil
-}
-
-// quoteIdentifier wraps the specified identifier in backticks and escapes all occurrences of backticks in the
-// identifier by replacing them with double backticks.
-func quoteIdentifier(id string) string {
-	id = strings.ReplaceAll(id, "`", "``")
-	return fmt.Sprintf("`%s`", id)
-}
-
-// quoteIdentifiers wraps each of the specified identifiers in backticks, escapes all occurrences of backticks in
-// the identifier, and returns a slice of the quoted identifiers.
-func quoteIdentifiers(ids []string) []string {
-	quoted := make([]string, len(ids))
-	for i, id := range ids {
-		quoted[i] = quoteIdentifier(id)
-	}
-	return quoted
+	return sql.GenerateCreateTableStatement(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name()), nil
 }
 
 // isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.

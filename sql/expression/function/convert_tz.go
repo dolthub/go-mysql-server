@@ -17,13 +17,15 @@ package function
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var offsetRegex = regexp.MustCompile(`(?m)^(\+|\-)(\d{2}):(\d{2})$`) // (?m)^\+|\-(\d{2}):(\d{2})$
+var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`) // (?m)^\+|\-(\d{2}):(\d{2})$
 
 type ConvertTz struct {
 	dt     sql.Expression
@@ -32,6 +34,7 @@ type ConvertTz struct {
 }
 
 var _ sql.FunctionExpression = (*ConvertTz)(nil)
+var _ sql.CollationCoercible = (*ConvertTz)(nil)
 
 // NewConvertTz returns an implementation of the CONVERT_TZ() function.
 func NewConvertTz(dt, fromTz, toTz sql.Expression) sql.Expression {
@@ -64,7 +67,12 @@ func (c *ConvertTz) String() string {
 
 // Type implements the sql.Expression interface.
 func (c *ConvertTz) Type() sql.Type {
-	return sql.Datetime
+	return types.Datetime
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ConvertTz) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -90,14 +98,23 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If either the date, or the timezones/offsets are not correct types we return NULL.
-	datetime, err := sql.Datetime.ConvertWithoutRangeCheck(dt)
+	datetime, err := types.Datetime.ConvertWithoutRangeCheck(dt)
 	if err != nil {
 		return nil, nil
 	}
 
+	globalTimeZone, _, _ := sql.SystemVariables.GetGlobal("time_zone")
+
 	fromStr, ok := from.(string)
 	if !ok {
 		return nil, nil
+	}
+
+	t := time.Now()
+	_, offset := t.Zone()
+
+	if fromStr == globalTimeZone.Default {
+		fromStr = getSystemDelta(offset)
 	}
 
 	toStr, ok := to.(string)
@@ -105,9 +122,13 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	if toStr == globalTimeZone.Default {
+		toStr = getSystemDelta(offset)
+	}
+
 	converted, success := convertTimeZone(datetime, fromStr, toStr)
 	if success {
-		return sql.Datetime.ConvertWithoutRangeCheck(converted)
+		return types.Datetime.ConvertWithoutRangeCheck(converted)
 	}
 
 	// If we weren't successful converting by timezone try converting via offsets.
@@ -116,7 +137,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return sql.Datetime.ConvertWithoutRangeCheck(converted)
+	return types.Datetime.ConvertWithoutRangeCheck(converted)
 }
 
 // convertTimeZone returns the conversion of t from timezone fromLocation to toLocation.
@@ -171,6 +192,22 @@ func getDeltaAsDuration(d string) (time.Duration, error) {
 	}
 
 	return time.ParseDuration(symbol + hours + "h" + mins + "m")
+}
+
+func getSystemDelta(offset int) string {
+	seconds := offset % (60 * 60 * 24)
+	hours := math.Floor(float64(seconds) / 60 / 60)
+	seconds = offset % (60 * 60)
+	minutes := math.Floor(float64(seconds) / 60)
+
+	result := fmt.Sprintf("%02d:%02d", int(math.Abs(hours)), int(math.Abs(minutes)))
+	if offset >= 0 {
+		result = fmt.Sprintf("+%s", result)
+	} else {
+		result = fmt.Sprintf("-%s", result)
+	}
+
+	return result
 }
 
 // Children implements the sql.Expression interface.

@@ -16,12 +16,14 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowPrivileges represents the statement SHOW PRIVILEGES.
 type ShowPrivileges struct{}
 
 var _ sql.Node = (*ShowPrivileges)(nil)
+var _ sql.CollationCoercible = (*ShowPrivileges)(nil)
 
 // NewShowPrivileges returns a new ShowPrivileges node.
 func NewShowPrivileges() *ShowPrivileges {
@@ -31,9 +33,9 @@ func NewShowPrivileges() *ShowPrivileges {
 // Schema implements the interface sql.Node.
 func (n *ShowPrivileges) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Privilege", Type: sql.LongText},
-		&sql.Column{Name: "Context", Type: sql.LongText},
-		&sql.Column{Name: "Comment", Type: sql.LongText},
+		&sql.Column{Name: "Privilege", Type: types.LongText},
+		&sql.Column{Name: "Context", Type: types.LongText},
+		&sql.Column{Name: "Comment", Type: types.LongText},
 	}
 }
 
@@ -63,6 +65,11 @@ func (n *ShowPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *ShowPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

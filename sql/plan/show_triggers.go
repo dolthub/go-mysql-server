@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ShowTriggers struct {
@@ -27,19 +28,20 @@ type ShowTriggers struct {
 
 var _ sql.Databaser = (*ShowTriggers)(nil)
 var _ sql.Node = (*ShowTriggers)(nil)
+var _ sql.CollationCoercible = (*ShowTriggers)(nil)
 
 var showTriggersSchema = sql.Schema{
-	&sql.Column{Name: "Trigger", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Event", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Table", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Statement", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Timing", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Created", Type: sql.Datetime, Nullable: false},
-	&sql.Column{Name: "sql_mode", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Definer", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "character_set_client", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "collation_connection", Type: sql.LongText, Nullable: false},
-	&sql.Column{Name: "Database Collation", Type: sql.LongText, Nullable: false},
+	&sql.Column{Name: "Trigger", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Event", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Table", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Statement", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Timing", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Created", Type: types.Datetime, Nullable: false},
+	&sql.Column{Name: "sql_mode", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Definer", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "character_set_client", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "collation_connection", Type: types.LongText, Nullable: false},
+	&sql.Column{Name: "Database Collation", Type: types.LongText, Nullable: false},
 }
 
 // NewShowCreateTrigger creates a new ShowCreateTrigger node for SHOW TRIGGER statements.
@@ -115,6 +117,11 @@ func (s *ShowTriggers) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (s *ShowTriggers) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: figure out what privileges are needed here
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowTriggers) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the sql.Databaser interface.

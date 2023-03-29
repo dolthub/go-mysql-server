@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowCreateDatabase returns the SQL for creating a database.
@@ -28,8 +29,8 @@ type ShowCreateDatabase struct {
 }
 
 var showCreateDatabaseSchema = sql.Schema{
-	{Name: "Database", Type: sql.LongText},
-	{Name: "Create Database", Type: sql.LongText},
+	{Name: "Database", Type: types.LongText},
+	{Name: "Create Database", Type: types.LongText},
 }
 
 // NewShowCreateDatabase creates a new ShowCreateDatabase node.
@@ -37,7 +38,9 @@ func NewShowCreateDatabase(db sql.Database, ifNotExists bool) *ShowCreateDatabas
 	return &ShowCreateDatabase{db, ifNotExists}
 }
 
+var _ sql.Node = (*ShowCreateDatabase)(nil)
 var _ sql.Databaser = (*ShowCreateDatabase)(nil)
+var _ sql.CollationCoercible = (*ShowCreateDatabase)(nil)
 
 // Database implements the sql.Databaser interface.
 func (s *ShowCreateDatabase) Database() sql.Database {
@@ -107,4 +110,9 @@ func (s *ShowCreateDatabase) WithChildren(children ...sql.Node) (sql.Node, error
 func (s *ShowCreateDatabase) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// The database won't be visible during the resolution step if the user doesn't have the correct privileges
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCreateDatabase) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

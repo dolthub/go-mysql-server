@@ -45,11 +45,6 @@ func getTableName(node sql.Node) string {
 	return tableName
 }
 
-type NameableNode interface {
-	sql.Nameable
-	sql.Node
-}
-
 // Returns the underlying table name for the node given, ignoring table aliases
 func getUnaliasedTableName(node sql.Node) string {
 	var tableName string
@@ -155,8 +150,10 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			table = n
-			return false
+			if !plan.IsDualTable(n) {
+				table = n
+				return false
+			}
 		case *plan.IndexedTableAccess:
 			table = n.ResolvedTable
 			return false
@@ -177,14 +174,12 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 		case *plan.IndexedTableAccess:
 			ret[n.ResolvedTable.Name()] = n.ResolvedTable
 		case *plan.TableAlias:
-			rt, ok := n.Child.(*plan.ResolvedTable)
-			if ok {
+			rt := getResolvedTable(n)
+			if rt != nil {
 				ret[n.Name()] = rt
 			}
 		default:
-			return true
 		}
-
 		return true
 	})
 

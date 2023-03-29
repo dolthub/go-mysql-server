@@ -34,6 +34,7 @@ type QueryProcess struct {
 
 var _ sql.Node = (*QueryProcess)(nil)
 var _ sql.Node2 = (*QueryProcess)(nil)
+var _ sql.CollationCoercible = (*QueryProcess)(nil)
 
 // NotifyFunc is a function to notify about some event.
 type NotifyFunc func()
@@ -59,6 +60,11 @@ func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *QueryProcess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return p.Child().CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *QueryProcess) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Child())
 }
 
 // RowIter implements the sql.Node interface.

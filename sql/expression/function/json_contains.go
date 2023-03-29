@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSON_CONTAINS(target, candidate[, path])
@@ -53,6 +54,7 @@ type JSONContains struct {
 }
 
 var _ sql.FunctionExpression = (*JSONContains)(nil)
+var _ sql.CollationCoercible = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
@@ -104,7 +106,12 @@ func (j *JSONContains) String() string {
 }
 
 func (j *JSONContains) Type() sql.Type {
-	return sql.Boolean
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONContains) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (j *JSONContains) IsNullable() bool {
@@ -136,7 +143,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 			return nil, err
 		}
 
-		path, err = sql.LongText.Convert(path)
+		path, err = types.LongText.Convert(path)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +166,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return target.Contains(ctx, candidate)
 }
 
-func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.SearchableJSONValue, error) {
+func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.SearchableJSONValue, error) {
 	js, err := json.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -170,8 +177,8 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 
 	var converted interface{}
 	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, sql.JSONValue:
-		converted, err = sql.JSON.Convert(js)
+	case string, []interface{}, map[string]interface{}, types.JSONValue:
+		converted, err = types.JSON.Convert(js)
 		if err != nil {
 			return nil, sql.ErrInvalidJSONText.New(js)
 		}
@@ -179,9 +186,9 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
 
-	searchable, ok := converted.(sql.SearchableJSONValue)
+	searchable, ok := converted.(types.SearchableJSONValue)
 	if !ok {
-		searchable, err = js.(sql.JSONValue).Unmarshall(ctx)
+		searchable, err = js.(types.JSONValue).Unmarshall(ctx)
 		if err != nil {
 			return nil, err
 		}

@@ -21,17 +21,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestCase(t *testing.T) {
 	f1 := NewCase(
-		NewGetField(0, sql.Int64, "foo", false),
+		NewGetField(0, types.Int64, "foo", false),
 		[]CaseBranch{
-			{Cond: NewLiteral(int64(1), sql.Int64), Value: NewLiteral(int64(2), sql.Int64)},
-			{Cond: NewLiteral(int64(3), sql.Int64), Value: NewLiteral(int64(4), sql.Int64)},
-			{Cond: NewLiteral(int64(5), sql.Int64), Value: NewLiteral(int64(6), sql.Int64)},
+			{Cond: NewLiteral(int64(1), types.Int64), Value: NewLiteral(int64(2), types.Int64)},
+			{Cond: NewLiteral(int64(3), types.Int64), Value: NewLiteral(int64(4), types.Int64)},
+			{Cond: NewLiteral(int64(5), types.Int64), Value: NewLiteral(int64(6), types.Int64)},
 		},
-		NewLiteral(int64(7), sql.Int64),
+		NewLiteral(int64(7), types.Int64),
 	)
 
 	f2 := NewCase(
@@ -39,35 +40,35 @@ func TestCase(t *testing.T) {
 		[]CaseBranch{
 			{
 				Cond: NewEquals(
-					NewGetField(0, sql.Int64, "foo", false),
-					NewLiteral(int64(1), sql.Int64),
+					NewGetField(0, types.Int64, "foo", false),
+					NewLiteral(int64(1), types.Int64),
 				),
-				Value: NewLiteral(int64(2), sql.Int64),
+				Value: NewLiteral(int64(2), types.Int64),
 			},
 			{
 				Cond: NewEquals(
-					NewGetField(0, sql.Int64, "foo", false),
-					NewLiteral(int64(3), sql.Int64),
+					NewGetField(0, types.Int64, "foo", false),
+					NewLiteral(int64(3), types.Int64),
 				),
-				Value: NewLiteral(int64(4), sql.Int64),
+				Value: NewLiteral(int64(4), types.Int64),
 			},
 			{
 				Cond: NewEquals(
-					NewGetField(0, sql.Int64, "foo", false),
-					NewLiteral(int64(5), sql.Int64),
+					NewGetField(0, types.Int64, "foo", false),
+					NewLiteral(int64(5), types.Int64),
 				),
-				Value: NewLiteral(int64(6), sql.Int64),
+				Value: NewLiteral(int64(6), types.Int64),
 			},
 		},
-		NewLiteral(int64(7), sql.Int64),
+		NewLiteral(int64(7), types.Int64),
 	)
 
 	f3 := NewCase(
-		NewGetField(0, sql.Int64, "foo", false),
+		NewGetField(0, types.Int64, "foo", false),
 		[]CaseBranch{
-			{Cond: NewLiteral(int64(1), sql.Int64), Value: NewLiteral(int64(2), sql.Int64)},
-			{Cond: NewLiteral(int64(3), sql.Int64), Value: NewLiteral(int64(4), sql.Int64)},
-			{Cond: NewLiteral(int64(5), sql.Int64), Value: NewLiteral(int64(6), sql.Int64)},
+			{Cond: NewLiteral(int64(1), types.Int64), Value: NewLiteral(int64(2), types.Int64)},
+			{Cond: NewLiteral(int64(3), types.Int64), Value: NewLiteral(int64(4), types.Int64)},
+			{Cond: NewLiteral(int64(5), types.Int64), Value: NewLiteral(int64(6), types.Int64)},
 		},
 		nil,
 	)
@@ -149,7 +150,7 @@ func TestCaseType(t *testing.T) {
 		var branches []CaseBranch
 		for i := 0; i < len(values)-1; i++ {
 			branches = append(branches, CaseBranch{
-				Cond:  NewLiteral(int64(i), sql.Int64),
+				Cond:  NewLiteral(int64(i), types.Int64),
 				Value: values[i],
 			})
 		}
@@ -160,7 +161,7 @@ func TestCaseType(t *testing.T) {
 		}
 	}
 
-	decimalType := sql.MustCreateDecimalType(65, 10)
+	decimalType := types.MustCreateDecimalType(65, 10)
 
 	testCases := []struct {
 		name string
@@ -169,78 +170,78 @@ func TestCaseType(t *testing.T) {
 	}{
 		{
 			"standalone else clause",
-			caseExpr(NewLiteral(int64(0), sql.Int64)),
-			sql.Int64,
+			caseExpr(NewLiteral(int64(0), types.Int64)),
+			types.Int64,
 		},
 		{
 			"unsigned promoted and unsigned",
-			caseExpr(NewLiteral(uint32(0), sql.Uint32), NewLiteral(uint32(1), sql.Uint32)),
-			sql.Uint64,
+			caseExpr(NewLiteral(uint32(0), types.Uint32), NewLiteral(uint32(1), types.Uint32)),
+			types.Uint64,
 		},
 		{
 			"signed promoted and signed",
-			caseExpr(NewLiteral(int8(0), sql.Int8), NewLiteral(int32(1), sql.Int32)),
-			sql.Int64,
+			caseExpr(NewLiteral(int8(0), types.Int8), NewLiteral(int32(1), types.Int32)),
+			types.Int64,
 		},
 		{
 			"int and float to float",
-			caseExpr(NewLiteral(int64(0), sql.Int64), NewLiteral(float64(1.0), sql.Float64)),
-			sql.Float64,
+			caseExpr(NewLiteral(int64(0), types.Int64), NewLiteral(float64(1.0), types.Float64)),
+			types.Float64,
 		},
 		{
 			"float and int to float",
-			caseExpr(NewLiteral(float64(1.0), sql.Float64), NewLiteral(int64(0), sql.Int64)),
-			sql.Float64,
+			caseExpr(NewLiteral(float64(1.0), types.Float64), NewLiteral(int64(0), types.Int64)),
+			types.Float64,
 		},
 		{
 			"int and text to text",
-			caseExpr(NewLiteral(int64(0), sql.Int64), NewLiteral("Hello, world!", sql.Text)),
-			sql.LongText,
+			caseExpr(NewLiteral(int64(0), types.Int64), NewLiteral("Hello, world!", types.Text)),
+			types.LongText,
 		},
 		{
 			"text and blob to blob",
-			caseExpr(NewLiteral("Hello, world!", sql.Text), NewLiteral([]byte("0x480x650x6c0x6c0x6f"), sql.Blob)),
-			sql.LongBlob,
+			caseExpr(NewLiteral("Hello, world!", types.Text), NewLiteral([]byte("0x480x650x6c0x6c0x6f"), types.Blob)),
+			types.LongBlob,
 		},
 		{
 			"int and null to int",
-			caseExpr(NewLiteral(int64(10), sql.Int64), NewLiteral(nil, sql.Null)),
-			sql.Int64,
+			caseExpr(NewLiteral(int64(10), types.Int64), NewLiteral(nil, types.Null)),
+			types.Int64,
 		},
 		{
 			"null and int to int",
-			caseExpr(NewLiteral(nil, sql.Null), NewLiteral(int64(10), sql.Int64)),
-			sql.Int64,
+			caseExpr(NewLiteral(nil, types.Null), NewLiteral(int64(10), types.Int64)),
+			types.Int64,
 		},
 		{
 			"uint64 and int8 to decimal",
-			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral(int8(0), sql.Int8)),
+			caseExpr(NewLiteral(uint64(10), types.Uint64), NewLiteral(int8(0), types.Int8)),
 			decimalType,
 		},
 		{
 			"int and text to text",
-			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", sql.LongText)),
-			sql.LongText,
+			caseExpr(NewLiteral(uint64(10), types.Uint64), NewLiteral("Hello, world!", types.LongText)),
+			types.LongText,
 		},
 		{
 			"uint and decimal to decimal",
-			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", sql.LongText)),
-			sql.LongText,
+			caseExpr(NewLiteral(uint64(10), types.Uint64), NewLiteral("Hello, world!", types.LongText)),
+			types.LongText,
 		},
 		{
 			"int and decimal to decimal",
-			caseExpr(NewLiteral(int32(10), sql.Int32), NewLiteral(decimal.NewFromInt(1), decimalType)),
+			caseExpr(NewLiteral(int32(10), types.Int32), NewLiteral(decimal.NewFromInt(1), decimalType)),
 			decimalType,
 		},
 		{
 			"date and date stays date",
-			caseExpr(NewLiteral("2020-04-07", sql.Date), NewLiteral("2020-04-07", sql.Date)),
-			sql.Date,
+			caseExpr(NewLiteral("2020-04-07", types.Date), NewLiteral("2020-04-07", types.Date)),
+			types.Date,
 		},
 		{
 			"date and timestamp becomes datetime",
-			caseExpr(NewLiteral("2020-04-07", sql.Date), NewLiteral("2020-04-07T00:00:00Z", sql.Timestamp)),
-			sql.Datetime,
+			caseExpr(NewLiteral("2020-04-07", types.Date), NewLiteral("2020-04-07T00:00:00Z", types.Timestamp)),
+			types.Datetime,
 		},
 	}
 
@@ -254,11 +255,11 @@ func TestCaseType(t *testing.T) {
 func TestCaseNullBranch(t *testing.T) {
 	require := require.New(t)
 	f := NewCase(
-		NewGetField(0, sql.Int64, "x", false),
+		NewGetField(0, types.Int64, "x", false),
 		[]CaseBranch{
 			{
-				Cond:  NewLiteral(int64(1), sql.Int64),
-				Value: NewLiteral(nil, sql.Null),
+				Cond:  NewLiteral(int64(1), types.Int64),
+				Value: NewLiteral(nil, types.Null),
 			},
 		},
 		nil,

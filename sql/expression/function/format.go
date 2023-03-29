@@ -25,6 +25,7 @@ import (
 	"golang.org/x/text/number"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Format function returns a result of NumValue rounded to NumDecimalPlaces as a string.
@@ -35,6 +36,7 @@ type Format struct {
 }
 
 var _ sql.FunctionExpression = (*Format)(nil)
+var _ sql.CollationCoercible = (*Format)(nil)
 
 // NewFormat returns a new Format expression.
 func NewFormat(args ...sql.Expression) (sql.Expression, error) {
@@ -65,7 +67,12 @@ func (f *Format) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f *Format) Type() sql.Type { return sql.LongText }
+func (f *Format) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Format) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
 
 // IsNullable implements the Expression interface.
 func (f *Format) IsNullable() bool {
@@ -108,13 +115,13 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	numVal, err = sql.Float64.Convert(numVal)
+	numVal, err = types.Float64.Convert(numVal)
 	if err != nil {
 		return nil, nil
 	}
 	numValue := numVal.(float64)
 
-	numDP, err = sql.Float64.Convert(numDP)
+	numDP, err = types.Float64.Convert(numDP)
 	if err != nil {
 		return nil, nil
 	}

@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // StrCmp compares two strings
@@ -27,6 +28,7 @@ type StrCmp struct {
 }
 
 var _ sql.FunctionExpression = (*StrCmp)(nil)
+var _ sql.CollationCoercible = (*StrCmp)(nil)
 
 // NewStrCmp creates a new NewStrCmp UDF.
 func NewStrCmp(e1, e2 sql.Expression) sql.Expression {
@@ -50,7 +52,14 @@ func (s *StrCmp) Description() string {
 
 // Type implements the Expression interface.
 func (s *StrCmp) Type() sql.Type {
-	return sql.Int8
+	return types.Int8
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *StrCmp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, s.Left)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, s.Right)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
 func (s *StrCmp) String() string {
@@ -86,13 +95,11 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	leftCollation, leftCoercibility := expression.GetCollationViaCoercion(s.Left)
-	rightCollation, rightCoercibility := expression.GetCollationViaCoercion(s.Right)
-	collationPreference, err := expression.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+	collationPreference, _ := s.CollationCoercibility(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	strType := sql.CreateLongText(collationPreference)
+	strType := types.CreateLongText(collationPreference)
 	return strType.Compare(expr1, expr2)
 }

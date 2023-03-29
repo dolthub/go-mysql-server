@@ -21,44 +21,45 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestMultiPolygon(t *testing.T) {
 	t.Run("create valid multipolygon", func(t *testing.T) {
 		require := require.New(t)
-		line := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
-		poly := sql.Polygon{Lines: []sql.LineString{line}}
-		f, err := NewMultiPolygon(expression.NewLiteral(poly, sql.PolygonType{}))
+		line := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
+		poly := types.Polygon{Lines: []types.LineString{line}}
+		f, err := NewMultiPolygon(expression.NewLiteral(poly, types.PolygonType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiPolygon{Polygons: []sql.Polygon{poly}}, v)
+		require.Equal(types.MultiPolygon{Polygons: []types.Polygon{poly}}, v)
 	})
 
 	t.Run("create valid multipolygon with multiple polygons", func(t *testing.T) {
 		require := require.New(t)
-		line1 := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
-		poly1 := sql.Polygon{Lines: []sql.LineString{line1}}
-		line2 := sql.LineString{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
-		poly2 := sql.Polygon{Lines: []sql.LineString{line2}}
+		line1 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
+		poly1 := types.Polygon{Lines: []types.LineString{line1}}
+		line2 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
+		poly2 := types.Polygon{Lines: []types.LineString{line2}}
 		f, err := NewMultiPolygon(
-			expression.NewLiteral(poly1, sql.PolygonType{}),
-			expression.NewLiteral(poly2, sql.PolygonType{}),
+			expression.NewLiteral(poly1, types.PolygonType{}),
+			expression.NewLiteral(poly2, types.PolygonType{}),
 		)
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.MultiPolygon{Polygons: []sql.Polygon{poly1, poly2}}, v)
+		require.Equal(types.MultiPolygon{Polygons: []types.Polygon{poly1, poly2}}, v)
 	})
 }
 
 func TestNewMultiPolygon(t *testing.T) {
 	require := require.New(t)
-	_, err := NewMultiPolygon(expression.NewLiteral(nil, sql.PolygonType{}),
-		expression.NewLiteral(nil, sql.PolygonType{}),
-		expression.NewLiteral(nil, sql.PolygonType{}),
+	_, err := NewMultiPolygon(expression.NewLiteral(nil, types.PolygonType{}),
+		expression.NewLiteral(nil, types.PolygonType{}),
+		expression.NewLiteral(nil, types.PolygonType{}),
 	)
 	require.NoError(err)
 }

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AliasReference is a named reference to an aliased expression.
@@ -55,7 +56,12 @@ func (a AliasReference) Children() []sql.Expression {
 }
 
 func (a AliasReference) Type() sql.Type {
-	return sql.Null
+	return types.Null
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (AliasReference) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (a AliasReference) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -70,12 +76,16 @@ func (a AliasReference) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 var _ sql.Expression = (*AliasReference)(nil)
+var _ sql.CollationCoercible = (*AliasReference)(nil)
 
 // Alias is a node that gives a name to an expression.
 type Alias struct {
 	UnaryExpression
 	name string
 }
+
+var _ sql.Expression = (*Alias)(nil)
+var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.
 func NewAlias(name string, expr sql.Expression) *Alias {
@@ -85,6 +95,11 @@ func NewAlias(name string, expr sql.Expression) *Alias {
 // Type returns the type of the expression.
 func (e *Alias) Type() sql.Type {
 	return e.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e *Alias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, e.Child)
 }
 
 // Eval implements the Expression interface.

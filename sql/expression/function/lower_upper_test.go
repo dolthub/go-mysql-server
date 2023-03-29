@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestLower(t *testing.T) {
@@ -30,10 +31,10 @@ func TestLower(t *testing.T) {
 		row      sql.Row
 		expected interface{}
 	}{
-		{"text nil", sql.LongText, sql.NewRow(nil), nil},
-		{"text ok", sql.LongText, sql.NewRow("LoWeR"), "lower"},
-		{"binary ok", sql.Blob, sql.NewRow([]byte("LoWeR")), "LoWeR"},
-		{"other type", sql.Int32, sql.NewRow(int32(1)), "1"},
+		{"text nil", types.LongText, sql.NewRow(nil), nil},
+		{"text ok", types.LongText, sql.NewRow("LoWeR"), "lower"},
+		{"binary ok", types.Blob, sql.NewRow([]byte("LoWeR")), "LoWeR"},
+		{"other type", types.Int32, sql.NewRow(int32(1)), "1"},
 	}
 
 	for _, tt := range testCases {
@@ -56,10 +57,10 @@ func TestUpper(t *testing.T) {
 		row      sql.Row
 		expected interface{}
 	}{
-		{"text nil", sql.LongText, sql.NewRow(nil), nil},
-		{"text ok", sql.LongText, sql.NewRow("UpPeR"), "UPPER"},
-		{"binary ok", sql.Blob, sql.NewRow([]byte("UpPeR")), "UpPeR"},
-		{"other type", sql.Int32, sql.NewRow(int32(1)), "1"},
+		{"text nil", types.LongText, sql.NewRow(nil), nil},
+		{"text ok", types.LongText, sql.NewRow("UpPeR"), "UPPER"},
+		{"binary ok", types.Blob, sql.NewRow([]byte("UpPeR")), "UpPeR"},
+		{"other type", types.Int32, sql.NewRow(int32(1)), "1"},
 	}
 
 	for _, tt := range testCases {

@@ -15,7 +15,9 @@
 package plan
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -24,17 +26,20 @@ import (
 // BeginEndBlock represents a BEGIN/END block.
 type BeginEndBlock struct {
 	*Block
-	pRef *expression.ProcedureReference
+	Label string
+	pRef  *expression.ProcedureReference
 }
 
 // NewBeginEndBlock creates a new *BeginEndBlock node.
-func NewBeginEndBlock(block *Block) *BeginEndBlock {
+func NewBeginEndBlock(label string, block *Block) *BeginEndBlock {
 	return &BeginEndBlock{
 		Block: block,
+		Label: label,
 	}
 }
 
 var _ sql.Node = (*BeginEndBlock)(nil)
+var _ sql.CollationCoercible = (*BeginEndBlock)(nil)
 var _ sql.DebugStringer = (*BeginEndBlock)(nil)
 var _ expression.ProcedureReferencable = (*BeginEndBlock)(nil)
 var _ RepresentsLabeledBlock = (*BeginEndBlock)(nil)
@@ -42,8 +47,12 @@ var _ RepresentsScope = (*BeginEndBlock)(nil)
 
 // String implements the interface sql.Node.
 func (b *BeginEndBlock) String() string {
+	label := ""
+	if len(b.Label) > 0 {
+		label = b.Label + ": "
+	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("BEGIN .. END")
+	_ = p.WriteNode(label + "BEGIN .. END")
 	var children []string
 	for _, s := range b.statements {
 		children = append(children, s.String())
@@ -54,8 +63,12 @@ func (b *BeginEndBlock) String() string {
 
 // DebugString implements the interface sql.DebugStringer.
 func (b *BeginEndBlock) DebugString() string {
+	label := ""
+	if len(b.Label) > 0 {
+		label = b.Label + ": "
+	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("BEGIN .. END")
+	_ = p.WriteNode(label + "BEGIN .. END")
 	var children []string
 	for _, s := range b.statements {
 		children = append(children, sql.DebugString(s))
@@ -78,6 +91,11 @@ func (b *BeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 	return b.Block.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (b *BeginEndBlock) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return b.Block.CollationCoercibility(ctx)
+}
+
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (b *BeginEndBlock) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nb := *b
@@ -90,8 +108,7 @@ func (b *BeginEndBlock) implementsRepresentsScope() {}
 
 // GetBlockLabel implements the interface RepresentsLabeledBlock.
 func (b *BeginEndBlock) GetBlockLabel(ctx *sql.Context) string {
-	//TODO: implement labels for BEGIN ... END
-	return ""
+	return b.Label
 }
 
 // RepresentsLoop implements the interface RepresentsLabeledBlock.
@@ -102,11 +119,16 @@ func (b *BeginEndBlock) RepresentsLoop() bool {
 // RowIter implements the interface sql.Node.
 func (b *BeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	b.pRef.PushScope()
-	//TODO: check for label errors
 	rowIter, err := b.Block.RowIter(ctx, row)
 	if err != nil {
 		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
 			err = nil
+		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
+			if controlFlow.IsExit {
+				err = nil
+			} else {
+				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
+			}
 		}
 		if nErr := b.pRef.PopScope(ctx); err == nil && nErr != nil {
 			err = nErr
@@ -133,6 +155,12 @@ func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
 			err = io.EOF
+		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
+			if controlFlow.IsExit {
+				err = nil
+			} else {
+				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
+			}
 		}
 		if nErr := b.pRef.PopScope(ctx); nErr != nil && err == io.EOF {
 			err = nErr

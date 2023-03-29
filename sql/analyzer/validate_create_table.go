@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const MaxBytePrefix = 3072
@@ -33,7 +34,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, transform.SameTree, nil
 	}
 
-	err := validateIndexes(ct.TableSpec())
+	err := validateIndexes(ctx, ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -148,7 +149,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			}
 			return n, transform.NewTree, nil
 		case *plan.AlterIndex:
-			indexes, err = validateAlterIndex(initialSch, sch, n.(*plan.AlterIndex), indexes)
+			indexes, err = validateAlterIndex(ctx, initialSch, sch, n.(*plan.AlterIndex), indexes)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -279,7 +280,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	// not becoming a text/blob column
 	newCol := mc.NewColumn()
-	if !sql.IsTextBlob(newCol.Type) {
+	if !types.IsTextBlob(newCol.Type) {
 		return newSch, nil
 	}
 
@@ -297,7 +298,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 				if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
 					return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
 				}
-				if sql.IsTextOnly(newCol.Type) && prefixLengths[i]*4 > MaxBytePrefix {
+				if types.IsTextOnly(newCol.Type) && prefixLengths[i]*4 > MaxBytePrefix {
 					return nil, sql.ErrKeyTooLong.New()
 				}
 			}
@@ -318,7 +319,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
 	}
 
-	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
+	err := validateColumnSafeToDropWithCheckConstraint(dc.Column, dc.Checks)
 	if err != nil {
 		return nil, err
 	}
@@ -350,9 +351,44 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 	return nil
 }
 
+// validateColumnSafeToDropWithCheckConstraint validates that the specified column name is safe to drop, even if
+// referenced in a check constraint. Columns referenced in check constraints can be dropped if they are the only
+// column referenced in the check constraint.
+func validateColumnSafeToDropWithCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	var err error
+	for _, check := range checks {
+		hasOtherCol := false
+		hasMatchingCol := false
+		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
+			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
+				if columnName == unresolvedColumn.Name() {
+					if hasOtherCol {
+						err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+						return true
+					} else {
+						hasMatchingCol = true
+					}
+				} else {
+					hasOtherCol = true
+				}
+			}
+			return false
+		})
+
+		if hasOtherCol && hasMatchingCol {
+			err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // validateAlterIndex validates the specified column can have an index added, dropped, or renamed. Returns an updated
 // list of index name given the add, drop, or rename operations.
-func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
+func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
 	tableName := getTableName(ai.Table)
 
 	switch ai.Action {
@@ -361,10 +397,26 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
-
 		err := validateIndexType(ai.Columns, sch)
 		if err != nil {
 			return nil, err
+		}
+
+		if ai.Constraint == sql.IndexConstraint_Spatial {
+			if len(ai.Columns) != 1 {
+				return nil, sql.ErrTooManyKeyParts.New(1)
+			}
+			schCol := sch[sch.IndexOfColName(ai.Columns[0].Name)]
+			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
+			if !ok {
+				return nil, sql.ErrBadSpatialIdxCol.New()
+			}
+			if schCol.Nullable {
+				return nil, sql.ErrNullableSpatialIdx.New()
+			}
+			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
+				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
+			}
 		}
 
 		return append(indexes, ai.IndexName), nil
@@ -405,13 +457,13 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
 func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 	// Throw prefix length error for non-string types with prefixes
-	if idxCol.Length > 0 && !sql.IsText(schCol.Type) {
+	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
 	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
 	prefixByteLength := idxCol.Length
-	if sql.IsTextOnly(schCol.Type) {
+	if types.IsTextOnly(schCol.Type) {
 		prefixByteLength = 4 * idxCol.Length
 	}
 
@@ -427,7 +479,7 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 	}
 
 	// Prefix length is only required for BLOB and TEXT columns
-	if sql.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
+	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
 		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
 	}
 
@@ -543,12 +595,11 @@ const textIndexPrefix = 1000
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 // TODO: this method is very similar to validateIndexType...
-func validateIndexes(tableSpec *plan.TableSpec) error {
+func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
 		lwrNames[strings.ToLower(col.Name)] = col
 	}
-
 	var hasPkIndexDef bool
 	for _, idx := range tableSpec.IdxDefs {
 		if idx.Constraint == sql.IndexConstraint_Primary {
@@ -564,13 +615,29 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 				return err
 			}
 		}
+		if idx.Constraint == sql.IndexConstraint_Spatial {
+			if len(idx.Columns) != 1 {
+				return sql.ErrTooManyKeyParts.New(1)
+			}
+			schCol, _ := lwrNames[strings.ToLower(idx.Columns[0].Name)]
+			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
+			if !ok {
+				return sql.ErrBadSpatialIdxCol.New()
+			}
+			if schCol.Nullable {
+				return sql.ErrNullableSpatialIdx.New()
+			}
+			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
+				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
+			}
+		}
 	}
 
 	// if there was not a PkIndexDef, then any primary key text/blob columns must not have index lengths
 	// otherwise, then it would've been validated before this
 	if !hasPkIndexDef {
 		for _, col := range tableSpec.Schema.Schema {
-			if col.PrimaryKey && sql.IsTextBlob(col.Type) {
+			if col.PrimaryKey && types.IsTextBlob(col.Type) {
 				return sql.ErrInvalidBlobTextKey.New(col.Name)
 			}
 		}

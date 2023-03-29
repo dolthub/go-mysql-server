@@ -87,7 +87,7 @@ func GetColExprTypes(ranges []Range) []Type {
 	}
 	for i, t := range colExprTypes {
 		if t == nil {
-			colExprTypes[i] = Null
+			colExprTypes[i] = nil
 		}
 	}
 	return colExprTypes
@@ -163,7 +163,7 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (Ra
 		if cmp1 <= 0 && cmp2 <= 0 {
 			// We have a connection here, so we need to see if any inner column expressions also have a connection
 			typ := tree.typ
-			if typ == Null {
+			if typ == nil {
 				typ = colExpr.Typ
 			}
 			connectedColExpr := RangeColumnExpr{

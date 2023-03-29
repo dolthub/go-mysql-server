@@ -73,7 +73,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		n, err = n.WithParentForeignKeyTables(fkParentTbls)
 		return n, transform.NewTree, err
 	case *plan.InsertInto:
-		if n.Destination == plan.EmptyTable {
+		if plan.IsEmptyTable(n.Destination) {
 			return n, transform.SameTree, nil
 		}
 		insertableDest, err := plan.GetInsertable(n.Destination)
@@ -109,7 +109,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		})
 		return nn, transform.NewTree, err
 	case *plan.Update:
-		if n.Child == plan.EmptyTable {
+		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
 		updateDest, err := plan.GetUpdatable(n.Child)
@@ -137,33 +137,50 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		})
 		return nn, transform.NewTree, err
 	case *plan.DeleteFrom:
-		if n.Child == plan.EmptyTable {
+		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
-		deleteDest, err := plan.GetDeletable(n.Child)
-		if err != nil {
-			return nil, transform.SameTree, err
+
+		targets := n.GetDeleteTargets()
+		foreignKeyHandlers := make([]sql.Node, len(targets))
+		copy(foreignKeyHandlers, targets)
+
+		for i, node := range targets {
+			deleteDest, err := plan.GetDeletable(node)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			tbl, ok := deleteDest.(sql.ForeignKeyTable)
+			// If foreign keys aren't supported then check the next node
+			if !ok {
+				continue
+			}
+			fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if fkEditor == nil {
+				continue
+			}
+
+			foreignKeyHandlers[i] = &plan.ForeignKeyHandler{
+				Table:        tbl,
+				Sch:          deleteDest.Schema(),
+				OriginalNode: targets[i],
+				Editor:       fkEditor,
+				AllUpdaters:  fkChain.GetUpdaters(),
+			}
 		}
-		tbl, ok := deleteDest.(sql.ForeignKeyTable)
-		// If foreign keys aren't supported then we return
-		if !ok {
-			return n, transform.SameTree, nil
+		if n.HasExplicitTargets() {
+			return n.WithExplicitTargets(foreignKeyHandlers), transform.NewTree, nil
+		} else {
+			newNode, err := n.WithChildren(foreignKeyHandlers...)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
 		}
-		fkEditor, err := getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, nil)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if fkEditor == nil {
-			return n, transform.SameTree, nil
-		}
-		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
-			Table:        tbl,
-			Sch:          deleteDest.Schema(),
-			OriginalNode: n.Child,
-			Editor:       fkEditor,
-			AllUpdaters:  fkChain.GetUpdaters(),
-		})
-		return nn, transform.NewTree, err
 	case *plan.RowUpdateAccumulator:
 		children := n.Children()
 		newChildren := make([]sql.Node, len(children))
@@ -239,7 +256,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 		// Resolve the foreign key if it has not been resolved yet
 		if !fk.IsResolved {
-			err = plan.ResolveForeignKey(ctx, tbl, parentTbl, fk, false)
+			err = plan.ResolveForeignKey(ctx, tbl, parentTbl, fk, false, true)
 			if err != nil {
 				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
@@ -332,11 +349,15 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
-		fkChain = fkChain.AddTableUpdater(fk.Database, fk.Table, childUpdater)
+		// If either referential action is not equivalent to RESTRICT, then the updater has the possibility of having
+		// its contents modified, therefore we add it to the chain.
+		if !fk.OnUpdate.IsEquivalentToRestrict() || !fk.OnDelete.IsEquivalentToRestrict() {
+			fkChain = fkChain.AddTableUpdater(fk.Database, fk.Table, childUpdater)
+		}
 
 		// Resolve the foreign key if it has not been resolved yet
 		if !fk.IsResolved {
-			err = plan.ResolveForeignKey(ctx, childTbl, tbl, fk, false)
+			err = plan.ResolveForeignKey(ctx, childTbl, tbl, fk, false, true)
 			if err != nil {
 				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
@@ -516,7 +537,8 @@ func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName 
 
 // foreignKeyChain holds all previously used foreign keys and modified tables in the chain. Also keeps track of all
 // updaters that have been used in the chain. This differs from the updaters in the cache, as the cache may contain
-// updaters that are not a part of this chain.
+// updaters that are not a part of this chain. In addition, any updaters that cannot be modified (such as those
+// belonging to strictly RESTRICT referential actions) will not appear in the chain.
 type foreignKeyChain struct {
 	fkNames  map[string]struct{}
 	fkTables map[foreignKeyTableName]struct{}

@@ -22,27 +22,28 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONExtract(t *testing.T) {
 	f2, err := NewJSONExtract(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
 	f3, err := NewJSONExtract(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 
 	f4, err := NewJSONExtract(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
-		expression.NewGetField(2, sql.LongText, "arg3", false),
-		expression.NewGetField(3, sql.LongText, "arg4", false),
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+		expression.NewGetField(2, types.LongText, "arg3", false),
+		expression.NewGetField(3, types.LongText, "arg4", false),
 	)
 	require.NoError(t, err)
 
@@ -74,19 +75,19 @@ func TestJSONExtract(t *testing.T) {
 		//{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
 		{f2, sql.Row{nil, "$.b.c"}, nil, nil},
 		{f2, sql.Row{json, "$.foo"}, nil, nil},
-		{f2, sql.Row{json, "$.b.c"}, sql.JSONDocument{Val: "foo"}, nil},
-		{f3, sql.Row{json, "$.b.c", "$.b.d"}, sql.JSONDocument{Val: []interface{}{"foo", true}}, nil},
-		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, sql.JSONDocument{Val: []interface{}{
+		{f2, sql.Row{json, "$.b.c"}, types.JSONDocument{Val: "foo"}, nil},
+		{f3, sql.Row{json, "$.b.c", "$.b.d"}, types.JSONDocument{Val: []interface{}{"foo", true}}, nil},
+		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, types.JSONDocument{Val: []interface{}{
 			"foo",
 			true,
 			[]interface{}{1., 2.},
 		}}, nil},
 
-		{f2, sql.Row{json, `$.f."key.with.dots"`}, sql.JSONDocument{Val: float64(0)}, nil},
-		{f2, sql.Row{json, `$.f."key with spaces"`}, sql.JSONDocument{Val: float64(1)}, nil},
-		{f2, sql.Row{json, `$.f.key with spaces`}, sql.JSONDocument{Val: float64(1)}, nil},
-		{f2, sql.Row{json, `$.f.key'with'squotes`}, sql.JSONDocument{Val: float64(3)}, nil},
-		{f2, sql.Row{json, `$.f."key'with'squotes"`}, sql.JSONDocument{Val: float64(3)}, nil},
+		{f2, sql.Row{json, `$.f."key.with.dots"`}, types.JSONDocument{Val: float64(0)}, nil},
+		{f2, sql.Row{json, `$.f."key with spaces"`}, types.JSONDocument{Val: float64(1)}, nil},
+		{f2, sql.Row{json, `$.f.key with spaces`}, types.JSONDocument{Val: float64(1)}, nil},
+		{f2, sql.Row{json, `$.f.key'with'squotes`}, types.JSONDocument{Val: float64(3)}, nil},
+		{f2, sql.Row{json, `$.f."key'with'squotes"`}, types.JSONDocument{Val: float64(3)}, nil},
 
 		// TODO: Fix these. They work in mysql
 		//{f2, sql.Row{json, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},

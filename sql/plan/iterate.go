@@ -27,6 +27,7 @@ type Iterate struct {
 }
 
 var _ sql.Node = (*Iterate)(nil)
+var _ sql.CollationCoercible = (*Iterate)(nil)
 
 // NewIterate returns a new *Iterate node.
 func NewIterate(label string) *Iterate {
@@ -63,6 +64,11 @@ func (i *Iterate) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (i *Iterate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Iterate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

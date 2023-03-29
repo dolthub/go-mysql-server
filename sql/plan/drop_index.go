@@ -46,7 +46,9 @@ func NewDropIndex(name string, table sql.Node) *DropIndex {
 	return &DropIndex{name, table, nil, ""}
 }
 
+var _ sql.Node = (*DropIndex)(nil)
 var _ sql.Databaseable = (*DropIndex)(nil)
+var _ sql.CollationCoercible = (*DropIndex)(nil)
 
 func (d *DropIndex) Database() string { return d.CurrentDatabase }
 
@@ -143,5 +145,10 @@ func (d *DropIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(d.Table), getTableName(d.Table), "", sql.PrivilegeType_Index))
+		sql.NewPrivilegedOperation(GetDatabaseName(d.Table), getTableName(d.Table), "", sql.PrivilegeType_Index))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AsGeoJSON is a function that returns a point type from a WKT string
@@ -18,6 +19,7 @@ type AsGeoJSON struct {
 }
 
 var _ sql.FunctionExpression = (*AsGeoJSON)(nil)
+var _ sql.CollationCoercible = (*AsGeoJSON)(nil)
 
 // NewAsGeoJSON creates a new point expression.
 func NewAsGeoJSON(args ...sql.Expression) (sql.Expression, error) {
@@ -39,7 +41,12 @@ func (g *AsGeoJSON) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *AsGeoJSON) Type() sql.Type {
-	return sql.JSON
+	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *AsGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 2
 }
 
 func (g *AsGeoJSON) String() string {
@@ -55,11 +62,11 @@ func (g *AsGeoJSON) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewAsGeoJSON(children...)
 }
 
-func PointToSlice(p sql.Point) [2]float64 {
+func PointToSlice(p types.Point) [2]float64 {
 	return [2]float64{p.X, p.Y}
 }
 
-func LineToSlice(l sql.LineString) [][2]float64 {
+func LineToSlice(l types.LineString) [][2]float64 {
 	arr := make([][2]float64, len(l.Points))
 	for i, p := range l.Points {
 		arr[i] = PointToSlice(p)
@@ -67,7 +74,7 @@ func LineToSlice(l sql.LineString) [][2]float64 {
 	return arr
 }
 
-func PolyToSlice(p sql.Polygon) [][][2]float64 {
+func PolyToSlice(p types.Polygon) [][][2]float64 {
 	arr := make([][][2]float64, len(p.Lines))
 	for i, l := range p.Lines {
 		arr[i] = LineToSlice(l)
@@ -75,7 +82,7 @@ func PolyToSlice(p sql.Polygon) [][][2]float64 {
 	return arr
 }
 
-func MPointToSlice(p sql.MultiPoint) [][2]float64 {
+func MPointToSlice(p types.MultiPoint) [][2]float64 {
 	arr := make([][2]float64, len(p.Points))
 	for i, point := range p.Points {
 		arr[i] = PointToSlice(point)
@@ -83,7 +90,7 @@ func MPointToSlice(p sql.MultiPoint) [][2]float64 {
 	return arr
 }
 
-func MLineToSlice(p sql.MultiLineString) [][][2]float64 {
+func MLineToSlice(p types.MultiLineString) [][][2]float64 {
 	arr := make([][][2]float64, len(p.Lines))
 	for i, l := range p.Lines {
 		arr[i] = LineToSlice(l)
@@ -91,7 +98,7 @@ func MLineToSlice(p sql.MultiLineString) [][][2]float64 {
 	return arr
 }
 
-func MPolyToSlice(p sql.MultiPolygon) [][][][2]float64 {
+func MPolyToSlice(p types.MultiPolygon) [][][][2]float64 {
 	arr := make([][][][2]float64, len(p.Polygons))
 	for i, p := range p.Polygons {
 		arr[i] = PolyToSlice(p)
@@ -99,30 +106,30 @@ func MPolyToSlice(p sql.MultiPolygon) [][][][2]float64 {
 	return arr
 }
 
-func GeomCollToSlice(g sql.GeomColl) interface{} {
+func GeomCollToSlice(g types.GeomColl) interface{} {
 	arr := make([]interface{}, len(g.Geoms))
 	for i, geom := range g.Geoms {
 		obj := make(map[string]interface{})
 		switch v := geom.(type) {
-		case sql.Point:
+		case types.Point:
 			obj["type"] = "Point"
 			obj["coordinates"] = PointToSlice(v)
-		case sql.LineString:
+		case types.LineString:
 			obj["type"] = "LineString"
 			obj["coordinates"] = LineToSlice(v)
-		case sql.Polygon:
+		case types.Polygon:
 			obj["type"] = "Polygon"
 			obj["coordinates"] = PolyToSlice(v)
-		case sql.MultiPoint:
+		case types.MultiPoint:
 			obj["type"] = "MultiPoint"
 			obj["coordinates"] = MPointToSlice(v)
-		case sql.MultiLineString:
+		case types.MultiLineString:
 			obj["type"] = "MultiLineString"
 			obj["coordinates"] = MLineToSlice(v)
-		case sql.MultiPolygon:
+		case types.MultiPolygon:
 			obj["type"] = "MultiPolygon"
 			obj["coordinates"] = MPolyToSlice(v)
-		case sql.GeomColl:
+		case types.GeomColl:
 			obj["type"] = "GeometryCollection"
 			obj["geometries"] = GeomCollToSlice(v)
 		}
@@ -135,9 +142,9 @@ func GeomCollToSlice(g sql.GeomColl) interface{} {
 func FindBBox(v interface{}) [4]float64 {
 	var res [4]float64
 	switch v := v.(type) {
-	case sql.Point:
+	case types.Point:
 		res = [4]float64{v.X, v.Y, v.X, v.Y}
-	case sql.LineString:
+	case types.LineString:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, p := range v.Points {
 			tmp := FindBBox(p)
@@ -146,7 +153,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[2] = math.Max(res[2], tmp[2])
 			res[3] = math.Max(res[3], tmp[3])
 		}
-	case sql.Polygon:
+	case types.Polygon:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, l := range v.Lines {
 			tmp := FindBBox(l)
@@ -155,7 +162,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[2] = math.Max(res[2], tmp[2])
 			res[3] = math.Max(res[3], tmp[3])
 		}
-	case sql.MultiPoint:
+	case types.MultiPoint:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, p := range v.Points {
 			tmp := FindBBox(p)
@@ -164,7 +171,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[2] = math.Max(res[2], tmp[2])
 			res[3] = math.Max(res[3], tmp[3])
 		}
-	case sql.MultiLineString:
+	case types.MultiLineString:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, l := range v.Lines {
 			tmp := FindBBox(l)
@@ -173,7 +180,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[2] = math.Max(res[2], tmp[2])
 			res[3] = math.Max(res[3], tmp[3])
 		}
-	case sql.MultiPolygon:
+	case types.MultiPolygon:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, p := range v.Polygons {
 			tmp := FindBBox(p)
@@ -182,7 +189,7 @@ func FindBBox(v interface{}) [4]float64 {
 			res[2] = math.Max(res[2], tmp[2])
 			res[3] = math.Max(res[3], tmp[3])
 		}
-	case sql.GeomColl:
+	case types.GeomColl:
 		res = [4]float64{math.MaxFloat64, math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
 		for _, geom := range v.Geoms {
 			tmp := FindBBox(geom)
@@ -236,7 +243,7 @@ func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{},
 	case float32, float64:
 		return nil, errors.New("received a float when it should be an int")
 	}
-	x, err = sql.Int64.Convert(x)
+	x, err = types.Int64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -257,25 +264,25 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	obj := make(map[string]interface{})
 	switch v := val.(type) {
-	case sql.Point:
+	case types.Point:
 		obj["type"] = "Point"
 		obj["coordinates"] = PointToSlice(v)
-	case sql.LineString:
+	case types.LineString:
 		obj["type"] = "LineString"
 		obj["coordinates"] = LineToSlice(v)
-	case sql.Polygon:
+	case types.Polygon:
 		obj["type"] = "Polygon"
 		obj["coordinates"] = PolyToSlice(v)
-	case sql.MultiPoint:
+	case types.MultiPoint:
 		obj["type"] = "MultiPoint"
 		obj["coordinates"] = MPointToSlice(v)
-	case sql.MultiLineString:
+	case types.MultiLineString:
 		obj["type"] = "MultiLineString"
 		obj["coordinates"] = MLineToSlice(v)
-	case sql.MultiPolygon:
+	case types.MultiPolygon:
 		obj["type"] = "MultiPolygon"
 		obj["coordinates"] = MPolyToSlice(v)
-	case sql.GeomColl:
+	case types.GeomColl:
 		obj["type"] = "GeometryCollection"
 		obj["geometries"] = GeomCollToSlice(v)
 	default:
@@ -283,7 +290,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if len(g.ChildExpressions) == 1 {
-		return sql.JSONDocument{Val: obj}, nil
+		return types.JSONDocument{Val: obj}, nil
 	}
 
 	// Evaluate precision
@@ -309,7 +316,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if len(g.ChildExpressions) == 2 {
-		return sql.JSONDocument{Val: obj}, nil
+		return types.JSONDocument{Val: obj}, nil
 	}
 
 	// Evaluate flag argument
@@ -329,7 +336,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Flags 1,3,5 have bounding box
 	case 1, 3, 5:
 		// Don't find bounding box for empty geometries
-		if g, ok := val.(sql.GeomColl); ok {
+		if g, ok := val.(types.GeomColl); ok {
 			if len(g.Geoms) == 0 {
 				break
 			}
@@ -347,7 +354,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Flag 2 and 4 add CRS URN (EPSG: <srid>); only shows up if SRID != 0
 	case 2, 4:
 		// CRS obj only shows up if srid != 0
-		srid := val.(sql.GeometryValue).GetSRID()
+		srid := val.(types.GeometryValue).GetSRID()
 		if srid != 0 {
 			// Create CRS URN Object
 			crs := make(map[string]interface{})
@@ -370,7 +377,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	return sql.JSONDocument{Val: obj}, nil
+	return types.JSONDocument{Val: obj}, nil
 }
 
 // GeomFromGeoJSON is a function returns a geometry based on a string
@@ -379,6 +386,7 @@ type GeomFromGeoJSON struct {
 }
 
 var _ sql.FunctionExpression = (*GeomFromGeoJSON)(nil)
+var _ sql.CollationCoercible = (*GeomFromGeoJSON)(nil)
 
 // NewGeomFromGeoJSON creates a new point expression.
 func NewGeomFromGeoJSON(args ...sql.Expression) (sql.Expression, error) {
@@ -400,7 +408,12 @@ func (g *GeomFromGeoJSON) Description() string {
 
 // Type implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Type() sql.Type {
-	return sql.GeometryType{}
+	return types.GeometryType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomFromGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomFromGeoJSON) String() string {
@@ -432,7 +445,7 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("coordinate must be of type number")
 	}
-	return sql.Point{SRID: sql.GeoSpatialSRID, X: x, Y: y}, nil
+	return types.Point{SRID: types.GeoSpatialSRID, X: x, Y: y}, nil
 }
 
 func SliceToLine(coords interface{}) (interface{}, error) {
@@ -443,15 +456,15 @@ func SliceToLine(coords interface{}) (interface{}, error) {
 	if len(cs) < 2 {
 		return nil, errors.New("invalid GeoJSON data provided")
 	}
-	points := make([]sql.Point, len(cs))
+	points := make([]types.Point, len(cs))
 	for i, c := range cs {
 		p, err := SliceToPoint(c)
 		if err != nil {
 			return nil, err
 		}
-		points[i] = p.(sql.Point)
+		points[i] = p.(types.Point)
 	}
-	return sql.LineString{SRID: sql.GeoSpatialSRID, Points: points}, nil
+	return types.LineString{SRID: types.GeoSpatialSRID, Points: points}, nil
 }
 
 func SliceToPoly(coords interface{}) (interface{}, error) {
@@ -463,18 +476,18 @@ func SliceToPoly(coords interface{}) (interface{}, error) {
 	if len(cs) == 0 {
 		return nil, errors.New("not enough lines")
 	}
-	lines := make([]sql.LineString, len(cs))
+	lines := make([]types.LineString, len(cs))
 	for i, c := range cs {
 		l, err := SliceToLine(c)
 		if err != nil {
 			return nil, err
 		}
-		if !isLinearRing(l.(sql.LineString)) {
+		if !isLinearRing(l.(types.LineString)) {
 			return nil, errors.New("invalid GeoJSON data provided")
 		}
-		lines[i] = l.(sql.LineString)
+		lines[i] = l.(types.LineString)
 	}
-	return sql.Polygon{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
+	return types.Polygon{SRID: types.GeoSpatialSRID, Lines: lines}, nil
 }
 
 func SliceToMPoint(coords interface{}) (interface{}, error) {
@@ -485,15 +498,15 @@ func SliceToMPoint(coords interface{}) (interface{}, error) {
 	if len(cs) < 2 {
 		return nil, errors.New("invalid GeoJSON data provided")
 	}
-	points := make([]sql.Point, len(cs))
+	points := make([]types.Point, len(cs))
 	for i, c := range cs {
 		p, err := SliceToPoint(c)
 		if err != nil {
 			return nil, err
 		}
-		points[i] = p.(sql.Point)
+		points[i] = p.(types.Point)
 	}
-	return sql.MultiPoint{SRID: sql.GeoSpatialSRID, Points: points}, nil
+	return types.MultiPoint{SRID: types.GeoSpatialSRID, Points: points}, nil
 }
 
 func SliceToMLine(coords interface{}) (interface{}, error) {
@@ -505,15 +518,15 @@ func SliceToMLine(coords interface{}) (interface{}, error) {
 	if len(cs) == 0 {
 		return nil, errors.New("not enough lines")
 	}
-	lines := make([]sql.LineString, len(cs))
+	lines := make([]types.LineString, len(cs))
 	for i, c := range cs {
 		l, err := SliceToLine(c)
 		if err != nil {
 			return nil, err
 		}
-		lines[i] = l.(sql.LineString)
+		lines[i] = l.(types.LineString)
 	}
-	return sql.MultiLineString{SRID: sql.GeoSpatialSRID, Lines: lines}, nil
+	return types.MultiLineString{SRID: types.GeoSpatialSRID, Lines: lines}, nil
 }
 
 func SliceToMPoly(coords interface{}) (interface{}, error) {
@@ -525,15 +538,15 @@ func SliceToMPoly(coords interface{}) (interface{}, error) {
 	if len(cs) == 0 {
 		return nil, errors.New("not enough polygons")
 	}
-	polys := make([]sql.Polygon, len(cs))
+	polys := make([]types.Polygon, len(cs))
 	for i, c := range cs {
 		p, err := SliceToPoly(c)
 		if err != nil {
 			return nil, err
 		}
-		polys[i] = p.(sql.Polygon)
+		polys[i] = p.(types.Polygon)
 	}
-	return sql.MultiPolygon{SRID: sql.GeoSpatialSRID, Polygons: polys}, nil
+	return types.MultiPolygon{SRID: types.GeoSpatialSRID, Polygons: polys}, nil
 }
 
 func SliceToGeomColl(geometries interface{}) (interface{}, error) {
@@ -543,7 +556,7 @@ func SliceToGeomColl(geometries interface{}) (interface{}, error) {
 		return nil, errors.New("member 'geometries' must be of type 'array'")
 	}
 
-	geoms := make([]sql.GeometryValue, len(geomObjs))
+	geoms := make([]types.GeometryValue, len(geomObjs))
 	for i, o := range geomObjs {
 		obj, ok := o.(map[string]interface{})
 		if !ok {
@@ -553,9 +566,9 @@ func SliceToGeomColl(geometries interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		geoms[i] = res.(sql.GeometryValue)
+		geoms[i] = res.(types.GeometryValue)
 	}
-	return sql.GeomColl{SRID: sql.GeoSpatialSRID, Geoms: geoms}, nil
+	return types.GeomColl{SRID: types.GeoSpatialSRID, Geoms: geoms}, nil
 }
 
 func ParseGeoJsonData(obj map[string]interface{}) (interface{}, string, error) {
@@ -654,7 +667,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if val == nil {
 		return nil, nil
 	}
-	val, err = sql.LongBlob.Convert(val)
+	val, err = types.LongBlob.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -739,6 +752,6 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err = ValidateSRID(srid); err != nil {
 		return nil, err
 	}
-	res = res.(sql.GeometryValue).SetSRID(srid)
+	res = res.(types.GeometryValue).SetSRID(srid)
 	return res, nil
 }

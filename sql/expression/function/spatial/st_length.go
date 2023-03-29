@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // STLength is a function that returns the STLength of a LineString
@@ -29,6 +30,7 @@ type STLength struct {
 }
 
 var _ sql.FunctionExpression = (*STLength)(nil)
+var _ sql.CollationCoercible = (*STLength)(nil)
 
 // NewSTLength creates a new STLength expression.
 func NewSTLength(args ...sql.Expression) (sql.Expression, error) {
@@ -50,7 +52,12 @@ func (s *STLength) Description() string {
 
 // Type implements the sql.Expression interface.
 func (s *STLength) Type() sql.Type {
-	return sql.Float64
+	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*STLength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (s *STLength) String() string {
@@ -66,8 +73,8 @@ func (s *STLength) WithChildren(children ...sql.Expression) (sql.Expression, err
 	return NewSTLength(children...)
 }
 
-// calculateLength sums up the line segements formed from a LineString
-func calculateLength(l sql.LineString) float64 {
+// calculateLength sums up the line segments formed from a LineString
+func calculateLength(l types.LineString) float64 {
 	var length float64
 	for i := 0; i < len(l.Points)-1; i++ {
 		p1 := l.Points[i]
@@ -91,11 +98,11 @@ func (s *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Return nil if argument is geometry typ, but not linestring
-	var l sql.LineString
+	var l types.LineString
 	switch v := v1.(type) {
-	case sql.LineString:
+	case types.LineString:
 		l = v
-	case sql.Point, sql.Polygon:
+	case types.Point, types.Polygon:
 		return nil, nil
 	default:
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type crossJoin struct {
@@ -334,6 +335,34 @@ func (r *subqueryAlias) outputCols() sql.Schema {
 	return r.table.Schema()
 }
 
+type max1Row struct {
+	*relBase
+	table sql.NameableNode
+}
+
+var _ relExpr = (*max1Row)(nil)
+var _ sourceRel = (*max1Row)(nil)
+
+func (r *max1Row) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *max1Row) name() string {
+	return strings.ToLower(r.table.Name())
+}
+
+func (r *max1Row) tableId() TableId {
+	return tableIdForSource(r.g.id)
+}
+
+func (r *max1Row) children() []*exprGroup {
+	return nil
+}
+
+func (r *max1Row) outputCols() sql.Schema {
+	return r.table.Schema()
+}
+
 type tableFunc struct {
 	*relBase
 	table sql.TableFunction
@@ -360,6 +389,77 @@ func (r *tableFunc) children() []*exprGroup {
 
 func (r *tableFunc) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+type emptyTable struct {
+	*relBase
+	table *plan.EmptyTable
+}
+
+var _ relExpr = (*emptyTable)(nil)
+var _ sourceRel = (*emptyTable)(nil)
+
+func (r *emptyTable) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *emptyTable) name() string {
+	return strings.ToLower(r.table.Name())
+}
+
+func (r *emptyTable) tableId() TableId {
+	return tableIdForSource(r.g.id)
+}
+
+func (r *emptyTable) children() []*exprGroup {
+	return nil
+}
+
+func (r *emptyTable) outputCols() sql.Schema {
+	return r.table.Schema()
+}
+
+type project struct {
+	*relBase
+	child       *exprGroup
+	projections []sql.Expression
+}
+
+var _ relExpr = (*project)(nil)
+
+func (r *project) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *project) children() []*exprGroup {
+	return []*exprGroup{r.child}
+}
+
+func (r *project) outputCols() sql.Schema {
+	var s = make(sql.Schema, len(r.projections))
+	for i, e := range r.projections {
+		s[i] = transform.ExpressionToColumn(e)
+	}
+	return s
+}
+
+type distinct struct {
+	*relBase
+	child *exprGroup
+}
+
+var _ relExpr = (*distinct)(nil)
+
+func (r *distinct) String() string {
+	return formatRelExpr(r)
+}
+
+func (r *distinct) children() []*exprGroup {
+	return []*exprGroup{r.child}
+}
+
+func (r *distinct) outputCols() sql.Schema {
+	return r.child.relProps.OutputCols()
 }
 
 func formatRelExpr(r relExpr) string {
@@ -396,50 +496,79 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("recursiveCte: %s", r.name())
 	case *subqueryAlias:
 		return fmt.Sprintf("subqueryAlias: %s", r.name())
+	case *max1Row:
+		return fmt.Sprintf("max1Row: %s", r.name())
 	case *tableFunc:
 		return fmt.Sprintf("tableFunc: %s", r.name())
+	case *emptyTable:
+		return fmt.Sprintf("emptyTable: %s", r.name())
+	case *project:
+		return fmt.Sprintf("project: %d", r.child.id)
+	case *distinct:
+		return fmt.Sprintf("distinct: %d", r.child.id)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
 }
 
 func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	var result sql.Node
+	var err error
+
 	switch r := r.(type) {
 	case *crossJoin:
-		return b.buildCrossJoin(r, input, children...)
+		result, err = b.buildCrossJoin(r, input, children...)
 	case *innerJoin:
-		return b.buildInnerJoin(r, input, children...)
+		result, err = b.buildInnerJoin(r, input, children...)
 	case *leftJoin:
-		return b.buildLeftJoin(r, input, children...)
+		result, err = b.buildLeftJoin(r, input, children...)
 	case *semiJoin:
-		return b.buildSemiJoin(r, input, children...)
+		result, err = b.buildSemiJoin(r, input, children...)
 	case *antiJoin:
-		return b.buildAntiJoin(r, input, children...)
+		result, err = b.buildAntiJoin(r, input, children...)
 	case *lookupJoin:
-		return b.buildLookupJoin(r, input, children...)
+		result, err = b.buildLookupJoin(r, input, children...)
 	case *concatJoin:
-		return b.buildConcatJoin(r, input, children...)
+		result, err = b.buildConcatJoin(r, input, children...)
 	case *hashJoin:
-		return b.buildHashJoin(r, input, children...)
+		result, err = b.buildHashJoin(r, input, children...)
 	case *mergeJoin:
-		return b.buildMergeJoin(r, input, children...)
+		result, err = b.buildMergeJoin(r, input, children...)
 	case *fullOuterJoin:
-		return b.buildFullOuterJoin(r, input, children...)
+		result, err = b.buildFullOuterJoin(r, input, children...)
 	case *tableScan:
-		return b.buildTableScan(r, input, children...)
+		result, err = b.buildTableScan(r, input, children...)
 	case *values:
-		return b.buildValues(r, input, children...)
+		result, err = b.buildValues(r, input, children...)
 	case *tableAlias:
-		return b.buildTableAlias(r, input, children...)
+		result, err = b.buildTableAlias(r, input, children...)
 	case *recursiveTable:
-		return b.buildRecursiveTable(r, input, children...)
+		result, err = b.buildRecursiveTable(r, input, children...)
 	case *recursiveCte:
-		return b.buildRecursiveCte(r, input, children...)
+		result, err = b.buildRecursiveCte(r, input, children...)
 	case *subqueryAlias:
-		return b.buildSubqueryAlias(r, input, children...)
+		result, err = b.buildSubqueryAlias(r, input, children...)
+	case *max1Row:
+		result, err = b.buildMax1Row(r, input, children...)
 	case *tableFunc:
-		return b.buildTableFunc(r, input, children...)
+		result, err = b.buildTableFunc(r, input, children...)
+	case *emptyTable:
+		result, err = b.buildEmptyTable(r, input, children...)
+	case *project:
+		result, err = b.buildProject(r, input, children...)
+	case *distinct:
+		result, err = b.buildDistinct(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	result, err = r.group().finalize(result, input)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

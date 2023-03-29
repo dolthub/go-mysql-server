@@ -31,6 +31,7 @@ var _ sql.Node = (*ProcedureResolvedTable)(nil)
 var _ sql.DebugStringer = (*ProcedureResolvedTable)(nil)
 var _ sql.TableWrapper = (*ProcedureResolvedTable)(nil)
 var _ sql.Table = (*ProcedureResolvedTable)(nil)
+var _ sql.CollationCoercible = (*ProcedureResolvedTable)(nil)
 
 // NewProcedureResolvedTable returns a *ProcedureResolvedTable.
 func NewProcedureResolvedTable(rt *ResolvedTable) *ProcedureResolvedTable {
@@ -99,6 +100,11 @@ func (t *ProcedureResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql
 	return t.ResolvedTable.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t *ProcedureResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.ResolvedTable.CollationCoercibility(ctx)
+}
+
 // Underlying implements the sql.TableWrapper interface.
 func (t *ProcedureResolvedTable) Underlying() sql.Table {
 	return t.ResolvedTable.Table
@@ -134,7 +140,9 @@ func (t *ProcedureResolvedTable) newestTable(ctx *sql.Context) (*ResolvedTable, 
 		return t.ResolvedTable, nil
 	}
 
-	if t.ResolvedTable.AsOf == nil {
+	if IsDualTable(t.ResolvedTable) {
+		return t.ResolvedTable, nil
+	} else if t.ResolvedTable.AsOf == nil {
 		tbl, ok, err := t.ResolvedTable.Database.GetTableInsensitive(ctx, t.ResolvedTable.Table.Name())
 		if err != nil {
 			return nil, err

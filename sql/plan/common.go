@@ -144,12 +144,12 @@ func getTableName(nodeToSearch sql.Node) string {
 	return ""
 }
 
-// getDatabaseName attempts to fetch the database name from the node. If not found directly on the node, searches the
+// GetDatabaseName attempts to fetch the database name from the node. If not found directly on the node, searches the
 // children. Returns the first database name found, regardless of whether there are more, therefore this is only
 // intended to be used in situations where only a single database is expected to be found. Unlike how tables are handled
 // in most nodes, databases may be stored as a string field therefore there will be situations where a database name
 // exists on a node, but cannot be found through inspection.
-func getDatabaseName(nodeToSearch sql.Node) string {
+func GetDatabaseName(nodeToSearch sql.Node) string {
 	nodeStack := []sql.Node{nodeToSearch}
 	for len(nodeStack) > 0 {
 		node := nodeStack[len(nodeStack)-1]

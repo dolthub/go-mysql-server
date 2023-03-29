@@ -5,6 +5,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // RowCount implements the ROW_COUNT() function
@@ -19,6 +20,7 @@ func NewRowCount() sql.Expression {
 }
 
 var _ sql.FunctionExpression = RowCount{}
+var _ sql.CollationCoercible = RowCount{}
 
 // Description implements sql.FunctionExpression
 func (r RowCount) Description() string {
@@ -37,7 +39,12 @@ func (r RowCount) String() string {
 
 // Type implements sql.Expression
 func (r RowCount) Type() sql.Type {
-	return sql.Int64
+	return types.Int64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (RowCount) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression
@@ -86,6 +93,7 @@ func NewLastInsertId(children ...sql.Expression) (sql.Expression, error) {
 }
 
 var _ sql.FunctionExpression = LastInsertId{}
+var _ sql.CollationCoercible = LastInsertId{}
 
 // Description implements sql.FunctionExpression
 func (r LastInsertId) Description() string {
@@ -104,7 +112,12 @@ func (r LastInsertId) String() string {
 
 // Type implements sql.Expression
 func (r LastInsertId) Type() sql.Type {
-	return sql.Int64
+	return types.Int64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (LastInsertId) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression
@@ -124,7 +137,7 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	id, err := sql.Int64.Convert(res)
+	id, err := types.Int64.Convert(res)
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +176,7 @@ func NewFoundRows() sql.Expression {
 }
 
 var _ sql.FunctionExpression = FoundRows{}
+var _ sql.CollationCoercible = FoundRows{}
 
 // FunctionName implements sql.FunctionExpression
 func (r FoundRows) FunctionName() string {
@@ -186,7 +200,12 @@ func (r FoundRows) String() string {
 
 // Type implements sql.Expression
 func (r FoundRows) Type() sql.Type {
-	return sql.Int64
+	return types.Int64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (FoundRows) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements sql.Expression

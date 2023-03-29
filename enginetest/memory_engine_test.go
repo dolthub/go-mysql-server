@@ -26,6 +26,9 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
+
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -95,7 +98,7 @@ func TestSpatialQueriesPrepared(t *testing.T) {
 	enginetest.TestSpatialQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+// TestSpatialQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestSpatialQueriesSimple(t *testing.T) {
 	enginetest.TestSpatialQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
@@ -119,14 +122,24 @@ func TestJoinQueriesPrepared(t *testing.T) {
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestMergeJoins runs join-specific tests for merge
-func TestMergeJoins(t *testing.T) {
-	enginetest.TestMergeJoins(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+// TestJoinPlanning runs join-specific tests for merge
+func TestJoinPlanning(t *testing.T) {
+	enginetest.TestJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestMergeJoinsPrepared runs prepared join-specific tests for merge
-func TestMergeJoinsPrepared(t *testing.T) {
-	enginetest.TestMergeJoinsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+// TestJoinPlanningPrepared runs prepared join-specific tests for merge
+func TestJoinPlanningPrepared(t *testing.T) {
+	enginetest.TestJoinPlanningPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJoinOps runs join-specific tests for merge
+func TestJoinOps(t *testing.T) {
+	enginetest.TestJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJoinOpsPrepared runs prepared join-specific tests for merge
+func TestJoinOpsPrepared(t *testing.T) {
+	enginetest.TestJoinOpsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
@@ -150,25 +163,13 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `
-			WITH RECURSIVE bus_dst as (
-				SELECT origin as dst FROM bus_routes WHERE origin='New York'
-				UNION
-				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON bus_dst.dst= bus_routes.origin
-			)
-			SELECT * FROM bus_dst
-			ORDER BY dst`,
-		Expected: []sql.Row{
-			{"Boston"},
-			{"New York"},
-			{"Raleigh"},
-			{"Washington"},
-		},
+		Query:    `SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp`,
+		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
-	harness.Setup(setup.GraphSetup...)
+	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
 		panic(err)
@@ -204,26 +205,14 @@ func TestSingleQueryPrepared(t *testing.T) {
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
 	t.Skip()
-
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "create table as select distinct",
-			SetUpScript: []string{
-				"CREATE TABLE t1 (a int, b varchar(10));",
-				"insert into t1 values (1, 'a'), (2, 'b'), (2, 'b'), (3, 'c');",
-			},
+			Name:        "trigger with signal and user var",
+			SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "create table t2 as select distinct b, a from t1;",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3}}},
-				},
-				{
-					Query: "select * from t2 order by a;",
-					Expected: []sql.Row{
-						{"a", 1},
-						{"b", 2},
-						{"c", 3},
-					},
+					Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
+					Expected: []sql.Row{},
 				},
 			},
 		},
@@ -441,8 +430,20 @@ func TestInsertIgnoreInto(t *testing.T) {
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestInsertDuplicateKeyKeyless(t *testing.T) {
+	enginetest.TestInsertDuplicateKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestInsertDuplicateKeyKeylessPrepared(t *testing.T) {
+	enginetest.TestInsertDuplicateKeyKeylessPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t *testing.T) {
 	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeyless(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestIgnoreIntoWithDuplicateUniqueKeyKeylessPrepared(t *testing.T) {
+	enginetest.TestIgnoreIntoWithDuplicateUniqueKeyKeylessPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestInsertIntoErrors(t *testing.T) {
@@ -539,6 +540,26 @@ func TestScripts(t *testing.T) {
 
 func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialScriptsPrepared(t *testing.T) {
+	enginetest.TestSpatialScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexScripts(t *testing.T) {
+	enginetest.TestSpatialIndexScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexScriptsPrepared(t *testing.T) {
+	enginetest.TestSpatialIndexScriptsPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexPlans(t *testing.T) {
+	enginetest.TestSpatialIndexPlans(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialIndexPlansPrepared(t *testing.T) {
+	enginetest.TestSpatialIndexPlansPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestLoadDataPrepared(t *testing.T) {
@@ -866,44 +887,44 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
+				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false)),
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+				expression.NewGetFieldWithTable(1, types.Text, "mytable", "s", false)),
 			newMergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
+				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
+				expression.NewGetFieldWithTable(1, types.Text, "mytable", "s", false)),
 		},
 		"othertable": {
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
+				expression.NewGetFieldWithTable(0, types.Text, "othertable", "s2", false)),
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+				expression.NewGetFieldWithTable(1, types.Text, "othertable", "i2", false)),
 			newMergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
+				expression.NewGetFieldWithTable(0, types.Text, "othertable", "s2", false),
+				expression.NewGetFieldWithTable(1, types.Text, "othertable", "i2", false)),
 		},
 		"bigtable": {
 			newMergableIndex(dbs, "bigtable",
-				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
+				expression.NewGetFieldWithTable(0, types.Text, "bigtable", "t", false)),
 		},
 		"floattable": {
 			newMergableIndex(dbs, "floattable",
-				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
+				expression.NewGetFieldWithTable(2, types.Text, "floattable", "f64", false)),
 		},
 		"niltable": {
 			newMergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
+				expression.NewGetFieldWithTable(0, types.Int64, "niltable", "i", false)),
 			newMergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(1, sql.Int64, "niltable", "i2", true)),
+				expression.NewGetFieldWithTable(1, types.Int64, "niltable", "i2", true)),
 		},
 		"one_pk": {
 			newMergableIndex(dbs, "one_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
+				expression.NewGetFieldWithTable(0, types.Int8, "one_pk", "pk", false)),
 		},
 		"two_pk": {
 			newMergableIndex(dbs, "two_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
-				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
+				expression.NewGetFieldWithTable(0, types.Int8, "two_pk", "pk1", false),
+				expression.NewGetFieldWithTable(1, types.Int8, "two_pk", "pk2", false),
 			),
 		},
 	})
@@ -937,4 +958,12 @@ func findTable(dbs []sql.Database, tableName string) (sql.Database, sql.Table) {
 		}
 	}
 	return nil, nil
+}
+
+func mergeSetupScripts(scripts ...setup.SetupScript) []string {
+	var all []string
+	for _, s := range scripts {
+		all = append(all, s...)
+	}
+	return all
 }

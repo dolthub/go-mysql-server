@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Locate returns the position of the first occurrence of a substring in a string.
@@ -30,6 +31,7 @@ type Locate struct {
 }
 
 var _ sql.FunctionExpression = (*Locate)(nil)
+var _ sql.CollationCoercible = (*Locate)(nil)
 
 // NewLocate returns a new Locate function.
 func NewLocate(exprs ...sql.Expression) (sql.Expression, error) {
@@ -60,7 +62,12 @@ func (l *Locate) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 // Type implements the sql.Expression interface.
-func (l *Locate) Type() sql.Type { return sql.Int32 }
+func (l *Locate) Type() sql.Type { return types.Int32 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Locate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 func (l *Locate) String() string {
 	switch len(l.ChildExpressions) {
@@ -125,7 +132,7 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if posVal != nil {
-			posInt, err := sql.Int32.Convert(posVal)
+			posInt, err := types.Int32.Convert(posVal)
 			if err != nil {
 				return nil, sql.ErrInvalidArgumentDetails.New("locate", "start must be an integer")
 			}

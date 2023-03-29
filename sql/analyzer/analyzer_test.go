@@ -28,6 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestMaxIterations(t *testing.T) {
@@ -35,8 +36,8 @@ func TestMaxIterations(t *testing.T) {
 	tName := "my-table"
 	db := memory.NewDatabase("mydb")
 	table := memory.NewTable(tName, sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: tName},
-		{Name: "t", Type: sql.Text, Source: tName},
+		{Name: "i", Type: types.Int32, Source: tName},
+		{Name: "t", Type: types.Text, Source: tName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tName, table)
 
@@ -50,8 +51,8 @@ func TestMaxIterations(t *testing.T) {
 				count++
 				name := fmt.Sprintf("mytable-%v", count)
 				table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
-					{Name: "i", Type: sql.Int32, Source: name},
-					{Name: "t", Type: sql.Text, Source: name},
+					{Name: "i", Type: types.Int32, Source: name},
+					{Name: "t", Type: types.Text, Source: name},
 				}), db.GetForeignKeyCollection())
 				n = plan.NewResolvedTable(table, nil, nil)
 			}
@@ -59,15 +60,16 @@ func TestMaxIterations(t *testing.T) {
 			return n, transform.NewTree, nil
 		}).Build())
 
-	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("mydb")
 	notAnalyzed := plan.NewUnresolvedTable(tName, "")
 	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
 	require.Error(err)
 	require.True(ErrMaxAnalysisIters.Is(err))
 	require.Equal(
 		plan.NewResolvedTable(memory.NewTable("mytable-8", sql.NewPrimaryKeySchema(sql.Schema{
-			{Name: "i", Type: sql.Int32, Source: "mytable-8"},
-			{Name: "t", Type: sql.Text, Source: "mytable-8"},
+			{Name: "i", Type: types.Int32, Source: "mytable-8"},
+			{Name: "t", Type: types.Text, Source: "mytable-8"},
 		}), db.GetForeignKeyCollection()), nil, nil),
 		analyzed,
 	)
@@ -174,15 +176,15 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 			expression.JoinAnd(
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "repository_id"),
-					expression.NewLiteral("foo", sql.LongText),
+					expression.NewLiteral("foo", types.LongText),
 				),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "ref_name"),
-					expression.NewLiteral("HEAD", sql.LongText),
+					expression.NewLiteral("HEAD", types.LongText),
 				),
 				expression.NewEquals(
 					expression.NewUnresolvedQualifiedColumn("rc", "history_index"),
-					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewLiteral(int64(0), types.Int64),
 				),
 			),
 			plan.NewNaturalJoin(
@@ -210,21 +212,21 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	)
 
 	commits := memory.NewTable("commits", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "commits", Type: sql.Text},
-		{Name: "commit_hash", Source: "commits", Type: sql.Text},
-		{Name: "commit_author_when", Source: "commits", Type: sql.Text},
+		{Name: "repository_id", Source: "commits", Type: types.Text},
+		{Name: "commit_hash", Source: "commits", Type: types.Text},
+		{Name: "commit_author_when", Source: "commits", Type: types.Text},
 	}), nil)
 
 	refs := memory.NewTable("refs", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "refs", Type: sql.Text},
-		{Name: "ref_name", Source: "refs", Type: sql.Text},
+		{Name: "repository_id", Source: "refs", Type: types.Text},
+		{Name: "ref_name", Source: "refs", Type: types.Text},
 	}), nil)
 
 	refCommits := memory.NewTable("ref_commits", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "repository_id", Source: "ref_commits", Type: sql.Text},
-		{Name: "ref_name", Source: "ref_commits", Type: sql.Text},
-		{Name: "commit_hash", Source: "ref_commits", Type: sql.Text},
-		{Name: "history_index", Source: "ref_commits", Type: sql.Int64},
+		{Name: "repository_id", Source: "ref_commits", Type: types.Text},
+		{Name: "ref_name", Source: "ref_commits", Type: types.Text},
+		{Name: "commit_hash", Source: "ref_commits", Type: types.Text},
+		{Name: "history_index", Source: "ref_commits", Type: types.Int64},
 	}), nil)
 
 	db := memory.NewDatabase("")
@@ -249,7 +251,7 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewNaturalJoin(
 					plan.NewInnerJoin(
@@ -273,11 +275,11 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewProject(
 				[]sql.Expression{
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
 				},
 				plan.NewUnion(plan.NewProject(
 					[]sql.Expression{
-						expression.NewLiteral(1, sql.Int64),
+						expression.NewLiteral(1, types.Int64),
 					},
 					plan.NewUnresolvedTable("mytable", ""),
 				), plan.NewProject(
@@ -292,15 +294,15 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewFilter(
 				expression.NewEquals(
-					expression.NewLiteral(1, sql.Int64),
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
+					expression.NewLiteral(1, types.Int64),
 				),
 				plan.NewWindow(
 					[]sql.Expression{
 						aggregation.NewSum(
-							expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+							expression.NewGetFieldWithTable(0, types.Int64, "a", "x", false),
 						),
-						expression.NewGetFieldWithTable(1, sql.Int64, "a", "x", false),
+						expression.NewGetFieldWithTable(1, types.Int64, "a", "x", false),
 						expression.NewBindVar("v1"),
 					},
 					plan.NewProject(
@@ -315,8 +317,8 @@ func TestDeepCopyNode(t *testing.T) {
 		{
 			node: plan.NewFilter(
 				expression.NewEquals(
-					expression.NewLiteral(1, sql.Int64),
-					expression.NewLiteral(1, sql.Int64),
+					expression.NewLiteral(1, types.Int64),
+					expression.NewLiteral(1, types.Int64),
 				),
 				plan.NewSubqueryAlias("cte1", "select x from a",
 					plan.NewProject(
@@ -336,8 +338,8 @@ func TestDeepCopyNode(t *testing.T) {
 			cop, err := DeepCopyNode(tt.node)
 			require.NoError(t, err)
 			cop, _, err = plan.ApplyBindings(cop, map[string]sql.Expression{
-				"v1": expression.NewLiteral(1, sql.Int64),
-				"v2": expression.NewLiteral("x", sql.Text),
+				"v1": expression.NewLiteral(1, types.Int64),
+				"v2": expression.NewLiteral("x", types.Text),
 			})
 			require.NoError(t, err)
 			require.NotEqual(t, cop, tt.node)

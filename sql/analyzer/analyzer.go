@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -262,6 +263,8 @@ func (ab *Builder) Build() *Analyzer {
 		Batches:      batches,
 		Catalog:      NewCatalog(ab.provider),
 		Parallelism:  ab.parallelism,
+		Coster:       NewDefaultCoster(),
+		Carder:       NewDefaultCarder(),
 	}
 }
 
@@ -279,6 +282,13 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
+	// BinlogReplicaController holds an optional controller that receives forwarded binlog
+	// replication messages (e.g. "start replica").
+	BinlogReplicaController binlogreplication.BinlogReplicaController
+	// Carder estimates the number of rows returned by a relational expression.
+	Carder Carder
+	// Coster estimates the incremental CPU+memory cost for execution operators.
+	Coster Coster
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
@@ -369,11 +379,9 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 		switch id {
 		case optimizeJoinsId,
 			pruneTablesId,
+			transformJoinApplyId,
 
 			// once after default rules should only be run once
-			cacheSubqueryResultsId,
-			cacheSubqueryAliasesInJoinsId,
-			inSubqueryIndexesId,
 			AutocommitId,
 			TrackProcessId,
 			parallelizeId,
@@ -406,10 +414,8 @@ func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 			resolveUnionsId,
 			// skip redundant finalize rules
 			finalizeSubqueriesId,
-			// skip caching rules, they should only be run once in outer scope
+			hoistOutOfScopeFiltersId,
 			cacheSubqueryResultsId,
-			cacheSubqueryAliasesInJoinsId,
-			inSubqueryIndexesId,
 			TrackProcessId:
 			return false
 		}
@@ -425,10 +431,6 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 			resolveSubqueryExprsId,
 			resolveSubqueriesId,
 			resolveUnionsId,
-			// skip caching rules, they should only be run once in outer scope
-			cacheSubqueryResultsId,
-			cacheSubqueryAliasesInJoinsId,
-			inSubqueryIndexesId,
 			parallelizeId:
 			return false
 		}
@@ -436,15 +438,10 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 	}
 }
 
-func NewFinalizeSubqueryExprSelector(sel RuleSelector) RuleSelector {
+func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 	return func(id RuleId) bool {
 		switch id {
-		case
-			// skip recursive resolve rules
-			resolveSubqueryExprsId,
-			resolveSubqueriesId,
-			// skip redundant finalize rules
-			finalizeSubqueriesId:
+		case transformJoinApplyId:
 			return false
 		}
 		return sel(id)
@@ -480,7 +477,8 @@ func prePrepareRuleSelector(id RuleId) bool {
 		validateOperandsId,
 
 		// OnceAfterAll
-		TrackProcessId:
+		TrackProcessId,
+		parallelizeId:
 		return false
 	default:
 		return true
@@ -521,10 +519,12 @@ func postPrepareRuleSelector(id RuleId) bool {
 		flattenAggregationExprsId,
 
 		// OnceAfterDefault
+		pushdownFiltersId,
 		subqueryIndexesId,
-		inSubqueryIndexesId,
 		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
+		finalizeSubqueriesId,
+		finalizeUnionsId,
 
 		// DefaultValidationRules
 		validateResolvedId,
@@ -533,6 +533,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		//validateUnionSchemasMatchId, // TODO: we never validate UnionSchemasMatchId :)
 
 		// OnceAfterAll
+		parallelizeId,
 		TrackProcessId:
 		return true
 	}
@@ -558,7 +559,6 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 
 		pushdownFiltersId,
 		subqueryIndexesId,
-		inSubqueryIndexesId,
 		resolveInsertRowsId,
 
 		AutocommitId,

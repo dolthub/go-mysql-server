@@ -31,16 +31,6 @@ func loadPrivilegeTypes(n int, f func(j int) int32) map[sql.PrivilegeType]struct
 	return privs
 }
 
-// loadPrivilegeTypes is a helper method that loads strings given the length and loading function
-// and returns them as a set
-func loadGlobalDynamic(n int, f func(j int) []byte) map[string]struct{} {
-	strings := make(map[string]struct{}, n)
-	for i := 0; i < n; i++ {
-		strings[string(f(i))] = struct{}{}
-	}
-	return strings
-}
-
 func loadColumn(serialColumn *serial.PrivilegeSetColumn) *PrivilegeSetColumn {
 	return &PrivilegeSetColumn{
 		name:  string(serialColumn.Name()),
@@ -95,9 +85,13 @@ func loadPrivilegeSet(serialPrivilegeSet *serial.PrivilegeSet) *PrivilegeSet {
 		databases[database.Name()] = *database
 	}
 
+	globalDynamic := make(map[string]bool)
+	for i := 0; i < serialPrivilegeSet.GlobalDynamicLength(); i++ {
+		globalDynamic[string(serialPrivilegeSet.GlobalDynamic(i))] = serialPrivilegeSet.GlobalDynamicWgo(i)
+	}
 	return &PrivilegeSet{
 		globalStatic:  loadPrivilegeTypes(serialPrivilegeSet.GlobalStaticLength(), serialPrivilegeSet.GlobalStatic),
-		globalDynamic: loadGlobalDynamic(serialPrivilegeSet.GlobalDynamicLength(), serialPrivilegeSet.GlobalDynamic),
+		globalDynamic: globalDynamic,
 		databases:     databases,
 	}
 }
@@ -132,5 +126,17 @@ func LoadRoleEdge(serialRoleEdge *serial.RoleEdge) *RoleEdge {
 		FromUser: string(serialRoleEdge.FromUser()),
 		ToHost:   string(serialRoleEdge.ToHost()),
 		ToUser:   string(serialRoleEdge.ToUser()),
+	}
+}
+
+func LoadReplicaSourceInfo(serialReplicaSourceInfo *serial.ReplicaSourceInfo) *ReplicaSourceInfo {
+	return &ReplicaSourceInfo{
+		Host:                 string(serialReplicaSourceInfo.Host()),
+		User:                 string(serialReplicaSourceInfo.User()),
+		Password:             string(serialReplicaSourceInfo.Password()),
+		Port:                 serialReplicaSourceInfo.Port(),
+		Uuid:                 string(serialReplicaSourceInfo.Uuid()),
+		ConnectRetryInterval: serialReplicaSourceInfo.ConnectRetryInterval(),
+		ConnectRetryCount:    serialReplicaSourceInfo.ConnectRetryCount(),
 	}
 }

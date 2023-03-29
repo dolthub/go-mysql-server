@@ -30,6 +30,9 @@ type UpdateSource struct {
 	Ignore      bool
 }
 
+var _ sql.Node = (*UpdateSource)(nil)
+var _ sql.CollationCoercible = (*UpdateSource)(nil)
+
 // NewUpdateSource returns a new UpdateSource from the node and expressions given.
 func NewUpdateSource(node sql.Node, ignore bool, updateExprs []sql.Expression) *UpdateSource {
 	return &UpdateSource{
@@ -183,4 +186,9 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (u *UpdateSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return u.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (u *UpdateSource) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, u.Child)
 }

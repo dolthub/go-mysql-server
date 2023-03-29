@@ -33,6 +33,7 @@ table PrivilegeSet {
     global_static:[int];
     global_dynamic:[string];
     databases:[PrivilegeSetDatabase];
+    global_dynamic_wgo:[bool]; // WITH GRANT OPTION, separate as this was added later
 }
 
 // Entries in the user table
@@ -57,10 +58,22 @@ table RoleEdge {
     with_admin_option:bool;
 }
 
+// Entries in the slave_master_info table
+table ReplicaSourceInfo {
+    host:string;
+    user:string;
+    password:string;
+    port:uint16;
+    uuid:string;
+    connect_retry_interval:uint32;
+    connect_retry_count:uint64;
+}
+
 // The MySQL Db containing all the tables
 table MySQLDb {
     user:[User];
     role_edges:[RoleEdge];
+    replica_source_info:[ReplicaSourceInfo];
 }
 
 root_type MySQLDb;

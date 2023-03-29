@@ -20,6 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var errCannotSetField = errors.NewKind("Expected GetField expression on left but got %T")
@@ -28,6 +29,9 @@ var errCannotSetField = errors.NewKind("Expected GetField expression on left but
 type SetField struct {
 	BinaryExpression
 }
+
+var _ sql.Expression = (*SetField)(nil)
+var _ sql.CollationCoercible = (*SetField)(nil)
 
 // NewSetField creates a new SetField expression.
 func NewSetField(left, expr sql.Expression) sql.Expression {
@@ -45,6 +49,11 @@ func (s *SetField) DebugString() string {
 // Type implements the Expression interface.
 func (s *SetField) Type() sql.Type {
 	return s.Left.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *SetField) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Left)
 }
 
 // Eval implements the Expression interface.
@@ -66,8 +75,8 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		convertedVal, err := getField.fieldType.Convert(val)
 		if err != nil {
 			// Fill in error with information
-			if sql.ErrLengthBeyondLimit.Is(err) {
-				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, sql.ErrLengthBeyondLimit.New(val, getField.Name()))
+			if types.ErrLengthBeyondLimit.Is(err) {
+				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, types.ErrLengthBeyondLimit.New(val, getField.Name()))
 			}
 			return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, err)
 		}

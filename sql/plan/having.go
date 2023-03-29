@@ -25,7 +25,9 @@ type Having struct {
 	Cond sql.Expression
 }
 
+var _ sql.Node = (*Having)(nil)
 var _ sql.Expressioner = (*Having)(nil)
+var _ sql.CollationCoercible = (*Having)(nil)
 
 // NewHaving creates a new having node.
 func NewHaving(cond sql.Expression, child sql.Node) *Having {
@@ -50,6 +52,11 @@ func (h *Having) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (h *Having) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return h.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (h *Having) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, h.Child)
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -81,8 +88,9 @@ func (h *Having) String() string {
 }
 
 func (h *Having) DebugString() string {
-	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Having(%s)", sql.DebugString(h.Cond))
-	_ = p.WriteChildren(sql.DebugString(h.Child))
-	return p.String()
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Having")
+	children := []string{sql.DebugString(h.Cond), sql.DebugString(h.Child)}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
 }

@@ -25,6 +25,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestResolveSetVariables(t *testing.T) {
@@ -41,8 +43,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), sql.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -56,8 +58,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), sql.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -71,8 +73,8 @@ func TestResolveSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("auto_increment_INCREMENT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), sql.Int64)),
-					expression.NewSetField(expression.NewSystemVar("sql_select_LIMIT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), sql.Int64)),
+					expression.NewSetField(expression.NewSystemVar("auto_increment_INCREMENT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(1), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar("sql_select_LIMIT", sql.SystemVariableScope_Session), expression.NewLiteral(int64(math.MaxInt32), types.Int64)),
 				},
 			),
 		},
@@ -133,7 +135,7 @@ func TestResolveBarewordSetVariables(t *testing.T) {
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), expression.NewLiteral("hello", sql.LongText)),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), expression.NewLiteral("hello", types.LongText)),
 				},
 			),
 		},
@@ -146,10 +148,10 @@ func TestResolveColumnsSession(t *testing.T) {
 	require := require.New(t)
 
 	fooBarValue := int64(42)
-	fooBarType := sql.ApproximateTypeFromValue(fooBarValue)
+	fooBarType := types.ApproximateTypeFromValue(fooBarValue)
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
-	err := ctx.SetUserVariable(ctx, "foo_bar", fooBarValue)
+	err := ctx.SetUserVariable(ctx, "foo_bar", fooBarValue, fooBarType)
 	require.NoError(err)
 	err = ctx.SetSessionVariable(ctx, "autocommit", true)
 	require.NoError(err)
@@ -170,9 +172,9 @@ func TestResolveColumnsSession(t *testing.T) {
 	expected := plan.NewProject(
 		[]sql.Expression{
 			expression.NewUserVarWithType("foo_bar", fooBarType),
-			expression.NewUserVar("bar_baz"),
+			expression.NewUserVarWithType("bar_baz", nil),
 			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
-			expression.NewUserVar("myvar"),
+			expression.NewUserVarWithType("myvar", nil),
 		},
 		plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 	)

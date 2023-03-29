@@ -22,9 +22,11 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var _ ArithmeticOp = (*Mod)(nil)
+var _ sql.CollationCoercible = (*Mod)(nil)
 
 // Mod expression represents "%" arithmetic operation
 type Mod struct {
@@ -73,21 +75,26 @@ func (m *Mod) IsNullable() bool {
 func (m *Mod) Type() sql.Type {
 	//TODO: what if both BindVars? should be constant folded
 	rTyp := m.Right.Type()
-	if sql.IsDeferredType(rTyp) {
+	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
 	lTyp := m.Left.Type()
-	if sql.IsDeferredType(lTyp) {
+	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
 
-	if sql.IsText(lTyp) || sql.IsText(rTyp) {
-		return sql.Float64
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		return types.Float64
 	}
 
 	// for division operation, it's either float or decimal.Decimal type
 	// except invalid value will result it either 0 or nil
 	return floatOrDecimalType(m)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Mod) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.
@@ -134,16 +141,16 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 
 func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := m.Type()
-	lIsTimeType := sql.IsTime(m.Left.Type())
-	rIsTimeType := sql.IsTime(m.Right.Type())
+	lIsTimeType := types.IsTime(m.Left.Type())
+	rIsTimeType := types.IsTime(m.Right.Type())
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
 		left = convertToDecimalValue(left, lIsTimeType)
 	}
 
-	if sql.IsFloat(typ) {
+	if types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
 		right = convertToDecimalValue(right, rIsTimeType)

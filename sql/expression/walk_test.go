@@ -20,11 +20,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestWalk(t *testing.T) {
-	lit1 := NewLiteral(1, sql.Int64)
-	lit2 := NewLiteral(2, sql.Int64)
+	lit1 := NewLiteral(1, types.Int64)
+	lit2 := NewLiteral(2, types.Int64)
 	col := NewUnresolvedColumn("foo")
 	fn := NewUnresolvedFunction(
 		"bar",
@@ -74,8 +75,8 @@ func (f visitor) Visit(n sql.Expression) sql.Visitor {
 }
 
 func TestInspect(t *testing.T) {
-	lit1 := NewLiteral(1, sql.Int64)
-	lit2 := NewLiteral(2, sql.Int64)
+	lit1 := NewLiteral(1, types.Int64)
+	lit2 := NewLiteral(2, types.Int64)
 	col := NewUnresolvedColumn("foo")
 	fn := NewUnresolvedFunction(
 		"bar",

@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -29,6 +30,7 @@ type LineString struct {
 }
 
 var _ sql.FunctionExpression = (*LineString)(nil)
+var _ sql.CollationCoercible = (*LineString)(nil)
 
 // NewLineString creates a new LineString.
 func NewLineString(args ...sql.Expression) (sql.Expression, error) {
@@ -50,7 +52,12 @@ func (l *LineString) Description() string {
 
 // Type implements the sql.Expression interface.
 func (l *LineString) Type() sql.Type {
-	return sql.LineStringType{}
+	return types.LineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LineString) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *LineString) String() string {
@@ -69,7 +76,7 @@ func (l *LineString) WithChildren(children ...sql.Expression) (sql.Expression, e
 // Eval implements the sql.Expression interface.
 func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of points
-	var points = make([]sql.Point, len(l.ChildExpressions))
+	var points = make([]types.Point, len(l.ChildExpressions))
 
 	// Go through each argument
 	for i, arg := range l.ChildExpressions {
@@ -80,14 +87,14 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		// Must be of type point, throw error otherwise
 		switch v := val.(type) {
-		case sql.Point:
+		case types.Point:
 			points[i] = v
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.LineString{Points: points}, nil
+	return types.LineString{Points: points}, nil
 }

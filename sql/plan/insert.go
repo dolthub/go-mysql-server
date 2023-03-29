@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -79,6 +80,7 @@ type InsertInto struct {
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
 var _ sql.Expressioner = (*InsertInto)(nil)
+var _ sql.CollationCoercible = (*InsertInto)(nil)
 var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
@@ -129,7 +131,9 @@ type InsertDestination struct {
 	Sch sql.Schema
 }
 
+var _ sql.Node = (*InsertDestination)(nil)
 var _ sql.Expressioner = (*InsertDestination)(nil)
+var _ sql.CollationCoercible = (*InsertDestination)(nil)
 
 func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
 	return &InsertDestination{
@@ -203,6 +207,11 @@ func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error)
 // CheckPrivileges implements the interface sql.Node.
 func (id *InsertDestination) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return id.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (id *InsertDestination) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, id.Child)
 }
 
 type insertIter struct {
@@ -311,9 +320,9 @@ func newInsertIter(
 	}
 
 	if ignore {
-		return NewCheckpointingTableEditorIter(ed, insertIter), nil
+		return NewCheckpointingTableEditorIter(insertIter, ed), nil
 	} else {
-		return NewTableEditorIter(ed, insertIter), nil
+		return NewTableEditorIter(insertIter, ed), nil
 	}
 }
 
@@ -374,8 +383,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					continue
 				} else {
 					// Fill in error with information
-					if sql.ErrLengthBeyondLimit.Is(cErr) {
-						cErr = sql.ErrLengthBeyondLimit.New(row[idx], col.Name)
+					if types.ErrLengthBeyondLimit.Is(cErr) {
+						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					}
@@ -575,7 +584,7 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 // Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
-	if sql.ErrLengthBeyondLimit.Is(err) {
+	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
 	} else {
@@ -696,6 +705,11 @@ func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 		return opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert))
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*InsertInto) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // DisjointedChildren implements the interface DisjointedChildrenNode.

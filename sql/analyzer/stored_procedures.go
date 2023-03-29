@@ -130,7 +130,15 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		var newChild sql.Node
 		switch child := child.(type) {
 		case plan.RepresentsBlock:
+			// Many analyzer rules only check the top-level node, so we have to recursively analyze each child
 			newChild, _, err = analyzeProcedureBodies(ctx, a, child, skipCall, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			// Blocks may have expressions declared directly on them, so we explicitly check the block node for variables
+			newChild, _, err = a.analyzeWithSelector(ctx, newChild, scope, SelectAllBatches, func(id RuleId) bool {
+				return id == resolveVariablesId
+			})
 		case *plan.Call:
 			if skipCall {
 				newChild = child
@@ -241,9 +249,6 @@ func validateStoredProcedure(_ *sql.Context, proc *plan.Procedure) error {
 
 // applyProcedures applies the relevant stored procedures to the node given (if necessary).
 func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if scope.proceduresPopulating() {
-		return n, transform.SameTree, nil
-	}
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
 	}
@@ -254,10 +259,95 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
-	scope, err := loadStoredProcedures(ctx, a, n, scope, sel)
+	call, newIdentity, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		call, ok := n.(*plan.Call)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
+		if scope.IsEmpty() {
+			scope = scope.withProcedureCache(NewProcedureCache())
+		}
+		if call.AsOf() != nil && !scope.enforceReadOnly {
+			scope.enforceReadOnly = true
+			defer func() {
+				scope.enforceReadOnly = false
+			}()
+		}
+
+		esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if esp != nil {
+			externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return call.WithProcedure(externalProcedure), transform.NewTree, nil
+		}
+
+		if spdb, ok := call.Database().(sql.StoredProcedureDatabase); ok {
+			procedure, ok, err := spdb.GetStoredProcedure(ctx, call.Name)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if !ok {
+				err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+				if call.Database().Name() == "" {
+					return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
+				}
+				return nil, transform.SameTree, err
+			}
+			parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			parsedProcedure, _, err = transform.Node(parsedProcedure, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+				versionable, ok := n.(plan.Versionable)
+				if !ok {
+					return n, transform.SameTree, nil
+				}
+				tree := transform.SameTree
+				if newCall, ok := versionable.(*plan.Call); ok {
+					if newCall.Database() == nil || newCall.Database().Name() == "" {
+						newNode, err := newCall.WithDatabase(spdb)
+						if err != nil {
+							return nil, transform.SameTree, err
+						}
+						versionable = newNode.(plan.Versionable)
+						tree = transform.NewTree
+					}
+				}
+				if versionable.AsOf() == nil {
+					newNode, err := versionable.WithAsOf(call.AsOf())
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					versionable = newNode.(plan.Versionable)
+					tree = transform.NewTree
+				}
+				return versionable, tree, nil
+			})
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			cp, ok := parsedProcedure.(*plan.CreateProcedure)
+			if !ok {
+				return nil, transform.SameTree, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
+			}
+			analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return call.WithProcedure(analyzedProc), transform.NewTree, nil
+		} else {
+			return nil, transform.SameTree, sql.ErrStoredProceduresNotSupported.New(call.Database().Name())
+		}
+	})
 	if err != nil {
-		return nil, false, err
+		return nil, transform.SameTree, err
 	}
+	n = call
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
@@ -275,44 +365,48 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 			}
 			return n.WithExternalStoredProcedure(procedures[0]), transform.NewTree, nil
 		default:
-			return n, transform.SameTree, nil
+			return n, newIdentity, nil
 		}
 	})
 }
 
 // applyProceduresCall applies the relevant stored procedure to the given *plan.Call.
 func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	dbName := ctx.GetCurrentDatabase()
-	if call.Database() != nil {
-		dbName = call.Database().Name()
-	}
-
-	esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
 	var procedure *plan.Procedure
-	if esp != nil {
-		externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
+	if call.Procedure == nil {
+		dbName := ctx.GetCurrentDatabase()
+		if call.Database() != nil {
+			dbName = call.Database().Name()
+		}
+
+		esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
 		if err != nil {
-			return nil, false, err
+			return nil, transform.SameTree, err
 		}
-		procedure = externalProcedure
+
+		if esp != nil {
+			externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
+			if err != nil {
+				return nil, false, err
+			}
+			procedure = externalProcedure
+		} else {
+			procedure = scope.procedures.Get(dbName, call.Name, len(call.Params))
+		}
+
+		if procedure == nil {
+			err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+			if dbName == "" {
+				return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
+			}
+			return nil, transform.SameTree, err
+		}
+
+		if procedure.ValidationError != nil {
+			return nil, transform.SameTree, procedure.ValidationError
+		}
 	} else {
-		procedure = scope.procedures.Get(dbName, call.Name, len(call.Params))
-	}
-
-	if procedure == nil {
-		err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
-		if dbName == "" {
-			return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
-		}
-		return nil, transform.SameTree, err
-	}
-
-	if procedure.ValidationError != nil {
-		return nil, transform.SameTree, procedure.ValidationError
+		procedure = call.Procedure
 	}
 
 	if procedure.HasVariadicParameter() {

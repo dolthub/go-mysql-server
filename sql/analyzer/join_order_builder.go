@@ -79,7 +79,7 @@ import (
 //
 // Applicability rules:
 //
-// We build applicibility rules before exhaustive enumeration to filter valid
+// We build applicability rules before exhaustive enumeration to filter valid
 // plans. We consider a reordering valid by checking:
 //
 // 1) Transform compatibility: a lookup table between two join operator types
@@ -159,15 +159,22 @@ func (j *joinOrderBuilder) reorderJoin(n sql.Node) {
 // populateSubgraph recursively tracks new join nodes as edges and new
 // leaf nodes as vertices to the joinOrderBuilder graph, returning
 // the subgraph's newly tracked vertices and edges.
-func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet) {
+func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *exprGroup) {
+	var group *exprGroup
 	startV := j.allVertices()
 	startE := j.allEdges()
 	// build operator
 	switch n := n.(type) {
+	case *plan.Filter:
+		_, _, group = j.populateSubgraph(n.Child)
+		group.relProps.filter = n.Expression
+	case *plan.Limit:
+		_, _, group = j.populateSubgraph(n.Child)
+		group.relProps.limit = n.Limit
 	case *plan.JoinNode:
-		j.buildJoinOp(n)
+		group = j.buildJoinOp(n)
 	case sql.Nameable:
-		j.buildJoinLeaf(n)
+		group = j.buildJoinLeaf(n)
 	case *plan.StripRowNode:
 		return j.populateSubgraph(n.Child)
 	case *plan.CachedResults:
@@ -175,16 +182,14 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet) {
 	default:
 		panic(fmt.Sprintf("expected Nameable node, found: %T", n))
 	}
-	return j.allVertices().difference(startV), j.allEdges().Difference(startE)
+	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
 }
 
-func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
-	leftV, leftE := j.populateSubgraph(n.Left())
-	rightV, rightE := j.populateSubgraph(n.Right())
+func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *exprGroup {
+	leftV, leftE, _ := j.populateSubgraph(n.Left())
+	rightV, rightE, _ := j.populateSubgraph(n.Right())
 	typ := n.JoinType()
-	var hint plan.JoinType
 	if typ.IsPhysical() {
-		hint = typ
 		typ = plan.JoinTypeInner
 	}
 	isInner := typ.IsInner()
@@ -207,16 +212,14 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) {
 		group = j.memoize(op.joinType, left, right, filters, nil)
 		j.plans[union] = group
 		j.m.root = group
-		if hint != plan.JoinTypeUnknown {
-			group.opHint = hint
-		}
 	}
 
 	if !isInner {
 		j.buildNonInnerEdge(op, filters...)
-		return
+	} else {
+		j.buildInnerEdge(op, filters...)
 	}
-	j.buildInnerEdge(op, filters...)
+	return group
 }
 
 func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
@@ -233,6 +236,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 		rel = &recursiveTable{relBase: b, table: n}
 	case *plan.SubqueryAlias:
 		rel = &subqueryAlias{relBase: b, table: n}
+	case *plan.Max1Row:
+		rel = &max1Row{relBase: b, table: n}
 	case *plan.RecursiveCte:
 		rel = &recursiveCte{relBase: b, table: n}
 	case *plan.IndexedTableAccess:
@@ -241,6 +246,8 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 		rel = &values{relBase: b, table: n}
 	case sql.TableFunction:
 		rel = &tableFunc{relBase: b, table: n}
+	case *plan.EmptyTable:
+		rel = &emptyTable{relBase: b, table: n}
 	default:
 		panic(fmt.Sprintf("unrecognized join leaf: %T", n))
 	}
@@ -381,9 +388,8 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 
 	if addInnerJoin {
 		// Construct an inner join. Don't add in the case when a non-inner join has
-		// already been constructed, because doing so can lead to a case where a
-		// non-inner join operator 'disappears' because an inner join has replaced
-		// it.
+		// already been constructed, because doing so can lead to a case where an
+		// inner join replaces a non-inner join.
 		if innerJoinFilters == nil {
 			j.addJoin(plan.JoinTypeCross, s1, s2, nil, nil, isRedundant)
 		} else {
@@ -465,7 +471,7 @@ func (j *joinOrderBuilder) constructJoin(
 		rel = &fullOuterJoin{b}
 	case plan.JoinTypeLeftOuter:
 		rel = &leftJoin{b}
-	case plan.JoinTypeSemi:
+	case plan.JoinTypeSemi, plan.JoinTypeRightSemi:
 		rel = &semiJoin{b}
 	case plan.JoinTypeAnti:
 		rel = &antiJoin{b}
@@ -1082,7 +1088,7 @@ func getOpIdx(e *edge) int {
 		return 0
 	case plan.JoinTypeInner:
 		return 1
-	case plan.JoinTypeSemi:
+	case plan.JoinTypeSemi, plan.JoinTypeRightSemi:
 		return 2
 	case plan.JoinTypeAnti:
 		return 3

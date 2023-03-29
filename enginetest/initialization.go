@@ -58,7 +58,7 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 			"myview",
 			"SELECT * FROM mytable",
 			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView())
+		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
@@ -78,7 +78,7 @@ func NewSession(harness Harness) *sql.Context {
 	currentDB := ctx.GetCurrentDatabase()
 	if currentDB == "" {
 		currentDB = "mydb"
-		ctx.WithCurrentDB(currentDB)
+		ctx.SetCurrentDatabase(currentDB)
 	}
 
 	_ = ctx.GetViewRegistry().Register(currentDB,
@@ -86,7 +86,7 @@ func NewSession(harness Harness) *sql.Context {
 			"myview",
 			"SELECT * FROM mytable",
 			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView())
+		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
@@ -124,10 +124,9 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	return engine
 }
 
-// NewEngineWithProviderSetup creates test data and returns an engine using the harness provided.
-// TODO: rename
-func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness, harness.NewDatabaseProvider())
+// NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given.
+func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
+	e := NewEngineWithProvider(t, harness, provider)
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool
@@ -139,14 +138,14 @@ func NewEngineWithProviderSetup(t *testing.T, harness Harness, setupData []setup
 	if len(setupData) == 0 {
 		setupData = setup.MydbData
 	}
-	return RunEngineScripts(ctx, e, setupData, supportsIndexes)
+	return RunSetupScripts(ctx, e, setupData, supportsIndexes)
 }
 
-// TODO: rename to RunSetupScripts
-func RunEngineScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, supportsIndexes bool) (*sqle.Engine, error) {
+// RunSetupScripts runs the given setup scripts on the given engine, returning any error
+func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) (*sqle.Engine, error) {
 	for i := range scripts {
 		for _, s := range scripts[i] {
-			if !supportsIndexes {
+			if !createIndexes {
 				if strings.Contains("create index", s) {
 					continue
 				}

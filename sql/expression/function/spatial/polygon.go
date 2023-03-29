@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -31,6 +32,7 @@ type Polygon struct {
 }
 
 var _ sql.FunctionExpression = (*Polygon)(nil)
+var _ sql.CollationCoercible = (*Polygon)(nil)
 
 // NewPolygon creates a new polygon expression.
 func NewPolygon(args ...sql.Expression) (sql.Expression, error) {
@@ -52,7 +54,12 @@ func (p *Polygon) Description() string {
 
 // Type implements the sql.Expression interface.
 func (p *Polygon) Type() sql.Type {
-	return sql.PolygonType{}
+	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Polygon) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *Polygon) String() string {
@@ -69,7 +76,7 @@ func (p *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, erro
 }
 
 // TODO: https://www.geeksforgeeks.org/orientation-3-ordered-points/
-func pointOrientation(p1, p2, p3 sql.Point) int {
+func pointOrientation(p1, p2, p3 types.Point) int {
 	// compare slopes of line(p1, p2) and line(p2, p3)
 	val := (p2.Y-p1.Y)*(p3.X-p2.X) - (p3.Y-p2.Y)*(p2.X-p1.X)
 	// check orientation
@@ -83,12 +90,12 @@ func pointOrientation(p1, p2, p3 sql.Point) int {
 }
 
 // Check if point c is in line segment ab
-func onSegment(a, b, c sql.Point) bool {
+func onSegment(a, b, c types.Point) bool {
 	return c.X > math.Min(a.X, b.X) && c.X < math.Max(a.X, b.X) && c.Y > math.Min(a.Y, b.Y) && c.Y < math.Max(a.Y, b.Y)
 }
 
 // TODO: https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-func lineSegmentsIntersect(a, b, c, d sql.Point) bool {
+func lineSegmentsIntersect(a, b, c, d types.Point) bool {
 	abc := pointOrientation(a, b, c)
 	abd := pointOrientation(a, b, d)
 	cda := pointOrientation(c, d, a)
@@ -118,7 +125,7 @@ func lineSegmentsIntersect(a, b, c, d sql.Point) bool {
 }
 
 // TODO: should go in line?
-func isLinearRing(line sql.LineString) bool {
+func isLinearRing(line types.LineString) bool {
 	// Get number of points
 	numPoints := len(line.Points)
 	// Check length of LineString (must be 0 or 4+) points
@@ -129,24 +136,13 @@ func isLinearRing(line sql.LineString) bool {
 	if line.Points[0] != line.Points[numPoints-1] {
 		return false
 	}
-	return true // TODO: MySQL appears to not check this, and there are issues so return true for now
-	// TODO: how to deal with same point?
-	// TODO: easy, but slow O(n^2) solution; apparently O(nlogn) exists
-	// Check each segment for intersections
-	for i := 0; i < numPoints-1; i++ {
-		for j := i + 1; j < numPoints; j++ {
-			if lineSegmentsIntersect(line.Points[i], line.Points[i+1], line.Points[j], line.Points[j+1]) {
-				return false
-			}
-		}
-	}
 	return true
 }
 
 // Eval implements the sql.Expression interface.
 func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of lines
-	var lines = make([]sql.LineString, len(p.ChildExpressions))
+	var lines = make([]types.LineString, len(p.ChildExpressions))
 
 	// Go through each argument
 	for i, arg := range p.ChildExpressions {
@@ -157,19 +153,19 @@ func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		// Must be of type linestring, throw error otherwise
 		switch v := val.(type) {
-		case sql.LineString:
+		case types.LineString:
 			// Check that line is a linear ring
 			if isLinearRing(v) {
 				lines[i] = v
 			} else {
 				return nil, errors.New("Invalid GIS data provided to function polygon.")
 			}
-		case sql.GeometryValue:
+		case types.GeometryValue:
 			return nil, sql.ErrInvalidArgumentDetails.New(p.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
-	return sql.Polygon{Lines: lines}, nil
+	return types.Polygon{Lines: lines}, nil
 }

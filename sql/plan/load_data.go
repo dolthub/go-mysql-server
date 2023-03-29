@@ -26,6 +26,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type LoadData struct {
@@ -44,6 +45,9 @@ type LoadData struct {
 	linesTerminatedByDelim  string
 	linesStartingByDelim    string
 }
+
+var _ sql.Node = (*LoadData)(nil)
+var _ sql.CollationCoercible = (*LoadData)(nil)
 
 // Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
 const (
@@ -360,15 +364,15 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 				if destCol.Default != nil {
 					exprs[i] = destCol.Default
 				} else {
-					exprs[i] = expression.NewLiteral(nil, sql.Null)
+					exprs[i] = expression.NewLiteral(nil, types.Null)
 				}
 			} else {
-				exprs[i] = expression.NewLiteral(field, sql.LongText)
+				exprs[i] = expression.NewLiteral(field, types.LongText)
 			}
 		} else if field == "NULL" {
-			exprs[i] = expression.NewLiteral(nil, sql.Null)
+			exprs[i] = expression.NewLiteral(nil, types.Null)
 		} else {
-			exprs[i] = expression.NewLiteral(field, sql.LongText)
+			exprs[i] = expression.NewLiteral(field, types.LongText)
 		}
 	}
 
@@ -398,6 +402,11 @@ func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (l *LoadData) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_File))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LoadData) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64) *LoadData {

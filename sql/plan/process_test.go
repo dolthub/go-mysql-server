@@ -23,13 +23,14 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestQueryProcess(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64},
+		{Name: "a", Type: types.Int64},
 	}), nil)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
@@ -40,7 +41,7 @@ func TestQueryProcess(t *testing.T) {
 	node := NewQueryProcess(
 		NewProject(
 			[]sql.Expression{
-				expression.NewGetField(0, sql.Int64, "a", false),
+				expression.NewGetField(0, types.Int64, "a", false),
 			},
 			NewResolvedTable(table, nil, nil),
 		),
@@ -69,7 +70,7 @@ func TestProcessTable(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64},
+		{Name: "a", Type: types.Int64},
 	}), nil, 2)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
@@ -83,7 +84,7 @@ func TestProcessTable(t *testing.T) {
 
 	node := NewProject(
 		[]sql.Expression{
-			expression.NewGetField(0, sql.Int64, "a", false),
+			expression.NewGetField(0, types.Int64, "a", false),
 		},
 		NewResolvedTable(NewProcessTable(
 			table,
@@ -123,7 +124,7 @@ func TestProcessIndexableTable(t *testing.T) {
 	require := require.New(t)
 
 	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
+		{Name: "a", Type: types.Int64, Source: "foo"},
 	}), nil, 2)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))

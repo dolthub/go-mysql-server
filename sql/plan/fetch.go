@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -34,6 +35,7 @@ type Fetch struct {
 }
 
 var _ sql.Node = (*Fetch)(nil)
+var _ sql.CollationCoercible = (*Fetch)(nil)
 var _ expression.ProcedureReferencable = (*Fetch)(nil)
 
 // NewFetch returns a new *Fetch node.
@@ -42,7 +44,7 @@ func NewFetch(name string, variables []string) *Fetch {
 	for i := range variables {
 		exprs[i] = expression.NewSetField(
 			expression.NewUnresolvedColumn(variables[i]),
-			expression.NewGetField(i, sql.Null, "", true),
+			expression.NewGetField(i, types.Null, "", true),
 		)
 	}
 	return &Fetch{
@@ -90,6 +92,11 @@ func (f *Fetch) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (f *Fetch) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Fetch) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.
