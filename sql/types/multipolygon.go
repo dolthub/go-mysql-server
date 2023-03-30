@@ -181,11 +181,6 @@ func (p MultiPolygon) SetSRID(srid uint32) GeometryValue {
 	}
 }
 
-// GetGeomType implements GeometryValue interface.
-func (p MultiPolygon) GetGeomType() uint32 {
-	return WKBMultiPolyID
-}
-
 // Serialize implements GeometryValue interface.
 func (p MultiPolygon) Serialize() (buf []byte) {
 	var numPoints, numCounts int

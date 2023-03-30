@@ -181,11 +181,6 @@ func (p MultiLineString) SetSRID(srid uint32) GeometryValue {
 	}
 }
 
-// GetGeomType implements GeometryValue interface.
-func (p MultiLineString) GetGeomType() uint32 {
-	return WKBMultiLineID
-}
-
 // Serialize implements GeometryValue interface.
 func (p MultiLineString) Serialize() (buf []byte) {
 	var numPoints int
