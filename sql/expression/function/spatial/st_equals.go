@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package function
+package spatial
 
 import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // STEquals is a function that returns the STEquals of a LineString
@@ -50,7 +51,7 @@ func (s *STEquals) Description() string {
 
 // Type implements the sql.Expression interface.
 func (s *STEquals) Type() sql.Type {
-	return sql.Int8 // TODO: bool?
+	return types.Boolean
 }
 
 func (s *STEquals) String() string {
@@ -66,55 +67,51 @@ func (s *STEquals) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 // extractPoints recursively "flattens" the geometry value into all its points
-func extractPoints(g sql.GeometryValue, points map[sql.Point]bool) {
+func extractPoints(g types.GeometryValue, points map[types.Point]bool) {
 	switch g := g.(type) {
-	case sql.Point:
+	case types.Point:
 		points[g] = true
-	case sql.LineString:
+	case types.LineString:
 		for _, p := range g.Points {
 			extractPoints(p, points)
 		}
-	case sql.Polygon:
+	case types.Polygon:
 		for _, l := range g.Lines {
 			extractPoints(l, points)
 		}
-	case sql.MultiPoint:
+	case types.MultiPoint:
 		for _, p := range g.Points {
 			extractPoints(p, points)
 		}
-	case sql.MultiLineString:
+	case types.MultiLineString:
 		for _, l := range g.Lines {
 			extractPoints(l, points)
 		}
-	case sql.MultiPolygon:
+	case types.MultiPolygon:
 		for _, p := range g.Polygons {
 			extractPoints(p, points)
 		}
-	case sql.GeomColl:
+	case types.GeomColl:
 		for _, gg := range g.Geoms {
 			extractPoints(gg, points)
 		}
 	}
 }
 
-// isSpatiallyEqual checks if the set of sql.Points in g1 is equal to g2
-func isSpatiallyEqual(g1 sql.GeometryValue, g2 sql.GeometryValue) int8 {
-	m1 := map[sql.Point]bool{}
-	m2 := map[sql.Point]bool{}
-	extractPoints(g1, m1)
-	extractPoints(g2, m2)
-
-	if len(m1) != len(m2) {
-		return 0
+// isEqual checks if the set of types.Points in g1 is equal to g2
+func isEqual(g1 types.GeometryValue, g2 types.GeometryValue) bool {
+	switch g1 := g1.(type) {
+	case types.Point:
+		return isPointWithin(g1, g2)
+	case types.LineString:
+	case types.Polygon:
+	case types.MultiPoint:
+	case types.MultiLineString:
+	case types.MultiPolygon:
+	case types.GeomColl:
+		// TODO (james): implement these
 	}
-
-	for k := range m1 {
-		if !m2[k] {
-			return 0
-		}
-	}
-
-	return 1
+	return false
 }
 
 // Eval implements the sql.Expression interface.
@@ -135,24 +132,20 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	var geom1, geom2 sql.GeometryValue
+	var geom1, geom2 types.GeometryValue
 	var ok bool
-	geom1, ok = g1.(sql.GeometryValue)
+	geom1, ok = g1.(types.GeometryValue)
 	if !ok {
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
 	}
-	geom2, ok = g2.(sql.GeometryValue)
+	geom2, ok = g2.(types.GeometryValue)
 	if !ok {
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
-	}
-
-	if geom1.GetGeomType() != geom2.GetGeomType() {
-		return int8(0), nil
 	}
 
 	if geom1.GetSRID() != geom2.GetSRID() {
 		return nil, sql.ErrDiffSRIDs.New(s.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
 	}
 
-	return isSpatiallyEqual(geom1, geom2), nil
+	return isEqual(geom1, geom2), nil
 }
