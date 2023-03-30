@@ -66,86 +66,61 @@ func (s *STEquals) WithChildren(children ...sql.Expression) (sql.Expression, err
 	return NewSTEquals(children[0], children[1]), nil
 }
 
-// extractPoints recursively "flattens" the geometry value into all its points
-func extractPoints(g types.GeometryValue, points map[types.Point]bool) {
-	switch g := g.(type) {
-	case types.Point:
-		points[g] = true
-	case types.LineString:
-		for _, p := range g.Points {
-			extractPoints(p, points)
-		}
-	case types.Polygon:
-		for _, l := range g.Lines {
-			extractPoints(l, points)
-		}
-	case types.MultiPoint:
-		for _, p := range g.Points {
-			extractPoints(p, points)
-		}
-	case types.MultiLineString:
-		for _, l := range g.Lines {
-			extractPoints(l, points)
-		}
-	case types.MultiPolygon:
-		for _, p := range g.Polygons {
-			extractPoints(p, points)
-		}
-	case types.GeomColl:
-		for _, gg := range g.Geoms {
-			extractPoints(gg, points)
-		}
-	}
-}
-
-// isEqual checks if the set of types.Points in g1 is equal to g2
+// isEqual checks if the set of types.Points in g1 is spatially equal to g2
+// This is equivalent to checking if g1 within g2 and g2 within g1
 func isEqual(g1 types.GeometryValue, g2 types.GeometryValue) bool {
-	switch g1 := g1.(type) {
-	case types.Point:
-		return isPointWithin(g1, g2)
-	case types.LineString:
-	case types.Polygon:
-	case types.MultiPoint:
-	case types.MultiLineString:
-	case types.MultiPolygon:
-	case types.GeomColl:
-		// TODO (james): implement these
-	}
-	return false
+	return isWithin(g1, g2) && isWithin(g2, g1)
 }
 
 // Eval implements the sql.Expression interface.
 func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	g1, err := s.Left.Eval(ctx, row)
+	geom1, err := s.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if g1 == nil {
-		return nil, nil
-	}
-
-	g2, err := s.Right.Eval(ctx, row)
+	geom2, err := s.Right.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if g2 == nil {
+	g1, g2, err := validateGeomComp(geom1, geom2, s.FunctionName())
+	if err != nil {
+		return nil, err
+	}
+	if g1 == nil || g2 == nil {
 		return nil, nil
 	}
 
-	var geom1, geom2 types.GeometryValue
-	var ok bool
-	geom1, ok = g1.(types.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
-	}
-	geom2, ok = g2.(types.GeometryValue)
-	if !ok {
-		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+	// TODO (james): remove this switch block when the other comparisons are implemented
+	switch geom1.(type) {
+	case types.LineString:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
+	case types.Polygon:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", s.FunctionName())
+	case types.MultiPoint:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", s.FunctionName())
+	case types.MultiLineString:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", s.FunctionName())
+	case types.MultiPolygon:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", s.FunctionName())
+	case types.GeomColl:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", s.FunctionName())
 	}
 
-	if geom1.GetSRID() != geom2.GetSRID() {
-		return nil, sql.ErrDiffSRIDs.New(s.FunctionName(), geom1.GetSRID(), geom2.GetSRID())
+	// TODO (james): remove this switch block when the other comparisons are implemented
+	switch geom2.(type) {
+	case types.LineString:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
+	case types.Polygon:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("Polygon", s.FunctionName())
+	case types.MultiPoint:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPoint", s.FunctionName())
+	case types.MultiLineString:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiLineString", s.FunctionName())
+	case types.MultiPolygon:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("MultiPolygon", s.FunctionName())
+	case types.GeomColl:
+		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("GeomColl", s.FunctionName())
 	}
 
-	return isEqual(geom1, geom2), nil
+	return isEqual(g1, g2), nil
 }
