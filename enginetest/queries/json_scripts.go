@@ -398,6 +398,9 @@ var JsonScripts = []ScriptTest{
 			`insert into t values (12, '{"b":[{"c":3},{"d":4}],"a":[{"a":1},{"b":2}]}');`,
 			// unordered keys with arrays of objects with extra spaces
 			`insert into t values (13, '{ "b" : [ { "c" : 3 } , { "d" : 4 } ] , "a" : [ { "a" : 1 } , { "b" : 2 } ] }');`,
+
+			// formatted json with special characters
+			`insert into t values (14, '[{"a":"<>&"}]');`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -416,6 +419,7 @@ var JsonScripts = []ScriptTest{
 					{11, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
 					{12, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
 					{13, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
+					{14, `[{"a": "<>&"}]`},
 				},
 			},
 		},

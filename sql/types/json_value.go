@@ -15,6 +15,7 @@
 package types
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -90,12 +91,22 @@ func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
 // We then remove the newlines, trim the prefix/suffix whitespace, and add a space after trailing commas:
 // {"a": 1, "b": 2}
 func marshalToMySqlString(doc JSONDocument) (string, error) {
-	// marshal the data into a multiline string with indentation and MySQL-matching spacing
-	b, err := json.MarshalIndent(doc.Val, " ", " ")
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	// Prevents special characters like <, >, or & from being escaped.
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(doc.Val)
 	if err != nil {
 		return "", err
 	}
-	lines := strings.Split(string(b), "\n")
+
+	indentBuffer := &bytes.Buffer{}
+	err = json.Indent(indentBuffer, buffer.Bytes(), " ", " ")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(indentBuffer.String(), "\n")
 	// keep track of trailing commas, so we can add a space after them
 	trailingComma := false
 	sb := strings.Builder{}
