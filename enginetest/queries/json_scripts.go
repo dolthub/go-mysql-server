@@ -365,6 +365,62 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/4499
+		Name: "json is formatted correctly",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 json);",
+
+			// formatted json
+			`insert into t values (1, '{"a": 1, "b": 2}');`,
+			// unordered keys with correct spacing
+			`insert into t values (2, '{"b": 2, "a": 1}');`,
+			// ordered keys with no spacing
+			`insert into t values (3, '{"a":1,"b":2}');`,
+			// unordered keys with no spacing
+			`insert into t values (4, '{"b":2,"a":1}');`,
+			// unordered keys with extra spacing
+			`insert into t values (5, '{ "b": 2 , "a" : 1 }');`,
+
+			// ordered keys with arrays of primitives without spaces
+			`insert into t values (6, '{"a":[1,2,3],"b":[4,5,6]}');`,
+			// unordered keys with arrays of primitives without spaces
+			`insert into t values (7, '{"b":[4,5,6],"a":[1,2,3]}');`,
+			// ordered keys with arrays of primitives with extra spaces
+			`insert into t values (8, '{ "a" : [ 1 , 2 , 3 ] , "b" : [ 4 , 5 , 6 ] }');`,
+			// unordered keys with arrays of primitives with extra spaces
+			`insert into t values (9, '{ "b" : [ 4 , 5 , 6 ] , "a" : [ 1 , 2 , 3 ] }');`,
+
+			// ordered keys with arrays of objects without spaces
+			`insert into t values (10, '{"a":[{"a":1},{"b":2}],"b":[{"c":3},{"d":4}]}');`,
+			// ordered keys with arrays of objects with extra spaces
+			`insert into t values (11, '{ "a" : [ { "a" : 1 } , { "b" : 2 } ] , "b" : [ { "c" : 3 } , { "d" : 4 } ] }');`,
+			// unordered keys with arrays of objects without spaces
+			`insert into t values (12, '{"b":[{"c":3},{"d":4}],"a":[{"a":1},{"b":2}]}');`,
+			// unordered keys with arrays of objects with extra spaces
+			`insert into t values (13, '{ "b" : [ { "c" : 3 } , { "d" : 4 } ] , "a" : [ { "a" : 1 } , { "b" : 2 } ] }');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, cast(col1 as char) from t order by pk asc;",
+				Expected: []sql.Row{
+					{1, `{"a": 1, "b": 2}`},
+					{2, `{"a": 1, "b": 2}`},
+					{3, `{"a": 1, "b": 2}`},
+					{4, `{"a": 1, "b": 2}`},
+					{5, `{"a": 1, "b": 2}`},
+					{6, `{"a": [1, 2, 3], "b": [4, 5, 6]}`},
+					{7, `{"a": [1, 2, 3], "b": [4, 5, 6]}`},
+					{8, `{"a": [1, 2, 3], "b": [4, 5, 6]}`},
+					{9, `{"a": [1, 2, 3], "b": [4, 5, 6]}`},
+					{10, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
+					{11, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
+					{12, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
+					{13, `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`},
+				},
+			},
+		},
+	},
+	{
 		Name: "json_extract returns missing keys as sql null and handles json null literals correctly",
 		SetUpScript: []string{
 			"create table t (pk int primary key, col1 json);",

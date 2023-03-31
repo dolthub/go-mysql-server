@@ -6784,7 +6784,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
 		Expected: []sql.Row{
-			{types.MustJSON(`{"{\"foo\":\"bar\"}": 10}`)},
+			{types.MustJSON(`{"{\"foo\": \"bar\"}": 10}`)},
 		},
 	},
 	{
