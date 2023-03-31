@@ -107,7 +107,7 @@ var joinCostTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
-				Query:    "select * from xy where x not in (select v from uv))",
+				Query:    "select * from xy where x not in (select v from uv)",
 				Expected: []sql.Row{{0, 0}},
 			},
 		},
