@@ -338,20 +338,14 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 			projections: projectExpressions,
 		}
 		rightGrp := m.memoize(newRight)
-
-		// distinct is a new group
-		rightDistinct := &distinct{
-			relBase: &relBase{},
-			child:   rightGrp,
-		}
-		rightDistinctGrp := m.memoize(rightDistinct)
+		rightGrp.relProps.distinct = hashDistinctOp
 
 		// join and its commute are a new group
 		newJoin := &innerJoin{
 			joinBase: &joinBase{
 				relBase: &relBase{},
 				left:    semi.left,
-				right:   rightDistinctGrp,
+				right:   rightGrp,
 				op:      plan.JoinTypeInner,
 				filter:  semi.filter,
 			},
@@ -361,7 +355,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 		newJoinCommuted := &innerJoin{
 			joinBase: &joinBase{
 				relBase: &relBase{g: joinGrp},
-				left:    rightDistinctGrp,
+				left:    rightGrp,
 				right:   semi.left,
 				op:      plan.JoinTypeInner,
 				filter:  semi.filter,
@@ -371,7 +365,9 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 
 		// project belongs to the original group
 		rel := &project{
-			relBase:     &relBase{g: e.group()},
+			relBase: &relBase{
+				g: e.group(),
+			},
 			child:       joinGrp,
 			projections: expression.SchemaToGetFields(semi.left.relProps.outputColsForRel(semi.left.first)),
 		}
@@ -414,8 +410,35 @@ func addRightSemiJoins(m *Memo) error {
 				continue
 			}
 
+			var projectExpressions []sql.Expression
+			for _, f := range keyExprs {
+				transform.InspectExpr(f, func(e sql.Expression) bool {
+					switch e := e.(type) {
+					case *expression.GetField:
+						projectExpressions = append(projectExpressions, e)
+					default:
+					}
+					return false
+				})
+			}
+
+			rGroup := semi.right
+			projRight := &project{
+				relBase:     &relBase{},
+				child:       rGroup,
+				projections: projectExpressions,
+			}
+			rGroup = m.memoize(projRight)
+			rGroup.relProps.distinct = hashDistinctOp
+
 			rel := &lookupJoin{
-				joinBase: semi.joinPrivate().copy(),
+				joinBase: &joinBase{
+					relBase: &relBase{g: semi.g},
+					left:    rGroup,
+					right:   semi.left,
+					op:      plan.JoinTypeRightSemiLookup,
+					filter:  semi.filter,
+				},
 				lookup: &lookup{
 					source:   attrSource,
 					index:    idx,
@@ -423,8 +446,6 @@ func addRightSemiJoins(m *Memo) error {
 					nullmask: nullmask,
 				},
 			}
-			rel.op = plan.JoinTypeRightSemiLookup
-			rel.left, rel.right = rel.right, rel.left
 			rel.lookup.parent = rel.joinBase
 			e.group().prepend(rel)
 		}
@@ -879,6 +900,19 @@ func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
 	})
 	return tc, !invalid && tc.table != ""
 }
+
+//func addSortDistinct(m *Memo) error {
+//
+//	seen := make(map[GroupId]struct{})
+//	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+//		d, ok := e.(*distinct)
+//		if !ok {
+//			return nil
+//		}
+//
+//		d.g.
+//	}
+//}
 
 func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {

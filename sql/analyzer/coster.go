@@ -188,7 +188,7 @@ func (c *coster) costProject(_ *sql.Context, n *project, _ sql.StatsReader) (flo
 }
 
 func (c *coster) costDistinct(_ *sql.Context, n *distinct, _ sql.StatsReader) (float64, error) {
-	return n.child.cost * (cpuCostFactor + memCostFactor), nil
+	return n.child.cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
 // lookupJoinSelectivityMultiplier estimates the selectivity of a join condition.

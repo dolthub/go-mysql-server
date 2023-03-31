@@ -134,14 +134,14 @@ var joinCostTests = []struct {
 			// queries that test subquery hoisting
 			{
 				// case 1: condition uses columns from both sides
-				Query: "/*case1*/ select * from ab where exists (select * from xy where ab.a = xy.x + 3)",
+				Query: "/*+case1*/ select * from ab where exists (select * from xy where ab.a = xy.x + 3)",
 				Expected: []sql.Row{
 					{3, 1},
 				},
 			},
 			{
 				// case 1N: NOT EXISTS condition uses columns from both sides
-				Query: "/*case1N*/ select * from ab where not exists (select * from xy where ab.a = xy.x + 3)",
+				Query: "/*+case1N*/ select * from ab where not exists (select * from xy where ab.a = xy.x + 3)",
 				Expected: []sql.Row{
 					{0, 2},
 					{1, 2},
@@ -150,12 +150,12 @@ var joinCostTests = []struct {
 			},
 			{
 				// case 2: condition uses columns from left side only
-				Query:    "/*case2*/ select * from ab where exists (select * from xy where a = 1)",
+				Query:    "/*+case2*/ select * from ab where exists (select * from xy where a = 1)",
 				Expected: []sql.Row{{1, 2}},
 			},
 			{
 				// case 2N: NOT EXISTS condition uses columns from left side only
-				Query: "/*case2N*/ select * from ab where not exists (select * from xy where a = 1)",
+				Query: "/*+case2N*/ select * from ab where not exists (select * from xy where a = 1)",
 				Expected: []sql.Row{
 					{0, 2},
 					{2, 2},
@@ -164,7 +164,7 @@ var joinCostTests = []struct {
 			},
 			{
 				// case 3: condition uses columns from right side only
-				Query: "/*case3*/ select * from ab where exists (select * from xy where 1 = xy.x)",
+				Query: "/*+case3*/ select * from ab where exists (select * from xy where 1 = xy.x)",
 				Expected: []sql.Row{
 					{0, 2},
 					{1, 2},
@@ -174,7 +174,7 @@ var joinCostTests = []struct {
 			},
 			{
 				// case 3N: NOT EXISTS condition uses columns from right side only
-				Query: "/*case3N*/ select * from ab where not exists (select * from xy where 10 = xy.x)",
+				Query: "/*+case3N*/ select * from ab where not exists (select * from xy where 10 = xy.x)",
 				Expected: []sql.Row{
 					{0, 2},
 					{1, 2},
@@ -184,7 +184,7 @@ var joinCostTests = []struct {
 			},
 			{
 				// case 4a: condition uses no columns from either side, and condition is true
-				Query: "/*case4a*/ select * from ab where exists (select * from xy where 1 = 1)",
+				Query: "/*+case4a*/ select * from ab where exists (select * from xy where 1 = 1)",
 				Expected: []sql.Row{
 					{0, 2},
 					{1, 2},
@@ -194,17 +194,17 @@ var joinCostTests = []struct {
 			},
 			{
 				// case 4aN: NOT EXISTS condition uses no columns from either side, and condition is true
-				Query:    "/*case4aN*/ select * from ab where not exists (select * from xy where 1 = 1)",
+				Query:    "/*+case4aN*/ select * from ab where not exists (select * from xy where 1 = 1)",
 				Expected: []sql.Row{},
 			},
 			{
 				// case 4b: condition uses no columns from either side, and condition is false
-				Query:    "/*case4b*/ select * from ab where exists (select * from xy where 1 = 0)",
+				Query:    "/*+case4b*/ select * from ab where exists (select * from xy where 1 = 0)",
 				Expected: []sql.Row{},
 			},
 			{
 				// case 4bN: NOT EXISTS condition uses no columns from either side, and condition is false
-				Query:    "/*case4bN*/ select * from ab where not exists (select * from xy where 1 = 0)",
+				Query:    "/*+case4bN*/ select * from ab where not exists (select * from xy where 1 = 0)",
 				Expected: []sql.Row{{0, 2}, {1, 2}, {2, 2}, {3, 1}},
 			},
 			{
