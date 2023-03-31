@@ -125,6 +125,8 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 				}
 			}
 			relCost += dCost
+		} else {
+			n.setDistinct(noDistinctOp)
 		}
 
 		n.setCost(relCost)
@@ -898,7 +900,8 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		},
 	},
 	{
-		Name:    "distinct",
-		IsUnary: true,
+		Name:     "distinct",
+		IsUnary:  true,
+		SkipExec: true,
 	},
 }

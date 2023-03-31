@@ -556,8 +556,6 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildEmptyTable(r, input, children...)
 	case *project:
 		result, err = b.buildProject(r, input, children...)
-	case *distinct:
-		result, err = b.buildDistinct(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
