@@ -38,16 +38,12 @@ type indexLookup struct {
 type indexLookupsByTable map[string]*indexLookup
 
 func isSpatialAnalysisFunc(e sql.Expression) bool {
-	if _, ok := e.(*spatial.Intersects); ok {
+	switch e.(type) {
+	case *spatial.Intersects, *spatial.Within, *spatial.STEquals:
 		return true
+	default:
+		return false
 	}
-	if _, ok := e.(*spatial.Within); ok {
-		return true
-	}
-	if _, ok := e.(*spatial.STEquals); ok {
-		return true
-	}
-	return false
 }
 
 // getIndexes returns indexes applicable to all tables in the node given for the expression given, keyed by the name of
