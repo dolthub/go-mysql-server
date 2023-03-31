@@ -80,14 +80,14 @@ func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
 // marshalToMySqlString is a helper function to marshal a JSONDocument to a string that is
 // compatible with MySQL's JSON output, including spaces.
 // This approach is a bit of a hack, but it's an easy way to get the output we want.
-// We use the json.MarshalIndent function, which adds formats JSON with spaces and newlines like this:
+// We use the json.MarshalIndent function, which formats JSON with spaces and newlines like this:
 //
 //	{
 //	 "a": 1,
 //	 "b": 2
 //	}
 //
-// We then remove the newlines and trim the prefix/suffix spaces, and add a space after any trailing commas:
+// We then remove the newlines, trim the prefix/suffix whitespace, and add a space after trailing commas:
 // {"a": 1, "b": 2}
 func marshalToMySqlString(doc JSONDocument) (string, error) {
 	// marshal the data into a multiline string with indentation and MySQL-matching spacing

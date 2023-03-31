@@ -270,13 +270,13 @@ var JsonRoundtripTests = []JsonRoundtripTest{
 		expected: `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`,
 	},
 	{
-		desc:     "arrays of objects with no spaces",
-		input:    `{"a":[{"a":1},{"b":2}],"b":[{"c":3},{"d":4}]}`,
+		desc:     "unordered keys with arrays of objects with extra spaces",
+		input:    `{"b" : [ { "c" : 3 }, { "d" : 4 } ], "a" : [ { "a" : 1 }, { "b" : 2 } ] }`,
 		expected: `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`,
 	},
 	{
-		desc:     "unordered keys with arrays of objects with no spaces",
-		input:    `{"b":[{"c":3},{"d":4}],"a":[{"a":1},{"b":2}]}`,
+		desc:     "arrays of objects with extra spaces",
+		input:    `{"a": [ { "a" : 1 }, { "b" : 2 } ], "b": [ { "c" : 3 }, { "d" : 4 } ] }`,
 		expected: `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`,
 	},
 }
