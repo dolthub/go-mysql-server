@@ -209,5 +209,84 @@ func TestValuer(t *testing.T) {
 	}
 	res, err = withVal.Value()
 	require.NoError(t, err)
-	require.Equal(t, `{"a":"one"}`, res)
+	require.Equal(t, `{"a": "one"}`, res)
+}
+
+type JsonRoundtripTest struct {
+	desc     string
+	input    string
+	expected string
+}
+
+var JsonRoundtripTests = []JsonRoundtripTest{
+	{
+		desc:     "formatted json",
+		input:    `{"a": 1, "b": 2}`,
+		expected: `{"a": 1, "b": 2}`,
+	},
+	{
+		desc:     "unordered keys with correct spacing",
+		input:    `{"b": 2, "a": 1}`,
+		expected: `{"a": 1, "b": 2}`,
+	},
+	{
+		desc:     "missing spaces after comma and colon",
+		input:    `{"a":1,"b":2}`,
+		expected: `{"a": 1, "b": 2}`,
+	},
+	{
+		desc:     "unordered keys with no spacing",
+		input:    `{"b":2,"a":1}`,
+		expected: `{"a": 1, "b": 2}`,
+	},
+	{
+		desc:     "unordered keys with extra spaces",
+		input:    `{"b" : 2, "a" : 1}`,
+		expected: `{"a": 1, "b": 2}`,
+	},
+	{
+		desc:     "unordered keys with extra spaces and missing spaces after comma and colon",
+		input:    `{"b" :2,"a" :1}`,
+		expected: `{"a": 1, "b": 2}`,
+	},
+	{
+		desc:     "arrays of primitives without spaces",
+		input:    `{"a":[1,2,3],"b":[4,5,6]}`,
+		expected: `{"a": [1, 2, 3], "b": [4, 5, 6]}`,
+	},
+	{
+		desc:     "unordered keys with arrays of primitives",
+		input:    `{"b":[4,5,6],"a":[1,2,3]}`,
+		expected: `{"a": [1, 2, 3], "b": [4, 5, 6]}`,
+	},
+	{
+		desc:     "arrays of objects without spaces",
+		input:    `{"a":[{"a":1},{"b":2}],"b":[{"c":3},{"d":4}]}`,
+		expected: `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`,
+	},
+	{
+		desc:     "unordered keys with arrays of objects",
+		input:    `{"b":[{"c":3},{"d":4}],"a":[{"a":1},{"b":2}]}`,
+		expected: `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`,
+	},
+	{
+		desc:     "arrays of objects with no spaces",
+		input:    `{"a":[{"a":1},{"b":2}],"b":[{"c":3},{"d":4}]}`,
+		expected: `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`,
+	},
+	{
+		desc:     "unordered keys with arrays of objects with no spaces",
+		input:    `{"b":[{"c":3},{"d":4}],"a":[{"a":1},{"b":2}]}`,
+		expected: `{"a": [{"a": 1}, {"b": 2}], "b": [{"c": 3}, {"d": 4}]}`,
+	},
+}
+
+func TestJsonRoundTripping(t *testing.T) {
+	for _, test := range JsonRoundtripTests {
+		t.Run("JSON roundtripping: "+test.desc, func(t *testing.T) {
+			val, err := JSON.SQL(sql.NewEmptyContext(), nil, test.input)
+			require.NoError(t, err)
+			assert.Equal(t, test.expected, val.ToString())
+		})
+	}
 }
