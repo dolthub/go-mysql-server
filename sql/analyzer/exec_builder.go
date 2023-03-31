@@ -298,7 +298,9 @@ func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) 
 		return plan.NewDistinct(n), nil
 	case sortedDistinctOp:
 		return plan.NewOrderedDistinct(n), nil
-	default:
+	case noDistinctOp:
 		return n, nil
+	default:
+		return nil, fmt.Errorf("unexpected distinct operator: %d", d)
 	}
 }

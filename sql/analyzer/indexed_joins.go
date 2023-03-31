@@ -901,19 +901,6 @@ func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
 	return tc, !invalid && tc.table != ""
 }
 
-//func addSortDistinct(m *Memo) error {
-//
-//	seen := make(map[GroupId]struct{})
-//	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
-//		d, ok := e.(*distinct)
-//		if !ok {
-//			return nil
-//		}
-//
-//		d.g.
-//	}
-//}
-
 func transposeRightJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
