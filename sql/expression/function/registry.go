@@ -211,6 +211,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_astext", Fn: spatial.NewAsWKT},
 	sql.FunctionN{Name: "st_distance", Fn: spatial.NewDistance},
 	sql.Function1{Name: "st_dimension", Fn: spatial.NewDimension},
+	sql.Function2{Name: "st_equal", Fn: spatial.NewSTEquals},
 	sql.Function1{Name: "st_endpoint", Fn: spatial.NewEndPoint},
 	sql.FunctionN{Name: "st_geomcollfromtext", Fn: spatial.NewGeomCollFromText},
 	sql.FunctionN{Name: "st_geomcollfromtxt", Fn: spatial.NewGeomCollFromText},
