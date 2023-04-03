@@ -29,7 +29,7 @@ import (
 func TestGroupConcat_FunctionName(t *testing.T) {
 	assert := require.New(t)
 
-	m, err := NewGroupConcat("field", nil, sqlparser.Separator{SeparatorString: ",", DefaultSeparator: false}, nil, 1024)
+	m, err := NewGroupConcat("field", nil, sqlparser.Separator{SeparatorString: ",", DefaultSeparator: true}, nil, 1024)
 	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field)", m.String())
