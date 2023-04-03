@@ -16,6 +16,7 @@ package aggregation
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"sort"
 	"strings"
 
@@ -29,7 +30,7 @@ import (
 type GroupConcat struct {
 	distinct    string
 	sf          sql.SortFields
-	separator   string
+	separator   sqlparser.Separator
 	selectExprs []sql.Expression
 	maxLen      int
 	returnType  sql.Type
@@ -54,7 +55,7 @@ func (g *GroupConcat) Description() string {
 	return "returns a string result with the concatenated non-NULL values from a group."
 }
 
-func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
+func NewGroupConcat(distinct string, orderBy sql.SortFields, separator sqlparser.Separator, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
 	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}, nil
 }
 
@@ -132,9 +133,9 @@ func (g *GroupConcat) String() string {
 		}
 	}
 
-	if g.separator != "," {
+	if !g.separator.DefaultSeparator {
 		sb.WriteString(" separator ")
-		sb.WriteString(fmt.Sprintf("'%s'", g.separator))
+		sb.WriteString(fmt.Sprintf("'%s'", g.separator.SeparatorString))
 	}
 
 	sb.WriteString(")")
@@ -273,7 +274,7 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		if i == 0 {
 			sb.WriteString(row[lastIdx].(string))
 		} else {
-			sb.WriteString(g.gc.separator)
+			sb.WriteString(g.gc.separator.SeparatorString)
 			sb.WriteString(row[lastIdx].(string))
 		}
 

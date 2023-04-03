@@ -3568,9 +3568,8 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 
-		separatorS := ","
-		if v.Separator != "" {
-			separatorS = v.Separator
+		if v.Separator.DefaultSeparator {
+			v.Separator.SeparatorString = ","
 		}
 
 		sortFields, err := orderByToSortFields(ctx, v.OrderBy)
@@ -3585,7 +3584,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 		groupConcatMaxLen := gcml.(uint64)
 
-		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
+		return aggregation.NewGroupConcat(v.Distinct, sortFields, v.Separator, exprs, int(groupConcatMaxLen))
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:

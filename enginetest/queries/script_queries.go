@@ -1097,6 +1097,10 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
 			},
+			{
+				Query:    "SELECT group_concat(attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
+				Expected: []sql.Row{{"colorfabric"}},
+			},
 		},
 	},
 	{
