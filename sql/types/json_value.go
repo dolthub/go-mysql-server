@@ -75,6 +75,22 @@ func (doc JSONDocument) Compare(ctx *sql.Context, v JSONValue) (int, error) {
 }
 
 func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
+	return marshalToMySqlString(doc)
+}
+
+// marshalToMySqlString is a helper function to marshal a JSONDocument to a string that is
+// compatible with MySQL's JSON output, including spaces.
+// This approach is a bit of a hack, but it's an easy way to get the output we want.
+// We use the json.MarshalIndent function, which formats JSON with spaces and newlines like this:
+//
+//	{
+//	 "a": 1,
+//	 "b": 2
+//	}
+//
+// We then remove the newlines, trim the prefix/suffix whitespace, and add a space after trailing commas:
+// {"a": 1, "b": 2}
+func marshalToMySqlString(doc JSONDocument) (string, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	// Prevents special characters like <, >, or & from being escaped.
@@ -83,10 +99,28 @@ func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// json.Encoder appends a newline character so we trim it.
-	// SELECT cast('6\n' as JSON) returns only 6 in MySQL.
-	out := strings.TrimRight(buffer.String(), "\n")
-	return out, err
+
+	indentBuffer := &bytes.Buffer{}
+	err = json.Indent(indentBuffer, buffer.Bytes(), " ", " ")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(indentBuffer.String(), "\n")
+	// keep track of trailing commas, so we can add a space after them
+	trailingComma := false
+	sb := strings.Builder{}
+	for _, line := range lines {
+		if trailingComma {
+			sb.WriteString(" ")
+		}
+		// the lines are indented, trim them first
+		trimmed := strings.Trim(line, " ")
+		sb.WriteString(trimmed)
+		trailingComma = strings.HasSuffix(trimmed, ",")
+	}
+	out := sb.String()
+	return out, nil
 }
 
 var _ SearchableJSONValue = JSONDocument{}
@@ -152,12 +186,12 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 		return nil, nil
 	}
 
-	byteSl, err := json.Marshal(doc.Val)
+	mysqlString, err := marshalToMySqlString(doc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal document: %w", err)
 	}
 
-	return string(byteSl), nil
+	return mysqlString, nil
 }
 
 func ConcatenateJSONValues(ctx *sql.Context, vals ...JSONValue) (JSONValue, error) {

@@ -37,6 +37,15 @@ type indexLookup struct {
 
 type indexLookupsByTable map[string]*indexLookup
 
+func isSpatialAnalysisFunc(e sql.Expression) bool {
+	switch e.(type) {
+	case *spatial.Intersects, *spatial.Within, *spatial.STEquals:
+		return true
+	default:
+		return false
+	}
+}
+
 // getIndexes returns indexes applicable to all tables in the node given for the expression given, keyed by the name of
 // the table (aliased as appropriate). If more than one index per table is usable for the expression given, chooses a
 // best match (typically the longest prefix by column count).
@@ -252,7 +261,7 @@ func getIndexes(
 		// Next try to match the remaining expressions individually
 		for _, e := range unusedExprs {
 			// TODO: eventually support merging spatial lookups
-			if _, ok := e.(*spatial.Intersects); ok {
+			if isSpatialAnalysisFunc(e) {
 				continue
 			}
 			indexes, err := getIndexes(ctx, ia, e, tableAliases)
@@ -279,7 +288,7 @@ func getIndexes(
 	// TODO (james): add all other spatial index supported functions here
 	// TODO: make generalizable to all functions?
 	switch e := e.(type) {
-	case *spatial.Intersects, *spatial.Within:
+	case *spatial.Intersects, *spatial.Within, *spatial.STEquals:
 		// don't pushdown functions with bindvars
 		if exprHasBindVar(e) {
 			return nil, nil
