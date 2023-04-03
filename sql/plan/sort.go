@@ -17,10 +17,11 @@ package plan
 import (
 	"container/heap"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
