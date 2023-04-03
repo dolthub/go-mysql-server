@@ -16,10 +16,10 @@ package aggregation
 
 import (
 	"errors"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"testing"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
