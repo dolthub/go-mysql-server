@@ -137,6 +137,19 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return nil, transform.SameTree, err
 	}
 
+	//hasLimit := false
+	//transform.Inspect(n, func(node sql.Node) bool {
+	//	if _, ok := node.(*plan.Limit); ok {
+	//		hasLimit = true
+	//		return false
+	//	}
+	//	return true
+	//})
+	//
+	//if hasLimit {
+	//	return n, transform.SameTree, nil
+	//}
+
 	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
 }
 
@@ -300,12 +313,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	}
 
 	// For each filter node, we want to push its predicates as low as possible.
-	hasLimit := false
 	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		// If there's a plan.Limit under this node, the filter can't be pushed any lower
-		if hasLimit {
-			return n, transform.SameTree, nil
-		}
 		switch n := node.(type) {
 		case *plan.Filter:
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
@@ -340,9 +348,6 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				return nil, transform.SameTree, err
 			}
 			return node, transform.NewTree, nil
-		case *plan.Limit:
-			hasLimit = true
-			return n, transform.SameTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -366,21 +371,13 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	}
 
 	// For each filter node, we want to push its predicates as low as possible.
-	hasLimit := false
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		// If there's a plan.Limit under this node, the filter can't be pushed any lower
-		if hasLimit {
-			return n, transform.SameTree, nil
-		}
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
 			filtersByTable := getFiltersByTable(n)
 			filters = newFilterSet(n.Expression, filtersByTable, tableAliases)
 			return transformFilterNode(n)
-		case *plan.Limit:
-			hasLimit = true
-			return n, transform.SameTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

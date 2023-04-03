@@ -204,39 +204,39 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	var scripts = []queries.ScriptTest{
-		{
-			Name:        "delete me",
-			SetUpScript: "create table mytable ("
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: `SELECT
-			"testing" AS s,
-			(SELECT max(i)
-			 FROM (SELECT * FROM mytable) mytable
-			 RIGHT JOIN
-				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-				 UNION ALL
-				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-				ON i2 = i) AS rj
-			FROM DUAL`,
-					Expected: []sql.Row{
-						{"testing", 3},
-					},
-				},
-			},
-		},
-	}
-
-	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		engine, err := harness.NewEngine(t)
-		if err != nil {
-			panic(err)
-		}
-
-		enginetest.TestScriptWithEngine(t, engine, harness, test)
-	}
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name:        "delete me",
+	//		SetUpScript: "create table mytable ("
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query: `SELECT
+	//		"testing" AS s,
+	//		(SELECT max(i)
+	//		 FROM (SELECT * FROM mytable) mytable
+	//		 RIGHT JOIN
+	//			((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
+	//			 UNION ALL
+	//			 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+	//			ON i2 = i) AS rj
+	//		FROM DUAL`,
+	//				Expected: []sql.Row{
+	//					{"testing", 3},
+	//				},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 
 	//t.Skip()
 	//var scripts = []queries.ScriptTest{
