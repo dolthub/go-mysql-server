@@ -79,8 +79,6 @@ func TestJoinOpsPrepared(t *testing.T, harness Harness) {
 				}
 			}
 
-			e.Analyzer.Verbose = true
-			e.Analyzer.Debug = true
 			for k, c := range biasedCosters {
 				e.Analyzer.Coster = c
 				for _, tt := range tt.tests {
