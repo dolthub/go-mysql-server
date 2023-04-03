@@ -59,6 +59,7 @@ const (
 
 // Type represents a SQL type.
 type Type interface {
+	CollationCoercible
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
 	Compare(interface{}, interface{}) (int, error)

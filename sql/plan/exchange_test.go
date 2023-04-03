@@ -152,6 +152,7 @@ type partitionable struct {
 }
 
 var _ sql.Table = partitionable{}
+var _ sql.CollationCoercible = partitionable{}
 
 // WithChildren implements the Node interface.
 func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -165,6 +166,11 @@ func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *partitionable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return p.Node.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p partitionable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Node)
 }
 
 func (partitionable) Children() []sql.Node { return nil }

@@ -25,6 +25,9 @@ type Distinct struct {
 	UnaryNode
 }
 
+var _ sql.Node = (*Distinct)(nil)
+var _ sql.CollationCoercible = (*Distinct)(nil)
+
 // NewDistinct creates a new Distinct node.
 func NewDistinct(child sql.Node) *Distinct {
 	return &Distinct{
@@ -62,6 +65,11 @@ func (d *Distinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *Distinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return d.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (d *Distinct) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, d.Child)
 }
 
 func (d Distinct) String() string {
@@ -142,6 +150,9 @@ type OrderedDistinct struct {
 	UnaryNode
 }
 
+var _ sql.Node = (*OrderedDistinct)(nil)
+var _ sql.CollationCoercible = (*OrderedDistinct)(nil)
+
 // NewOrderedDistinct creates a new OrderedDistinct node.
 func NewOrderedDistinct(child sql.Node) *OrderedDistinct {
 	return &OrderedDistinct{
@@ -179,6 +190,11 @@ func (d *OrderedDistinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *OrderedDistinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return d.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (d *OrderedDistinct) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, d.Child)
 }
 
 func (d OrderedDistinct) String() string {

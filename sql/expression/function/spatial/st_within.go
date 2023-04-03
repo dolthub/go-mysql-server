@@ -29,6 +29,7 @@ type Within struct {
 }
 
 var _ sql.FunctionExpression = (*Within)(nil)
+var _ sql.CollationCoercible = (*Within)(nil)
 
 // NewWithin creates a new Within expression.
 func NewWithin(g1, g2 sql.Expression) sql.Expression {
@@ -53,6 +54,11 @@ func (w *Within) Description() string {
 // Type implements the sql.Expression interface.
 func (w *Within) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Within) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (w *Within) String() string {
@@ -203,7 +209,6 @@ func isPointWithin(p types.Point, g types.GeometryValue) bool {
 	return false
 }
 
-// TODO: consider parallelization
 func isWithin(g1, g2 types.GeometryValue) bool {
 	switch g1 := g1.(type) {
 	case types.Point:
@@ -216,7 +221,7 @@ func isWithin(g1, g2 types.GeometryValue) bool {
 	case types.GeomColl:
 		// TODO (james): implement these
 	}
-	return true
+	return false
 }
 
 // Eval implements the sql.Expression interface.

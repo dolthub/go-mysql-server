@@ -34,6 +34,7 @@ type SystemBoolType_ struct {
 }
 
 var _ sql.SystemVariableType = SystemBoolType_{}
+var _ sql.CollationCoercible = SystemBoolType_{}
 
 // NewSystemBoolType returns a new systemBoolType.
 func NewSystemBoolType(varName string) sql.SystemVariableType {
@@ -175,6 +176,11 @@ func (t SystemBoolType_) String() string {
 // Type implements Type interface.
 func (t SystemBoolType_) Type() query.Type {
 	return sqltypes.Int8
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (SystemBoolType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // ValueType implements Type interface.

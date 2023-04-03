@@ -33,6 +33,7 @@ type CountDistinct struct {
 var _ sql.FunctionExpression = (*CountDistinct)(nil)
 var _ sql.Aggregation = (*CountDistinct)(nil)
 var _ sql.WindowAdaptableExpression = (*CountDistinct)(nil)
+var _ sql.CollationCoercible = (*CountDistinct)(nil)
 
 func NewCountDistinct(exprs ...sql.Expression) *CountDistinct {
 	return &CountDistinct{
@@ -43,6 +44,11 @@ func NewCountDistinct(exprs ...sql.Expression) *CountDistinct {
 // Type implements the Expression interface.
 func (a *CountDistinct) Type() sql.Type {
 	return types.Int64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CountDistinct) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the Expression interface.

@@ -72,6 +72,9 @@ type CachedResults struct {
 	disposed bool
 }
 
+var _ sql.Node = (*CachedResults)(nil)
+var _ sql.CollationCoercible = (*CachedResults)(nil)
+
 func (n *CachedResults) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
@@ -127,6 +130,11 @@ func (n *CachedResults) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (n *CachedResults) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (n *CachedResults) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, n.Child)
 }
 
 func (n *CachedResults) getCachedResults() []sql.Row {

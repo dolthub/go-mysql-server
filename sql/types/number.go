@@ -88,6 +88,7 @@ type NumberTypeImpl_ struct {
 
 var _ sql.Type = NumberTypeImpl_{}
 var _ sql.Type2 = NumberTypeImpl_{}
+var _ sql.CollationCoercible = NumberTypeImpl_{}
 
 // CreateNumberType creates a NumberType.
 func CreateNumberType(baseType query.Type) (sql.NumberType, error) {
@@ -703,6 +704,11 @@ func (t NumberTypeImpl_) Zero() interface{} {
 	default:
 		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 	}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (NumberTypeImpl_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsFloat implements NumberType interface.

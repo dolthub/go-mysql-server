@@ -34,6 +34,7 @@ type LastValue struct {
 var _ sql.FunctionExpression = (*LastValue)(nil)
 var _ sql.WindowAggregation = (*LastValue)(nil)
 var _ sql.WindowAdaptableExpression = (*LastValue)(nil)
+var _ sql.CollationCoercible = (*LastValue)(nil)
 
 func NewLastValue(e sql.Expression) sql.Expression {
 	return &LastValue{nil, expression.UnaryExpression{Child: e}, 0}
@@ -82,6 +83,11 @@ func (f *LastValue) FunctionName() string {
 // Type implements sql.Expression
 func (f *LastValue) Type() sql.Type {
 	return f.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *LastValue) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, f.Child)
 }
 
 // IsNullable implements sql.Expression

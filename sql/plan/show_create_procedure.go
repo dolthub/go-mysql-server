@@ -30,6 +30,7 @@ type ShowCreateProcedure struct {
 
 var _ sql.Databaser = (*ShowCreateProcedure)(nil)
 var _ sql.Node = (*ShowCreateProcedure)(nil)
+var _ sql.CollationCoercible = (*ShowCreateProcedure)(nil)
 
 var showCreateProcedureSchema = sql.Schema{
 	&sql.Column{Name: "Procedure", Type: types.LongText, Nullable: false},
@@ -136,6 +137,11 @@ func (s *ShowCreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.Pr
 		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_CreateRoutine)) ||
 		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_AlterRoutine)) ||
 		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_Execute))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCreateProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the sql.Databaser interface.

@@ -42,6 +42,9 @@ type CreateView struct {
 	CheckOpt         string
 }
 
+var _ sql.Node = (*CreateView)(nil)
+var _ sql.CollationCoercible = (*CreateView)(nil)
+
 // NewCreateView creates a CreateView node with the specified parameters,
 // setting its catalog to nil.
 func NewCreateView(
@@ -156,6 +159,11 @@ func (cv *CreateView) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(cv.database.Name(), "", "", sql.PrivilegeType_CreateView)) &&
 		cv.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateView) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the Databaser interface, and it returns the database in

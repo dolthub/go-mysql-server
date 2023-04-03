@@ -80,6 +80,7 @@ type InsertInto struct {
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
 var _ sql.Expressioner = (*InsertInto)(nil)
+var _ sql.CollationCoercible = (*InsertInto)(nil)
 var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
@@ -130,7 +131,9 @@ type InsertDestination struct {
 	Sch sql.Schema
 }
 
+var _ sql.Node = (*InsertDestination)(nil)
 var _ sql.Expressioner = (*InsertDestination)(nil)
+var _ sql.CollationCoercible = (*InsertDestination)(nil)
 
 func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
 	return &InsertDestination{
@@ -204,6 +207,11 @@ func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error)
 // CheckPrivileges implements the interface sql.Node.
 func (id *InsertDestination) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return id.Child.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (id *InsertDestination) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, id.Child)
 }
 
 type insertIter struct {
@@ -697,6 +705,11 @@ func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 		return opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert))
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*InsertInto) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // DisjointedChildren implements the interface DisjointedChildrenNode.

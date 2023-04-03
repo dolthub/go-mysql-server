@@ -66,6 +66,9 @@ type ShowProcessList struct {
 	Database string
 }
 
+var _ sql.Node = (*ShowProcessList)(nil)
+var _ sql.CollationCoercible = (*ShowProcessList)(nil)
+
 // NewShowProcessList creates a new ProcessList node.
 func NewShowProcessList() *ShowProcessList { return new(ShowProcessList) }
 
@@ -88,6 +91,11 @@ func (p *ShowProcessList) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (p *ShowProcessList) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Process))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowProcessList) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Schema implements the Node interface.

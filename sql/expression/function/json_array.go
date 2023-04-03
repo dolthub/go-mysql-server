@@ -33,6 +33,7 @@ type JSONArray struct {
 }
 
 var _ sql.FunctionExpression = (*JSONArray)(nil)
+var _ sql.CollationCoercible = (*JSONArray)(nil)
 
 // NewJSONArray creates a new JSONArray function.
 func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
@@ -79,6 +80,11 @@ func (j *JSONArray) String() string {
 // Type implements the Expression interface.
 func (j *JSONArray) Type() sql.Type {
 	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (JSONArray) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
 }
 
 // IsNullable implements the Expression interface.

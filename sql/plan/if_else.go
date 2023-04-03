@@ -30,6 +30,7 @@ type IfConditional struct {
 var _ sql.Node = (*IfConditional)(nil)
 var _ sql.DebugStringer = (*IfConditional)(nil)
 var _ sql.Expressioner = (*IfConditional)(nil)
+var _ sql.CollationCoercible = (*IfConditional)(nil)
 var _ RepresentsBlock = (*IfConditional)(nil)
 
 // NewIfConditional creates a new *IfConditional node.
@@ -87,6 +88,11 @@ func (ic *IfConditional) CheckPrivileges(ctx *sql.Context, opChecker sql.Privile
 	return ic.Body.CheckPrivileges(ctx, opChecker)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (ic *IfConditional) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, ic.Body)
+}
+
 // Expressions implements the sql.Expressioner interface.
 func (ic *IfConditional) Expressions() []sql.Expression {
 	return []sql.Expression{ic.Condition}
@@ -118,6 +124,7 @@ type IfElseBlock struct {
 }
 
 var _ sql.Node = (*IfElseBlock)(nil)
+var _ sql.CollationCoercible = (*IfElseBlock)(nil)
 var _ sql.DebugStringer = (*IfElseBlock)(nil)
 var _ RepresentsBlock = (*IfElseBlock)(nil)
 
@@ -217,6 +224,13 @@ func (ieb *IfElseBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 		return ieb.Else.CheckPrivileges(ctx, opChecker)
 	}
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (ieb *IfElseBlock) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// We'll only be able to know which branch was taken during the RowIter, so we can't rely on that here.
+	// I'm going to make the assumption that this will never need to be used, so we'll return 7 here.
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the sql.Node interface.

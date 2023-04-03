@@ -47,6 +47,7 @@ var (
 
 var _ sql.Type = MultiPolygonType{}
 var _ sql.SpatialColumnType = MultiPolygonType{}
+var _ sql.CollationCoercible = MultiPolygonType{}
 var _ GeometryValue = MultiPolygon{}
 
 // Compare implements Type interface.
@@ -127,6 +128,11 @@ func (t MultiPolygonType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t MultiPolygonType) Zero() interface{} {
 	return MultiPolygon{Polygons: []Polygon{PolygonType{}.Zero().(Polygon)}}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (MultiPolygonType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

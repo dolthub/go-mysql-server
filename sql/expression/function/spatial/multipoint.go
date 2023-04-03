@@ -30,6 +30,7 @@ type MultiPoint struct {
 }
 
 var _ sql.FunctionExpression = (*MultiPoint)(nil)
+var _ sql.CollationCoercible = (*MultiPoint)(nil)
 
 // NewMultiPoint creates a new MultiPoint.
 func NewMultiPoint(args ...sql.Expression) (sql.Expression, error) {
@@ -52,6 +53,11 @@ func (l *MultiPoint) Description() string {
 // Type implements the sql.Expression interface.
 func (l *MultiPoint) Type() sql.Type {
 	return types.MultiPointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MultiPoint) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *MultiPoint) String() string {

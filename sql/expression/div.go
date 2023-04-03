@@ -41,6 +41,7 @@ const divIntermediatePrecisionInc = 9
 const ERDivisionByZero = 1365
 
 var _ ArithmeticOp = (*Div)(nil)
+var _ sql.CollationCoercible = (*Div)(nil)
 
 // Div expression represents "/" arithmetic operation
 type Div struct {
@@ -111,6 +112,11 @@ func (d *Div) Type() sql.Type {
 	// for division operation, it's either float or decimal.Decimal type
 	// except invalid value will result it either 0 or nil
 	return floatOrDecimalType(d)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Div) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.
@@ -559,6 +565,7 @@ func getPrecInc(e sql.Expression, cur int) int {
 }
 
 var _ ArithmeticOp = (*IntDiv)(nil)
+var _ sql.CollationCoercible = (*IntDiv)(nil)
 
 // IntDiv expression represents integer "div" arithmetic operation
 type IntDiv struct {
@@ -632,6 +639,11 @@ func (i *IntDiv) Type() sql.Type {
 	// using max precision which is 65.
 	defType := types.MustCreateDecimalType(65, 0)
 	return defType
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IntDiv) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // WithChildren implements the Expression interface.

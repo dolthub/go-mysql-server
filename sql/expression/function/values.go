@@ -31,6 +31,7 @@ type Values struct {
 }
 
 var _ sql.FunctionExpression = (*Values)(nil)
+var _ sql.CollationCoercible = (*Values)(nil)
 
 // NewValues creates a new Values function.
 func NewValues(col sql.Expression) sql.Expression {
@@ -65,6 +66,11 @@ func (v *Values) String() string {
 // Type implements sql.FunctionExpression.
 func (v *Values) Type() sql.Type {
 	return v.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (v *Values) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, v.Child)
 }
 
 // WithChildren implements sql.FunctionExpression.

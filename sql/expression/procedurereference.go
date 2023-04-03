@@ -320,6 +320,9 @@ type ProcedureParam struct {
 	hasBeenSet bool
 }
 
+var _ sql.Expression = (*ProcedureParam)(nil)
+var _ sql.CollationCoercible = (*ProcedureParam)(nil)
+
 // NewProcedureParam creates a new ProcedureParam expression.
 func NewProcedureParam(name string) *ProcedureParam {
 	return &ProcedureParam{name: strings.ToLower(name)}
@@ -343,6 +346,12 @@ func (*ProcedureParam) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (pp *ProcedureParam) Type() sql.Type {
 	return pp.pRef.GetVariableType(pp.name)
+}
+
+// CollationCoercibility implements the sql.CollationCoercible interface.
+func (pp *ProcedureParam) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	collation, _ = pp.pRef.GetVariableType(pp.name).CollationCoercibility(ctx)
+	return collation, 2
 }
 
 // Name implements the Nameable interface.
@@ -385,6 +394,9 @@ type UnresolvedProcedureParam struct {
 	name string
 }
 
+var _ sql.Expression = (*UnresolvedProcedureParam)(nil)
+var _ sql.CollationCoercible = (*UnresolvedProcedureParam)(nil)
+
 // NewUnresolvedProcedureParam creates a new UnresolvedProcedureParam expression.
 func NewUnresolvedProcedureParam(name string) *UnresolvedProcedureParam {
 	return &UnresolvedProcedureParam{name: strings.ToLower(name)}
@@ -408,6 +420,11 @@ func (*UnresolvedProcedureParam) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (*UnresolvedProcedureParam) Type() sql.Type {
 	return types.Null
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnresolvedProcedureParam) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Name implements the Nameable interface.

@@ -36,6 +36,7 @@ type ColumnDefaultValue struct {
 }
 
 var _ Expression = (*ColumnDefaultValue)(nil)
+var _ CollationCoercible = (*ColumnDefaultValue)(nil)
 
 // NewColumnDefaultValue returns a new ColumnDefaultValue expression.
 func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool, parenthesized bool, mayReturnNil bool) (*ColumnDefaultValue, error) {
@@ -171,6 +172,14 @@ func (e *ColumnDefaultValue) Type() Type {
 	return e.outType
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e *ColumnDefaultValue) CollationCoercibility(ctx *Context) (collation CollationID, coercibility byte) {
+	if e == nil {
+		return Collation_binary, 6
+	}
+	return GetCoercibility(ctx, e.Expression)
+}
+
 // WithChildren implements sql.Expression
 func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, error) {
 	if e == nil && len(children) == 0 {
@@ -209,6 +218,9 @@ type UnresolvedColumnDefault struct {
 	exprString string
 }
 
+var _ Expression = UnresolvedColumnDefault{}
+var _ CollationCoercible = UnresolvedColumnDefault{}
+
 func (u UnresolvedColumnDefault) Resolved() bool {
 	return false
 }
@@ -219,6 +231,11 @@ func (u UnresolvedColumnDefault) String() string {
 
 func (u UnresolvedColumnDefault) Type() Type {
 	panic("UnresolvedColumnDefault is a placeholder node, but Type() was called")
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (UnresolvedColumnDefault) CollationCoercibility(ctx *Context) (collation CollationID, coercibility byte) {
+	return Collation_binary, 7
 }
 
 func (u UnresolvedColumnDefault) IsNullable() bool {

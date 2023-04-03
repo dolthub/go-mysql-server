@@ -42,6 +42,7 @@ func NewCreateRole(ifNotExists bool, roles []UserName) *CreateRole {
 }
 
 var _ sql.Node = (*CreateRole)(nil)
+var _ sql.CollationCoercible = (*CreateRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *CreateRole) Schema() sql.Schema {
@@ -99,6 +100,11 @@ func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateRole)) ||
 		opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

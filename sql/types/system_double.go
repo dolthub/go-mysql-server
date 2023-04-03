@@ -35,6 +35,7 @@ type systemDoubleType struct {
 }
 
 var _ sql.SystemVariableType = systemDoubleType{}
+var _ sql.CollationCoercible = systemDoubleType{}
 
 // NewSystemDoubleType returns a new systemDoubleType.
 func NewSystemDoubleType(varName string, lowerbound, upperbound float64) sql.SystemVariableType {
@@ -170,6 +171,11 @@ func (t systemDoubleType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t systemDoubleType) Zero() interface{} {
 	return float64(0)
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (systemDoubleType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // EncodeValue implements SystemVariableType interface.

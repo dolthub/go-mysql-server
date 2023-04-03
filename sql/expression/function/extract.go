@@ -29,6 +29,7 @@ type Extract struct {
 }
 
 var _ sql.FunctionExpression = (*Extract)(nil)
+var _ sql.CollationCoercible = (*Extract)(nil)
 
 // NewExtract creates a new Extract expression.
 func NewExtract(e1, e2 sql.Expression) sql.Expression {
@@ -52,6 +53,11 @@ func (td *Extract) Description() string {
 
 // Type implements the Expression interface.
 func (td *Extract) Type() sql.Type { return types.Int64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Extract) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 func (td *Extract) String() string {
 	return fmt.Sprintf("%s(%s from %s)", td.FunctionName(), td.Left, td.Right)

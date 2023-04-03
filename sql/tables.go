@@ -166,6 +166,16 @@ type CheckAlterableTable interface {
 	DropCheck(ctx *Context, chName string) error
 }
 
+// CollationAlterableTable represents a table that supports the alteration of its collation.
+type CollationAlterableTable interface {
+	Table
+	// ModifyStoredCollation modifies the default collation that is set on the table, along with converting all columns
+	// to the given collation (ALTER TABLE ... CONVERT TO CHARACTER SET).
+	ModifyStoredCollation(ctx *Context, collation CollationID) error
+	// ModifyDefaultCollation modifies the default collation that is set on the table (ALTER TABLE ... COLLATE).
+	ModifyDefaultCollation(ctx *Context, collation CollationID) error
+}
+
 // PrimaryKeyTable is a table with a primary key.
 type PrimaryKeyTable interface {
 	// PrimaryKeySchema returns this table's PrimaryKeySchema

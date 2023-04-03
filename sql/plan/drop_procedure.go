@@ -29,6 +29,7 @@ type DropProcedure struct {
 
 var _ sql.Databaser = (*DropProcedure)(nil)
 var _ sql.Node = (*DropProcedure)(nil)
+var _ sql.CollationCoercible = (*DropProcedure)(nil)
 
 // NewDropProcedure creates a new *DropProcedure node.
 func NewDropProcedure(db sql.Database, procedureName string, ifExists bool) *DropProcedure {
@@ -92,6 +93,11 @@ func (d *DropProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (d *DropProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(d.db.Name(), "", "", sql.PrivilegeType_AlterRoutine))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the sql.Databaser interface.

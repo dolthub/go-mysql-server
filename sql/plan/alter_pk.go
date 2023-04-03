@@ -45,8 +45,10 @@ type AlterPK struct {
 	targetSchema sql.Schema
 }
 
+var _ sql.Node = (*AlterPK)(nil)
 var _ sql.Databaser = (*AlterPK)(nil)
 var _ sql.SchemaTarget = (*AlterPK)(nil)
+var _ sql.CollationCoercible = (*AlterPK)(nil)
 
 func NewAlterCreatePk(db sql.Database, table sql.Node, columns []sql.IndexColumn) *AlterPK {
 	return &AlterPK{
@@ -363,4 +365,9 @@ func (a AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
 func (a *AlterPK) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(a.Database().Name(), getTableName(a.Table), "", sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AlterPK) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

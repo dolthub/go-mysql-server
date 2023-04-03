@@ -41,6 +41,7 @@ type MultiPoint struct {
 
 var _ sql.Type = MultiPointType{}
 var _ sql.SpatialColumnType = MultiPointType{}
+var _ sql.CollationCoercible = MultiPointType{}
 var _ GeometryValue = MultiPoint{}
 
 var (
@@ -131,6 +132,11 @@ func (t MultiPointType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t MultiPointType) Zero() interface{} {
 	return MultiPoint{Points: []Point{{}}}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (MultiPointType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

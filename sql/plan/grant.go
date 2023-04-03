@@ -37,6 +37,7 @@ type Grant struct {
 
 var _ sql.Node = (*Grant)(nil)
 var _ sql.Databaser = (*Grant)(nil)
+var _ sql.CollationCoercible = (*Grant)(nil)
 
 // NewGrant returns a new Grant node.
 func NewGrant(db sql.Database, privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, withGrant bool, as *GrantUserAssumption, granter string) (*Grant, error) {
@@ -197,6 +198,11 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 			sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
 				convertToSqlPrivilegeType(true, n.Privileges...)...))
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Grant) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.
@@ -588,6 +594,7 @@ type GrantRole struct {
 
 var _ sql.Node = (*GrantRole)(nil)
 var _ sql.Databaser = (*GrantRole)(nil)
+var _ sql.CollationCoercible = (*GrantRole)(nil)
 
 // NewGrantRole returns a new GrantRole node.
 func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole {
@@ -688,6 +695,11 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 	return true
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GrantRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 // RowIter implements the interface sql.Node.
 func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
@@ -731,6 +743,7 @@ type GrantProxy struct {
 }
 
 var _ sql.Node = (*GrantProxy)(nil)
+var _ sql.CollationCoercible = (*GrantProxy)(nil)
 
 // NewGrantProxy returns a new GrantProxy node.
 func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
@@ -777,6 +790,11 @@ func (n *GrantProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (n *GrantProxy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: add this when proxy support is added
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GrantProxy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

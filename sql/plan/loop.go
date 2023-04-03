@@ -36,6 +36,7 @@ type Loop struct {
 var _ sql.Node = (*Loop)(nil)
 var _ sql.DebugStringer = (*Loop)(nil)
 var _ sql.Expressioner = (*Loop)(nil)
+var _ sql.CollationCoercible = (*Loop)(nil)
 var _ RepresentsLabeledBlock = (*Loop)(nil)
 
 // NewLoop returns a new *Loop node.
@@ -117,6 +118,11 @@ func (l *Loop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (l *Loop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return l.Block.CheckPrivileges(ctx, opChecker)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Loop) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return l.Block.CollationCoercibility(ctx)
 }
 
 // RowIter implements the interface sql.Node.

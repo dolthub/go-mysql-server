@@ -42,6 +42,7 @@ type RegexpLike struct {
 }
 
 var _ sql.FunctionExpression = (*RegexpLike)(nil)
+var _ sql.CollationCoercible = (*RegexpLike)(nil)
 
 // NewRegexpLike creates a new RegexpLike expression.
 func NewRegexpLike(args ...sql.Expression) (sql.Expression, error) {
@@ -76,6 +77,13 @@ func (r *RegexpLike) Description() string {
 
 // Type implements the sql.Expression interface.
 func (r *RegexpLike) Type() sql.Type { return types.Int8 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *RegexpLike) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, r.Text)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, r.Pattern)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+}
 
 // IsNullable implements the sql.Expression interface.
 func (r *RegexpLike) IsNullable() bool { return true }

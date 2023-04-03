@@ -40,6 +40,9 @@ type Like struct {
 	cached bool
 }
 
+var _ sql.Expression = (*Like)(nil)
+var _ sql.CollationCoercible = (*Like)(nil)
+
 type likeMatcherErrTuple struct {
 	matcher LikeMatcher
 	err     error
@@ -67,6 +70,13 @@ func NewLike(left, right, escape sql.Expression) sql.Expression {
 // Type implements the sql.Expression interface.
 func (l *Like) Type() sql.Type { return types.Boolean }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Like) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, l.Left)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, l.Right)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+}
+
 // Eval implements the sql.Expression interface.
 func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("expression.Like")
@@ -93,13 +103,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if right == nil {
 			return nil, nil
 		}
-		leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
-		rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
-		var collation sql.CollationID
-		collation, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
-		if err != nil {
-			return nil, err
-		}
+		collation, _ := l.CollationCoercibility(ctx)
 		lm, err = ConstructLikeMatcher(collation, *right, escape)
 	} else {
 		l.once.Do(func() {
@@ -109,12 +113,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 					if err != nil || right == nil {
 						return likeMatcherErrTuple{LikeMatcher{}, err}
 					}
-					leftCollation, leftCoercibility := GetCollationViaCoercion(l.Left)
-					rightCollation, rightCoercibility := GetCollationViaCoercion(l.Right)
-					collation, err := ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
-					if err != nil {
-						return likeMatcherErrTuple{LikeMatcher{}, err}
-					}
+					collation, _ := l.CollationCoercibility(ctx)
 					m, e := ConstructLikeMatcher(collation, *right, escape)
 					return likeMatcherErrTuple{m, e}
 				},

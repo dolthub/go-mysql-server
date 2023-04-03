@@ -28,6 +28,7 @@ type Lower struct {
 }
 
 var _ sql.FunctionExpression = (*Lower)(nil)
+var _ sql.CollationCoercible = (*Lower)(nil)
 
 // NewLower creates a new Lower expression.
 func NewLower(e sql.Expression) sql.Expression {
@@ -82,12 +83,18 @@ func (l *Lower) Type() sql.Type {
 	return l.Child.Type()
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Lower) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, l.Child)
+}
+
 // Upper is a function that returns the UPPERCASE of the text provided.
 type Upper struct {
 	expression.UnaryExpression
 }
 
 var _ sql.FunctionExpression = (*Upper)(nil)
+var _ sql.CollationCoercible = (*Upper)(nil)
 
 // NewUpper creates a new Lower expression.
 func NewUpper(e sql.Expression) sql.Expression {
@@ -140,4 +147,9 @@ func (u *Upper) WithChildren(children ...sql.Expression) (sql.Expression, error)
 // Type implements the Expression interface.
 func (u *Upper) Type() sql.Type {
 	return u.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (u *Upper) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, u.Child)
 }

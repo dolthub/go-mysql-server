@@ -34,6 +34,7 @@ type ConvertTz struct {
 }
 
 var _ sql.FunctionExpression = (*ConvertTz)(nil)
+var _ sql.CollationCoercible = (*ConvertTz)(nil)
 
 // NewConvertTz returns an implementation of the CONVERT_TZ() function.
 func NewConvertTz(dt, fromTz, toTz sql.Expression) sql.Expression {
@@ -67,6 +68,11 @@ func (c *ConvertTz) String() string {
 // Type implements the sql.Expression interface.
 func (c *ConvertTz) Type() sql.Type {
 	return types.Datetime
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ConvertTz) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // IsNullable implements the sql.Expression interface.

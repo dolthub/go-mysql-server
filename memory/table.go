@@ -80,6 +80,7 @@ var _ sql.TruncateableTable = (*Table)(nil)
 var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
+var _ sql.CollationAlterableTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
@@ -1530,6 +1531,17 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 		delete(t.indexes, fromIndexName)
 		t.indexes[toIndexName] = idx
 	}
+	return nil
+}
+
+// ModifyStoredCollation implements sql.CollationAlterableTable
+func (t *Table) ModifyStoredCollation(ctx *sql.Context, collation sql.CollationID) error {
+	return fmt.Errorf("converting the collations of columns is not yet supported")
+}
+
+// ModifyDefaultCollation implements sql.CollationAlterableTable
+func (t *Table) ModifyDefaultCollation(ctx *sql.Context, collation sql.CollationID) error {
+	t.collation = collation
 	return nil
 }
 

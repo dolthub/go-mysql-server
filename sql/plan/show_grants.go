@@ -34,6 +34,7 @@ type ShowGrants struct {
 
 var _ sql.Node = (*ShowGrants)(nil)
 var _ sql.Databaser = (*ShowGrants)(nil)
+var _ sql.CollationCoercible = (*ShowGrants)(nil)
 
 // NewShowGrants returns a new ShowGrants node.
 func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *ShowGrants {
@@ -113,6 +114,11 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		return opChecker.UserHasPrivileges(ctx,
 			sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Select))
 	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowGrants) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // generatePrivStrings creates a formatted GRANT <privilege_list> on <global/database/table> to <user@host> string
