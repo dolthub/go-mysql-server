@@ -128,7 +128,7 @@ func (r *RecursiveCte) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(r.union.SortFields, limit, false, iter)
+		iter = newTopRowsIter(r.union.SortFields, limit, false, iter, len(r.union.Schema()))
 	} else if r.union.Limit != nil {
 		limit, err := getInt64Value(ctx, r.union.Limit)
 		if err != nil {
