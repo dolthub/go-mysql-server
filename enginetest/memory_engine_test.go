@@ -212,11 +212,10 @@ func TestSingleScript(t *testing.T) {
 				"INSERT INTO tab1 VALUES (1, 1), (2, 3), (3, 6)",
 				"CREATE TABLE tab2 (i2 int primary key, s text)",
 				"INSERT INTO tab2 VALUES (1, 'b'), (2, 'm'), (3, 'g')",
-
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT m.id, t.s FROM tab1 m JOIN tab2 t on m.id = t.i2 ORDER BY t.s DESC LIMIT 1 INTO @myId, @myText",
+					Query: "SELECT m.id, t.s FROM tab1 m JOIN tab2 t on m.id = t.i2 ORDER BY t.s DESC LIMIT 1 INTO @myId, @myText",
 				},
 				{
 					Query:    `SELECT @myId, @myText, @myUnion`,
