@@ -19,10 +19,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 type GroupConcat struct {
