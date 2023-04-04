@@ -17,12 +17,13 @@ func _() {
 	_ = x[HintTypeSemiJoin-6]
 	_ = x[HintTypeAntiJoin-7]
 	_ = x[HintTypeInnerJoin-8]
-	_ = x[HintTypeNoIndexConditionPushDown-9]
+	_ = x[HintTypeRightSemiLookupJoin-9]
+	_ = x[HintTypeNoIndexConditionPushDown-10]
 }
 
-const _HintType_name = "JOIN_ORDERJOIN_FIXED_ORDERMERGE_JOINLOOKUP_JOINHASH_JOINSEMI_JOINANTI_JOININNER_JOINNO_ICP"
+const _HintType_name = "JOIN_ORDERJOIN_FIXED_ORDERMERGE_JOINLOOKUP_JOINHASH_JOINSEMI_JOINANTI_JOININNER_JOINRIGHT_SEMI_LOOKUP_JOINNO_ICP"
 
-var _HintType_index = [...]uint8{0, 0, 10, 26, 36, 47, 56, 65, 74, 84, 90}
+var _HintType_index = [...]uint8{0, 0, 10, 26, 36, 47, 56, 65, 74, 84, 106, 112}
 
 func (i HintType) String() string {
 	if i >= HintType(len(_HintType_index)-1) {

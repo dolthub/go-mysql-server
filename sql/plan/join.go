@@ -82,9 +82,10 @@ func (i JoinType) IsFullOuter() bool {
 func (i JoinType) IsPhysical() bool {
 	switch i {
 	case JoinTypeLookup, JoinTypeLeftOuterLookup,
-		JoinTypeSemiLookup, JoinTypeRightSemiLookup,
+		JoinTypeSemiLookup, JoinTypeRightSemiLookup, JoinTypeSemiMerge, JoinTypeSemiHash,
 		JoinTypeHash, JoinTypeLeftOuterHash,
-		JoinTypeMerge, JoinTypeLeftOuterMerge:
+		JoinTypeMerge, JoinTypeLeftOuterMerge,
+		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash:
 		return true
 	default:
 		return false
@@ -172,8 +173,12 @@ func (i JoinType) IsPlaceholder() bool {
 }
 
 func (i JoinType) IsLookup() bool {
-	return i == JoinTypeLookup ||
-		i == JoinTypeLeftOuterLookup
+	switch i {
+	case JoinTypeLookup, JoinTypeLeftOuterLookup, JoinTypeAntiLookup:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsCross() bool {

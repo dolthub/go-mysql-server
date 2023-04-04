@@ -28,10 +28,12 @@ type ResolvedTable struct {
 	sql.Table
 	Database sql.Database
 	AsOf     interface{}
+	comment  string
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
+var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)
 
@@ -46,6 +48,16 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 // NewResolvedDualTable creates a new instance of ResolvedTable.
 func NewResolvedDualTable() *ResolvedTable {
 	return &ResolvedTable{Table: NewDualSqlTable(), Database: memory.NewDatabase(""), AsOf: nil}
+}
+
+func (t *ResolvedTable) WithComment(s string) sql.Node {
+	ret := *t
+	ret.comment = s
+	return &ret
+}
+
+func (t *ResolvedTable) Comment() string {
+	return t.comment
 }
 
 func (t *ResolvedTable) WithName(s string) sql.Node {
@@ -108,6 +120,9 @@ func (t *ResolvedTable) DebugString() string {
 		}
 	}
 	children = append(children, fmt.Sprintf("columns: %v", columns))
+	if t.comment != "" {
+		children = append(children, fmt.Sprintf("comment: %s", t.comment))
+	}
 
 	if ft, ok := table.(sql.FilteredTable); ok {
 		var filters []string

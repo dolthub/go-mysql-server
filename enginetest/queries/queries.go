@@ -1759,6 +1759,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive a as (select 1) select * from a union select * from a;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Query:    "with cte(x) as (select 0) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
 		Expected: []sql.Row{},
 	},

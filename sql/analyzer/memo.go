@@ -97,11 +97,12 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 	if grp.done {
 		return nil
 	}
+	var err error
 	n := grp.first
 	for n != nil {
 		var cost float64
 		for _, g := range n.children() {
-			err := m.optimizeMemoGroup(g)
+			err = m.optimizeMemoGroup(g)
 			if err != nil {
 				return err
 			}
@@ -111,6 +112,23 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 		if err != nil {
 			return err
 		}
+
+		if grp.relProps.distinct.IsHash() {
+			var dCost float64
+			if sortedInputs(n) {
+				n.setDistinct(sortedDistinctOp)
+			} else {
+				n.setDistinct(hashDistinctOp)
+				dCost, err = m.c.EstimateCost(m.ctx, &distinct{child: grp}, m.statsRw)
+				if err != nil {
+					return err
+				}
+			}
+			relCost += dCost
+		} else {
+			n.setDistinct(noDistinctOp)
+		}
+
 		n.setCost(relCost)
 		cost += relCost
 		m.updateBest(grp, n, cost)
@@ -118,7 +136,6 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 	}
 
 	grp.done = true
-	var err error
 	grp.relProps.card, err = m.s.EstimateCard(m.ctx, grp.best, m.statsRw)
 	if err != nil {
 		return err
@@ -176,7 +193,7 @@ func (m *Memo) applyHint(hint Hint) {
 	case HintTypeJoinOrder:
 		m.WithJoinOrder(hint.Args)
 	case HintTypeJoinFixedOrder:
-	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin:
+	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin, HintTypeRightSemiLookupJoin:
 		m.WithJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
 	default:
 	}
@@ -254,8 +271,9 @@ type relProps struct {
 
 	card float64
 
-	limit  sql.Expression
-	filter sql.Expression
+	distinct distinctOp
+	limit    sql.Expression
+	filter   sql.Expression
 }
 
 func newRelProps(rel relExpr) *relProps {
@@ -361,6 +379,93 @@ func (p *relProps) OutputTables() sql.FastIntSet {
 // InputTables returns a bitmap of tables input into this node.
 func (p *relProps) InputTables() sql.FastIntSet {
 	return p.inputTables
+}
+
+// sortedInputs returns true if a relation's inputs are sorted on the
+// full output schema. The OrderedDistinct operator can be used in this
+// case.
+func sortedInputs(rel relExpr) bool {
+	switch r := rel.(type) {
+	case *max1Row:
+		return true
+	case *project:
+		if _, ok := r.child.best.(*max1Row); ok {
+			return true
+		}
+		sortedOn := sortedColsForRel(r.child.best)
+		childOutputs := r.outputCols()
+		if len(sortedOn) < len(childOutputs) {
+			return false
+		}
+		sorted := make(map[tableCol]struct{})
+		for _, c := range sortedOn {
+			sorted[tableCol{table: c.Source, col: c.Name}] = struct{}{}
+		}
+		for _, c := range childOutputs {
+			if _, ok := sorted[tableCol{table: strings.ToLower(c.Source), col: strings.ToLower(c.Name)}]; !ok {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+func sortedColsForRel(rel relExpr) sql.Schema {
+	switch r := rel.(type) {
+	case *tableScan:
+		tab, ok := r.table.Table.(sql.PrimaryKeyTable)
+		if ok {
+			ords := tab.PrimaryKeySchema().PkOrdinals
+			var pks sql.Schema
+			for _, i := range ords {
+				pks = append(pks, tab.PrimaryKeySchema().Schema[i])
+			}
+			return pks
+		}
+	case *mergeJoin:
+		var ret sql.Schema
+		for _, e := range r.innerScan.idx.Expressions() {
+			// TODO columns can have "." characters, this will miss cases
+			parts := strings.Split(e, ".")
+			var name string
+			if len(parts) == 2 {
+				name = parts[1]
+			} else {
+				return nil
+			}
+			ret = append(ret, &sql.Column{
+				Name:     strings.ToLower(name),
+				Source:   strings.ToLower(r.innerScan.idx.Table()),
+				Nullable: true},
+			)
+		}
+		return ret
+	case joinRel:
+		return sortedColsForRel(r.joinPrivate().left.best)
+	case *project:
+		// TODO remove projections from sortedColsForRel(n.child.best)
+		return nil
+	case *tableAlias:
+		rt, ok := r.table.Child.(*plan.ResolvedTable)
+		if !ok {
+			return nil
+		}
+		tab, ok := rt.Table.(sql.PrimaryKeyTable)
+		if ok {
+			ords := tab.PrimaryKeySchema().PkOrdinals
+			var pks sql.Schema
+			for _, i := range ords {
+				col := tab.PrimaryKeySchema().Schema[i].Copy()
+				col.Source = r.name()
+				pks = append(pks, col)
+			}
+			return pks
+		}
+	default:
+	}
+	return nil
 }
 
 type tableProps struct {
@@ -537,6 +642,8 @@ type relExpr interface {
 	setGroup(g *exprGroup)
 	setCost(c float64)
 	cost() float64
+	distinct() distinctOp
+	setDistinct(distinctOp)
 }
 
 type relBase struct {
@@ -548,6 +655,8 @@ type relBase struct {
 	c float64
 	// cnt is this relations output row count
 	cnt float64
+	// d indicates a relExpr should be checked for distinctness
+	d distinctOp
 }
 
 // relKEy is a quick identifier for avoiding duplicate work on the same
@@ -562,6 +671,27 @@ func relKey(r relExpr) uint64 {
 		i *= 1<<16 - 1
 	}
 	return uint64(key)
+}
+
+type distinctOp uint8
+
+const (
+	unknownDistinctOp distinctOp = iota
+	noDistinctOp
+	sortedDistinctOp
+	hashDistinctOp
+)
+
+func (d distinctOp) IsHash() bool {
+	return d == hashDistinctOp
+}
+
+func (r *relBase) distinct() distinctOp {
+	return r.d
+}
+
+func (r *relBase) setDistinct(d distinctOp) {
+	r.d = d
 }
 
 func (r *relBase) group() *exprGroup {
@@ -771,7 +901,8 @@ var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
 		},
 	},
 	{
-		Name:    "distinct",
-		IsUnary: true,
+		Name:     "distinct",
+		IsUnary:  true,
+		SkipExec: true,
 	},
 }

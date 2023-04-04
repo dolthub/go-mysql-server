@@ -443,6 +443,7 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 		off = i.scopeLen + i.parentLen + i.leftRowLen
 		restore = make(sql.Row, i.rightRowLen)
 		copy(restore, i.fullRow[off:off+i.rightRowLen])
+	default:
 	}
 
 	// peek lookahead
@@ -457,7 +458,7 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	// check if lookahead valid
 	copySubslice(i.fullRow, peek, off)
 	res, err := i.cmp.Compare(ctx, i.fullRow)
-	if sql.ErrValueOutOfRange.Is(err) {
+	if expression.ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
 		copySubslice(i.fullRow, restore, off)
 	} else if err != nil {
 		return false, nil, err
