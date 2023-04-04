@@ -115,7 +115,7 @@ func (m *Memo) optimizeMemoGroup(grp *exprGroup) error {
 
 		if grp.relProps.distinct.IsHash() {
 			var dCost float64
-			if sortedOnDistinct(n) {
+			if sortedInputs(n) {
 				n.setDistinct(sortedDistinctOp)
 			} else {
 				n.setDistinct(hashDistinctOp)
@@ -381,10 +381,10 @@ func (p *relProps) InputTables() sql.FastIntSet {
 	return p.inputTables
 }
 
-// sortedOnDistinct returns true if a relation's inputs are sorted on the
+// sortedInputs returns true if a relation's inputs are sorted on the
 // full output schema. The OrderedDistinct operator can be used in this
 // case.
-func sortedOnDistinct(rel relExpr) bool {
+func sortedInputs(rel relExpr) bool {
 	switch r := rel.(type) {
 	case *max1Row:
 		return true
@@ -427,6 +427,7 @@ func sortedColsForRel(rel relExpr) sql.Schema {
 	case *mergeJoin:
 		var ret sql.Schema
 		for _, e := range r.innerScan.idx.Expressions() {
+			// TODO columns can have "." characters, this will miss cases
 			parts := strings.Split(e, ".")
 			var name string
 			if len(parts) == 2 {
@@ -654,7 +655,7 @@ type relBase struct {
 	c float64
 	// cnt is this relations output row count
 	cnt float64
-	// distinct indicates a relExpr should be checked for sort enforcement
+	// d indicates a relExpr should be checked for distinctness
 	d distinctOp
 }
 

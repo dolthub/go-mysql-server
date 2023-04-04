@@ -1754,6 +1754,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive a as (select 1) select * from a union select * from a;",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Query:    "with cte(x) as (select 0) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
 		Expected: []sql.Row{},
 	},
@@ -6784,7 +6790,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
 		Expected: []sql.Row{
-			{types.MustJSON(`{"{\"foo\":\"bar\"}": 10}`)},
+			{types.MustJSON(`{"{\"foo\": \"bar\"}": 10}`)},
 		},
 	},
 	{

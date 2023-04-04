@@ -37,7 +37,7 @@ var biasedCosters = map[string]analyzer.Coster{
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
-	for _, tt := range joinCostTests {
+	for _, tt := range joinOpTests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
@@ -63,7 +63,7 @@ func TestJoinOps(t *testing.T, harness Harness) {
 }
 
 func TestJoinOpsPrepared(t *testing.T, harness Harness) {
-	for _, tt := range joinCostTests {
+	for _, tt := range joinOpTests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
@@ -89,11 +89,82 @@ func TestJoinOpsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-var joinCostTests = []struct {
+var joinOpTests = []struct {
 	name  string
 	setup [][]string
 	tests []JoinOpTests
 }{
+	{
+		name: "issue 5633, nil comparison in merge join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xyz (x int primary key, y int, z int, key(y), key(z))",
+				"create table uv (u int primary key, v int, unique key(u,v))",
+				"insert into xyz values (0,0,0),(1,1,1),(2,1,null),(3,2,null)",
+				"insert into uv values (0,0),(1,1),(2,null),(3,null)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x,u,z from xyz join uv on z = u where y = 1 order by 1,2",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+		},
+	},
+	{
+		name: "issue 5633 2, nil comparison in merge join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xyz (x int primary key, y int, z int, key(y), key(z))",
+				"create table uv (u int primary key, v int, unique key(u,v))",
+				"insert into xyz values (1,1,3),(2,1,2),(3,1,1)",
+				"insert into uv values (1,1),(2,2),(3,3)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x,u from xyz join uv on z = u where y = 1 order by 1,2",
+				Expected: []sql.Row{{1, 3}, {2, 2}, {3, 1}},
+			},
+		},
+	},
+	{
+		name: "left join tests",
+		setup: [][]string{
+			{
+				"create table xy (x int primary key, y int)",
+				"create table uv (u int primary key, v int, key(v))",
+				"insert into xy values (0,0),(2,2),(3,3),(4,4),(5,5),(7,7),(8,8),(10,10);",
+				"insert into uv values (0,0),(1,1),(3,3),(5,5),(6,5),(7,7),(9,9),(10,10);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x from xy left join uv on x = v",
+				Expected: []sql.Row{{0}, {2}, {3}, {4}, {5}, {5}, {7}, {8}, {10}},
+			},
+		},
+	},
+	{
+		name: "point lookups",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int, unique key(v));",
+				"insert into uv values (1,1),(2,2);",
+				"create table xy (x int primary key, v int);",
+				"insert into xy values (0,0),(1,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x not in (select v from uv)",
+				Expected: []sql.Row{{0, 0}},
+			},
+		},
+	},
 	{
 		name: "4-way join tests",
 		setup: [][]string{

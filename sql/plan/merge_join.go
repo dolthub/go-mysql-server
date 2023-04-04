@@ -349,9 +349,8 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 		} else if !match {
 			i.leftPeek = peek
 			i.leftDone = true
-		} else {
-			i.leftMatched = false
 		}
+		i.leftMatched = false
 	}
 
 	if !i.leftDone {
@@ -444,6 +443,7 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 		off = i.scopeLen + i.parentLen + i.leftRowLen
 		restore = make(sql.Row, i.rightRowLen)
 		copy(restore, i.fullRow[off:off+i.rightRowLen])
+	default:
 	}
 
 	// peek lookahead
@@ -458,7 +458,10 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	// check if lookahead valid
 	copySubslice(i.fullRow, peek, off)
 	res, err := i.cmp.Compare(ctx, i.fullRow)
-	if err != nil {
+	if expression.ErrNilOperand.Is(err) {
+		// revert change to output row if no match
+		copySubslice(i.fullRow, restore, off)
+	} else if err != nil {
 		return false, nil, err
 	}
 	if res != 0 {
@@ -527,6 +530,7 @@ func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
 	for j, v := range row {
 		i.fullRow[off+j] = v
 	}
+
 	return nil
 }
 
