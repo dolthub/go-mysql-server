@@ -764,11 +764,11 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT count(*) FROM mytable WHERE i <> 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{3}},
 	},
 	{
 		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795 AND i > 0;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{3}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/4874
