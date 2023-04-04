@@ -646,8 +646,8 @@ where u in (select * from rec);`,
 				order: []string{"b", "c", "a"},
 			},
 			{
-				q:     "select /*+ JOIN_ORDER(b,applySubq0,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
-				order: []string{"b", "applySubq0", "a"},
+				q:     "select /*+ JOIN_ORDER(b,scalarSubq0,a) */ 1 from xy a join xy b on a.x+3 = b.x WHERE a.x in (select u from uv c)",
+				order: []string{"b", "scalarSubq0", "a"},
 			},
 		},
 	},
@@ -725,45 +725,45 @@ join uv d on d.u = c.x`,
 				order: []string{"a", "b", "c", "d"},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,applySubq0) */ 1 from xy where x not in (select u from uv)",
+				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeAntiLookup},
 			},
 			{
 				// TODO implement anti merge join
-				q:     "select /*+ MERGE_JOIN(xy,applySubq0) */ 1 from xy where x not in (select u from uv)",
+				q:     "select /*+ MERGE_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeAntiMerge},
 				skip:  true,
 			},
 			{
-				q:     "select /*+ ANTI_JOIN(xy,applySubq0) */ 1 from xy where x not in (select u from uv)",
+				q:     "select /*+ ANTI_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeAnti},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,applySubq0) */ 1 from xy where x in (select u from uv)",
+				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 			},
 			{
 				// TODO implement semi merge join
-				q:     "select /*+ MERGE_JOIN(xy,applySubq0) */ 1 from xy where x in (select u from uv)",
+				q:     "select /*+ MERGE_JOIN(xy,scalarSubq0) */ 1 from xy where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemiMerge},
 				skip:  true,
 			},
 			{
-				q:     "select /*+ SEMI_JOIN(xy,applySubq0) */ 1 from xy where x in (select u from uv)",
+				q:     "select /*+ SEMI_JOIN(xy,scalarSubq0) */ 1 from xy where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(s,applySubq0) */ 1 from xy s where x in (select u from uv)",
+				q:     "select /*+ LOOKUP_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 			},
 			{
 				// TODO implement semi merge join
-				q:     "select /*+ MERGE_JOIN(s,applySubq0) */ 1 from xy s where x in (select u from uv)",
+				q:     "select /*+ MERGE_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemiMerge},
 				skip:  true,
 			},
 			{
-				q:     "select /*+ SEMI_JOIN(s,applySubq0) */ 1 from xy s where x in (select u from uv)",
+				q:     "select /*+ SEMI_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 			},
 		},
