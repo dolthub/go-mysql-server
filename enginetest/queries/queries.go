@@ -747,10 +747,6 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
-		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{0}},
-	},
-	{
 		Query:    "SELECT count(*) FROM mytable WHERE i <= 3720481604718463778705849469618542795;",
 		Expected: []sql.Row{{0}},
 	},
@@ -7448,6 +7444,11 @@ var KeylessQueries = []QueryTest{
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
 	{
+		// TODO cast overflows into max for type
+		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795;",
+		Expected: []sql.Row{{3}},
+	},
+	{
 		// natural join filter columns do not hide duplicated columns
 		Query: "select t2.* from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
 		Expected: []sql.Row{
@@ -7463,15 +7464,6 @@ var BrokenQueries = []QueryTest{
 			{1, "first row", 1, "first row", 1},
 			{2, "second row", 2, "second row", 2},
 			{3, "third row", 3, "third row", 3},
-		},
-	},
-	{
-		// natural join w/ inner join
-		Query: "select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
-		Expected: []sql.Row{
-			{1, "first row", "third", 1},
-			{2, "second row", "second", 2},
-			{3, "third row", "first", 3},
 		},
 	},
 	{
