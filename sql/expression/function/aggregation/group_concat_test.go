@@ -31,7 +31,7 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	m, err := NewGroupConcat("field", nil, ",", nil, 1024)
 	require.NoError(t, err)
 
-	assert.Equal("group_concat(distinct field)", m.String())
+	assert.Equal("group_concat(distinct field separator ',')", m.String())
 
 	m, err = NewGroupConcat("field", nil, "-", nil, 1024)
 	require.NoError(t, err)
