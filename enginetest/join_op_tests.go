@@ -112,6 +112,24 @@ var joinOpTests = []struct {
 		},
 	},
 	{
+		name: "point lookups",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int, unique key(v));",
+				"insert into uv values (1,1),(2,2);",
+				"create table xy (x int primary key, v int);",
+				"insert into xy values (0,0),(1,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x not in (select v from uv)",
+				Expected: []sql.Row{{0, 0}},
+			},
+		},
+	},
+	{
 		name: "4-way join tests",
 		setup: [][]string{
 			setup.MydbData[0],
