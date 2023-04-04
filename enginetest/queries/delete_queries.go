@@ -363,12 +363,12 @@ var DeleteErrorTests = []ScriptTest{
 			{
 				// targets table function alias
 				Query:          "DELETE jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
-				ExpectedErrStr: "table not found: jt",
+				ExpectedErrStr: "target table jt of the DELETE is not updatable",
 			},
 			{
 				// targets valid table and table function alias
 				Query:          "DELETE mytable, jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
-				ExpectedErrStr: "table not found: jt",
+				ExpectedErrStr: "target table jt of the DELETE is not updatable",
 			},
 		},
 	},
