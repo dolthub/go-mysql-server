@@ -37,7 +37,7 @@ var biasedCosters = map[string]analyzer.Coster{
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
-	for _, tt := range joinCostTests {
+	for _, tt := range joinOpTests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
@@ -63,7 +63,7 @@ func TestJoinOps(t *testing.T, harness Harness) {
 }
 
 func TestJoinOpsPrepared(t *testing.T, harness Harness) {
-	for _, tt := range joinCostTests {
+	for _, tt := range joinOpTests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
@@ -89,11 +89,28 @@ func TestJoinOpsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-var joinCostTests = []struct {
+var joinOpTests = []struct {
 	name  string
 	setup [][]string
 	tests []JoinOpTests
 }{
+	{
+		name: "left join tests",
+		setup: [][]string{
+			{
+				"create table xy (x int primary key, y int)",
+				"create table uv (u int primary key, v int, key(v))",
+				"insert into xy values (0,0),(2,2),(3,3),(4,4),(5,5),(7,7),(8,8),(10,10);",
+				"insert into uv values (0,0),(1,1),(3,3),(5,5),(6,5),(7,7),(9,9),(10,10);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x from xy left join uv on x = v",
+				Expected: []sql.Row{{0}, {2}, {3}, {4}, {5}, {5}, {7}, {8}, {10}},
+			},
+		},
+	},
 	{
 		name: "issue 5633, nil comparison in merge join",
 		setup: [][]string{

@@ -349,9 +349,8 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 		} else if !match {
 			i.leftPeek = peek
 			i.leftDone = true
-		} else {
-			i.leftMatched = false
 		}
+		i.leftMatched = false
 	}
 
 	if !i.leftDone {
@@ -531,6 +530,7 @@ func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
 	for j, v := range row {
 		i.fullRow[off+j] = v
 	}
+
 	return nil
 }
 
