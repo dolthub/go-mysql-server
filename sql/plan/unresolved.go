@@ -30,6 +30,7 @@ type UnresolvedTable struct {
 	name     string
 	database string
 	asOf     sql.Expression
+	comment  string
 }
 
 var _ sql.Node = (*UnresolvedTable)(nil)
@@ -37,15 +38,26 @@ var _ sql.Expressioner = (*UnresolvedTable)(nil)
 var _ sql.UnresolvedTable = (*UnresolvedTable)(nil)
 var _ sql.CollationCoercible = (*UnresolvedTable)(nil)
 var _ Versionable = (*UnresolvedTable)(nil)
+var _ sql.CommentedNode = (*UnresolvedTable)(nil)
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name, db string) *UnresolvedTable {
-	return &UnresolvedTable{name, db, nil}
+	return &UnresolvedTable{name, db, nil, ""}
 }
 
 // NewUnresolvedTableAsOf creates a new Unresolved table with an AS OF expression.
 func NewUnresolvedTableAsOf(name, db string, asOf sql.Expression) *UnresolvedTable {
-	return &UnresolvedTable{name, db, asOf}
+	return &UnresolvedTable{name, db, asOf, ""}
+}
+
+func (t *UnresolvedTable) WithComment(s string) sql.Node {
+	ret := *t
+	ret.comment = s
+	return &ret
+}
+
+func (t *UnresolvedTable) Comment() string {
+	return t.comment
 }
 
 // Name implements the Nameable interface.

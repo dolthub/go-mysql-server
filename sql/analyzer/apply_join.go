@@ -122,7 +122,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				//     normalized to match changes to (2).
 				subq := m.r
 
-				name := fmt.Sprintf("applySubq%d", applyId)
+				name := fmt.Sprintf("scalarSubq%d", applyId)
 				applyId++
 
 				sch := subq.Query.Schema()

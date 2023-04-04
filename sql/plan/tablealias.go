@@ -26,10 +26,12 @@ import (
 // TableAlias is a node that acts as a table with a given name.
 type TableAlias struct {
 	*UnaryNode
-	name string
+	name    string
+	comment string
 }
 
 var _ sql.RenameableNode = (*TableAlias)(nil)
+var _ sql.CommentedNode = (*TableAlias)(nil)
 var _ sql.CollationCoercible = (*TableAlias)(nil)
 
 // NewTableAlias returns a new Table alias node.
@@ -40,6 +42,16 @@ func NewTableAlias(name string, node sql.Node) *TableAlias {
 // Name implements the Nameable interface.
 func (t *TableAlias) Name() string {
 	return t.name
+}
+
+func (t *TableAlias) WithComment(s string) sql.Node {
+	ret := *t
+	ret.comment = s
+	return &ret
+}
+
+func (t *TableAlias) Comment() string {
+	return t.comment
 }
 
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
@@ -61,7 +73,7 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
 
-	return NewTableAlias(t.name, children[0]), nil
+	return NewTableAlias(t.name, children[0]).WithComment(t.Comment()), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
