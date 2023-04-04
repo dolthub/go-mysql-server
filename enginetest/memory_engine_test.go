@@ -204,39 +204,37 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name:        "delete me",
-	//		SetUpScript: "create table mytable ("
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query: `SELECT
-	//		"testing" AS s,
-	//		(SELECT max(i)
-	//		 FROM (SELECT * FROM mytable) mytable
-	//		 RIGHT JOIN
-	//			((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
-	//			 UNION ALL
-	//			 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
-	//			ON i2 = i) AS rj
-	//		FROM DUAL`,
-	//				Expected: []sql.Row{
-	//					{"testing", 3},
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "Test cases on select into statement",
+			SetUpScript: []string{
+				"CREATE TABLE tab1 (id int primary key, v1 int)",
+				"INSERT INTO tab1 VALUES (1, 1), (2, 3), (3, 6)",
+				"CREATE TABLE tab2 (i2 int primary key, s text)",
+				"INSERT INTO tab2 VALUES (1, 'b'), (2, 'm'), (3, 'g')",
+
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "SELECT m.id, t.s FROM tab1 m JOIN tab2 t on m.id = t.i2 ORDER BY t.s DESC LIMIT 1 INTO @myId, @myText",
+				},
+				{
+					Query:    `SELECT @myId, @myText, @myUnion`,
+					Expected: []sql.Row{{2, "m", nil}},
+				},
+			},
+		},
+	}
+
+	for _, test := range scripts {
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		engine, err := harness.NewEngine(t)
+		if err != nil {
+			panic(err)
+		}
+
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
 
 	//t.Skip()
 	//var scripts = []queries.ScriptTest{

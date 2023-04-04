@@ -79,6 +79,19 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
+	//hasLimit := false
+	//transform.Inspect(n, func(node sql.Node) bool {
+	//	if _, ok := node.(*plan.Limit); ok {
+	//		hasLimit = true
+	//		return false
+	//	}
+	//	return true
+	//})
+	//
+	//if hasLimit {
+	//	return n, transform.SameTree, nil
+	//}
+
 	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -170,7 +183,26 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
-	return true
+	// If there are any limit nodes under filter nodes, we can't pushdown the filter
+	hasLimit := false
+	canPushDown := true
+	transform.Inspect(n, func(node sql.Node) bool {
+		switch node.(type) {
+		case *plan.Filter:
+			if hasLimit {
+				canPushDown = false
+				return false
+			}
+			return true
+		case *plan.Limit:
+			hasLimit = true
+			return true
+		default:
+			return true
+		}
+	})
+
+	return canPushDown
 }
 
 // Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
@@ -400,8 +432,8 @@ func convertFiltersToIndexedAccess(
 		case *plan.IndexedTableAccess:
 			return false
 		// We can't/shouldn't push indexes down to a table that has a limit over it
-		case *plan.Limit:
-			return false
+		//case *plan.Limit:
+		//	return false
 		case *plan.RecursiveCte:
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
 			// this probably fails for *plan.Union also, we just don't have tests for it
