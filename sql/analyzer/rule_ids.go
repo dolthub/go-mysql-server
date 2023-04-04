@@ -91,7 +91,6 @@ const (
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
 	foldEmptyJoinsId             // foldEmptyJoins
 	optimizeJoinsId              // optimizeJoins
-	concatFiltersId              // concatFilters
 	pushdownFiltersId            // pushdownFilters
 	subqueryIndexesId            // subqueryIndexes
 	pruneTablesId                // pruneTables

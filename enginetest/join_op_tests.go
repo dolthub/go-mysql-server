@@ -95,6 +95,42 @@ var joinOpTests = []struct {
 	tests []JoinOpTests
 }{
 	{
+		name: "issue 5633, nil comparison in merge join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xyz (x int primary key, y int, z int, key(y), key(z))",
+				"create table uv (u int primary key, v int, unique key(u,v))",
+				"insert into xyz values (0,0,0),(1,1,1),(2,1,null),(3,2,null)",
+				"insert into uv values (0,0),(1,1),(2,null),(3,null)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x,u,z from xyz join uv on z = u where y = 1 order by 1,2",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+		},
+	},
+	{
+		name: "issue 5633 2, nil comparison in merge join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xyz (x int primary key, y int, z int, key(y), key(z))",
+				"create table uv (u int primary key, v int, unique key(u,v))",
+				"insert into xyz values (1,1,3),(2,1,2),(3,1,1)",
+				"insert into uv values (1,1),(2,2),(3,3)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x,u from xyz join uv on z = u where y = 1 order by 1,2",
+				Expected: []sql.Row{{1, 3}, {2, 2}, {3, 1}},
+			},
+		},
+	},
+	{
 		name: "left join tests",
 		setup: [][]string{
 			{
