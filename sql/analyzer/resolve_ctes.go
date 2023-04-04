@@ -162,9 +162,9 @@ func stripWith(
 			subquery = subquery.WithColumns(cte.Columns)
 		}
 
-		if with.Recursive {
+		if u, ok := subquery.Child.(*plan.Union); with.Recursive && ok {
 			// TODO maybe split into a separate rule
-			rCte, err := convertUnionToRecursiveCTE(subquery)
+			rCte, err := convertUnionToRecursiveCTE(subquery, u)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -295,8 +295,7 @@ func hoistRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	})
 }
 
-func convertUnionToRecursiveCTE(sq *plan.SubqueryAlias) (*plan.RecursiveCte, error) {
-	u := sq.Child.(*plan.Union)
+func convertUnionToRecursiveCTE(sq *plan.SubqueryAlias, u *plan.Union) (*plan.RecursiveCte, error) {
 	l, r := splitRecursiveCteUnion(sq.Name(), u)
 	return plan.NewRecursiveCte(l, r, sq.Name(), sq.Columns, u.Distinct, u.Limit, u.SortFields), nil
 }

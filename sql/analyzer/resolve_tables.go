@@ -153,8 +153,12 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 				return nil, err
 			}
 
+			var comment string
+			if cn, ok := t.(sql.CommentedNode); ok {
+				comment = cn.Comment()
+			}
 			a.Log("table resolved: %q as of %s", rt.Name(), asOf)
-			return plan.NewResolvedTable(rt, database, asOf), nil
+			return plan.NewResolvedTable(rt, database, asOf).WithComment(comment), nil
 		}
 	}
 
@@ -168,7 +172,11 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 		return nil, err
 	}
 
-	resolvedTableNode := plan.NewResolvedTable(rt, database, nil)
+	var comment string
+	if cn, ok := t.(sql.CommentedNode); ok {
+		comment = cn.Comment()
+	}
+	resolvedTableNode := plan.NewResolvedTable(rt, database, nil).WithComment(comment).(*plan.ResolvedTable)
 
 	a.Log("table resolved: %s", t.Name())
 	if asofBindVar {
@@ -332,7 +340,7 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 		return to
 	}
 
-	return plan.NewResolvedTable(toTable, to.Database, to.AsOf)
+	return plan.NewResolvedTable(toTable, to.Database, to.AsOf).WithComment(from.Comment()).(*plan.ResolvedTable)
 }
 
 // validateDropTables returns an error if the database is not droppable.
