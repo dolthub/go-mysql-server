@@ -114,12 +114,16 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	cmpLower, err := typ.Compare(val, lower)
-	if err != nil {
+	if sql.ErrValueOutOfRange.Is(err) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 
 	cmpUpper, err := typ.Compare(val, upper)
-	if err != nil {
+	if sql.ErrValueOutOfRange.Is(err) {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 

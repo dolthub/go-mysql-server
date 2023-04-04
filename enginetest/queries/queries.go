@@ -742,6 +742,11 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		// https://github.com/dolthub/dolt/issues/5642
+		Query:    "SELECT count(*) FROM mytable WHERE i = 3720481604718463778705849469618542795;",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/4874
 		Query:    "select * from information_schema.columns where column_key in ('invalid_enum_value') and table_name = 'does_not_exist';",
 		Expected: []sql.Row{},

@@ -414,7 +414,9 @@ func getComparisonIndexLookup(
 	default:
 		return nil, nil
 	}
-	if err != nil || lookup.IsEmpty() {
+	if sql.ErrValueOutOfRange.Is(err) {
+		return nil, nil
+	} else if err != nil || lookup.IsEmpty() {
 		return nil, err
 	}
 
