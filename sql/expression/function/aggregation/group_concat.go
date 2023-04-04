@@ -19,18 +19,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 type GroupConcat struct {
 	distinct    string
 	sf          sql.SortFields
-	separator   sqlparser.Separator
+	separator   string
 	selectExprs []sql.Expression
 	maxLen      int
 	returnType  sql.Type
@@ -55,7 +53,7 @@ func (g *GroupConcat) Description() string {
 	return "returns a string result with the concatenated non-NULL values from a group."
 }
 
-func NewGroupConcat(distinct string, orderBy sql.SortFields, separator sqlparser.Separator, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
+func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
 	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}, nil
 }
 
@@ -133,10 +131,8 @@ func (g *GroupConcat) String() string {
 		}
 	}
 
-	if !g.separator.DefaultSeparator {
-		sb.WriteString(" separator ")
-		sb.WriteString(fmt.Sprintf("'%s'", g.separator.SeparatorString))
-	}
+	sb.WriteString(" separator ")
+	sb.WriteString(fmt.Sprintf("'%s'", g.separator))
 
 	sb.WriteString(")")
 
@@ -274,7 +270,7 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 		if i == 0 {
 			sb.WriteString(row[lastIdx].(string))
 		} else {
-			sb.WriteString(g.gc.separator.SeparatorString)
+			sb.WriteString(g.gc.separator)
 			sb.WriteString(row[lastIdx].(string))
 		}
 

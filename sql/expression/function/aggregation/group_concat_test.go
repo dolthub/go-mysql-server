@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -29,12 +28,12 @@ import (
 func TestGroupConcat_FunctionName(t *testing.T) {
 	assert := require.New(t)
 
-	m, err := NewGroupConcat("field", nil, sqlparser.Separator{SeparatorString: ",", DefaultSeparator: true}, nil, 1024)
+	m, err := NewGroupConcat("field", nil, ",", nil, 1024)
 	require.NoError(t, err)
 
-	assert.Equal("group_concat(distinct field)", m.String())
+	assert.Equal("group_concat(distinct field separator ',')", m.String())
 
-	m, err = NewGroupConcat("field", nil, sqlparser.Separator{SeparatorString: "-", DefaultSeparator: false}, nil, 1024)
+	m, err = NewGroupConcat("field", nil, "-", nil, 1024)
 	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field separator '-')", m.String())
@@ -44,7 +43,7 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 		{Column: expression.NewUnresolvedColumn("field2"), Order: sql.Descending},
 	}
 
-	m, err = NewGroupConcat("field", sf, sqlparser.Separator{SeparatorString: "-", DefaultSeparator: false}, nil, 1024)
+	m, err = NewGroupConcat("field", sf, "-", nil, 1024)
 	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
@@ -63,7 +62,7 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 	require.NoError(t, err)
 	maxLen := maxLenInt.(uint64)
 
-	gc, err := NewGroupConcat("", nil, sqlparser.Separator{SeparatorString: ",", DefaultSeparator: false}, []sql.Expression{expression.NewGetField(0, types.Int64, "int", true)}, int(maxLen))
+	gc, err := NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, types.Int64, "int", true)}, int(maxLen))
 	require.NoError(t, err)
 
 	buf, _ := gc.NewBuffer()
@@ -95,7 +94,7 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		gc, err := NewGroupConcat("", nil, sqlparser.Separator{SeparatorString: ",", DefaultSeparator: false}, tt.expression, tt.maxLen)
+		gc, err := NewGroupConcat("", nil, ",", tt.expression, tt.maxLen)
 		require.NoError(t, err)
 
 		buf, _ := gc.NewBuffer()

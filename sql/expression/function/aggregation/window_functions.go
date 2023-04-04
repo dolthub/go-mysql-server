@@ -919,7 +919,7 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 		if i == 0 {
 			sb.WriteString(row[lastIdx].(string))
 		} else {
-			sb.WriteString(a.gc.separator.SeparatorString)
+			sb.WriteString(a.gc.separator)
 			sb.WriteString(row[lastIdx].(string))
 		}
 
