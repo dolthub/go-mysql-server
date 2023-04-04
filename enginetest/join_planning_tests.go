@@ -431,6 +431,14 @@ WHERE EXISTS (
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{0, 2}},
 			},
+			{
+				q: `
+select x from xy where
+  not exists (select a from ab where a = x and a = 1) and
+  not exists (select a from ab where a = x and a = 2)`,
+				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeAntiLookup},
+				exp:   []sql.Row{{0}, {3}},
+			},
 		},
 	},
 	{
