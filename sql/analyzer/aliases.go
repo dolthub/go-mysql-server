@@ -80,13 +80,9 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
-			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable, *plan.DeferredAsOfTable:
-				analysisErr = passAliases.add(at, t.(sql.NameableNode))
-			case *plan.TableAlias:
-				analysisErr = passAliases.add(at, t)
-			case *plan.IndexedTableAccess:
-				analysisErr = passAliases.add(at, t)
 			case *plan.RecursiveCte:
+			case sql.NameableNode:
+				analysisErr = passAliases.add(at, t)
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:
@@ -116,15 +112,16 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			rt := getResolvedTable(node.Destination)
 			analysisErr = passAliases.add(rt, rt)
 			return false
-		case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode, *plan.RecursiveTable:
-			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
-			return false
 		case *plan.IndexedTableAccess:
 			rt := getResolvedTable(node.ResolvedTable)
 			analysisErr = passAliases.add(rt, node)
 			return false
+		case sql.Nameable:
+			analysisErr = passAliases.add(node, node)
+			return false
 		case *plan.UnresolvedTable:
 			panic("Table not resolved")
+		default:
 		}
 
 		if opaque, ok := node.(sql.OpaqueNode); ok && opaque.Opaque() {
@@ -300,6 +297,20 @@ func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node
 			return node, transform.SameTree, nil
 		} else {
 			return newNode, transform.NewTree, nil
+		}
+	})
+}
+
+func disambiguateTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var i int
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *expression.UnresolvedTableFunction:
+			i++
+			return plan.NewTableAlias(fmt.Sprintf("%s_%d", n.Name(), i), n), transform.NewTree, nil
+			//return n.WithName(fmt.Sprintf("%s_%d", n.Name(), i)), transform.NewTree, nil
+		default:
+			return n, transform.SameTree, nil
 		}
 	})
 }

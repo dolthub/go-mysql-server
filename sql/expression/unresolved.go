@@ -121,6 +121,7 @@ type UnresolvedTableFunction struct {
 
 var _ sql.Node = (*UnresolvedTableFunction)(nil)
 var _ sql.CollationCoercible = (*UnresolvedTableFunction)(nil)
+var _ sql.RenameableNode = (*UnresolvedTableFunction)(nil)
 
 // NewUnresolvedTableFunction creates a new UnresolvedTableFunction node for a sql plan.
 func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *UnresolvedTableFunction {
@@ -128,6 +129,12 @@ func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *Unreso
 		name:      name,
 		Arguments: arguments,
 	}
+}
+
+func (utf *UnresolvedTableFunction) WithName(s string) sql.Node {
+	ret := *utf
+	ret.name = s
+	return &ret
 }
 
 // NewInstance implements the TableFunction interface
