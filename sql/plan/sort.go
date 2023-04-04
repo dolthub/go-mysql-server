@@ -399,9 +399,9 @@ type topRowsIter struct {
 	idx           int
 }
 
-func newTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childLen int) *topRowsIter {
+func newTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
 	return &topRowsIter{
-		sortFields:    append(s, sql.SortField{Column: expression.NewGetField(childLen, types.Int64, "order", false)}),
+		sortFields:    append(s, sql.SortField{Column: expression.NewGetField(childSchemaLen, types.Int64, "order", false)}),
 		limit:         limit,
 		calcFoundRows: calcFoundRows,
 		childIter:     child,
