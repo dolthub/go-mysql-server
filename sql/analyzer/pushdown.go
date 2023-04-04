@@ -52,17 +52,6 @@ func exprHasBindVar(expr sql.Expression) bool {
 	return hasBindVar
 }
 
-func concatFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if f, ok := n.(*plan.Filter); ok {
-			if c, ok := f.Child.(*plan.Filter); ok {
-				return plan.NewFilter(expression.JoinAnd(f.Expression, c.Expression), c.Child), transform.NewTree, nil
-			}
-		}
-		return n, transform.SameTree, nil
-	})
-}
-
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
 // sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
 // sql.IndexAddressableTable will get an appropriate index lookup applied.
@@ -219,6 +208,8 @@ func filterPushdownChildSelector(c transform.Context) bool {
 		return false
 	case *plan.JoinNode:
 		switch {
+		case n.Op.IsMerge():
+			return false
 		case n.Op.IsLookup():
 			if n.JoinType().IsLeftOuter() {
 				return c.ChildNum == 0
@@ -271,6 +262,11 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return n, samePred && sameFix, nil
 			case *plan.IndexedTableAccess:
+				if jn, ok := c.Parent.(*plan.JoinNode); ok {
+					if jn.Op.IsMerge() {
+						return n, transform.SameTree, nil
+					}
+				}
 				if plan.GetIndexLookup(node).IsEmpty() {
 					// Index without lookup has no filters to mark/push.
 					// Relevant for IndexJoin, which has more restrictive
@@ -449,7 +445,9 @@ func convertFiltersToIndexedAccess(
 		// *will* inappropriately remove the filter from the predicate.
 		// TODO: the analyzer should combine these indexed lookups better
 		case *plan.JoinNode:
-			if n.Op.IsLookup() || n.Op.IsLeftOuter() {
+			if n.Op.IsMerge() {
+				return false
+			} else if n.Op.IsLookup() || n.Op.IsLeftOuter() {
 				return c.ChildNum == 0
 			}
 		case *plan.TableAlias:

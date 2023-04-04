@@ -312,6 +312,11 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 				return nil, err
 			}
 
+			filtersToKeep, err = renameAliasesInExpressions(filtersToKeep, conflict, newAlias)
+			if err != nil {
+				return nil, err
+			}
+
 			// alias was renamed, need to get the renamed target before adding to the outside aliases collection
 			nodeAliases, err = getTableAliases(n, nil)
 			if err != nil {

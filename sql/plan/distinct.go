@@ -204,6 +204,13 @@ func (d OrderedDistinct) String() string {
 	return p.String()
 }
 
+func (d OrderedDistinct) DebugString() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("OrderedDistinct")
+	_ = p.WriteChildren(sql.DebugString(d.Child))
+	return p.String()
+}
+
 // orderedDistinctIter iterates the children iterator and skips all the
 // repeated rows assuming the iterator has all rows sorted.
 type orderedDistinctIter struct {

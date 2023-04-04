@@ -15,7 +15,12 @@ func NewExecBuilder() *ExecBuilder {
 }
 
 func (b *ExecBuilder) buildRel(r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return buildRelExpr(b, r, input, children...)
+	n, err := buildRelExpr(b, r, input, children...)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.buildDistinct(n, r.distinct())
 }
 
 func (b *ExecBuilder) buildFilters(scope *Scope, s sql.Schema, filters ...sql.Expression) (sql.Expression, error) {
@@ -128,11 +133,6 @@ func (b *ExecBuilder) buildLookupJoin(j *lookupJoin, input sql.Schema, children 
 	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
-	}
-	if j.op == plan.JoinTypeRightSemiLookup {
-		if _, ok := left.(*plan.Max1Row); !ok {
-			left = plan.NewDistinct(left)
-		}
 	}
 	return plan.NewJoin(left, right, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
@@ -292,6 +292,15 @@ func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql
 	return plan.NewProject(p, children[0]), nil
 }
 
-func (b *ExecBuilder) buildDistinct(r *distinct, _ sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return plan.NewDistinct(children[0]), nil
+func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) {
+	switch d {
+	case hashDistinctOp:
+		return plan.NewDistinct(n), nil
+	case sortedDistinctOp:
+		return plan.NewOrderedDistinct(n), nil
+	case noDistinctOp:
+		return n, nil
+	default:
+		return nil, fmt.Errorf("unexpected distinct operator: %d", d)
+	}
 }

@@ -35,6 +35,7 @@ const (
 	resolveUnionsId                              // resolveUnions
 	resolveDescribeQueryId                       // resolveDescribeQuery
 	checkUniqueTableNamesId                      // checkUniqueTableNames
+	disambiguateTableFunctionsId                 // disambiguateTableFunctions
 	resolveTableFunctionsId                      // resolveTableFunctions
 	resolveDeclarationsId                        // resolveDeclarations
 	resolveColumnDefaultsId                      // resolveColumnDefaults
@@ -91,7 +92,6 @@ const (
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
 	foldEmptyJoinsId             // foldEmptyJoins
 	optimizeJoinsId              // optimizeJoins
-	concatFiltersId              // concatFilters
 	pushdownFiltersId            // pushdownFilters
 	subqueryIndexesId            // subqueryIndexes
 	pruneTablesId                // pruneTables

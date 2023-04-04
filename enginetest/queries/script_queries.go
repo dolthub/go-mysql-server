@@ -82,6 +82,39 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "topN stable output",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y int)",
+			"insert into xy values (1,0),(2,0),(3,0),(4,0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from xy order by y asc limit 1",
+				Expected: []sql.Row{{1, 0}},
+			},
+			{
+				Query:    "select * from xy order by y asc limit 1 offset 1",
+				Expected: []sql.Row{{2, 0}},
+			},
+			{
+				Query:    "select * from xy order by y asc limit 1 offset 2",
+				Expected: []sql.Row{{3, 0}},
+			},
+			{
+				Query:    "select * from xy order by y asc limit 1 offset 3",
+				Expected: []sql.Row{{4, 0}},
+			},
+			{
+				Query:    "(select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)",
+				Expected: []sql.Row{{2, 0}, {3, 0}},
+			},
+			{
+				Query:    "with recursive cte as ((select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)) select * from cte",
+				Expected: []sql.Row{{2, 0}, {3, 0}},
+			},
+		},
+	},
+	{
 		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
 		SetUpScript: []string{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
@@ -1096,6 +1129,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color' order by o_id",
 				Expected: []sql.Row{{"2,3"}},
+			},
+			{
+				Query:    "SELECT group_concat(attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
+				Expected: []sql.Row{{"colorfabric"}},
 			},
 		},
 	},

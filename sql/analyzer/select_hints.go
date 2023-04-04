@@ -38,6 +38,7 @@ const (
 	HintTypeSemiJoin                                 // SEMI_JOIN
 	HintTypeAntiJoin                                 // ANTI_JOIN
 	HintTypeInnerJoin                                // INNER_JOIN
+	HintTypeRightSemiLookupJoin                      // RIGHT_SEMI_LOOKUP_JOIN
 	HintTypeNoIndexConditionPushDown                 // NO_ICP
 )
 
@@ -73,6 +74,8 @@ func newHint(joinTyp string, args []string) Hint {
 		typ = HintTypeSemiJoin
 	case "anti_join":
 		typ = HintTypeAntiJoin
+	case "right_semi_lookup_join":
+		typ = HintTypeRightSemiLookupJoin
 	case "no_icp":
 		typ = HintTypeNoIndexConditionPushDown
 	default:
@@ -98,6 +101,8 @@ func (h Hint) valid() bool {
 	case HintTypeSemiJoin:
 		return len(h.Args) == 2
 	case HintTypeAntiJoin:
+		return len(h.Args) == 2
+	case HintTypeRightSemiLookupJoin:
 		return len(h.Args) == 2
 	case HintTypeNoIndexConditionPushDown:
 		return len(h.Args) == 0
@@ -290,6 +295,8 @@ func (o joinOpHint) isValid() bool {
 // but not [ab] x [c].
 func (o joinOpHint) depsMatch(n relExpr) bool {
 	switch n := n.(type) {
+	case *project:
+		return o.depsMatch(n.child.best)
 	case joinRel:
 		base := n.joinPrivate()
 		if o.l.Intersects(base.left.relProps.InputTables()) &&
@@ -323,12 +330,16 @@ func (o joinOpHint) typeMatches(n relExpr) bool {
 		case HintTypeHashJoin:
 			return base.op.IsHash()
 		case HintTypeSemiJoin:
-			return base.op.IsSemi()
+			return base.op.IsSemi() && !base.op.IsPhysical()
 		case HintTypeAntiJoin:
-			return base.op.IsAnti()
+			return base.op.IsAnti() && !base.op.IsPhysical()
+		case HintTypeRightSemiLookupJoin:
+			return base.op == plan.JoinTypeRightSemiLookup
 		default:
 			return false
 		}
+	case *project:
+		return o.typeMatches(n.child.best)
 	default:
 	}
 	return true

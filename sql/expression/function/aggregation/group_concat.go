@@ -132,10 +132,8 @@ func (g *GroupConcat) String() string {
 		}
 	}
 
-	if g.separator != "," {
-		sb.WriteString(" separator ")
-		sb.WriteString(fmt.Sprintf("'%s'", g.separator))
-	}
+	sb.WriteString(" separator ")
+	sb.WriteString(fmt.Sprintf("'%s'", g.separator))
 
 	sb.WriteString(")")
 
