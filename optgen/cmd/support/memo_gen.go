@@ -14,7 +14,8 @@ type MemoDef struct {
 	IsJoin bool
 	Attrs  [][2]string
 
-	IsUnary bool
+	IsUnary  bool
+	SkipExec bool
 }
 
 var _ GenDefs = ([]MemoDef)(nil)
@@ -169,6 +170,9 @@ func (g *MemoGen) genFormatters(defines []MemoDef) {
 	fmt.Fprintf(g.w, "  var err error\n\n")
 	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
 	for _, d := range defines {
+		if d.SkipExec {
+			continue
+		}
 		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
 		fmt.Fprintf(g.w, "  result, err = b.build%s(r, input, children...)\n", strings.Title(d.Name))
 	}

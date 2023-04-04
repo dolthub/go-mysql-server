@@ -25,6 +25,48 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select a from ab);`,
+		ExpectedPlan: "RightSemiLookupJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ xy.x:1!null\n" +
+			" │   └─ scalarSubq0.a:0!null\n" +
+			" ├─ OrderedDistinct\n" +
+			" │   └─ TableAlias(scalarSubq0)\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: ab\n" +
+			" │           └─ columns: [a]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: `select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,ab) MERGE_JOIN(ab,uv) JOIN_ORDER(ab,uv,xy) */ * from xy where EXISTS (select 1 from ab join uv on a = u where x = a);`,
+		ExpectedPlan: "RightSemiLookupJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ xy.x:1!null\n" +
+			" │   └─ ab.a:0!null\n" +
+			" ├─ OrderedDistinct\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [ab.a:0!null]\n" +
+			" │       └─ MergeJoin\n" +
+			" │           ├─ cmp: Eq\n" +
+			" │           │   ├─ ab.a:0!null\n" +
+			" │           │   └─ uv.u:1!null\n" +
+			" │           ├─ IndexedTableAccess(ab)\n" +
+			" │           │   ├─ index: [ab.a]\n" +
+			" │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │           │   └─ columns: [a]\n" +
+			" │           └─ IndexedTableAccess(uv)\n" +
+			" │               ├─ index: [uv.u]\n" +
+			" │               ├─ static: [{[NULL, ∞)}]\n" +
+			" │               └─ columns: [u]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
 		Query: `select * from uv where not exists (select * from xy where not exists (select * from xy where not(u = 1)))`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ NOT\n" +
@@ -95,17 +137,20 @@ var PlanTests = []QueryPlanTest{
 			" ├─ columns: [mytable.s:1!null]\n" +
 			" └─ RightSemiLookupJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ mytable.i:2!null\n" +
-			"     │   └─ scalarSubq0.i2:1!null\n" +
-			"     ├─ Max1Row\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ Eq\n" +
-			"     │       │   ├─ scalarSubq0.s2:0!null\n" +
-			"     │       │   └─ second (longtext)\n" +
-			"     │       └─ TableAlias(scalarSubq0)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: othertable\n" +
-			"     │               └─ columns: [s2 i2]\n" +
+			"     │   ├─ mytable.i:1!null\n" +
+			"     │   └─ scalarSubq0.i2:0!null\n" +
+			"     ├─ OrderedDistinct\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [scalarSubq0.i2:1!null]\n" +
+			"     │       └─ Max1Row\n" +
+			"     │           └─ Filter\n" +
+			"     │               ├─ Eq\n" +
+			"     │               │   ├─ scalarSubq0.s2:0!null\n" +
+			"     │               │   └─ second (longtext)\n" +
+			"     │               └─ TableAlias(scalarSubq0)\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: othertable\n" +
+			"     │                       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         └─ columns: [i s]\n" +
@@ -116,18 +161,17 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.s:1!null]\n" +
 			" └─ Sort(mytable.i:0!null ASC nullsFirst)\n" +
-			"     └─ RightSemiLookupJoin\n" +
+			"     └─ SemiLookupJoin\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ mytable.i:1!null\n" +
-			"         │   └─ scalarSubq0.i2:0!null\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ TableAlias(scalarSubq0)\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: othertable\n" +
-			"         │           └─ columns: [i2]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i s]\n" +
+			"         │   ├─ mytable.i:0!null\n" +
+			"         │   └─ scalarSubq0.i2:2!null\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: mytable\n" +
+			"         │   └─ columns: [i s]\n" +
+			"         └─ TableAlias(scalarSubq0)\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -770,12 +814,14 @@ var PlanTests = []QueryPlanTest{
 			" │           ├─ columns: [ab.a:2!null]\n" +
 			" │           └─ RightSemiLookupJoin\n" +
 			" │               ├─ Eq\n" +
-			" │               │   ├─ ab.a:4!null\n" +
+			" │               │   ├─ ab.a:3!null\n" +
 			" │               │   └─ uv.u:2!null\n" +
-			" │               ├─ Distinct\n" +
-			" │               │   └─ Table\n" +
-			" │               │       ├─ name: uv\n" +
-			" │               │       └─ columns: [u v]\n" +
+			" │               ├─ OrderedDistinct\n" +
+			" │               │   └─ Project\n" +
+			" │               │       ├─ columns: [uv.u:2!null]\n" +
+			" │               │       └─ Table\n" +
+			" │               │           ├─ name: uv\n" +
+			" │               │           └─ columns: [u v]\n" +
 			" │               └─ IndexedTableAccess(ab)\n" +
 			" │                   ├─ index: [ab.a]\n" +
 			" │                   └─ columns: [a b]\n" +
@@ -871,17 +917,16 @@ var PlanTests = []QueryPlanTest{
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: ab.a:0!null\n" +
-			"     └─ RightSemiLookupJoin\n" +
+			"     └─ SemiLookupJoin\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ xy.x:0!null\n" +
-			"         │   └─ ab.a:2!null\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: xy\n" +
-			"         │       └─ columns: [x y]\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             └─ columns: [a b]\n" +
+			"         │   ├─ xy.x:2!null\n" +
+			"         │   └─ ab.a:0!null\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: ab\n" +
+			"         │   └─ columns: [a b]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -889,15 +934,17 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "RightSemiLookupJoin\n" +
 			" ├─ Eq\n" +
 			" │   ├─ cte.a:0!null\n" +
-			" │   └─ xy.x:2!null\n" +
+			" │   └─ xy.x:1!null\n" +
 			" ├─ Distinct\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: cte\n" +
-			" │       ├─ outerVisibility: true\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: ab\n" +
-			" │           └─ columns: [a b]\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [cte.a:0!null]\n" +
+			" │       └─ SubqueryAlias\n" +
+			" │           ├─ name: cte\n" +
+			" │           ├─ outerVisibility: true\n" +
+			" │           ├─ cacheable: true\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: ab\n" +
+			" │               └─ columns: [a b]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     └─ columns: [x y]\n" +
@@ -906,34 +953,32 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select * from xy where exists (select * from ab where a = x) order by x`,
 		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
-			" └─ RightSemiLookupJoin\n" +
+			" └─ SemiLookupJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ ab.a:0!null\n" +
-			"     │   └─ xy.x:2!null\n" +
-			"     ├─ Distinct\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: ab\n" +
-			"     │       └─ columns: [a b]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         └─ columns: [x y]\n" +
+			"     │   ├─ ab.a:2!null\n" +
+			"     │   └─ xy.x:0!null\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: xy\n" +
+			"     │   └─ columns: [x y]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ columns: [a b]\n" +
 			"",
 	},
 	{
 		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ TopN(Limit: [5 (tinyint)]; xy.x:0!null ASC nullsFirst)\n" +
-			"     └─ RightSemiLookupJoin\n" +
+			"     └─ SemiLookupJoin\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ ab.a:0!null\n" +
-			"         │   └─ xy.x:2!null\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: ab\n" +
-			"         │       └─ columns: [a b]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             └─ columns: [x y]\n" +
+			"         │   ├─ ab.a:2!null\n" +
+			"         │   └─ xy.x:0!null\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: xy\n" +
+			"         │   └─ columns: [x y]\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -977,7 +1022,7 @@ inner join xy on a = x;`,
 			" │                   ├─ source: TUPLE(uv.u:2)\n" +
 			" │                   ├─ target: TUPLE(pq.p:0!null)\n" +
 			" │                   └─ CachedResults\n" +
-			" │                       └─ Distinct\n" +
+			" │                       └─ OrderedDistinct\n" +
 			" │                           └─ Project\n" +
 			" │                               ├─ columns: [pq.p:0!null]\n" +
 			" │                               └─ Table\n" +
@@ -999,21 +1044,23 @@ where exists
 );`,
 		ExpectedPlan: "RightSemiLookupJoin\n" +
 			" ├─ Eq\n" +
-			" │   ├─ ab.a:4!null\n" +
+			" │   ├─ ab.a:1!null\n" +
 			" │   └─ uv.u:0!null\n" +
-			" ├─ Distinct\n" +
-			" │   └─ LeftOuterMergeJoin\n" +
-			" │       ├─ cmp: Eq\n" +
-			" │       │   ├─ uv.u:0!null\n" +
-			" │       │   └─ pq.p:2!null\n" +
-			" │       ├─ IndexedTableAccess(uv)\n" +
-			" │       │   ├─ index: [uv.u]\n" +
-			" │       │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │       │   └─ columns: [u v]\n" +
-			" │       └─ IndexedTableAccess(pq)\n" +
-			" │           ├─ index: [pq.p]\n" +
-			" │           ├─ static: [{[NULL, ∞)}]\n" +
-			" │           └─ columns: [p q]\n" +
+			" ├─ OrderedDistinct\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [uv.u:0!null]\n" +
+			" │       └─ LeftOuterMergeJoin\n" +
+			" │           ├─ cmp: Eq\n" +
+			" │           │   ├─ uv.u:0!null\n" +
+			" │           │   └─ pq.p:2!null\n" +
+			" │           ├─ IndexedTableAccess(uv)\n" +
+			" │           │   ├─ index: [uv.u]\n" +
+			" │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │           │   └─ columns: [u v]\n" +
+			" │           └─ IndexedTableAccess(pq)\n" +
+			" │               ├─ index: [pq.p]\n" +
+			" │               ├─ static: [{[NULL, ∞)}]\n" +
+			" │               └─ columns: [p q]\n" +
 			" └─ IndexedTableAccess(ab)\n" +
 			"     ├─ index: [ab.a]\n" +
 			"     └─ columns: [a b]\n" +
@@ -1052,7 +1099,7 @@ where exists (select * from pq where a = p)
 			"         ├─ source: TUPLE(alias1.a:0!null)\n" +
 			"         ├─ target: TUPLE(pq.p:0!null)\n" +
 			"         └─ CachedResults\n" +
-			"             └─ Distinct\n" +
+			"             └─ OrderedDistinct\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [pq.p:0!null]\n" +
 			"                     └─ Table\n" +
@@ -1165,7 +1212,7 @@ inner join pq on true
 			"             ├─ source: TUPLE(alias1.a:0!null)\n" +
 			"             ├─ target: TUPLE(uv.u:0!null)\n" +
 			"             └─ CachedResults\n" +
-			"                 └─ Distinct\n" +
+			"                 └─ OrderedDistinct\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [uv.u:0!null]\n" +
 			"                         └─ Table\n" +
@@ -1177,19 +1224,18 @@ inner join pq on true
 		Query: `select i from mytable a where exists (select 1 from mytable b where a.i = b.i)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
-			" └─ RightSemiLookupJoin\n" +
+			" └─ SemiLookupJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ a.i:1!null\n" +
-			"     │   └─ b.i:0!null\n" +
-			"     ├─ Distinct\n" +
-			"     │   └─ TableAlias(b)\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ b.i:2!null\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -1946,32 +1992,39 @@ inner join pq on true
 		Query: `SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i:2!null, selfjoin.i:0!null]\n" +
-			" └─ SemiJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ selfjoin.i:0!null\n" +
-			"     │   └─ scalarSubq0.1:4!null\n" +
-			"     ├─ MergeJoin\n" +
-			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ selfjoin.i:0!null\n" +
-			"     │   │   └─ mytable.i:2!null\n" +
-			"     │   ├─ TableAlias(selfjoin)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i s]\n" +
-			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: scalarSubq0\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [1 (tinyint)]\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: \n" +
-			"                 └─ columns: []\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [selfjoin.i:1!null, selfjoin.s:2!null, mytable.i:3!null, mytable.s:4!null]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ selfjoin.i:1!null\n" +
+			"         │   └─ scalarSubq0.1:0!null\n" +
+			"         ├─ Distinct\n" +
+			"         │   └─ SubqueryAlias\n" +
+			"         │       ├─ name: scalarSubq0\n" +
+			"         │       ├─ outerVisibility: false\n" +
+			"         │       ├─ cacheable: true\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [1 (tinyint)]\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: \n" +
+			"         │               └─ columns: []\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ source: TUPLE(scalarSubq0.1:0!null)\n" +
+			"             ├─ target: TUPLE(selfjoin.i:0!null)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ MergeJoin\n" +
+			"                     ├─ cmp: Eq\n" +
+			"                     │   ├─ selfjoin.i:1!null\n" +
+			"                     │   └─ mytable.i:3!null\n" +
+			"                     ├─ TableAlias(selfjoin)\n" +
+			"                     │   └─ IndexedTableAccess(mytable)\n" +
+			"                     │       ├─ index: [mytable.i]\n" +
+			"                     │       ├─ static: [{[NULL, ∞)}]\n" +
+			"                     │       └─ columns: [i s]\n" +
+			"                     └─ IndexedTableAccess(mytable)\n" +
+			"                         ├─ index: [mytable.i]\n" +
+			"                         ├─ static: [{[NULL, ∞)}]\n" +
+			"                         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -3262,15 +3315,16 @@ inner join pq on true
 			" ├─ Eq\n" +
 			" │   ├─ mytable.i:1!null\n" +
 			" │   └─ scalarSubq0.i2:0!null\n" +
-			" ├─ Max1Row\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: scalarSubq0\n" +
-			" │       ├─ outerVisibility: false\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Limit(1)\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: othertable\n" +
-			" │               └─ columns: [i2]\n" +
+			" ├─ OrderedDistinct\n" +
+			" │   └─ Max1Row\n" +
+			" │       └─ SubqueryAlias\n" +
+			" │           ├─ name: scalarSubq0\n" +
+			" │           ├─ outerVisibility: false\n" +
+			" │           ├─ cacheable: true\n" +
+			" │           └─ Limit(1)\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: othertable\n" +
+			" │                   └─ columns: [i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     └─ columns: [i s]\n" +
@@ -3278,18 +3332,17 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable)`,
-		ExpectedPlan: "RightSemiLookupJoin\n" +
+		ExpectedPlan: "SemiLookupJoin\n" +
 			" ├─ Eq\n" +
-			" │   ├─ mytable.i:1!null\n" +
-			" │   └─ scalarSubq0.i2:0!null\n" +
-			" ├─ Distinct\n" +
-			" │   └─ TableAlias(scalarSubq0)\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: othertable\n" +
-			" │           └─ columns: [i2]\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     └─ columns: [i s]\n" +
+			" │   ├─ mytable.i:0!null\n" +
+			" │   └─ scalarSubq0.i2:2!null\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: mytable\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ TableAlias(scalarSubq0)\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -13905,29 +13958,31 @@ ORDER BY cla.FTQLQ ASC`,
 			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
 			"         └─ RightSemiLookupJoin\n" +
 			"             ├─ Eq\n" +
-			"             │   ├─ cla.id:4!null\n" +
-			"             │   └─ scalarSubq0.IXUXU:2\n" +
+			"             │   ├─ cla.id:1!null\n" +
+			"             │   └─ scalarSubq0.IXUXU:0\n" +
 			"             ├─ Distinct\n" +
-			"             │   └─ SemiLookupJoin\n" +
-			"             │       ├─ Eq\n" +
-			"             │       │   ├─ scalarSubq0.id:0!null\n" +
-			"             │       │   └─ scalarSubq1.GXLUB:4!null\n" +
-			"             │       ├─ SemiLookupJoin\n" +
-			"             │       │   ├─ Eq\n" +
-			"             │       │   │   ├─ scalarSubq0.id:0!null\n" +
-			"             │       │   │   └─ scalarSubq2.GXLUB:4!null\n" +
-			"             │       │   ├─ TableAlias(scalarSubq0)\n" +
-			"             │       │   │   └─ Table\n" +
-			"             │       │   │       ├─ name: THNTS\n" +
-			"             │       │   │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
-			"             │       │   └─ TableAlias(scalarSubq2)\n" +
-			"             │       │       └─ IndexedTableAccess(AMYXQ)\n" +
-			"             │       │           ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
-			"             │       │           └─ columns: [gxlub]\n" +
-			"             │       └─ TableAlias(scalarSubq1)\n" +
-			"             │           └─ IndexedTableAccess(HGMQ6)\n" +
-			"             │               ├─ index: [HGMQ6.GXLUB]\n" +
-			"             │               └─ columns: [gxlub]\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [scalarSubq0.IXUXU:2]\n" +
+			"             │       └─ SemiLookupJoin\n" +
+			"             │           ├─ Eq\n" +
+			"             │           │   ├─ scalarSubq0.id:0!null\n" +
+			"             │           │   └─ scalarSubq1.GXLUB:4!null\n" +
+			"             │           ├─ SemiLookupJoin\n" +
+			"             │           │   ├─ Eq\n" +
+			"             │           │   │   ├─ scalarSubq0.id:0!null\n" +
+			"             │           │   │   └─ scalarSubq2.GXLUB:4!null\n" +
+			"             │           │   ├─ TableAlias(scalarSubq0)\n" +
+			"             │           │   │   └─ Table\n" +
+			"             │           │   │       ├─ name: THNTS\n" +
+			"             │           │   │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"             │           │   └─ TableAlias(scalarSubq2)\n" +
+			"             │           │       └─ IndexedTableAccess(AMYXQ)\n" +
+			"             │           │           ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
+			"             │           │           └─ columns: [gxlub]\n" +
+			"             │           └─ TableAlias(scalarSubq1)\n" +
+			"             │               └─ IndexedTableAccess(HGMQ6)\n" +
+			"             │                   ├─ index: [HGMQ6.GXLUB]\n" +
+			"             │                   └─ columns: [gxlub]\n" +
 			"             └─ TableAlias(cla)\n" +
 			"                 └─ IndexedTableAccess(YK2GW)\n" +
 			"                     ├─ index: [YK2GW.id]\n" +
@@ -13985,21 +14040,23 @@ ORDER BY cla.FTQLQ ASC`,
 			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
 			"         └─ RightSemiLookupJoin\n" +
 			"             ├─ Eq\n" +
-			"             │   ├─ cla.id:4!null\n" +
-			"             │   └─ scalarSubq0.IXUXU:2\n" +
+			"             │   ├─ cla.id:1!null\n" +
+			"             │   └─ scalarSubq0.IXUXU:0\n" +
 			"             ├─ Distinct\n" +
-			"             │   └─ SemiLookupJoin\n" +
-			"             │       ├─ Eq\n" +
-			"             │       │   ├─ scalarSubq0.id:0!null\n" +
-			"             │       │   └─ scalarSubq1.GXLUB:4!null\n" +
-			"             │       ├─ TableAlias(scalarSubq0)\n" +
-			"             │       │   └─ Table\n" +
-			"             │       │       ├─ name: THNTS\n" +
-			"             │       │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
-			"             │       └─ TableAlias(scalarSubq1)\n" +
-			"             │           └─ IndexedTableAccess(AMYXQ)\n" +
-			"             │               ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
-			"             │               └─ columns: [gxlub]\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [scalarSubq0.IXUXU:2]\n" +
+			"             │       └─ SemiLookupJoin\n" +
+			"             │           ├─ Eq\n" +
+			"             │           │   ├─ scalarSubq0.id:0!null\n" +
+			"             │           │   └─ scalarSubq1.GXLUB:4!null\n" +
+			"             │           ├─ TableAlias(scalarSubq0)\n" +
+			"             │           │   └─ Table\n" +
+			"             │           │       ├─ name: THNTS\n" +
+			"             │           │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"             │           └─ TableAlias(scalarSubq1)\n" +
+			"             │               └─ IndexedTableAccess(AMYXQ)\n" +
+			"             │                   ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
+			"             │                   └─ columns: [gxlub]\n" +
 			"             └─ TableAlias(cla)\n" +
 			"                 └─ IndexedTableAccess(YK2GW)\n" +
 			"                     ├─ index: [YK2GW.id]\n" +

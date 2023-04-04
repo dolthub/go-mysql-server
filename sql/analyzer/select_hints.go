@@ -295,6 +295,8 @@ func (o joinOpHint) isValid() bool {
 // but not [ab] x [c].
 func (o joinOpHint) depsMatch(n relExpr) bool {
 	switch n := n.(type) {
+	case *project:
+		return o.depsMatch(n.child.best)
 	case joinRel:
 		base := n.joinPrivate()
 		if o.l.Intersects(base.left.relProps.InputTables()) &&
@@ -336,6 +338,8 @@ func (o joinOpHint) typeMatches(n relExpr) bool {
 		default:
 			return false
 		}
+	case *project:
+		return o.typeMatches(n.child.best)
 	default:
 	}
 	return true

@@ -213,6 +213,37 @@ var JoinPlanningTests = []struct {
 		},
 		tests: []JoinPlanTest{
 			{
+				q:     "select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select b from ab where a in (0,1,2));",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{2, 1}},
+			},
+			{
+				// TODO: RIGHT_SEMI_JOIN tuple equalities
+				q:     "select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where (x,y) in (select b,a from ab where a in (0,1,2));",
+				types: []plan.JoinType{plan.JoinTypeSemi},
+				exp:   []sql.Row{{2, 1}},
+			},
+			{
+				q:     "select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select a from ab);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{2, 1}, {1, 0}, {0, 2}, {3, 3}},
+			},
+			{
+				q:     "select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select a from ab where a in (1,2));",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				exp:   []sql.Row{{2, 1}, {1, 0}},
+			},
+			{
+				q:     "select * from xy where x in (select a from ab);",
+				types: []plan.JoinType{plan.JoinTypeSemiLookup},
+				exp:   []sql.Row{{2, 1}, {1, 0}, {0, 2}, {3, 3}},
+			},
+			{
+				q:     "select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,ab) MERGE_JOIN(ab,uv) JOIN_ORDER(ab,uv,xy) */ * from xy where EXISTS (select 1 from ab join uv on a = u where x = a);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeMerge},
+				exp:   []sql.Row{{2, 1}, {1, 0}, {0, 2}, {3, 3}},
+			},
+			{
 				q:     "select * from xy where y+1 not in (select u from uv);",
 				types: []plan.JoinType{plan.JoinTypeAntiLookup},
 				exp:   []sql.Row{{3, 3}},
@@ -310,7 +341,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -388,7 +419,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select cnt from (select count(u) as cnt from uv group by v having cnt > 0) sq) order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -488,22 +519,22 @@ select x from xy where
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select * from (select 1) r where x = 1);",
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x in (select 1 where 1 in (select 1 where 1 in (select 1 where x != 2)) and x = 1);",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash, plan.JoinTypeRightSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash, plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x in (select * from (select 1 where 1 in (select 1 where x != 2)) r where x = 1);",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeRightSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x in (select * from (select 1) r);",
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
@@ -512,7 +543,7 @@ with recursive rec(x) as (select 1 union select 1)
 select * from xy where x in (
   select * from rec
 );`,
-				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
