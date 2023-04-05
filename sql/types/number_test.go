@@ -166,54 +166,54 @@ func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 
 func TestNumberConvert(t *testing.T) {
 	tests := []struct {
-		typ      sql.Type
-		inp      interface{}
-		exp      interface{}
-		err      bool
-		overflow bool
+		typ        sql.Type
+		inp        interface{}
+		exp        interface{}
+		err        bool
+		outOfRange bool
 	}{
-		{typ: Boolean, inp: true, exp: int8(1), err: false, overflow: false},
-		{typ: Int8, inp: int32(0), exp: int8(0), err: false, overflow: false},
-		{typ: Int16, inp: uint16(1), exp: int16(1), err: false, overflow: false},
-		{typ: Int24, inp: false, exp: int32(0), err: false, overflow: false},
-		{typ: Int32, inp: nil, exp: nil, err: false, overflow: false},
-		{typ: Int64, inp: "33", exp: int64(33), err: false, overflow: false},
-		{typ: Int64, inp: "33.0", exp: int64(33), err: false, overflow: false},
-		{typ: Int64, inp: "33.1", exp: int64(33), err: false, overflow: false},
-		{typ: Int64, inp: strconv.FormatInt(math.MaxInt64, 10), exp: int64(math.MaxInt64), err: false, overflow: false},
-		{typ: Int64, inp: true, exp: int64(1), err: false, overflow: false},
-		{typ: Int64, inp: false, exp: int64(0), err: false, overflow: false},
-		{typ: Uint8, inp: int64(34), exp: uint8(34), err: false, overflow: false},
-		{typ: Uint16, inp: int16(35), exp: uint16(35), err: false, overflow: false},
-		{typ: Uint24, inp: 36.756, exp: uint32(37), err: false, overflow: false},
-		{typ: Uint32, inp: uint8(37), exp: uint32(37), err: false, overflow: false},
-		{typ: Uint64, inp: time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), exp: uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), err: false, overflow: false},
-		{typ: Uint64, inp: "01000", exp: uint64(1000), err: false, overflow: false},
-		{typ: Uint64, inp: true, exp: uint64(1), err: false, overflow: false},
-		{typ: Uint64, inp: false, exp: uint64(0), err: false, overflow: false},
-		{typ: Float32, inp: "22.25", exp: float32(22.25), err: false, overflow: false},
-		{typ: Float32, inp: []byte{90, 140, 228, 206, 116}, exp: float32(388910861940), err: false, overflow: false},
-		{typ: Float64, inp: float32(893.875), exp: float64(893.875), err: false, overflow: false},
-		{typ: Boolean, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, overflow: true},
-		{typ: Int8, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, overflow: true},
-		{typ: Int8, inp: math.MinInt8 - 1, exp: int8(math.MinInt8), err: false, overflow: true},
-		{typ: Int16, inp: math.MaxInt16 + 1, exp: int16(math.MaxInt16), err: false, overflow: true},
-		{typ: Int16, inp: math.MinInt16 - 1, exp: int16(math.MinInt16), err: false, overflow: true},
-		{typ: Int24, inp: 1 << 24, exp: int32(1<<23 - 1), err: false, overflow: true},
-		{typ: Int24, inp: -1 << 24, exp: int32(-1 << 23), err: false, overflow: true},
-		{typ: Int32, inp: math.MaxInt32 + 1, exp: int32(math.MaxInt32), err: false, overflow: true},
-		{typ: Int32, inp: math.MinInt32 - 1, exp: int32(math.MinInt32), err: false, overflow: true},
-		{typ: Int64, inp: uint64(math.MaxInt64 + 1), exp: int64(math.MaxInt64), err: false, overflow: true},
-		{typ: Uint8, inp: math.MaxUint8 + 1, exp: uint8(math.MaxUint8), err: false, overflow: true},
-		{typ: Uint8, inp: -1, exp: uint8(math.MaxUint8), err: false, overflow: true},
-		{typ: Uint16, inp: math.MaxUint16 + 1, exp: uint16(math.MaxUint16), err: false, overflow: true},
-		{typ: Uint16, inp: -1, exp: uint16(math.MaxUint16), err: false, overflow: true},
-		{typ: Uint24, inp: 1<<24 + 1, exp: uint32(1 << 24), err: false, overflow: true},
-		{typ: Uint24, inp: -1, exp: uint32(1 << 24), err: false, overflow: true},
-		{typ: Uint32, inp: math.MaxUint32 + 1, exp: uint32(math.MaxUint32), err: false, overflow: true},
-		{typ: Uint32, inp: -1, exp: uint32(math.MaxUint32), err: false, overflow: true},
-		{typ: Uint64, inp: -1, exp: uint64(math.MaxUint64), err: false, overflow: true},
-		{typ: Float32, inp: math.MaxFloat32 * 2, exp: float32(math.MaxFloat32), err: false, overflow: true},
+		{typ: Boolean, inp: true, exp: int8(1), err: false, outOfRange: false},
+		{typ: Int8, inp: int32(0), exp: int8(0), err: false, outOfRange: false},
+		{typ: Int16, inp: uint16(1), exp: int16(1), err: false, outOfRange: false},
+		{typ: Int24, inp: false, exp: int32(0), err: false, outOfRange: false},
+		{typ: Int32, inp: nil, exp: nil, err: false, outOfRange: false},
+		{typ: Int64, inp: "33", exp: int64(33), err: false, outOfRange: false},
+		{typ: Int64, inp: "33.0", exp: int64(33), err: false, outOfRange: false},
+		{typ: Int64, inp: "33.1", exp: int64(33), err: false, outOfRange: false},
+		{typ: Int64, inp: strconv.FormatInt(math.MaxInt64, 10), exp: int64(math.MaxInt64), err: false, outOfRange: false},
+		{typ: Int64, inp: true, exp: int64(1), err: false, outOfRange: false},
+		{typ: Int64, inp: false, exp: int64(0), err: false, outOfRange: false},
+		{typ: Uint8, inp: int64(34), exp: uint8(34), err: false, outOfRange: false},
+		{typ: Uint16, inp: int16(35), exp: uint16(35), err: false, outOfRange: false},
+		{typ: Uint24, inp: 36.756, exp: uint32(37), err: false, outOfRange: false},
+		{typ: Uint32, inp: uint8(37), exp: uint32(37), err: false, outOfRange: false},
+		{typ: Uint64, inp: time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), exp: uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), err: false, outOfRange: false},
+		{typ: Uint64, inp: "01000", exp: uint64(1000), err: false, outOfRange: false},
+		{typ: Uint64, inp: true, exp: uint64(1), err: false, outOfRange: false},
+		{typ: Uint64, inp: false, exp: uint64(0), err: false, outOfRange: false},
+		{typ: Float32, inp: "22.25", exp: float32(22.25), err: false, outOfRange: false},
+		{typ: Float32, inp: []byte{90, 140, 228, 206, 116}, exp: float32(388910861940), err: false, outOfRange: false},
+		{typ: Float64, inp: float32(893.875), exp: float64(893.875), err: false, outOfRange: false},
+		{typ: Boolean, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, outOfRange: true},
+		{typ: Int8, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, outOfRange: true},
+		{typ: Int8, inp: math.MinInt8 - 1, exp: int8(math.MinInt8), err: false, outOfRange: true},
+		{typ: Int16, inp: math.MaxInt16 + 1, exp: int16(math.MaxInt16), err: false, outOfRange: true},
+		{typ: Int16, inp: math.MinInt16 - 1, exp: int16(math.MinInt16), err: false, outOfRange: true},
+		{typ: Int24, inp: 1 << 24, exp: int32(1<<23 - 1), err: false, outOfRange: true},
+		{typ: Int24, inp: -1 << 24, exp: int32(-1 << 23), err: false, outOfRange: true},
+		{typ: Int32, inp: math.MaxInt32 + 1, exp: int32(math.MaxInt32), err: false, outOfRange: true},
+		{typ: Int32, inp: math.MinInt32 - 1, exp: int32(math.MinInt32), err: false, outOfRange: true},
+		{typ: Int64, inp: uint64(math.MaxInt64 + 1), exp: int64(math.MaxInt64), err: false, outOfRange: true},
+		{typ: Uint8, inp: math.MaxUint8 + 1, exp: uint8(math.MaxUint8), err: false, outOfRange: true},
+		{typ: Uint8, inp: -1, exp: uint8(math.MaxUint8), err: false, outOfRange: true},
+		{typ: Uint16, inp: math.MaxUint16 + 1, exp: uint16(math.MaxUint16), err: false, outOfRange: true},
+		{typ: Uint16, inp: -1, exp: uint16(math.MaxUint16), err: false, outOfRange: true},
+		{typ: Uint24, inp: 1<<24 + 1, exp: uint32(1 << 24), err: false, outOfRange: true},
+		{typ: Uint24, inp: -1, exp: uint32(1 << 24), err: false, outOfRange: true},
+		{typ: Uint32, inp: math.MaxUint32 + 1, exp: uint32(math.MaxUint32), err: false, outOfRange: true},
+		{typ: Uint32, inp: -1, exp: uint32(math.MaxUint32), err: false, outOfRange: true},
+		{typ: Uint64, inp: -1, exp: uint64(math.MaxUint64), err: false, outOfRange: true},
+		{typ: Float32, inp: math.MaxFloat32 * 2, exp: float32(math.MaxFloat32), err: false, outOfRange: true},
 	}
 
 	for _, test := range tests {
@@ -224,7 +224,7 @@ func TestNumberConvert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.exp, val)
-				assert.Equal(t, test.overflow, outOfRange)
+				assert.Equal(t, test.outOfRange, outOfRange)
 				if val != nil {
 					assert.Equal(t, test.typ.ValueType(), reflect.TypeOf(val))
 				}
