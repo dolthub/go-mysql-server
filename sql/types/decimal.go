@@ -237,10 +237,8 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 }
 
 func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, bool, error) {
-	var outOfRange bool
 	if -v.Exponent() > int32(t.scale) {
 		// TODO : add 'Data truncated' warning
-		outOfRange = true
 		v = v.Round(int32(t.scale))
 	}
 	// TODO add shortcut for common case
@@ -248,7 +246,7 @@ func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, bool, err
 	if !v.Abs().LessThan(t.exclusiveUpperBound) {
 		return decimal.Decimal{}, false, ErrConvertToDecimalLimit.New()
 	}
-	return v, outOfRange, nil
+	return v, false, nil
 }
 
 // MustConvert implements the Type interface.

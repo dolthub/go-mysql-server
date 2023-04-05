@@ -15,6 +15,7 @@
 package expression
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -46,7 +47,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			expression:  NewLiteral(int32(-5), types.Int32),
 			castTo:      ConvertToUnsigned,
-			expected:    uint64(0),
+			expected:    uint64(math.MaxUint64 - 4),
 			expectedErr: false,
 		},
 		{

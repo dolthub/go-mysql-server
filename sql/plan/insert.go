@@ -371,7 +371,10 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, _, cErr := col.Type.Convert(row[idx]) // allows for better error handling
+			converted, outOfRange, cErr := col.Type.Convert(row[idx]) // allows for better error handling
+			if outOfRange {
+				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
+			}
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
 				// For JSON column types, always throw an error. MySQL throws the following error even when
@@ -379,7 +382,20 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				// ERROR 3140 (22032): Invalid JSON text: "Invalid value." at position 0 in value for column
 				// 'table.column'.
 				if i.ignore && col.Type.Type() != query.Type_JSON {
-					row = convertDataAndWarn(ctx, i.schema, row, idx, cErr)
+					if _, ok := col.Type.(sql.NumberType); ok {
+						if converted == nil {
+							converted = i.schema[idx].Type.Zero()
+						}
+						row[idx] = converted
+						// Add a warning instead
+						ctx.Session.Warn(&sql.Warning{
+							Level:   "Note",
+							Code:    sql.CastSQLError(cErr).Num,
+							Message: cErr.Error(),
+						})
+					} else {
+						row = convertDataAndWarn(ctx, i.schema, row, idx, cErr)
+					}
 					continue
 				} else {
 					// Fill in error with information

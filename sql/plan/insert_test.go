@@ -64,10 +64,10 @@ func TestInsertIgnoreConversions(t *testing.T) {
 		{
 			name:      "inserting a negative into an unsigned int results in 0",
 			colType:   types.Uint64,
-			value:     -1,
-			valueType: types.Int8,
-			expected:  uint64(0),
-			err:       false,
+			value:     int64(-1),
+			expected:  uint64(1<<64 - 1),
+			valueType: types.Uint64,
+			err:       true,
 		},
 	}
 
@@ -88,7 +88,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 			row, err := ri.Next(ctx)
 			require.NoError(t, err)
 
-			require.Equal(t, row, sql.Row{tc.expected})
+			require.Equal(t, sql.Row{tc.expected}, row)
 
 			// Validate that the number of warnings are increasing by 1 each time
 			if tc.err {
