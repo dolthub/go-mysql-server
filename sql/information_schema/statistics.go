@@ -18,7 +18,7 @@ import (
 	"io"
 	"math"
 	"sort"
-
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -133,4 +133,18 @@ func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, 
 	}
 
 	return histMap, nil
+}
+// Cardinality returns the estimated number of distinct values for the given column.
+func Cardinality(ctx *sql.Context, t sql.Table, colName string) (int64, error) {
+histMap, err := NewHistogramMapFromTable(ctx, t)
+if err != nil {
+return 0, err
+}
+
+hist, ok := histMap[colName]
+if !ok {
+	return 0, fmt.Errorf("column '%s' not found in table", colName)
+}
+
+return int64(hist.DistinctCount), nil
 }
