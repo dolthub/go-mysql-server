@@ -83,11 +83,11 @@ func (t BitType_) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	ac, err := t.Convert(a)
+	ac, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bc, err := t.Convert(b)
+	bc, _, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -103,9 +103,9 @@ func (t BitType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t BitType_) Convert(v interface{}) (interface{}, error) {
+func (t BitType_) Convert(v interface{}) (interface{}, bool, error) {
 	if v == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	value := uint64(0)
@@ -140,43 +140,43 @@ func (t BitType_) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(float64(val))
 	case float64:
 		if val < 0 {
-			return nil, fmt.Errorf(`negative floats cannot become bit values`)
+			return nil, false, fmt.Errorf(`negative floats cannot become bit values`)
 		}
 		value = uint64(val)
 	case decimal.NullDecimal:
 		if !val.Valid {
-			return nil, nil
+			return nil, false, nil
 		}
 		return t.Convert(val.Decimal)
 	case decimal.Decimal:
 		val = val.Round(0)
 		if val.GreaterThan(dec_uint64_max) {
-			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
+			return nil, false, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
 		if val.LessThan(dec_int64_min) {
-			return nil, errBeyondMaxBit.New(val.String(), t.numOfBits)
+			return nil, false, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
 		value = uint64(val.IntPart())
 	case string:
 		return t.Convert([]byte(val))
 	case []byte:
 		if len(val) > 8 {
-			return nil, errBeyondMaxBit.New(value, t.numOfBits)
+			return nil, false, errBeyondMaxBit.New(value, t.numOfBits)
 		}
 		value = binary.BigEndian.Uint64(append(make([]byte, 8-len(val)), val...))
 	default:
-		return nil, sql.ErrInvalidType.New(t)
+		return nil, false, sql.ErrInvalidType.New(t)
 	}
 
 	if value > uint64(1<<t.numOfBits-1) {
-		return nil, errBeyondMaxBit.New(value, t.numOfBits)
+		return nil, false, errBeyondMaxBit.New(value, t.numOfBits)
 	}
-	return value, nil
+	return value, false, nil
 }
 
 // MustConvert implements the Type interface.
 func (t BitType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -201,7 +201,7 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

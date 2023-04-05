@@ -90,7 +90,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// non number type will be caught here
 	if !types.IsNumber(c.Child.Type()) {
-		child, err = types.Float64.Convert(child)
+		child, _, err = types.Float64.Convert(child)
 		if err != nil {
 			return int32(0), nil
 		}
@@ -174,7 +174,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// non number type will be caught here
 	if !types.IsNumber(f.Child.Type()) {
-		child, err = types.Float64.Convert(child)
+		child, _, err = types.Float64.Convert(child)
 		if err != nil {
 			return int32(0), nil
 		}
@@ -291,7 +291,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				}
 				dVal = float64(val)
 			default:
-				dTemp, err = types.Float64.Convert(dTemp)
+				dTemp, _, err = types.Float64.Convert(dTemp)
 				if err == nil {
 					dVal = dTemp.(float64)
 				}
@@ -303,12 +303,12 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if types.IsText(r.Left.Type()) {
-		xVal, err = types.Float64.Convert(xVal)
+		xVal, _, err = types.Float64.Convert(xVal)
 		if err != nil {
 			return int32(0), nil
 		}
 	} else if !types.IsNumber(r.Left.Type()) {
-		xVal, err = types.Float64.Convert(xVal)
+		xVal, _, err = types.Float64.Convert(xVal)
 		if err != nil {
 			return int32(0), nil
 		}

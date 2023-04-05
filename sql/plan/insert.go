@@ -371,7 +371,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, cErr := col.Type.Convert(row[idx]) // allows for better error handling
+			converted, _, cErr := col.Type.Convert(row[idx]) // allows for better error handling
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
 				// For JSON column types, always throw an error. MySQL throws the following error even when

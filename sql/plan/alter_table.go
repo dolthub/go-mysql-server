@@ -317,7 +317,7 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 	if columnDefaultExpr == nil && !tblSch[col].Nullable {
 		val := tblSch[col].Type.Zero()
 		var err error
-		newRow[col], err = tblSch[col].Type.Convert(val)
+		newRow[col], _, err = tblSch[col].Type.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +326,7 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 		if err != nil {
 			return nil, err
 		}
-		newRow[col], err = tblSch[col].Type.Convert(val)
+		newRow[col], _, err = tblSch[col].Type.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -539,7 +539,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		}
 
 		if autoIncColIdx != -1 {
-			v, err := i.a.column.Type.Convert(val)
+			v, _, err := i.a.column.Type.Convert(val)
 			if err != nil {
 				return false, err
 			}
@@ -671,13 +671,15 @@ func (c colDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 
 	if columnDefaultExpr == nil && !c.column.Nullable {
 		val := c.column.Type.Zero()
-		return c.column.Type.Convert(val)
+		ret, _, err := c.column.Type.Convert(val)
+		return ret, err
 	} else if columnDefaultExpr != nil {
 		val, err := columnDefaultExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		return c.column.Type.Convert(val)
+		ret, _, err := c.column.Type.Convert(val)
+		return ret, err
 	}
 
 	return nil, nil
@@ -1488,7 +1490,7 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	}
 
 	for i := range newRow {
-		newRow[i], err = sch[i].Type.Convert(newRow[i])
+		newRow[i], _, err = sch[i].Type.Convert(newRow[i])
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(sch[i].Name, err)

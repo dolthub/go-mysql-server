@@ -40,12 +40,12 @@ func (t nullType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t nullType) Convert(v interface{}) (interface{}, error) {
+func (t nullType) Convert(v interface{}) (interface{}, bool, error) {
 	if v != nil {
-		return nil, ErrValueNotNil.New(v)
+		return nil, false, ErrValueNotNil.New(v)
 	}
 
-	return nil, nil
+	return nil, false, nil
 }
 
 // MaxTextResponseByteLength implements the Type interface
@@ -55,7 +55,7 @@ func (t nullType) MaxTextResponseByteLength() uint32 {
 
 // MustConvert implements the Type interface.
 func (t nullType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}

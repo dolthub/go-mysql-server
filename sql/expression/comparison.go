@@ -278,7 +278,7 @@ func (e *Equals) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := e.Compare(ctx, row)
 	if err != nil {
-		if ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
 
@@ -429,7 +429,7 @@ func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	result, err := re.Compare(ctx, row)
 	if err != nil {
-		if ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
 
@@ -449,7 +449,7 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	if err != nil || left == nil {
 		return nil, err
 	}
-	left, err = types.LongText.Convert(left)
+	left, _, err = types.LongText.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +503,7 @@ func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
 	if right == nil {
 		return nil, nil
 	}
-	right, err = types.LongText.Convert(right)
+	right, _, err = types.LongText.Convert(right)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +549,7 @@ func (gt *GreaterThan) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := gt.Compare(ctx, row)
 	if err != nil {
-		if ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
 
@@ -601,7 +601,7 @@ func (lt *LessThan) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := lt.Compare(ctx, row)
 	if err != nil {
-		if ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
 
@@ -654,7 +654,7 @@ func (gte *GreaterThanOrEqual) CollationCoercibility(ctx *sql.Context) (collatio
 func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := gte.Compare(ctx, row)
 	if err != nil {
-		if ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
 
@@ -707,7 +707,7 @@ func (lte *LessThanOrEqual) CollationCoercibility(ctx *sql.Context) (collation s
 func (lte *LessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	result, err := lte.Compare(ctx, row)
 	if err != nil {
-		if ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
 

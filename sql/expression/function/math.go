@@ -131,7 +131,7 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var seed int64
 	if types.IsNumber(r.Child.Type()) {
-		e, err = types.Int64.Convert(e)
+		e, _, err = types.Int64.Convert(e)
 		if err == nil {
 			seed = e.(int64)
 		}
@@ -174,7 +174,7 @@ func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (s *Cos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +419,7 @@ func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +468,7 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -522,7 +522,7 @@ func (d *Degrees) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -571,7 +571,7 @@ func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -625,7 +625,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case string:
 		bytes = []byte(val)
 	case int8, int16, int32, int64, int:
-		val, err := types.Int64.Convert(arg)
+		val, _, err := types.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -633,7 +633,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		bytes = []byte(strconv.FormatInt(val.(int64), 10))
 	case uint8, uint16, uint32, uint64, uint:
-		val, err := types.Uint64.Convert(arg)
+		val, _, err := types.Uint64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -716,7 +716,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch typedVal := arg.(type) {
 	case int8, int16, int32, int64, float64, float32, int, decimal.Decimal:
-		val, err := types.Int64.Convert(arg)
+		val, _, err := types.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -732,7 +732,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int8(1), nil
 
 	case uint8, uint16, uint32, uint64, uint:
-		val, err := types.Uint64.Convert(arg)
+		val, _, err := types.Uint64.Convert(arg)
 
 		if err != nil {
 			return nil, err

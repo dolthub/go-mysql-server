@@ -136,7 +136,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -150,7 +150,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	length, err = types.Int64.Convert(length)
+	length, _, err = types.Int64.Convert(length)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	padStr, err = types.LongText.Convert(padStr)
+	padStr, _, err = types.LongText.Convert(padStr)
 	if err != nil {
 		return nil, err
 	}

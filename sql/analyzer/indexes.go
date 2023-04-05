@@ -201,9 +201,7 @@ func getIndexes(
 		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, types.Null)), tableAliases)
 	case *expression.Not:
 		r, err := getNegatedIndexes(ctx, ia, e, tableAliases)
-		if sql.ErrValueOutOfRange.Is(err) {
-			return nil, nil
-		} else if err != nil {
+		if err != nil {
 			return nil, err
 		}
 
@@ -416,9 +414,7 @@ func getComparisonIndexLookup(
 	default:
 		return nil, nil
 	}
-	if sql.ErrValueOutOfRange.Is(err) {
-		return nil, nil
-	} else if err != nil || lookup.IsEmpty() {
+	if err != nil || lookup.IsEmpty() {
 		return nil, err
 	}
 
@@ -686,9 +682,7 @@ func getMultiColumnIndexes(
 		}
 
 		lookup, err := getMultiColumnIndexForExpressions(ctx, ia, table, exprList[0], exps, tableAliases)
-		if sql.ErrValueOutOfRange.Is(err) {
-			continue
-		} else if err != nil {
+		if err != nil {
 			return nil, nil, err
 		}
 

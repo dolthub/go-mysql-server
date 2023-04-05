@@ -80,7 +80,7 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err = typ.Convert(val)
+	val, _, err = typ.Convert(val)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if lower != nil {
-		lower, err = typ.Convert(lower)
+		lower, _, err = typ.Convert(lower)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +103,7 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if upper != nil {
-		upper, err = typ.Convert(upper)
+		upper, _, err = typ.Convert(upper)
 		if err != nil {
 			return nil, err
 		}
@@ -114,16 +114,12 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	cmpLower, err := typ.Compare(val, lower)
-	if sql.ErrValueOutOfRange.Is(err) {
-		return nil, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	cmpUpper, err := typ.Compare(val, upper)
-	if sql.ErrValueOutOfRange.Is(err) {
-		return nil, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 

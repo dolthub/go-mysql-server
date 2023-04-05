@@ -154,7 +154,7 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if text == nil {
 		return nil, nil
 	}
-	text, err = types.LongText.Convert(text)
+	text, _, err = types.LongText.Convert(text)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 	if patternVal == nil {
 		return nil, nil
 	}
-	patternVal, err = types.LongText.Convert(patternVal)
+	patternVal, _, err = types.LongText.Convert(patternVal)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 		if f == nil {
 			return nil, nil
 		}
-		f, err = types.LongText.Convert(f)
+		f, _, err = types.LongText.Convert(f)
 		if err != nil {
 			return nil, err
 		}

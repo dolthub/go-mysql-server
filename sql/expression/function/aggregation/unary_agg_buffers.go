@@ -80,7 +80,7 @@ func (m *sumBuffer) PerformSum(v interface{}) {
 	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
 	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type()) {
-		val, err := m.expr.Type().Convert(s)
+		val, _, err := m.expr.Type().Convert(s)
 		if err == nil {
 			v = val
 		}
@@ -98,7 +98,7 @@ func (m *sumBuffer) PerformSum(v interface{}) {
 			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(n)
 		}
 	default:
-		val, err := types.Float64.Convert(n)
+		val, _, err := types.Float64.Convert(n)
 		if err != nil {
 			val = float64(0)
 		}
@@ -106,7 +106,7 @@ func (m *sumBuffer) PerformSum(v interface{}) {
 			m.sum = float64(0)
 			m.isnil = false
 		}
-		sum, err := types.Float64.Convert(m.sum)
+		sum, _, err := types.Float64.Convert(m.sum)
 		if err != nil {
 			sum = float64(0)
 		}
@@ -260,7 +260,7 @@ func (b *bitAndBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = types.Uint64.Convert(v)
+	v, _, err = types.Uint64.Convert(v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -307,7 +307,7 @@ func (b *bitOrBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = types.Uint64.Convert(v)
+	v, _, err = types.Uint64.Convert(v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -354,7 +354,7 @@ func (b *bitXorBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = types.Uint64.Convert(v)
+	v, _, err = types.Uint64.Convert(v)
 	if err != nil {
 		v = uint64(0)
 	}

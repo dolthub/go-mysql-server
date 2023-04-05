@@ -207,7 +207,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 	var v interface{}
 	var vs string
 	if types.IsBlobType(retType) {
-		v, err = types.Blob.Convert(evalRow[0])
+		v, _, err = types.Blob.Convert(evalRow[0])
 		if err != nil {
 			return err
 		}
@@ -216,7 +216,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 			return nil
 		}
 	} else {
-		v, err = types.LongText.Convert(evalRow[0])
+		v, _, err = types.LongText.Convert(evalRow[0])
 		if err != nil {
 			return err
 		}

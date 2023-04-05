@@ -58,7 +58,7 @@ func valueToExpr(v driver.Value) (sql.Expression, error) {
 		return nil, err
 	}
 
-	c, err := typ.Convert(v)
+	c, _, err := typ.Convert(v)
 	if err != nil {
 		return nil, err
 	}

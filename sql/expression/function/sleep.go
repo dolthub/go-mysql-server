@@ -61,7 +61,7 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	child, err = types.Float64.Convert(child)
+	child, _, err = types.Float64.Convert(child)
 	if err != nil {
 		return nil, err
 	}

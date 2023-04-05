@@ -43,11 +43,11 @@ func NewSystemBoolType(varName string) sql.SystemVariableType {
 
 // Compare implements Type interface.
 func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
-	as, err := t.Convert(a)
+	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bs, err := t.Convert(b)
+	bs, _, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -64,14 +64,14 @@ func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t SystemBoolType_) Convert(v interface{}) (interface{}, error) {
+func (t SystemBoolType_) Convert(v interface{}) (interface{}, bool, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case bool:
 		if value {
-			return int8(1), nil
+			return int8(1), false, nil
 		}
-		return int8(0), nil
+		return int8(0), false, nil
 	case int:
 		return t.Convert(int64(value))
 	case uint:
@@ -90,7 +90,7 @@ func (t SystemBoolType_) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(int64(value))
 	case int64:
 		if value == 0 || value == 1 {
-			return int8(value), nil
+			return int8(value), false, nil
 		}
 	case uint64:
 		return t.Convert(int64(value))
@@ -113,18 +113,18 @@ func (t SystemBoolType_) Convert(v interface{}) (interface{}, error) {
 	case string:
 		switch strings.ToLower(value) {
 		case "on", "true":
-			return int8(1), nil
+			return int8(1), false, nil
 		case "off", "false":
-			return int8(0), nil
+			return int8(0), false, nil
 		}
 	}
 
-	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
 func (t SystemBoolType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -156,7 +156,7 @@ func (t SystemBoolType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

@@ -35,6 +35,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 		value     interface{}
 		valueType sql.Type
 		expected  interface{}
+		err       bool
 	}{
 		{
 			name:      "inserting a string into a integer defaults to a 0",
@@ -42,6 +43,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 			value:     "dadasd",
 			valueType: types.Text,
 			expected:  int64(0),
+			err:       true,
 		},
 		{
 			name:      "string too long gets truncated",
@@ -49,6 +51,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 			value:     "dadsa",
 			valueType: types.Text,
 			expected:  "da",
+			err:       true,
 		},
 		{
 			name:      "inserting a string into a datetime results in 0 time",
@@ -56,6 +59,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 			value:     "dadasd",
 			valueType: types.Text,
 			expected:  time.Unix(-62167219200, 0).UTC(),
+			err:       true,
 		},
 		{
 			name:      "inserting a negative into an unsigned int results in 0",
@@ -63,10 +67,12 @@ func TestInsertIgnoreConversions(t *testing.T) {
 			value:     -1,
 			valueType: types.Int8,
 			expected:  uint64(0),
+			err:       false,
 		},
 	}
 
-	for i, tc := range testCases {
+	var warningCnt int
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "c1", Source: "foo", Type: tc.colType},
@@ -85,7 +91,10 @@ func TestInsertIgnoreConversions(t *testing.T) {
 			require.Equal(t, row, sql.Row{tc.expected})
 
 			// Validate that the number of warnings are increasing by 1 each time
-			require.Equal(t, ctx.WarningCount(), uint16(i+1))
+			if tc.err {
+				warningCnt++
+			}
+			require.Equal(t, ctx.WarningCount(), uint16(warningCnt))
 		})
 	}
 }

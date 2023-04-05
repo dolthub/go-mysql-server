@@ -116,7 +116,7 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := types.Float64.Convert(x)
+	_x, _, err := types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := types.Float64.Convert(y)
+	_y, _, err := types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	x, err = types.Float64.Convert(x)
+	x, _, err = types.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +431,7 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	y, err = types.Float64.Convert(y)
+	y, _, err = types.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}

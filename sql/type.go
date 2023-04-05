@@ -64,7 +64,7 @@ type Type interface {
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
 	Compare(interface{}, interface{}) (int, error)
 	// Convert a value of a compatible type to a most accurate type.
-	Convert(interface{}) (interface{}, error)
+	Convert(interface{}) (interface{}, bool, error)
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
 	Equals(otherType Type) bool
@@ -186,8 +186,9 @@ type DecimalType interface {
 	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
 	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
 	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
-	// BoundsCheck rounds and validates a decimal
-	BoundsCheck(v decimal.Decimal) (decimal.Decimal, error)
+	// BoundsCheck rounds and validates a decimal, returning the decimal,
+	// whether the value was out of range, and an error.
+	BoundsCheck(v decimal.Decimal) (decimal.Decimal, bool, error)
 	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
 	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
 	ExclusiveUpperBound() decimal.Decimal

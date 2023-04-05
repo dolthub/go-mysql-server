@@ -46,7 +46,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			expression:  NewLiteral(int32(-5), types.Int32),
 			castTo:      ConvertToUnsigned,
-			expected:    uint64(18446744073709551611),
+			expected:    uint64(0),
 			expectedErr: false,
 		},
 		{

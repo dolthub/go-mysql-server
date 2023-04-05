@@ -151,7 +151,7 @@ func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	key, err = n.outer.Type().Convert(key)
+	key, _, err = n.outer.Type().Convert(key)
 	if err != nil {
 		return nil, err
 	}

@@ -113,11 +113,11 @@ func (t SetType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	ai, err := t.Convert(a)
+	ai, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bi, err := t.Convert(b)
+	bi, _, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -134,9 +134,9 @@ func (t SetType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 // Returns the string representing the given value if applicable.
-func (t SetType) Convert(v interface{}) (interface{}, error) {
+func (t SetType) Convert(v interface{}) (interface{}, bool, error) {
 	if v == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	switch value := v.(type) {
@@ -160,7 +160,7 @@ func (t SetType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(uint64(value))
 	case uint64:
 		if value <= t.allValuesBitField() {
-			return value, nil
+			return value, false, nil
 		}
 	case float32:
 		return t.Convert(uint64(value))
@@ -170,16 +170,17 @@ func (t SetType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(value.BigInt().Uint64())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, nil
+			return nil, false, nil
 		}
 		return t.Convert(value.Decimal.BigInt().Uint64())
 	case string:
-		return t.convertStringToBitField(value)
+		ret, err := t.convertStringToBitField(value)
+		return ret, false, err
 	case []byte:
 		return t.Convert(string(value))
 	}
 
-	return uint64(0), sql.ErrConvertingToSet.New(v)
+	return uint64(0), false, sql.ErrConvertingToSet.New(v)
 }
 
 // MaxTextResponseByteLength implements the Type interface
@@ -189,7 +190,7 @@ func (t SetType) MaxTextResponseByteLength() uint32 {
 
 // MustConvert implements the Type interface.
 func (t SetType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -219,7 +220,7 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

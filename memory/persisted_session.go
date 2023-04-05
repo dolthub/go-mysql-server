@@ -41,7 +41,7 @@ func (s *InMemoryPersistedSession) PersistGlobal(sysVarName string, value interf
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
-	val, err := sysVar.Type.Convert(value)
+	val, _, err := sysVar.Type.Convert(value)
 	if err != nil {
 		return err
 	}

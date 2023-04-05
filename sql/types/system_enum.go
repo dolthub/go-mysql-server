@@ -51,11 +51,11 @@ func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType 
 
 // Compare implements Type interface.
 func (t systemEnumType) Compare(a interface{}, b interface{}) (int, error) {
-	as, err := t.Convert(a)
+	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bs, err := t.Convert(b)
+	bs, _, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -72,12 +72,12 @@ func (t systemEnumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
+func (t systemEnumType) Convert(v interface{}) (interface{}, bool, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
 		if value >= 0 && value < len(t.indexToVal) {
-			return t.indexToVal[value], nil
+			return t.indexToVal[value], false, nil
 		}
 	case uint:
 		return t.Convert(int(value))
@@ -115,16 +115,16 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 		}
 	case string:
 		if idx, ok := t.valToIndex[strings.ToLower(value)]; ok {
-			return t.indexToVal[idx], nil
+			return t.indexToVal[idx], false, nil
 		}
 	}
 
-	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
 func (t systemEnumType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -161,7 +161,7 @@ func (t systemEnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -207,7 +207,7 @@ func (t systemEnumType) EncodeValue(val interface{}) (string, error) {
 
 // DecodeValue implements SystemVariableType interface.
 func (t systemEnumType) DecodeValue(val string) (interface{}, error) {
-	outVal, err := t.Convert(val)
+	outVal, _, err := t.Convert(val)
 	if err != nil {
 		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}

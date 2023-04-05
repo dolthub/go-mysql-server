@@ -164,7 +164,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		}
 		if cmp > 0 {
 			// Provided value larger than autoIncVal, set autoIncVal to that value
-			v, err := types.Uint64.Convert(row[idx])
+			v, _, err := types.Uint64.Convert(row[idx])
 			if err != nil {
 				return err
 			}

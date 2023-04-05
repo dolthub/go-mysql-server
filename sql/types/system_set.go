@@ -43,11 +43,11 @@ func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
 	if a == nil || b == nil {
 		return 0, sql.ErrInvalidSystemVariableValue.New(t.varName, nil)
 	}
-	ai, err := t.Convert(a)
+	ai, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bi, err := t.Convert(b)
+	bi, _, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -64,7 +64,7 @@ func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemSetType) Convert(v interface{}) (interface{}, error) {
+func (t systemSetType) Convert(v interface{}) (interface{}, bool, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
@@ -107,12 +107,12 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 		return t.SetType.Convert(value)
 	}
 
-	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
 func (t systemSetType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -137,7 +137,7 @@ func (t systemSetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltyp
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -187,7 +187,7 @@ func (t systemSetType) EncodeValue(val interface{}) (string, error) {
 
 // DecodeValue implements SystemVariableType interface.
 func (t systemSetType) DecodeValue(val string) (interface{}, error) {
-	outVal, err := t.Convert(val)
+	outVal, _, err := t.Convert(val)
 	if err != nil {
 		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}

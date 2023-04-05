@@ -746,7 +746,7 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 	}
 
 	if cmp > 0 && insertVal != nil {
-		v, err := types.Uint64.Convert(insertVal)
+		v, _, err := types.Uint64.Convert(insertVal)
 		if err != nil {
 			return 0, err
 		}
@@ -819,7 +819,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 
 					if cmp > 0 {
 						var val interface{}
-						val, err = types.Uint64.Convert(row[newColIdx])
+						val, _, err = types.Uint64.Convert(row[newColIdx])
 						if err != nil {
 							panic(err)
 						}
@@ -954,7 +954,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			var oldRowWithoutVal sql.Row
 			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
 			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
-			newVal, err := column.Type.Convert(row[oldIdx])
+			newVal, _, err := column.Type.Convert(row[oldIdx])
 			if err != nil {
 				if sql.ErrNotMatchingSRID.Is(err) {
 					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
@@ -1937,7 +1937,7 @@ func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, 
 					continue
 				}
 
-				val, err := types.Float64.Convert(row[i])
+				val, _, err := types.Float64.Convert(row[i])
 				if err != nil {
 					continue // silently skip unsupported column types for now
 				}

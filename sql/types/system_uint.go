@@ -44,11 +44,11 @@ func NewSystemUintType(varName string, lowerbound, upperbound uint64) sql.System
 
 // Compare implements Type interface.
 func (t systemUintType) Compare(a interface{}, b interface{}) (int, error) {
-	as, err := t.Convert(a)
+	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bs, err := t.Convert(b)
+	bs, _, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -65,7 +65,7 @@ func (t systemUintType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemUintType) Convert(v interface{}) (interface{}, error) {
+func (t systemUintType) Convert(v interface{}) (interface{}, bool, error) {
 	// Float, string, nor nil values are accepted
 	switch value := v.(type) {
 	case int:
@@ -88,7 +88,7 @@ func (t systemUintType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(uint64(value))
 	case uint64:
 		if value >= t.lowerbound && value <= t.upperbound {
-			return value, nil
+			return value, false, nil
 		}
 	case float32:
 		return t.Convert(float64(value))
@@ -108,12 +108,12 @@ func (t systemUintType) Convert(v interface{}) (interface{}, error) {
 		}
 	}
 
-	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.
 func (t systemUintType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +145,7 @@ func (t systemUintType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

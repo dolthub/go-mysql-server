@@ -53,25 +53,25 @@ func (t LineStringType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t LineStringType) Convert(v interface{}) (interface{}, error) {
+func (t LineStringType) Convert(v interface{}) (interface{}, bool, error) {
 	switch buf := v.(type) {
 	case nil:
-		return nil, nil
+		return nil, false, nil
 	case []byte:
-		line, err := GeometryType{}.Convert(buf)
+		line, _, err := GeometryType{}.Convert(buf)
 		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.ErrInvalidGISData.New("LineStringType.Convert")
+			return nil, false, sql.ErrInvalidGISData.New("LineStringType.Convert")
 		}
-		return line, err
+		return line, false, err
 	case string:
 		return t.Convert([]byte(buf))
 	case LineString:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return buf, nil
+		return buf, false, nil
 	default:
-		return nil, sql.ErrSpatialTypeConversion.New()
+		return nil, false, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -97,7 +97,7 @@ func (t LineStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

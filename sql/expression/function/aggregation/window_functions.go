@@ -162,7 +162,7 @@ func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.Windo
 		if err != nil {
 			continue
 		}
-		val, err := types.Float64.Convert(v)
+		val, _, err := types.Float64.Convert(v)
 		if err != nil || val == nil {
 			val = float64(0)
 			nullCnt += 1
@@ -316,7 +316,7 @@ func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 			continue
 		}
 
-		val, err := types.Uint64.Convert(v)
+		val, _, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -383,7 +383,7 @@ func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sq
 			continue
 		}
 
-		val, err := types.Uint64.Convert(v)
+		val, _, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -451,7 +451,7 @@ func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 		}
 
 		// TODO: handle strings
-		val, err := types.Uint64.Convert(v)
+		val, _, err := types.Uint64.Convert(v)
 		if err != nil {
 			return 0
 		}
@@ -958,9 +958,9 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 
 		var v interface{}
 		if retType == types.Blob {
-			v, err = types.Blob.Convert(evalRow[0])
+			v, _, err = types.Blob.Convert(evalRow[0])
 		} else {
-			v, err = types.LongText.Convert(evalRow[0])
+			v, _, err = types.LongText.Convert(evalRow[0])
 		}
 
 		if err != nil {
@@ -1146,7 +1146,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 		}
 
 		// Update the map.
-		keyAsString, err := types.LongText.Convert(key)
+		keyAsString, _, err := types.LongText.Convert(key)
 		if err != nil {
 			continue
 		}

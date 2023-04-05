@@ -138,13 +138,13 @@ func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t DecimalType_) Convert(v interface{}) (interface{}, error) {
+func (t DecimalType_) Convert(v interface{}) (interface{}, bool, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !dec.Valid {
-		return nil, nil
+		return nil, false, nil
 	}
 	return t.BoundsCheck(dec.Decimal)
 }
@@ -236,22 +236,24 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
 }
 
-func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
+func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, bool, error) {
+	var outOfRange bool
 	if -v.Exponent() > int32(t.scale) {
 		// TODO : add 'Data truncated' warning
+		outOfRange = true
 		v = v.Round(int32(t.scale))
 	}
 	// TODO add shortcut for common case
 	// ex: certain num of bits fast tracks OK
 	if !v.Abs().LessThan(t.exclusiveUpperBound) {
-		return decimal.Decimal{}, ErrConvertToDecimalLimit.New()
+		return decimal.Decimal{}, false, ErrConvertToDecimalLimit.New()
 	}
-	return v, nil
+	return v, outOfRange, nil
 }
 
 // MustConvert implements the Type interface.
 func (t DecimalType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}

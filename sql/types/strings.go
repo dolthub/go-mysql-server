@@ -251,7 +251,7 @@ func (t StringType) Compare(a interface{}, b interface{}) (int, error) {
 	var bs string
 	var ok bool
 	if as, ok = a.(string); !ok {
-		ai, err := t.Convert(a)
+		ai, _, err := t.Convert(a)
 		if err != nil {
 			return 0, err
 		}
@@ -262,7 +262,7 @@ func (t StringType) Compare(a interface{}, b interface{}) (int, error) {
 		}
 	}
 	if bs, ok = b.(string); !ok {
-		bi, err := t.Convert(b)
+		bi, _, err := t.Convert(b)
 		if err != nil {
 			return 0, err
 		}
@@ -304,20 +304,20 @@ func (t StringType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t StringType) Convert(v interface{}) (interface{}, error) {
+func (t StringType) Convert(v interface{}) (interface{}, bool, error) {
 	if v == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	val, err := ConvertToString(v, t)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if IsBinaryType(t) {
-		return []byte(val), nil
+		return []byte(val), false, nil
 	}
-	return val, nil
+	return val, false, nil
 }
 
 func ConvertToString(v interface{}, t sql.StringType) (string, error) {
@@ -423,7 +423,7 @@ func ConvertToCollatedString(val interface{}, typ sql.Type) (string, sql.Collati
 		} else if byteVal, ok := val.([]byte); ok {
 			content = encodings.BytesToString(byteVal)
 		} else {
-			val, err = LongText.Convert(val)
+			val, _, err = LongText.Convert(val)
 			if err != nil {
 				return "", sql.Collation_Unspecified, err
 			}
@@ -431,7 +431,7 @@ func ConvertToCollatedString(val interface{}, typ sql.Type) (string, sql.Collati
 		}
 	} else {
 		collation = sql.Collation_Default
-		val, err = LongText.Convert(val)
+		val, _, err = LongText.Convert(val)
 		if err != nil {
 			return "", sql.Collation_Unspecified, err
 		}
@@ -442,7 +442,7 @@ func ConvertToCollatedString(val interface{}, typ sql.Type) (string, sql.Collati
 
 // MustConvert implements the Type interface.
 func (t StringType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -477,7 +477,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 
 	var val []byte
 	if IsBinaryType(t) {
-		v, err := t.Convert(v)
+		v, _, err := t.Convert(v)
 		if err != nil {
 			return sqltypes.Value{}, err
 		}

@@ -90,7 +90,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	js, err = j.Type().Convert(js)
+	js, _, err = j.Type().Convert(js)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		path, err = types.LongText.Convert(path)
+		path, _, err = types.LongText.Convert(path)
 		if err != nil {
 			return nil, err
 		}

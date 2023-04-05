@@ -63,7 +63,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert pat into string
-	pat, err = types.LongText.Convert(pat)
+	pat, _, err = types.LongText.Convert(pat)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
 	}
@@ -80,7 +80,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert pat into string
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
@@ -202,7 +202,7 @@ func (t *LeftTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -265,7 +265,7 @@ func (t *RightTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}

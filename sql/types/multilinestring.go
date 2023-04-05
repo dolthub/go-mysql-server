@@ -56,25 +56,25 @@ func (t MultiLineStringType) Compare(a interface{}, b interface{}) (int, error) 
 }
 
 // Convert implements Type interface.
-func (t MultiLineStringType) Convert(v interface{}) (interface{}, error) {
+func (t MultiLineStringType) Convert(v interface{}) (interface{}, bool, error) {
 	switch buf := v.(type) {
 	case nil:
-		return nil, nil
+		return nil, false, nil
 	case []byte:
-		mline, err := GeometryType{}.Convert(buf)
+		mline, _, err := GeometryType{}.Convert(buf)
 		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.ErrInvalidGISData.New("MultiLineString.Convert")
+			return nil, false, sql.ErrInvalidGISData.New("MultiLineString.Convert")
 		}
-		return mline, err
+		return mline, false, err
 	case string:
 		return t.Convert([]byte(buf))
 	case MultiLineString:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return buf, nil
+		return buf, false, nil
 	default:
-		return nil, sql.ErrSpatialTypeConversion.New()
+		return nil, false, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -100,7 +100,7 @@ func (t MultiLineStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

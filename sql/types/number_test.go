@@ -166,69 +166,65 @@ func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 
 func TestNumberConvert(t *testing.T) {
 	tests := []struct {
-		typ         sql.Type
-		val         interface{}
-		expectedVal interface{}
-		expectedErr bool
+		typ      sql.Type
+		inp      interface{}
+		exp      interface{}
+		err      bool
+		overflow bool
 	}{
-		{Boolean, true, int8(1), false},
-		{Int8, int32(0), int8(0), false},
-		{Int16, uint16(1), int16(1), false},
-		{Int24, false, int32(0), false},
-		{Int32, nil, nil, false},
-		{Int64, "33", int64(33), false},
-		{Int64, "33.0", int64(33), false},
-		{Int64, "33.1", int64(33), false},
-		{Int64, strconv.FormatInt(math.MaxInt64, 10), int64(math.MaxInt64), false},
-		{Int64, true, int64(1), false},
-		{Int64, false, int64(0), false},
-		{Uint8, int64(34), uint8(34), false},
-		{Uint16, int16(35), uint16(35), false},
-		{Uint24, 36.756, uint32(37), false},
-		{Uint32, uint8(37), uint32(37), false},
-		{Uint64, time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), false},
-		{Uint64, "01000", uint64(1000), false},
-		{Uint64, true, uint64(1), false},
-		{Uint64, false, uint64(0), false},
-		{Float32, "22.25", float32(22.25), false},
-		{Float32, []byte{90, 140, 228, 206, 116}, float32(388910861940), false},
-		{Float64, float32(893.875), float64(893.875), false},
-
-		{Boolean, math.MaxInt8 + 1, nil, true},
-		{Int8, math.MaxInt8 + 1, nil, true},
-		{Int8, math.MinInt8 - 1, nil, true},
-		{Int16, math.MaxInt16 + 1, nil, true},
-		{Int16, math.MinInt16 - 1, nil, true},
-		{Int24, 1 << 23, nil, true},
-		{Int24, -1<<23 - 1, nil, true},
-		{Int32, math.MaxInt32 + 1, nil, true},
-		{Int32, math.MinInt32 - 1, nil, true},
-		{Int64, uint64(math.MaxInt64 + 1), nil, true},
-		{Uint8, math.MaxUint8 + 1, nil, true},
-		{Uint8, -1, nil, true},
-		{Uint16, math.MaxUint16 + 1, nil, true},
-		{Uint16, -1, nil, true},
-		{Uint24, 1 << 24, nil, true},
-		{Uint24, -1, nil, true},
-		{Uint32, math.MaxUint32 + 1, nil, true},
-		{Uint32, -1, nil, true},
-		{Uint64, -1, nil, true},
-		{Float32, math.MaxFloat32 * 2, nil, true},
-		{Uint8, -1, nil, true},
-		{Uint16, -1, nil, true},
-		{Uint24, -1, nil, true},
-		{Uint32, -1, nil, true},
-		{Uint64, -1, nil, true},
+		{typ: Boolean, inp: true, exp: int8(1), err: false, overflow: false},
+		{typ: Int8, inp: int32(0), exp: int8(0), err: false, overflow: false},
+		{typ: Int16, inp: uint16(1), exp: int16(1), err: false, overflow: false},
+		{typ: Int24, inp: false, exp: int32(0), err: false, overflow: false},
+		{typ: Int32, inp: nil, exp: nil, err: false, overflow: false},
+		{typ: Int64, inp: "33", exp: int64(33), err: false, overflow: false},
+		{typ: Int64, inp: "33.0", exp: int64(33), err: false, overflow: false},
+		{typ: Int64, inp: "33.1", exp: int64(33), err: false, overflow: false},
+		{typ: Int64, inp: strconv.FormatInt(math.MaxInt64, 10), exp: int64(math.MaxInt64), err: false, overflow: false},
+		{typ: Int64, inp: true, exp: int64(1), err: false, overflow: false},
+		{typ: Int64, inp: false, exp: int64(0), err: false, overflow: false},
+		{typ: Uint8, inp: int64(34), exp: uint8(34), err: false, overflow: false},
+		{typ: Uint16, inp: int16(35), exp: uint16(35), err: false, overflow: false},
+		{typ: Uint24, inp: 36.756, exp: uint32(37), err: false, overflow: false},
+		{typ: Uint32, inp: uint8(37), exp: uint32(37), err: false, overflow: false},
+		{typ: Uint64, inp: time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), exp: uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), err: false, overflow: false},
+		{typ: Uint64, inp: "01000", exp: uint64(1000), err: false, overflow: false},
+		{typ: Uint64, inp: true, exp: uint64(1), err: false, overflow: false},
+		{typ: Uint64, inp: false, exp: uint64(0), err: false, overflow: false},
+		{typ: Float32, inp: "22.25", exp: float32(22.25), err: false, overflow: false},
+		{typ: Float32, inp: []byte{90, 140, 228, 206, 116}, exp: float32(388910861940), err: false, overflow: false},
+		{typ: Float64, inp: float32(893.875), exp: float64(893.875), err: false, overflow: false},
+		{typ: Boolean, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, overflow: true},
+		{typ: Int8, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, overflow: true},
+		{typ: Int8, inp: math.MinInt8 - 1, exp: int8(math.MinInt8), err: false, overflow: true},
+		{typ: Int16, inp: math.MaxInt16 + 1, exp: int16(math.MaxInt16), err: false, overflow: true},
+		{typ: Int16, inp: math.MinInt16 - 1, exp: int16(math.MinInt16), err: false, overflow: true},
+		{typ: Int24, inp: 1 << 24, exp: int32(1<<23 - 1), err: false, overflow: true},
+		{typ: Int24, inp: -1 << 24, exp: int32(-1 << 23), err: false, overflow: true},
+		{typ: Int32, inp: math.MaxInt32 + 1, exp: int32(math.MaxInt32), err: false, overflow: true},
+		{typ: Int32, inp: math.MinInt32 - 1, exp: int32(math.MinInt32), err: false, overflow: true},
+		{typ: Int64, inp: uint64(math.MaxInt64 + 1), exp: int64(math.MaxInt64), err: false, overflow: true},
+		{typ: Uint8, inp: math.MaxUint8 + 1, exp: uint8(math.MaxUint8), err: false, overflow: true},
+		{typ: Uint8, inp: -1, exp: uint8(math.MaxUint8), err: false, overflow: true},
+		{typ: Uint16, inp: math.MaxUint16 + 1, exp: uint16(math.MaxUint16), err: false, overflow: true},
+		{typ: Uint16, inp: -1, exp: uint16(math.MaxUint16), err: false, overflow: true},
+		{typ: Uint24, inp: 1<<24 + 1, exp: uint32(1 << 24), err: false, overflow: true},
+		{typ: Uint24, inp: -1, exp: uint32(1 << 24), err: false, overflow: true},
+		{typ: Uint32, inp: math.MaxUint32 + 1, exp: uint32(math.MaxUint32), err: false, overflow: true},
+		{typ: Uint32, inp: -1, exp: uint32(math.MaxUint32), err: false, overflow: true},
+		{typ: Uint64, inp: -1, exp: uint64(math.MaxUint64), err: false, overflow: true},
+		{typ: Float32, inp: math.MaxFloat32 * 2, exp: float32(math.MaxFloat32), err: false, overflow: true},
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.val, test.expectedVal), func(t *testing.T) {
-			val, err := test.typ.Convert(test.val)
-			if test.expectedErr {
+		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.inp, test.exp), func(t *testing.T) {
+			val, outOfRange, err := test.typ.Convert(test.inp)
+			if test.err {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, test.expectedVal, val)
+				assert.Equal(t, test.exp, val)
+				assert.Equal(t, test.overflow, outOfRange)
 				if val != nil {
 					assert.Equal(t, test.typ.ValueType(), reflect.TypeOf(val))
 				}

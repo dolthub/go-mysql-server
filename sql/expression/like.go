@@ -87,7 +87,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if _, ok := left.(string); !ok {
-		left, err = types.LongText.Convert(left)
+		left, _, err = types.LongText.Convert(left)
 		if err != nil {
 			return nil, err
 		}
@@ -142,7 +142,7 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 		return nil, 0, err
 	}
 	if _, ok := rightVal.(string); !ok {
-		rightVal, err = types.LongText.Convert(rightVal)
+		rightVal, _, err = types.LongText.Convert(rightVal)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -158,7 +158,7 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 			escapeVal = `\`
 		}
 		if _, ok := escapeVal.(string); !ok {
-			escapeVal, err = types.LongText.Convert(escapeVal)
+			escapeVal, _, err = types.LongText.Convert(escapeVal)
 			if err != nil {
 				return nil, 0, err
 			}

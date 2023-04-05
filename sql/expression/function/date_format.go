@@ -292,7 +292,7 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	timeVal, err := types.Datetime.Convert(left)
+	timeVal, _, err := types.Datetime.Convert(left)
 
 	if err != nil {
 		return nil, err

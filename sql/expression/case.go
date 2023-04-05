@@ -180,7 +180,8 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			return t.Convert(bval)
+			ret, _, err := t.Convert(bval)
+			return ret, err
 		}
 	}
 
@@ -189,7 +190,9 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return t.Convert(val)
+		ret, _, err := t.Convert(val)
+		return ret, err
+
 	}
 
 	return nil, nil

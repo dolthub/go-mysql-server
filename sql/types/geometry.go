@@ -406,15 +406,15 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t GeometryType) Convert(v interface{}) (interface{}, error) {
+func (t GeometryType) Convert(v interface{}) (interface{}, bool, error) {
 	if v == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 	switch val := v.(type) {
 	case []byte:
 		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		val = val[EWKBHeaderSize:]
 
@@ -435,21 +435,21 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 		case WKBGeomCollID:
 			geom, _, err = DeserializeGeomColl(val, isBig, srid)
 		default:
-			return nil, sql.ErrInvalidGISData.New("GeometryType.Convert")
+			return nil, false, sql.ErrInvalidGISData.New("GeometryType.Convert")
 		}
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return geom, nil
+		return geom, false, nil
 	case string:
 		return t.Convert([]byte(val))
 	case GeometryValue:
 		if err := t.MatchSRID(val); err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return val, nil
+		return val, false, nil
 	default:
-		return nil, sql.ErrSpatialTypeConversion.New()
+		return nil, false, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -475,7 +475,7 @@ func (t GeometryType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

@@ -200,7 +200,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		case msCompare:
 			res, err = i.cmp.Compare(ctx, i.fullRow)
-			if expression.ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+			if expression.ErrNilOperand.Is(err) {
 				nextState = msRejectNull
 				break
 			} else if err != nil {
@@ -458,7 +458,8 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	// check if lookahead valid
 	copySubslice(i.fullRow, peek, off)
 	res, err := i.cmp.Compare(ctx, i.fullRow)
-	if expression.ErrNilOperand.Is(err) || sql.ErrValueOutOfRange.Is(err) {
+	if expression.ErrNilOperand.Is(err) {
+		// revert change to output row if no match
 		copySubslice(i.fullRow, restore, off)
 	} else if err != nil {
 		return false, nil, err

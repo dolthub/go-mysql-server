@@ -66,7 +66,7 @@ func (v *ValueDerivedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 				return nil, err
 			}
 			// cast all row values to the most permissive type
-			vals[j], err = v.sch[j].Type.Convert(p)
+			vals[j], _, err = v.sch[j].Type.Convert(p)
 			if err != nil {
 				return nil, err
 			}

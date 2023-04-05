@@ -277,7 +277,7 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 				continue
 			}
 			exprType := expr.Type()
-			_, err := exprType.Convert(otherCol.Type.Zero())
+			_, _, err := exprType.Convert(otherCol.Type.Zero())
 			if err != nil {
 				// The zero value will fail when passing string values to ENUM, so we specially handle this case
 				if _, ok := exprType.(sql.EnumType); ok && types.IsText(otherCol.Type) {
