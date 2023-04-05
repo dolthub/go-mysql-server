@@ -1421,6 +1421,10 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							collation = "A"
 
 							// TODO : cardinality is an estimate of the number of unique values in the index.
+							cardinality, err := Cardinality(ctx, tbl, colName)
+							if err != nil {
+								return nil, err
+							}
 
 							if j < len(index.PrefixLengths()) {
 								subPart = int64(index.PrefixLengths()[j])
