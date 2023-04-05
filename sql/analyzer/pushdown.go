@@ -68,19 +68,6 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
-	//hasLimit := false
-	//transform.Inspect(n, func(node sql.Node) bool {
-	//	if _, ok := node.(*plan.Limit); ok {
-	//		hasLimit = true
-	//		return false
-	//	}
-	//	return true
-	//})
-	//
-	//if hasLimit {
-	//	return n, transform.SameTree, nil
-	//}
-
 	node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -178,26 +165,6 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
-	// If there are any limit nodes under filter nodes, we can't pushdown the filter
-	//hasLimit := false
-	//canPushDown := true
-	//transform.Inspect(n, func(node sql.Node) bool {
-	//	switch node.(type) {
-	//	case *plan.Filter:
-	//		if hasLimit {
-	//			canPushDown = false
-	//			return false
-	//		}
-	//		return true
-	//	case *plan.Limit:
-	//		hasLimit = true
-	//		return true
-	//	default:
-	//		return true
-	//	}
-	//})
-	//
-	//return canPushDown
 	return true
 }
 

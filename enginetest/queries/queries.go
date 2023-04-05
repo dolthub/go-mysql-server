@@ -2724,6 +2724,42 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
+		Query:    "SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq WHERE i = 3;",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1) sq2 WHERE i = 3;",
+		Expected: []sql.Row{},
+	},
+
+	{
+		Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC LIMIT 1) sq WHERE i = 3;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC  LIMIT 1) sq1) sq2 WHERE i = 3;",
+		Expected: []sql.Row{{3}},
+	},
+
+	{
+		Query:    "SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq LIMIT 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq1) sq2 LIMIT 1;",
+		Expected: []sql.Row{{2}},
+	},
+
+	{
+		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable) sq1 WHERE i > 1) sq2 LIMIT 1;",
+		Expected: []sql.Row{{2}},
+	},
+	{
+		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1 WHERE i > 1) sq2 LIMIT 10;",
+		Expected: []sql.Row{},
+	},
+
+	{
 		Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM (SELECT * FROM (SELECT i as i, s as s FROM mytable) f) s)",
 		Expected: []sql.Row{},
 	},

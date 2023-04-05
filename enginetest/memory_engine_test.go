@@ -204,22 +204,15 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Test cases on select into statement",
-			SetUpScript: []string{
-				"CREATE TABLE tab1 (id int primary key, v1 int)",
-				"INSERT INTO tab1 VALUES (1, 1), (2, 3), (3, 6)",
-				"CREATE TABLE tab2 (i2 int primary key, s text)",
-				"INSERT INTO tab2 VALUES (1, 'b'), (2, 'm'), (3, 'g')",
-			},
+			Name:        "trigger with signal and user var",
+			SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "SELECT m.id, t.s FROM tab1 m JOIN tab2 t on m.id = t.i2 ORDER BY t.s DESC LIMIT 1 INTO @myId, @myText",
-				},
-				{
-					Query:    `SELECT @myId, @myText, @myUnion`,
-					Expected: []sql.Row{{2, "m", nil}},
+					Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
+					Expected: []sql.Row{},
 				},
 			},
 		},
@@ -231,35 +224,11 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name:        "trigger with signal and user var",
-	//		SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
-	//				Expected: []sql.Row{},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.Analyzer.Debug = true
-	//	engine.Analyzer.Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
