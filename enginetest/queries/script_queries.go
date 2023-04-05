@@ -1759,7 +1759,7 @@ var ScriptTests = []ScriptTest{
 					{"t3", "CREATE TABLE `t3` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` varchar(100) NOT NULL,\n" +
-						"  `c` datetime(0),\n" +
+						"  `c` datetime(6),\n" +
 						"  PRIMARY KEY (`b`,`a`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},

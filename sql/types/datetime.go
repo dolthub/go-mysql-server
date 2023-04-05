@@ -387,9 +387,9 @@ func (t datetimeType) String() string {
 	case sqltypes.Date:
 		return "date"
 	case sqltypes.Datetime:
-		return "datetime(0)"
+		return "datetime(6)"
 	case sqltypes.Timestamp:
-		return "timestamp(0)"
+		return "timestamp(6)"
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
