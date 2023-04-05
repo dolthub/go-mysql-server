@@ -685,19 +685,6 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
 func pushdownIndexesToTable(a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error) {
-	hasLimit := false
-	transform.Inspect(tableNode, func(n sql.Node) bool {
-		if _, ok := n.(*plan.Limit); ok {
-			hasLimit = true
-			return false
-		}
-		return true
-	})
-
-	if hasLimit {
-		return tableNode, transform.SameTree, nil
-	}
-
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
