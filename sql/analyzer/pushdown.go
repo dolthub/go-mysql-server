@@ -139,18 +139,24 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return nil, transform.SameTree, err
 	}
 
-	//hasLimit := false
-	//transform.Inspect(n, func(node sql.Node) bool {
-	//	if _, ok := node.(*plan.Limit); ok {
-	//		hasLimit = true
-	//		return false
-	//	}
-	//	return true
-	//})
-	//
-	//if hasLimit {
-	//	return n, transform.SameTree, nil
-	//}
+	hasFilterAboveLimit := false
+	hasLimit := false
+	transform.Inspect(n, func(node sql.Node) bool {
+		switch n.(type) {
+		case *plan.Filter:
+			if hasLimit {
+				hasFilterAboveLimit = true
+				return false
+			}
+		case *plan.Limit:
+			hasLimit = true
+		}
+		return true
+	})
+
+	if hasFilterAboveLimit {
+		return n, transform.SameTree, nil
+	}
 
 	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
 }
@@ -173,31 +179,37 @@ func canDoPushdown(n sql.Node) bool {
 	}
 
 	// If there are any limit nodes under filter nodes, we can't pushdown the filter
-	hasLimit := false
-	canPushDown := true
-	transform.Inspect(n, func(node sql.Node) bool {
-		switch node.(type) {
-		case *plan.Filter:
-			if hasLimit {
-				canPushDown = false
-				return false
-			}
-			return true
-		case *plan.Limit:
-			hasLimit = true
-			return true
-		default:
-			return true
-		}
-	})
-
-	return canPushDown
+	//hasLimit := false
+	//canPushDown := true
+	//transform.Inspect(n, func(node sql.Node) bool {
+	//	switch node.(type) {
+	//	case *plan.Filter:
+	//		if hasLimit {
+	//			canPushDown = false
+	//			return false
+	//		}
+	//		return true
+	//	case *plan.Limit:
+	//		hasLimit = true
+	//		return true
+	//	default:
+	//		return true
+	//	}
+	//})
+	//
+	//return canPushDown
+	return true
 }
 
 // Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
 // the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
 // sometimes null in these types of joins). It must be evaluated only after the join result is computed.
 func filterPushdownChildSelector(c transform.Context) bool {
+	switch c.Node.(type) {
+	case *plan.Limit:
+		return false
+	}
+
 	switch n := c.Parent.(type) {
 	case *plan.TableAlias:
 		return false
@@ -422,14 +434,21 @@ func convertFiltersToIndexedAccess(
 	scope *Scope,
 	indexes indexLookupsByTable,
 ) (sql.Node, transform.TreeIdentity, error) {
+	seenFilter := false
 	childSelector := func(c transform.Context) bool {
+		childIsLimit := false
 		switch n := c.Node.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
 			return false
-		// We can't/shouldn't push indexes down to a table that has a limit over it
-		//case *plan.Limit:
-		//	return false
+		// We can't/shouldn't push indexes down to a node that has a limit over it
+		case *plan.Filter:
+			seenFilter = true
+		case *plan.Limit:
+			if seenFilter {
+				return false
+			}
+			childIsLimit = true
 		case *plan.RecursiveCte:
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
 			// this probably fails for *plan.Union also, we just don't have tests for it
@@ -461,6 +480,11 @@ func convertFiltersToIndexedAccess(
 			// pushdown, it will get picked up in the isolated pass
 			// run by the filters pushdown transform.
 			return false
+		case *plan.Filter:
+			seenFilter = true
+			if childIsLimit {
+				return false
+			}
 		}
 		return true
 	}
@@ -720,6 +744,20 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
 func pushdownIndexesToTable(a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error) {
+	hasLimit := false
+	transform.Inspect(tableNode, func(n sql.Node) bool {
+		if _, ok := n.(*plan.Limit); ok {
+			hasLimit = true
+			return false
+		}
+		return true
+	})
+
+	if hasLimit {
+		return tableNode, transform.SameTree, nil
+	}
+
+
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:

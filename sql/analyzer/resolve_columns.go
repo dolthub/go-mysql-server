@@ -801,21 +801,6 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		idx++
 	}
 
-	//indexColumn := func(col *sql.Column) {
-	//	if col.Source == "" && col.Name == "" {
-	//		return
-	//	}
-	//	tblCol := tableCol{
-	//		table: strings.ToLower(col.Source),
-	//		col:   strings.ToLower(col.Name),
-	//	}
-	//	if _, ok := columns[tblCol]; ok {
-	//		return
-	//	}
-	//	columns[tblCol] = indexedCol{col, idx}
-	//	idx++
-	//}
-
 	indexSchema := func(n sql.Schema) {
 		for _, col := range n {
 			indexColumn(col)
