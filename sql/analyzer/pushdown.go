@@ -126,25 +126,6 @@ func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		return nil, transform.SameTree, err
 	}
 
-	hasFilterAboveLimit := false
-	hasLimit := false
-	transform.Inspect(n, func(node sql.Node) bool {
-		switch n.(type) {
-		case *plan.Filter:
-			if hasLimit {
-				hasFilterAboveLimit = true
-				return false
-			}
-		case *plan.Limit:
-			hasLimit = true
-		}
-		return true
-	})
-
-	if hasFilterAboveLimit {
-		return n, transform.SameTree, nil
-	}
-
 	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
 }
 
@@ -401,7 +382,6 @@ func convertFiltersToIndexedAccess(
 	scope *Scope,
 	indexes indexLookupsByTable,
 ) (sql.Node, transform.TreeIdentity, error) {
-	seenFilter := false
 	childSelector := func(c transform.Context) bool {
 		childIsLimit := false
 		switch n := c.Node.(type) {
@@ -409,12 +389,7 @@ func convertFiltersToIndexedAccess(
 		case *plan.IndexedTableAccess:
 			return false
 		// We can't/shouldn't push indexes down to a node that has a limit over it
-		case *plan.Filter:
-			seenFilter = true
 		case *plan.Limit:
-			if seenFilter {
-				return false
-			}
 			childIsLimit = true
 		case *plan.RecursiveCte:
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
@@ -448,7 +423,6 @@ func convertFiltersToIndexedAccess(
 			// run by the filters pushdown transform.
 			return false
 		case *plan.Filter:
-			seenFilter = true
 			if childIsLimit {
 				return false
 			}
