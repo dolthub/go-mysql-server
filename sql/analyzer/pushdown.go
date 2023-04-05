@@ -383,14 +383,10 @@ func convertFiltersToIndexedAccess(
 	indexes indexLookupsByTable,
 ) (sql.Node, transform.TreeIdentity, error) {
 	childSelector := func(c transform.Context) bool {
-		childIsLimit := false
 		switch n := c.Node.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
 			return false
-		// We can't/shouldn't push indexes down to a node that has a limit over it
-		case *plan.Limit:
-			childIsLimit = true
 		case *plan.RecursiveCte:
 			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
 			// this probably fails for *plan.Union also, we just don't have tests for it
@@ -423,7 +419,8 @@ func convertFiltersToIndexedAccess(
 			// run by the filters pushdown transform.
 			return false
 		case *plan.Filter:
-			if childIsLimit {
+			// Can't push Filter Nodes below Limit Nodes
+			if _, ok := c.Node.(*plan.Limit); ok {
 				return false
 			}
 		}
