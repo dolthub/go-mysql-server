@@ -63,7 +63,9 @@ type Type interface {
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
 	Compare(interface{}, interface{}) (int, error)
-	// Convert a value of a compatible type to a most accurate type.
+	// Convert a value of a compatible type to a most accurate type, returning
+	// the new value, whether the value was coerced from out of range, or an
+	// error.
 	Convert(interface{}) (interface{}, bool, error)
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
