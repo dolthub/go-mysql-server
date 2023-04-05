@@ -757,7 +757,6 @@ func pushdownIndexesToTable(a *Analyzer, tableNode sql.NameableNode, indexes map
 		return tableNode, transform.SameTree, nil
 	}
 
-
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
