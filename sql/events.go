@@ -21,10 +21,6 @@ import (
 )
 
 // EventDetails are the details of the event.
-// TODO : should it be similar to procedures this case:
-//
-//	Integrators only need to store and retrieve the given
-//	details for an event, as the engine handles all parsing and processing.
 type EventDetails struct {
 	SchemaName           string
 	Name                 string
@@ -49,7 +45,7 @@ type EventDetails struct {
 	// TODO: add TimeZone
 }
 
-// EventStatus represents an event status that is defined on an event.
+// EventStatus represents an event status that is defined for an event.
 type EventStatus byte
 
 const (

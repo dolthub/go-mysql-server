@@ -224,14 +224,13 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 	eventDetails := make([]sql.EventDetails, len(events))
 	for i, event := range events {
 		// Db, Name, Definer, Time Zone, Type, ...
-		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE PROCEDURE `%s`.`%s`;", d.name, event[1]))
+		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event[1]))
 		if err != nil {
 			return nil, err
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
 		eventDetails[i] = sql.EventDetails{
 			Name:            eventStmt[0][0].(string),
-			TimeZone:        eventStmt[0][2].(string),
 			CreateStatement: eventStmt[0][3].(string),
 			// TODO: other fields should be added
 		}

@@ -72,11 +72,11 @@ func (s *ShowCreateEvent) Schema() sql.Schema {
 
 // RowIter implements the sql.Node interface.
 func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	triggerDb, ok := s.db.(sql.EventDatabase)
+	eventDb, ok := s.db.(sql.EventDatabase)
 	if !ok {
-		return nil, sql.ErrTriggersNotSupported.New(s.db.Name())
+		return nil, sql.ErrEventsNotSupported.New(s.db.Name())
 	}
-	events, err := triggerDb.GetEvents(ctx)
+	events, err := eventDb.GetEvents(ctx)
 	if err != nil {
 		return nil, err
 	}

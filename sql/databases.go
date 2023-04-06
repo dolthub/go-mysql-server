@@ -237,9 +237,7 @@ type EventDatabase interface {
 	SaveEvent(ctx *Context, ed EventDetails) error
 	// DropEvent removes the EventDetails with the matching name from the database.
 	DropEvent(ctx *Context, name string) error
-
-	// ExecuteEvent executes given event and updates the LastExecutedAt value
-	// ExecuteEvent(ctx *Context, name string) error
+	// TODO: add ExecuteEvent() method that executes given event and updates the LastExecutedAt value
 }
 
 // ViewDatabase is implemented by databases that persist view definitions

@@ -551,7 +551,7 @@ func IsShowNode(node sql.Node) bool {
 		*ShowColumns, *ShowIndexes,
 		*ShowProcessList, *ShowTableStatus,
 		*ShowVariables, ShowWarnings,
-		*ShowEvents:
+		*ShowEvents, *ShowCreateEvent:
 		return true
 	default:
 		return false

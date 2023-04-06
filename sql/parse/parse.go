@@ -1396,13 +1396,10 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	eventSpec := c.EventSpec
 	dbName := eventSpec.EventName.Qualifier.String()
 	if dbName == "" {
-		// TODO: set current database
+		dbName = ctx.GetCurrentDatabase()
 	}
 
-	definer := c.EventSpec.Definer
-	if definer == "" {
-		// TODO: set definer to current client
-	}
+	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
 
 	var status sql.EventStatus
 	switch eventSpec.Status {

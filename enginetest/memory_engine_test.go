@@ -204,19 +204,14 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger with signal and user var",
-			SetUpScript: []string{
-				"create table totals (dt datetime)",
-			},
+			Name:        "trigger with signal and user var",
+			SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `CREATE EVENT event1 ON SCHEDULE AT '2006-02-10 23:59:00' + INTERVAL 1 DAY DO INSERT INTO totals VALUES (NOW());`,
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    `SHOW EVENTS;`,
+					Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
 					Expected: []sql.Row{},
 				},
 			},
@@ -229,6 +224,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
