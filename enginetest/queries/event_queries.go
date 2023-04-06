@@ -95,12 +95,12 @@ var EventTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "DROP EVENT non_existent_event",
+				Query:       "DROP EVENT non_existent_event",
 				ExpectedErr: sql.ErrEventDoesNotExist,
 			},
 			{
-				Query:    "DROP EVENT IF EXISTS non_existent_event",
-				Expected:  []sql.Row{{types.OkResult{}}},
+				Query:                 "DROP EVENT IF EXISTS non_existent_event",
+				Expected:              []sql.Row{{types.OkResult{}}},
 				ExpectedWarningsCount: 1,
 			},
 			{
@@ -112,7 +112,7 @@ var EventTests = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query: "SHOW EVENTS;",
+				Query:    "SHOW EVENTS;",
 				Expected: []sql.Row{},
 			},
 		},
