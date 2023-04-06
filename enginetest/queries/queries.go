@@ -855,6 +855,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
+		Expected: []sql.Row{
+			{0, nil, nil, 123, "abc", "abcdef"},
+		},
+	},
+	{
+		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
+		Expected: []sql.Row{
+			{0, nil, nil, 123, "abc", "abcdef"},
+		},
+	},
+	{
 		Query: "SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
 			{int64(0), float64(14)},

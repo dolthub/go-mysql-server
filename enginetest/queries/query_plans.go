@@ -911,6 +911,28 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as count(*), emptytable.i:1!null, concat(i, i):2!null, 123 (tinyint), abc (longtext) as abc, concat(abc (longtext),def (longtext)) as concat('abc', 'def')]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint)), emptytable.i:0!null, concat(emptytable.i:0!null,emptytable.i:0!null) as concat(i, i)\n" +
+			"     ├─ group: \n" +
+			"     └─ Table\n" +
+			"         ├─ name: emptytable\n" +
+			"         └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as count(*), mytable.i:1!null, concat(i, i):2!null, 123 (tinyint), abc (longtext) as abc, concat(abc (longtext),def (longtext)) as concat('abc', 'def')]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint)), mytable.i:0!null, concat(mytable.i:0!null,mytable.i:0!null) as concat(i, i)\n" +
+			"     ├─ group: \n" +
+			"     └─ EmptyTable\n" +
+			"",
+	},
+	{
 		Query: `select count(*) cnt from ab where exists (select * from xy where x = a) group by a`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(1):0!null as cnt]\n" +

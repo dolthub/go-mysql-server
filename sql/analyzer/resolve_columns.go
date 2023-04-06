@@ -1021,7 +1021,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
 			return n, transform.SameTree, nil
 		}
-		if !ok || len(g.GroupByExprs) == 0 {
+		if !ok || len(g.GroupByExprs) == 0 { // TODO: this never happens because of above if???
 			return n, transform.SameTree, nil
 		}
 
