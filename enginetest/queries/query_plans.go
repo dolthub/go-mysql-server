@@ -7445,6 +7445,84 @@ With c as (
 			"                     └─ columns: [i]\n" +
 			"",
 	},
+	{
+		Query: `SELECT * FROM (SELECT a.pk, b.i FROM one_pk a JOIN mytable b ORDER BY a.pk ASC, b.i ASC LIMIT 1) sq WHERE i != 0`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Filter\n" +
+			"     ├─ NOT\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ b.i:1!null\n" +
+			"     │       └─ 0 (tinyint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ TopN(Limit: [1 (tinyint)]; a.pk:0!null ASC nullsFirst, b.i:1!null ASC nullsFirst)\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ TableAlias(a)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: one_pk\n" +
+			"                 │       └─ columns: [pk]\n" +
+			"                 └─ TableAlias(b)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT a.pk, b.i FROM one_pk a JOIN mytable b ORDER BY a.pk DESC, b.i DESC LIMIT 1) sq WHERE i != 0`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Filter\n" +
+			"     ├─ NOT\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ b.i:1!null\n" +
+			"     │       └─ 0 (tinyint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ TopN(Limit: [1 (tinyint)]; a.pk:0!null DESC nullsFirst, b.i:1!null DESC nullsFirst)\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ TableAlias(a)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: one_pk\n" +
+			"                 │       └─ columns: [pk]\n" +
+			"                 └─ TableAlias(b)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT pk FROM one_pk WHERE pk < 2 LIMIT 1) a JOIN (SELECT i FROM mytable WHERE i > 1 LIMIT 1) b WHERE pk >= 2;`,
+		ExpectedPlan: "CrossJoin\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: a\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Filter\n" +
+			" │       ├─ GreaterThanOrEqual\n" +
+			" │       │   ├─ one_pk.pk:0!null\n" +
+			" │       │   └─ 2 (tinyint)\n" +
+			" │       └─ Limit(1)\n" +
+			" │           └─ Filter\n" +
+			" │               ├─ LessThan\n" +
+			" │               │   ├─ one_pk.pk:0!null\n" +
+			" │               │   └─ 2 (tinyint)\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: one_pk\n" +
+			" │                   └─ columns: [pk]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: b\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{(1, ∞)}]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
