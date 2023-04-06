@@ -75,4 +75,3 @@ func loadEventsFromDb(ctx *sql.Context, db sql.Database) ([]*plan.Event, error) 
 	}
 	return loadedEvents, nil
 }
-

@@ -44,7 +44,7 @@ var showCreateEventSchema = sql.Schema{
 // NewShowCreateEvent creates a new ShowCreateEvent node for SHOW CREATE EVENT statements.
 func NewShowCreateEvent(db sql.Database, event string) *ShowCreateEvent {
 	return &ShowCreateEvent{
-		db:          db,
+		db:        db,
 		EventName: strings.ToLower(event),
 	}
 }
@@ -99,7 +99,7 @@ func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			return sql.RowsToRowIter(sql.Row{
 				event.Name,            // Event
 				"",                    // sql_mode
-				"SYSTEM",		       // time_zone
+				"SYSTEM",              // time_zone
 				event.CreateStatement, // Create Event
 				characterSetClient,    // character_set_client
 				collationConnection,   // collation_connection

@@ -201,7 +201,7 @@ func (c *CreateEvent) String() string {
 	}
 
 	onCompletion := ""
-	if !c.OnCompletionPreserve  {
+	if !c.OnCompletionPreserve {
 		onCompletion = fmt.Sprintf(" ON COMPLETION NOT PRESERVE")
 	}
 
@@ -230,7 +230,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		OnCompletionPreserve: c.OnCompletionPreserve,
 		Created:              c.Created,
 		LastAltered:          c.LastAltered,
-		LastExecuted: 	      c.LastExecuted,
+		LastExecuted:         c.LastExecuted,
 		ExecutionCount:       c.ExecutionCount,
 		Comment:              c.Comment,
 		CreateStatement:      c.CreateStatement,
@@ -287,7 +287,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 // createEventIter is the row iterator for *CreateEvent.
 type createEventIter struct {
 	once sync.Once
-	ed  sql.EventDetails
+	ed   sql.EventDetails
 	db   sql.Database
 }
 

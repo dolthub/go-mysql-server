@@ -206,7 +206,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "trigger with signal and user var",
+			Name: "trigger with signal and user var",
 			SetUpScript: []string{
 				"create table totals (dt datetime)",
 			},

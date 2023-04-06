@@ -20,32 +20,31 @@ import (
 	"time"
 )
 
-
-
 // EventDetails are the details of the event.
 // TODO : should it be similar to procedures this case:
-//  Integrators only need to store and retrieve the given
-//  details for an event, as the engine handles all parsing and processing.
+//
+//	Integrators only need to store and retrieve the given
+//	details for an event, as the engine handles all parsing and processing.
 type EventDetails struct {
-	SchemaName 				string
-	Name  					string
-	Definer    				string
-	Definition 				string
-	ExecuteAt  				time.Time
-	HasExecuteAt	 		bool
-	ExecuteEvery			*EventOnScheduleEveryInterval
-	Starts        			time.Time
-	HasStarts    			bool
-	Ends          			time.Time
-	HasEnds      			bool
-	Status        			EventStatus
-	OnCompletionPreserve 	bool
-	Created 				time.Time
-	LastAltered 			time.Time
-	LastExecuted  			time.Time
-	ExecutionCount 			uint64
-	Comment    				string
-	CreateStatement 		string
+	SchemaName           string
+	Name                 string
+	Definer              string
+	Definition           string
+	ExecuteAt            time.Time
+	HasExecuteAt         bool
+	ExecuteEvery         *EventOnScheduleEveryInterval
+	Starts               time.Time
+	HasStarts            bool
+	Ends                 time.Time
+	HasEnds              bool
+	Status               EventStatus
+	OnCompletionPreserve bool
+	Created              time.Time
+	LastAltered          time.Time
+	LastExecuted         time.Time
+	ExecutionCount       uint64
+	Comment              string
+	CreateStatement      string
 
 	// TODO: add TimeZone
 }
@@ -74,26 +73,26 @@ func (e EventStatus) String() string {
 }
 
 type EventOnScheduleEveryInterval struct {
-	Years        int64
-	Months       int64
-	Days         int64
-	Hours        int64
-	Minutes      int64
-	Seconds      int64
+	Years   int64
+	Months  int64
+	Days    int64
+	Hours   int64
+	Minutes int64
+	Seconds int64
 }
 
 func NewEveryInterval(y, mo, d, h, mi, s int64) *EventOnScheduleEveryInterval {
 	return &EventOnScheduleEveryInterval{
-		Years: y,
-		Months: mo,
-		Days: d,
-		Hours: h,
+		Years:   y,
+		Months:  mo,
+		Days:    d,
+		Hours:   h,
 		Minutes: mi,
 		Seconds: s,
 	}
 }
 
-func  (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string) {
+func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string) {
 	if e == nil {
 		return "", ""
 	}

@@ -26,25 +26,25 @@ var _ RepresentsBlock = (*Event)(nil)
 
 // Event is an event that is executed during server run-time only.
 type Event struct {
-	SchemaName 				string
-	Name  					string
-	Definer    				string
-	Definition 				sql.Node
-	ExecuteAt  				time.Time
-	HasExecuteAt 			bool
-	Every					*sql.EventOnScheduleEveryInterval
-	Starts        			time.Time
-	HasStarts    			bool
-	Ends          			time.Time
-	HasEnds      			bool
-	Status        			sql.EventStatus
-	OnCompletionPreserve 	bool
-	Created 				time.Time
-	LastAltered 			time.Time
-	LastExecuted  			time.Time
-	ExecutionCount 			uint64
-	Comment    				string
-	CreateStatement 		string
+	SchemaName           string
+	Name                 string
+	Definer              string
+	Definition           sql.Node
+	ExecuteAt            time.Time
+	HasExecuteAt         bool
+	Every                *sql.EventOnScheduleEveryInterval
+	Starts               time.Time
+	HasStarts            bool
+	Ends                 time.Time
+	HasEnds              bool
+	Status               sql.EventStatus
+	OnCompletionPreserve bool
+	Created              time.Time
+	LastAltered          time.Time
+	LastExecuted         time.Time
+	ExecutionCount       uint64
+	Comment              string
+	CreateStatement      string
 
 	// TODO: add TimeZone
 }

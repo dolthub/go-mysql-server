@@ -28,11 +28,11 @@ var EventTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CREATE EVENT event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
+				Query:    "CREATE EVENT event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query: "CREATE EVENT event2 ON SCHEDULE EVERY 3 DAY STARTS '2037-10-16 23:59:00 +0000 UTC' + INTERVAL 2 DAY ENDS '2037-11-16 23:59:00 +0000 UTC' + INTERVAL 1 MONTH DISABLE DO INSERT INTO totals VALUES (1000);",
+				Query:    "CREATE EVENT event2 ON SCHEDULE EVERY 3 DAY STARTS '2037-10-16 23:59:00 +0000 UTC' + INTERVAL 2 DAY ENDS '2037-11-16 23:59:00 +0000 UTC' + INTERVAL 1 MONTH DISABLE DO INSERT INTO totals VALUES (1000);",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
@@ -49,7 +49,7 @@ var EventTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "CREATE EVENT event1 ON SCHEDULE EVERY 1 MINUTE ENDS '2006-02-10 23:59:00' DO INSERT INTO totals VALUES (1);",
+				Query:          "CREATE EVENT event1 ON SCHEDULE EVERY 1 MINUTE ENDS '2006-02-10 23:59:00' DO INSERT INTO totals VALUES (1);",
 				ExpectedErrStr: "ENDS is either invalid or before STARTS",
 			},
 		},
@@ -62,20 +62,20 @@ var EventTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CREATE EVENT event1 ON SCHEDULE AT '2006-02-10 23:59:00' DISABLE DO INSERT INTO totals VALUES (100);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Query:                 "CREATE EVENT event1 ON SCHEDULE AT '2006-02-10 23:59:00' DISABLE DO INSERT INTO totals VALUES (100);",
+				Expected:              []sql.Row{{types.OkResult{}}},
 				ExpectedWarningsCount: 1,
 			},
 			{
-				Query: "SHOW WARNINGS;",
+				Query:    "SHOW WARNINGS;",
 				Expected: []sql.Row{{"Note", 1588, "Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation."}},
 			},
 			{
-				Query: "SHOW CREATE EVENT event1;",
+				Query:       "SHOW CREATE EVENT event1;",
 				ExpectedErr: sql.ErrUnknownEvent,
 			},
 			{
-				Query: "CREATE EVENT event2 ON SCHEDULE AT '2038-01-16 23:59:00 +0000 UTC' + INTERVAL 1 DAY DISABLE DO INSERT INTO totals VALUES (100);",
+				Query:    "CREATE EVENT event2 ON SCHEDULE AT '2038-01-16 23:59:00 +0000 UTC' + INTERVAL 1 DAY DISABLE DO INSERT INTO totals VALUES (100);",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{

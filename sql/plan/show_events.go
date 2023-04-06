@@ -20,8 +20,8 @@ import (
 )
 
 type ShowEvents struct {
-	db       sql.Database
-	Events   []*Event
+	db     sql.Database
+	Events []*Event
 }
 
 var _ sql.Databaser = (*ShowEvents)(nil)
@@ -109,21 +109,21 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 		// TODO: Time zone and Originator are set to default for now.
 		rows = append(rows, sql.Row{
-			dbName, // Db
-			event.Name, // Name
-			event.Definer, // Definer
-			"SYSTEM", // Time zone
-			eventType, // Type - ONE TIME (transient) or RECURRING (repeating).
-			executeAt, // Execute At
-			intervalVal, // Interval Value
-			intervalField, // Interval Field
-			starts, // Starts
-			ends, // Ends
+			dbName,                // Db
+			event.Name,            // Name
+			event.Definer,         // Definer
+			"SYSTEM",              // Time zone
+			eventType,             // Type - ONE TIME (transient) or RECURRING (repeating).
+			executeAt,             // Execute At
+			intervalVal,           // Interval Value
+			intervalField,         // Interval Field
+			starts,                // Starts
+			ends,                  // Ends
 			event.Status.String(), // Status
-			0, // Originator
-			characterSetClient,  // character_set_client
-			collationConnection, // collation_connection
-			collationServer,     // Database Collation
+			0,                     // Originator
+			characterSetClient,    // character_set_client
+			collationConnection,   // collation_connection
+			collationServer,       // Database Collation
 		})
 	}
 

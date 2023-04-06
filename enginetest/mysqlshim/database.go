@@ -231,7 +231,7 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 		// Event, sql_mode, time_zone, Create Event, ...
 		eventDetails[i] = sql.EventDetails{
 			Name:            eventStmt[0][0].(string),
-			TimeZone:		 eventStmt[0][2].(string),
+			TimeZone:        eventStmt[0][2].(string),
 			CreateStatement: eventStmt[0][3].(string),
 			// TODO: other fields should be added
 		}
