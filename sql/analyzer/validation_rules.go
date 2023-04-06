@@ -490,6 +490,11 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 }
 
 func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// Interval can be used without DATE_ADD/DATE_SUB functions in CREATE/ALTER EVENTS statements.
+	if _, ok := n.(*plan.CreateEvent); ok {
+		return n, transform.SameTree, nil
+	}
+
 	var invalid bool
 	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		// If it's already invalid just skip everything else.

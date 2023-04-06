@@ -222,6 +222,26 @@ type StoredProcedureDatabase interface {
 	DropStoredProcedure(ctx *Context, name string) error
 }
 
+// EventDatabase is a database that supports the creation and execution of events. The engine will
+// handle all parsing and execution logic for events. Integrators only need to store and retrieve
+// EventDetails, while verifying that all events have a unique name without regard to
+// case-sensitivity.
+type EventDatabase interface {
+	Database
+	// GetEvent returns the desired EventDetails from the database.
+	GetEvent(ctx *Context, name string) (EventDetails, bool, error)
+	// GetEvents returns all EventDetails for the database.
+	GetEvents(ctx *Context) ([]EventDetails, error)
+	// SaveEvent stores the given EventDetails to the database. The integrator should verify that
+	// the name of the new event is unique amongst existing stored procedures.
+	SaveEvent(ctx *Context, ed EventDetails) error
+	// DropEvent removes the EventDetails with the matching name from the database.
+	DropEvent(ctx *Context, name string) error
+
+	// ExecuteEvent executes given event and updates the LastExecutedAt value
+	// ExecuteEvent(ctx *Context, name string) error
+}
+
 // ViewDatabase is implemented by databases that persist view definitions
 type ViewDatabase interface {
 	// CreateView persists the definition a view with the name and select statement given. If a view with that name

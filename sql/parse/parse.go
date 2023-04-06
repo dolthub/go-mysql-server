@@ -602,7 +602,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	switch showType {
 	case "processlist":
 		return plan.NewShowProcessList(), nil
-	case "create table", "create view":
+	case sqlparser.CreateTableStr, "create view":
 		var asOfExpression sql.Expression
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 			expr, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
@@ -618,11 +618,24 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Database),
 			s.IfNotExists,
 		), nil
-	case "create trigger":
-		return plan.NewShowCreateTrigger(
-			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
-			s.Table.Name.String(),
-		), nil
+	case sqlparser.CreateTriggerStr, sqlparser.CreateProcedureStr, sqlparser.CreateEventStr:
+		dbName := s.Table.Qualifier.String()
+		if dbName == "" {
+			dbName = ctx.GetCurrentDatabase()
+		}
+		if dbName == "" {
+			return nil, sql.ErrNoDatabaseSelected.New()
+		}
+		var showCreate sql.Node
+		switch showType {
+		case sqlparser.CreateTriggerStr:
+			showCreate = plan.NewShowCreateTrigger(sql.UnresolvedDatabase(dbName), s.Table.Name.String())
+		case sqlparser.CreateProcedureStr:
+			showCreate = plan.NewShowCreateProcedure(sql.UnresolvedDatabase(dbName), s.Table.Name.String())
+		case sqlparser.CreateEventStr:
+			showCreate = plan.NewShowCreateEvent(sql.UnresolvedDatabase(dbName), s.Table.Name.String())
+		}
+		return showCreate, nil
 	case "triggers":
 		var dbName string
 		var filter sql.Expression
@@ -652,19 +665,35 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
-	case "create procedure":
-		dbName := s.Table.Qualifier.String()
-		if dbName == "" {
-			dbName = ctx.GetCurrentDatabase()
+	case "events":
+		var dbName string
+		var filter sql.Expression
+		if s.ShowTablesOpt != nil {
+			dbName = s.ShowTablesOpt.DbName
+			if s.ShowTablesOpt.Filter != nil {
+				if s.ShowTablesOpt.Filter.Filter != nil {
+					var err error
+					filter, err = ExprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
+					if err != nil {
+						return nil, err
+					}
+				} else if s.ShowTablesOpt.Filter.Like != "" {
+					filter = expression.NewLike(
+						expression.NewUnresolvedColumn("Name"),
+						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
+						nil,
+					)
+				}
+			}
 		}
-		if dbName == "" {
-			return nil, sql.ErrNoDatabaseSelected.New()
+
+		var node sql.Node = plan.NewShowEvents(sql.UnresolvedDatabase(dbName))
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
 		}
-		return plan.NewShowCreateProcedure(
-			sql.UnresolvedDatabase(dbName),
-			s.Table.Name.String(),
-		), nil
-	case "procedure status":
+
+		return node, nil
+	case sqlparser.ProcedureStatusStr:
 		var filter sql.Expression
 
 		node, err := Parse(ctx, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
@@ -695,7 +724,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			node = plan.NewHaving(filter, node)
 		}
 		return node, nil
-	case "function status":
+	case sqlparser.FunctionStatusStr:
 		var filter sql.Expression
 		var node sql.Node
 		if s.Filter != nil {
@@ -726,6 +755,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			node = plan.NewHaving(filter, node)
 		}
 		return node, nil
+	case sqlparser.TableStatusStr:
+		return convertShowTableStatus(ctx, s)
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String())), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
@@ -896,8 +927,6 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 		}
 		return node, nil
-	case "table status":
-		return convertShowTableStatus(ctx, s)
 	case sqlparser.KeywordString(sqlparser.COLLATION):
 		// show collation statements are functionally identical to selecting from the collations table in
 		// information_schema, with slightly different syntax and with some columns aliased.
@@ -1217,6 +1246,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		if c.ProcedureSpec != nil {
 			return convertCreateProcedure(ctx, query, c)
 		}
+		if c.EventSpec != nil {
+			return convertCreateEvent(ctx, query, c)
+		}
 		if c.ViewSpec != nil {
 			return convertCreateView(ctx, query, c)
 		}
@@ -1228,6 +1260,10 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		if c.ProcedureSpec != nil {
 			return plan.NewDropProcedure(sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
 				c.ProcedureSpec.ProcName.Name.String(), c.IfExists), nil
+		}
+		if c.EventSpec != nil {
+			return plan.NewDropEvent(sql.UnresolvedDatabase(c.EventSpec.EventName.Qualifier.String()),
+				c.EventSpec.EventName.Name.String(), c.IfExists), nil
 		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
@@ -1354,6 +1390,97 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 		ctx.QueryTime(),
 		definer,
 	), nil
+}
+
+func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+	eventSpec := c.EventSpec
+	dbName := eventSpec.EventName.Qualifier.String()
+	if dbName == "" {
+		// TODO: set current database
+	}
+
+	definer := c.EventSpec.Definer
+	if definer == "" {
+		// TODO: set definer to current client
+	}
+
+	var status sql.EventStatus
+	switch eventSpec.Status {
+	case sqlparser.EventStatus_Enable:
+		status = sql.EventStatus_Enable
+	case sqlparser.EventStatus_Disable:
+		status = sql.EventStatus_Disable
+	case sqlparser.EventStatus_DisableOnSlave:
+		status = sql.EventStatus_DisableOnSlove
+	}
+
+	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+	body, err := convert(ctx, c.EventSpec.Body, bodyStr)
+	if err != nil {
+		return nil, err
+	}
+
+	var at, starts, ends *plan.OnScheduleTimestamp
+	var every sql.Expression
+	if eventSpec.OnSchedule.At != nil {
+		ts, intervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.At)
+		if err != nil {
+			return nil, err
+		}
+		at = plan.NewEventOnScheduleTimestamp(ts, intervals)
+	} else {
+		every, err = intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
+		if err != nil {
+			return nil, err
+		}
+		var startsTs, endsTs sql.Expression
+		var startsIntervals, endsIntervals []sql.Expression
+		if eventSpec.OnSchedule.Starts != nil {
+			startsTs, startsIntervals, err = convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Starts)
+			if err != nil {
+				return nil, err
+			}
+			starts = plan.NewEventOnScheduleTimestamp(startsTs, startsIntervals)
+		}
+		if eventSpec.OnSchedule.Ends != nil {
+			endsTs, endsIntervals, err = convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
+			if err != nil {
+				return nil, err
+			}
+			ends = plan.NewEventOnScheduleTimestamp(endsTs, endsIntervals)
+		}
+	}
+
+	comment := ""
+	if eventSpec.Comment != nil {
+		comment = string(eventSpec.Comment.Val)
+	}
+
+	return plan.NewCreateEvent(
+		sql.UnresolvedDatabase(dbName),
+		eventSpec.EventName.String(),
+		definer,
+		eventSpec.OnCompletionPreserve,
+		status, body, comment, query, bodyStr, at, starts, ends, every), nil
+}
+
+func convertEventScheduleTimeSpec(ctx *sql.Context, spec *sqlparser.EventScheduleTimeSpec) (sql.Expression, []sql.Expression, error) {
+	ts, err := ExprToExpression(ctx, spec.EventTimestamp)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(spec.EventIntervals) == 0 {
+		return ts, nil, nil
+	}
+	var intervals = make([]sql.Expression, len(spec.EventIntervals))
+	for i, interval := range spec.EventIntervals {
+		e, err := intervalExprToExpression(ctx, &interval)
+		if err != nil {
+			return nil, nil, err
+		}
+		intervals[i] = e
+	}
+	return ts, intervals, nil
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {

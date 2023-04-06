@@ -41,6 +41,7 @@ var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
 var _ sql.StoredProcedureDatabase = (*Database)(nil)
+var _ sql.EventDatabase = (*Database)(nil)
 var _ sql.ViewDatabase = (*Database)(nil)
 var _ sql.CollatedDatabase = (*Database)(nil)
 
@@ -51,6 +52,7 @@ type BaseDatabase struct {
 	fkColl            *ForeignKeyCollection
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
+	events            []sql.EventDetails
 	primaryKeyIndexes bool
 	collation         sql.CollationID
 }
@@ -316,6 +318,55 @@ func (d *BaseDatabase) DropStoredProcedure(ctx *sql.Context, name string) error 
 	}
 	if !found {
 		return sql.ErrStoredProcedureDoesNotExist.New(name)
+	}
+	return nil
+}
+
+// GetEvent implements sql.EventDatabase
+func (d *BaseDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDetails, bool, error) {
+	name = strings.ToLower(name)
+	for _, ed := range d.events {
+		if name == strings.ToLower(ed.Name) {
+			return ed, true, nil
+		}
+	}
+	return sql.EventDetails{}, false, nil
+}
+
+// GetEvents implements sql.EventDatabase
+func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
+	var eds []sql.EventDetails
+	for _, ed := range d.events {
+		eds = append(eds, ed)
+	}
+	return eds, nil
+}
+
+// SaveEvent implements sql.EventDatabase
+func (d *BaseDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
+	loweredName := strings.ToLower(ed.Name)
+	for _, existingEd := range d.events {
+		if strings.ToLower(existingEd.Name) == loweredName {
+			return sql.ErrEventAlreadyExists.New(ed.Name)
+		}
+	}
+	d.events = append(d.events, ed)
+	return nil
+}
+
+// DropEvent implements sql.EventDatabase
+func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
+	loweredName := strings.ToLower(name)
+	found := false
+	for i, ed := range d.events {
+		if strings.ToLower(ed.Name) == loweredName {
+			d.events = append(d.events[:i], d.events[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return sql.ErrEventDoesNotExist.New(name)
 	}
 	return nil
 }
