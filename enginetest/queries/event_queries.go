@@ -38,7 +38,7 @@ var EventTests = []ScriptTest{
 			{
 				Query: "SHOW EVENTS LIKE 'event2';",
 				Expected: []sql.Row{
-					{"mydb", "event2", "", "SYSTEM", "RECURRING", nil, "3", "DAY", "2037-10-18 23:59:00 +0000 UTC", "2037-12-16 23:59:00 +0000 UTC", "DISABLE", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "RECURRING", nil, "3", "DAY", "2037-10-18 23:59:00 +0000 UTC", "2037-12-16 23:59:00 +0000 UTC", "DISABLE", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -81,8 +81,39 @@ var EventTests = []ScriptTest{
 			{
 				Query: "SHOW EVENTS;",
 				Expected: []sql.Row{
-					{"mydb", "event2", "", "SYSTEM", "ONE TIME", "2038-01-17 23:59:00 +0000 UTC", nil, nil, nil, nil, "DISABLE", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 23:59:00 +0000 UTC", nil, nil, nil, nil, "DISABLE", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
+			},
+		},
+	},
+	{
+		Name: "Simple DROP EVENTs",
+		SetUpScript: []string{
+			"USE mydb;",
+			"CREATE TABLE totals (num int);",
+			"CREATE EVENT event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DROP EVENT non_existent_event",
+				ExpectedErr: sql.ErrEventDoesNotExist,
+			},
+			{
+				Query:    "DROP EVENT IF EXISTS non_existent_event",
+				Expected:  []sql.Row{{types.OkResult{}}},
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SHOW WARNINGS;",
+				Expected: []sql.Row{{"Note", 1305, "Event non_existent_event does not exist"}},
+			},
+			{
+				Query:    "DROP EVENT event1",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "SHOW EVENTS;",
+				Expected: []sql.Row{},
 			},
 		},
 	},

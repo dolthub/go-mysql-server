@@ -20,6 +20,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// TODO: do I need this file?
+
 var _ sql.Node = (*Event)(nil)
 var _ sql.DebugStringer = (*Event)(nil)
 var _ RepresentsBlock = (*Event)(nil)
@@ -70,27 +72,33 @@ func NewEvent(
 	}
 }
 
+// Resolved implements the interface sql.Node.
 func (e *Event) Resolved() bool {
 	return e.Definition.Resolved()
 }
 
+// String implements the sql.Node interface.
 func (e *Event) String() string {
 	return e.Definition.String()
 }
 
+// Schema implements the interface sql.Node.
 func (e *Event) Schema() sql.Schema {
 	return e.Definition.Schema()
 }
 
+// Children implements the interface sql.Node.
 func (e *Event) Children() []sql.Node {
 	return []sql.Node{e.Definition}
 }
 
+// RowIter implements the sql.Node interface.
 func (e *Event) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// TODO: is this called by 'execute event'?
 	return e.Definition.RowIter(ctx, row)
 }
 
+// WithChildren implements the interface sql.Node.
 func (e *Event) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
@@ -101,10 +109,12 @@ func (e *Event) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &ne, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
 func (e *Event) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return e.Definition.CheckPrivileges(ctx, opChecker)
 }
 
+// DebugString implements the sql.DebugStringer interface.
 func (e *Event) DebugString() string {
 	return sql.DebugString(e.Definition)
 }
