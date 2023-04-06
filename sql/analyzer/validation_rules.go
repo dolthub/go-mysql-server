@@ -216,10 +216,10 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	defer span.End()
 
 	var validationError error
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectUp(n, func(n sql.Node) bool {
 		df, ok := n.(*plan.DeleteFrom)
 		if !ok {
-			return true
+			return false
 		}
 
 		// Check that delete from join only targets tables that exist in the join
@@ -236,10 +236,12 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				deletable, err := plan.GetDeletable(target)
 				if err != nil {
 					validationError = err
+					return true
 				}
 				tableName := deletable.Name()
 				if _, ok := sourceTables[tableName]; !ok {
 					validationError = fmt.Errorf("table %q not found in DELETE FROM sources", tableName)
+					return true
 				}
 			}
 		}
@@ -253,17 +255,21 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				databases[plan.GetDatabaseName(target)] = struct{}{}
 				if len(databases) > 1 {
 					validationError = fmt.Errorf("multiple databases specified as delete from targets")
+					return true
 				}
 
 				// Check for duplicate targets
-				if nameable, ok := target.(sql.Nameable); ok {
-					if _, ok := tables[nameable.Name()]; ok {
-						validationError = fmt.Errorf("duplicate tables specified as delete from targets")
-					}
-					tables[nameable.Name()] = struct{}{}
-				} else {
+				nameable, ok := target.(sql.Nameable)
+				if !ok {
 					validationError = fmt.Errorf("target node does not implement sql.Nameable: %T", target)
+					return true
 				}
+
+				if _, ok := tables[nameable.Name()]; ok {
+					validationError = fmt.Errorf("duplicate tables specified as delete from targets")
+					return true
+				}
+				tables[nameable.Name()] = struct{}{}
 			}
 		}
 
@@ -279,9 +285,10 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 		if deleteFromJoin {
 			if df.HasExplicitTargets() == false {
 				validationError = fmt.Errorf("delete from statement with join requires specifying explicit delete target tables")
+				return true
 			}
 		}
-		return true
+		return false
 	})
 
 	if validationError != nil {

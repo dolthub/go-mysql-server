@@ -1372,7 +1372,7 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `select row_number() over (order by i desc), mytable.i as i2 
+		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2 order by 1`,
 		ExpectedPlan: "Sort(row_number() over (order by i desc):0!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
@@ -1438,7 +1438,7 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `select row_number() over (order by i desc), mytable.i as i2 
+		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2
 				where mytable.i = 2
 				order by 1`,
@@ -3982,8 +3982,8 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2 
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						JOIN two_pk tpk ON pk=tpk.pk1 AND pk-1=tpk.pk2
 						JOIN two_pk tpk2 ON pk-1=TPK2.pk1 AND pk=tpk2.pk2
 						ORDER BY 1`,
 		ExpectedPlan: "Sort(one_pk.pk:0!null ASC nullsFirst)\n" +
@@ -4128,7 +4128,7 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `SELECT pk FROM one_pk 
+		Query: `SELECT pk FROM one_pk
 						RIGHT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						RIGHT JOIN two_pk tpk2 ON tpk.pk1=TPk2.pk2 AND tpk.pk2=TPK2.pk1`,
 		ExpectedPlan: "Project\n" +
@@ -4236,7 +4236,7 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `SELECT pk,nt.i,nt2.i FROM one_pk 
+		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i + 1`,
 		ExpectedPlan: "Project\n" +
@@ -7243,7 +7243,7 @@ With c as (
       Where t1.I in (2,3)
     ) e
     On b.I = e.i
-  ) d   
+  ) d
 ) select * from c;`,
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
@@ -7301,6 +7301,226 @@ With c as (
 			"                                     └─ Table\n" +
 			"                                         ├─ name: mytable\n" +
 			"                                         └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq WHERE i = 3;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ 3 (tinyint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1) sq2 WHERE i = 3;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq2\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: sq1\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Filter\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ mytable.i:0!null\n" +
+			"         │   └─ 3 (tinyint)\n" +
+			"         └─ Limit(1)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC LIMIT 1) sq WHERE i = 3;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ 3 (tinyint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ TopN(Limit: [1 (tinyint)]; mytable.i:0!null DESC nullsFirst)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC  LIMIT 1) sq1) sq2 WHERE i = 3;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq2\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: sq1\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Filter\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ mytable.i:0!null\n" +
+			"         │   └─ 3 (tinyint)\n" +
+			"         └─ Limit(1)\n" +
+			"             └─ TopN(Limit: [1 (tinyint)]; mytable.i:0!null DESC nullsFirst)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq LIMIT 1;`,
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: sq\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{(1, ∞)}]\n" +
+			"         └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq1) sq2 LIMIT 1;`,
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: sq2\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: sq1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{(1, ∞)}]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM (SELECT i FROM mytable) sq1 WHERE i > 1) sq2 LIMIT 1;`,
+		ExpectedPlan: "Limit(1)\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: sq2\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: sq1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{(1, ∞)}]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1 WHERE i > 1) sq2 LIMIT 10;`,
+		ExpectedPlan: "Limit(10)\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: sq2\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: sq1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Filter\n" +
+			"             ├─ GreaterThan\n" +
+			"             │   ├─ mytable.i:0!null\n" +
+			"             │   └─ 1 (tinyint)\n" +
+			"             └─ Limit(1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT a.pk, b.i FROM one_pk a JOIN mytable b ORDER BY a.pk ASC, b.i ASC LIMIT 1) sq WHERE i != 0`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Filter\n" +
+			"     ├─ NOT\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ b.i:1!null\n" +
+			"     │       └─ 0 (tinyint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ TopN(Limit: [1 (tinyint)]; a.pk:0!null ASC nullsFirst, b.i:1!null ASC nullsFirst)\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ TableAlias(a)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: one_pk\n" +
+			"                 │       └─ columns: [pk]\n" +
+			"                 └─ TableAlias(b)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT a.pk, b.i FROM one_pk a JOIN mytable b ORDER BY a.pk DESC, b.i DESC LIMIT 1) sq WHERE i != 0`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: sq\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Filter\n" +
+			"     ├─ NOT\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ b.i:1!null\n" +
+			"     │       └─ 0 (tinyint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ TopN(Limit: [1 (tinyint)]; a.pk:0!null DESC nullsFirst, b.i:1!null DESC nullsFirst)\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ TableAlias(a)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: one_pk\n" +
+			"                 │       └─ columns: [pk]\n" +
+			"                 └─ TableAlias(b)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT pk FROM one_pk WHERE pk < 2 LIMIT 1) a JOIN (SELECT i FROM mytable WHERE i > 1 LIMIT 1) b WHERE pk >= 2;`,
+		ExpectedPlan: "CrossJoin\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: a\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Filter\n" +
+			" │       ├─ GreaterThanOrEqual\n" +
+			" │       │   ├─ one_pk.pk:0!null\n" +
+			" │       │   └─ 2 (tinyint)\n" +
+			" │       └─ Limit(1)\n" +
+			" │           └─ Filter\n" +
+			" │               ├─ LessThan\n" +
+			" │               │   ├─ one_pk.pk:0!null\n" +
+			" │               │   └─ 2 (tinyint)\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: one_pk\n" +
+			" │                   └─ columns: [pk]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: b\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{(1, ∞)}]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 }

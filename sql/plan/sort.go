@@ -21,6 +21,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -320,7 +322,7 @@ func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i)), nil
+	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))), nil
 }
 
 func (n *TopN) String() string {
@@ -397,9 +399,9 @@ type topRowsIter struct {
 	idx           int
 }
 
-func newTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter) *topRowsIter {
+func newTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
 	return &topRowsIter{
-		sortFields:    s,
+		sortFields:    append(s, sql.SortField{Column: expression.NewGetField(childSchemaLen, types.Int64, "order", false)}),
 		limit:         limit,
 		calcFoundRows: calcFoundRows,
 		childIter:     child,
@@ -421,7 +423,7 @@ func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	row := i.topRows[i.idx]
 	i.idx++
-	return row, nil
+	return row[:len(row)-1], nil
 }
 
 func (i *topRowsIter) Close(ctx *sql.Context) error {
@@ -452,6 +454,8 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 			return err
 		}
 		i.numFoundRows++
+
+		row = append(row, i.numFoundRows)
 
 		heap.Push(topRowsHeap, row)
 		if int64(topRowsHeap.Len()) > i.limit {

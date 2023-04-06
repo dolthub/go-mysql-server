@@ -81,12 +81,16 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return GetDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
+	case *TableAlias:
+		return GetDeletable(node.Child)
 	case *SubqueryAlias:
 		return nil, ErrDeleteFromNotSupported.New()
 	case *TriggerExecutor:
 		return GetDeletable(node.Left())
 	case sql.TableWrapper:
 		return getDeletableTable(node.Underlying())
+	case *JSONTable:
+		return nil, fmt.Errorf("target table %s of the DELETE is not updatable", node.Name())
 	}
 	if len(node.Children()) > 1 {
 		return nil, ErrDeleteFromNotSupported.New()

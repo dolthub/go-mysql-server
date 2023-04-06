@@ -3569,8 +3569,8 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		separatorS := ","
-		if v.Separator != "" {
-			separatorS = v.Separator
+		if !v.Separator.DefaultSeparator {
+			separatorS = v.Separator.SeparatorString
 		}
 
 		sortFields, err := orderByToSortFields(ctx, v.OrderBy)

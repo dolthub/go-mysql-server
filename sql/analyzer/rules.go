@@ -53,6 +53,7 @@ var OnceBeforeDefault = []Rule{
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},
+	{disambiguateTableFunctionsId, disambiguateTableFunctions},
 	{checkUniqueTableNamesId, validateUniqueTableNames},
 	{resolveTableFunctionsId, resolveTableFunctions},
 	{resolveDeclarationsId, resolveDeclarations},
@@ -63,6 +64,7 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
+	{validateDeleteFromId, validateDeleteFrom},
 	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 }
 
@@ -139,7 +141,6 @@ var DefaultValidationRules = []Rule{
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
 	{validateAggregationsId, validateAggregations},
-	{validateDeleteFromId, validateDeleteFrom},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

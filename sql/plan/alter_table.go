@@ -1413,7 +1413,15 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		}
 	}
 
-	oldPkSchema, newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema()), sql.SchemaToPrimaryKeySchema(rwt, newSch)
+	var renames []sql.ColumnRename
+	if i.m.columnName != i.m.column.Name {
+		renames = []sql.ColumnRename{{
+			Before: i.m.columnName, After: i.m.column.Name,
+		}}
+	}
+
+	oldPkSchema := sql.SchemaToPrimaryKeySchema(rwt, rwt.Schema())
+	newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, newSch, renames...)
 
 	rewriteRequired := false
 	if i.m.targetSchema[oldColIdx].Nullable && !i.m.column.Nullable {

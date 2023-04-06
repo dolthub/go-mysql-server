@@ -143,7 +143,7 @@ func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(u.SortFields, limit, false, iter)
+		iter = newTopRowsIter(u.SortFields, limit, false, iter, len(u.Schema()))
 	} else if u.Limit != nil {
 		limit, err := getInt64Value(ctx, u.Limit)
 		if err != nil {

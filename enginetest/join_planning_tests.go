@@ -470,6 +470,17 @@ select x from xy where
 				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeAntiLookup},
 				exp:   []sql.Row{{0}, {3}},
 			},
+			{
+				q: `
+select * from xy where x in (
+    with recursive tree(s) AS (
+        SELECT 1
+    )
+    SELECT u FROM uv, tree where u = s
+)`,
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				exp:   []sql.Row{{1, 0}},
+			},
 		},
 	},
 	{
