@@ -150,21 +150,32 @@ func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 
 // SchemaToPrimaryKeySchema adapts the schema given to a PrimaryKey schema using the primary keys of the table given, if
 // present. The resulting PrimaryKeySchema may have an empty key set if the table has no primary keys. Matching for
-// ordinals is performed by column name.
-func SchemaToPrimaryKeySchema(table Table, sch Schema) PrimaryKeySchema {
+// ordinals is performed by column name, with the aid of |renames| when provided.
+func SchemaToPrimaryKeySchema(table Table, sch Schema, renames ...ColumnRename) PrimaryKeySchema {
 	var pks []*Column
 	if pkt, ok := table.(PrimaryKeyTable); ok {
 		schema := pkt.PrimaryKeySchema()
 		for _, ordinal := range schema.PkOrdinals {
 			pks = append(pks, schema.Schema[ordinal])
 		}
+	} else {
+		// set PkOrdinals by schema order
+		return NewPrimaryKeySchema(sch)
+	}
+
+	mapping := make(map[string]string)
+	for _, r := range renames {
+		mapping[strings.ToLower(r.Before)] = r.After
 	}
 
 	ords := make([]int, len(pks))
 	for i, pk := range pks {
-		ords[i] = sch.IndexOf(pk.Name, pk.Source)
+		name := strings.ToLower(pk.Name)
+		if n, ok := mapping[name]; ok {
+			name = n
+		}
+		ords[i] = sch.IndexOf(name, pk.Source)
 	}
-
 	return NewPrimaryKeySchema(sch, ords...)
 }
 
@@ -172,4 +183,8 @@ func SchemaToPrimaryKeySchema(table Table, sch Schema) PrimaryKeySchema {
 type ColumnOrder struct {
 	First       bool   // True if this column should come first
 	AfterColumn string // Set to the name of the column after which this column should appear
+}
+
+type ColumnRename struct {
+	Before, After string
 }
