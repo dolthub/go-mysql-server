@@ -954,12 +954,15 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			var oldRowWithoutVal sql.Row
 			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
 			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
-			newVal, _, err := column.Type.Convert(row[oldIdx])
+			newVal, inRange, err := column.Type.Convert(row[oldIdx])
 			if err != nil {
 				if sql.ErrNotMatchingSRID.Is(err) {
 					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
 				}
 				return err
+			}
+			if !inRange {
+				return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
 			}
 			var newRow sql.Row
 			newRow = append(newRow, oldRowWithoutVal[:newIdx]...)

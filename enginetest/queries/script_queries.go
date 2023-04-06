@@ -82,6 +82,19 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "trigger with signal and user var",
+		SetUpScript: []string{
+			"create table t (i int primary key, i2 int, key(i2));",
+			"insert into t values (0,-1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `alter table t modify column i2 int unsigned`,
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+		},
+	},
+	{
 		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
 		SetUpScript: []string{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",

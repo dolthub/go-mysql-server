@@ -1490,13 +1490,16 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	}
 
 	for i := range newRow {
-		newRow[i], _, err = sch[i].Type.Convert(newRow[i])
+		converted, inRange, err := sch[i].Type.Convert(newRow[i])
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(sch[i].Name, err)
 			}
 			return nil, err
+		} else if !inRange {
+			return nil, sql.ErrValueOutOfRange.New(newRow[i], sch[i].Type)
 		}
+		newRow[i] = converted
 	}
 
 	return newRow, nil

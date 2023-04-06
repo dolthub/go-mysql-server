@@ -274,10 +274,10 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange
 		if err != nil {
 			return nil, sql.InRange, err
 		}
-		if num > (1 << 24) {
-			return uint32(1 << 24), sql.OutOfRange, nil
+		if num >= (1 << 24) {
+			return uint32(1<<24 - 1), sql.OutOfRange, nil
 		} else if num < 0 {
-			return uint32(1<<24 - int32(-num-1)), sql.OutOfRange, nil
+			return uint32(1<<24 - int32(-num)), sql.OutOfRange, nil
 		}
 		return uint32(num), sql.InRange, nil
 	case sqltypes.Int32:

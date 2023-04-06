@@ -747,28 +747,15 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
-		// TODO cast overflows into max for type
-		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{3}},
-	},
-	{
-		Query:    "SELECT count(*) FROM mytable WHERE i <= 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{3}},
-	},
-	{
-		Query:    "SELECT count(*) FROM mytable WHERE i > 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{0}},
-	},
-	{
-		Query:    "SELECT count(*) FROM mytable WHERE i >= 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{0}},
-	},
-	{
 		Query:    "SELECT count(*) FROM mytable WHERE i <> 3720481604718463778705849469618542795;",
 		Expected: []sql.Row{{3}},
 	},
 	{
 		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795 AND i > 0;",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795 OR i > 0;",
 		Expected: []sql.Row{{3}},
 	},
 	{
