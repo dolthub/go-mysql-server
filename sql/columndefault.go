@@ -80,9 +80,11 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 	}
 
 	if e.outType != nil {
-		var outOfRange bool
-		if val, outOfRange, err = e.outType.Convert(val); err != nil || outOfRange {
+		var inRange ConvertInRange
+		if val, inRange, err = e.outType.Convert(val); err != nil {
 			return nil, ErrIncompatibleDefaultType.New()
+		} else if !inRange {
+			return nil, ErrValueOutOfRange.New(val, e.outType)
 		}
 	}
 
@@ -207,10 +209,10 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		if val == nil && !e.returnNil {
 			return ErrIncompatibleDefaultType.New()
 		}
-		_, outOfRange, err := e.outType.Convert(val)
+		_, inRange, err := e.outType.Convert(val)
 		if err != nil {
 			return ErrIncompatibleDefaultType.Wrap(err)
-		} else if outOfRange {
+		} else if !inRange {
 			return ErrIncompatibleDefaultType.Wrap(ErrValueOutOfRange.New(val, e.Expression))
 		}
 

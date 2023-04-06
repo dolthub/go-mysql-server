@@ -56,29 +56,29 @@ func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t MultiPointType) Convert(v interface{}) (interface{}, bool, error) {
+func (t MultiPointType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	case []byte:
 		multipoint, _, err := GeometryType{}.Convert(buf)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		// TODO: is this even possible?
 		if _, ok := multipoint.(MultiPoint); !ok {
-			return nil, false, sql.ErrInvalidGISData.New("MultiPointType.Convert")
+			return nil, sql.InRange, sql.ErrInvalidGISData.New("MultiPointType.Convert")
 		}
-		return multipoint, false, nil
+		return multipoint, sql.InRange, nil
 	case string:
 		return t.Convert([]byte(buf))
 	case MultiPoint:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
-		return buf, false, nil
+		return buf, sql.InRange, nil
 	default:
-		return nil, false, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

@@ -68,13 +68,13 @@ func (t TupleType) Compare(a, b interface{}) (int, error) {
 	return 0, nil
 }
 
-func (t TupleType) Convert(v interface{}) (interface{}, bool, error) {
+func (t TupleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 	if vals, ok := v.([]interface{}); ok {
 		if len(vals) != len(t) {
-			return nil, false, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
+			return nil, sql.InRange, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
 		}
 
 		var result = make([]interface{}, len(t))
@@ -82,13 +82,13 @@ func (t TupleType) Convert(v interface{}) (interface{}, bool, error) {
 			var err error
 			result[i], _, err = typ.Convert(vals[i])
 			if err != nil {
-				return nil, false, err
+				return nil, sql.InRange, err
 			}
 		}
 
-		return result, false, nil
+		return result, sql.InRange, nil
 	}
-	return nil, false, sql.ErrNotTuple.New(v)
+	return nil, sql.InRange, sql.ErrNotTuple.New(v)
 }
 
 func (t TupleType) MustConvert(v interface{}) interface{} {

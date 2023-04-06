@@ -64,9 +64,9 @@ func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t YearType_) Convert(v interface{}) (interface{}, bool, error) {
+func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
@@ -88,16 +88,16 @@ func (t YearType_) Convert(v interface{}) (interface{}, bool, error) {
 		return t.Convert(int64(value))
 	case int64:
 		if value == 0 {
-			return int16(0), false, nil
+			return int16(0), sql.InRange, nil
 		}
 		if value >= 1 && value <= 69 {
-			return int16(value + 2000), false, nil
+			return int16(value + 2000), sql.InRange, nil
 		}
 		if value >= 70 && value <= 99 {
-			return int16(value + 1900), false, nil
+			return int16(value + 1900), sql.InRange, nil
 		}
 		if value >= 1901 && value <= 2155 {
-			return int16(value), false, nil
+			return int16(value), sql.InRange, nil
 		}
 	case uint64:
 		return t.Convert(int64(value))
@@ -109,7 +109,7 @@ func (t YearType_) Convert(v interface{}) (interface{}, bool, error) {
 		return t.Convert(value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, false, nil
+			return nil, sql.InRange, nil
 		}
 		return t.Convert(value.Decimal.IntPart())
 	case string:
@@ -117,21 +117,21 @@ func (t YearType_) Convert(v interface{}) (interface{}, bool, error) {
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
 			i, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return nil, false, err
+				return nil, sql.InRange, err
 			}
 			if i == 0 {
-				return int16(2000), false, nil
+				return int16(2000), sql.InRange, nil
 			}
 			return t.Convert(i)
 		}
 	case time.Time:
 		year := value.Year()
 		if year == 0 || (year >= 1901 && year <= 2155) {
-			return int16(year), false, nil
+			return int16(year), sql.InRange, nil
 		}
 	}
 
-	return nil, false, ErrConvertingToYear.New(v)
+	return nil, sql.InRange, ErrConvertingToYear.New(v)
 }
 
 // MustConvert implements the Type interface.

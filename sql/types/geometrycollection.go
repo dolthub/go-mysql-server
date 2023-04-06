@@ -56,10 +56,10 @@ func (t GeomCollType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t GeomCollType) Convert(v interface{}) (interface{}, bool, error) {
+func (t GeomCollType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Allow null
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 	// Handle conversions
 	switch val := v.(type) {
@@ -67,27 +67,27 @@ func (t GeomCollType) Convert(v interface{}) (interface{}, bool, error) {
 		// Parse header
 		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		// Throw error if not marked as geometry collection
 		if geomType != WKBGeomCollID {
-			return nil, false, sql.ErrInvalidGISData.New("GeomCollType.Convert")
+			return nil, sql.InRange, sql.ErrInvalidGISData.New("GeomCollType.Convert")
 		}
 		// Parse data section
 		geom, _, err := DeserializeGeomColl(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
-		return geom, false, nil
+		return geom, sql.InRange, nil
 	case string:
 		return t.Convert([]byte(val))
 	case GeomColl:
 		if err := t.MatchSRID(val); err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
-		return val, false, nil
+		return val, sql.InRange, nil
 	default:
-		return nil, false, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

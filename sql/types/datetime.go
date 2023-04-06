@@ -150,15 +150,15 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(v interface{}) (interface{}, bool, error) {
+func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 	res, err := ConvertToTime(v, t)
 	if err != nil {
-		return nil, false, err
+		return nil, sql.InRange, err
 	}
-	return res, false, nil
+	return res, sql.InRange, nil
 }
 
 func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {

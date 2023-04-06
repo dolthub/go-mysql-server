@@ -64,14 +64,14 @@ func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t SystemBoolType_) Convert(v interface{}) (interface{}, bool, error) {
+func (t SystemBoolType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case bool:
 		if value {
-			return int8(1), false, nil
+			return int8(1), sql.InRange, nil
 		}
-		return int8(0), false, nil
+		return int8(0), sql.InRange, nil
 	case int:
 		return t.Convert(int64(value))
 	case uint:
@@ -90,7 +90,7 @@ func (t SystemBoolType_) Convert(v interface{}) (interface{}, bool, error) {
 		return t.Convert(int64(value))
 	case int64:
 		if value == 0 || value == 1 {
-			return int8(value), false, nil
+			return int8(value), sql.InRange, nil
 		}
 	case uint64:
 		return t.Convert(int64(value))
@@ -113,13 +113,13 @@ func (t SystemBoolType_) Convert(v interface{}) (interface{}, bool, error) {
 	case string:
 		switch strings.ToLower(value) {
 		case "on", "true":
-			return int8(1), false, nil
+			return int8(1), sql.InRange, nil
 		case "off", "false":
-			return int8(0), false, nil
+			return int8(0), sql.InRange, nil
 		}
 	}
 
-	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.

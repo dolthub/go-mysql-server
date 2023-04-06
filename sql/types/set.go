@@ -134,9 +134,9 @@ func (t SetType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 // Returns the string representing the given value if applicable.
-func (t SetType) Convert(v interface{}) (interface{}, bool, error) {
+func (t SetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
@@ -160,7 +160,7 @@ func (t SetType) Convert(v interface{}) (interface{}, bool, error) {
 		return t.Convert(uint64(value))
 	case uint64:
 		if value <= t.allValuesBitField() {
-			return value, false, nil
+			return value, sql.InRange, nil
 		}
 	case float32:
 		return t.Convert(uint64(value))
@@ -170,17 +170,17 @@ func (t SetType) Convert(v interface{}) (interface{}, bool, error) {
 		return t.Convert(value.BigInt().Uint64())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, false, nil
+			return nil, sql.InRange, nil
 		}
 		return t.Convert(value.Decimal.BigInt().Uint64())
 	case string:
 		ret, err := t.convertStringToBitField(value)
-		return ret, false, err
+		return ret, sql.InRange, err
 	case []byte:
 		return t.Convert(string(value))
 	}
 
-	return uint64(0), false, sql.ErrConvertingToSet.New(v)
+	return uint64(0), sql.InRange, sql.ErrConvertingToSet.New(v)
 }
 
 // MaxTextResponseByteLength implements the Type interface

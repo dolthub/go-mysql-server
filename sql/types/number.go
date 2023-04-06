@@ -214,9 +214,9 @@ func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, bool, error) {
+func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 
 	if ti, ok := v.(time.Time); ok {
@@ -226,7 +226,7 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, bool, error) {
 	if jv, ok := v.(JSONValue); ok {
 		jd, err := jv.Unmarshall(nil)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		v = jd.Val
 	}
@@ -235,65 +235,62 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, bool, error) {
 	case sqltypes.Int8:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		if num > math.MaxInt8 {
-			return int8(math.MaxInt8), true, nil
+			return int8(math.MaxInt8), sql.OutOfRange, nil
 		} else if num < math.MinInt8 {
-			return int8(math.MinInt8), true, nil
+			return int8(math.MinInt8), sql.OutOfRange, nil
 		}
-		return int8(num), false, nil
+		return int8(num), sql.InRange, nil
 	case sqltypes.Uint8:
 		return convertToUint8(t, v)
 	case sqltypes.Int16:
-		num, outOfRange, err := convertToInt64(t, v)
+		num, inRange, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		if num > math.MaxInt16 {
-			return int16(math.MaxInt16), true, nil
+			return int16(math.MaxInt16), sql.OutOfRange, nil
 		} else if num < math.MinInt16 {
-			return int16(math.MinInt16), true, nil
+			return int16(math.MinInt16), sql.OutOfRange, nil
 		}
-		return int16(num), outOfRange, nil
+		return int16(num), inRange, nil
 	case sqltypes.Uint16:
 		return convertToUint16(t, v)
 	case sqltypes.Int24:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, false, err
-		}
-		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		if num > (1<<23 - 1) {
-			return int32(1<<23 - 1), true, nil
+			return int32(1<<23 - 1), sql.OutOfRange, nil
 		} else if num < (-1 << 23) {
-			return int32(-1 << 23), true, nil
+			return int32(-1 << 23), sql.OutOfRange, nil
 		}
-		return int32(num), false, nil
+		return int32(num), sql.InRange, nil
 	case sqltypes.Uint24:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		if num > (1 << 24) {
-			return uint32(1 << 24), true, nil
+			return uint32(1 << 24), sql.OutOfRange, nil
 		} else if num < 0 {
-			return uint32(1<<24 - int32(-num-1)), true, nil
+			return uint32(1<<24 - int32(-num-1)), sql.OutOfRange, nil
 		}
-		return uint32(num), false, nil
+		return uint32(num), sql.InRange, nil
 	case sqltypes.Int32:
-		num, outOfRange, err := convertToInt64(t, v)
+		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		if num > math.MaxInt32 {
-			return int32(math.MaxInt32), true, nil
+			return int32(math.MaxInt32), sql.OutOfRange, nil
 		} else if num < math.MinInt32 {
-			return int32(math.MinInt32), true, nil
+			return int32(math.MinInt32), sql.OutOfRange, nil
 		}
-		return int32(num), outOfRange, nil
+		return int32(num), sql.InRange, nil
 	case sqltypes.Uint32:
 		return convertToUint32(t, v)
 	case sqltypes.Int64:
@@ -303,19 +300,19 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, bool, error) {
 	case sqltypes.Float32:
 		num, err := convertToFloat64(t, v)
 		if err != nil {
-			return nil, false, err
+			return nil, sql.InRange, err
 		}
 		if num > math.MaxFloat32 {
-			return float32(math.MaxFloat32), true, nil
+			return float32(math.MaxFloat32), sql.OutOfRange, nil
 		} else if num < -math.MaxFloat32 {
-			return float32(-math.MaxFloat32), true, nil
+			return float32(-math.MaxFloat32), sql.OutOfRange, nil
 		}
-		return float32(num), false, nil
+		return float32(num), sql.InRange, nil
 	case sqltypes.Float64:
 		ret, err := convertToFloat64(t, v)
-		return ret, false, err
+		return ret, sql.InRange, err
 	default:
-		return nil, false, sql.ErrInvalidType.New(t.baseType.String())
+		return nil, sql.InRange, sql.ErrInvalidType.New(t.baseType.String())
 	}
 }
 
@@ -733,79 +730,79 @@ func (t NumberTypeImpl_) IsSigned() bool {
 	return false
 }
 
-func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, bool, error) {
+func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case int:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case int8:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case int16:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case int32:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case int64:
-		return v, false, nil
+		return v, sql.InRange, nil
 	case uint:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case uint8:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case uint16:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case uint32:
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case uint64:
 		if v > math.MaxInt64 {
-			return math.MaxInt64, true, nil
+			return math.MaxInt64, sql.OutOfRange, nil
 		}
-		return int64(v), false, nil
+		return int64(v), sql.InRange, nil
 	case float32:
 		if v > float32(math.MaxInt64) {
-			return math.MaxInt64, true, nil
+			return math.MaxInt64, sql.OutOfRange, nil
 		} else if v < float32(math.MinInt64) {
-			return math.MinInt64, true, nil
+			return math.MinInt64, sql.OutOfRange, nil
 		}
-		return int64(math.Round(float64(v))), false, nil
+		return int64(math.Round(float64(v))), sql.OutOfRange, nil
 	case float64:
 		if v > float64(math.MaxInt64) {
-			return math.MaxInt64, true, nil
+			return math.MaxInt64, sql.OutOfRange, nil
 		} else if v < float64(math.MinInt64) {
-			return math.MinInt64, true, nil
+			return math.MinInt64, sql.OutOfRange, nil
 		}
-		return int64(math.Round(v)), false, nil
+		return int64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_int64_max) {
-			return dec_int64_max.IntPart(), true, nil
+			return dec_int64_max.IntPart(), sql.OutOfRange, nil
 		} else if v.LessThan(dec_int64_min) {
-			return dec_int64_min.IntPart(), true, nil
+			return dec_int64_min.IntPart(), sql.OutOfRange, nil
 		}
-		return v.Round(0).IntPart(), false, nil
+		return v.Round(0).IntPart(), sql.InRange, nil
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return i, false, nil
+		return i, sql.InRange, nil
 	case string:
 		// Parse first an integer, which allows for more values than float64
 		i, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {
-			return i, false, nil
+			return i, sql.InRange, nil
 		}
 		// If that fails, try as a float and truncate it to integral
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return int64(f), false, nil
+		return int64(f), sql.InRange, nil
 	case bool:
 		if v {
-			return 1, false, nil
+			return 1, sql.InRange, nil
 		}
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	case nil:
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	default:
-		return 0, false, sql.ErrInvalidValueType.New(v, t.String())
+		return 0, sql.InRange, sql.ErrInvalidValueType.New(v, t.String())
 	}
 }
 
@@ -897,369 +894,369 @@ func convertValueToUint64(t NumberTypeImpl_, v sql.Value) (uint64, error) {
 	}
 }
 
-func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, bool, error) {
+func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case int:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), true, nil
+			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case int8:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), true, nil
+			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case int16:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), true, nil
+			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case int32:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), true, nil
+			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case int64:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), true, nil
+			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case uint:
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case uint8:
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case uint16:
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case uint32:
-		return uint64(v), false, nil
+		return uint64(v), sql.InRange, nil
 	case uint64:
-		return v, false, nil
+		return v, sql.InRange, nil
 	case float32:
 		if v > float32(math.MaxInt64) {
-			return math.MaxUint64, true, nil
+			return math.MaxUint64, sql.OutOfRange, nil
 		} else if v < 0 {
-			return uint64(math.MaxUint64 - v), true, nil
+			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
-		return uint64(math.Round(float64(v))), false, nil
+		return uint64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint64) {
-			return math.MaxUint64, true, nil
+			return math.MaxUint64, sql.OutOfRange, nil
 		} else if v <= 0 {
-			return uint64(math.MaxUint64 - v), true, nil
+			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
-		return uint64(math.Round(v)), false, nil
+		return uint64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint64_max) {
-			return math.MaxUint64, false, nil
+			return math.MaxUint64, sql.InRange, nil
 		} else if v.LessThan(dec_zero) {
 			ret, _ := dec_uint64_max.Sub(v).Float64()
-			return uint64(math.Round(ret)), true, nil
+			return uint64(math.Round(ret)), sql.OutOfRange, nil
 		}
 		// TODO: If we ever internally switch to using Decimal for large numbers, this will need to be updated
 		f, _ := v.Float64()
-		return uint64(math.Round(f)), false, nil
+		return uint64(math.Round(f)), sql.InRange, nil
 	case []byte:
 		i, err := strconv.ParseUint(hex.EncodeToString(v), 16, 64)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return i, false, nil
+		return i, sql.InRange, nil
 	case string:
 		i, err := strconv.ParseUint(v, 10, 64)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return i, false, nil
+		return i, sql.InRange, nil
 	case bool:
 		if v {
-			return 1, false, nil
+			return 1, sql.InRange, nil
 		}
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	case nil:
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	default:
-		return 0, false, sql.ErrInvalidValueType.New(v, t.String())
+		return 0, sql.InRange, sql.ErrInvalidValueType.New(v, t.String())
 	}
 }
 
-func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, bool, error) {
+func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case int:
 		if v < 0 {
-			return uint32(math.MaxUint32 - uint(-v-1)), true, nil
+			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint32 {
-			return uint32(math.MaxUint32), true, nil
+			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case int8:
 		if v < 0 {
-			return uint32(math.MaxUint32 - uint(-v-1)), true, nil
+			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
 		} else if int(v) > math.MaxUint32 {
-			return uint32(math.MaxUint32), true, nil
+			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case int16:
 		if v < 0 {
-			return uint32(math.MaxUint32 - uint(-v-1)), true, nil
+			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
 		} else if int(v) > math.MaxUint32 {
-			return uint32(math.MaxUint32), true, nil
+			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case int32:
 		if v < 0 {
-			return uint32(math.MaxUint32 + uint(v)), true, nil
+			return uint32(math.MaxUint32 + uint(v)), sql.OutOfRange, nil
 		} else if int(v) > math.MaxUint32 {
-			return uint32(math.MaxUint32), true, nil
+			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case int64:
 		if v < 0 {
-			return uint32(math.MaxUint32 + uint(v)), true, nil
+			return uint32(math.MaxUint32 + uint(v)), sql.OutOfRange, nil
 		} else if v > math.MaxUint32 {
-			return uint32(math.MaxUint32), true, nil
+			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case uint:
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case uint8:
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case uint16:
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case uint32:
-		return v, false, nil
+		return v, sql.InRange, nil
 	case uint64:
-		return uint32(v), false, nil
+		return uint32(v), sql.InRange, nil
 	case float64:
 		if float32(v) > float32(math.MaxInt32) {
-			return math.MaxUint32, true, nil
+			return math.MaxUint32, sql.OutOfRange, nil
 		} else if v < 0 {
-			return uint32(math.MaxUint32 - v), true, nil
+			return uint32(math.MaxUint32 - v), sql.OutOfRange, nil
 		}
-		return uint32(math.Round(float64(v))), false, nil
+		return uint32(math.Round(float64(v))), sql.InRange, nil
 	case float32:
 		if v >= float32(math.MaxUint32) {
-			return math.MaxUint32, true, nil
+			return math.MaxUint32, sql.OutOfRange, nil
 		} else if v <= 0 {
-			return uint32(math.MaxUint32 - v), true, nil
+			return uint32(math.MaxUint32 - v), sql.OutOfRange, nil
 		}
-		return uint32(math.Round(float64(v))), false, nil
+		return uint32(math.Round(float64(v))), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint32_max) {
-			return math.MaxUint32, false, nil
+			return math.MaxUint32, sql.InRange, nil
 		} else if v.LessThan(dec_zero) {
 			ret, _ := dec_uint32_max.Sub(v).Float64()
-			return uint32(math.Round(ret)), true, nil
+			return uint32(math.Round(ret)), sql.OutOfRange, nil
 		}
 		// TODO: If we ever internally switch to using Decimal for large numbers, this will need to be updated
 		f, _ := v.Float64()
-		return uint32(math.Round(f)), false, nil
+		return uint32(math.Round(f)), sql.InRange, nil
 	case []byte:
 		i, err := strconv.ParseUint(hex.EncodeToString(v), 16, 32)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return uint32(i), false, nil
+		return uint32(i), sql.InRange, nil
 	case string:
 		i, err := strconv.ParseUint(v, 10, 32)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return uint32(i), false, nil
+		return uint32(i), sql.InRange, nil
 	case bool:
 		if v {
-			return 1, false, nil
+			return 1, sql.InRange, nil
 		}
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	case nil:
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	default:
-		return 0, false, sql.ErrInvalidValueType.New(v, t.String())
+		return 0, sql.InRange, sql.ErrInvalidValueType.New(v, t.String())
 	}
 }
 
-func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, bool, error) {
+func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case int:
 		if v < 0 {
-			return uint16(math.MaxUint16 - uint(-v-1)), true, nil
+			return uint16(math.MaxUint16 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint16 {
-			return uint16(math.MaxUint16), true, nil
+			return uint16(math.MaxUint16), sql.OutOfRange, nil
 		}
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case int8:
 		if v < 0 {
-			return uint16(math.MaxUint16 - uint(-v-1)), true, nil
+			return uint16(math.MaxUint16 - uint(-v-1)), sql.OutOfRange, nil
 		}
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case int16:
 		if v < 0 {
-			return uint16(math.MaxUint16 - uint(-v-1)), true, nil
+			return uint16(math.MaxUint16 - uint(-v-1)), sql.OutOfRange, nil
 		}
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case int32:
 		if v < 0 {
-			return uint16(math.MaxUint16 - uint(-v-1)), true, nil
+			return uint16(math.MaxUint16 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint16 {
-			return uint16(math.MaxUint16), true, nil
+			return uint16(math.MaxUint16), sql.OutOfRange, nil
 		}
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case int64:
 		if v < 0 {
-			return uint16(math.MaxUint16 - uint(-v-1)), true, nil
+			return uint16(math.MaxUint16 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint16 {
-			return uint16(math.MaxUint16), true, nil
+			return uint16(math.MaxUint16), sql.OutOfRange, nil
 		}
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case uint:
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case uint8:
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case uint64:
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case uint32:
-		return uint16(v), false, nil
+		return uint16(v), sql.InRange, nil
 	case uint16:
-		return v, false, nil
+		return v, sql.InRange, nil
 	case float32:
 		if v > float32(math.MaxInt16) {
-			return math.MaxUint16, true, nil
+			return math.MaxUint16, sql.OutOfRange, nil
 		} else if v < 0 {
-			return uint16(math.MaxUint16 - v), true, nil
+			return uint16(math.MaxUint16 - v), sql.OutOfRange, nil
 		}
-		return uint16(math.Round(float64(v))), false, nil
+		return uint16(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint16) {
-			return math.MaxUint16, true, nil
+			return math.MaxUint16, sql.OutOfRange, nil
 		} else if v <= 0 {
-			return uint16(math.MaxUint16 - v), true, nil
+			return uint16(math.MaxUint16 - v), sql.OutOfRange, nil
 		}
-		return uint16(math.Round(v)), false, nil
+		return uint16(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint16_max) {
-			return math.MaxUint16, false, nil
+			return math.MaxUint16, sql.InRange, nil
 		} else if v.LessThan(dec_zero) {
 			ret, _ := dec_uint16_max.Sub(v).Float64()
-			return uint16(math.Round(ret)), true, nil
+			return uint16(math.Round(ret)), sql.OutOfRange, nil
 		}
 		// TODO: If we ever internally switch to using Decimal for large numbers, this will need to be updated
 		f, _ := v.Float64()
-		return uint16(math.Round(f)), false, nil
+		return uint16(math.Round(f)), sql.InRange, nil
 	case []byte:
 		i, err := strconv.ParseUint(hex.EncodeToString(v), 16, 16)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return uint16(i), false, nil
+		return uint16(i), sql.InRange, nil
 	case string:
 		i, err := strconv.ParseUint(v, 10, 16)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return uint16(i), false, nil
+		return uint16(i), sql.InRange, nil
 	case bool:
 		if v {
-			return 1, false, nil
+			return 1, sql.InRange, nil
 		}
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	case nil:
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	default:
-		return 0, false, sql.ErrInvalidValueType.New(v, t.String())
+		return 0, sql.InRange, sql.ErrInvalidValueType.New(v, t.String())
 	}
 }
 
-func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, bool, error) {
+func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case int:
 		if v < 0 {
-			return uint8(math.MaxUint8 - uint(-v-1)), true, nil
+			return uint8(math.MaxUint8 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint8 {
-			return uint8(math.MaxUint8), true, nil
+			return uint8(math.MaxUint8), sql.OutOfRange, nil
 		}
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case int16:
 		if v < 0 {
-			return uint8(math.MaxUint8 - uint(-v-1)), true, nil
+			return uint8(math.MaxUint8 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint8 {
-			return uint8(math.MaxUint8), true, nil
+			return uint8(math.MaxUint8), sql.OutOfRange, nil
 		}
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case int8:
 		if v < 0 {
-			return uint8(math.MaxUint8 - uint(-v-1)), true, nil
+			return uint8(math.MaxUint8 - uint(-v-1)), sql.OutOfRange, nil
 		} else if int(v) > math.MaxUint8 {
-			return uint8(math.MaxUint8), true, nil
+			return uint8(math.MaxUint8), sql.OutOfRange, nil
 		}
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case int32:
 		if v < 0 {
-			return uint8(math.MaxUint8 - uint(-v-1)), true, nil
+			return uint8(math.MaxUint8 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint8 {
-			return uint8(math.MaxUint8), true, nil
+			return uint8(math.MaxUint8), sql.OutOfRange, nil
 		}
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case int64:
 		if v < 0 {
-			return uint8(math.MaxUint8 - uint(-v-1)), true, nil
+			return uint8(math.MaxUint8 - uint(-v-1)), sql.OutOfRange, nil
 		} else if v > math.MaxUint8 {
-			return uint8(math.MaxUint8), true, nil
+			return uint8(math.MaxUint8), sql.OutOfRange, nil
 		}
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case uint:
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case uint16:
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case uint64:
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case uint32:
-		return uint8(v), false, nil
+		return uint8(v), sql.InRange, nil
 	case uint8:
-		return v, false, nil
+		return v, sql.InRange, nil
 	case float32:
 		if v > float32(math.MaxInt8) {
-			return math.MaxUint8, true, nil
+			return math.MaxUint8, sql.OutOfRange, nil
 		} else if v < 0 {
-			return uint8(math.MaxUint8 - v), true, nil
+			return uint8(math.MaxUint8 - v), sql.OutOfRange, nil
 		}
-		return uint8(math.Round(float64(v))), false, nil
+		return uint8(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint8) {
-			return math.MaxUint8, true, nil
+			return math.MaxUint8, sql.OutOfRange, nil
 		} else if v <= 0 {
-			return uint8(math.MaxUint8 - v), true, nil
+			return uint8(math.MaxUint8 - v), sql.OutOfRange, nil
 		}
-		return uint8(math.Round(v)), false, nil
+		return uint8(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint8_max) {
-			return math.MaxUint8, false, nil
+			return math.MaxUint8, sql.InRange, nil
 		} else if v.LessThan(dec_zero) {
 			ret, _ := dec_uint8_max.Sub(v).Float64()
-			return uint8(math.Round(ret)), true, nil
+			return uint8(math.Round(ret)), sql.OutOfRange, nil
 		}
 		// TODO: If we ever internally switch to using Decimal for large numbers, this will need to be updated
 		f, _ := v.Float64()
-		return uint8(math.Round(f)), false, nil
+		return uint8(math.Round(f)), sql.InRange, nil
 	case []byte:
 		i, err := strconv.ParseUint(hex.EncodeToString(v), 8, 8)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return uint8(i), false, nil
+		return uint8(i), sql.InRange, nil
 	case string:
 		i, err := strconv.ParseUint(v, 10, 8)
 		if err != nil {
-			return 0, false, sql.ErrInvalidValue.New(v, t.String())
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return uint8(i), false, nil
+		return uint8(i), sql.InRange, nil
 	case bool:
 		if v {
-			return 1, false, nil
+			return 1, sql.InRange, nil
 		}
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	case nil:
-		return 0, false, nil
+		return 0, sql.InRange, nil
 	default:
-		return 0, false, sql.ErrInvalidValueType.New(v, t.String())
+		return 0, sql.InRange, sql.ErrInvalidValueType.New(v, t.String())
 	}
 }
 

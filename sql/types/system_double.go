@@ -65,7 +65,7 @@ func (t systemDoubleType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemDoubleType) Convert(v interface{}) (interface{}, bool, error) {
+func (t systemDoubleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// String nor nil values are accepted
 	switch value := v.(type) {
 	case int:
@@ -92,7 +92,7 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, bool, error) {
 		return t.Convert(float64(value))
 	case float64:
 		if value >= t.lowerbound && value <= t.upperbound {
-			return value, false, nil
+			return value, sql.InRange, nil
 		}
 	case decimal.Decimal:
 		f, _ := value.Float64()
@@ -104,7 +104,7 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, bool, error) {
 		}
 	}
 
-	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.

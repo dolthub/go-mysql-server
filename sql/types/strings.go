@@ -304,20 +304,20 @@ func (t StringType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t StringType) Convert(v interface{}) (interface{}, bool, error) {
+func (t StringType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 
 	val, err := ConvertToString(v, t)
 	if err != nil {
-		return nil, false, err
+		return nil, sql.InRange, err
 	}
 
 	if IsBinaryType(t) {
-		return []byte(val), false, nil
+		return []byte(val), sql.InRange, nil
 	}
-	return val, false, nil
+	return val, sql.InRange, nil
 }
 
 func ConvertToString(v interface{}, t sql.StringType) (string, error) {

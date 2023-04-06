@@ -45,12 +45,12 @@ func (t deferredType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t deferredType) Convert(v interface{}) (interface{}, bool, error) {
+func (t deferredType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v != nil {
-		return nil, false, ErrValueNotNil.New(v)
+		return nil, sql.InRange, ErrValueNotNil.New(v)
 	}
 
-	return nil, false, nil
+	return nil, sql.InRange, nil
 }
 
 // MaxTextResponseByteLength implements the Type interface

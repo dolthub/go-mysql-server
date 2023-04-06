@@ -61,15 +61,15 @@ func (t systemStringType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemStringType) Convert(v interface{}) (interface{}, bool, error) {
+func (t systemStringType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return "", false, nil
+		return "", sql.InRange, nil
 	}
 	if value, ok := v.(string); ok {
-		return value, false, nil
+		return value, sql.InRange, nil
 	}
 
-	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.

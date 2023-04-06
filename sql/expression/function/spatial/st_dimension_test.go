@@ -151,7 +151,8 @@ func TestDimension(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, inRange, err := typ.Convert(v)
+		require.True(bool(inRange))
 		require.NoError(err)
 	})
 }

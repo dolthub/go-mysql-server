@@ -72,12 +72,12 @@ func (t systemEnumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemEnumType) Convert(v interface{}) (interface{}, bool, error) {
+func (t systemEnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
 		if value >= 0 && value < len(t.indexToVal) {
-			return t.indexToVal[value], false, nil
+			return t.indexToVal[value], sql.InRange, nil
 		}
 	case uint:
 		return t.Convert(int(value))
@@ -115,11 +115,11 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, bool, error) {
 		}
 	case string:
 		if idx, ok := t.valToIndex[strings.ToLower(value)]; ok {
-			return t.indexToVal[idx], false, nil
+			return t.indexToVal[idx], sql.InRange, nil
 		}
 	}
 
-	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.

@@ -150,15 +150,15 @@ func (t EnumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t EnumType) Convert(v interface{}) (interface{}, bool, error) {
+func (t EnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
 	case int:
 		if _, ok := t.At(value); ok {
-			return uint16(value), false, nil
+			return uint16(value), sql.InRange, nil
 		}
 	case uint:
 		return t.Convert(int(value))
@@ -186,18 +186,18 @@ func (t EnumType) Convert(v interface{}) (interface{}, bool, error) {
 		return t.Convert(value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, false, nil
+			return nil, sql.InRange, nil
 		}
 		return t.Convert(value.Decimal.IntPart())
 	case string:
 		if index := t.IndexOf(value); index != -1 {
-			return uint16(index), false, nil
+			return uint16(index), sql.InRange, nil
 		}
 	case []byte:
 		return t.Convert(string(value))
 	}
 
-	return nil, false, ErrConvertingToEnum.New(v)
+	return nil, sql.InRange, ErrConvertingToEnum.New(v)
 }
 
 // MustConvert implements the Type interface.

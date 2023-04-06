@@ -52,45 +52,45 @@ func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t JsonType) Convert(v interface{}) (doc interface{}, b bool, err error) {
+func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
 	switch v := v.(type) {
 	case JSONValue:
-		return v, false, nil
+		return v, sql.InRange, nil
 	case []byte:
 		if int64(len(v)) > MaxJsonFieldByteLength {
-			return nil, false, ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
+			return nil, sql.InRange, ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
 		}
 		err = json.Unmarshal(v, &doc)
 		if err != nil {
-			return nil, false, sql.ErrInvalidJson.New(err.Error())
+			return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
 		}
 	case string:
 		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
 		length := int64(len(v)) * charsetMaxLength
 		if length > MaxJsonFieldByteLength {
-			return nil, false, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
+			return nil, sql.InRange, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
 		}
 		err = json.Unmarshal([]byte(v), &doc)
 		if err != nil {
-			return nil, false, sql.ErrInvalidJson.New(err.Error())
+			return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
 		}
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
 		if b, berr := json.Marshal(v); berr == nil {
 			if int64(len(b)) > MaxJsonFieldByteLength {
-				return nil, false, ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
+				return nil, sql.InRange, ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
 			}
 			err = json.Unmarshal(b, &doc)
 			if err != nil {
-				return nil, false, sql.ErrInvalidJson.New(err.Error())
+				return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
 			}
 		}
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, sql.InRange, err
 	}
-	return JSONDocument{Val: doc}, false, nil
+	return JSONDocument{Val: doc}, sql.InRange, nil
 }
 
 // Equals implements the Type interface.

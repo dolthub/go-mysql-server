@@ -64,7 +64,7 @@ func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemSetType) Convert(v interface{}) (interface{}, bool, error) {
+func (t systemSetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
@@ -107,7 +107,7 @@ func (t systemSetType) Convert(v interface{}) (interface{}, bool, error) {
 		return t.SetType.Convert(value)
 	}
 
-	return nil, false, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.

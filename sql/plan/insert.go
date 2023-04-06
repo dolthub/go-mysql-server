@@ -371,8 +371,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, outOfRange, cErr := col.Type.Convert(row[idx]) // allows for better error handling
-			if outOfRange {
+			converted, inRange, cErr := col.Type.Convert(row[idx]) // allows for better error handling
+			if !inRange {
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
 			}
 			if cErr != nil {

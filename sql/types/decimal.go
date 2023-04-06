@@ -138,13 +138,13 @@ func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t DecimalType_) Convert(v interface{}) (interface{}, bool, error) {
+func (t DecimalType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
-		return nil, false, err
+		return nil, sql.InRange, err
 	}
 	if !dec.Valid {
-		return nil, false, nil
+		return nil, sql.InRange, nil
 	}
 	return t.BoundsCheck(dec.Decimal)
 }
@@ -236,7 +236,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
 }
 
-func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, bool, error) {
+func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, sql.ConvertInRange, error) {
 	if -v.Exponent() > int32(t.scale) {
 		// TODO : add 'Data truncated' warning
 		v = v.Round(int32(t.scale))
@@ -244,9 +244,9 @@ func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, bool, err
 	// TODO add shortcut for common case
 	// ex: certain num of bits fast tracks OK
 	if !v.Abs().LessThan(t.exclusiveUpperBound) {
-		return decimal.Decimal{}, false, ErrConvertToDecimalLimit.New()
+		return decimal.Decimal{}, sql.InRange, ErrConvertToDecimalLimit.New()
 	}
-	return v, false, nil
+	return v, sql.InRange, nil
 }
 
 // MustConvert implements the Type interface.
