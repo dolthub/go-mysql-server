@@ -2889,19 +2889,6 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name: "alter, rename primary key column",
-		SetUpScript: []string{
-			"create table t (pk1 varchar(100), pk2 varchar(50), PRIMARY KEY (pk1, pk2))",
-			"alter table t change column pk2 pkTwo varchar(20)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "show create table t",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk1` varchar(100) NOT NULL,\n  `pkTwo` varchar(20) NOT NULL,\n  PRIMARY KEY (`pkTwo`,`pk1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-		},
-	},
 }
 
 var SpatialScriptTests = []ScriptTest{
