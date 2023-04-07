@@ -153,6 +153,11 @@ func canDoPushdown(n sql.Node) bool {
 // the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
 // sometimes null in these types of joins). It must be evaluated only after the join result is computed.
 func filterPushdownChildSelector(c transform.Context) bool {
+	switch c.Node.(type) {
+	case *plan.Limit:
+		return false
+	}
+
 	switch n := c.Parent.(type) {
 	case *plan.TableAlias:
 		return false
@@ -413,6 +418,11 @@ func convertFiltersToIndexedAccess(
 			// pushdown, it will get picked up in the isolated pass
 			// run by the filters pushdown transform.
 			return false
+		case *plan.Filter:
+			// Can't push Filter Nodes below Limit Nodes
+			if _, ok := c.Node.(*plan.Limit); ok {
+				return false
+			}
 		}
 		return true
 	}
