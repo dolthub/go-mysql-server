@@ -67,7 +67,7 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
 // them into.
 type InsertInto struct {
-	db          sql.Database
+	Db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
 	ColumnNames []string
@@ -86,7 +86,7 @@ var _ DisjointedChildrenNode = (*InsertInto)(nil)
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
 	return &InsertInto{
-		db:          db,
+		Db:          db,
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,
@@ -115,12 +115,12 @@ func (ii *InsertInto) Children() []sql.Node {
 }
 
 func (ii *InsertInto) Database() sql.Database {
-	return ii.db
+	return ii.Db
 }
 
 func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *ii
-	nc.db = database
+	nc.Db = database
 	return &nc, nil
 }
 
@@ -700,10 +700,10 @@ func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if ii.IsReplace {
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert, sql.PrivilegeType_Delete))
+			sql.NewPrivilegedOperation(ii.Db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert, sql.PrivilegeType_Delete))
 	} else {
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert))
+			sql.NewPrivilegedOperation(ii.Db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert))
 	}
 }
 

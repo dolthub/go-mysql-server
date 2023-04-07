@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"os"
 	"reflect"
 	"strings"
@@ -453,6 +454,241 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
+}
+
+func (a *Analyzer) analyzeNode(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	var err error
+	switch n.(type) {
+	case *plan.InsertInto:
+
+	default:
+		n, _, err = a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
+	}
+	return n, err
+}
+
+// analyzeInsert is an example of straight-line analyzing an edge case node.
+// *plan.InsertInto special cases is littered throughout analyzer rules, and
+// it would be easier to analyze all other rules without the special casing.
+// Likewise, it is maybe easier to analyze an insert if all analyze logic can
+// be pipelined in one reasonably sized function.
+//
+// TODO to keep in mind:
+//   - ideally special casing here deletes the same logic in core rules
+//   - transaction lifecycle considerations -- which database? user vars for
+//     transactions?
+//   - triggers, stored procedures, prepared statements, columnDefaults still
+//     need to work. Some of the logic would go here, some maybe would go into
+//     a separate Analyzer.analyzePreparedInsert, which can call this after
+//     prepared special casing.
+//   - validation rules would ideally be moved into another object, a
+//     Validator, that has a Validator.ValidateNode entrypoint that switches
+//     on type while walking the tree downwards. This could be built incrementally,
+//     only handling insert rules right now.
+func (a *Analyzer) analyzeInsert(ctx *sql.Context, n *plan.InsertInto, scope *Scope) (sql.Node, error) {
+	validator := &Validator{}
+
+	// db
+	{
+		var dbName = ctx.GetCurrentDatabase()
+		db, err := a.Catalog.Database(ctx, dbName)
+		if err != nil {
+			return nil, err
+		}
+		n.Db = db
+	}
+
+	// Destination
+	{
+		var err error
+		switch t := n.Destination.(type) {
+		case *plan.UnresolvedTable:
+			n.Destination, err = resolveTable(ctx, t, a)
+		default:
+			err = fmt.Errorf("invalid insert destination")
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Checks
+	{
+		rtable := getResolvedTable(n.Destination)
+		table, ok := rtable.Table.(sql.CheckTable)
+		if ok {
+			var err error
+			n.Checks, err = loadChecksFromTable(ctx, table)
+			if err != nil {
+				return nil, err
+			}
+			onDupUpdateSymbols := getAvailableNamesByScope(n, scope)
+			checkExprs, _, err := transform.Exprs(n.Checks.ToExpressions(), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				return qualifyExpression(e, n, onDupUpdateSymbols)
+			})
+			if err != nil {
+				return nil, err
+			}
+			n.Checks, err = n.Checks.FromExpressions(checkExprs)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Column Names
+	{
+		var err error
+		n, err = setInsertColumnsHelper(n)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// OnDupExprs
+	{
+		var err error
+		inNoSrc := plan.NewInsertInto(
+			n.Database(),
+			n.Destination,
+			nil,
+			n.IsReplace,
+			n.ColumnNames,
+			n.OnDupExprs,
+			n.Ignore,
+		)
+		onDupUpdateSymbols := getAvailableNamesByScope(inNoSrc, scope)
+		n.OnDupExprs, _, err = transform.Exprs(n.OnDupExprs, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			return qualifyExpression(e, n, onDupUpdateSymbols)
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Source
+	{
+		var err error
+		n, _, err = resolveInsert(ctx, a, n, scope, DefaultRuleSelector)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// foreign keys
+	for {
+		cache := newForeignKeyCache()
+		fkChain := foreignKeyChain{
+			fkUpdate: make(map[foreignKeyTableName]sql.ForeignKeyEditor),
+		}
+
+		if plan.IsEmptyTable(n.Destination) {
+			break
+		}
+		insertableDest, err := plan.GetInsertable(n.Destination)
+		if err != nil {
+			return nil, err
+		}
+		tbl, ok := insertableDest.(sql.ForeignKeyTable)
+		// If foreign keys aren't supported then we return
+		if !ok {
+			break
+		}
+		var fkEditor *plan.ForeignKeyEditor
+		if n.IsReplace || len(n.OnDupExprs) > 0 {
+			fkEditor, err = getForeignKeyEditor(ctx, a, tbl, cache, fkChain)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			fkEditor, err = getForeignKeyReferences(ctx, a, tbl, cache, fkChain)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if fkEditor == nil {
+			return n, fmt.Errorf("fk editor not found")
+		}
+		n.Destination = &plan.ForeignKeyHandler{
+			Table:        tbl,
+			Sch:          insertableDest.Schema(),
+			OriginalNode: n.Destination,
+			Editor:       fkEditor,
+			AllUpdaters:  fkChain.GetUpdaters(),
+		}
+	}
+
+	// TODO column defaults
+	{
+		new, _, err := resolveColumnDefaults(ctx, nil, n, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		var ok bool
+		n, ok = new.(*plan.InsertInto)
+		if !ok {
+			return nil, fmt.Errorf("resolveColumnDefaults returned a non-insert node")
+		}
+	}
+
+	// TODO validation
+	{
+		if err := validator.ValidateNode(n); err != nil {
+			return nil, err
+		}
+	}
+
+	// TODO rowupdateacc
+	// TODO triggers
+	{
+		var ret sql.Node
+		var err error
+		accumulatorType, err := getUpdateAccumulatorType(n)
+		if err != nil {
+			return nil, err
+		}
+		ret = plan.NewRowUpdateAccumulator(n, accumulatorType)
+		ret, _, err = applyTriggers(ctx, a, ret, scope, nil)
+		return ret, nil
+	}
+}
+
+// TODO put this on analyzer
+type Validator struct{}
+
+func (v *Validator) ValidateNode(n sql.Node) (err error) {
+	switch n := n.(type) {
+	case *plan.InsertInto:
+		// TODO validate special things about *plan.Insert
+		// - check if destination node is sql.ReadOnlyDatabase or sql.TemporaryTable
+		// validateReadOnlyTransaction || validateReadOnlyDatabase
+		t := getResolvedTable(n.Destination)
+		var isTemporary bool
+		switch t := t.Table.(type) {
+		case sql.TemporaryTable:
+			isTemporary = t.IsTemporary()
+
+		}
+		var readOnly bool
+		switch t.Database.(type) {
+		case sql.ReadOnlyDatabase:
+			readOnly = true
+		}
+
+		readOnlyTransaction := true
+		if readOnlyTransaction && !isTemporary {
+			// TODO transaction logic // can only write to temporary tables
+		}
+		readOnlyDb := true
+		if readOnlyDb && !readOnly {
+			// TODO read only database logic, can't write to read only
+
+		}
+
+		// TODO then recurse on source node
+		return v.ValidateNode(n.Source)
+	default:
+	}
 }
 
 // prePrepareRuleSelector are applied before a prepared statement before bindvars

@@ -32,26 +32,29 @@ func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-
 		if !ii.Destination.Resolved() {
 			return n, transform.SameTree, nil
 		}
-
-		schema := ii.Destination.Schema()
-
-		// If no column names were specified in the query, go ahead and fill
-		// them all in now that the destination is resolved.
-		// TODO: setting the plan field directly is not great
-		if len(ii.ColumnNames) == 0 {
-			colNames := make([]string, len(schema))
-			for i, col := range schema {
-				colNames[i] = col.Name
-			}
-			ii.ColumnNames = colNames
-		}
-
-		return ii, transform.NewTree, nil
+		ret, err := setInsertColumnsHelper(ii)
+		return ret, transform.NewTree, err
 	})
+}
+
+func setInsertColumnsHelper(ii *plan.InsertInto) (*plan.InsertInto, error) {
+	schema := ii.Destination.Schema()
+
+	// If no column names were specified in the query, go ahead and fill
+	// them all in now that the destination is resolved.
+	// TODO: setting the plan field directly is not great
+	if len(ii.ColumnNames) == 0 {
+		colNames := make([]string, len(schema))
+		for i, col := range schema {
+			colNames[i] = col.Name
+		}
+		ii.ColumnNames = colNames
+	}
+
+	return ii, nil
 }
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -66,76 +69,80 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-
-		table := getResolvedTable(insert.Destination)
-
-		insertable, err := plan.GetInsertable(table)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		if insert.IsReplace {
-			var ok bool
-			_, ok = insertable.(sql.ReplaceableTable)
-			if !ok {
-				return nil, transform.SameTree, plan.ErrReplaceIntoNotSupported.New()
-			}
-		}
-
-		if len(insert.OnDupExprs) > 0 {
-			var ok bool
-			_, ok = insertable.(sql.UpdatableTable)
-			if !ok {
-				return nil, transform.SameTree, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
-			}
-		}
-
-		source := insert.Source
-		// TriggerExecutor has already been analyzed
-		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
-			// Analyze the source of the insert independently
-			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel))
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			source = StripPassthroughNodes(source)
-		}
-
-		dstSchema := insertable.Schema()
-
-		// normalize the column name
-		columnNames := make([]string, len(insert.ColumnNames))
-		for i, name := range insert.ColumnNames {
-			columnNames[i] = strings.ToLower(name)
-		}
-
-		// If no columns are given and value tuples are not all empty, use the full schema
-		if len(columnNames) == 0 && existsNonZeroValueCount(source) {
-			columnNames = make([]string, len(dstSchema))
-			for i, f := range dstSchema {
-				columnNames[i] = f.Name
-			}
-		} else {
-			err = validateColumns(columnNames, dstSchema)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-		}
-
-		err = validateValueCount(columnNames, source)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		return insert.WithSource(project), transform.NewTree, nil
+		return resolveInsert(ctx, a, insert, scope, sel)
 	})
+}
+
+func resolveInsert(ctx *sql.Context, a *Analyzer, insert *plan.InsertInto, scope *Scope, sel RuleSelector) (*plan.InsertInto, transform.TreeIdentity, error) {
+	table := getResolvedTable(insert.Destination)
+
+	insertable, err := plan.GetInsertable(table)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	if insert.IsReplace {
+		var ok bool
+		_, ok = insertable.(sql.ReplaceableTable)
+		if !ok {
+			return nil, transform.SameTree, plan.ErrReplaceIntoNotSupported.New()
+		}
+	}
+
+	if len(insert.OnDupExprs) > 0 {
+		var ok bool
+		_, ok = insertable.(sql.UpdatableTable)
+		if !ok {
+			return nil, transform.SameTree, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
+		}
+	}
+
+	source := insert.Source
+	// TriggerExecutor has already been analyzed
+	if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
+		// Analyze the source of the insert independently
+		source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel))
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		source = StripPassthroughNodes(source)
+	}
+
+	dstSchema := insertable.Schema()
+
+	// normalize the column name
+	columnNames := make([]string, len(insert.ColumnNames))
+	for i, name := range insert.ColumnNames {
+		columnNames[i] = strings.ToLower(name)
+	}
+
+	// If no columns are given and value tuples are not all empty, use the full schema
+	if len(columnNames) == 0 && existsNonZeroValueCount(source) {
+		columnNames = make([]string, len(dstSchema))
+		for i, f := range dstSchema {
+			columnNames[i] = f.Name
+		}
+	} else {
+		err = validateColumns(columnNames, dstSchema)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+	}
+
+	err = validateValueCount(columnNames, source)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	// The schema of the destination node and the underlying table differ subtly in terms of defaults
+	project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	insert.Source = project
+	return insert, transform.NewTree, nil
 }
 
 // resolvePreparedInsert applies post-optimization
