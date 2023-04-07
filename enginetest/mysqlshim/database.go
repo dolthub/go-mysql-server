@@ -16,12 +16,13 @@ package mysqlshim
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -269,17 +270,17 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 			}
 		}
 		eventDetails[i] = sql.EventDetails{
-			SchemaName: d.name,
-			Name:            eventStmt[0][0].(string),
-			Definer: createEvent.Definer,
-			ExecuteAt: at,
-			ExecuteEvery: sql.NewEveryInterval(interval.Years, interval.Months, interval.Days, interval.Hours, interval.Minutes, interval.Seconds),
-			Starts: starts,
-			Ends: ends,
+			SchemaName:           d.name,
+			Name:                 eventStmt[0][0].(string),
+			Definer:              createEvent.Definer,
+			ExecuteAt:            at,
+			ExecuteEvery:         sql.NewEveryInterval(interval.Years, interval.Months, interval.Days, interval.Hours, interval.Minutes, interval.Seconds),
+			Starts:               starts,
+			Ends:                 ends,
 			OnCompletionPreserve: createEvent.OnCompPreserve,
-			Status: createEvent.Status,
-			Comment: createEvent.Comment,
-			Definition: createEvent.DefinitionString,
+			Status:               createEvent.Status,
+			Comment:              createEvent.Comment,
+			Definition:           createEvent.DefinitionString,
 			// TODO: other fields should be added such as Created, LastAltered, ...
 		}
 	}

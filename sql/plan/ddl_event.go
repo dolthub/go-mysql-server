@@ -70,7 +70,6 @@ func NewCreateEvent(
 		Comment:          comment,
 		DefinitionString: definitionString,
 		DefinitionNode:   definition,
-
 	}
 }
 
