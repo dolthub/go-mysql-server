@@ -456,7 +456,7 @@ func (a *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 	case time.Time:
 		t = v
 	case string, []byte:
-		d, err := types.Datetime.Convert(v)
+		d, _, err := types.Datetime.Convert(v)
 		if err != nil {
 			return time.Time{}, err
 		}
