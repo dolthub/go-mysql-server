@@ -952,6 +952,155 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM emptytable) uv WHERE pk = u;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk:2!null, uv.u:0!null, uv.v:1!null]\n" +
+			" └─ HashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ one_pk.pk:2!null\n" +
+			"     │   └─ uv.u:0!null\n" +
+			"     ├─ SubqueryAlias\n" +
+			"     │   ├─ name: uv\n" +
+			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [COUNT(1):0!null as u, 123 (tinyint) as v]\n" +
+			"     │       └─ GroupBy\n" +
+			"     │           ├─ select: COUNT(1 (bigint))\n" +
+			"     │           ├─ group: \n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: emptytable\n" +
+			"     │               └─ columns: []\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ source: TUPLE(uv.u:0!null)\n" +
+			"         ├─ target: TUPLE(one_pk.pk:0!null)\n" +
+			"         └─ CachedResults\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false) uv WHERE pk = u;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk:2!null, uv.u:0!null, uv.v:1!null]\n" +
+			" └─ HashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ one_pk.pk:2!null\n" +
+			"     │   └─ uv.u:0!null\n" +
+			"     ├─ SubqueryAlias\n" +
+			"     │   ├─ name: uv\n" +
+			"     │   ├─ outerVisibility: false\n" +
+			"     │   ├─ cacheable: true\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [COUNT(1):0!null as u, 123 (tinyint) as v]\n" +
+			"     │       └─ GroupBy\n" +
+			"     │           ├─ select: COUNT(1 (bigint))\n" +
+			"     │           ├─ group: \n" +
+			"     │           └─ EmptyTable\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ source: TUPLE(uv.u:0!null)\n" +
+			"         ├─ target: TUPLE(one_pk.pk:0!null)\n" +
+			"         └─ CachedResults\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM emptytable);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk:0!null]\n" +
+			" └─ SemiJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ TUPLE(one_pk.pk:0!null, 123 (tinyint))\n" +
+			"     │   └─ TUPLE(scalarSubq0.u:6!null, scalarSubq0.v:7!null)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: one_pk\n" +
+			"     │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: scalarSubq0\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [COUNT(1):0!null as u, 123 (tinyint) as v]\n" +
+			"             └─ GroupBy\n" +
+			"                 ├─ select: COUNT(1 (bigint))\n" +
+			"                 ├─ group: \n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: emptytable\n" +
+			"                     └─ columns: []\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk:0!null]\n" +
+			" └─ SemiJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ TUPLE(one_pk.pk:0!null, 123 (tinyint))\n" +
+			"     │   └─ TUPLE(scalarSubq0.u:6!null, scalarSubq0.v:7!null)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: one_pk\n" +
+			"     │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: scalarSubq0\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [COUNT(1):0!null as u, 123 (tinyint) as v]\n" +
+			"             └─ GroupBy\n" +
+			"                 ├─ select: COUNT(1 (bigint))\n" +
+			"                 ├─ group: \n" +
+			"                 └─ EmptyTable\n" +
+			"",
+	},
+	{
+		Query: `SELECT i FROM mytable WHERE EXISTS (SELECT * FROM (SELECT count(*) as u, 123 as v FROM emptytable) uv);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:0!null]\n" +
+			" └─ SemiJoin\n" +
+			"     ├─ true (tinyint)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: uv\n" +
+			"             ├─ outerVisibility: true\n" +
+			"             ├─ cacheable: true\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [COUNT(1):0!null as u, 123 (tinyint) as v]\n" +
+			"                 └─ GroupBy\n" +
+			"                     ├─ select: COUNT(1 (bigint))\n" +
+			"                     ├─ group: \n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: emptytable\n" +
+			"                         └─ columns: []\n" +
+			"",
+	},
+	{
+		Query: `SELECT count(*), (SELECT i FROM mytable WHERE i = 1 group by i);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as count(*), Subquery\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ GroupBy\n" +
+			" │       ├─ select: mytable.i:1!null\n" +
+			" │       ├─ group: mytable.i:1!null\n" +
+			" │       └─ IndexedTableAccess(mytable)\n" +
+			" │           ├─ index: [mytable.i]\n" +
+			" │           ├─ static: [{[1, 1]}]\n" +
+			" │           └─ columns: [i]\n" +
+			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Table\n" +
+			"         ├─ name: \n" +
+			"         └─ columns: []\n" +
+			"",
+	},
+	{
 		Query: `with cte(a,b) as (select * from ab) select * from xy where exists (select * from cte where a = x)`,
 		ExpectedPlan: "RightSemiLookupJoin\n" +
 			" ├─ Eq\n" +

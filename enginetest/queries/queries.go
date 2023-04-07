@@ -867,6 +867,60 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM emptytable) uv WHERE pk = u;",
+		Expected: []sql.Row{
+			{0, 0, 123},
+		},
+	},
+	{
+		Query: "SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false) uv WHERE pk = u;",
+		Expected: []sql.Row{
+			{0, 0, 123},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM emptytable);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) NOT IN (SELECT count(*) AS u, 123 AS v FROM emptytable);",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) NOT IN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false);",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "SELECT i FROM mytable WHERE EXISTS (SELECT * FROM (SELECT count(*) as u, 123 as v FROM emptytable) uv);",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "SELECT count(*), (SELECT i FROM mytable WHERE i = 1 group by i);",
+		Expected: []sql.Row{
+			{1, 1},
+		},
+	},
+	{
 		Query: "SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
 			{int64(0), float64(14)},
