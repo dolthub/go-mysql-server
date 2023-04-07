@@ -689,6 +689,7 @@ func (v *Validator) ValidateNode(n sql.Node) (err error) {
 		return v.ValidateNode(n.Source)
 	default:
 	}
+	return nil
 }
 
 // prePrepareRuleSelector are applied before a prepared statement before bindvars
