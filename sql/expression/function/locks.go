@@ -333,7 +333,7 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.Left.Type().String(), gl.FunctionName()), err)
 	}
 
-	timeout, err := types.Int64.Convert(rightVal)
+	timeout, _, err := types.Int64.Convert(rightVal)
 
 	if err != nil {
 		return nil, fmt.Errorf("illegal value for timeout %v", timeout)

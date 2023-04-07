@@ -172,7 +172,7 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 	if sysVar.Scope == SystemVariableScope_Global {
 		return ErrSystemVariableGlobalOnly.New(sysVar.Name)
 	}
-	convertedVal, err := sysVar.Type.Convert(value)
+	convertedVal, _, err := sysVar.Type.Convert(value)
 	if err != nil {
 		return err
 	}

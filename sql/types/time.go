@@ -99,17 +99,17 @@ func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
 	return as.Compare(bs), nil
 }
 
-func (t TimespanType_) Convert(v interface{}) (interface{}, error) {
+func (t TimespanType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
-
-	return t.ConvertToTimespan(v)
+	ret, err := t.ConvertToTimespan(v)
+	return ret, sql.InRange, err
 }
 
 // MustConvert implements the Type interface.
 func (t TimespanType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}

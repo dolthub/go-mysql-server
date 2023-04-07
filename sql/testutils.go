@@ -14,7 +14,7 @@
 
 package sql
 
-func MustConvert(val interface{}, err error) interface{} {
+func MustConvert(val interface{}, _ ConvertInRange, err error) interface{} {
 	if err != nil {
 		panic(err)
 	}

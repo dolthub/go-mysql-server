@@ -108,7 +108,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, err := types.Datetime.Convert(val)
+	date, _, err := types.Datetime.Convert(val)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -120,7 +120,8 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if types.IsText(resType) {
 		return res, nil
 	}
-	return resType.Convert(res)
+	ret, _, err := resType.Convert(res)
+	return ret, err
 }
 
 func (d *DateAdd) String() string {
@@ -202,7 +203,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, err = types.Datetime.Convert(date)
+	date, _, err = types.Datetime.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -223,7 +224,8 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if types.IsText(resType) {
 		return res, nil
 	}
-	return resType.Convert(res)
+	ret, _, err := resType.Convert(res)
+	return ret, err
 }
 
 func (d *DateSub) String() string {
@@ -274,7 +276,8 @@ func (t *TimestampConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
-	return types.Timestamp.Convert(e)
+	ret, _, err := types.Timestamp.Convert(e)
+	return ret, err
 }
 
 func (t *TimestampConversion) Children() []sql.Expression {
@@ -339,7 +342,8 @@ func (t *DatetimeConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	return types.Datetime.Convert(e)
+	ret, _, err := types.Datetime.Convert(e)
+	return ret, err
 }
 
 func (t *DatetimeConversion) Children() []sql.Expression {
@@ -436,7 +440,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, nil
 	}
 
-	date, err = types.Datetime.Convert(date)
+	date, _, err = types.Datetime.Convert(date)
 	if err != nil {
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
@@ -448,7 +452,8 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 func toUnixTimestamp(t time.Time) (interface{}, error) {
-	return types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
+	ret, _, err := types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
+	return ret, err
 }
 
 func (ut *UnixTimestamp) String() string {
@@ -491,7 +496,7 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	n, err := types.Int64.Convert(val)
+	n, _, err := types.Int64.Convert(val)
 	if err != nil {
 		return nil, err
 	}

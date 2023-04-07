@@ -79,7 +79,7 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			val = v
 		}
 
-		value, err := j.schema[i].Type.Convert(val)
+		value, _, err := j.schema[i].Type.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +157,7 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	if err != nil {
 		return nil, err
 	}
-	strData, err := types.LongBlob.Convert(data)
+	strData, _, err := types.LongBlob.Convert(data)
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}

@@ -57,14 +57,23 @@ const (
 	True = int8(1)
 )
 
+type ConvertInRange bool
+
+const (
+	InRange    ConvertInRange = true
+	OutOfRange                = false
+)
+
 // Type represents a SQL type.
 type Type interface {
 	CollationCoercible
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
 	Compare(interface{}, interface{}) (int, error)
-	// Convert a value of a compatible type to a most accurate type.
-	Convert(interface{}) (interface{}, error)
+	// Convert a value of a compatible type to a most accurate type, returning
+	// the new value, whether the value in range, or an error. If |inRange| is
+	// false, the value was coerced according to MySQL's rules.
+	Convert(interface{}) (interface{}, ConvertInRange, error)
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
 	Equals(otherType Type) bool
@@ -186,8 +195,9 @@ type DecimalType interface {
 	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
 	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
 	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
-	// BoundsCheck rounds and validates a decimal
-	BoundsCheck(v decimal.Decimal) (decimal.Decimal, error)
+	// BoundsCheck rounds and validates a decimal, returning the decimal,
+	// whether the value was out of range, and an error.
+	BoundsCheck(v decimal.Decimal) (decimal.Decimal, ConvertInRange, error)
 	// ExclusiveUpperBound returns the exclusive upper bound for this Decimal.
 	// For example, DECIMAL(5,2) would return 1000, as 999.99 is the max represented.
 	ExclusiveUpperBound() decimal.Decimal

@@ -145,7 +145,7 @@ func TestEnumConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.vals, test.collation, test.val), func(t *testing.T) {
 			typ := MustCreateEnumType(test.vals, test.collation)
-			val, err := typ.Convert(test.val)
+			val, _, err := typ.Convert(test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {

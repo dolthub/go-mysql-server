@@ -55,10 +55,10 @@ func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t PointType) Convert(v interface{}) (interface{}, error) {
+func (t PointType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Allow null
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	// Handle conversions
 	switch val := v.(type) {
@@ -66,27 +66,27 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 		// Parse header
 		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
 		// Throw error if not marked as point
 		if geomType != WKBPointID {
-			return nil, sql.ErrInvalidGISData.New("PointType.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
 		point, _, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
-		return point, nil
+		return point, sql.InRange, nil
 	case string:
 		return t.Convert([]byte(val))
 	case Point:
 		if err := t.MatchSRID(val); err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
-		return val, nil
+		return val, sql.InRange, nil
 	default:
-		return nil, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -112,7 +112,7 @@ func (t PointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

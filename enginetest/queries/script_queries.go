@@ -82,6 +82,19 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "trigger with signal and user var",
+		SetUpScript: []string{
+			"create table t (i int primary key, i2 int, key(i2));",
+			"insert into t values (0,-1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `alter table t modify column i2 int unsigned`,
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+		},
+	},
+	{
 		Name: "topN stable output",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int)",

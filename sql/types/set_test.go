@@ -187,7 +187,7 @@ func TestSetConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v | %v | %v", test.vals, test.collation, test.val), func(t *testing.T) {
 			typ := MustCreateSetType(test.vals, test.collation)
-			val, err := typ.Convert(test.val)
+			val, _, err := typ.Convert(test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -220,12 +220,12 @@ func TestSetMarshalMax(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
-			bits, err := typ.Convert(test)
+			bits, _, err := typ.Convert(test)
 			require.NoError(t, err)
 			res1, err := typ.BitsToString(bits.(uint64))
 			require.NoError(t, err)
 			require.Equal(t, test, res1)
-			bits2, err := typ.Convert(bits)
+			bits2, _, err := typ.Convert(bits)
 			require.NoError(t, err)
 			res2, err := typ.BitsToString(bits2.(uint64))
 			require.NoError(t, err)

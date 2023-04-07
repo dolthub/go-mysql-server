@@ -103,7 +103,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return false
 				}
 
-				i64, err = types.Int64.Convert(i)
+				i64, _, err = types.Int64.Convert(i)
 				if err != nil {
 					return false
 				}
@@ -129,7 +129,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return false
 				}
 
-				i64, err = types.Int64.Convert(i)
+				i64, _, err = types.Int64.Convert(i)
 				if err != nil {
 					return false
 				}
