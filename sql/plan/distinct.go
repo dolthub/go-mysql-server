@@ -169,7 +169,7 @@ func (d *OrderedDistinct) Resolved() bool {
 func (d *OrderedDistinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.OrderedDistinct")
 
-	it, err := d.Child.RowIter(ctx, nil)
+	it, err := d.Child.RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
