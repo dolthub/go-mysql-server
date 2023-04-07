@@ -63,18 +63,18 @@ func (t MultiPolygonType) Convert(v interface{}) (interface{}, sql.ConvertInRang
 	case []byte:
 		mpoly, _, err := GeometryType{}.Convert(buf)
 		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.InRange, sql.ErrInvalidGISData.New("MultiPolygon.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("MultiPolygon.Convert")
 		}
-		return mpoly, sql.InRange, err
+		return mpoly, sql.OutOfRange, err
 	case string:
 		return t.Convert([]byte(buf))
 	case MultiPolygon:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, sql.InRange, err
+			return nil, sql.OutOfRange, err
 		}
 		return buf, sql.InRange, nil
 	default:
-		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

@@ -62,7 +62,7 @@ func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertIn
 		}
 		err = json.Unmarshal(v, &doc)
 		if err != nil {
-			return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
+			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 		}
 	case string:
 		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
@@ -72,7 +72,7 @@ func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertIn
 		}
 		err = json.Unmarshal([]byte(v), &doc)
 		if err != nil {
-			return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
+			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 		}
 	default:
 		// if |v| can be marshalled, it contains
@@ -83,12 +83,12 @@ func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertIn
 			}
 			err = json.Unmarshal(b, &doc)
 			if err != nil {
-				return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
+				return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 			}
 		}
 	}
 	if err != nil {
-		return nil, sql.InRange, err
+		return nil, sql.OutOfRange, err
 	}
 	return JSONDocument{Val: doc}, sql.InRange, nil
 }

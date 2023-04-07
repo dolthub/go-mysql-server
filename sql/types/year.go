@@ -117,7 +117,7 @@ func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
 			i, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return nil, sql.InRange, err
+				return nil, sql.OutOfRange, err
 			}
 			if i == 0 {
 				return int16(2000), sql.InRange, nil

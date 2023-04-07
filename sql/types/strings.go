@@ -311,7 +311,7 @@ func (t StringType) Convert(v interface{}) (interface{}, sql.ConvertInRange, err
 
 	val, err := ConvertToString(v, t)
 	if err != nil {
-		return nil, sql.InRange, err
+		return nil, sql.OutOfRange, err
 	}
 
 	if IsBinaryType(t) {

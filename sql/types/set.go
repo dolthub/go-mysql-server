@@ -180,7 +180,7 @@ func (t SetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error)
 		return t.Convert(string(value))
 	}
 
-	return uint64(0), sql.InRange, sql.ErrConvertingToSet.New(v)
+	return uint64(0), sql.OutOfRange, sql.ErrConvertingToSet.New(v)
 }
 
 // MaxTextResponseByteLength implements the Type interface

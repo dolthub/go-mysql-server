@@ -74,7 +74,7 @@ func (t TupleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 	}
 	if vals, ok := v.([]interface{}); ok {
 		if len(vals) != len(t) {
-			return nil, sql.InRange, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
+			return nil, sql.OutOfRange, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
 		}
 
 		var result = make([]interface{}, len(t))
@@ -82,13 +82,13 @@ func (t TupleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 			var err error
 			result[i], _, err = typ.Convert(vals[i])
 			if err != nil {
-				return nil, sql.InRange, err
+				return nil, sql.OutOfRange, err
 			}
 		}
 
 		return result, sql.InRange, nil
 	}
-	return nil, sql.InRange, sql.ErrNotTuple.New(v)
+	return nil, sql.OutOfRange, sql.ErrNotTuple.New(v)
 }
 
 func (t TupleType) MustConvert(v interface{}) interface{} {

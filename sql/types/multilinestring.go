@@ -63,18 +63,18 @@ func (t MultiLineStringType) Convert(v interface{}) (interface{}, sql.ConvertInR
 	case []byte:
 		mline, _, err := GeometryType{}.Convert(buf)
 		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.InRange, sql.ErrInvalidGISData.New("MultiLineString.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("MultiLineString.Convert")
 		}
-		return mline, sql.InRange, err
+		return mline, sql.OutOfRange, err
 	case string:
 		return t.Convert([]byte(buf))
 	case MultiLineString:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, sql.InRange, err
+			return nil, sql.OutOfRange, err
 		}
 		return buf, sql.InRange, nil
 	default:
-		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

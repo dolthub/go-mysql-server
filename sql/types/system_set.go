@@ -107,7 +107,7 @@ func (t systemSetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, 
 		return t.SetType.Convert(value)
 	}
 
-	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.

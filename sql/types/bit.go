@@ -151,25 +151,25 @@ func (t BitType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error
 	case decimal.Decimal:
 		val = val.Round(0)
 		if val.GreaterThan(dec_uint64_max) {
-			return nil, sql.InRange, errBeyondMaxBit.New(val.String(), t.numOfBits)
+			return nil, sql.OutOfRange, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
 		if val.LessThan(dec_int64_min) {
-			return nil, sql.InRange, errBeyondMaxBit.New(val.String(), t.numOfBits)
+			return nil, sql.OutOfRange, errBeyondMaxBit.New(val.String(), t.numOfBits)
 		}
 		value = uint64(val.IntPart())
 	case string:
 		return t.Convert([]byte(val))
 	case []byte:
 		if len(val) > 8 {
-			return nil, sql.InRange, errBeyondMaxBit.New(value, t.numOfBits)
+			return nil, sql.OutOfRange, errBeyondMaxBit.New(value, t.numOfBits)
 		}
 		value = binary.BigEndian.Uint64(append(make([]byte, 8-len(val)), val...))
 	default:
-		return nil, sql.InRange, sql.ErrInvalidType.New(t)
+		return nil, sql.OutOfRange, sql.ErrInvalidType.New(t)
 	}
 
 	if value > uint64(1<<t.numOfBits-1) {
-		return nil, sql.InRange, errBeyondMaxBit.New(value, t.numOfBits)
+		return nil, sql.OutOfRange, errBeyondMaxBit.New(value, t.numOfBits)
 	}
 	return value, sql.InRange, nil
 }

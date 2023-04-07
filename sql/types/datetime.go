@@ -156,7 +156,7 @@ func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 	}
 	res, err := ConvertToTime(v, t)
 	if err != nil {
-		return nil, sql.InRange, err
+		return nil, sql.OutOfRange, err
 	}
 	return res, sql.InRange, nil
 }

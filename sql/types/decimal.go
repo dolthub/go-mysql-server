@@ -141,7 +141,7 @@ func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
 func (t DecimalType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
-		return nil, sql.InRange, err
+		return nil, sql.OutOfRange, err
 	}
 	if !dec.Valid {
 		return nil, sql.InRange, nil

@@ -367,12 +367,11 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	origRow := make(sql.Row, len(row))
 	copy(origRow, row)
-
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, inRange, cErr := col.Type.Convert(row[idx]) // allows for better error handling
-			if !inRange {
+			converted, inRange, cErr := col.Type.Convert(row[idx])
+			if cErr == nil && !inRange {
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
 			}
 			if cErr != nil {

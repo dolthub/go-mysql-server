@@ -104,7 +104,7 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, sql.ConvertInRang
 		}
 	}
 
-	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // MustConvert implements the Type interface.

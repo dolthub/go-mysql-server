@@ -414,7 +414,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 	case []byte:
 		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
-			return nil, sql.InRange, err
+			return nil, sql.OutOfRange, err
 		}
 		val = val[EWKBHeaderSize:]
 
@@ -435,21 +435,21 @@ func (t GeometryType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 		case WKBGeomCollID:
 			geom, _, err = DeserializeGeomColl(val, isBig, srid)
 		default:
-			return nil, sql.InRange, sql.ErrInvalidGISData.New("GeometryType.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("GeometryType.Convert")
 		}
 		if err != nil {
-			return nil, sql.InRange, err
+			return nil, sql.OutOfRange, err
 		}
 		return geom, sql.InRange, nil
 	case string:
 		return t.Convert([]byte(val))
 	case GeometryValue:
 		if err := t.MatchSRID(val); err != nil {
-			return nil, sql.InRange, err
+			return nil, sql.OutOfRange, err
 		}
 		return val, sql.InRange, nil
 	default:
-		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

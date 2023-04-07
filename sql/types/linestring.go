@@ -60,18 +60,18 @@ func (t LineStringType) Convert(v interface{}) (interface{}, sql.ConvertInRange,
 	case []byte:
 		line, _, err := GeometryType{}.Convert(buf)
 		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.InRange, sql.ErrInvalidGISData.New("LineStringType.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("LineStringType.Convert")
 		}
 		return line, sql.InRange, err
 	case string:
 		return t.Convert([]byte(buf))
 	case LineString:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, sql.InRange, err
+			return nil, sql.OutOfRange, err
 		}
 		return buf, sql.InRange, nil
 	default:
-		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

@@ -66,7 +66,7 @@ type ScriptTestAssertion struct {
 	ExpectedColumns sql.Schema
 
 	// SkipResultsCheck is used to skip assertions on expected Rows returned from a query. This should be used
-	// sparingly, such as inee917e0e5e07d92c569efd867e8727052af82221 cases where you only want to test warning messages.
+	// sparingly, such as in cases where you only want to test warning messages.
 	SkipResultsCheck bool
 
 	// Skip is used to completely skip a test, not execute its query at all, and record it as a skipped test
