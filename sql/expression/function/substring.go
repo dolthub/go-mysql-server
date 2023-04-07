@@ -105,7 +105,7 @@ func (s *Substring) Eval(
 		return nil, nil
 	}
 
-	start, err = types.Int64.Convert(start)
+	start, _, err = types.Int64.Convert(start)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (s *Substring) Eval(
 			return nil, nil
 		}
 
-		len, err = types.Int64.Convert(len)
+		len, _, err = types.Int64.Convert(len)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = types.LongText.Convert(ex)
+	ex, _, err = types.LongText.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = types.LongText.Convert(ex)
+	ex, _, err = types.LongText.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = types.Int64.Convert(ex)
+	ex, _, err = types.Int64.Convert(ex)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = types.Int64.Convert(len)
+	len, _, err = types.Int64.Convert(len)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +474,7 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = types.Int64.Convert(len)
+	len, _, err = types.Int64.Convert(len)
 	if err != nil {
 		return nil, err
 	}

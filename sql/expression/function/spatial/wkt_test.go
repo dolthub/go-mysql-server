@@ -147,7 +147,7 @@ func TestAsWKT(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, err = typ.Convert(v)
+		_, _, err = typ.Convert(v)
 		require.NoError(err)
 	})
 }

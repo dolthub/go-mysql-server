@@ -137,7 +137,7 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	id, err := types.Int64.Convert(res)
+	id, _, err := types.Int64.Convert(res)
 	if err != nil {
 		return nil, err
 	}

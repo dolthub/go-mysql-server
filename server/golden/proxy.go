@@ -325,7 +325,7 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 
 		row := make([]sqltypes.Value, len(fields))
 		for i := range row {
-			scanRow[i], err = types[i].Convert(scanRow[i])
+			scanRow[i], _, err = types[i].Convert(scanRow[i])
 			if err != nil {
 				return nil, false, err
 			}

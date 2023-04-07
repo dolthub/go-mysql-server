@@ -85,7 +85,7 @@ func NewHistogramMapFromTable(ctx *sql.Context, t sql.Table) (sql.HistogramMap, 
 					continue
 				}
 
-				val, err := types.Float64.Convert(row[i])
+				val, _, err := types.Float64.Convert(row[i])
 				if err != nil {
 					continue // silently skip unsupported column types for now
 				}

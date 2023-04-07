@@ -161,7 +161,7 @@ func TestTimeConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val, test.expectedVal), func(t *testing.T) {
-			val, err := Time.Convert(test.val)
+			val, _, err := Time.Convert(test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {

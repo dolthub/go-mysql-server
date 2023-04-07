@@ -340,7 +340,7 @@ func resolveSortField(a *Analyzer, f sql.SortField, schema sql.Schema) (sql.Sort
 			return sql.SortField{}, transform.SameTree, err
 		}
 
-		v, err = types.Int64.Convert(v)
+		v, _, err = types.Int64.Convert(v)
 		if err != nil {
 			return sql.SortField{}, transform.SameTree, err
 		}

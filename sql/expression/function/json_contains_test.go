@@ -53,17 +53,17 @@ func TestJSONContains(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	json, err := types.JSON.Convert(`{` +
+	json, _, err := types.JSON.Convert(`{` +
 		`"a": [1, 2, 3, 4], ` +
 		`"b": {"c": "foo", "d": true}, ` +
 		`"e": [[1, 2], [3, 4]] ` +
 		`}`)
 	require.NoError(t, err)
 
-	badMap, err := types.JSON.Convert(`{"x": [[1, 2], [3, 4]]}`)
+	badMap, _, err := types.JSON.Convert(`{"x": [[1, 2], [3, 4]]}`)
 	require.NoError(t, err)
 
-	goodMap, err := types.JSON.Convert(`{"e": [[1, 2], [3, 4]]}`)
+	goodMap, _, err := types.JSON.Convert(`{"e": [[1, 2], [3, 4]]}`)
 	require.NoError(t, err)
 
 	testCases := []struct {

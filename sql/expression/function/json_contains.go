@@ -143,7 +143,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 			return nil, err
 		}
 
-		path, err = types.LongText.Convert(path)
+		path, _, err = types.LongText.Convert(path)
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +178,7 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (t
 	var converted interface{}
 	switch js.(type) {
 	case string, []interface{}, map[string]interface{}, types.JSONValue:
-		converted, err = types.JSON.Convert(js)
+		converted, _, err = types.JSON.Convert(js)
 		if err != nil {
 			return nil, sql.ErrInvalidJSONText.New(js)
 		}

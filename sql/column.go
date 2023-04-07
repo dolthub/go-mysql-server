@@ -55,7 +55,7 @@ func (c *Column) Check(v interface{}) bool {
 		return c.Nullable
 	}
 
-	_, err := c.Type.Convert(v)
+	_, _, err := c.Type.Convert(v)
 	return err == nil
 }
 

@@ -150,15 +150,15 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(v interface{}) (interface{}, error) {
+func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	res, err := ConvertToTime(v, t)
 	if err != nil {
-		return nil, err
+		return nil, sql.OutOfRange, err
 	}
-	return res, nil
+	return res, sql.InRange, nil
 }
 
 func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
@@ -310,7 +310,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 }
 
 func (t datetimeType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -345,7 +345,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

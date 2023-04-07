@@ -446,7 +446,7 @@ func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		strVal, err := types.LongText.Convert(val)
+		strVal, _, err := types.LongText.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -3399,7 +3399,7 @@ func getInt64Literal(ctx *sql.Context, expr sqlparser.Expr, errStr string) (*exp
 	if !ok || !types.IsInteger(nl.Type()) {
 		return nil, sql.ErrUnsupportedFeature.New(errStr)
 	} else {
-		i64, err := types.Int64.Convert(nl.Value())
+		i64, _, err := types.Int64.Convert(nl.Value())
 		if err != nil {
 			return nil, sql.ErrUnsupportedFeature.New(errStr)
 		}
@@ -3486,7 +3486,7 @@ func selectToSelectionNode(
 		for i, ge := range groupingExprs {
 			// if GROUP BY index
 			if l, ok := ge.(*expression.Literal); ok && types.IsNumber(l.Type()) {
-				if i64, err := types.Int64.Convert(l.Value()); err == nil {
+				if i64, _, err := types.Int64.Convert(l.Value()); err == nil {
 					if idx, ok := i64.(int64); ok && idx > 0 && idx <= agglen {
 						aggexpr := selectExprs[idx-1]
 						if alias, ok := aggexpr.(*expression.Alias); ok {
@@ -3955,7 +3955,7 @@ func convertInt(value string, base int) (sql.Expression, error) {
 	if ui64, err := strconv.ParseUint(value, base, 64); err == nil {
 		return expression.NewLiteral(uint64(ui64), types.Uint64), nil
 	}
-	if decimal, err := types.InternalDecimalType.Convert(value); err == nil {
+	if decimal, _, err := types.InternalDecimalType.Convert(value); err == nil {
 		return expression.NewLiteral(decimal, types.InternalDecimalType), nil
 	}
 
@@ -3984,7 +3984,7 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 				if err != nil {
 					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}
-				dVal, err := dt.Convert(ogVal)
+				dVal, _, err := dt.Convert(ogVal)
 				if err != nil {
 					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}

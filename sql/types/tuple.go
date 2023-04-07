@@ -42,12 +42,12 @@ func (t TupleType) Compare(a, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	a, err := t.Convert(a)
+	a, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
 
-	b, err = t.Convert(b)
+	b, _, err = t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -68,31 +68,31 @@ func (t TupleType) Compare(a, b interface{}) (int, error) {
 	return 0, nil
 }
 
-func (t TupleType) Convert(v interface{}) (interface{}, error) {
+func (t TupleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	if vals, ok := v.([]interface{}); ok {
 		if len(vals) != len(t) {
-			return nil, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
+			return nil, sql.OutOfRange, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
 		}
 
 		var result = make([]interface{}, len(t))
 		for i, typ := range t {
 			var err error
-			result[i], err = typ.Convert(vals[i])
+			result[i], _, err = typ.Convert(vals[i])
 			if err != nil {
-				return nil, err
+				return nil, sql.OutOfRange, err
 			}
 		}
 
-		return result, nil
+		return result, sql.InRange, nil
 	}
-	return nil, sql.ErrNotTuple.New(v)
+	return nil, sql.OutOfRange, sql.ErrNotTuple.New(v)
 }
 
 func (t TupleType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}

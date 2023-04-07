@@ -65,7 +65,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var strBytes []byte
 	if types.IsTextOnly(t.Child.Type()) {
-		val, err = t.Child.Type().Convert(val)
+		val, _, err = t.Child.Type().Convert(val)
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
 		}
@@ -77,7 +77,7 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		strBytes = encodedBytes
 	} else {
-		val, err = types.LongText.Convert(val)
+		val, _, err = types.LongText.Convert(val)
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
 		}
@@ -172,7 +172,7 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}

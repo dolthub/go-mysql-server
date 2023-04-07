@@ -110,7 +110,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := types.Uint32.Convert(v)
+	val, _, err := types.Uint32.Convert(v)
 	if err != nil {
 		return nil, err
 	}

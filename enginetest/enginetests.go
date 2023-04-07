@@ -1106,6 +1106,28 @@ func TestTruncate(t *testing.T, harness Harness) {
 	})
 }
 
+func TestConvert(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.TypestableData)
+	for _, tt := range queries.ConvertTests {
+		query := fmt.Sprintf("select count(*) from typestable where %s %s %s", tt.Field, tt.Op, tt.Operand)
+		t.Run(query, func(t *testing.T) {
+			TestQuery(t, harness, query, []sql.Row{{tt.ExpCnt}}, nil, nil)
+		})
+	}
+
+}
+
+func TestConvertPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.TypestableData)
+	for _, tt := range queries.ConvertTests {
+		query := fmt.Sprintf("select count(*) from typestable where %s %s %s", tt.Field, tt.Op, tt.Operand)
+		t.Run(query, func(t *testing.T) {
+			TestPreparedQuery(t, harness, query, []sql.Row{{tt.ExpCnt}}, nil)
+		})
+	}
+
+}
+
 func TestScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ScriptTests {

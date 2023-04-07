@@ -75,7 +75,7 @@ func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		val = x.Year()
 	}
 
-	x, err := types.Text.Convert(val)
+	x, _, err := types.Text.Convert(val)
 
 	if err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
-		n, err := types.Int64.Convert(arg)
+		n, _, err := types.Int64.Convert(arg)
 
 		if err != nil {
 			return nil, err
@@ -291,7 +291,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := types.LongText.Convert(arg)
+	val, _, err := types.LongText.Convert(arg)
 
 	if err != nil {
 		return nil, err
@@ -435,22 +435,28 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 		return int64(v), nil
 	case uint64:
 		if v > math.MaxInt64 {
-			return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
+			return math.MaxInt64, nil
 		}
 		return int64(v), nil
 	case float32:
-		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
-			return int64(v), nil
+		if v >= float32(math.MaxInt64) {
+			return math.MaxInt64, nil
+		} else if v <= float32(math.MinInt64) {
+			return math.MinInt64, nil
 		}
-		return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
+		return int64(v), nil
 	case float64:
-		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
-			return int64(v), nil
+		if v >= float64(math.MaxInt64) {
+			return math.MaxInt64, nil
+		} else if v <= float64(math.MinInt64) {
+			return math.MinInt64, nil
 		}
-		return 0, sql.ErrValueOutOfRange.New(v, types.Int64)
+		return int64(v), nil
 	case decimal.Decimal:
-		if v.GreaterThan(decimal.NewFromInt(math.MaxInt64)) || v.LessThan(decimal.NewFromInt(math.MinInt64)) {
-			return 0, sql.ErrValueOutOfRange.New(v.String(), types.Int64)
+		if v.GreaterThan(decimal.NewFromInt(math.MaxInt64)) {
+			return math.MaxInt64, nil
+		} else if v.LessThan(decimal.NewFromInt(math.MinInt64)) {
+			return math.MinInt64, nil
 		}
 		return v.IntPart(), nil
 	case []byte:

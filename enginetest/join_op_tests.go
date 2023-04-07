@@ -178,6 +178,15 @@ var joinOpTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
+				// natural join w/ inner join
+				Query: "select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+				Expected: []sql.Row{
+					{1, "first row", "third", 1},
+					{2, "second row", "second", 2},
+					{3, "third row", "first", 3},
+				},
+			},
+			{
 				Query: `
 SELECT SUM(x) FROM xy WHERE x IN (
   SELECT u FROM uv WHERE u IN (

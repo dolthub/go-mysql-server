@@ -124,7 +124,7 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		if err != nil {
 			return nil, err
 		}
-		exprParamVal, err = paramDefinition.Type.Convert(exprParamVal)
+		exprParamVal, _, err = paramDefinition.Type.Convert(exprParamVal)
 		if err != nil {
 			return nil, err
 		}

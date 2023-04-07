@@ -197,7 +197,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func convertValue(val interface{}, castTo string, originType sql.Type) (interface{}, error) {
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		b, err := types.LongBlob.Convert(val)
+		b, _, err := types.LongBlob.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
@@ -212,7 +212,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		}
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
-		s, err := types.LongText.Convert(val)
+		s, _, err := types.LongText.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
@@ -224,7 +224,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, err := types.Date.Convert(val)
+		d, _, err := types.Date.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +236,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, err := types.Datetime.Convert(val)
+		d, _, err := types.Datetime.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -246,7 +246,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		d, err := types.InternalDecimalType.Convert(value)
+		d, _, err := types.InternalDecimalType.Convert(value)
 		if err != nil {
 			return "0", nil
 		}
@@ -256,13 +256,13 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		d, err := types.Float64.Convert(value)
+		d, _, err := types.Float64.Convert(value)
 		if err != nil {
 			return types.Float64.Zero(), nil
 		}
 		return d, nil
 	case ConvertToJSON:
-		js, err := types.JSON.Convert(val)
+		js, _, err := types.JSON.Convert(val)
 		if err != nil {
 			return nil, err
 		}
@@ -272,14 +272,14 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		num, err := types.Int64.Convert(value)
+		num, _, err := types.Int64.Convert(value)
 		if err != nil {
 			return types.Int64.Zero(), nil
 		}
 
 		return num, nil
 	case ConvertToTime:
-		t, err := types.Time.Convert(val)
+		t, _, err := types.Time.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
@@ -289,9 +289,9 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		num, err := types.Uint64.Convert(value)
+		num, _, err := types.Uint64.Convert(value)
 		if err != nil {
-			num, err = types.Int64.Convert(value)
+			num, _, err = types.Int64.Convert(value)
 			if err != nil {
 				return types.Uint64.Zero(), nil
 			}

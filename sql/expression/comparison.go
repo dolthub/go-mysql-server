@@ -449,7 +449,7 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	if err != nil || left == nil {
 		return nil, err
 	}
-	left, err = types.LongText.Convert(left)
+	left, _, err = types.LongText.Convert(left)
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +503,7 @@ func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
 	if right == nil {
 		return nil, nil
 	}
-	right, err = types.LongText.Convert(right)
+	right, _, err = types.LongText.Convert(right)
 	if err != nil {
 		return nil, err
 	}
