@@ -33,18 +33,18 @@ var _ sql.DebugStringer = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
-	EventName string
-	Definer string
-	OnCompPreserve bool
-	Status sql.EventStatus
-	Definition sql.Node
-	Comment string
+	EventName       string
+	Definer         string
+	OnCompPreserve  bool
+	Status          sql.EventStatus
+	Definition      sql.Node
+	Comment         string
 	CreateStatement string
-	At         *OnScheduleTimestamp
-	Every      sql.Expression
-	Starts     *OnScheduleTimestamp
-	Ends       *OnScheduleTimestamp
-	BodyString string
+	At              *OnScheduleTimestamp
+	Every           sql.Expression
+	Starts          *OnScheduleTimestamp
+	Ends            *OnScheduleTimestamp
+	BodyString      string
 }
 
 // NewCreateEvent returns a *CreateEvent node.
@@ -59,18 +59,18 @@ func NewCreateEvent(
 	every sql.Expression,
 ) *CreateEvent {
 	return &CreateEvent{
-		ddlNode:    ddlNode{db},
-		EventName: name,
-		Definer: definer,
+		ddlNode:        ddlNode{db},
+		EventName:      name,
+		Definer:        definer,
 		OnCompPreserve: onCompletionPreserve,
-		Status: status,
-		Definition: definition,
-		Comment: comment,
-		At:         at,
-		Every:      every,
-		Starts:     starts,
-		Ends:       ends,
-		BodyString: bodyString,
+		Status:         status,
+		Definition:     definition,
+		Comment:        comment,
+		At:             at,
+		Every:          every,
+		Starts:         starts,
+		Ends:           ends,
+		BodyString:     bodyString,
 	}
 }
 
