@@ -33,18 +33,17 @@ var _ sql.DebugStringer = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
-	EventName       string
-	Definer         string
-	OnCompPreserve  bool
-	Status          sql.EventStatus
-	Definition      sql.Node
-	Comment         string
-	CreateStatement string
-	At              *OnScheduleTimestamp
-	Every           sql.Expression
-	Starts          *OnScheduleTimestamp
-	Ends            *OnScheduleTimestamp
-	BodyString      string
+	EventName        string
+	Definer          string
+	At               *OnScheduleTimestamp
+	Every            *expression.Interval
+	Starts           *OnScheduleTimestamp
+	Ends             *OnScheduleTimestamp
+	OnCompPreserve   bool
+	Status           sql.EventStatus
+	Comment          string
+	DefinitionString string
+	DefinitionNode   sql.Node
 }
 
 // NewCreateEvent returns a *CreateEvent node.
@@ -54,29 +53,30 @@ func NewCreateEvent(
 	onCompletionPreserve bool,
 	status sql.EventStatus,
 	definition sql.Node,
-	comment, bodyString string,
+	comment, definitionString string,
 	at, starts, ends *OnScheduleTimestamp,
-	every sql.Expression,
+	every *expression.Interval,
 ) *CreateEvent {
 	return &CreateEvent{
-		ddlNode:        ddlNode{db},
-		EventName:      name,
-		Definer:        definer,
-		OnCompPreserve: onCompletionPreserve,
-		Status:         status,
-		Definition:     definition,
-		Comment:        comment,
-		At:             at,
-		Every:          every,
-		Starts:         starts,
-		Ends:           ends,
-		BodyString:     bodyString,
+		ddlNode:          ddlNode{db},
+		EventName:        name,
+		Definer:          definer,
+		At:               at,
+		Every:            every,
+		Starts:           starts,
+		Ends:             ends,
+		OnCompPreserve:   onCompletionPreserve,
+		Status:           status,
+		Comment:          comment,
+		DefinitionString: definitionString,
+		DefinitionNode:   definition,
+
 	}
 }
 
 // Resolved implements the sql.Node interface.
 func (c *CreateEvent) Resolved() bool {
-	r := c.ddlNode.Resolved() && c.Definition.Resolved()
+	r := c.ddlNode.Resolved() && c.DefinitionNode.Resolved()
 	if c.At != nil {
 		r = r && c.At.Resolved()
 	} else {
@@ -99,16 +99,16 @@ func (c *CreateEvent) Schema() sql.Schema {
 // Children implements the sql.Node interface.
 func (c *CreateEvent) Children() []sql.Node {
 	if c.At != nil {
-		return []sql.Node{c.Definition, c.At}
+		return []sql.Node{c.DefinitionNode, c.At}
 	} else {
 		if c.Starts == nil && c.Ends == nil {
-			return []sql.Node{c.Definition}
+			return []sql.Node{c.DefinitionNode}
 		} else if c.Starts == nil {
-			return []sql.Node{c.Definition, c.Ends}
+			return []sql.Node{c.DefinitionNode, c.Ends}
 		} else if c.Ends == nil {
-			return []sql.Node{c.Definition, c.Starts}
+			return []sql.Node{c.DefinitionNode, c.Starts}
 		} else {
-			return []sql.Node{c.Definition, c.Starts, c.Ends}
+			return []sql.Node{c.DefinitionNode, c.Starts, c.Ends}
 		}
 	}
 }
@@ -120,7 +120,7 @@ func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	nc := *c
-	nc.Definition = children[0]
+	nc.DefinitionNode = children[0]
 
 	if len(children) > 1 {
 		ts, ok := children[1].(*OnScheduleTimestamp)
@@ -191,7 +191,7 @@ func (c *CreateEvent) String() string {
 	}
 
 	return fmt.Sprintf("CREATE%s EVENT %s %s%s%s%s DO %s",
-		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(c.Definition))
+		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(c.DefinitionNode))
 }
 
 // DebugString implements the sql.DebugStringer interface.
@@ -233,7 +233,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		SchemaName:           c.db.Name(),
 		Name:                 c.EventName,
 		Definer:              c.Definer,
-		Definition:           c.BodyString,
+		Definition:           c.DefinitionString,
 		Status:               c.Status,
 		OnCompletionPreserve: c.OnCompPreserve,
 		Comment:              c.Comment,
@@ -248,11 +248,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			return nil, err
 		}
 	} else {
-		i, ok := c.Every.(*expression.Interval)
-		if !ok {
-			return nil, fmt.Errorf("expected interval but got: %s", c.Every)
-		}
-		delta, err := i.EvalDelta(ctx, nil)
+		delta, err := c.Every.EvalDelta(ctx, nil)
 		if err != nil {
 			return nil, err
 		}

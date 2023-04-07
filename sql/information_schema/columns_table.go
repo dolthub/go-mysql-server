@@ -308,7 +308,7 @@ func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb 
 // getRowsFromViews returns array or rows for columns for all views for given database.
 func getRowsFromViews(ctx *sql.Context, db sql.Database) ([]sql.Row, error) {
 	var rows []sql.Row
-	// TODO: View Definition is lacking information to properly fill out these table
+	// TODO: View DefinitionNode is lacking information to properly fill out these table
 	// TODO: Should somehow get reference to table(s) view is referencing
 	// TODO: Each column that view references should also show up as unique entries as well
 	views, err := viewsInDatabase(ctx, db)

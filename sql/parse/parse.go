@@ -1418,7 +1418,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	}
 
 	var at, starts, ends *plan.OnScheduleTimestamp
-	var every sql.Expression
+	var everyInterval *expression.Interval
 	if eventSpec.OnSchedule.At != nil {
 		ts, intervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.At)
 		if err != nil {
@@ -1426,21 +1426,26 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 		}
 		at = plan.NewOnScheduleTimestamp(ts, intervals)
 	} else {
-		every, err = intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
+		every, err := intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
 		if err != nil {
 			return nil, err
 		}
-		var startsTs, endsTs sql.Expression
-		var startsIntervals, endsIntervals []sql.Expression
+
+		var ok bool
+		everyInterval, ok = every.(*expression.Interval)
+		if !ok {
+			return nil, fmt.Errorf("expected everyInterval but got: %s", every)
+		}
+
 		if eventSpec.OnSchedule.Starts != nil {
-			startsTs, startsIntervals, err = convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Starts)
+			startsTs, startsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Starts)
 			if err != nil {
 				return nil, err
 			}
 			starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
 		}
 		if eventSpec.OnSchedule.Ends != nil {
-			endsTs, endsIntervals, err = convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
+			endsTs, endsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
 			if err != nil {
 				return nil, err
 			}
@@ -1458,7 +1463,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 		eventSpec.EventName.String(),
 		definer,
 		eventSpec.OnCompletionPreserve,
-		status, body, comment, bodyStr, at, starts, ends, every), nil
+		status, body, comment, bodyStr, at, starts, ends, everyInterval), nil
 }
 
 func convertEventScheduleTimeSpec(ctx *sql.Context, spec *sqlparser.EventScheduleTimeSpec) (sql.Expression, []sql.Expression, error) {

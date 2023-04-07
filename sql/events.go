@@ -35,8 +35,8 @@ type EventDetails struct {
 	HasStarts            bool
 	Ends                 time.Time
 	HasEnds              bool
-	Status               EventStatus
 	OnCompletionPreserve bool
+	Status               EventStatus
 	Comment              string
 	Definition           string
 	Created              time.Time

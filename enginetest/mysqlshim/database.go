@@ -16,6 +16,9 @@ package mysqlshim
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"io"
 	"strings"
 	"time"
@@ -229,10 +232,55 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 			return nil, err
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
+		createStmt := eventStmt[0][3].(string)
+		ce, err := parse.Parse(ctx, createStmt)
+		if err != nil {
+			return nil, err
+		}
+		createEvent, ok := ce.(*plan.CreateEvent)
+		if !ok {
+			return nil, sql.ErrEventCreateStatementInvalid.New(createStmt)
+		}
+		// It's more likely the timestamp values are evaluated timestamp string
+		// rather than unresolved function like CURRENT_TIMESTAMP
+		var at, starts, ends time.Time
+		var interval *expression.TimeDelta
+		if createEvent.At != nil {
+			at, err = createEvent.At.EvalTime(ctx)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			interval, err = createEvent.Every.EvalDelta(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			if createEvent.Starts != nil {
+				starts, err = createEvent.Starts.EvalTime(ctx)
+				if err != nil {
+					return nil, err
+				}
+			}
+			if createEvent.Ends != nil {
+				ends, err = createEvent.Ends.EvalTime(ctx)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 		eventDetails[i] = sql.EventDetails{
+			SchemaName: d.name,
 			Name:            eventStmt[0][0].(string),
-			CreateStatement: eventStmt[0][3].(string),
-			// TODO: other fields should be added
+			Definer: createEvent.Definer,
+			ExecuteAt: at,
+			ExecuteEvery: sql.NewEveryInterval(interval.Years, interval.Months, interval.Days, interval.Hours, interval.Minutes, interval.Seconds),
+			Starts: starts,
+			Ends: ends,
+			OnCompletionPreserve: createEvent.OnCompPreserve,
+			Status: createEvent.Status,
+			Comment: createEvent.Comment,
+			Definition: createEvent.DefinitionString,
+			// TODO: other fields should be added such as Created, LastAltered, ...
 		}
 	}
 	return eventDetails, nil
@@ -240,7 +288,7 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 
 // SaveEvent implements sql.EventDatabase
 func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
-	return d.shim.Exec(d.name, ed.CreateStatement)
+	return d.shim.Exec(d.name, ed.GetCreateEventStatement())
 }
 
 // DropEvent implements sql.EventDatabase
