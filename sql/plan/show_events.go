@@ -21,7 +21,7 @@ import (
 
 type ShowEvents struct {
 	db     sql.Database
-	Events []*Event
+	Events []sql.EventDetails
 }
 
 var _ sql.Databaser = (*ShowEvents)(nil)
@@ -97,13 +97,13 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		var executeAt, intervalVal, intervalField, starts, ends interface{}
 		if event.HasExecuteAt {
 			eventType = "ONE TIME"
-			executeAt = event.ExecuteAt.String()
+			executeAt = event.ExecuteAt.Format(sql.EventTimeStampFormat)
 		} else {
-			intervalVal, intervalField = event.Every.GetIntervalValAndField()
+			intervalVal, intervalField = event.ExecuteEvery.GetIntervalValAndField()
 			// STARTS will always have value regardless of user definition
-			starts = event.Starts.String()
+			starts = event.Starts.Format(sql.EventTimeStampFormat)
 			if event.HasEnds {
-				ends = event.Ends.String()
+				ends = event.Ends.Format(sql.EventTimeStampFormat)
 			}
 		}
 

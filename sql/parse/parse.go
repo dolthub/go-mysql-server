@@ -1458,7 +1458,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 		eventSpec.EventName.String(),
 		definer,
 		eventSpec.OnCompletionPreserve,
-		status, body, comment, query, bodyStr, at, starts, ends, every), nil
+		status, body, comment, bodyStr, at, starts, ends, every), nil
 }
 
 func convertEventScheduleTimeSpec(ctx *sql.Context, spec *sqlparser.EventScheduleTimeSpec) (sql.Expression, []sql.Expression, error) {

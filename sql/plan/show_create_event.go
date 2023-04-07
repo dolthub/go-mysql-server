@@ -100,7 +100,7 @@ func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 				event.Name,            // Event
 				"",                    // sql_mode
 				"SYSTEM",              // time_zone
-				event.CreateStatement, // Create Event
+				event.GetCreateEventStatement(), // Create Event
 				characterSetClient,    // character_set_client
 				collationConnection,   // collation_connection
 				collationServer,       // Database Collation

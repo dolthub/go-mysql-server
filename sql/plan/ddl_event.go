@@ -32,8 +32,14 @@ var _ sql.Databaser = (*CreateEvent)(nil)
 var _ sql.DebugStringer = (*CreateEvent)(nil)
 
 type CreateEvent struct {
-	*Event
 	ddlNode
+	EventName string
+	Definer string
+	OnCompPreserve bool
+	Status sql.EventStatus
+	Definition sql.Node
+	Comment string
+	CreateStatement string
 	At         *OnScheduleTimestamp
 	Every      sql.Expression
 	Starts     *OnScheduleTimestamp
@@ -48,25 +54,29 @@ func NewCreateEvent(
 	onCompletionPreserve bool,
 	status sql.EventStatus,
 	definition sql.Node,
-	comment, query, bodyString string,
+	comment, bodyString string,
 	at, starts, ends *OnScheduleTimestamp,
 	every sql.Expression,
 ) *CreateEvent {
-	e := NewEvent(db.Name(), name, definer, onCompletionPreserve, status, definition, comment, query)
 	return &CreateEvent{
-		Event:      e,
 		ddlNode:    ddlNode{db},
-		BodyString: bodyString,
+		EventName: name,
+		Definer: definer,
+		OnCompPreserve: onCompletionPreserve,
+		Status: status,
+		Definition: definition,
+		Comment: comment,
 		At:         at,
 		Every:      every,
 		Starts:     starts,
 		Ends:       ends,
+		BodyString: bodyString,
 	}
 }
 
 // Resolved implements the sql.Node interface.
 func (c *CreateEvent) Resolved() bool {
-	r := c.ddlNode.Resolved() && c.Event.Resolved()
+	r := c.ddlNode.Resolved() && c.Definition.Resolved()
 	if c.At != nil {
 		r = r && c.At.Resolved()
 	} else {
@@ -89,16 +99,16 @@ func (c *CreateEvent) Schema() sql.Schema {
 // Children implements the sql.Node interface.
 func (c *CreateEvent) Children() []sql.Node {
 	if c.At != nil {
-		return []sql.Node{c.Event, c.At}
+		return []sql.Node{c.Definition, c.At}
 	} else {
 		if c.Starts == nil && c.Ends == nil {
-			return []sql.Node{c.Event}
+			return []sql.Node{c.Definition}
 		} else if c.Starts == nil {
-			return []sql.Node{c.Event, c.Ends}
+			return []sql.Node{c.Definition, c.Ends}
 		} else if c.Ends == nil {
-			return []sql.Node{c.Event, c.Starts}
+			return []sql.Node{c.Definition, c.Starts}
 		} else {
-			return []sql.Node{c.Event, c.Starts, c.Ends}
+			return []sql.Node{c.Definition, c.Starts, c.Ends}
 		}
 	}
 }
@@ -108,13 +118,9 @@ func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) == 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), "at least 1")
 	}
-	event, ok := children[0].(*Event)
-	if !ok {
-		return nil, fmt.Errorf("expected `*Event` but got `%T`", children[0])
-	}
 
 	nc := *c
-	nc.Event = event
+	nc.Definition = children[0]
 
 	if len(children) > 1 {
 		ts, ok := children[1].(*OnScheduleTimestamp)
@@ -175,7 +181,7 @@ func (c *CreateEvent) String() string {
 	}
 
 	onCompletion := ""
-	if !c.OnCompletionPreserve {
+	if !c.OnCompPreserve {
 		onCompletion = fmt.Sprintf(" ON COMPLETION NOT PRESERVE")
 	}
 
@@ -185,7 +191,7 @@ func (c *CreateEvent) String() string {
 	}
 
 	return fmt.Sprintf("CREATE%s EVENT %s %s%s%s%s DO %s",
-		definer, c.Name, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(c.Event))
+		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(c.Definition))
 }
 
 // DebugString implements the sql.DebugStringer interface.
@@ -225,17 +231,12 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	eventDetails := sql.EventDetails{
 		SchemaName:           c.db.Name(),
-		Name:                 c.Name,
+		Name:                 c.EventName,
 		Definer:              c.Definer,
 		Definition:           c.BodyString,
 		Status:               c.Status,
-		OnCompletionPreserve: c.OnCompletionPreserve,
-		Created:              c.Created,
-		LastAltered:          c.LastAltered,
-		LastExecuted:         c.LastExecuted,
-		ExecutionCount:       c.ExecutionCount,
+		OnCompletionPreserve: c.OnCompPreserve,
 		Comment:              c.Comment,
-		CreateStatement:      c.CreateStatement,
 	}
 
 	eventCreationTime := time.Now()
@@ -339,7 +340,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// If Starts is set to current_timestamp or not set, then execute the event once and update last executed At.
 	if c.ed.Created.Sub(c.ed.Starts).Abs().Seconds() <= 1 {
-		// TODO: execute the event once
+		// TODO: execute the event once and update 'LastExecuted' and 'ExecutionCount'
 	}
 
 	return sql.Row{types.NewOkResult(0)}, nil
@@ -448,7 +449,7 @@ func (a *OnScheduleTimestamp) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	panic("OnScheduleTimestamp.RowIter is just a placeholder method and should not be called directly")
 }
 
-// EvalTime evaluates time.Time value for given expressions as expected to be time value and optional
+// EvalTime returns time.Time value converted to UTC evaluating given expressions as expected to be time value and optional
 // interval values. The value returned is time.Time value from timestamp value plus all intervals given.
 func (a *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 	value, err := a.timestamp.Eval(ctx, nil)
@@ -486,7 +487,7 @@ func (a *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 		t = timeDelta.Add(t)
 	}
 
-	return t, nil
+	return t.UTC(), nil
 }
 
 var _ sql.Node = (*DropEvent)(nil)

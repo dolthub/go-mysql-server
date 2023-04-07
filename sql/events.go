@@ -16,16 +16,18 @@ package sql
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
+
+const EventTimeStampFormat = "2006-01-02 15:04:05"
 
 // EventDetails are the details of the event.
 type EventDetails struct {
 	SchemaName           string
 	Name                 string
 	Definer              string
-	Definition           string
 	ExecuteAt            time.Time
 	HasExecuteAt         bool
 	ExecuteEvery         *EventOnScheduleEveryInterval
@@ -35,14 +37,48 @@ type EventDetails struct {
 	HasEnds              bool
 	Status               EventStatus
 	OnCompletionPreserve bool
+	Comment              string
+	Definition           string
 	Created              time.Time
 	LastAltered          time.Time
 	LastExecuted         time.Time
 	ExecutionCount       uint64
-	Comment              string
-	CreateStatement      string
 
 	// TODO: add TimeZone
+}
+
+func (e *EventDetails) GetCreateEventStatement() string {
+	stmt := fmt.Sprintf("CREATE")
+	if e.Definer != "" {
+		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, e.Definer)
+	}
+	stmt = fmt.Sprintf("%s EVENT `%s`", stmt, e.Name)
+
+	if e.HasExecuteAt {
+		stmt = fmt.Sprintf("%s ON SCHEDULE AT '%s'", stmt, e.ExecuteAt.Format(EventTimeStampFormat))
+	} else {
+		val, field := e.ExecuteEvery.GetIntervalValAndField()
+		// STARTS should be NOT null regardless of user definition
+		stmt = fmt.Sprintf("%s ON SCHEDULE EVERY %s %s STARTS '%s'", stmt, val, field, e.Starts.Format(EventTimeStampFormat))
+		if e.HasEnds {
+			stmt = fmt.Sprintf("%s ENDS '%s'", stmt, e.Ends.Format(EventTimeStampFormat))
+		}
+	}
+
+	if e.OnCompletionPreserve {
+		stmt = fmt.Sprintf("%s ON COMPLETION PRESERVE", stmt)
+	} else {
+		stmt = fmt.Sprintf("%s ON COMPLETION NOT PRESERVE", stmt)
+	}
+
+	stmt = fmt.Sprintf("%s %s", stmt, e.Status.String())
+
+	if e.Comment != "" {
+		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, e.Comment)
+	}
+
+	stmt = fmt.Sprintf("%s DO %s", stmt, e.Definition)
+	return stmt
 }
 
 // EventStatus represents an event status that is defined for an event.
@@ -65,6 +101,20 @@ func (e EventStatus) String() string {
 		return "DISABLE ON SLAVE"
 	default:
 		panic(fmt.Errorf("invalid event status value `%d`", byte(e)))
+	}
+}
+
+func GetEventStatusFromString(status string) (EventStatus, error) {
+	switch strings.ToLower(status) {
+	case "enable":
+		return EventStatus_Enable, nil
+	case "disable":
+		return EventStatus_Disable, nil
+	case "disable on slave":
+		return EventStatus_DisableOnSlove, nil
+	default:
+		// use disable as default to be safe
+		return EventStatus_Disable, fmt.Errorf("invalid event status value: `%s`", status)
 	}
 }
 
@@ -126,4 +176,50 @@ func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string)
 	}
 
 	return fmt.Sprintf("'%s'", strings.Join(val, ":")), strings.Join(field, "_")
+}
+
+// GetEventOnScheduleEveryIntervalFromString returns *EventOnScheduleEveryInterval parsing
+// given interval string such as `2 DAY` or `'1:2' MONTH_DAY`.
+func GetEventOnScheduleEveryIntervalFromString(every string) (*EventOnScheduleEveryInterval, error) {
+	errCannotParseEveryInterval := fmt.Errorf("cannot parse ON SCHEDULE EVERY interval: `%s`", every)
+	strs := strings.Split(every, " ")
+	if len(strs) != 2 {
+		return nil, errCannotParseEveryInterval
+	}
+	intervalVal := strs[0]
+	intervalField := strs[1]
+
+	intervalVal = strings.TrimSuffix(strings.TrimPrefix(intervalVal, "'"), "'")
+	iVals := strings.Split(intervalVal, ":")
+	iFields := strings.Split(intervalField, "_")
+
+	if len(iVals) != len(iFields) {
+		return nil, errCannotParseEveryInterval
+	}
+
+	var interval = &EventOnScheduleEveryInterval{}
+	for i, val := range iVals {
+		n, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return nil, errCannotParseEveryInterval
+		}
+		switch iFields[i] {
+		case "YEAR":
+			interval.Years = n
+		case "MONTH":
+			interval.Months = n
+		case "DAY":
+			interval.Days = n
+		case "HOUR":
+			interval.Hours = n
+		case "MINUTE":
+			interval.Minutes = n
+		case "SECOND":
+			interval.Seconds = n
+		default:
+			return nil, errCannotParseEveryInterval
+		}
+	}
+
+	return interval, nil
 }
