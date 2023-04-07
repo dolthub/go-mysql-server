@@ -187,6 +187,16 @@ var joinOpTests = []struct {
 				},
 			},
 			{
+				Query: `
+SELECT SUM(x) FROM xy WHERE x IN (
+  SELECT u FROM uv WHERE u IN (
+    SELECT a FROM ab WHERE a = 2
+    )
+  ) AND
+  x = 2;`,
+				Expected: []sql.Row{{float64(2)}},
+			},
+			{
 				Query:    "select * from ab left join uv on a = u where exists (select * from uv where false)",
 				Expected: []sql.Row{},
 			},
