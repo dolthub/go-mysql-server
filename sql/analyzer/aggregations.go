@@ -109,13 +109,9 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *Scope, proj
 
 		if same {
 			// add to plan.GroupBy.SelectedExprs iff expression has an expression.GetField
-			hasGetField := false
-			transform.InspectExpr(e, func(expr sql.Expression) bool {
-				if _, ok := expr.(*expression.GetField); ok {
-					hasGetField = true
-					return true
-				}
-				return false
+			hasGetField := transform.InspectExpr(e, func(expr sql.Expression) bool {
+				_, ok := expr.(*expression.GetField)
+				return ok
 			})
 			if hasGetField {
 				newAggregates = append(newAggregates, e)
