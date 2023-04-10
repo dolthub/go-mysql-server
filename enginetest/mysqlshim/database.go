@@ -242,8 +242,9 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 		if !ok {
 			return nil, sql.ErrEventCreateStatementInvalid.New(createStmt)
 		}
-		// It's more likely the timestamp values are evaluated timestamp string
-		// rather than unresolved function like CURRENT_TIMESTAMP
+		// CREATE EVENT statement in SHOW CREATE EVENT is always constructed from EventDetails,
+		// which stores resolved/evaluated values only. Therefore, AT, STARTS and ENDS clauses will
+		// have evaluated timestamp string values that can be converted back to time.Time values.
 		var at, starts, ends time.Time
 		var interval *expression.TimeDelta
 		if createEvent.At != nil {
@@ -270,7 +271,6 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 			}
 		}
 		eventDetails[i] = sql.EventDetails{
-			SchemaName:           d.name,
 			Name:                 eventStmt[0][0].(string),
 			Definer:              createEvent.Definer,
 			ExecuteAt:            at,

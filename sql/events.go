@@ -25,25 +25,27 @@ const EventTimeStampFormat = "2006-01-02 15:04:05"
 
 // EventDetails are the details of the event.
 type EventDetails struct {
-	SchemaName           string
 	Name                 string
 	Definer              string
-	ExecuteAt            time.Time
-	HasExecuteAt         bool
-	ExecuteEvery         *EventOnScheduleEveryInterval
-	Starts               time.Time
-	HasStarts            bool
-	Ends                 time.Time
-	HasEnds              bool
 	OnCompletionPreserve bool
 	Status               EventStatus
 	Comment              string
 	Definition           string
-	Created              time.Time
-	LastAltered          time.Time
-	LastExecuted         time.Time
-	ExecutionCount       uint64
 
+	// events' ON SCHEDULE clause fields
+	ExecuteAt    time.Time
+	HasExecuteAt bool
+	ExecuteEvery *EventOnScheduleEveryInterval
+	Starts       time.Time
+	HasStarts    bool
+	Ends         time.Time
+	HasEnds      bool
+
+	// time values of event create/alter/execute metadata
+	Created        time.Time
+	LastAltered    time.Time
+	LastExecuted   time.Time
+	ExecutionCount uint64
 	// TODO: add TimeZone
 }
 
@@ -138,6 +140,7 @@ func NewEveryInterval(y, mo, d, h, mi, s int64) *EventOnScheduleEveryInterval {
 	}
 }
 
+// GetIntervalValAndField
 func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string) {
 	if e == nil {
 		return "", ""

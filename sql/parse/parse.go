@@ -618,24 +618,24 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Database),
 			s.IfNotExists,
 		), nil
-	case sqlparser.CreateTriggerStr, sqlparser.CreateProcedureStr, sqlparser.CreateEventStr:
-		dbName := s.Table.Qualifier.String()
-		if dbName == "" {
-			dbName = ctx.GetCurrentDatabase()
+	case sqlparser.CreateTriggerStr:
+		udb, err := getUnresolvedDatabase(ctx, s.Table.Qualifier.String())
+		if err != nil {
+			return nil, err
 		}
-		if dbName == "" {
-			return nil, sql.ErrNoDatabaseSelected.New()
+		return plan.NewShowCreateTrigger(udb, s.Table.Name.String()), nil
+	case sqlparser.CreateProcedureStr:
+		udb, err := getUnresolvedDatabase(ctx, s.Table.Qualifier.String())
+		if err != nil {
+			return nil, err
 		}
-		var showCreate sql.Node
-		switch showType {
-		case sqlparser.CreateTriggerStr:
-			showCreate = plan.NewShowCreateTrigger(sql.UnresolvedDatabase(dbName), s.Table.Name.String())
-		case sqlparser.CreateProcedureStr:
-			showCreate = plan.NewShowCreateProcedure(sql.UnresolvedDatabase(dbName), s.Table.Name.String())
-		case sqlparser.CreateEventStr:
-			showCreate = plan.NewShowCreateEvent(sql.UnresolvedDatabase(dbName), s.Table.Name.String())
+		return plan.NewShowCreateProcedure(udb, s.Table.Name.String()), nil
+	case sqlparser.CreateEventStr:
+		udb, err := getUnresolvedDatabase(ctx, s.Table.Qualifier.String())
+		if err != nil {
+			return nil, err
 		}
-		return showCreate, nil
+		return plan.NewShowCreateEvent(udb, s.Table.Name.String()), nil
 	case "triggers":
 		var dbName string
 		var filter sql.Expression
@@ -1394,11 +1394,10 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 
 func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
 	eventSpec := c.EventSpec
-	dbName := eventSpec.EventName.Qualifier.String()
-	if dbName == "" {
-		dbName = ctx.GetCurrentDatabase()
+	udb, err := getUnresolvedDatabase(ctx, eventSpec.EventName.Qualifier.String())
+	if err != nil {
+		return nil, err
 	}
-
 	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
 
 	var status sql.EventStatus
@@ -1459,9 +1458,8 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	}
 
 	return plan.NewCreateEvent(
-		sql.UnresolvedDatabase(dbName),
-		eventSpec.EventName.String(),
-		definer,
+		udb,
+		eventSpec.EventName.String(), definer,
 		eventSpec.OnCompletionPreserve,
 		status, body, comment, bodyStr, at, starts, ends, everyInterval), nil
 }
@@ -4490,13 +4488,12 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 		}
 	}
 
-	db := ctx.GetCurrentDatabase()
-	if s.Database != "" {
-		db = s.Database
+	udb, err := getUnresolvedDatabase(ctx, s.Database)
+	if err != nil {
+		return nil, err
 	}
 
-	var node sql.Node = plan.NewShowTableStatus(sql.UnresolvedDatabase(db))
-
+	var node sql.Node = plan.NewShowTableStatus(udb)
 	if filter != nil {
 		node = plan.NewFilter(filter, node)
 	}
@@ -4510,4 +4507,15 @@ func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
 		definer = fmt.Sprintf("`%s`@`%s`", client.User, client.Address)
 	}
 	return definer
+}
+
+func getUnresolvedDatabase(ctx *sql.Context, dbName string) (sql.UnresolvedDatabase, error) {
+	if dbName == "" {
+		dbName = ctx.GetCurrentDatabase()
+	}
+	udb := sql.UnresolvedDatabase(dbName)
+	if dbName == "" {
+		return udb, sql.ErrNoDatabaseSelected.New()
+	}
+	return udb, nil
 }

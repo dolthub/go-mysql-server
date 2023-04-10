@@ -135,11 +135,11 @@ func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 				nc.Ends = ts
 			}
 			if len(children) == 3 {
-				ts2, ok := children[2].(*OnScheduleTimestamp)
+				ts, ok = children[2].(*OnScheduleTimestamp)
 				if !ok {
 					return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", children[0])
 				}
-				nc.Ends = ts2
+				nc.Ends = ts
 			}
 		}
 	}
@@ -229,13 +229,12 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	eventDetails := sql.EventDetails{
-		SchemaName:           c.db.Name(),
 		Name:                 c.EventName,
 		Definer:              c.Definer,
-		Definition:           c.DefinitionString,
-		Status:               c.Status,
 		OnCompletionPreserve: c.OnCompPreserve,
+		Status:               c.Status,
 		Comment:              c.Comment,
+		Definition:           c.DefinitionString,
 	}
 
 	eventCreationTime := time.Now()
@@ -251,9 +250,9 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if err != nil {
 			return nil, err
 		}
-
 		eventDetails.ExecuteEvery = sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 
+		// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
 		if c.Starts != nil {
 			eventDetails.HasStarts = true
 			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
@@ -261,7 +260,6 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				return nil, err
 			}
 		} else {
-			// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
 			eventDetails.Starts = eventCreationTime
 		}
 		if c.Ends != nil {

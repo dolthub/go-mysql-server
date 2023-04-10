@@ -100,7 +100,7 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			executeAt = event.ExecuteAt.Format(sql.EventTimeStampFormat)
 		} else {
 			intervalVal, intervalField = event.ExecuteEvery.GetIntervalValAndField()
-			// STARTS will always have value regardless of user definition
+			// STARTS will always have defined value
 			starts = event.Starts.Format(sql.EventTimeStampFormat)
 			if event.HasEnds {
 				ends = event.Ends.Format(sql.EventTimeStampFormat)
@@ -113,7 +113,7 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			event.Name,            // Name
 			event.Definer,         // Definer
 			"SYSTEM",              // Time zone
-			eventType,             // Type - ONE TIME (transient) or RECURRING (repeating).
+			eventType,             // Type
 			executeAt,             // Execute At
 			intervalVal,           // Interval Value
 			intervalField,         // Interval Field
