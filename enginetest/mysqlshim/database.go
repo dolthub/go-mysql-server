@@ -289,7 +289,7 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 
 // SaveEvent implements sql.EventDatabase
 func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
-	return d.shim.Exec(d.name, ed.GetCreateEventStatement())
+	return d.shim.Exec(d.name, ed.GenerateCreateEventStatement())
 }
 
 // DropEvent implements sql.EventDatabase

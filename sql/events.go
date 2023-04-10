@@ -49,7 +49,11 @@ type EventDetails struct {
 	// TODO: add TimeZone
 }
 
-func (e *EventDetails) GetCreateEventStatement() string {
+// GenerateCreateEventStatement returns CREATE EVENT statement constructed from EventDetails.
+// It's important to construct new CREATE EVENT statement instead of using the initial statement
+// used to create the event in the first place as some timestamps (optional at, starts and ends)
+// need to be preserved as defined and evaluated in the first place.
+func (e *EventDetails) GenerateCreateEventStatement() string {
 	stmt := fmt.Sprintf("CREATE")
 	if e.Definer != "" {
 		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, e.Definer)
@@ -120,6 +124,8 @@ func GetEventStatusFromString(status string) (EventStatus, error) {
 	}
 }
 
+// EventOnScheduleEveryInterval is used to store ON SCHEDULE EVERY clause's interval definition.
+// It is equivalent of expression.TimeDelta without microseconds field.
 type EventOnScheduleEveryInterval struct {
 	Years   int64
 	Months  int64
@@ -140,7 +146,10 @@ func NewEveryInterval(y, mo, d, h, mi, s int64) *EventOnScheduleEveryInterval {
 	}
 }
 
-// GetIntervalValAndField
+// GetIntervalValAndField returns ON SCHEDULE EVERY clause's
+// interval value and field type in string format
+// (e.g. returns "'1:2'" and "MONTH_DAY" for 1 month and 2 day
+//  or returns "4" and "HOUR" for 4 hour intervals).
 func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string) {
 	if e == nil {
 		return "", ""
@@ -182,7 +191,8 @@ func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string)
 }
 
 // GetEventOnScheduleEveryIntervalFromString returns *EventOnScheduleEveryInterval parsing
-// given interval string such as `2 DAY` or `'1:2' MONTH_DAY`.
+// given interval string such as `2 DAY` or `'1:2' MONTH_DAY`. This function is used in Dolt to construct
+// EventOnScheduleEveryInterval value for the EventDetails.
 func GetEventOnScheduleEveryIntervalFromString(every string) (*EventOnScheduleEveryInterval, error) {
 	errCannotParseEveryInterval := fmt.Errorf("cannot parse ON SCHEDULE EVERY interval: `%s`", every)
 	strs := strings.Split(every, " ")
