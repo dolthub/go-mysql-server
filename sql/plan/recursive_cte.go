@@ -396,8 +396,6 @@ func (*RecursiveTable) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 	return sql.Collation_binary, 7
 }
 
-var _ sql.Node = (*RecursiveTable)(nil)
-
 // TODO a queue is probably more optimal
 type recursiveTableIter struct {
 	pos int

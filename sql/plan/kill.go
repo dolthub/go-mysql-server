@@ -29,8 +29,6 @@ const (
 	KillType_Connection KillType = 1
 )
 
-var _ sql.Node = (*Kill)(nil)
-
 func (kt KillType) String() string {
 	if kt == KillType_Query {
 		return "QUERY"
