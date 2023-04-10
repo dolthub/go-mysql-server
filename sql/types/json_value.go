@@ -91,7 +91,7 @@ func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
 // We then remove the newlines, trim the prefix/suffix whitespace, and add a space after trailing commas:
 // {"a": 1, "b": 2}
 //
-// There's a special case for map[string]interface{}, to sort the keys in precedence of length and
+// There's a special case for map[string]interface{}, to sort the keys in precedence of length and then alphabetically
 func marshalToMySqlString(val interface{}) (string, error) {
 	switch val := val.(type) {
 	case []interface{}:
