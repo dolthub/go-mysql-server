@@ -149,7 +149,8 @@ func NewEveryInterval(y, mo, d, h, mi, s int64) *EventOnScheduleEveryInterval {
 // GetIntervalValAndField returns ON SCHEDULE EVERY clause's
 // interval value and field type in string format
 // (e.g. returns "'1:2'" and "MONTH_DAY" for 1 month and 2 day
-//  or returns "4" and "HOUR" for 4 hour intervals).
+//
+//	or returns "4" and "HOUR" for 4 hour intervals).
 func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string) {
 	if e == nil {
 		return "", ""
