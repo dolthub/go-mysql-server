@@ -4488,12 +4488,12 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 		}
 	}
 
-	udb, err := getUnresolvedDatabase(ctx, s.Database)
-	if err != nil {
-		return nil, err
+	db := ctx.GetCurrentDatabase()
+	if s.Database != "" {
+		db = s.Database
 	}
 
-	var node sql.Node = plan.NewShowTableStatus(udb)
+	var node sql.Node = plan.NewShowTableStatus(sql.UnresolvedDatabase(db))
 	if filter != nil {
 		node = plan.NewFilter(filter, node)
 	}
