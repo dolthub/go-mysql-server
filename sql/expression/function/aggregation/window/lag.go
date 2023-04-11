@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -137,7 +138,7 @@ func (l *Lag) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (l *Lag) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, fmt.Errorf("eval called on window function %s", l.FunctionName())
+	return nil, analyzer.ErrWindowUnsupported.New(l.FunctionName())
 }
 
 // Children implements sql.Expression

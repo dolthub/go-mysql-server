@@ -15,10 +15,10 @@
 package window
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -94,7 +94,7 @@ func (r *RowNumber) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r *RowNumber) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, fmt.Errorf("eval called on window function %s", r.FunctionName())
+	return nil, analyzer.ErrWindowUnsupported.New(r.FunctionName())
 }
 
 // Children implements sql.Expression

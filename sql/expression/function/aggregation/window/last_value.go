@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -97,7 +98,7 @@ func (f *LastValue) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (f *LastValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, fmt.Errorf("eval called on window function %s", f.FunctionName())
+	return nil, analyzer.ErrWindowUnsupported.New(f.FunctionName())
 }
 
 // Children implements sql.Expression
