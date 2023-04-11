@@ -5982,9 +5982,9 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
 			{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
-			{"v1_new", "timestamp", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
+			{"v1_new", "timestamp(6)", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
-			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
+			{"v3", "datetime(6)", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
 		}, nil, nil)
 
 		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
