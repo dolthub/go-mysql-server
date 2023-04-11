@@ -289,12 +289,19 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 
 // SaveEvent implements sql.EventDatabase
 func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
-	return d.shim.Exec(d.name, ed.GenerateCreateEventStatement())
+	return d.shim.Exec(d.name, ed.CreateEventStatement())
 }
 
 // DropEvent implements sql.EventDatabase
 func (d Database) DropEvent(ctx *sql.Context, name string) error {
 	return d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", name))
+}
+
+// UpdateEvent implements sql.EventDatabase
+func (d Database) UpdateEvent(ctx *sql.Context, ed sql.EventDetails) error {
+	// TODO : needs to run update stmt?
+	panic("implement me")
+	//return d.shim.Exec(d.name, ed.CreateEventStatement())
 }
 
 // CreateView implements the interface sql.ViewDatabase.

@@ -223,12 +223,11 @@ type StoredProcedureDatabase interface {
 }
 
 // EventDatabase is a database that supports the creation and execution of events. The engine will
-// handle all parsing and execution logic for events. Integrators only need to store and retrieve
-// EventDetails, while verifying that all events have a unique name without regard to
-// case-sensitivity.
+// handle execution logic for events. Integrators only need to store and retrieve EventDetails,
+// while verifying that all events have a unique name without regard to case-sensitivity.
 type EventDatabase interface {
 	Database
-	// GetEvent returns the desired EventDetails from the database.
+	// GetEvent returns the desired EventDetails and if it exists in the database.
 	GetEvent(ctx *Context, name string) (EventDetails, bool, error)
 	// GetEvents returns all EventDetails for the database.
 	GetEvents(ctx *Context) ([]EventDetails, error)
@@ -237,6 +236,8 @@ type EventDatabase interface {
 	SaveEvent(ctx *Context, ed EventDetails) error
 	// DropEvent removes the EventDetails with the matching name from the database.
 	DropEvent(ctx *Context, name string) error
+	// UpdateEvent updates existing event stored in the database with the given EventDetails with the updates.
+	UpdateEvent(ctx *Context, ed EventDetails) error
 	// TODO: add ExecuteEvent() method that executes given event and updates the LastExecutedAt value
 }
 

@@ -20,8 +20,7 @@ import (
 )
 
 type ShowEvents struct {
-	db     sql.Database
-	Events []sql.EventDetails
+	db sql.Database
 }
 
 var _ sql.Databaser = (*ShowEvents)(nil)
@@ -92,9 +91,18 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, err
 	}
 
-	for _, event := range s.Events {
+	eventDb, ok := s.db.(sql.EventDatabase)
+	if !ok {
+		return nil, sql.ErrEventsNotSupported.New(s.db.Name())
+	}
+	events, err := eventDb.GetEvents(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, event := range events {
 		eventType := "RECURRING"
-		var executeAt, intervalVal, intervalField, starts, ends interface{}
+		var executeAt, intervalVal, intervalField, starts, ends, status interface{}
 		if event.HasExecuteAt {
 			eventType = "ONE TIME"
 			executeAt = event.ExecuteAt.Format(sql.EventTimeStampFormat)
@@ -107,23 +115,32 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 		}
 
+		switch event.Status {
+		case sql.EventStatus_Enable:
+			status = "ENABLED"
+		case sql.EventStatus_Disable:
+			status = "DISABLED"
+		case sql.EventStatus_DisableOnSlave:
+			status = "SLAVESIDE_DISABLED"
+		}
+
 		// TODO: Time zone and Originator are set to default for now.
 		rows = append(rows, sql.Row{
-			dbName,                // Db
-			event.Name,            // Name
-			event.Definer,         // Definer
-			"SYSTEM",              // Time zone
-			eventType,             // Type
-			executeAt,             // Execute At
-			intervalVal,           // Interval Value
-			intervalField,         // Interval Field
-			starts,                // Starts
-			ends,                  // Ends
-			event.Status.String(), // Status
-			0,                     // Originator
-			characterSetClient,    // character_set_client
-			collationConnection,   // collation_connection
-			collationServer,       // Database Collation
+			dbName,              // Db
+			event.Name,          // Name
+			event.Definer,       // Definer
+			"SYSTEM",            // Time zone
+			eventType,           // Type
+			executeAt,           // Execute At
+			intervalVal,         // Interval Value
+			intervalField,       // Interval Field
+			starts,              // Starts
+			ends,                // Ends
+			status,              // Status
+			0,                   // Originator
+			characterSetClient,  // character_set_client
+			collationConnection, // collation_connection
+			collationServer,     // Database Collation
 		})
 	}
 

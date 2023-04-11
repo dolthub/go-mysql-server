@@ -1407,7 +1407,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	case sqlparser.EventStatus_Disable:
 		status = sql.EventStatus_Disable
 	case sqlparser.EventStatus_DisableOnSlave:
-		status = sql.EventStatus_DisableOnSlove
+		status = sql.EventStatus_DisableOnSlave
 	}
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
@@ -1458,10 +1458,11 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	}
 
 	return plan.NewCreateEvent(
-		udb,
-		eventSpec.EventName.String(), definer,
+		udb, eventSpec.EventName.Name.String(), definer,
+		at, starts, ends, everyInterval,
 		eventSpec.OnCompletionPreserve,
-		status, body, comment, bodyStr, at, starts, ends, everyInterval), nil
+		status, comment, bodyStr, body, eventSpec.IfNotExists,
+	), nil
 }
 
 func convertEventScheduleTimeSpec(ctx *sql.Context, spec *sqlparser.EventScheduleTimeSpec) (sql.Expression, []sql.Expression, error) {

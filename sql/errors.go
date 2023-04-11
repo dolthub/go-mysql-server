@@ -231,10 +231,10 @@ var (
 	ErrEventsNotSupported = errors.NewKind("database '%s' doesn't support events")
 
 	// ErrEventAlreadyExists is returned when an event does not exist.
-	ErrEventAlreadyExists = errors.NewKind("event '%s' already exists")
+	ErrEventAlreadyExists = errors.NewKind("Event '%s' already exists")
 
 	// ErrEventDoesNotExist is returned when an event does not exist.
-	ErrEventDoesNotExist = errors.NewKind("event '%s' does not exist")
+	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
 
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
 	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")

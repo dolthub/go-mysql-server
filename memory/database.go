@@ -371,6 +371,22 @@ func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
 	return nil
 }
 
+// UpdateEvent implements sql.EventDatabase
+func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDetails) error {
+	loweredName := strings.ToLower(ed.Name)
+	found := false
+	for i, existingEd := range d.events {
+		if strings.ToLower(existingEd.Name) == loweredName {
+			d.events[i] = ed
+			found = true
+		}
+	}
+	if !found {
+		return sql.ErrEventDoesNotExist.New(ed.Name)
+	}
+	return nil
+}
+
 // GetCollation implements sql.CollatedDatabase.
 func (d *BaseDatabase) GetCollation(ctx *sql.Context) sql.CollationID {
 	return d.collation

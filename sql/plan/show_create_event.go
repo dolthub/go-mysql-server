@@ -97,13 +97,13 @@ func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 
 			// TODO: fill sql_mode and time_zone with appropriate values
 			return sql.RowsToRowIter(sql.Row{
-				event.Name,                           // Event
-				"",                                   // sql_mode
-				"SYSTEM",                             // time_zone
-				event.GenerateCreateEventStatement(), // Create Event
-				characterSetClient,                   // character_set_client
-				collationConnection,                  // collation_connection
-				collationServer,                      // Database Collation
+				event.Name,                   // Event
+				"",                           // sql_mode
+				"SYSTEM",                     // time_zone
+				event.CreateEventStatement(), // Create Event
+				characterSetClient,           // character_set_client
+				collationConnection,          // collation_connection
+				collationServer,              // Database Collation
 			}), nil
 		}
 	}

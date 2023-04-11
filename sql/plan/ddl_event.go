@@ -29,7 +29,6 @@ import (
 var _ sql.Node = (*CreateEvent)(nil)
 var _ sql.Expressioner = (*CreateEvent)(nil)
 var _ sql.Databaser = (*CreateEvent)(nil)
-var _ sql.DebugStringer = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
@@ -44,18 +43,20 @@ type CreateEvent struct {
 	Comment          string
 	DefinitionString string
 	DefinitionNode   sql.Node
+	IfNotExists      bool
 }
 
 // NewCreateEvent returns a *CreateEvent node.
 func NewCreateEvent(
 	db sql.Database,
 	name, definer string,
-	onCompletionPreserve bool,
-	status sql.EventStatus,
-	definition sql.Node,
-	comment, definitionString string,
 	at, starts, ends *OnScheduleTimestamp,
 	every *expression.Interval,
+	onCompletionPreserve bool,
+	status sql.EventStatus,
+	comment, definitionString string,
+	definition sql.Node,
+	ifNotExists bool,
 ) *CreateEvent {
 	return &CreateEvent{
 		ddlNode:          ddlNode{db},
@@ -70,6 +71,7 @@ func NewCreateEvent(
 		Comment:          comment,
 		DefinitionString: definitionString,
 		DefinitionNode:   definition,
+		IfNotExists:      ifNotExists,
 	}
 }
 
@@ -97,52 +99,17 @@ func (c *CreateEvent) Schema() sql.Schema {
 
 // Children implements the sql.Node interface.
 func (c *CreateEvent) Children() []sql.Node {
-	if c.At != nil {
-		return []sql.Node{c.DefinitionNode, c.At}
-	} else {
-		if c.Starts == nil && c.Ends == nil {
-			return []sql.Node{c.DefinitionNode}
-		} else if c.Starts == nil {
-			return []sql.Node{c.DefinitionNode, c.Ends}
-		} else if c.Ends == nil {
-			return []sql.Node{c.DefinitionNode, c.Starts}
-		} else {
-			return []sql.Node{c.DefinitionNode, c.Starts, c.Ends}
-		}
-	}
+	return []sql.Node{c.DefinitionNode}
 }
 
 // WithChildren implements the sql.Node interface.
 func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) == 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), "at least 1")
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 
 	nc := *c
 	nc.DefinitionNode = children[0]
-
-	if len(children) > 1 {
-		ts, ok := children[1].(*OnScheduleTimestamp)
-		if !ok {
-			return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", children[0])
-		}
-		if c.At != nil {
-			nc.At = ts
-		} else {
-			if c.Starts != nil {
-				nc.Starts = ts
-			} else if c.Ends != nil {
-				nc.Ends = ts
-			}
-			if len(children) == 3 {
-				ts, ok = children[2].(*OnScheduleTimestamp)
-				if !ok {
-					return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", children[0])
-				}
-				nc.Ends = ts
-			}
-		}
-	}
 
 	return &nc, nil
 }
@@ -193,36 +160,65 @@ func (c *CreateEvent) String() string {
 		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(c.DefinitionNode))
 }
 
-// DebugString implements the sql.DebugStringer interface.
-func (c *CreateEvent) DebugString() string {
-	return c.String()
-}
-
 // Expressions implements the sql.Expressioner interface.
 func (c *CreateEvent) Expressions() []sql.Expression {
-	if c.Every != nil {
-		return []sql.Expression{c.Every}
+	if c.At != nil {
+		return []sql.Expression{c.At}
+	} else {
+		if c.Starts == nil && c.Ends == nil {
+			return []sql.Expression{c.Every}
+		} else if c.Starts == nil {
+			return []sql.Expression{c.Every, c.Ends}
+		} else if c.Ends == nil {
+			return []sql.Expression{c.Every, c.Starts}
+		} else {
+			return []sql.Expression{c.Every, c.Starts, c.Ends}
+		}
 	}
-	return nil
 }
 
 // WithExpressions implements the sql.Expressioner interface.
 func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	if len(e) > 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(e), "0 or 1")
-	}
-
-	if len(e) == 0 {
-		return c, nil
-	}
-
-	every, ok := e[0].(*expression.Interval)
-	if ok {
-		return nil, fmt.Errorf("expected `*expression.Interval` but got `%T`", e[0])
+	if len(e) < 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(e), "at least 1")
 	}
 
 	nc := *c
-	nc.Every = every
+	if c.At != nil {
+		ts, ok := e[0].(*OnScheduleTimestamp)
+		if !ok {
+			return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[0])
+		}
+		nc.At = ts
+	} else {
+		every, ok := e[0].(*expression.Interval)
+		if ok {
+			return nil, fmt.Errorf("expected `*expression.Interval` but got `%T`", e[0])
+		}
+		nc.Every = every
+
+		var ts *OnScheduleTimestamp
+		if len(e) == 2 {
+			ts, ok = e[1].(*OnScheduleTimestamp)
+			if !ok {
+				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[1])
+			}
+			if c.Starts != nil {
+				nc.Starts = ts
+			} else if c.Ends != nil {
+				nc.Ends = ts
+			}
+		}
+
+		if len(e) == 3 {
+			ts, ok = e[2].(*OnScheduleTimestamp)
+			if !ok {
+				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[2])
+			}
+			nc.Ends = ts
+		}
+	}
+
 	return &nc, nil
 }
 
@@ -274,17 +270,24 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	eventDetails.Created = eventCreationTime
 	eventDetails.LastAltered = eventCreationTime
 
+	eventDb, ok := c.db.(sql.EventDatabase)
+	if !ok {
+		return nil, sql.ErrEventsNotSupported.New(c.db.Name())
+	}
+
 	return &createEventIter{
-		ed: eventDetails,
-		db: c.db,
+		eventDetails: eventDetails,
+		eventDb:      eventDb,
+		ifNotExists:  c.IfNotExists,
 	}, nil
 }
 
 // createEventIter is the row iterator for *CreateEvent.
 type createEventIter struct {
-	once sync.Once
-	ed   sql.EventDetails
-	db   sql.Database
+	once         sync.Once
+	eventDetails sql.EventDetails
+	eventDb      sql.EventDatabase
+	ifNotExists  bool
 }
 
 // Next implements the sql.RowIter interface.
@@ -297,42 +300,59 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	pdb, ok := c.db.(sql.EventDatabase)
-	if !ok {
-		return nil, sql.ErrEventsNotSupported.New(c.db.Name())
-	}
-
-	if c.ed.HasEnds {
-		if c.ed.Ends.Sub(c.ed.Starts).Seconds() < 0 {
+	// checks if the defined ENDS time is before STARTS time
+	if c.eventDetails.HasEnds {
+		if c.eventDetails.Ends.Sub(c.eventDetails.Starts).Seconds() < 0 {
 			return nil, fmt.Errorf("ENDS is either invalid or before STARTS")
 		}
 	}
 
-	err := pdb.SaveEvent(ctx, c.ed)
+	err := c.eventDb.SaveEvent(ctx, c.eventDetails)
 	if err != nil {
+		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    1537,
+				Message: fmt.Sprintf(err.Error()),
+			})
+			return sql.Row{types.NewOkResult(0)}, nil
+		}
 		return nil, err
 	}
 
-	if c.ed.HasExecuteAt {
-		// If the event execution time is in the past and ON COMPLETION NOT PRESERVE is set.
-		// The event is dropped immediately after creation.
-		if c.ed.ExecuteAt.Sub(c.ed.Created).Seconds() < 0 && !c.ed.OnCompletionPreserve {
-			err = pdb.DropEvent(ctx, c.ed.Name)
-			if err != nil {
-				return nil, err
+	if c.eventDetails.HasExecuteAt {
+		// If the event execution time is in the past and  is set.
+		if c.eventDetails.ExecuteAt.Sub(c.eventDetails.Created).Seconds() < 0 {
+			if c.eventDetails.OnCompletionPreserve {
+				// If ON COMPLETION PRESERVE is defined, the event is disabled.
+				c.eventDetails.Status = sql.EventStatus_Disable
+				err = c.eventDb.UpdateEvent(ctx, c.eventDetails)
+				if err != nil {
+					return nil, err
+				}
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    1544,
+					Message: fmt.Sprintf("Event execution time is in the past. Event has been disabled"),
+				})
+			} else {
+				// If ON COMPLETION NOT PRESERVE is defined, the event is dropped immediately after creation.
+				err = c.eventDb.DropEvent(ctx, c.eventDetails.Name)
+				if err != nil {
+					return nil, err
+				}
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    1588,
+					Message: fmt.Sprintf("Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation."),
+				})
 			}
-
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Note",
-				Code:    1588,
-				Message: fmt.Sprintf("Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation."),
-			})
 			return sql.Row{types.NewOkResult(0)}, nil
 		}
 	}
 
 	// If Starts is set to current_timestamp or not set, then execute the event once and update last executed At.
-	if c.ed.Created.Sub(c.ed.Starts).Abs().Seconds() <= 1 {
+	if c.eventDetails.Created.Sub(c.eventDetails.Starts).Abs().Seconds() <= 1 {
 		// TODO: execute the event once and update 'LastExecuted' and 'ExecutionCount'
 	}
 
@@ -365,8 +385,7 @@ type OnScheduleTimestamp struct {
 	intervals []sql.Expression
 }
 
-var _ sql.Node = (*OnScheduleTimestamp)(nil)
-var _ sql.Expressioner = (*OnScheduleTimestamp)(nil)
+var _ sql.Expression = (*OnScheduleTimestamp)(nil)
 
 // NewOnScheduleTimestamp creates OnScheduleTimestamp object used for EVENT ON SCHEDULE { AT / STARTS / ENDS } optional fields only.
 func NewOnScheduleTimestamp(ts sql.Expression, i []sql.Expression) *OnScheduleTimestamp {
@@ -376,10 +395,44 @@ func NewOnScheduleTimestamp(ts sql.Expression, i []sql.Expression) *OnScheduleTi
 	}
 }
 
+func (ost *OnScheduleTimestamp) Type() sql.Type {
+	return ost.timestamp.Type()
+}
+
+func (ost *OnScheduleTimestamp) IsNullable() bool {
+	if ost.timestamp.IsNullable() {
+		return true
+	}
+	for _, i := range ost.intervals {
+		if i.IsNullable() {
+			return true
+		}
+	}
+	return false
+}
+
+func (ost *OnScheduleTimestamp) Children() []sql.Expression {
+	var exprs = []sql.Expression{ost.timestamp}
+	return append(exprs, ost.intervals...)
+}
+
+func (ost *OnScheduleTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) == 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ost, len(children), "at least 1")
+	}
+
+	var intervals = make([]sql.Expression, 0)
+	if len(children) > 1 {
+		intervals = append(intervals, children[1:]...)
+	}
+
+	return NewOnScheduleTimestamp(children[0], intervals), nil
+}
+
 // Resolved implements the sql.Node interface.
-func (a *OnScheduleTimestamp) Resolved() bool {
-	var children = []sql.Expression{a.timestamp}
-	children = append(children, a.intervals...)
+func (ost *OnScheduleTimestamp) Resolved() bool {
+	var children = []sql.Expression{ost.timestamp}
+	children = append(children, ost.intervals...)
 	for _, child := range children {
 		if !child.Resolved() {
 			return false
@@ -389,63 +442,22 @@ func (a *OnScheduleTimestamp) Resolved() bool {
 }
 
 // String implements the sql.Node interface.
-func (a *OnScheduleTimestamp) String() string {
+func (ost *OnScheduleTimestamp) String() string {
 	intervals := ""
-	for _, interval := range a.intervals {
+	for _, interval := range ost.intervals {
 		intervals = fmt.Sprintf("%s + %s", intervals, interval.String())
 	}
-	return fmt.Sprintf("%s%s", a.timestamp.String(), intervals)
+	return fmt.Sprintf("%s%s", ost.timestamp.String(), intervals)
 }
 
-// Schema implements the sql.Node interface.
-func (a *OnScheduleTimestamp) Schema() sql.Schema {
-	return nil
-}
-
-// Children implements the sql.Node interface.
-func (a *OnScheduleTimestamp) Children() []sql.Node {
-	return nil
-}
-
-// WithChildren implements the sql.Node interface.
-func (a *OnScheduleTimestamp) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(a, children...)
-}
-
-// CheckPrivileges implements the sql.Node interface.
-func (a *OnScheduleTimestamp) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// Expressions implements the sql.Expressioner interface.
-func (a *OnScheduleTimestamp) Expressions() []sql.Expression {
-	var exprs = []sql.Expression{a.timestamp}
-	return append(exprs, a.intervals...)
-}
-
-// WithExpressions implements the sql.Expressioner interface.
-func (a *OnScheduleTimestamp) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) == 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), "at least 1")
-	}
-
-	var intervals = make([]sql.Expression, 0)
-	if len(exprs) > 1 {
-		intervals = append(intervals, exprs[1:]...)
-	}
-
-	return NewOnScheduleTimestamp(exprs[0], intervals), nil
-}
-
-// RowIter implements the sql.Node interface.
-func (a *OnScheduleTimestamp) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("OnScheduleTimestamp.RowIter is just a placeholder method and should not be called directly")
+func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	panic("OnScheduleTimestamp.Eval is just a placeholder method and should not be called directly")
 }
 
 // EvalTime returns time.Time value converted to UTC evaluating given expressions as expected to be time value and optional
 // interval values. The value returned is time.Time value from timestamp value plus all intervals given.
-func (a *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
-	value, err := a.timestamp.Eval(ctx, nil)
+func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
+	value, err := ost.timestamp.Eval(ctx, nil)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -467,7 +479,7 @@ func (a *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("unexpected type: %s", v)
 	}
 
-	for _, interval := range a.intervals {
+	for _, interval := range ost.intervals {
 		i, ok := interval.(*expression.Interval)
 		if !ok {
 			return time.Time{}, fmt.Errorf("expected interval but got: %s", interval)

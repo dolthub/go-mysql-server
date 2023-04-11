@@ -376,6 +376,14 @@ func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
 	return sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
+// UpdateEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDetails) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.UpdateEvent(ctx, ed)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
 // CopyTableData implements the interface sql.TableCopierDatabase.
 func (pdb PrivilegedDatabase) CopyTableData(ctx *sql.Context, sourceTable string, destinationTable string) (uint64, error) {
 	if db, ok := pdb.db.(sql.TableCopierDatabase); ok {
