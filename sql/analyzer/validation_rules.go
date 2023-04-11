@@ -83,6 +83,14 @@ var (
 	ErrAggregationUnsupported = errors.NewKind(
 		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
 	)
+
+	ErrWindowUnsupported = errors.NewKind(
+		"a window function '%s' is in a context where it cannot be evaluated.",
+	)
+
+	ErrStarUnsupported = errors.NewKind(
+		"a '*' is in a context where it is not allowed.",
+	)
 )
 
 // validateLimitAndOffset ensures that only integer literals are used for limit and offset values

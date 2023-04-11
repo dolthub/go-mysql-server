@@ -8538,6 +8538,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "drop table myview;",
 		ExpectedErr: sql.ErrUnknownTable,
 	},
+	{
+		Query:       "select SUM(*) from dual;",
+		ExpectedErr: analyzer.ErrStarUnsupported,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{

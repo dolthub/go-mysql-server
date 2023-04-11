@@ -17,6 +17,7 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/mysql"
 
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -729,6 +730,14 @@ var UpdateErrorTests = []QueryErrorTest{
 	{
 		Query:       `UPDATE people set height_inches = null where height_inches < 100`,
 		ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+	},
+	{
+		Query:       `UPDATE people SET height_inches = IF(SUM(height_inches) % 2 = 0, 42, height_inches)`,
+		ExpectedErr: analyzer.ErrAggregationUnsupported,
+	},
+	{
+		Query:       `UPDATE people SET height_inches = IF(ROW_NUMBER() OVER() % 2 = 0, 42, height_inches)`,
+		ExpectedErr: analyzer.ErrWindowUnsupported,
 	},
 }
 
