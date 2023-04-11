@@ -15,6 +15,7 @@
 package window
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -92,7 +93,7 @@ func (p *PercentRank) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (p *PercentRank) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("eval called on window function")
+	return nil, fmt.Errorf("eval called on window function %s", p.FunctionName())
 }
 
 // Children implements sql.Expression

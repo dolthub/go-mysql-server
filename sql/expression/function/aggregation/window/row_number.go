@@ -15,6 +15,7 @@
 package window
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -93,7 +94,7 @@ func (r *RowNumber) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r *RowNumber) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("eval called on window function")
+	return nil, fmt.Errorf("eval called on window function %s", r.FunctionName())
 }
 
 // Children implements sql.Expression
