@@ -22,7 +22,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -8343,11 +8343,11 @@ var ErrorQueries = []QueryErrorTest{
 	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
 	{
 		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzer.ErrAggregationUnsupported,
+		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzer.ErrAggregationUnsupported,
+		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "select ((1, 2)) from dual",
@@ -8540,7 +8540,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select SUM(*) from dual;",
-		ExpectedErr: analyzer.ErrStarUnsupported,
+		ExpectedErr: analyzererrors.ErrStarUnsupported,
 	},
 }
 

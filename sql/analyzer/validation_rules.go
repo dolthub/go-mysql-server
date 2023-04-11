@@ -19,78 +19,14 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-)
-
-var (
-	// ErrValidationResolved is returned when the plan can not be resolved.
-	ErrValidationResolved = errors.NewKind("plan is not resolved because of node '%T'")
-	// ErrValidationOrderBy is returned when the order by contains aggregation
-	// expressions.
-	ErrValidationOrderBy = errors.NewKind("OrderBy does not support aggregation expressions")
-	// ErrValidationGroupBy is returned when the aggregation expression does not
-	// appear in the grouping columns.
-	ErrValidationGroupBy = errors.NewKind("expression '%v' doesn't appear in the group by expressions")
-	// ErrValidationSchemaSource is returned when there is any column source
-	// that does not match the table name.
-	ErrValidationSchemaSource = errors.NewKind("one or more schema sources are empty")
-	// ErrUnknownIndexColumns is returned when there are columns in the expr
-	// to index that are unknown in the table.
-	ErrUnknownIndexColumns = errors.NewKind("unknown columns to index for table %q: %s")
-	// ErrCaseResultType is returned when one or more of the types of the values in
-	// a case expression don't match.
-	ErrCaseResultType = errors.NewKind(
-		"expecting all case branches to return values of type %s, " +
-			"but found value %q of type %s on %s",
-	)
-	// ErrIntervalInvalidUse is returned when an interval expression is not
-	// correctly used.
-	ErrIntervalInvalidUse = errors.NewKind(
-		"invalid use of an interval, which can only be used with DATE_ADD, " +
-			"DATE_SUB and +/- operators to subtract from or add to a date",
-	)
-	// ErrExplodeInvalidUse is returned when an EXPLODE function is used
-	// outside a Project node.
-	ErrExplodeInvalidUse = errors.NewKind(
-		"using EXPLODE is not supported outside a Project node",
-	)
-
-	// ErrSubqueryFieldIndex is returned when an expression subquery references a field outside the range of the rows it
-	// works on.
-	ErrSubqueryFieldIndex = errors.NewKind(
-		"subquery field index out of range for expression %s: only %d columns available",
-	)
-
-	// ErrUnionSchemasMatch is returned when both sides of a UNION do not
-	// have the same schema.
-	ErrUnionSchemasMatch = errors.NewKind(
-		"the schema of the left side of union does not match the right side, expected %s to match %s",
-	)
-
-	// ErrReadOnlyDatabase is returned when a write is attempted to a ReadOnlyDatabse.
-	ErrReadOnlyDatabase = errors.NewKind("Database %s is read-only.")
-
-	// ErrAggregationUnsupported is returned when the analyzer has failed
-	// to push down an Aggregation in an expression to a GroupBy node.
-	ErrAggregationUnsupported = errors.NewKind(
-		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
-	)
-
-	ErrWindowUnsupported = errors.NewKind(
-		"a window function '%s' is in a context where it cannot be evaluated.",
-	)
-
-	ErrStarUnsupported = errors.NewKind(
-		"a '*' is in a context where it is not allowed.",
-	)
 )
 
 // validateLimitAndOffset ensures that only integer literals are used for limit and offset values
@@ -196,7 +132,7 @@ func unresolvedError(n sql.Node) error {
 	if err != nil {
 		return err
 	}
-	return ErrValidationResolved.New(n)
+	return analyzererrors.ErrValidationResolved.New(n)
 }
 
 func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -208,7 +144,7 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		for _, field := range n.SortFields {
 			switch field.Column.(type) {
 			case sql.Aggregation:
-				return nil, transform.SameTree, ErrValidationOrderBy.New()
+				return nil, transform.SameTree, analyzererrors.ErrValidationOrderBy.New()
 			}
 		}
 	}
@@ -364,7 +300,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		for _, expr := range gb.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					err = ErrValidationGroupBy.New(expr.String())
+					err = analyzererrors.ErrValidationGroupBy.New(expr.String())
 					return false
 				}
 			}
@@ -448,7 +384,7 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	}
 
 	if len(unknownColumns) > 0 {
-		return nil, transform.SameTree, ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
+		return nil, transform.SameTree, analyzererrors.ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
 	}
 
 	return n, transform.SameTree, nil
@@ -457,7 +393,7 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 func validateSchema(t *plan.ResolvedTable) error {
 	for _, col := range t.Schema() {
 		if col.Source == "" {
-			return ErrValidationSchemaSource.New()
+			return analyzererrors.ErrValidationSchemaSource.New()
 		}
 	}
 	return nil
@@ -492,7 +428,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return true
 	})
 	if firstmismatch != nil {
-		return nil, transform.SameTree, ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
+		return nil, transform.SameTree, analyzererrors.ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
 	}
 	return n, transform.SameTree, nil
 }
@@ -520,7 +456,7 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	})
 
 	if invalid {
-		return nil, transform.SameTree, ErrIntervalInvalidUse.New()
+		return nil, transform.SameTree, analyzererrors.ErrIntervalInvalidUse.New()
 	}
 
 	return n, transform.SameTree, nil
@@ -666,7 +602,7 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 		return outOfRangeIndexExpression == nil
 	})
 	if outOfRangeIndexExpression != nil {
-		return nil, transform.SameTree, ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
+		return nil, transform.SameTree, analyzererrors.ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
 	}
 
 	return n, transform.SameTree, nil
@@ -753,7 +689,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		if enforceReadOnly {
 			return nil, transform.SameTree, sql.ErrProcedureCallAsOfReadOnly.New()
 		} else {
-			return nil, transform.SameTree, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+			return nil, transform.SameTree, analyzererrors.ErrReadOnlyDatabase.New(readOnlyDB.Name())
 		}
 	}
 
@@ -863,7 +799,7 @@ func checkForAggregationFunctions(exprs []sql.Expression) error {
 	for _, e := range exprs {
 		sql.Inspect(e, func(ie sql.Expression) bool {
 			if _, ok := ie.(sql.Aggregation); ok {
-				validationErr = ErrAggregationUnsupported.New(e.String())
+				validationErr = analyzererrors.ErrAggregationUnsupported.New(e.String())
 			}
 			return validationErr == nil
 		})
