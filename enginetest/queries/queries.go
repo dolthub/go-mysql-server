@@ -1362,6 +1362,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
+		Expected: []sql.Row{
+			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
+		},
+	},
+	{
+		Query: `SELECT CONCAT(JSON_ARRAY(JSON_OBJECT('aa', 123, 'z', 456), JSON_OBJECT('BB', 321, 'Y', 654)), "")`,
+		Expected: []sql.Row{
+			{`[{"z": 456, "aa": 123}, {"Y": 654, "BB": 321}]`},
+		},
+	},
+	{
 		Query: `SELECT column_0, sum(column_1) FROM
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 order by 1`,
