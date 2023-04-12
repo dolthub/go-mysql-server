@@ -246,6 +246,7 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 		// which stores resolved/evaluated values only. Therefore, AT, STARTS and ENDS clauses will
 		// have evaluated timestamp string values that can be converted back to time.Time values.
 		var at, starts, ends time.Time
+		var every string
 		var interval *expression.TimeDelta
 		if createEvent.At != nil {
 			at, err = createEvent.At.EvalTime(ctx)
@@ -257,6 +258,8 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 			if err != nil {
 				return nil, err
 			}
+			iVal, iField := plan.NewEveryInterval(interval.Years, interval.Months, interval.Days, interval.Hours, interval.Minutes, interval.Seconds).GetIntervalValAndField()
+			every = fmt.Sprintf("%s %s", iVal, iField)
 			if createEvent.Starts != nil {
 				starts, err = createEvent.Starts.EvalTime(ctx)
 				if err != nil {
@@ -274,11 +277,11 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 			Name:                 eventStmt[0][0].(string),
 			Definer:              createEvent.Definer,
 			ExecuteAt:            at,
-			ExecuteEvery:         sql.NewEveryInterval(interval.Years, interval.Months, interval.Days, interval.Hours, interval.Minutes, interval.Seconds),
+			ExecuteEvery:         every,
 			Starts:               starts,
 			Ends:                 ends,
 			OnCompletionPreserve: createEvent.OnCompPreserve,
-			Status:               createEvent.Status,
+			Status:               createEvent.Status.String(),
 			Comment:              createEvent.Comment,
 			Definition:           createEvent.DefinitionString,
 			// TODO: other fields should be added such as Created, LastAltered, ...
@@ -299,9 +302,11 @@ func (d Database) DropEvent(ctx *sql.Context, name string) error {
 
 // UpdateEvent implements sql.EventDatabase
 func (d Database) UpdateEvent(ctx *sql.Context, ed sql.EventDetails) error {
-	// TODO : needs to run update stmt?
-	panic("implement me")
-	//return d.shim.Exec(d.name, ed.CreateEventStatement())
+	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", ed.Name))
+	if err != nil {
+		return err
+	}
+	return d.shim.Exec(d.name, ed.CreateEventStatement())
 }
 
 // CreateView implements the interface sql.ViewDatabase.
