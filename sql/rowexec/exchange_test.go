@@ -67,7 +67,7 @@ func TestExchange(t *testing.T) {
 
 			exchange := plan.NewExchange(i, children)
 			ctx := sql.NewEmptyContext()
-			iter, err := exchange.RowIter(ctx, nil)
+			iter, err := DefaultBuilder.Build(ctx, exchange, nil)
 			require.NoError(err)
 
 			rows, err := sql.RowIterToRows(ctx, nil, iter)
@@ -103,7 +103,7 @@ func TestExchangeCancelled(t *testing.T) {
 	ctx := sql.NewContext(c)
 	cancel()
 
-	iter, err := exchange.RowIter(ctx, nil)
+	iter, err := DefaultBuilder.Build(ctx, exchange, nil)
 	require.NoError(err)
 
 	_, err = iter.Next(ctx)

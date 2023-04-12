@@ -94,7 +94,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 				},
 			)
 
-			_, err := s.RowIter(sqlCtx, nil)
+			_, err := DefaultBuilder.Build(sqlCtx, s, nil)
 			if test.err != nil {
 				assert.True(t, test.err.Is(err))
 				return
