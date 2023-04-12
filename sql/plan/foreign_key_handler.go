@@ -75,11 +75,6 @@ func (n *ForeignKeyHandler) Children() []sql.Node {
 	return []sql.Node{n.OriginalNode}
 }
 
-// RowIter implements the interface sql.Node.
-func (n *ForeignKeyHandler) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return n.OriginalNode.RowIter(ctx, row)
-}
-
 // WithChildren implements the interface sql.Node.
 func (n *ForeignKeyHandler) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {

@@ -19,7 +19,6 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ErrNoPartitionable is returned when no Partitionable node is found
@@ -78,21 +77,6 @@ func (e *Exchange) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (e *Exchange) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, e.Child)
-}
-
-func (e *Exchange) getRowIter2Func() func(*sql.Context, sql.Partition, *sql.RowFrame) (sql.RowIter2, error) {
-	return func(ctx *sql.Context, partition sql.Partition, frame *sql.RowFrame) (sql.RowIter2, error) {
-		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-			if t, ok := n.(sql.Table); ok {
-				return &ExchangePartition{partition, t}, transform.NewTree, nil
-			}
-			return n, transform.SameTree, nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		return node.(sql.Node2).RowIter2(ctx, frame)
-	}
 }
 
 type ExchangePartition struct {

@@ -166,8 +166,8 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		oldJoinRow, newJoinRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
 
-		tableToOldRowMap := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
-		tableToNewRowMap := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
+		tableToOldRowMap := plan.SplitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
+		tableToNewRowMap := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
 		for tableName, _ := range u.updaters {
 			oldTableRow := tableToOldRowMap[tableName]

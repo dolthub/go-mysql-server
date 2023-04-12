@@ -32,7 +32,6 @@ type QueryProcess struct {
 }
 
 var _ sql.Node = (*QueryProcess)(nil)
-var _ sql.Node2 = (*QueryProcess)(nil)
 var _ sql.CollationCoercible = (*QueryProcess)(nil)
 
 // NotifyFunc is a function to notify about some event.
@@ -115,8 +114,6 @@ type ProcessIndexableTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
-var _ sql.Table2 = (*ProcessIndexableTable)(nil)
-
 func (t *ProcessIndexableTable) DebugString() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("ProcessIndexableTable")
@@ -180,20 +177,6 @@ func (t *ProcessIndexableTable) newPartIter(p sql.Partition, iter sql.RowIter) (
 	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
 }
 
-func (t *ProcessIndexableTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
-	iter, err := t.DriverIndexableTable.(sql.Table2).PartitionRows2(ctx, part)
-	if err != nil {
-		return nil, err
-	}
-
-	partIter, err := t.newPartIter(part, iter)
-	if err != nil {
-		return nil, err
-	}
-
-	return partIter.(sql.RowIter2), nil
-}
-
 var _ sql.DriverIndexableTable = (*ProcessIndexableTable)(nil)
 
 // NamedNotifyFunc is a function to notify about some event with a string argument.
@@ -209,8 +192,6 @@ type ProcessTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
-var _ sql.Table2 = (*ProcessTable)(nil)
-
 // NewProcessTable returns a new ProcessTable.
 func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
 	return &ProcessTable{t, onPartitionDone, onPartitionStart, OnRowNext}
@@ -224,17 +205,6 @@ func (t *ProcessTable) Underlying() sql.Table {
 // PartitionRows implements the sql.Table interface.
 func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.RowIter, error) {
 	iter, err := t.Table.PartitionRows(ctx, p)
-	if err != nil {
-		return nil, err
-	}
-
-	onDone, onNext := t.notifyFuncsForPartition(p)
-
-	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
-}
-
-func (t *ProcessTable) PartitionRows2(ctx *sql.Context, p sql.Partition) (sql.RowIter2, error) {
-	iter, err := t.Table.(sql.Table2).PartitionRows2(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -364,22 +334,6 @@ func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return row, nil
-}
-
-func (i *trackedRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	err := i.iter2.Next2(ctx, frame)
-	if err != nil {
-		return err
-	}
-
-	// TODO: revisit this when we put more than one row per frame
-	i.numRows++
-
-	if i.onNext != nil {
-		i.onNext()
-	}
-
-	return nil
 }
 
 func (i *trackedRowIter) Close(ctx *sql.Context) error {

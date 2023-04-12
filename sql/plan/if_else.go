@@ -108,11 +108,6 @@ func (ic *IfConditional) WithExpressions(exprs ...sql.Expression) (sql.Node, err
 	return &nic, nil
 }
 
-// RowIter implements the sql.Node interface.
-func (ic *IfConditional) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return ic.Body.RowIter(ctx, row)
-}
-
 // implementsRepresentsBlock implements the RepresentsBlock interface.
 func (ic *IfConditional) implementsRepresentsBlock() {}
 

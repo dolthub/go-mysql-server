@@ -367,36 +367,6 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 	return nil
 }
 
-func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
-	switch node := node.(type) {
-	case *plan.Exchange:
-		return GetInsertable(node.Child)
-	case sql.InsertableTable:
-		return node, nil
-	case *plan.ResolvedTable:
-		return getInsertableTable(node.Table)
-	case sql.TableWrapper:
-		return getInsertableTable(node.Underlying())
-	case *plan.InsertDestination:
-		return GetInsertable(node.Child)
-	case *plan.PrependNode:
-		return GetInsertable(node.Child)
-	default:
-		return nil, plan.ErrInsertIntoNotSupported.New()
-	}
-}
-
-func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
-	switch t := t.(type) {
-	case sql.InsertableTable:
-		return t, nil
-	case sql.TableWrapper:
-		return getInsertableTable(t.Underlying())
-	default:
-		return nil, plan.ErrInsertIntoNotSupported.New()
-	}
-}
-
 func toInt64(x interface{}) int64 {
 	switch x := x.(type) {
 	case int:

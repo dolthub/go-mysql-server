@@ -41,10 +41,6 @@ func (n *TransformedNamedNode) Schema() sql.Schema {
 	return n.Child.Schema()
 }
 
-func (n *TransformedNamedNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return n.Child.RowIter(ctx, row)
-}
-
 func (n *TransformedNamedNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)

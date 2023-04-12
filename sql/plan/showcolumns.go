@@ -167,32 +167,14 @@ func (s *ShowColumns) DebugString() string {
 	return tp.String()
 }
 
-func (s *ShowColumns) IsFirstColInUniqueKey(col *sql.Column, table sql.Table) bool {
-	for _, idx := range s.Indexes {
-		if !idx.IsUnique() {
-			continue
-		}
-
-		firstIndexCol := GetColumnFromIndexExpr(idx.Expressions()[0], table)
-		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
-			return true
+// GetColumnFromIndexExpr returns column from the table given using the expression string given, in the form
+// "table.column". Returns nil if the expression doesn't represent a column.
+func GetColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
+	for _, col := range table.Schema() {
+		if col.Source+"."+col.Name == expr {
+			return col
 		}
 	}
 
-	return false
-}
-
-func (s *ShowColumns) IsFirstColInNonUniqueKey(col *sql.Column, table sql.Table) bool {
-	for _, idx := range s.Indexes {
-		if idx.IsUnique() {
-			continue
-		}
-
-		firstIndexCol := GetColumnFromIndexExpr(idx.Expressions()[0], table)
-		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
-			return true
-		}
-	}
-
-	return false
+	return nil
 }

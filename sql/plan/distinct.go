@@ -38,19 +38,6 @@ func (d *Distinct) Resolved() bool {
 	return d.UnaryNode.Child.Resolved()
 }
 
-// RowIter implements the Node interface.
-func (d *Distinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Distinct")
-
-	it, err := d.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, newDistinctIter(ctx, it)), nil
-}
-
 // WithChildren implements the Node interface.
 func (d *Distinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -103,19 +90,6 @@ func NewOrderedDistinct(child sql.Node) *OrderedDistinct {
 // Resolved implements the Resolvable interface.
 func (d *OrderedDistinct) Resolved() bool {
 	return d.UnaryNode.Child.Resolved()
-}
-
-// RowIter implements the Node interface.
-func (d *OrderedDistinct) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.OrderedDistinct")
-
-	it, err := d.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, newOrderedDistinctIter(it, d.Child.Schema())), nil
 }
 
 // WithChildren implements the Node interface.

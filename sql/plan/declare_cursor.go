@@ -87,11 +87,6 @@ func (*DeclareCursor) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-// RowIter implements the interface sql.Node.
-func (d *DeclareCursor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &declareCursorIter{d}, nil
-}
-
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (d *DeclareCursor) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d

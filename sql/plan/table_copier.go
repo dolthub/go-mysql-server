@@ -46,23 +46,10 @@ func (tc *TableCopier) Database() sql.Database {
 	return tc.db
 }
 
-func (tc *TableCopier) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	if _, ok := tc.Destination.(*CreateTable); ok {
-		return tc.ProcessCreateTable(ctx, row)
-	}
-
-	drt, ok := tc.Destination.(*ResolvedTable)
-	if !ok {
-		return nil, fmt.Errorf("TableCopier only accepts CreateTable or ResolvedTable as the destination")
-	}
-
-	return tc.CopyTableOver(ctx, tc.Source.Schema()[0].Source, drt.Name())
-}
-
-func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilder, row sql.Row) (sql.RowIter, error) {
 	ct := tc.Destination.(*CreateTable)
 
-	_, err := ct.RowIter(ctx, row)
+	_, err := b.Build(ctx, ct, row)
 	if err != nil {
 		return sql.RowsToRowIter(), err
 	}
@@ -86,7 +73,7 @@ func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, row sql.Row) (sql.Ro
 	// Wrap the insert into a row update accumulator
 	roa := NewRowUpdateAccumulator(ii, UpdateTypeInsert)
 
-	return roa.RowIter(ctx, row)
+	return b.Build(ctx, roa, row)
 }
 
 // createTableSelectCanBeCopied determines whether the newly created table's data can just be copied from the Source table

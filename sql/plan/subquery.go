@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -47,6 +46,10 @@ type Subquery struct {
 	disposeFunc sql.DisposeFunc
 	// Mutex to guard the caches
 	cacheMu sync.Mutex
+	// TODO convert subquery expressions into apply joins
+	// TODO move expression.Eval into an execution package
+	b sql.NodeExecBuilder
+	// TODO analyzer rule to connect builder access
 }
 
 // NewSubquery returns a new subquery expression.
@@ -106,6 +109,17 @@ type PrependNode struct {
 
 var _ sql.Node = (*PrependNode)(nil)
 var _ sql.CollationCoercible = (*PrependNode)(nil)
+
+func (p *PrependNode) String() string {
+	return p.Child.String()
+}
+
+func (p *PrependNode) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("Prepend(%s)", sql.FormatRow(p.Row))
+	_ = tp.WriteChildren(sql.DebugString(p.Child))
+	return tp.String()
+}
 
 func (p *PrependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -263,53 +277,6 @@ func (m *Max1Row) DebugString() string {
 	return pr.String()
 }
 
-func (m *Max1Row) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	m.Mu.Lock()
-	defer m.Mu.Unlock()
-
-	if !m.HasResults() {
-		err := m.PopulateResults(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	switch {
-	case m.EmptyResult:
-		return EmptyIter, nil
-	case m.Result != nil:
-		return sql.RowsToRowIter(m.Result), nil
-	default:
-		return nil, fmt.Errorf("Max1Row failed to load results")
-	}
-}
-
-// PopulateResults loads and stores the state of its child iter:
-// 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
-// returned
-func (m *Max1Row) PopulateResults(ctx *sql.Context, row sql.Row) error {
-	i, err := m.Child.RowIter(ctx, row)
-	if err != nil {
-		return err
-	}
-	r1, err := i.Next(ctx)
-	if errors.Is(err, io.EOF) {
-		m.EmptyResult = true
-		return nil
-	} else if err != nil {
-		return err
-	}
-
-	_, err = i.Next(ctx)
-	if err == nil {
-		return sql.ErrExpectedSingleRow.New()
-	} else if !errors.Is(err, io.EOF) {
-		return err
-	}
-	m.Result = r1
-	return nil
-}
-
 // HasResults returns true after a successful call to PopulateResults()
 func (m *Max1Row) HasResults() bool {
 	return m.Result != nil || m.EmptyResult
@@ -368,7 +335,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
-	iter, err := q.RowIter(ctx, row)
+	iter, err := s.b.Build(ctx, q, row)
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +420,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 		return false, err
 	}
 
-	iter, err := q.RowIter(ctx, row)
+	iter, err := s.b.Build(ctx, q, row)
 	if err != nil {
 		return false, err
 	}

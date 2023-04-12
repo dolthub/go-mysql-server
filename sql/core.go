@@ -24,6 +24,7 @@ import (
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable
+
 	fmt.Stringer
 	// Type returns the expression type.
 	Type() Type
@@ -80,6 +81,10 @@ type Node interface {
 	// whether a user (contained in the context, along with their active roles) has the necessary privileges to execute
 	// this node (and its children).
 	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
+}
+
+type NodeExecBuilder interface {
+	Build(ctx *Context, n Node, r Row) (RowIter, error)
 }
 
 // Nameable is something that has a name.

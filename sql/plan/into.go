@@ -18,9 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -61,58 +58,6 @@ func (i *Into) DebugString() string {
 	_ = p.WriteNode("Into(%s)", strings.Join(vars, ", "))
 	_ = p.WriteChildren(sql.DebugString(i.Child))
 	return p.String()
-}
-
-func (i *Into) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Into")
-	defer span.End()
-
-	rowIter, err := i.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := sql.RowIterToRows(ctx, nil, rowIter)
-	if err != nil {
-		return nil, err
-	}
-
-	rowNum := len(rows)
-	if rowNum > 1 {
-		return nil, sql.ErrMoreThanOneRow.New()
-	}
-	if rowNum == 0 {
-		// a warning with error code 1329 occurs (No data), and make no change to variables
-		return sql.RowsToRowIter(sql.Row{}), nil
-	}
-	if len(rows[0]) != len(i.IntoVars) {
-		return nil, sql.ErrColumnNumberDoesNotMatch.New()
-	}
-
-	var rowValues = make([]interface{}, len(rows[0]))
-
-	for j, val := range rows[0] {
-		rowValues[j] = val
-	}
-
-	for j, v := range i.IntoVars {
-		switch variable := v.(type) {
-		case *expression.UserVar:
-			varType := types.ApproximateTypeFromValue(rowValues[j])
-			err = ctx.SetUserVariable(ctx, variable.Name, rowValues[j], varType)
-			if err != nil {
-				return nil, err
-			}
-		case *expression.ProcedureParam:
-			err = variable.Set(rowValues[j], types.ApproximateTypeFromValue(rowValues[j]))
-			if err != nil {
-				return nil, err
-			}
-		default:
-			return nil, fmt.Errorf("unsupported type for into: %T", variable)
-		}
-	}
-
-	return sql.RowsToRowIter(sql.Row{}), nil
 }
 
 func (i *Into) WithChildren(children ...sql.Node) (sql.Node, error) {

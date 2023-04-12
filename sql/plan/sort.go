@@ -37,7 +37,6 @@ func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
 
 var _ sql.Expressioner = (*Sort)(nil)
 var _ sql.Node = (*Sort)(nil)
-var _ sql.Node2 = (*Sort)(nil)
 var _ sql.CollationCoercible = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
@@ -48,27 +47,6 @@ func (s *Sort) Resolved() bool {
 		}
 	}
 	return s.Child.Resolved()
-}
-
-// RowIter implements the Node interface.
-func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Sort")
-	i, err := s.UnaryNode.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	return sql.NewSpanIter(span, newSortIter(s.SortFields, i)), nil
-}
-
-func (s *Sort) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	span, ctx := ctx.Span("plan.Sort")
-	i, err := s.UnaryNode.Child.(sql.Node2).RowIter2(ctx, f)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	return sql.NewSpanIter(span, newSortIter(s.SortFields, i)).(sql.RowIter2), nil
 }
 
 func (s *Sort) String() string {
@@ -167,22 +145,6 @@ func (n *TopN) Resolved() bool {
 func (n TopN) WithCalcFoundRows(v bool) *TopN {
 	n.CalcFoundRows = v
 	return &n
-}
-
-// RowIter implements the Node interface.
-func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.TopN")
-	i, err := n.UnaryNode.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	limit, err := getInt64Value(ctx, n.Limit)
-	if err != nil {
-		return nil, err
-	}
-	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))), nil
 }
 
 func (n *TopN) String() string {

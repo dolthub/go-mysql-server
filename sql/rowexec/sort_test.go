@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package rowexec
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -207,9 +208,9 @@ func TestSort(t *testing.T) {
 				require.NoError(tbl.Insert(sql.NewEmptyContext(), row))
 			}
 
-			sort := NewSort(tt.sortFields, NewResolvedTable(tbl, nil, nil))
+			sort := plan.NewSort(tt.sortFields, plan.NewResolvedTable(tbl, nil, nil))
 
-			actual, err := sql.NodeToRows(ctx, sort)
+			actual, err := NodeToRows(ctx, sort)
 			require.NoError(err)
 			require.Equal(tt.expected, actual)
 		})
@@ -240,7 +241,7 @@ func TestSortAscending(t *testing.T) {
 	sf := []sql.SortField{
 		{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 	}
-	s := NewSort(sf, NewResolvedTable(child, nil, nil))
+	s := plan.NewSort(sf, plan.NewResolvedTable(child, nil, nil))
 	require.Equal(schema.Schema, s.Schema())
 
 	expected := []sql.Row{
@@ -280,7 +281,7 @@ func TestSortDescending(t *testing.T) {
 	sf := []sql.SortField{
 		{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 	}
-	s := NewSort(sf, NewResolvedTable(child, nil, nil))
+	s := plan.NewSort(sf, plan.NewResolvedTable(child, nil, nil))
 	require.Equal(schema.Schema, s.Schema())
 
 	expected := []sql.Row{

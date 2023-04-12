@@ -39,7 +39,6 @@ type IndexedTableAccess struct {
 var _ sql.Table = (*IndexedTableAccess)(nil)
 var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
-var _ sql.Node2 = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 

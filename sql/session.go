@@ -529,25 +529,6 @@ func (i *spanIter) Next(ctx *Context) (Row, error) {
 	return row, nil
 }
 
-func (i *spanIter) Next2(ctx *Context, frame *RowFrame) error {
-	start := time.Now()
-
-	err := i.iter2.Next2(ctx, frame)
-	if err == io.EOF {
-		i.finish()
-		return err
-	}
-
-	if err != nil {
-		i.finishWithError(err)
-		return err
-	}
-
-	i.count++
-	i.updateTimings(start)
-	return nil
-}
-
 func (i *spanIter) finish() {
 	var avg time.Duration
 	if i.count > 0 {

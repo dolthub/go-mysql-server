@@ -80,7 +80,7 @@ func (b *builder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, row sq
 		}
 		// If the branchIter is already a block iter, then we don't need to construct our own, as its contained
 		// node and schema will be a better representation of the iterated rows.
-		if blockRowIter, ok := branchIter.(*plan.BlockRowIter); ok {
+		if blockRowIter, ok := branchIter.(plan.BlockRowIter); ok {
 			return blockRowIter, nil
 		}
 		return &ifElseIter{
@@ -97,7 +97,7 @@ func (b *builder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, row sq
 	}
 	// If the branchIter is already a block iter, then we don't need to construct our own, as its contained
 	// node and schema will be a better representation of the iterated rows.
-	if blockRowIter, ok := branchIter.(*plan.BlockRowIter); ok {
+	if blockRowIter, ok := branchIter.(plan.BlockRowIter); ok {
 		return blockRowIter, nil
 	}
 	return &ifElseIter{

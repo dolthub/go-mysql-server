@@ -415,8 +415,8 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	oldJoinRow := row[:len(row)/2]
 	newJoinRow := row[len(row)/2:]
 
-	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
-	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
+	tableToOldRow := plan.SplitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
+	tableToNewRow := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
 	for tableName, _ := range u.updaterMap {
 		u.rowsMatched++ // TODO: This currently returns the incorrect answer
@@ -446,22 +446,6 @@ func (u *updateJoinRowHandler) okResult() types.OkResult {
 
 func (u *updateJoinRowHandler) RowsMatched() int64 {
 	return int64(u.rowsMatched)
-}
-
-// recreateTableSchemaFromJoinSchema takes a join schema and recreates each individual tables schema.
-func recreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
-	ret := make(map[string]sql.Schema, 0)
-
-	for _, c := range joinSchema {
-		potential, exists := ret[c.Source]
-		if exists {
-			ret[c.Source] = append(potential, c)
-		} else {
-			ret[c.Source] = sql.Schema{c}
-		}
-	}
-
-	return ret
 }
 
 type deleteRowHandler struct {
@@ -565,35 +549,6 @@ func (a *accumulatorIter) Close(ctx *sql.Context) error {
 
 type matchingAccumulator interface {
 	RowsMatched() int64
-}
-
-// splitRowIntoTableRowMap takes a join table row and breaks into a map of tables and their respective row.
-func splitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.Row {
-	ret := make(map[string]sql.Row)
-
-	if len(joinSchema) == 0 {
-		return ret
-	}
-
-	currentTable := joinSchema[0].Source
-	currentRow := sql.Row{row[0]}
-
-	for i := 1; i < len(joinSchema); i++ {
-		c := joinSchema[i]
-
-		if c.Source != currentTable {
-			ret[currentTable] = currentRow
-			currentTable = c.Source
-			currentRow = sql.Row{row[i]}
-		} else {
-			currentTable = c.Source
-			currentRow = append(currentRow, row[i])
-		}
-	}
-
-	ret[currentTable] = currentRow
-
-	return ret
 }
 
 type updateSourceIter struct {

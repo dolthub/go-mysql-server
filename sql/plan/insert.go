@@ -316,3 +316,33 @@ func (ii *InsertInto) Resolved() bool {
 	}
 	return true
 }
+
+func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
+	switch node := node.(type) {
+	case *Exchange:
+		return GetInsertable(node.Child)
+	case sql.InsertableTable:
+		return node, nil
+	case *ResolvedTable:
+		return getInsertableTable(node.Table)
+	case sql.TableWrapper:
+		return getInsertableTable(node.Underlying())
+	case *InsertDestination:
+		return GetInsertable(node.Child)
+	case *PrependNode:
+		return GetInsertable(node.Child)
+	default:
+		return nil, ErrInsertIntoNotSupported.New()
+	}
+}
+
+func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
+	switch t := t.(type) {
+	case sql.InsertableTable:
+		return t, nil
+	case sql.TableWrapper:
+		return getInsertableTable(t.Underlying())
+	default:
+		return nil, ErrInsertIntoNotSupported.New()
+	}
+}

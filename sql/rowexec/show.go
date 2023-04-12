@@ -424,9 +424,9 @@ func (b *builder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, row sq
 		case *plan.ResolvedTable:
 			if col.PrimaryKey {
 				key = "PRI"
-			} else if n.IsFirstColInUniqueKey(col, table) {
+			} else if isFirstColInUniqueKey(n, col, table) {
 				key = "UNI"
-			} else if n.IsFirstColInUniqueKey(col, table) {
+			} else if isFirstColInNonUniqueKey(n, col, table) {
 				key = "MUL"
 			}
 		case *plan.SubqueryAlias:

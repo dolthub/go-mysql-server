@@ -78,16 +78,10 @@ func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
 }
 
-func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.childIter2.Next2(ctx, frame)
-}
-
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	var err error
 	if t.childIter != nil {
 		err = t.childIter.Close(ctx)
-	} else if t.childIter2 != nil {
-		err = t.childIter2.Close(ctx)
 	}
 	if err != nil {
 		return err

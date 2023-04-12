@@ -183,7 +183,7 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	nullable := ""
-	if col := GetColumnFromIndexExpr(show.expression, tbl); col != nil {
+	if col := plan.GetColumnFromIndexExpr(show.expression, tbl); col != nil {
 		columnName, expression = col.Name, nil
 		if col.Nullable {
 			nullable = "YES"
@@ -221,16 +221,34 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	), nil
 }
 
-// GetColumnFromIndexExpr returns column from the table given using the expression string given, in the form
-// "table.column". Returns nil if the expression doesn't represent a column.
-func GetColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
-	for _, col := range table.Schema() {
-		if col.Source+"."+col.Name == expr {
-			return col
+func isFirstColInUniqueKey(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+	for _, idx := range s.Indexes {
+		if !idx.IsUnique() {
+			continue
+		}
+
+		firstIndexCol := plan.GetColumnFromIndexExpr(idx.Expressions()[0], table)
+		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
+			return true
 		}
 	}
 
-	return nil
+	return false
+}
+
+func isFirstColInNonUniqueKey(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+	for _, idx := range s.Indexes {
+		if idx.IsUnique() {
+			continue
+		}
+
+		firstIndexCol := plan.GetColumnFromIndexExpr(idx.Expressions()[0], table)
+		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (i *showIndexesIter) Close(*sql.Context) error {
@@ -347,7 +365,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		prefixLengths := index.PrefixLengths()
 		var indexCols []string
 		for i, expr := range index.Expressions() {
-			col := GetColumnFromIndexExpr(expr, table)
+			col := plan.GetColumnFromIndexExpr(expr, table)
 			if col != nil {
 				indexDef := sql.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > i && prefixLengths[i] != 0 {
@@ -403,7 +421,7 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	}
 
 	for _, expr := range index.Expressions() {
-		if col := GetColumnFromIndexExpr(expr, table); col != nil {
+		if col := plan.GetColumnFromIndexExpr(expr, table); col != nil {
 			found := false
 			for _, pk := range pks {
 				if col == pk {

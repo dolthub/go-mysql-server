@@ -15,11 +15,6 @@
 package plan
 
 import (
-	"reflect"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -90,26 +85,6 @@ func (t *TableAlias) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 		return sql.GetCoercibility(ctx, t.UnaryNode.Child)
 	}
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the Node interface.
-func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var table string
-	if tbl, ok := t.Child.(sql.Nameable); ok {
-		table = tbl.Name()
-	} else {
-		table = reflect.TypeOf(t.Child).String()
-	}
-
-	span, ctx := ctx.Span("sql.TableAlias", trace.WithAttributes(attribute.String("table", table)))
-
-	iter, err := t.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, iter), nil
 }
 
 func (t TableAlias) String() string {

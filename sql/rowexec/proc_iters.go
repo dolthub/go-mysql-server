@@ -165,16 +165,34 @@ type openIter struct {
 	pRef *expression.ProcedureReference
 	name string
 	row  sql.Row
+	b    *builder
 }
 
 var _ sql.RowIter = (*openIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (o *openIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if err := o.pRef.OpenCursor(ctx, o.name, o.row); err != nil {
+	if err := o.openCursor(ctx, o.pRef, o.name, o.row); err != nil {
 		return nil, err
 	}
 	return nil, io.EOF
+}
+
+func (o *openIter) openCursor(ctx *sql.Context, ref *expression.ProcedureReference, name string, row sql.Row) error {
+	lowerName := strings.ToLower(name)
+	scope := ref.InnermostScope
+	for scope != nil {
+		if cursorRefVal, ok := scope.Cursors[lowerName]; ok {
+			if cursorRefVal.RowIter != nil {
+				return sql.ErrCursorAlreadyOpen.New(name)
+			}
+			var err error
+			cursorRefVal.RowIter, err = o.b.buildNodeExec(ctx, cursorRefVal.SelectStmt, row)
+			return err
+		}
+		scope = scope.Parent
+	}
+	return fmt.Errorf("cannot find cursor `%s`", name)
 }
 
 // Close implements the interface sql.RowIter.

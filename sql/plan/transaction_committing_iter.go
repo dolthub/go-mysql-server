@@ -26,7 +26,6 @@ type TransactionCommittingNode struct {
 }
 
 var _ sql.Node = (*TransactionCommittingNode)(nil)
-var _ sql.Node2 = (*TransactionCommittingNode)(nil)
 var _ sql.CollationCoercible = (*TransactionCommittingNode)(nil)
 
 // NewTransactionCommittingNode returns a TransactionCommittingNode.

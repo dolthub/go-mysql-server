@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -130,29 +129,6 @@ func (t *TriggerRollback) CollationCoercibility(ctx *sql.Context) (collation sql
 	return sql.GetCoercibility(ctx, t.Child)
 }
 
-func (t *TriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	childIter, err := t.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", SavePointName)
-
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return nil, fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
-	}
-
-	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
-		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
-	}
-
-	return &triggerRollbackIter{
-		child:        childIter,
-		hasSavepoint: true,
-	}, nil
-}
-
 func (t *TriggerRollback) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("TriggerRollback()")
@@ -196,10 +172,6 @@ func (t *NoopTriggerRollback) CheckPrivileges(ctx *sql.Context, opChecker sql.Pr
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t *NoopTriggerRollback) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, t.Child)
-}
-
-func (t *NoopTriggerRollback) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return t.Child.RowIter(ctx, row)
 }
 
 func (t *NoopTriggerRollback) String() string {

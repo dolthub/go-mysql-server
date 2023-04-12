@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -97,31 +96,6 @@ func (f *Fetch) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Fetch) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-func (f *Fetch) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	row, sch, err := f.Pref.FetchCursor(ctx, f.Name)
-	if err == io.EOF {
-		return sql.RowsToRowIter(), f.Pref.HandleError(ctx, err)
-	} else if err != nil {
-		return nil, err
-	}
-	if len(row) != len(f.InnerSet.Exprs) {
-		return nil, sql.ErrFetchIncorrectCount.New()
-	}
-	if f.Sch == nil {
-		f.Sch = sch
-		for i, expr := range f.InnerSet.Exprs {
-			setExpr, ok := expr.(*expression.SetField)
-			if !ok {
-				return nil, fmt.Errorf("expected SetField expression in FETCH")
-			}
-			col := sch[i]
-			setExpr.Right = expression.NewGetField(i, col.Type, col.Name, col.Nullable)
-		}
-	}
-	return f.InnerSet.RowIter(ctx, row)
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.

@@ -15,9 +15,6 @@
 package plan
 
 import (
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -62,28 +59,6 @@ func (l *Limit) Resolved() bool {
 func (l Limit) WithCalcFoundRows(v bool) *Limit {
 	l.CalcFoundRows = v
 	return &l
-}
-
-// RowIter implements the Node interface.
-func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", trace.WithAttributes(attribute.Stringer("limit", l.Limit)))
-
-	limit, err := getInt64Value(ctx, l.Limit)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	childIter, err := l.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	return sql.NewSpanIter(span, &limitIter{
-		calcFoundRows: l.CalcFoundRows,
-		limit:         limit,
-		childIter:     childIter,
-	}), nil
 }
 
 // WithChildren implements the Node interface.

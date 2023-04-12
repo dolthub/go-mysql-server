@@ -42,23 +42,6 @@ func (u *UpdateJoin) String() string {
 	return pr.String()
 }
 
-// RowIter implements the sql.Node interface.
-func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	ji, err := u.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return &updateJoinIter{
-		updateSourceIter: ji,
-		joinSchema:       u.Child.(*UpdateSource).Child.Schema(),
-		updaters:         u.Updaters,
-		caches:           make(map[string]sql.KeyValueCache),
-		disposals:        make(map[string]sql.DisposeFunc),
-		joinNode:         u.Child.(*UpdateSource).Child,
-	}, nil
-}
-
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	return &updatableJoinTable{
@@ -128,9 +111,25 @@ func (u *updatableJoinTable) Collation() sql.CollationID {
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
 		updaterMap: u.updaters,
-		schemaMap:  recreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
+		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
 		joinSchema: u.joinNode.Schema(),
 	}
+}
+
+// RecreateTableSchemaFromJoinSchema takes a join schema and recreates each individual tables schema.
+func RecreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
+	ret := make(map[string]sql.Schema, 0)
+
+	for _, c := range joinSchema {
+		potential, exists := ret[c.Source]
+		if exists {
+			ret[c.Source] = append(potential, c)
+		} else {
+			ret[c.Source] = sql.Schema{c}
+		}
+	}
+
+	return ret
 }
 
 // updatableJoinUpdater manages the process of taking a join row and allocating the respective updates to each updatable
@@ -177,8 +176,8 @@ func (u *updatableJoinUpdater) StatementComplete(ctx *sql.Context) error {
 
 // Update implements the sql.RowUpdater interface.
 func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
-	tableToOldRowMap := splitRowIntoTableRowMap(old, u.joinSchema)
-	tableToNewRowMap := splitRowIntoTableRowMap(new, u.joinSchema)
+	tableToOldRowMap := SplitRowIntoTableRowMap(old, u.joinSchema)
+	tableToNewRowMap := SplitRowIntoTableRowMap(new, u.joinSchema)
 
 	for tableName, updater := range u.updaterMap {
 		oldRow := tableToOldRowMap[tableName]
@@ -200,6 +199,35 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 	}
 
 	return nil
+}
+
+// SplitRowIntoTableRowMap takes a join table row and breaks into a map of tables and their respective row.
+func SplitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.Row {
+	ret := make(map[string]sql.Row)
+
+	if len(joinSchema) == 0 {
+		return ret
+	}
+
+	currentTable := joinSchema[0].Source
+	currentRow := sql.Row{row[0]}
+
+	for i := 1; i < len(joinSchema); i++ {
+		c := joinSchema[i]
+
+		if c.Source != currentTable {
+			ret[currentTable] = currentRow
+			currentTable = c.Source
+			currentRow = sql.Row{row[i]}
+		} else {
+			currentTable = c.Source
+			currentRow = append(currentRow, row[i])
+		}
+	}
+
+	ret[currentTable] = currentRow
+
+	return ret
 }
 
 // Close implements the sql.RowUpdater interface.

@@ -745,26 +745,6 @@ func (i *sortIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
-func (i *sortIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	if i.idx == -1 {
-		err := i.computeSortedRows2(ctx)
-		if err != nil {
-			return err
-		}
-		i.idx = 0
-	}
-
-	if i.idx >= len(i.sortedRows2) {
-		return io.EOF
-	}
-
-	row := i.sortedRows2[i.idx]
-	i.idx++
-	frame.Append(row...)
-
-	return nil
-}
-
 func (i *sortIter) Close(ctx *sql.Context) error {
 	i.sortedRows = nil
 	return i.childIter.Close(ctx)
@@ -801,42 +781,6 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 		return sorter.LastError
 	}
 	i.sortedRows = rows
-	return nil
-}
-
-func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
-	cache, dispose := ctx.Memory.NewRows2Cache()
-	defer dispose()
-
-	f := sql.NewRowFrame()
-	defer f.Recycle()
-
-	for {
-		f.Clear()
-		err := i.childIter2.Next2(ctx, f)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := cache.Add2(f.Row2Copy()); err != nil {
-			return err
-		}
-	}
-
-	rows := cache.Get2()
-	sorter := &expression.Sorter2{
-		SortFields: i.sortFields,
-		Rows:       rows,
-		Ctx:        ctx,
-	}
-	sort.Stable(sorter)
-	if sorter.LastError != nil {
-		return sorter.LastError
-	}
-	i.sortedRows2 = rows
 	return nil
 }
 

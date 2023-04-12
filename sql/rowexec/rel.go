@@ -2,6 +2,7 @@ package rowexec
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -12,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"io"
 	"reflect"
 )
 
@@ -198,17 +200,17 @@ func (b *builder) buildTableAlias(ctx *sql.Context, n *plan.TableAlias, row sql.
 func (b *builder) buildJoinNode(ctx *sql.Context, n *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
 	switch {
 	case n.Op.IsFullOuter():
-		return newFullJoinIter(ctx, n, row)
+		return newFullJoinIter(ctx, b, n, row)
 	case n.Op.IsPartial():
-		return newExistsIter(ctx, n, row)
+		return newExistsIter(ctx, b, n, row)
 	case n.Op.IsCross():
-		return newCrossJoinIter(ctx, n, row)
+		return newCrossJoinIter(ctx, b, n, row)
 	case n.Op.IsPlaceholder():
 		panic(fmt.Sprintf("%s is a placeholder, RowIter called", n.Op))
 	case n.Op.IsMerge():
-		return newMergeJoinIter(ctx, n, row)
+		return newMergeJoinIter(ctx, b, n, row)
 	default:
-		return newJoinIter(ctx, n, row)
+		return newJoinIter(ctx, b, n, row)
 	}
 }
 
@@ -400,7 +402,7 @@ func (b *builder) buildMax1Row(ctx *sql.Context, n *plan.Max1Row, row sql.Row) (
 	defer n.Mu.Unlock()
 
 	if !n.HasResults() {
-		err := n.PopulateResults(ctx, row)
+		err := b.populateMax1Results(ctx, n, row)
 		if err != nil {
 			return nil, err
 		}
@@ -414,6 +416,32 @@ func (b *builder) buildMax1Row(ctx *sql.Context, n *plan.Max1Row, row sql.Row) (
 	default:
 		return nil, fmt.Errorf("Max1Row failed to load results")
 	}
+}
+
+// PopulateResults loads and stores the state of its child iter:
+// 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
+// returned
+func (b *builder) populateMax1Results(ctx *sql.Context, n *plan.Max1Row, row sql.Row) error {
+	i, err := b.buildNodeExec(ctx, n.Child, row)
+	if err != nil {
+		return err
+	}
+	r1, err := i.Next(ctx)
+	if errors.Is(err, io.EOF) {
+		n.EmptyResult = true
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	_, err = i.Next(ctx)
+	if err == nil {
+		return sql.ErrExpectedSingleRow.New()
+	} else if !errors.Is(err, io.EOF) {
+		return err
+	}
+	n.Result = r1
+	return nil
 }
 
 func (b *builder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sql.RowIter, error) {

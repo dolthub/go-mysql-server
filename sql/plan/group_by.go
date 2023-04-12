@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -85,29 +83,6 @@ func (g *GroupBy) Schema() sql.Schema {
 	}
 
 	return s
-}
-
-// RowIter implements the Node interface.
-func (g *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.GroupBy", trace.WithAttributes(
-		attribute.Int("groupings", len(g.GroupByExprs)),
-		attribute.Int("aggregates", len(g.SelectedExprs)),
-	))
-
-	i, err := g.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	var iter sql.RowIter
-	if len(g.GroupByExprs) == 0 {
-		iter = newGroupByIter(g.SelectedExprs, i)
-	} else {
-		iter = newGroupByGroupingIter(ctx, g.SelectedExprs, g.GroupByExprs, i)
-	}
-
-	return sql.NewSpanIter(span, iter), nil
 }
 
 // WithChildren implements the Node interface.

@@ -807,6 +807,7 @@ func (b *builder) buildAddColumn(ctx *sql.Context, n *plan.AddColumn, row sql.Ro
 	return &addColumnIter{
 		a:         n,
 		alterable: alterable,
+		b:         b,
 	}, nil
 }
 

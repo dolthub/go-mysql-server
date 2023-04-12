@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -81,54 +80,6 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	default:
 	}
 	return row, err
-}
-
-func (i *TableRowIter) Next2(ctx *Context, frame *RowFrame) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-
-	if i.partition == nil {
-		partition, err := i.partitions.Next(ctx)
-		if err != nil {
-			if err == io.EOF {
-				if e := i.partitions.Close(ctx); e != nil {
-					return e
-				}
-			}
-
-			return err
-		}
-
-		i.partition = partition
-	}
-
-	if i.rows2 == nil {
-		t2, ok := i.table.(Table2)
-		if !ok {
-			return fmt.Errorf("table does not implement Table2: %s (%T)", i.table.Name(), i.table)
-		}
-
-		rows, err := t2.PartitionRows2(ctx, i.partition)
-		if err != nil {
-			return err
-		}
-
-		i.rows2 = rows
-	}
-
-	err := i.rows2.Next2(ctx, frame)
-	if err != nil && err == io.EOF {
-		if err = i.rows2.Close(ctx); err != nil {
-			return err
-		}
-
-		i.partition = nil
-		i.rows2 = nil
-		return i.Next2(ctx, frame)
-	}
-
-	return err
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {

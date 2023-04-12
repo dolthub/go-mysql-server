@@ -15,14 +15,9 @@
 package plan
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 
-	"github.com/oliveagle/jsonpath"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type jsonTablePartition struct {
@@ -62,6 +57,7 @@ type JSONTable struct {
 	Path     string
 	schema   sql.PrimaryKeySchema
 	ColPaths []string
+	b        sql.NodeExecBuilder
 }
 
 var _ sql.Table = (*JSONTable)(nil)
@@ -99,7 +95,7 @@ func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.Table interface
 func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return t.RowIter(ctx, nil)
+	return t.b.Build(ctx, t, nil)
 }
 
 // Resolved implements the sql.Resolvable interface
@@ -110,46 +106,6 @@ func (t *JSONTable) Resolved() bool {
 // Children implements the sql.Node interface
 func (t *JSONTable) Children() []sql.Node {
 	return nil
-}
-
-// RowIter implements the sql.Node interface
-func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// data must evaluate to JSON string
-	data, err := t.DataExpr.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	strData, err := types.LongBlob.Convert(data)
-	if err != nil {
-		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
-	}
-
-	if strData == nil {
-		return &jsonTableRowIter{}, nil
-	}
-
-	var jsonData interface{}
-	if err := json.Unmarshal(strData.([]byte), &jsonData); err != nil {
-		return nil, err
-	}
-
-	// Get data specified from initial path
-	var jsonPathData []interface{}
-	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, t.Path); err == nil {
-		if data, ok := rootJSONData.([]interface{}); ok {
-			jsonPathData = data
-		} else {
-			jsonPathData = []interface{}{rootJSONData}
-		}
-	} else {
-		return nil, err
-	}
-
-	return &jsonTableRowIter{
-		colPaths: t.ColPaths,
-		schema:   t.schema.Schema,
-		data:     jsonPathData,
-	}, nil
 }
 
 // WithChildren implements the sql.Node interface

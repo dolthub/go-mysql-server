@@ -127,52 +127,6 @@ func (c *CaseStatement) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return c.IfElse.CollationCoercibility(ctx)
 }
 
-// RowIter implements the interface sql.Node.
-func (c *CaseStatement) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	caseValue, err := c.Expr.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, ifConditional := range c.IfElse.IfConditionals {
-		whenValue, err := ifConditional.Condition.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		comparison, err := c.Expr.Type().Compare(caseValue, whenValue)
-		if err != nil {
-			return nil, err
-		}
-		if comparison != 0 {
-			continue
-		}
-
-		return c.ConstructRowIter(ctx, row, ifConditional, ifConditional.Body)
-	}
-
-	// All conditions failed so we run the else
-	return c.ConstructRowIter(ctx, row, c.IfElse.Else, c.IfElse.Else)
-}
-
-// ConstructRowIter is a helper function to create the sql.RowIter from the RowIter function.
-func (c *CaseStatement) ConstructRowIter(ctx *sql.Context, row sql.Row, iterNode sql.Node, bodyNode sql.Node) (sql.RowIter, error) {
-	// All conditions failed so we run the else
-	branchIter, err := iterNode.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	// If the branchIter is already a block iter, then we don't need to construct our own, as its contained
-	// node and schema will be a better representation of the iterated rows.
-	if blockRowIter, ok := branchIter.(BlockRowIter); ok {
-		return blockRowIter, nil
-	}
-	return &ifElseIter{
-		branchIter: branchIter,
-		sch:        bodyNode.Schema(),
-		branchNode: bodyNode,
-	}, nil
-}
-
 type ElseCaseError struct{}
 
 var _ sql.Node = ElseCaseError{}

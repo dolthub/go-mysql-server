@@ -109,39 +109,6 @@ func (n *HashLookup) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.GetCoercibility(ctx, n.Child)
 }
 
-func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
-	n.Mutex.Lock()
-	defer n.Mutex.Unlock()
-	if n.Lookup == nil {
-		// Instead of building the mapping inline here with a special
-		// RowIter, we currently make use of CachedResults and require
-		// *CachedResults to be our direct child.
-		cr := n.UnaryNode.Child.(*CachedResults)
-		if res := cr.GetCachedResults(); res != nil {
-			n.Lookup = make(map[interface{}][]sql.Row)
-			for _, row := range res {
-				// TODO: Maybe do not put nil stuff in here.
-				key, err := n.GetHashKey(ctx, n.Inner, row)
-				if err != nil {
-					return nil, err
-				}
-				n.Lookup[key] = append(n.Lookup[key], row)
-			}
-			// CachedResult is safe to Dispose after contents are transferred
-			// to |n.lookup|
-			cr.Dispose()
-		}
-	}
-	if n.Lookup != nil {
-		key, err := n.GetHashKey(ctx, n.Outer, r)
-		if err != nil {
-			return nil, err
-		}
-		return sql.RowsToRowIter(n.Lookup[key]...), nil
-	}
-	return n.UnaryNode.Child.RowIter(ctx, r)
-}
-
 // Convert a tuple expression returning []interface{} into something comparable.
 // Fast paths a few smaller slices into fixed size arrays, puts everything else
 // through string serialization and a hash for now. It is OK to hash lossy here

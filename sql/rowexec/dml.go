@@ -13,7 +13,7 @@ import (
 func (b *builder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
 	dstSchema := ii.Destination.Schema()
 
-	insertable, err := GetInsertable(ii.Destination)
+	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +311,7 @@ func (b *builder) buildRowUpdateAccumulator(ctx *sql.Context, n plan.RowUpdateAc
 			return nil, fmt.Errorf("error: No JoinNode found in query plan to go along with an UpdateTypeJoinUpdate")
 		}
 
-		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
+		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: plan.RecreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", n.RowUpdateType))
 	}

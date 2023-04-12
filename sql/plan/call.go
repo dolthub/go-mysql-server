@@ -170,31 +170,6 @@ func (c *Call) DebugString() string {
 	return tp.String()
 }
 
-// RowIter implements the sql.Node interface.
-func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	for i, paramExpr := range c.Params {
-		val, err := paramExpr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		paramName := c.Procedure.Params[i].Name
-		paramType := c.Procedure.Params[i].Type
-		err = c.Pref.InitializeVariable(paramName, paramType, val)
-		if err != nil {
-			return nil, err
-		}
-	}
-	c.Pref.PushScope()
-	innerIter, err := c.Procedure.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	return &callIter{
-		call:      c,
-		innerIter: innerIter,
-	}, nil
-}
-
 // Database implements the sql.Databaser interface.
 func (c *Call) Database() sql.Database {
 	if c.db == nil {

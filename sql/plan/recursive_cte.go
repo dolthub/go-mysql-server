@@ -108,34 +108,6 @@ func (r *RecursiveCte) Schema() sql.Schema {
 	return r.schema
 }
 
-// RowIter implements sql.Node
-func (r *RecursiveCte) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var iter sql.RowIter = &recursiveCteIter{
-		init:        r.Left(),
-		rec:         r.Right(),
-		row:         row,
-		working:     r.Working,
-		temp:        make([]sql.Row, 0),
-		deduplicate: r.union.Distinct,
-	}
-	if r.union.Limit != nil && len(r.union.SortFields) > 0 {
-		limit, err := getInt64Value(ctx, r.union.Limit)
-		if err != nil {
-			return nil, err
-		}
-		iter = newTopRowsIter(r.union.SortFields, limit, false, iter, len(r.union.Schema()))
-	} else if r.union.Limit != nil {
-		limit, err := getInt64Value(ctx, r.union.Limit)
-		if err != nil {
-			return nil, err
-		}
-		iter = &limitIter{limit: limit, childIter: iter}
-	} else if len(r.union.SortFields) > 0 {
-		iter = newSortIter(r.union.SortFields, iter)
-	}
-	return iter, nil
-}
-
 // WithChildren implements sql.Node
 func (r *RecursiveCte) WithChildren(children ...sql.Node) (sql.Node, error) {
 	ret := *r

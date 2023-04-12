@@ -35,16 +35,6 @@ func (r *Releaser) Children() []sql.Node {
 	return []sql.Node{r.Child}
 }
 
-func (r *Releaser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	iter, err := r.Child.RowIter(ctx, row)
-	if err != nil {
-		r.Release()
-		return nil, err
-	}
-
-	return &releaseIter{child: iter, release: r.Release}, nil
-}
-
 func (r *Releaser) Schema() sql.Schema {
 	return r.Child.Schema()
 }

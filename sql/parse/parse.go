@@ -236,8 +236,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertRepeat(ctx, n, query)
 	case *sqlparser.Leave:
 		return convertLeave(ctx, n)
-	case *sqlparser.Iterate:
-		return convertIterate(ctx, n)
 	case *sqlparser.Kill:
 		return convertKill(ctx, n)
 	case *sqlparser.Signal:
@@ -1582,10 +1580,6 @@ func convertRepeat(ctx *sql.Context, repeat *sqlparser.Repeat, query string) (sq
 
 func convertLeave(ctx *sql.Context, leave *sqlparser.Leave) (sql.Node, error) {
 	return plan.NewLeave(leave.Label), nil
-}
-
-func convertIterate(ctx *sql.Context, iterate *sqlparser.Iterate) (sql.Node, error) {
-	return plan.NewIterate(iterate.Label), nil
 }
 
 func convertSignal(ctx *sql.Context, s *sqlparser.Signal) (sql.Node, error) {

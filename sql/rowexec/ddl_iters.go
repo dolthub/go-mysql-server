@@ -9,6 +9,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -1101,6 +1102,7 @@ type addColumnIter struct {
 	a         *plan.AddColumn
 	alterable sql.AlterableTable
 	runOnce   bool
+	b         *builder
 }
 
 func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -1130,12 +1132,93 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
-	err = i.a.UpdateRowsWithDefaults(ctx, i.alterable)
+	err = i.UpdateRowsWithDefaults(ctx, i.alterable)
 	if err != nil {
 		return nil, err
 	}
 
 	return sql.NewRow(types.NewOkResult(0)), nil
+}
+
+// UpdateRowsWithDefaults iterates through an updatable table and applies an update to each row.
+func (i *addColumnIter) UpdateRowsWithDefaults(ctx *sql.Context, table sql.Table) error {
+	rt := plan.NewResolvedTable(table, i.a.Db, nil)
+	updatable, ok := table.(sql.UpdatableTable)
+	if !ok {
+		return plan.ErrUpdateNotSupported.New(rt.Name())
+	}
+
+	tableIter, err := i.b.buildNodeExec(ctx, rt, nil)
+	if err != nil {
+		return err
+	}
+
+	schema := updatable.Schema()
+	idx := -1
+	for j, col := range schema {
+		if col.Name == i.a.Column().Name {
+			idx = j
+		}
+	}
+
+	updater := updatable.Updater(ctx)
+
+	for {
+		r, err := tableIter.Next(ctx)
+		if err == io.EOF {
+			return updater.Close(ctx)
+		}
+
+		if err != nil {
+			_ = updater.Close(ctx)
+			return err
+		}
+
+		updatedRow, err := applyDefaults(ctx, schema, idx, r, i.a.Column().Default)
+		if err != nil {
+			return err
+		}
+
+		err = updater.Update(ctx, r, updatedRow)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+// applyDefaults applies the default value of the given column index to the given row, and returns a new row with the updated values.
+// This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
+// present and in the order as represented by the schema.
+func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd *sql.ColumnDefaultValue) (sql.Row, error) {
+	newRow := row.Copy()
+	if len(tblSch) != len(row) {
+		return nil, fmt.Errorf("any row given to ApplyDefaults must be of the same length as the table it represents")
+	}
+
+	if col < 0 || col > len(tblSch) {
+		return nil, fmt.Errorf("column index `%d` is out of bounds, table schema has `%d` number of columns", col, len(tblSch))
+	}
+
+	columnDefaultExpr := cd
+	if columnDefaultExpr == nil && !tblSch[col].Nullable {
+		val := tblSch[col].Type.Zero()
+		var err error
+		newRow[col], err = tblSch[col].Type.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		val, err := columnDefaultExpr.Eval(ctx, newRow)
+		if err != nil {
+			return nil, err
+		}
+		newRow[col], err = tblSch[col].Type.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return newRow, nil
 }
 
 func (i addColumnIter) Close(context *sql.Context) error {

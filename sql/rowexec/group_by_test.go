@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package rowexec
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -35,7 +36,7 @@ func TestGroupBySchema(t *testing.T) {
 		expression.NewAlias("c1", expression.NewLiteral("s", types.LongText)),
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
-	gb := NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
+	gb := plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil))
 	require.Equal(sql.Schema{
 		{Name: "c1", Type: types.LongText},
 		{Name: "c2", Type: types.Int64},
@@ -49,13 +50,13 @@ func TestGroupByResolved(t *testing.T) {
 	agg := []sql.Expression{
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
-	gb := NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
+	gb := plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil))
 	require.True(gb.Resolved())
 
 	agg = []sql.Expression{
 		expression.NewStar(),
 	}
-	gb = NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
+	gb = plan.NewGroupBy(agg, nil, plan.NewResolvedTable(child, nil, nil))
 	require.False(gb.Resolved())
 }
 
@@ -81,7 +82,7 @@ func TestGroupByRowIter(t *testing.T) {
 		require.NoError(child.Insert(sql.NewEmptyContext(), r))
 	}
 
-	p := NewSort(
+	p := plan.NewSort(
 		[]sql.SortField{
 			{
 				Column: expression.NewGetField(0, types.LongText, "col1", true),
@@ -91,7 +92,7 @@ func TestGroupByRowIter(t *testing.T) {
 				Order:  sql.Ascending,
 			},
 		},
-		NewGroupBy(
+		plan.NewGroupBy(
 			[]sql.Expression{
 				expression.NewGetField(0, types.LongText, "col1", true),
 				expression.NewGetField(1, types.Int64, "col2", true),
@@ -100,12 +101,12 @@ func TestGroupByRowIter(t *testing.T) {
 				expression.NewGetField(0, types.LongText, "col1", true),
 				expression.NewGetField(1, types.Int64, "col2", true),
 			},
-			NewResolvedTable(child, nil, nil),
+			plan.NewResolvedTable(child, nil, nil),
 		))
 
 	require.Equal(1, len(p.Children()))
 
-	rows, err := sql.NodeToRows(ctx, p)
+	rows, err := NodeToRows(ctx, p)
 	require.NoError(err)
 	require.Len(rows, 2)
 
@@ -136,7 +137,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 		require.NoError(child.Insert(sql.NewEmptyContext(), r))
 	}
 
-	p := NewGroupBy(
+	p := plan.NewGroupBy(
 		[]sql.Expression{
 			aggregation.NewCount(expression.NewGetField(0, types.LongText, "col1", true)),
 			expression.NewIsNull(expression.NewGetField(1, types.Int64, "col2", true)),
@@ -145,7 +146,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 			expression.NewGetField(0, types.LongText, "col1", true),
 			expression.NewIsNull(expression.NewGetField(1, types.Int64, "col2", true)),
 		},
-		NewResolvedTable(child, nil, nil),
+		plan.NewResolvedTable(child, nil, nil),
 	)
 
 	rows, err := sql.NodeToRows(ctx, p)
@@ -214,7 +215,7 @@ func TestGroupByCollations(t *testing.T) {
 				require.NoError(child.Insert(sql.NewEmptyContext(), r))
 			}
 
-			p := NewGroupBy(
+			p := plan.NewGroupBy(
 				[]sql.Expression{
 					aggregation.NewSum(
 						expression.NewGetFieldWithTable(1, types.Int64, "test", "col2", false),
@@ -223,7 +224,7 @@ func TestGroupByCollations(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, tc.Type, "test", "col1", false),
 				},
-				NewResolvedTable(child, nil, nil),
+				plan.NewResolvedTable(child, nil, nil),
 			)
 
 			rows, err := sql.NodeToRows(ctx, p)
@@ -242,14 +243,14 @@ func TestGroupByCollations(t *testing.T) {
 func BenchmarkGroupBy(b *testing.B) {
 	table := benchmarkTable(b)
 
-	node := NewGroupBy(
+	node := plan.NewGroupBy(
 		[]sql.Expression{
 			aggregation.NewMax(
 				expression.NewGetField(1, types.Int64, "b", false),
 			),
 		},
 		nil,
-		NewResolvedTable(table, nil, nil),
+		plan.NewResolvedTable(table, nil, nil),
 	)
 
 	expected := []sql.Row{{int64(200)}}
@@ -272,7 +273,7 @@ func BenchmarkGroupBy(b *testing.B) {
 
 	b.Run("no grouping", bench(node, expected))
 
-	node = NewGroupBy(
+	node = plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewGetField(0, types.Int64, "a", false),
 			aggregation.NewMax(
@@ -282,7 +283,7 @@ func BenchmarkGroupBy(b *testing.B) {
 		[]sql.Expression{
 			expression.NewGetField(0, types.Int64, "a", false),
 		},
-		NewResolvedTable(table, nil, nil),
+		plan.NewResolvedTable(table, nil, nil),
 	)
 
 	expected = []sql.Row{}
@@ -310,4 +311,16 @@ func benchmarkTable(t testing.TB) sql.Table {
 	}
 
 	return table
+}
+
+// NodeToRows converts a node to a slice of rows.
+func NodeToRows(ctx *sql.Context, n sql.Node) ([]sql.Row, error) {
+	// TODO can't have sql depend on rowexec
+	// move execution tests to rowexec
+	i, err := Builder.Build(ctx, n)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowIterToRows(ctx, nil, i)
 }

@@ -56,7 +56,39 @@ func (b *builder) buildDeallocateQuery(ctx *sql.Context, n *plan.DeallocateQuery
 func (b *builder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (sql.RowIter, error) {
 	row, sch, err := n.Pref.FetchCursor(ctx, n.Name)
 	if err == io.EOF {
-		return sql.RowsToRowIter(), n.Pref.HandleError(ctx, err)
+		scope := n.Pref.InnermostScope
+		for scope != nil {
+			for i := len(scope.Handlers) - 1; i >= 0; i-- {
+				//TODO: handle more than NOT FOUND handlers, handlers should check if the error applies to them first
+				originalScope := n.Pref.InnermostScope
+				defer func() {
+					n.Pref.InnermostScope = originalScope
+				}()
+				n.Pref.InnermostScope = scope
+				handlerRefVal := scope.Handlers[i]
+
+				handlerRowIter, err := b.buildNodeExec(ctx, handlerRefVal.Stmt, nil)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+				defer handlerRowIter.Close(ctx)
+
+				for {
+					_, err := handlerRowIter.Next(ctx)
+					if err == io.EOF {
+						break
+					} else if err != nil {
+						return sql.RowsToRowIter(), err
+					}
+				}
+				if handlerRefVal.IsExit {
+					return sql.RowsToRowIter(), expression.ProcedureBlockExitError(handlerRefVal.ScopeHeight)
+				}
+				return sql.RowsToRowIter(), io.EOF
+			}
+			scope = scope.Parent
+		}
+		return sql.RowsToRowIter(), err
 	} else if err != nil {
 		return nil, err
 	}
@@ -272,7 +304,7 @@ func (b *builder) buildNothing(ctx *sql.Context, n plan.Nothing, row sql.Row) (s
 
 func (b *builder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, row sql.Row) (sql.RowIter, error) {
 	if _, ok := n.Destination.(*plan.CreateTable); ok {
-		return n.ProcessCreateTable(ctx, row)
+		return n.ProcessCreateTable(ctx, b, row)
 	}
 
 	drt, ok := n.Destination.(*plan.ResolvedTable)

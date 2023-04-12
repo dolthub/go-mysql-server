@@ -51,24 +51,6 @@ func (c *Concat) Schema() sql.Schema {
 	return ret
 }
 
-// RowIter implements the Node interface.
-func (c *Concat) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Concat")
-	li, err := c.left.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	i := newConcatIter(
-		ctx,
-		li,
-		func() (sql.RowIter, error) {
-			return c.right.RowIter(ctx, row)
-		},
-	)
-	return sql.NewSpanIter(span, i), nil
-}
-
 // WithChildren implements the Node interface.
 func (c *Concat) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {

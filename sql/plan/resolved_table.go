@@ -32,7 +32,6 @@ type ResolvedTable struct {
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
-var _ sql.Node2 = (*ResolvedTable)(nil)
 var _ sql.CommentedNode = (*ResolvedTable)(nil)
 var _ sql.RenameableNode = (*ResolvedTable)(nil)
 var _ sql.CollationCoercible = (*ResolvedTable)(nil)

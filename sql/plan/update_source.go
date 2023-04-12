@@ -123,25 +123,6 @@ func nodeHasJoin(node sql.Node) bool {
 	return hasJoinNode
 }
 
-func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rowIter, err := u.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	schema, err := u.GetChildSchema()
-	if err != nil {
-		return nil, err
-	}
-
-	return &updateSourceIter{
-		childIter:   rowIter,
-		updateExprs: u.UpdateExprs,
-		tableSchema: schema,
-		ignore:      u.Ignore,
-	}, nil
-}
-
 func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)

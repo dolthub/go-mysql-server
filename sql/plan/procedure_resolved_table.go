@@ -68,15 +68,6 @@ func (t *ProcedureResolvedTable) Children() []sql.Node {
 	return []sql.Node{t.ResolvedTable}
 }
 
-// RowIter implements the sql.Node interface.
-func (t *ProcedureResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rt, err := t.NewestTable(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return rt.RowIter(ctx, row)
-}
-
 // WithChildren implements the sql.Node interface.
 func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {

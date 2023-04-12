@@ -277,7 +277,7 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 		return b.buildReleaseSavepoint(ctx, n, row)
 	case *plan.Update:
 		return b.buildUpdate(ctx, n, row)
-	case *plan.ShowWarnings:
+	case plan.ShowWarnings:
 		return b.buildShowWarnings(ctx, n, row)
 	case *plan.Releaser:
 		return b.buildReleaser(ctx, n, row)
@@ -344,7 +344,7 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 	case *plan.Exchange:
 		return b.buildExchange(ctx, n, row)
 	case *plan.ExchangePartition:
-		return b.buildExchangPartition(ctx, n, row)
+		return b.buildExchangePartition(ctx, n, row)
 	case *plan.HashLookup:
 		return b.buildHashLookup(ctx, n, row)
 	default:
