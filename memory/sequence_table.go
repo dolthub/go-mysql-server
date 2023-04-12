@@ -16,7 +16,7 @@ var _ sql.CollationCoercible = (*IntSequenceTable)(nil)
 // of integers.
 type IntSequenceTable struct {
 	name string
-	len  int
+	Len  int
 }
 
 func (s IntSequenceTable) NewInstance(_ *sql.Context, _ sql.Database, args []sql.Expression) (sql.Node, error) {
@@ -39,7 +39,7 @@ func (s IntSequenceTable) NewInstance(_ *sql.Context, _ sql.Database, args []sql
 	if !ok {
 		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
 	}
-	return IntSequenceTable{name: name, len: int(length.(int64))}, nil
+	return IntSequenceTable{name: name, Len: int(length.(int64))}, nil
 }
 
 func (s IntSequenceTable) Resolved() bool {
@@ -47,7 +47,7 @@ func (s IntSequenceTable) Resolved() bool {
 }
 
 func (s IntSequenceTable) String() string {
-	return fmt.Sprintf("sequence(%s, %d)", s.name, s.len)
+	return fmt.Sprintf("sequence(%s, %d)", s.name, s.Len)
 }
 
 func (s IntSequenceTable) DebugString() string {
@@ -55,7 +55,7 @@ func (s IntSequenceTable) DebugString() string {
 	_ = pr.WriteNode("sequence")
 	children := []string{
 		fmt.Sprintf("name: %s", s.name),
-		fmt.Sprintf("len: %d", s.len),
+		fmt.Sprintf("len: %d", s.Len),
 	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -77,7 +77,7 @@ func (s IntSequenceTable) Children() []sql.Node {
 }
 
 func (s IntSequenceTable) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	rowIter := &SequenceTableFnRowIter{i: 0, n: s.len}
+	rowIter := &SequenceTableFnRowIter{i: 0, n: s.Len}
 	return rowIter, nil
 }
 
@@ -123,6 +123,10 @@ var _ sql.RowIter = (*SequenceTableFnRowIter)(nil)
 type SequenceTableFnRowIter struct {
 	n int
 	i int
+}
+
+func NewSequenceTableFnRowIter(n int) *SequenceTableFnRowIter {
+	return &SequenceTableFnRowIter{i: 0, n: n}
 }
 
 func (i *SequenceTableFnRowIter) Next(_ *sql.Context) (sql.Row, error) {

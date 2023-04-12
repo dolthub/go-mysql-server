@@ -265,7 +265,7 @@ func sendAllRows(ctx *sql.Context, iter sql.RowIter, rows chan<- sql.Row) (rowCo
 	}
 }
 
-func (b *builder) exchangeIterGen(e *plan.Exchange, row sql.Row) func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+func (b *defaultBuilder) exchangeIterGen(e *plan.Exchange, row sql.Row) func(*sql.Context, sql.Partition) (sql.RowIter, error) {
 	return func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			if t, ok := n.(sql.Table); ok {

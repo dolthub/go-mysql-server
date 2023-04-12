@@ -1118,7 +1118,7 @@ type addColumnIter struct {
 	a         *plan.AddColumn
 	alterable sql.AlterableTable
 	runOnce   bool
-	b         *builder
+	b         *defaultBuilder
 }
 
 func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -1616,7 +1616,7 @@ func (i *dropColumnIter) Close(context *sql.Context) error {
 }
 
 // Execute inserts the rows in the database.
-func (b *builder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) error {
+func (b *defaultBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) error {
 	chAlterable, err := getCheckAlterable(c.UnaryNode.Child)
 	if err != nil {
 		return err
@@ -1657,7 +1657,7 @@ func (b *builder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) erro
 	return chAlterable.CreateCheck(ctx, check)
 }
 
-func (b *builder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) error {
+func (b *defaultBuilder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) error {
 	chAlterable, err := getCheckAlterable(n.Child)
 	if err != nil {
 		return err
@@ -1690,7 +1690,7 @@ func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
 }
 
 // Execute inserts the rows in the database.
-func (b *builder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) error {
+func (b *defaultBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) error {
 	// We should refresh the state of the table in case this alter was in a multi alter statement.
 	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
@@ -1849,7 +1849,7 @@ func (b *builder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) error 
 }
 
 // Execute inserts the rows in the database.
-func (b *builder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoIncrement) error {
+func (b *defaultBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoIncrement) error {
 	// Grab the table fresh from the database.
 	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {

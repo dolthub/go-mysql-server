@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *builder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement, row sql.Row) (sql.RowIter, error) {
 	caseValue, err := n.Expr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (b *builder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement, ro
 	return b.buildCaseIter(ctx, row, n.IfElse.Else, n.IfElse.Else)
 }
 
-func (b *builder) buildCaseIter(ctx *sql.Context, row sql.Row, iterNode sql.Node, bodyNode sql.Node) (sql.RowIter, error) {
+func (b *defaultBuilder) buildCaseIter(ctx *sql.Context, row sql.Row, iterNode sql.Node, bodyNode sql.Node) (sql.RowIter, error) {
 	// All conditions failed so we run the else
 	branchIter, err := b.buildNodeExec(ctx, iterNode, row)
 	if err != nil {
@@ -69,7 +69,7 @@ func (b *builder) buildCaseIter(ctx *sql.Context, row sql.Row, iterNode sql.Node
 	}, nil
 }
 
-func (b *builder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, row sql.Row) (sql.RowIter, error) {
 	var branchIter sql.RowIter
 
 	var err error
@@ -122,7 +122,7 @@ func (b *builder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, row sq
 	}, nil
 }
 
-func (b *builder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock, row sql.Row) (sql.RowIter, error) {
 	n.Pref.PushScope()
 	rowIter, err := b.buildNodeExec(ctx, n.Block, row)
 	if err != nil {
@@ -146,11 +146,11 @@ func (b *builder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock, ro
 	}, nil
 }
 
-func (b *builder) buildIfConditional(ctx *sql.Context, n *plan.IfConditional, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildIfConditional(ctx *sql.Context, n *plan.IfConditional, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Body, row)
 }
 
-func (b *builder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.ProcedureResolvedTable, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.ProcedureResolvedTable, row sql.Row) (sql.RowIter, error) {
 	rt, err := n.NewestTable(ctx)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (b *builder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.Procedur
 	return b.buildResolvedTable(ctx, rt, row)
 }
 
-func (b *builder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.RowIter, error) {
 	for i, paramExpr := range n.Params {
 		val, err := paramExpr.Eval(ctx, row)
 		if err != nil {
@@ -182,7 +182,7 @@ func (b *builder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.Ro
 	}, nil
 }
 
-func (b *builder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sql.RowIter, error) {
 	var blockIter sql.RowIter
 	// Currently, acquiring the RowIter will actually run through the loop once, so we abuse this by grabbing the iter
 	// only if we're supposed to run through the iter once before evaluating the condition
@@ -205,22 +205,26 @@ func (b *builder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sql.Ro
 	return iter, nil
 }
 
-func (b *builder) buildElseCaseError(ctx *sql.Context, n plan.ElseCaseError, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildElseCaseError(ctx *sql.Context, n plan.ElseCaseError, row sql.Row) (sql.RowIter, error) {
 	return elseCaseErrorIter{}, nil
 }
 
-func (b *builder) buildOpen(ctx *sql.Context, n *plan.Open, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildOpen(ctx *sql.Context, n *plan.Open, row sql.Row) (sql.RowIter, error) {
 	return &openIter{pRef: n.Pref, name: n.Name, row: row}, nil
 }
 
-func (b *builder) buildClose(ctx *sql.Context, n *plan.Close, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildClose(ctx *sql.Context, n *plan.Close, row sql.Row) (sql.RowIter, error) {
 	return &closeIter{pRef: n.Pref, name: n.Name}, nil
 }
 
-func (b *builder) buildLeave(ctx *sql.Context, n *plan.Leave, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildLeave(ctx *sql.Context, n *plan.Leave, row sql.Row) (sql.RowIter, error) {
 	return &leaveIter{n.Label}, nil
 }
 
-func (b *builder) buildIterate(ctx *sql.Context, n *plan.Iterate, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildIterate(ctx *sql.Context, n *plan.Iterate, row sql.Row) (sql.RowIter, error) {
 	return &iterateIter{n.Label}, nil
+}
+
+func (b *defaultBuilder) buildWhile(ctx *sql.Context, n *plan.While, row sql.Row) (sql.RowIter, error) {
+	return b.buildLoop(ctx, n.Loop, row)
 }

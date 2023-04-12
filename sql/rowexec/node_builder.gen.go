@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
 	switch n := n.(type) {
 	case *plan.CreateForeignKey:
 		return b.buildCreateForeignKey(ctx, n, row)
@@ -109,6 +109,8 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 		return b.buildUnion(ctx, n, row)
 	case *plan.IndexedTableAccess:
 		return b.buildIndexedTableAccess(ctx, n, row)
+	case *plan.TableAlias:
+		return b.buildTableAlias(ctx, n, row)
 	case *plan.AddColumn:
 		return b.buildAddColumn(ctx, n, row)
 	case *plan.RenameColumn:
@@ -147,6 +149,10 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 		return b.buildRecursiveCte(ctx, n, row)
 	case *plan.ShowColumns:
 		return b.buildShowColumns(ctx, n, row)
+	case *plan.ShowTables:
+		return b.buildShowTables(ctx, n, row)
+	case *plan.ShowCreateDatabase:
+		return b.buildShowCreateDatabase(ctx, n, row)
 	case *plan.DropIndex:
 		return b.buildDropIndex(ctx, n, row)
 	case *plan.ResetReplica:
@@ -161,8 +167,6 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 		return b.buildFilter(ctx, n, row)
 	case *plan.Kill:
 		return b.buildKill(ctx, n, row)
-	case *plan.ShowCreateDatabase:
-		return b.buildShowCreateDatabase(ctx, n, row)
 	case *plan.ShowPrivileges:
 		return b.buildShowPrivileges(ctx, n, row)
 	case *plan.AlterPK:
@@ -299,6 +303,8 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 		return b.buildFlushPrivileges(ctx, n, row)
 	case *plan.Leave:
 		return b.buildLeave(ctx, n, row)
+	case *plan.While:
+		return b.buildWhile(ctx, n, row)
 	case *plan.ShowProcessList:
 		return b.buildShowProcessList(ctx, n, row)
 	case *plan.CreateSavepoint:

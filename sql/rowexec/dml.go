@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *builder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
 	dstSchema := ii.Destination.Schema()
 
 	insertable, err := plan.GetInsertable(ii.Destination)
@@ -48,7 +48,7 @@ func (b *builder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql
 		}
 	}
 
-	rowIter, err := b.buildNodeExec(ctx, ii.Destination, row)
+	rowIter, err := b.buildNodeExec(ctx, ii.Source, row)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (b *builder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql
 	}
 }
 
-func (b *builder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (sql.RowIter, error) {
 	// If an empty table is passed in (potentially from a bad filter) return an empty row iter.
 	// Note: emptyTable could also implement sql.DetetableTable
 	if _, ok := n.Child.(*plan.EmptyTable); ok {
@@ -123,11 +123,11 @@ func (b *builder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.
 	return newDeleteIter(iter, n.Child.Schema(), schemaPositionDeleters...), nil
 }
 
-func (b *builder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKeyHandler, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKeyHandler, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.OriginalNode, row)
 }
 
-func (b *builder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row) (sql.RowIter, error) {
 	updatable, err := plan.GetUpdatable(n.Child)
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (b *builder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row) (sq
 	return newUpdateIter(iter, updatable.Schema(), updater, n.Checks, n.Ignore), nil
 }
 
-func (b *builder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, row sql.Row) (sql.RowIter, error) {
 	db, err := n.DbProvider.Database(ctx, n.Database())
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (b *builder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, 
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
-func (b *builder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sql.Row) (sql.RowIter, error) {
 	var err error
 	var curdb sql.Database
 
@@ -225,7 +225,7 @@ func (b *builder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sql.Ro
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
-func (b *builder) buildTriggerRollback(ctx *sql.Context, n *plan.TriggerRollback, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildTriggerRollback(ctx *sql.Context, n *plan.TriggerRollback, row sql.Row) (sql.RowIter, error) {
 	childIter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
@@ -248,7 +248,7 @@ func (b *builder) buildTriggerRollback(ctx *sql.Context, n *plan.TriggerRollback
 	}, nil
 }
 
-func (b *builder) buildAlterIndex(ctx *sql.Context, n *plan.AlterIndex, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildAlterIndex(ctx *sql.Context, n *plan.AlterIndex, row sql.Row) (sql.RowIter, error) {
 	err := b.executeAlterIndex(ctx, n)
 	if err != nil {
 		return nil, err
@@ -257,7 +257,7 @@ func (b *builder) buildAlterIndex(ctx *sql.Context, n *plan.AlterIndex, row sql.
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
-func (b *builder) buildTriggerBeginEndBlock(ctx *sql.Context, n *plan.TriggerBeginEndBlock, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildTriggerBeginEndBlock(ctx *sql.Context, n *plan.TriggerBeginEndBlock, row sql.Row) (sql.RowIter, error) {
 	return &triggerBlockIter{
 		statements: n.Children(),
 		row:        row,
@@ -265,7 +265,7 @@ func (b *builder) buildTriggerBeginEndBlock(ctx *sql.Context, n *plan.TriggerBeg
 	}, nil
 }
 
-func (b *builder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExecutor, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExecutor, row sql.Row) (sql.RowIter, error) {
 	childIter, err := b.buildNodeExec(ctx, n.Left(), row)
 	if err != nil {
 		return nil, err
@@ -280,11 +280,11 @@ func (b *builder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExecutor
 	}, nil
 }
 
-func (b *builder) buildInsertDestination(ctx *sql.Context, n *plan.InsertDestination, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildInsertDestination(ctx *sql.Context, n *plan.InsertDestination, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Child, row)
 }
 
-func (b *builder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpdateAccumulator, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpdateAccumulator, row sql.Row) (sql.RowIter, error) {
 	rowIter, err := b.buildNodeExec(ctx, n.Child(), row)
 	if err != nil {
 		return nil, err
@@ -338,7 +338,7 @@ func (b *builder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpdateA
 	}, nil
 }
 
-func (b *builder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.Row) (sql.RowIter, error) {
 	truncatable, err := plan.GetTruncatable(n.Child)
 	if err != nil {
 		return nil, err
@@ -370,7 +370,7 @@ func (b *builder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.Row)
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(removed))), nil
 }
 
-func (b *builder) buildUpdateSource(ctx *sql.Context, n *plan.UpdateSource, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildUpdateSource(ctx *sql.Context, n *plan.UpdateSource, row sql.Row) (sql.RowIter, error) {
 	rowIter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
@@ -389,7 +389,7 @@ func (b *builder) buildUpdateSource(ctx *sql.Context, n *plan.UpdateSource, row 
 	}, nil
 }
 
-func (b *builder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row sql.Row) (sql.RowIter, error) {
 	ji, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err

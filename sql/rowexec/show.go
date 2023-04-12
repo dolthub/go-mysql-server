@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -25,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *builder) buildShowCharset(ctx *sql.Context, n *plan.ShowCharset, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowCharset(ctx *sql.Context, n *plan.ShowCharset, row sql.Row) (sql.RowIter, error) {
 	//TODO: use the information_schema table instead, currently bypassing it to show currently-implemented charsets
 	//ri, err := sc.CharacterSetTable.RowIter(ctx, row)
 	//if err != nil {
@@ -48,7 +49,7 @@ func (b *builder) buildShowCharset(ctx *sql.Context, n *plan.ShowCharset, row sq
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
 	var formatString string
 	if n.Format == "debug" {
@@ -65,7 +66,7 @@ func (b *builder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery, ro
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowWarnings(ctx *sql.Context, n plan.ShowWarnings, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowWarnings(ctx *sql.Context, n plan.ShowWarnings, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, w := range n {
 		rows = append(rows, sql.NewRow(w.Level, w.Code, w.Message))
@@ -73,7 +74,7 @@ func (b *builder) buildShowWarnings(ctx *sql.Context, n plan.ShowWarnings, row s
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowProcessList(ctx *sql.Context, n *plan.ShowProcessList, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowProcessList(ctx *sql.Context, n *plan.ShowProcessList, row sql.Row) (sql.RowIter, error) {
 	processes := ctx.ProcessList.Processes()
 	var rows = make([]sql.Row, len(processes))
 
@@ -119,7 +120,7 @@ func (b *builder) buildShowProcessList(ctx *sql.Context, n *plan.ShowProcessList
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowTableStatus(ctx *sql.Context, n *plan.ShowTableStatus, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowTableStatus(ctx *sql.Context, n *plan.ShowTableStatus, row sql.Row) (sql.RowIter, error) {
 	tables, err := n.Database().GetTableNames(ctx)
 	if err != nil {
 		return nil, err
@@ -154,7 +155,7 @@ func (b *builder) buildShowTableStatus(ctx *sql.Context, n *plan.ShowTableStatus
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row sql.Row) (sql.RowIter, error) {
 	var tableNames []string
 
 	// TODO: this entire analysis should really happen in the analyzer, as opposed to at execution time
@@ -225,7 +226,7 @@ func (b *builder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row sql.
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowStatus(ctx *sql.Context, n *plan.ShowStatus, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowStatus(ctx *sql.Context, n *plan.ShowStatus, row sql.Row) (sql.RowIter, error) {
 	var names []string
 	for name := range sql.SystemVariables.NewSessionMap() {
 		names = append(names, name)
@@ -250,7 +251,7 @@ func (b *builder) buildShowStatus(ctx *sql.Context, n *plan.ShowStatus, row sql.
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowCreateProcedure(ctx *sql.Context, n *plan.ShowCreateProcedure, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowCreateProcedure(ctx *sql.Context, n *plan.ShowCreateProcedure, row sql.Row) (sql.RowIter, error) {
 	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
 	if err != nil {
 		return nil, err
@@ -301,11 +302,31 @@ func (b *builder) buildShowCreateProcedure(ctx *sql.Context, n *plan.ShowCreateP
 	}
 }
 
-func (b *builder) buildShowCreateDatabase(ctx *sql.Context, n *plan.ShowCreateDatabase, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("%T has no execution iterator", n)
+func (b *defaultBuilder) buildShowCreateDatabase(ctx *sql.Context, n *plan.ShowCreateDatabase, row sql.Row) (sql.RowIter, error) {
+	var name = n.Database().Name()
+
+	var buf bytes.Buffer
+
+	buf.WriteString("CREATE DATABASE ")
+	if n.IfNotExists {
+		buf.WriteString("/*!32312 IF NOT EXISTS*/ ")
+	}
+
+	buf.WriteRune('`')
+	buf.WriteString(name)
+	buf.WriteRune('`')
+	buf.WriteString(fmt.Sprintf(
+		" /*!40100 DEFAULT CHARACTER SET %s COLLATE %s */",
+		sql.Collation_Default.CharacterSet().String(),
+		sql.Collation_Default.String(),
+	))
+
+	return sql.RowsToRowIter(
+		sql.NewRow(name, buf.String()),
+	), nil
 }
 
-func (b *builder) buildShowPrivileges(ctx *sql.Context, n *plan.ShowPrivileges, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowPrivileges(ctx *sql.Context, n *plan.ShowPrivileges, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(
 		sql.Row{"Alter", "Tables", "To alter the table"},
 		sql.Row{"Alter routine", "Functions,Procedures", "To alter or drop stored functions/procedures"},
@@ -376,7 +397,7 @@ func (b *builder) buildShowPrivileges(ctx *sql.Context, n *plan.ShowPrivileges, 
 	), nil
 }
 
-func (b *builder) buildShowCreateTrigger(ctx *sql.Context, n *plan.ShowCreateTrigger, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowCreateTrigger(ctx *sql.Context, n *plan.ShowCreateTrigger, row sql.Row) (sql.RowIter, error) {
 	triggerDb, ok := n.Database().(sql.TriggerDatabase)
 	if !ok {
 		return nil, sql.ErrTriggersNotSupported.New(n.Database().Name())
@@ -413,7 +434,7 @@ func (b *builder) buildShowCreateTrigger(ctx *sql.Context, n *plan.ShowCreateTri
 	return nil, sql.ErrTriggerDoesNotExist.New(n.TriggerName)
 }
 
-func (b *builder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, row sql.Row) (sql.RowIter, error) {
 	span, _ := ctx.Span("plan.ShowColumns")
 
 	schema := n.TargetSchema()
@@ -495,7 +516,7 @@ func (b *builder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, row sq
 	return sql.NewSpanIter(span, sql.RowsToRowIter(rows...)), nil
 }
 
-func (b *builder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
 	var sysVars map[string]interface{}
 
@@ -525,7 +546,7 @@ func (b *builder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables, ro
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, trigger := range n.Triggers {
 		triggerEvent := strings.ToUpper(trigger.TriggerEvent)
@@ -560,11 +581,11 @@ func (b *builder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, row 
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildDescribe(ctx *sql.Context, n *plan.Describe, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildDescribe(ctx *sql.Context, n *plan.Describe, row sql.Row) (sql.RowIter, error) {
 	return &describeIter{schema: n.Child.Schema()}, nil
 }
 
-func (b *builder) buildShowDatabases(ctx *sql.Context, n *plan.ShowDatabases, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowDatabases(ctx *sql.Context, n *plan.ShowDatabases, row sql.Row) (sql.RowIter, error) {
 	dbs := n.Catalog.AllDatabases(ctx)
 	var rows = make([]sql.Row, 0, len(dbs))
 	for _, db := range dbs {
@@ -581,7 +602,7 @@ func (b *builder) buildShowDatabases(ctx *sql.Context, n *plan.ShowDatabases, ro
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -657,7 +678,7 @@ func (b *builder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row sql.
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *builder) buildShowIndexes(ctx *sql.Context, n *plan.ShowIndexes, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowIndexes(ctx *sql.Context, n *plan.ShowIndexes, row sql.Row) (sql.RowIter, error) {
 	table, ok := n.Child.(*plan.ResolvedTable)
 	if !ok {
 		panic(fmt.Sprintf("unexpected type %T", n.Child))
@@ -669,7 +690,7 @@ func (b *builder) buildShowIndexes(ctx *sql.Context, n *plan.ShowIndexes, row sq
 	}, nil
 }
 
-func (b *builder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateTable, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateTable, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
 		table:    n.Child,
 		isView:   n.IsView,
@@ -680,7 +701,7 @@ func (b *builder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateTable
 	}, nil
 }
 
-func (b *builder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowReplicaStatus, row sql.Row) (sql.RowIter, error) {
+func (b *defaultBuilder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowReplicaStatus, row sql.Row) (sql.RowIter, error) {
 	if n.ReplicaController == nil {
 		return sql.RowsToRowIter(), nil
 	}

@@ -529,6 +529,13 @@ func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	return &ns
 }
 
+// WithExecBuilder returns the subquery with a recursive execution builder.
+func (s *Subquery) WithExecBuilder(b sql.NodeExecBuilder) *Subquery {
+	ns := *s
+	ns.b = b
+	return &ns
+}
+
 func (s *Subquery) IsNonDeterministic() bool {
 	return !s.canCacheResults
 }

@@ -234,6 +234,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertLoop(ctx, n, query)
 	case *sqlparser.Repeat:
 		return convertRepeat(ctx, n, query)
+	case *sqlparser.While:
+		return convertWhile(ctx, n, query)
 	case *sqlparser.Leave:
 		return convertLeave(ctx, n)
 	case *sqlparser.Iterate:
@@ -1578,6 +1580,18 @@ func convertRepeat(ctx *sql.Context, repeat *sqlparser.Repeat, query string) (sq
 		return nil, err
 	}
 	return plan.NewRepeat(repeat.Label, expr, block), nil
+}
+
+func convertWhile(ctx *sql.Context, while *sqlparser.While, query string) (sql.Node, error) {
+	block, err := convertBlock(ctx, while.Statements, query)
+	if err != nil {
+		return nil, err
+	}
+	expr, err := ExprToExpression(ctx, while.Condition)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewWhile(while.Label, expr, block), nil
 }
 
 func convertLeave(ctx *sql.Context, leave *sqlparser.Leave) (sql.Node, error) {

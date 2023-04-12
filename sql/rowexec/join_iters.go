@@ -294,7 +294,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 			left = i.parentRow.Append(r)
-			rIter, err := i.b.Build(ctx, i.secondaryProvider, left)
+			rIter, err = i.b.Build(ctx, i.secondaryProvider, left)
 
 			if err != nil {
 				return nil, err
@@ -593,15 +593,15 @@ type rowIterProvider interface {
 }
 
 type crossJoinIterator struct {
+	l  sql.RowIter
+	r  sql.RowIter
+	rp sql.Node
+	b  sql.NodeExecBuilder
+
 	parentRow sql.Row
-	b         sql.NodeExecBuilder
 
 	rowSize  int
 	scopeLen int
-
-	l  sql.RowIter
-	rp sql.Node
-	r  sql.RowIter
 
 	leftRow sql.Row
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rowexec_test
+package rowexec
 
 import (
 	"testing"
@@ -83,14 +83,14 @@ func TestExistsSubquery(t *testing.T) {
 			require := require.New(t)
 
 			result, err := plan.NewExistsSubquery(
-				plan.NewSubquery(tt.subquery, ""),
+				plan.NewSubquery(tt.subquery, "").WithExecBuilder(DefaultBuilder),
 			).Eval(sql.NewEmptyContext(), tt.row)
 			require.NoError(err)
 			require.Equal(tt.result, result)
 
 			// Test Not Exists
 			result, err = expression.NewNot(plan.NewExistsSubquery(
-				plan.NewSubquery(tt.subquery, ""),
+				plan.NewSubquery(tt.subquery, "").WithExecBuilder(DefaultBuilder),
 			)).Eval(sql.NewEmptyContext(), tt.row)
 
 			require.NoError(err)

@@ -15,6 +15,7 @@
 package rowexec_test
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,7 +37,7 @@ func TestSubquery(t *testing.T) {
 			expression.NewLiteral("one", types.LongText),
 		},
 		plan.NewResolvedTable(table, nil, nil),
-	), "select 'one'")
+	), "select 'one'").WithExecBuilder(rowexec.DefaultBuilder)
 
 	value, err := subquery.Eval(sql.NewEmptyContext(), nil)
 	require.NoError(err)
@@ -54,7 +55,7 @@ func TestSubqueryTooManyRows(t *testing.T) {
 			expression.NewLiteral("one", types.LongText),
 		},
 		plan.NewResolvedTable(table, nil, nil),
-	), "select 'one'")
+	), "select 'one'").WithExecBuilder(rowexec.DefaultBuilder)
 
 	_, err := subquery.Eval(sql.NewEmptyContext(), nil)
 	require.Error(err)
@@ -77,7 +78,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 			expression.NewGetField(0, types.Text, "t", false),
 		},
 		plan.NewResolvedTable(table, nil, nil),
-	), "select t from foo")
+	), "select t from foo").WithExecBuilder(rowexec.DefaultBuilder)
 
 	values, err := subquery.EvalMultiple(ctx, nil)
 	require.NoError(err)

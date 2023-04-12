@@ -181,7 +181,7 @@ type openIter struct {
 	pRef *expression.ProcedureReference
 	name string
 	row  sql.Row
-	b    *builder
+	b    *defaultBuilder
 }
 
 var _ sql.RowIter = (*openIter)(nil)
@@ -271,7 +271,7 @@ func (l *loopIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		if l.blockIter == nil {
 			var err error
-			b := &builder{}
+			b := &defaultBuilder{}
 			l.blockIter, err = b.loopAcquireRowIter(ctx, nil, l.label, l.block, false)
 			if err != nil {
 				return nil, err
@@ -336,7 +336,7 @@ func (l loopError) Error() string {
 
 // loopAcquireRowIter is a helper function for LOOP that conditionally acquires a new sql.RowIter. If a loop exit is
 // encountered, `exitIter` determines whether to return an empty iterator or an io.EOF error.
-func (b *builder) loopAcquireRowIter(ctx *sql.Context, row sql.Row, label string, block *plan.Block, exitIter bool) (sql.RowIter, error) {
+func (b *defaultBuilder) loopAcquireRowIter(ctx *sql.Context, row sql.Row, label string, block *plan.Block, exitIter bool) (sql.RowIter, error) {
 	blockIter, err := b.buildBlock(ctx, block, row)
 	if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(label) {
 		if controlFlow.IsExit {

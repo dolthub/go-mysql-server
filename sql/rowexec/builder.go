@@ -18,12 +18,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-type builder struct{}
+type ExecBuilderFunc func(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error)
 
-var DefaultBuilder = &builder{}
+type defaultBuilder struct {
+	customSources ExecBuilderFunc
+}
 
-var _ sql.NodeExecBuilder = (*builder)(nil)
+func (b *defaultBuilder) WithCustomSources(custom ExecBuilderFunc) *defaultBuilder {
+	b.customSources = custom
+	return b
+}
 
-func (b *builder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
+var DefaultBuilder = &defaultBuilder{}
+
+var _ sql.NodeExecBuilder = (*defaultBuilder)(nil)
+
+func (b *defaultBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
+	if b.customSources != nil {
+		if ret, _ := b.customSources(ctx, n, r); ret != nil {
+			return ret, nil
+		}
+	}
 	return b.buildNodeExec(ctx, n, r)
 }

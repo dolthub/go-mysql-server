@@ -76,7 +76,7 @@ type triggerBlockIter struct {
 	statements []sql.Node
 	row        sql.Row
 	once       *sync.Once
-	b          *builder
+	b          *defaultBuilder
 }
 
 var _ sql.RowIter = (*triggerBlockIter)(nil)
@@ -158,7 +158,7 @@ type triggerIter struct {
 	triggerTime    plan.TriggerTime
 	triggerEvent   plan.TriggerEvent
 	ctx            *sql.Context
-	b              *builder
+	b              *defaultBuilder
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
