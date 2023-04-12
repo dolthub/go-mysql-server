@@ -75,7 +75,7 @@ func (doc JSONDocument) Compare(ctx *sql.Context, v JSONValue) (int, error) {
 }
 
 func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
-	return marshalToMySqlString(doc)
+	return marshalToMySqlString(doc.Val)
 }
 
 // marshalToMySqlString is a helper function to marshal a JSONDocument to a string that is
@@ -90,37 +90,76 @@ func (doc JSONDocument) ToString(_ *sql.Context) (string, error) {
 //
 // We then remove the newlines, trim the prefix/suffix whitespace, and add a space after trailing commas:
 // {"a": 1, "b": 2}
-func marshalToMySqlString(doc JSONDocument) (string, error) {
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	// Prevents special characters like <, >, or & from being escaped.
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(doc.Val)
-	if err != nil {
-		return "", err
-	}
-
-	indentBuffer := &bytes.Buffer{}
-	err = json.Indent(indentBuffer, buffer.Bytes(), " ", " ")
-	if err != nil {
-		return "", err
-	}
-
-	lines := strings.Split(indentBuffer.String(), "\n")
-	// keep track of trailing commas, so we can add a space after them
-	trailingComma := false
-	sb := strings.Builder{}
-	for _, line := range lines {
-		if trailingComma {
-			sb.WriteString(" ")
+//
+// There's a special case for map[string]interface{}, to sort the keys in precedence of length and then alphabetically
+func marshalToMySqlString(val interface{}) (string, error) {
+	switch val := val.(type) {
+	case []interface{}:
+		// recurse on JSON arrays to catch any JSON maps
+		res := make([]string, len(val))
+		for i, v := range val {
+			tmp, err := marshalToMySqlString(v)
+			if err != nil {
+				return "", err
+			}
+			res[i] = tmp
 		}
-		// the lines are indented, trim them first
-		trimmed := strings.Trim(line, " ")
-		sb.WriteString(trimmed)
-		trailingComma = strings.HasSuffix(trimmed, ",")
+		return fmt.Sprintf("[%s]", strings.Join(res, ", ")), nil
+	case map[string]interface{}:
+		// JSON map keys are sorted k by length then alphabetically
+		var keys []string
+		for k := range val {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			if len(keys[i]) != len(keys[j]) {
+				return len(keys[i]) < len(keys[j])
+			}
+			return keys[i] < keys[j]
+		})
+
+		res := make([]string, len(val))
+		for i, k := range keys {
+			tmp, err := marshalToMySqlString(val[k])
+			if err != nil {
+				return "", err
+			}
+			res[i] = fmt.Sprintf("\"%s\": %s", k, tmp)
+		}
+
+		return fmt.Sprintf("{%s}", strings.Join(res, ", ")), nil
+	default:
+		buffer := &bytes.Buffer{}
+		encoder := json.NewEncoder(buffer)
+		// Prevents special characters like <, >, or & from being escaped.
+		encoder.SetEscapeHTML(false)
+		err := encoder.Encode(val)
+		if err != nil {
+			return "", err
+		}
+
+		indentBuffer := &bytes.Buffer{}
+		err = json.Indent(indentBuffer, buffer.Bytes(), " ", " ")
+		if err != nil {
+			return "", err
+		}
+
+		lines := strings.Split(indentBuffer.String(), "\n")
+		// keep track of trailing commas, so we can add a space after them
+		trailingComma := false
+		sb := strings.Builder{}
+		for _, line := range lines {
+			if trailingComma {
+				sb.WriteString(" ")
+			}
+			// the lines are indented, trim them first
+			trimmed := strings.Trim(line, " ")
+			sb.WriteString(trimmed)
+			trailingComma = strings.HasSuffix(trimmed, ",")
+		}
+		out := sb.String()
+		return out, nil
 	}
-	out := sb.String()
-	return out, nil
 }
 
 var _ SearchableJSONValue = JSONDocument{}
@@ -186,7 +225,7 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 		return nil, nil
 	}
 
-	mysqlString, err := marshalToMySqlString(doc)
+	mysqlString, err := marshalToMySqlString(doc.Val)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal document: %w", err)
 	}

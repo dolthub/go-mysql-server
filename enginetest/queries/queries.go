@@ -872,6 +872,72 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
+		Expected: []sql.Row{
+			{0, nil, nil, 123, "abc", "abcdef"},
+		},
+	},
+	{
+		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
+		Expected: []sql.Row{
+			{0, nil, nil, 123, "abc", "abcdef"},
+		},
+	},
+	{
+		Query: "SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM emptytable) uv WHERE pk = u;",
+		Expected: []sql.Row{
+			{0, 0, 123},
+		},
+	},
+	{
+		Query: "SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false) uv WHERE pk = u;",
+		Expected: []sql.Row{
+			{0, 0, 123},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM emptytable);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) NOT IN (SELECT count(*) AS u, 123 AS v FROM emptytable);",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "SELECT pk FROM one_pk WHERE (pk, 123) NOT IN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false);",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "SELECT i FROM mytable WHERE EXISTS (SELECT * FROM (SELECT count(*) as u, 123 as v FROM emptytable) uv);",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "SELECT count(*), (SELECT i FROM mytable WHERE i = 1 group by i);",
+		Expected: []sql.Row{
+			{1, 1},
+		},
+	},
+	{
 		Query: "SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
 			{int64(0), float64(14)},
@@ -1293,6 +1359,18 @@ var QueryTests = []QueryTest{
 			{types.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
 			{types.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
 			{types.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
+		},
+	},
+	{
+		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
+		Expected: []sql.Row{
+			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
+		},
+	},
+	{
+		Query: `SELECT CONCAT(JSON_ARRAY(JSON_OBJECT('aa', 123, 'z', 456), JSON_OBJECT('BB', 321, 'Y', 654)), "")`,
+		Expected: []sql.Row{
+			{`[{"z": 456, "aa": 123}, {"Y": 654, "BB": 321}]`},
 		},
 	},
 	{
