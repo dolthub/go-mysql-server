@@ -39,7 +39,7 @@ type CreateEvent struct {
 	Starts           *OnScheduleTimestamp
 	Ends             *OnScheduleTimestamp
 	OnCompPreserve   bool
-	Status           sql.EventStatus
+	Status           EventStatus
 	Comment          string
 	DefinitionString string
 	DefinitionNode   sql.Node
@@ -53,7 +53,7 @@ func NewCreateEvent(
 	at, starts, ends *OnScheduleTimestamp,
 	every *expression.Interval,
 	onCompletionPreserve bool,
-	status sql.EventStatus,
+	status EventStatus,
 	comment, definitionString string,
 	definition sql.Node,
 	ifNotExists bool,
@@ -228,7 +228,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		Name:                 c.EventName,
 		Definer:              c.Definer,
 		OnCompletionPreserve: c.OnCompPreserve,
-		Status:               c.Status,
+		Status:               c.Status.String(),
 		Comment:              c.Comment,
 		Definition:           c.DefinitionString,
 	}
@@ -246,9 +246,10 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		if err != nil {
 			return nil, err
 		}
-		eventDetails.ExecuteEvery = sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+		interval := NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+		iVal, iField := interval.GetIntervalValAndField()
+		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
-		// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
 		if c.Starts != nil {
 			eventDetails.HasStarts = true
 			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
@@ -256,6 +257,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				return nil, err
 			}
 		} else {
+			// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
 			eventDetails.Starts = eventCreationTime
 		}
 		if c.Ends != nil {
@@ -325,7 +327,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if c.eventDetails.ExecuteAt.Sub(c.eventDetails.Created).Seconds() < 0 {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
-				c.eventDetails.Status = sql.EventStatus_Disable
+				c.eventDetails.Status = EventStatus_Disable.String()
 				err = c.eventDb.UpdateEvent(ctx, c.eventDetails)
 				if err != nil {
 					return nil, err

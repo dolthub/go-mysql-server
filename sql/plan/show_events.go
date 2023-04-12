@@ -107,7 +107,11 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			eventType = "ONE TIME"
 			executeAt = event.ExecuteAt.Format(sql.EventTimeStampFormat)
 		} else {
-			intervalVal, intervalField = event.ExecuteEvery.GetIntervalValAndField()
+			interval, err := EventOnScheduleEveryIntervalFromString(event.ExecuteEvery)
+			if err != nil {
+				return nil, err
+			}
+			intervalVal, intervalField = interval.GetIntervalValAndField()
 			// STARTS will always have defined value
 			starts = event.Starts.Format(sql.EventTimeStampFormat)
 			if event.HasEnds {
@@ -115,12 +119,16 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 		}
 
-		switch event.Status {
-		case sql.EventStatus_Enable:
+		eventStatus, err := EventStatusFromString(event.Status)
+		if err != nil {
+			return nil, err
+		}
+		switch eventStatus {
+		case EventStatus_Enable:
 			status = "ENABLED"
-		case sql.EventStatus_Disable:
+		case EventStatus_Disable:
 			status = "DISABLED"
-		case sql.EventStatus_DisableOnSlave:
+		case EventStatus_DisableOnSlave:
 			status = "SLAVESIDE_DISABLED"
 		}
 

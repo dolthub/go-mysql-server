@@ -1400,14 +1400,14 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	}
 	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
 
-	var status sql.EventStatus
+	var status plan.EventStatus
 	switch eventSpec.Status {
 	case sqlparser.EventStatus_Enable:
-		status = sql.EventStatus_Enable
+		status = plan.EventStatus_Enable
 	case sqlparser.EventStatus_Disable:
-		status = sql.EventStatus_Disable
+		status = plan.EventStatus_Disable
 	case sqlparser.EventStatus_DisableOnSlave:
-		status = sql.EventStatus_DisableOnSlave
+		status = plan.EventStatus_DisableOnSlave
 	}
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
