@@ -15,8 +15,9 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"reflect"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type Releaser struct {

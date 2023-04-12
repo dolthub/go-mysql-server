@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2023 Dolthub, Inc.
 //
 // GENERATED
 //
@@ -346,7 +346,7 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 	case *plan.HashLookup:
 		return b.buildHashLookup(ctx, n, row)
 	case *plan.Iterate:
-		return &iterateIter{n.Label}, nil
+		return b.buildIterate(ctx, n, row)
 	default:
 		return nil, fmt.Errorf("unknown Node type %T", n)
 	}

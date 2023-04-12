@@ -15,7 +15,6 @@
 package rowexec
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
