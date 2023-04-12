@@ -230,8 +230,8 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
 		eventDefinition[i] = sql.EventDefinition{
-			Name:                 eventStmt[0][0].(string),
-			CreateStatement:      eventStmt[0][3].(string),
+			Name:            eventStmt[0][0].(string),
+			CreateStatement: eventStmt[0][3].(string),
 			// TODO: other fields should be added such as Created, LastAltered
 		}
 	}

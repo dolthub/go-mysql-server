@@ -323,10 +323,10 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	var eventDefinition = sql.EventDefinition{
-		Name: c.eventDetails.Name,
+		Name:            c.eventDetails.Name,
 		CreateStatement: c.eventDetails.CreateEventStatement(),
-		CreatedAt: c.eventDetails.Created,
-		LastAltered: c.eventDetails.LastAltered,
+		CreatedAt:       c.eventDetails.Created,
+		LastAltered:     c.eventDetails.LastAltered,
 	}
 
 	err := c.eventDb.SaveEvent(ctx, eventDefinition)

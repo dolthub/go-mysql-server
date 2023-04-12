@@ -20,7 +20,7 @@ import (
 )
 
 type ShowEvents struct {
-	db sql.Database
+	db     sql.Database
 	Events []sql.EventDetails
 }
 
