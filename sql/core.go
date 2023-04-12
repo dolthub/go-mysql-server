@@ -70,7 +70,7 @@ type Node interface {
 	Children() []Node
 	// RowIter produces a row iterator from this node. The current row being evaluated is provided, as well the context
 	// of the query.
-	RowIter(ctx *Context, row Row) (RowIter, error)
+	//RowIter(ctx *Context, row Row) (RowIter, error)
 	// WithChildren returns a copy of the node with children replaced.
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order

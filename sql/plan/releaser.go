@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package plan
 
 import (
-	"reflect"
-	"sync"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"reflect"
 )
 
 type Releaser struct {
@@ -77,27 +75,4 @@ func (r *Releaser) Equal(n sql.Node) bool {
 		return reflect.DeepEqual(r.Child, r2.Child)
 	}
 	return false
-}
-
-type releaseIter struct {
-	child   sql.RowIter
-	release func()
-	once    sync.Once
-}
-
-func (i *releaseIter) Next(ctx *sql.Context) (sql.Row, error) {
-	row, err := i.child.Next(ctx)
-	if err != nil {
-		_ = i.Close(ctx)
-		return nil, err
-	}
-	return row, nil
-}
-
-func (i *releaseIter) Close(ctx *sql.Context) (err error) {
-	i.once.Do(i.release)
-	if i.child != nil {
-		err = i.child.Close(ctx)
-	}
-	return err
 }

@@ -129,7 +129,7 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 			return nil, err
 		}
 
-		funcParams[i+1], err = n.processParam(ctx, funcParamType, exprParamVal)
+		funcParams[i+1], err = n.ProcessParam(ctx, funcParamType, exprParamVal)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +157,7 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 	return sql.RowsToRowIter(), nil
 }
 
-func (n *ExternalProcedure) processParam(ctx *sql.Context, funcParamType reflect.Type, exprParamVal interface{}) (reflect.Value, error) {
+func (n *ExternalProcedure) ProcessParam(ctx *sql.Context, funcParamType reflect.Type, exprParamVal interface{}) (reflect.Value, error) {
 	funcParamCompType := funcParamType
 	if funcParamType.Kind() == reflect.Ptr {
 		funcParamCompType = funcParamType.Elem()

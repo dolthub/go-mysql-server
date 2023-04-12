@@ -16,16 +16,14 @@ package plan
 
 import (
 	"fmt"
-	"sort"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ShowVariables is a node that shows the global and session variables
 type ShowVariables struct {
-	filter sql.Expression
-	global bool
+	Filter sql.Expression
+	Global bool
 }
 
 var _ sql.Node = (*ShowVariables)(nil)
@@ -34,8 +32,8 @@ var _ sql.CollationCoercible = (*ShowVariables)(nil)
 // NewShowVariables returns a new ShowVariables reference.
 func NewShowVariables(filter sql.Expression, isGlobal bool) *ShowVariables {
 	return &ShowVariables{
-		filter: filter,
-		global: isGlobal,
+		Filter: filter,
+		Global: isGlobal,
 	}
 }
 
@@ -66,11 +64,11 @@ func (*ShowVariables) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 // String implements the fmt.Stringer interface.
 func (sv *ShowVariables) String() string {
 	var f string
-	if sv.filter != nil {
-		f = fmt.Sprintf(" WHERE %s", sv.filter.String())
+	if sv.Filter != nil {
+		f = fmt.Sprintf(" WHERE %s", sv.Filter.String())
 	}
 
-	if sv.global {
+	if sv.Global {
 		return fmt.Sprintf("SHOW GLOBAL VARIABLES%s", f)
 	}
 	return fmt.Sprintf("SHOW VARIABLES%s", f)
@@ -86,35 +84,3 @@ func (*ShowVariables) Schema() sql.Schema {
 
 // Children implements sql.Node interface. The function always returns nil.
 func (*ShowVariables) Children() []sql.Node { return nil }
-
-// RowIter implements the sql.Node interface.
-// The function returns an iterator for filtered variables (based on like pattern)
-func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var rows []sql.Row
-	var sysVars map[string]interface{}
-
-	if sv.global {
-		sysVars = sql.SystemVariables.GetAllGlobalVariables()
-	} else {
-		sysVars = ctx.GetAllSessionVariables()
-	}
-
-	for k, v := range sysVars {
-		if sv.filter != nil {
-			res, err := sv.filter.Eval(ctx, sql.Row{k})
-			if err != nil {
-				return nil, err
-			}
-			if !res.(bool) {
-				continue
-			}
-		}
-		rows = append(rows, sql.NewRow(k, v))
-	}
-
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i][0].(string) < rows[j][0].(string)
-	})
-
-	return sql.RowsToRowIter(rows...), nil
-}

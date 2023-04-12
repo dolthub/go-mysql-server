@@ -141,31 +141,6 @@ func (t *ResolvedTable) DebugString() string {
 // Children implements the Node interface.
 func (*ResolvedTable) Children() []sql.Node { return nil }
 
-// RowIter implements the RowIter interface.
-func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.ResolvedTable")
-
-	partitions, err := t.Table.Partitions(ctx)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)), nil
-}
-
-func (t *ResolvedTable) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	span, ctx := ctx.Span("plan.ResolvedTable")
-
-	partitions, err := t.Table.Partitions(ctx)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)).(sql.RowIter2), nil
-}
-
 // PartitionRows2 implements sql.Table2. sql.Table methods are embedded in the type.
 func (t *ResolvedTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
 	return t.Table.(sql.Table2).PartitionRows2(ctx, part)

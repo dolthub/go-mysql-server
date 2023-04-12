@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package rowexec
 
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"io"
 	"reflect"
 
@@ -28,18 +29,18 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func newJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
+func newJoinIter(ctx *sql.Context, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
 	var leftName, rightName string
-	if leftTable, ok := j.left.(sql.Nameable); ok {
+	if leftTable, ok := j.Left().(sql.Nameable); ok {
 		leftName = leftTable.Name()
 	} else {
-		leftName = reflect.TypeOf(j.left).String()
+		leftName = reflect.TypeOf(j.Left()).String()
 	}
 
-	if rightTable, ok := j.right.(sql.Nameable); ok {
+	if rightTable, ok := j.Right().(sql.Nameable); ok {
 		rightName = rightTable.Name()
 	} else {
-		rightName = reflect.TypeOf(j.right).String()
+		rightName = reflect.TypeOf(j.Right()).String()
 	}
 
 	span, ctx := ctx.Span("plan.joinIter", trace.WithAttributes(
@@ -47,7 +48,7 @@ func newJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error
 		attribute.String("right", rightName),
 	))
 
-	l, err := j.left.RowIter(ctx, row)
+	l, err := j.Left().RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
@@ -55,10 +56,10 @@ func newJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error
 	return sql.NewSpanIter(span, &joinIter{
 		parentRow:         row,
 		primary:           l,
-		secondaryProvider: j.right,
+		secondaryProvider: j.Right(),
 		cond:              j.Filter,
 		joinType:          j.Op,
-		rowSize:           len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+		rowSize:           len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
 		scopeLen:          j.ScopeLen,
 	}), nil
 }
@@ -72,7 +73,7 @@ type joinIter struct {
 	secondaryProvider sql.Node
 	secondary         sql.RowIter
 	cond              sql.Expression
-	joinType          JoinType
+	joinType          plan.JoinType
 
 	foundMatch bool
 	rowSize    int
@@ -99,8 +100,8 @@ func (i *joinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		if isEmptyIter(rowIter) {
-			return nil, ErrEmptyCachedResult
+		if plan.IsEmptyIter(rowIter) {
+			return nil, plan.ErrEmptyCachedResult
 		}
 		i.secondary = rowIter
 	}
@@ -138,7 +139,7 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 					return i.removeParentRow(row), nil
 				}
 				continue
-			} else if errors.Is(err, ErrEmptyCachedResult) {
+			} else if errors.Is(err, plan.ErrEmptyCachedResult) {
 				if !i.foundMatch && i.joinType.IsLeftOuter() {
 					i.primaryRow = nil
 					row := i.buildRow(primary, nil)
@@ -222,8 +223,8 @@ func IsNullRejecting(e sql.Expression) bool {
 	})
 }
 
-func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
-	leftIter, err := j.left.RowIter(ctx, row)
+func newExistsIter(ctx *sql.Context, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
+	leftIter, err := j.Left().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -231,16 +232,16 @@ func newExistsIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, err
 		parentRow:         row,
 		typ:               j.Op,
 		primary:           leftIter,
-		secondaryProvider: j.right,
+		secondaryProvider: j.Right(),
 		cond:              j.Filter,
 		scopeLen:          j.ScopeLen,
-		rowSize:           len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+		rowSize:           len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
 		nullRej:           !(j.Filter != nil && IsNullRejecting(j.Filter)),
 	}, nil
 }
 
 type existsIter struct {
-	typ               JoinType
+	typ               plan.JoinType
 	primary           sql.RowIter
 	secondaryProvider rowIterProvider
 	cond              sql.Expression
@@ -291,7 +292,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			if isEmptyIter(rIter) {
+			if plan.IsEmptyIter(rIter) {
 				if i.nullRej || i.typ.IsAnti() {
 					return nil, io.EOF
 				}
@@ -377,18 +378,18 @@ func (i *existsIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-func newFullJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
-	leftIter, err := j.left.RowIter(ctx, row)
+func newFullJoinIter(ctx *sql.Context, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
+	leftIter, err := j.Left().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 	return &fullJoinIter{
 		parentRow: row,
 		l:         leftIter,
-		rp:        j.right,
+		rp:        j.Right(),
 		cond:      j.Filter,
 		scopeLen:  j.ScopeLen,
-		rowSize:   len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
 		seenLeft:  make(map[uint64]struct{}),
 		seenRight: make(map[uint64]struct{}),
 	}, nil
@@ -542,18 +543,18 @@ func (i *fullJoinIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-func newCrossJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
+func newCrossJoinIter(ctx *sql.Context, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
 	var left, right string
-	if leftTable, ok := j.left.(sql.Nameable); ok {
+	if leftTable, ok := j.Left().(sql.Nameable); ok {
 		left = leftTable.Name()
 	} else {
-		left = reflect.TypeOf(j.left).String()
+		left = reflect.TypeOf(j.Left()).String()
 	}
 
-	if rightTable, ok := j.right.(sql.Nameable); ok {
+	if rightTable, ok := j.Right().(sql.Nameable); ok {
 		right = rightTable.Name()
 	} else {
-		right = reflect.TypeOf(j.right).String()
+		right = reflect.TypeOf(j.Right()).String()
 	}
 
 	span, ctx := ctx.Span("plan.CrossJoin", trace.WithAttributes(
@@ -561,7 +562,7 @@ func newCrossJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		attribute.String("right", right),
 	))
 
-	l, err := j.left.RowIter(ctx, row)
+	l, err := j.Left().RowIter(ctx, row)
 	if err != nil {
 		span.End()
 		return nil, err
@@ -570,8 +571,8 @@ func newCrossJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 	return sql.NewSpanIter(span, &crossJoinIterator{
 		parentRow: row,
 		l:         l,
-		rp:        j.right,
-		rowSize:   len(row) + len(j.left.Schema()) + len(j.right.Schema()),
+		rp:        j.Right(),
+		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
 		scopeLen:  j.ScopeLen,
 	}), nil
 }

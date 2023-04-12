@@ -94,8 +94,8 @@ type BlockRowIter interface {
 	Schema() sql.Schema
 }
 
-// nodeRepresentsSelect attempts to walk a sql.Node to determine if it represents a SELECT statement.
-func nodeRepresentsSelect(s sql.Node) bool {
+// NodeRepresentsSelect attempts to walk a sql.Node to determine if it represents a SELECT statement.
+func NodeRepresentsSelect(s sql.Node) bool {
 	if s == nil {
 		return false
 	}

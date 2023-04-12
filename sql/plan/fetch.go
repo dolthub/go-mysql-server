@@ -29,9 +29,9 @@ import (
 type Fetch struct {
 	Name      string
 	Variables []string
-	innerSet  *Set
-	pRef      *expression.ProcedureReference
-	sch       sql.Schema
+	InnerSet  *Set
+	Pref      *expression.ProcedureReference
+	Sch       sql.Schema
 }
 
 var _ sql.Node = (*Fetch)(nil)
@@ -50,13 +50,13 @@ func NewFetch(name string, variables []string) *Fetch {
 	return &Fetch{
 		Name:      name,
 		Variables: variables,
-		innerSet:  NewSet(exprs),
+		InnerSet:  NewSet(exprs),
 	}
 }
 
 // Resolved implements the interface sql.Node.
 func (f *Fetch) Resolved() bool {
-	return f.innerSet.Resolved()
+	return f.InnerSet.Resolved()
 }
 
 // String implements the interface sql.Node.
@@ -71,7 +71,7 @@ func (f *Fetch) Schema() sql.Schema {
 
 // Children implements the interface sql.Node.
 func (f *Fetch) Children() []sql.Node {
-	return []sql.Node{f.innerSet}
+	return []sql.Node{f.InnerSet}
 }
 
 // WithChildren implements the interface sql.Node.
@@ -82,7 +82,7 @@ func (f *Fetch) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	var ok bool
 	nf := *f
-	nf.innerSet, ok = children[0].(*Set)
+	nf.InnerSet, ok = children[0].(*Set)
 	if !ok {
 		return nil, fmt.Errorf("FETCH expected SET child")
 	}
@@ -101,18 +101,18 @@ func (*Fetch) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 
 // RowIter implements the interface sql.Node.
 func (f *Fetch) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	row, sch, err := f.pRef.FetchCursor(ctx, f.Name)
+	row, sch, err := f.Pref.FetchCursor(ctx, f.Name)
 	if err == io.EOF {
-		return sql.RowsToRowIter(), f.pRef.HandleError(ctx, err)
+		return sql.RowsToRowIter(), f.Pref.HandleError(ctx, err)
 	} else if err != nil {
 		return nil, err
 	}
-	if len(row) != len(f.innerSet.Exprs) {
+	if len(row) != len(f.InnerSet.Exprs) {
 		return nil, sql.ErrFetchIncorrectCount.New()
 	}
-	if f.sch == nil {
-		f.sch = sch
-		for i, expr := range f.innerSet.Exprs {
+	if f.Sch == nil {
+		f.Sch = sch
+		for i, expr := range f.InnerSet.Exprs {
 			setExpr, ok := expr.(*expression.SetField)
 			if !ok {
 				return nil, fmt.Errorf("expected SetField expression in FETCH")
@@ -121,13 +121,13 @@ func (f *Fetch) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			setExpr.Right = expression.NewGetField(i, col.Type, col.Name, col.Nullable)
 		}
 	}
-	return f.innerSet.RowIter(ctx, row)
+	return f.InnerSet.RowIter(ctx, row)
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (f *Fetch) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nf := *f
-	nf.pRef = pRef
+	nf.Pref = pRef
 	return &nf
 }
 

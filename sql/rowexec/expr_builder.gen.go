@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package row_exec
+package rowexec
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *Builder) buildExprExec(n sql.Expression, row sql.Row) (sql.RowIter, error) {
+func (b *builder) buildExprExec(n sql.Expression, row sql.Row) (sql.RowIter, error) {
 	switch n := n.(type) {
 	case *expression.SetField:
 		return buildSetField(n, row)

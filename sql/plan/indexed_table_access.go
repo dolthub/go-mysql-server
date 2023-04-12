@@ -167,35 +167,6 @@ func (i *IndexedTableAccess) Index() sql.Index {
 	return i.lb.index
 }
 
-func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.IndexedTableAccess")
-
-	lookup, err := i.getLookup(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	partIter, err := i.Table.LookupPartitions(ctx, lookup)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, i.Table, partIter)), nil
-}
-
-func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	lookup, err := i.getLookup2(ctx, f.Row2())
-	if err != nil {
-		return nil, err
-	}
-
-	partIter, err := i.Table.LookupPartitions(ctx, lookup)
-	if err != nil {
-		return nil, err
-	}
-	return sql.NewTableRowIter(ctx, i.Table, partIter), nil
-}
-
 // CanBuildIndex returns whether an index lookup on this table can be successfully built for a zero-valued key. For a
 // static lookup, no lookup needs to be built, so returns true.
 func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
@@ -209,7 +180,7 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	return err == nil && !lookup.IsEmpty(), nil
 }
 
-func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
+func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
 	if !i.lookup.IsEmpty() {
 		return i.lookup, nil

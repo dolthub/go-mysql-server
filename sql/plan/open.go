@@ -16,8 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,7 +24,7 @@ import (
 // Open represents the OPEN statement, which opens a cursor.
 type Open struct {
 	Name string
-	pRef *expression.ProcedureReference
+	Pref *expression.ProcedureReference
 }
 
 var _ sql.Node = (*Open)(nil)
@@ -75,35 +73,9 @@ func (*Open) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 	return sql.Collation_binary, 7
 }
 
-// RowIter implements the interface sql.Node.
-func (o *Open) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &openIter{o, row}, nil
-}
-
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (o *Open) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	no := *o
-	no.pRef = pRef
+	no.Pref = pRef
 	return &no
-}
-
-// openIter is the sql.RowIter of *Open.
-type openIter struct {
-	*Open
-	row sql.Row
-}
-
-var _ sql.RowIter = (*openIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (o *openIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if err := o.pRef.OpenCursor(ctx, o.Name, o.row); err != nil {
-		return nil, err
-	}
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (o *openIter) Close(ctx *sql.Context) error {
-	return nil
 }

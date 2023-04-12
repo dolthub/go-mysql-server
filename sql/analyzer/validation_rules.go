@@ -633,8 +633,6 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 			// calculations here. This needs to be rationalized
 			// across the analyzer.
 			switch n := n.(type) {
-			case *plan.IndexedInSubqueryFilter:
-				return false
 			case *plan.JoinNode:
 				return !n.Op.IsLookup()
 			default:

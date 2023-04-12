@@ -56,56 +56,18 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	return &jsonTablePartition{key}, nil
 }
 
-type jsonTableRowIter struct {
-	colPaths []string
-	schema   sql.Schema
-	data     []interface{}
-	pos      int
-}
-
-var _ sql.RowIter = &jsonTableRowIter{}
-
-func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if j.pos >= len(j.data) {
-		return nil, io.EOF
-	}
-	obj := j.data[j.pos]
-	j.pos++
-
-	row := make(sql.Row, len(j.colPaths))
-	for i, p := range j.colPaths {
-		var val interface{}
-		if v, err := jsonpath.JsonPathLookup(obj, p); err == nil {
-			val = v
-		}
-
-		value, err := j.schema[i].Type.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-
-		row[i] = value
-	}
-
-	return row, nil
-}
-
-func (j *jsonTableRowIter) Close(ctx *sql.Context) error {
-	return nil
-}
-
 type JSONTable struct {
-	dataExpr sql.Expression
+	DataExpr sql.Expression
 	name     string
-	path     string
+	Path     string
 	schema   sql.PrimaryKeySchema
-	colPaths []string
+	ColPaths []string
 }
 
-var _ sql.Table = &JSONTable{}
-var _ sql.Node = &JSONTable{}
-var _ sql.Expressioner = &JSONTable{}
-var _ sql.CollationCoercible = &JSONTable{}
+var _ sql.Table = (*JSONTable)(nil)
+var _ sql.Node = (*JSONTable)(nil)
+var _ sql.Expressioner = (*JSONTable)(nil)
+var _ sql.CollationCoercible = (*JSONTable)(nil)
 
 // Name implements the sql.Table interface
 func (t *JSONTable) Name() string {
@@ -129,7 +91,7 @@ func (t *JSONTable) Collation() sql.CollationID {
 
 // Partitions implements the sql.Table interface
 func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	// TODO: this does nothing
+	// TODO: this does Nothing
 	return &jsonTablePartitionIter{
 		keys: [][]byte{{0}},
 	}, nil
@@ -142,7 +104,7 @@ func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sq
 
 // Resolved implements the sql.Resolvable interface
 func (t *JSONTable) Resolved() bool {
-	return t.dataExpr.Resolved()
+	return t.DataExpr.Resolved()
 }
 
 // Children implements the sql.Node interface
@@ -153,7 +115,7 @@ func (t *JSONTable) Children() []sql.Node {
 // RowIter implements the sql.Node interface
 func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// data must evaluate to JSON string
-	data, err := t.dataExpr.Eval(ctx, row)
+	data, err := t.DataExpr.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +135,7 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 
 	// Get data specified from initial path
 	var jsonPathData []interface{}
-	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, t.path); err == nil {
+	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, t.Path); err == nil {
 		if data, ok := rootJSONData.([]interface{}); ok {
 			jsonPathData = data
 		} else {
@@ -184,7 +146,7 @@ func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	return &jsonTableRowIter{
-		colPaths: t.colPaths,
+		colPaths: t.ColPaths,
 		schema:   t.schema.Schema,
 		data:     jsonPathData,
 	}, nil
@@ -207,7 +169,7 @@ func (*JSONTable) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Expressions implements the sql.Expressioner interface
 func (t *JSONTable) Expressions() []sql.Expression {
-	return []sql.Expression{t.dataExpr}
+	return []sql.Expression{t.DataExpr}
 }
 
 // WithExpressions implements the sql.Expressioner interface
@@ -216,7 +178,7 @@ func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, err
 		return nil, sql.ErrInvalidExpressionNumber.New(t, len(expression), 1)
 	}
 	nt := *t
-	nt.dataExpr = expression[0]
+	nt.DataExpr = expression[0]
 	return &nt, nil
 }
 
@@ -228,9 +190,9 @@ func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPat
 
 	return &JSONTable{
 		name:     alias,
-		dataExpr: dataExpr,
-		path:     path,
+		DataExpr: dataExpr,
+		Path:     path,
 		schema:   schema,
-		colPaths: colPaths,
+		ColPaths: colPaths,
 	}, nil
 }

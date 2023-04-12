@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -102,77 +100,4 @@ func (c Concat) DebugString() string {
 	_ = pr.WriteNode("Concat")
 	_ = pr.WriteChildren(sql.DebugString(c.left), sql.DebugString(c.right))
 	return pr.String()
-}
-
-type concatIter struct {
-	cur      sql.RowIter
-	inLeft   sql.KeyValueCache
-	dispose  sql.DisposeFunc
-	nextIter func() (sql.RowIter, error)
-}
-
-func newConcatIter(ctx *sql.Context, cur sql.RowIter, nextIter func() (sql.RowIter, error)) *concatIter {
-	seen, dispose := ctx.Memory.NewHistoryCache()
-	return &concatIter{
-		cur,
-		seen,
-		dispose,
-		nextIter,
-	}
-}
-
-var _ sql.Disposable = (*concatIter)(nil)
-var _ sql.RowIter = (*concatIter)(nil)
-
-func (ci *concatIter) Next(ctx *sql.Context) (sql.Row, error) {
-	for {
-		res, err := ci.cur.Next(ctx)
-		if err == io.EOF {
-			if ci.nextIter == nil {
-				return nil, io.EOF
-			}
-			err = ci.cur.Close(ctx)
-			if err != nil {
-				return nil, err
-			}
-			ci.cur, err = ci.nextIter()
-			ci.nextIter = nil
-			if err != nil {
-				return nil, err
-			}
-			res, err = ci.cur.Next(ctx)
-		}
-		if err != nil {
-			return nil, err
-		}
-		hash, err := sql.HashOf(res)
-		if err != nil {
-			return nil, err
-		}
-		if ci.nextIter != nil {
-			// On Left
-			if err := ci.inLeft.Put(hash, struct{}{}); err != nil {
-				return nil, err
-			}
-		} else {
-			// On Right
-			if _, err := ci.inLeft.Get(hash); err == nil {
-				continue
-			}
-		}
-		return res, err
-	}
-}
-
-func (ci *concatIter) Dispose() {
-	ci.dispose()
-}
-
-func (ci *concatIter) Close(ctx *sql.Context) error {
-	ci.Dispose()
-	if ci.cur != nil {
-		return ci.cur.Close(ctx)
-	} else {
-		return nil
-	}
 }

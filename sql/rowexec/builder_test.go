@@ -1,4 +1,4 @@
-package row_exec
+package rowexec
 
 import (
 	"bufio"
@@ -239,7 +239,7 @@ func genBuilder(t *testing.T, typ, pack, fileName string, objects map[string]str
 	usr, _ := user.Current()
 	dir := usr.HomeDir
 
-	f, err := os.Create(filepath.Join(dir, "go/src/github.com/dolthub/go-mysql-server/sql/row_exec", fileName))
+	f, err := os.Create(filepath.Join(dir, "go/src/github.com/dolthub/go-mysql-server/sql/rowexec", fileName))
 	require.NoError(t, err)
 
 	w := bufio.NewWriter(f)
@@ -259,7 +259,7 @@ func genBuilder(t *testing.T, typ, pack, fileName string, objects map[string]str
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package row_exec
+package rowexec
 
 import (
   "fmt"
@@ -268,7 +268,7 @@ import (
 )
 
 `, pack)
-	fmt.Fprintf(w, "func (b *Builder) build%sExec(n sql.%s, row sql.Row) (sql.RowIter, error) {\n", typ, typ)
+	fmt.Fprintf(w, "func (b *builder) build%sExec(n sql.%s, row sql.Row) (sql.RowIter, error) {\n", typ, typ)
 	fmt.Fprintf(w, "  switch n := n.(type) {\n")
 
 	for name, obj := range objects {

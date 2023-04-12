@@ -65,13 +65,3 @@ func (ShowWarnings) Schema() sql.Schema {
 
 // Children implements sql.Node interface. The function always returns nil.
 func (ShowWarnings) Children() []sql.Node { return nil }
-
-// RowIter implements the sql.Node interface.
-// The function returns an iterator for warnings.
-func (sw ShowWarnings) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var rows []sql.Row
-	for _, w := range sw {
-		rows = append(rows, sql.NewRow(w.Level, w.Code, w.Message))
-	}
-	return sql.RowsToRowIter(rows...), nil
-}

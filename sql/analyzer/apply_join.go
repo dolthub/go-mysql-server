@@ -16,10 +16,10 @@ package analyzer
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -69,7 +69,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 
 			// separate decorrelation candidates
 			for _, e := range filters {
-				if !plan.IsNullRejecting(e) {
+				if !rowexec.IsNullRejecting(e) {
 					// TODO: rewrite dual table to permit in-scope joins,
 					// which aren't possible when values are projected
 					// above join filter

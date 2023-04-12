@@ -16,11 +16,7 @@ package plan
 
 import (
 	"fmt"
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type TriggerEvent string
@@ -101,152 +97,6 @@ func (t *TriggerExecutor) CollationCoercibility(ctx *sql.Context) (collation sql
 	return sql.GetCoercibility(ctx, t.left)
 }
 
-type triggerIter struct {
-	child          sql.RowIter
-	executionLogic sql.Node
-	triggerTime    TriggerTime
-	triggerEvent   TriggerEvent
-	ctx            *sql.Context
-}
-
-// prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
-// plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
-// result rows are prepended with the row given.
-func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-	return func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch n := c.Node.(type) {
-		case *Project:
-			// Only prepend rows for projects that aren't the input to inserts and other triggers
-			switch c.Parent.(type) {
-			case *InsertInto, *TriggerExecutor:
-				return n, transform.SameTree, nil
-			default:
-				return &prependNode{
-					UnaryNode: UnaryNode{Child: n},
-					row:       row,
-				}, transform.NewTree, nil
-			}
-		case *ResolvedTable, *IndexedTableAccess:
-			return &prependNode{
-				UnaryNode: UnaryNode{Child: n},
-				row:       row,
-			}, transform.NewTree, nil
-		default:
-			return n, transform.SameTree, nil
-		}
-	}
-}
-
-func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
-	childRow, err := t.child.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Wrap the execution logic with the current child row before executing it.
-	logic, _, err := transform.NodeWithCtx(t.executionLogic, nil, prependRowInPlanForTriggerExecution(childRow))
-	if err != nil {
-		return nil, err
-	}
-
-	// We don't do anything interesting with this subcontext yet, but it's a good idea to cancel it independently of the
-	// parent context if something goes wrong in trigger execution.
-	ctx, cancelFunc := t.ctx.NewSubContext()
-	defer cancelFunc()
-
-	logicIter, err := logic.RowIter(ctx, childRow)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		err := logicIter.Close(t.ctx)
-		if returnErr == nil {
-			returnErr = err
-		}
-	}()
-
-	var logicRow sql.Row
-	for {
-		row, err := logicIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		logicRow = row
-	}
-
-	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
-	// the fields of the new row
-	if ok, returnRow := shouldUseLogicResult(logic, logicRow); ok {
-		return returnRow, nil
-	}
-
-	return childRow, nil
-}
-
-func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
-	switch logic := logic.(type) {
-	// TODO: are there other statement types that we should use here?
-	case *Set:
-		hasSetField := false
-		for _, expr := range logic.Exprs {
-			sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
-				if _, ok := e.(*expression.GetField); ok {
-					hasSetField = true
-					return false
-				}
-				return true
-			})
-		}
-		return hasSetField, row[len(row)/2:]
-	case *TriggerBeginEndBlock:
-		hasSetField := false
-		transform.Inspect(logic, func(n sql.Node) bool {
-			set, ok := n.(*Set)
-			if !ok {
-				return true
-			}
-			for _, expr := range set.Exprs {
-				sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
-					if _, ok := e.(*expression.GetField); ok {
-						hasSetField = true
-						return false
-					}
-					return true
-				})
-			}
-			return !hasSetField
-		})
-		return hasSetField, row
-	default:
-		return false, nil
-	}
-}
-
-func (t *triggerIter) Close(ctx *sql.Context) error {
-	return t.child.Close(ctx)
-}
-
-func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	childIter, err := t.left.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return &triggerIter{
-		child:          childIter,
-		triggerTime:    t.TriggerTime,
-		triggerEvent:   t.TriggerEvent,
-		executionLogic: t.right,
-		ctx:            ctx,
-	}, nil
-}
-
-const SavePointName = "__go_mysql_server_starting_savepoint__"
-
 // TriggerRollback is a node that wraps the entire tree iff it contains a trigger, creates a savepoint, and performs a
 // rollback if something went wrong during execution
 type TriggerRollback struct {
@@ -315,49 +165,6 @@ func (t *TriggerRollback) DebugString() string {
 	_ = pr.WriteNode("TriggerRollback")
 	_ = pr.WriteChildren(sql.DebugString(t.Child))
 	return pr.String()
-}
-
-type triggerRollbackIter struct {
-	child        sql.RowIter
-	hasSavepoint bool
-}
-
-func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
-	childRow, err := t.child.Next(ctx)
-
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return nil, fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
-	}
-
-	// Rollback if error occurred
-	if err != nil && err != io.EOF {
-		if err := ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
-			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling RollbackToSavePoint during triggerRollbackIter.Next()")
-		}
-		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
-			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Next()")
-		} else {
-			t.hasSavepoint = false
-		}
-	}
-
-	return childRow, err
-}
-
-func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
-	}
-
-	if t.hasSavepoint {
-		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
-			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Close()")
-		}
-		t.hasSavepoint = false
-	}
-	return t.child.Close(ctx)
 }
 
 type NoopTriggerRollback struct {

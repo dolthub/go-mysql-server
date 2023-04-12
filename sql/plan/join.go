@@ -348,24 +348,6 @@ func makeNullable(cols []*sql.Column) []*sql.Column {
 	return result
 }
 
-// RowIter implements the Node interface.
-func (j *JoinNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	switch {
-	case j.Op.IsFullOuter():
-		return newFullJoinIter(ctx, j, row)
-	case j.Op.IsPartial():
-		return newExistsIter(ctx, j, row)
-	case j.Op.IsCross():
-		return newCrossJoinIter(ctx, j, row)
-	case j.Op.IsPlaceholder():
-		panic(fmt.Sprintf("%s is a placeholder, RowIter called", j.Op))
-	case j.Op.IsMerge():
-		return newMergeJoinIter(ctx, j, row)
-	default:
-		return newJoinIter(ctx, j, row)
-	}
-}
-
 func (j *JoinNode) WithScopeLen(i int) *JoinNode {
 	ret := *j
 	ret.ScopeLen = i

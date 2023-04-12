@@ -16,9 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -28,7 +25,7 @@ import (
 // CreateDB creates an in memory database that lasts the length of the process only.
 type CreateDB struct {
 	Catalog     sql.Catalog
-	dbName      string
+	DbName      string
 	IfNotExists bool
 	Collation   sql.CollationID
 }
@@ -45,7 +42,7 @@ func (c *CreateDB) String() string {
 	if c.IfNotExists {
 		ifNotExists = " if not exists"
 	}
-	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifNotExists, c.dbName)
+	return fmt.Sprintf("%s database%s %v", sqlparser.CreateStr, ifNotExists, c.DbName)
 }
 
 func (c *CreateDB) Schema() sql.Schema {
@@ -54,36 +51,6 @@ func (c *CreateDB) Schema() sql.Schema {
 
 func (c *CreateDB) Children() []sql.Node {
 	return nil
-}
-
-func (c *CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	exists := c.Catalog.HasDB(ctx, c.dbName)
-	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
-
-	if exists {
-		if c.IfNotExists {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Note",
-				Code:    mysql.ERDbCreateExists,
-				Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
-			})
-
-			return sql.RowsToRowIter(rows...), nil
-		} else {
-			return nil, sql.ErrDatabaseExists.New(c.dbName)
-		}
-	}
-
-	collation := c.Collation
-	if collation == sql.Collation_Unspecified {
-		collation = sql.Collation_Default
-	}
-	err := c.Catalog.CreateDatabase(ctx, c.dbName, collation)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(rows...), nil
 }
 
 func (c *CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -103,12 +70,12 @@ func (*CreateDB) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 // Database returns the name of the database that will be used.
 func (c *CreateDB) Database() string {
-	return c.dbName
+	return c.DbName
 }
 
 func NewCreateDatabase(dbName string, ifNotExists bool, collation sql.CollationID) *CreateDB {
 	return &CreateDB{
-		dbName:      dbName,
+		DbName:      dbName,
 		IfNotExists: ifNotExists,
 		Collation:   collation,
 	}
@@ -117,7 +84,7 @@ func NewCreateDatabase(dbName string, ifNotExists bool, collation sql.CollationI
 // DropDB removes a databases from the Catalog and updates the active database if it gets removed itself.
 type DropDB struct {
 	Catalog  sql.Catalog
-	dbName   string
+	DbName   string
 	IfExists bool
 }
 
@@ -133,7 +100,7 @@ func (d *DropDB) String() string {
 	if d.IfExists {
 		ifExists = " if exists"
 	}
-	return fmt.Sprintf("%s database%s %v", sqlparser.DropStr, ifExists, d.dbName)
+	return fmt.Sprintf("%s database%s %v", sqlparser.DropStr, ifExists, d.DbName)
 }
 
 func (d *DropDB) Schema() sql.Schema {
@@ -142,40 +109,6 @@ func (d *DropDB) Schema() sql.Schema {
 
 func (d *DropDB) Children() []sql.Node {
 	return nil
-}
-
-func (d *DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	exists := d.Catalog.HasDB(ctx, d.dbName)
-	if !exists {
-		if d.IfExists {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Note",
-				Code:    mysql.ERDbDropExists,
-				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
-			})
-
-			rows := []sql.Row{{types.OkResult{RowsAffected: 0}}}
-
-			return sql.RowsToRowIter(rows...), nil
-		} else {
-			return nil, sql.ErrDatabaseNotFound.New(d.dbName)
-		}
-	}
-
-	err := d.Catalog.RemoveDatabase(ctx, d.dbName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unsets the current database. Database name is case-insensitive.
-	if strings.ToLower(ctx.GetCurrentDatabase()) == strings.ToLower(d.dbName) {
-		ctx.SetCurrentDatabase("")
-		ctx.Session.SetTransactionDatabase("")
-	}
-
-	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
-
-	return sql.RowsToRowIter(rows...), nil
 }
 
 func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -195,7 +128,7 @@ func (*DropDB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 
 func NewDropDatabase(dbName string, ifExists bool) *DropDB {
 	return &DropDB{
-		dbName:   dbName,
+		DbName:   dbName,
 		IfExists: ifExists,
 	}
 }
@@ -232,34 +165,6 @@ func (c *AlterDB) Schema() sql.Schema {
 // Children implements the interface sql.Node.
 func (c *AlterDB) Children() []sql.Node {
 	return nil
-}
-
-// RowIter implements the interface sql.Node.
-func (c *AlterDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	dbName := c.Database(ctx)
-
-	if !c.Catalog.HasDB(ctx, dbName) {
-		return nil, sql.ErrDatabaseNotFound.New(dbName)
-	}
-	db, err := c.Catalog.Database(ctx, dbName)
-	if err != nil {
-		return nil, err
-	}
-	collatedDb, ok := db.(sql.CollatedDatabase)
-	if !ok {
-		return nil, sql.ErrDatabaseCollationsNotSupported.New(dbName)
-	}
-
-	collation := c.Collation
-	if collation == sql.Collation_Unspecified {
-		collation = sql.Collation_Default
-	}
-	if err = collatedDb.SetCollation(ctx, collation); err != nil {
-		return nil, err
-	}
-
-	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
-	return sql.RowsToRowIter(rows...), nil
 }
 
 // WithChildren implements the interface sql.Node.

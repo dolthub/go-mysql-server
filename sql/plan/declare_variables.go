@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -28,7 +27,7 @@ type DeclareVariables struct {
 	Names      []string
 	Type       sql.Type
 	DefaultVal *sql.ColumnDefaultValue
-	pRef       *expression.ProcedureReference
+	Pref       *expression.ProcedureReference
 }
 
 var _ sql.Node = (*DeclareVariables)(nil)
@@ -79,41 +78,9 @@ func (*DeclareVariables) CollationCoercibility(ctx *sql.Context) (collation sql.
 	return sql.Collation_binary, 7
 }
 
-// RowIter implements the interface sql.Node.
-func (d *DeclareVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &declareVariablesIter{d, row}, nil
-}
-
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (d *DeclareVariables) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
-	nd.pRef = pRef
+	nd.Pref = pRef
 	return &nd
-}
-
-// declareVariablesIter is the sql.RowIter of *DeclareVariables.
-type declareVariablesIter struct {
-	*DeclareVariables
-	row sql.Row
-}
-
-var _ sql.RowIter = (*declareVariablesIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (d *declareVariablesIter) Next(ctx *sql.Context) (sql.Row, error) {
-	defaultVal, err := d.DefaultVal.Eval(ctx, d.row)
-	if err != nil {
-		return nil, err
-	}
-	for _, varName := range d.Names {
-		if err := d.pRef.InitializeVariable(varName, d.Type, defaultVal); err != nil {
-			return nil, err
-		}
-	}
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (d *declareVariablesIter) Close(ctx *sql.Context) error {
-	return nil
 }

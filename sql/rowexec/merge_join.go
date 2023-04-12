@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package rowexec
 
 import (
 	"errors"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -28,25 +29,25 @@ var ErrMergeJoinExpectsComparerFilters = errors.New("merge join expects expressi
 // two relations. We require 1) the join filter is an equality with disjoint
 // join attributes, 2) the free attributes for a relation are a prefix for
 // an index that will be used to return sorted rows.
-func NewMergeJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeMerge, cond)
+func NewMergeJoin(left, right sql.Node, cond sql.Expression) *plan.JoinNode {
+	return plan.NewJoin(left, right, plan.JoinTypeMerge, cond)
 }
 
-func NewLeftMergeJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeLeftOuterMerge, cond)
+func NewLeftMergeJoin(left, right sql.Node, cond sql.Expression) *plan.JoinNode {
+	return plan.NewJoin(left, right, plan.JoinTypeLeftOuterMerge, cond)
 }
 
-func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error) {
-	l, err := j.left.RowIter(ctx, row)
+func newMergeJoinIter(ctx *sql.Context, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
+	l, err := j.Left().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	r, err := j.right.RowIter(ctx, row)
+	r, err := j.Right().RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	fullRow := make(sql.Row, len(row)+len(j.left.Schema())+len(j.right.Schema()))
+	fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
 	fullRow[0] = row
 	if len(row) > 0 {
 		copy(fullRow[0:], row[:])
@@ -73,8 +74,8 @@ func newMergeJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, 
 		fullRow:     fullRow,
 		scopeLen:    j.ScopeLen,
 		parentLen:   len(row) - j.ScopeLen,
-		leftRowLen:  len(j.left.Schema()),
-		rightRowLen: len(j.right.Schema()),
+		leftRowLen:  len(j.Left().Schema()),
+		rightRowLen: len(j.Right().Schema()),
 	}
 	return iter, nil
 }
@@ -113,7 +114,7 @@ type mergeJoinIter struct {
 	leftExhausted  bool
 	rightExhausted bool
 
-	typ         JoinType
+	typ         plan.JoinType
 	scopeLen    int
 	leftRowLen  int
 	rightRowLen int

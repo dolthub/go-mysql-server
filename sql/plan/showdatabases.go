@@ -15,9 +15,6 @@
 package plan
 
 import (
-	"sort"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -52,24 +49,6 @@ func (*ShowDatabases) Schema() sql.Schema {
 		Type:     types.LongText,
 		Nullable: false,
 	}}
-}
-
-// RowIter implements the Node interface.
-func (p *ShowDatabases) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	dbs := p.Catalog.AllDatabases(ctx)
-	var rows = make([]sql.Row, 0, len(dbs))
-	for _, db := range dbs {
-		rows = append(rows, sql.Row{db.Name()})
-	}
-	if _, err := p.Catalog.Database(ctx, "mysql"); err == nil {
-		rows = append(rows, sql.Row{"mysql"})
-	}
-
-	sort.Slice(rows, func(i, j int) bool {
-		return strings.Compare(rows[i][0].(string), rows[j][0].(string)) < 0
-	})
-
-	return sql.RowsToRowIter(rows...), nil
 }
 
 // WithChildren implements the Node interface.

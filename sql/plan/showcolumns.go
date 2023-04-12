@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"fmt"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -117,89 +115,6 @@ func (s *ShowColumns) TargetSchema() sql.Schema {
 	return s.targetSchema
 }
 
-// RowIter creates a new ShowColumns node.
-func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, _ := ctx.Span("plan.ShowColumns")
-
-	schema := s.targetSchema
-	var rows = make([]sql.Row, len(schema))
-	for i, col := range schema {
-		var row sql.Row
-		var collation interface{}
-		if types.IsTextOnly(col.Type) {
-			collation = sql.Collation_Default.String()
-		}
-
-		var null = "NO"
-		if col.Nullable {
-			null = "YES"
-		}
-
-		node := s.Child
-		if exchange, ok := node.(*Exchange); ok {
-			node = exchange.Child
-		}
-		key := ""
-		switch table := node.(type) {
-		case *ResolvedTable:
-			if col.PrimaryKey {
-				key = "PRI"
-			} else if s.isFirstColInUniqueKey(col, table) {
-				key = "UNI"
-			} else if s.isFirstColInNonUniqueKey(col, table) {
-				key = "MUL"
-			}
-		case *SubqueryAlias:
-			// no key info for views
-		default:
-			panic(fmt.Sprintf("unexpected type %T", s.Child))
-		}
-
-		var defaultVal string
-		if col.Default != nil {
-			defaultVal = col.Default.String()
-		} else {
-			// From: https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
-			// The default value for the column. This is NULL if the column has an explicit default of NULL,
-			// or if the column definition includes no DEFAULT clause.
-			defaultVal = "NULL"
-		}
-
-		extra := col.Extra
-		// If extra is not defined, fill it here.
-		if extra == "" && !col.Default.IsLiteral() {
-			extra = fmt.Sprintf("DEFAULT_GENERATED")
-		}
-
-		if s.Full {
-			row = sql.Row{
-				col.Name,
-				col.Type.String(),
-				collation,
-				null,
-				key,
-				defaultVal,
-				extra,
-				"", // Privileges
-				col.Comment,
-			}
-		} else {
-			row = sql.Row{
-				col.Name,
-				col.Type.String(),
-				null,
-				key,
-				defaultVal,
-				extra,
-			}
-		}
-
-		rows[i] = row
-	}
-
-	return sql.NewSpanIter(span, sql.RowsToRowIter(rows...)), nil
-}
-
 // WithChildren implements the Node interface.
 func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -252,7 +167,7 @@ func (s *ShowColumns) DebugString() string {
 	return tp.String()
 }
 
-func (s *ShowColumns) isFirstColInUniqueKey(col *sql.Column, table sql.Table) bool {
+func (s *ShowColumns) IsFirstColInUniqueKey(col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		if !idx.IsUnique() {
 			continue
@@ -267,7 +182,7 @@ func (s *ShowColumns) isFirstColInUniqueKey(col *sql.Column, table sql.Table) bo
 	return false
 }
 
-func (s *ShowColumns) isFirstColInNonUniqueKey(col *sql.Column, table sql.Table) bool {
+func (s *ShowColumns) IsFirstColInNonUniqueKey(col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		if idx.IsUnique() {
 			continue

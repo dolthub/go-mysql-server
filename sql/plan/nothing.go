@@ -16,37 +16,37 @@ package plan
 
 import "github.com/dolthub/go-mysql-server/sql"
 
-// Nothing is a node that will return no rows.
-var Nothing nothing
+// NothingImpl is a node that will return no rows.
+var NothingImpl Nothing
 
-type nothing struct{}
+type Nothing struct{}
 
-var _ sql.Node = nothing{}
-var _ sql.CollationCoercible = nothing{}
+var _ sql.Node = Nothing{}
+var _ sql.CollationCoercible = Nothing{}
 
-func (nothing) String() string       { return "NOTHING" }
-func (nothing) Resolved() bool       { return true }
-func (nothing) Schema() sql.Schema   { return nil }
-func (nothing) Children() []sql.Node { return nil }
-func (nothing) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
+func (Nothing) String() string       { return "NOTHING" }
+func (Nothing) Resolved() bool       { return true }
+func (Nothing) Schema() sql.Schema   { return nil }
+func (Nothing) Children() []sql.Node { return nil }
+func (Nothing) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
 // WithChildren implements the Node interface.
-func (n nothing) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n Nothing) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}
 
-	return Nothing, nil
+	return NothingImpl, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
-func (nothing) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (Nothing) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (nothing) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (Nothing) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
 }

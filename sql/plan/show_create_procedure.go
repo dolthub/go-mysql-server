@@ -25,7 +25,7 @@ import (
 type ShowCreateProcedure struct {
 	db                      sql.Database
 	ProcedureName           string
-	externalStoredProcedure *sql.ExternalStoredProcedureDetails
+	ExternalStoredProcedure *sql.ExternalStoredProcedureDetails
 }
 
 var _ sql.Databaser = (*ShowCreateProcedure)(nil)
@@ -85,11 +85,11 @@ func (s *ShowCreateProcedure) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter,
 		return nil, err
 	}
 
-	if s.externalStoredProcedure != nil {
+	if s.ExternalStoredProcedure != nil {
 		// If an external stored procedure has been plugged in by the analyzer, use that
-		fakeCreateProcedureStmt := s.externalStoredProcedure.FakeCreateProcedureStmt()
+		fakeCreateProcedureStmt := s.ExternalStoredProcedure.FakeCreateProcedureStmt()
 		return sql.RowsToRowIter(sql.Row{
-			s.externalStoredProcedure.Name, // Procedure
+			s.ExternalStoredProcedure.Name, // Procedure
 			"",                             // sql_mode
 			fakeCreateProcedureStmt,        // Create Procedure
 			characterSetClient,             // character_set_client
@@ -160,6 +160,6 @@ func (s *ShowCreateProcedure) WithDatabase(db sql.Database) (sql.Node, error) {
 // as the procedure to be shown.
 func (s *ShowCreateProcedure) WithExternalStoredProcedure(procedure sql.ExternalStoredProcedureDetails) sql.Node {
 	ns := *s
-	ns.externalStoredProcedure = &procedure
+	ns.ExternalStoredProcedure = &procedure
 	return &ns
 }

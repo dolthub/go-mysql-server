@@ -55,7 +55,7 @@ func TestAddColumnToSchema(t *testing.T) {
 			projections: []sql.Expression{
 				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
-				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
+				ColDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
 			},
 		},
 		{
@@ -71,7 +71,7 @@ func TestAddColumnToSchema(t *testing.T) {
 			projections: []sql.Expression{
 				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
-				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
+				ColDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
 			},
 		},
 		{
@@ -85,7 +85,7 @@ func TestAddColumnToSchema(t *testing.T) {
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
+				ColDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
 				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
 			},
@@ -106,7 +106,7 @@ func TestAddColumnToSchema(t *testing.T) {
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
-				colDefaultExpression{&sql.Column{
+				ColDefaultExpression{&sql.Column{
 					Name:    "i2",
 					Type:    types.Int64,
 					Source:  "mytable",
@@ -128,7 +128,7 @@ func TestAddColumnToSchema(t *testing.T) {
 			},
 			projections: []sql.Expression{
 				expression.NewGetField(0, types.Int64, "i", false),
-				colDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
+				ColDefaultExpression{&sql.Column{Name: "i2", Type: types.Int64, Source: "mytable"}},
 				expression.NewGetField(1, varchar20, "s", false),
 			},
 		},
@@ -149,7 +149,7 @@ func TestAddColumnToSchema(t *testing.T) {
 			},
 			projections: []sql.Expression{
 				expression.NewGetField(0, types.Int64, "i", false),
-				colDefaultExpression{&sql.Column{
+				ColDefaultExpression{&sql.Column{
 					Name:    "i2",
 					Type:    types.Int64,
 					Source:  "mytable",

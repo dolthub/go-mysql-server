@@ -28,7 +28,7 @@ import (
 // TODO: This is just a stub implementation that returns an empty set. The actual functionality needs to be implemented
 // in the future.
 type ShowStatus struct {
-	modifier ShowStatusModifier
+	Modifier ShowStatusModifier
 }
 
 var _ sql.Node = (*ShowStatus)(nil)
@@ -43,7 +43,7 @@ const (
 
 // NewShowStatus returns a new ShowStatus reference.
 func NewShowStatus(modifier ShowStatusModifier) *ShowStatus {
-	return &ShowStatus{modifier: modifier}
+	return &ShowStatus{Modifier: modifier}
 }
 
 // Resolved implements sql.Node interface.
@@ -84,8 +84,8 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
 
-		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
-			s.modifier == ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
+		if s.Modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
+			s.Modifier == ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
 			continue
 		}
 
@@ -97,7 +97,7 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 // WithChildren implements sql.Node interface.
 func (s *ShowStatus) WithChildren(node ...sql.Node) (sql.Node, error) {
-	return NewShowStatus(s.modifier), nil
+	return NewShowStatus(s.Modifier), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"io"
 	"strings"
 
@@ -217,7 +218,9 @@ func rowFromRow2(sch Schema, r Row2) Row {
 
 // NodeToRows converts a node to a slice of rows.
 func NodeToRows(ctx *Context, n Node) ([]Row, error) {
-	i, err := n.RowIter(ctx, nil)
+	// TODO can't have sql depend on rowexec
+	// move execution tests to rowexec
+	i, err := rowexec.Builder.Build(ctx, n)
 	if err != nil {
 		return nil, err
 	}

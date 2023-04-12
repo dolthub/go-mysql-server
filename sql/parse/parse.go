@@ -109,7 +109,7 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 	if err != nil {
 		if goerrors.Is(err, sqlparser.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-			return plan.Nothing, parsed, remainder, nil
+			return plan.NothingImpl, parsed, remainder, nil
 		}
 		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}
@@ -234,8 +234,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertLoop(ctx, n, query)
 	case *sqlparser.Repeat:
 		return convertRepeat(ctx, n, query)
-	case *sqlparser.While:
-		return convertWhile(ctx, n, query)
 	case *sqlparser.Leave:
 		return convertLeave(ctx, n)
 	case *sqlparser.Iterate:
@@ -1580,18 +1578,6 @@ func convertRepeat(ctx *sql.Context, repeat *sqlparser.Repeat, query string) (sq
 		return nil, err
 	}
 	return plan.NewRepeat(repeat.Label, expr, block), nil
-}
-
-func convertWhile(ctx *sql.Context, while *sqlparser.While, query string) (sql.Node, error) {
-	block, err := convertBlock(ctx, while.Statements, query)
-	if err != nil {
-		return nil, err
-	}
-	expr, err := ExprToExpression(ctx, while.Condition)
-	if err != nil {
-		return nil, err
-	}
-	return plan.NewWhile(while.Label, expr, block), nil
 }
 
 func convertLeave(ctx *sql.Context, leave *sqlparser.Leave) (sql.Node, error) {

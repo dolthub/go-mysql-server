@@ -69,28 +69,3 @@ func (l *Leave) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 func (*Leave) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
 }
-
-// RowIter implements the interface sql.Node.
-func (l *Leave) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &leaveIter{l.Label}, nil
-}
-
-// leaveIter is the sql.RowIter of *Leave.
-type leaveIter struct {
-	Label string
-}
-
-var _ sql.RowIter = (*leaveIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (l *leaveIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return nil, loopError{
-		Label:  l.Label,
-		IsExit: true,
-	}
-}
-
-// Close implements the interface sql.RowIter.
-func (l *leaveIter) Close(ctx *sql.Context) error {
-	return nil
-}

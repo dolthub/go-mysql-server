@@ -16,8 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -34,7 +32,7 @@ const (
 type DeclareHandler struct {
 	Action    DeclareHandlerAction
 	Statement sql.Node
-	pRef      *expression.ProcedureReference
+	Pref      *expression.ProcedureReference
 	//TODO: implement other conditions besides NOT FOUND
 }
 
@@ -118,32 +116,9 @@ func (*DeclareHandler) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 	return sql.Collation_binary, 7
 }
 
-// RowIter implements the interface sql.Node.
-func (d *DeclareHandler) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &declareHandlerIter{d}, nil
-}
-
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (d *DeclareHandler) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
-	nd.pRef = pRef
+	nd.Pref = pRef
 	return &nd
-}
-
-// declareHandlerIter is the sql.RowIter of *DeclareHandler.
-type declareHandlerIter struct {
-	*DeclareHandler
-}
-
-var _ sql.RowIter = (*declareHandlerIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (d *declareHandlerIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.pRef.InitializeHandler(d.Statement, d.Action == DeclareHandlerAction_Exit)
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (d *declareHandlerIter) Close(ctx *sql.Context) error {
-	return nil
 }

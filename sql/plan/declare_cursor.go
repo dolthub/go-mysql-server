@@ -16,8 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,7 +25,7 @@ import (
 type DeclareCursor struct {
 	Name   string
 	Select sql.Node
-	pRef   *expression.ProcedureReference
+	Pref   *expression.ProcedureReference
 }
 
 var _ sql.Node = (*DeclareCursor)(nil)
@@ -97,24 +95,6 @@ func (d *DeclareCursor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (d *DeclareCursor) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
-	nd.pRef = pRef
+	nd.Pref = pRef
 	return &nd
-}
-
-// declareCursorIter is the sql.RowIter of *DeclareCursor.
-type declareCursorIter struct {
-	*DeclareCursor
-}
-
-var _ sql.RowIter = (*declareCursorIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (d *declareCursorIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.pRef.InitializeCursor(d.Name, d.Select)
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (d *declareCursorIter) Close(ctx *sql.Context) error {
-	return nil
 }

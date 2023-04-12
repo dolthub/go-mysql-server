@@ -17,8 +17,6 @@ package plan
 import (
 	"fmt"
 
-	errors "gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -64,29 +62,6 @@ func (t *LockTables) Resolved() bool {
 
 // Schema implements the sql.Node interface.
 func (t *LockTables) Schema() sql.Schema { return nil }
-
-// RowIter implements the sql.Node interface.
-func (t *LockTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.LockTables")
-	defer span.End()
-
-	for _, l := range t.Locks {
-		lockable, err := getLockable(l.Table)
-		if err != nil {
-			// If a table is not lockable, just skip it
-			ctx.Warn(0, err.Error())
-			continue
-		}
-
-		if err := lockable.Lock(ctx, l.Write); err != nil {
-			ctx.Error(0, "unable to lock table: %s", err)
-		} else {
-			t.Catalog.LockTable(ctx, lockable.Name())
-		}
-	}
-
-	return sql.RowsToRowIter(), nil
-}
 
 func (t *LockTables) String() string {
 	var children = make([]string, len(t.Locks))
@@ -134,31 +109,6 @@ func (t *LockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*LockTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// ErrTableNotLockable is returned whenever a lockable table can't be found.
-var ErrTableNotLockable = errors.NewKind("table %s is not lockable")
-
-func getLockable(node sql.Node) (sql.Lockable, error) {
-	switch node := node.(type) {
-	case *ResolvedTable:
-		return getLockableTable(node.Table)
-	case sql.TableWrapper:
-		return getLockableTable(node.Underlying())
-	default:
-		return nil, ErrTableNotLockable.New("unknown")
-	}
-}
-
-func getLockableTable(table sql.Table) (sql.Lockable, error) {
-	switch t := table.(type) {
-	case sql.Lockable:
-		return t, nil
-	case sql.TableWrapper:
-		return getLockableTable(t.Underlying())
-	default:
-		return nil, ErrTableNotLockable.New(t.Name())
-	}
 }
 
 // UnlockTables will release all locks for the current session.

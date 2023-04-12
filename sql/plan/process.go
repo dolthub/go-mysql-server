@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -67,64 +66,6 @@ func (p *QueryProcess) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 	return sql.GetCoercibility(ctx, p.Child())
 }
 
-// RowIter implements the sql.Node interface.
-func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	iter, err := p.Child().RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	qType := getQueryType(p.Child())
-
-	trackedIter := newTrackedRowIter(p.Child(), iter, nil, p.Notify)
-	trackedIter.queryType = qType
-	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
-
-	return trackedIter, nil
-}
-
-func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	iter, err := p.Child().(sql.Node2).RowIter2(ctx, f)
-	if err != nil {
-		return nil, err
-	}
-
-	qType := getQueryType(p.Child())
-
-	trackedIter := newTrackedRowIter(p.Child(), iter, nil, p.Notify)
-	trackedIter.queryType = qType
-	trackedIter.shouldSetFoundRows = qType == queryTypeSelect && p.shouldSetFoundRows()
-
-	return trackedIter, nil
-}
-
-func getQueryType(child sql.Node) queryType {
-	// TODO: behavior of CALL is not specified in the docs. Needs investigation
-	var queryType queryType = queryTypeSelect
-	transform.Inspect(child, func(node sql.Node) bool {
-		if IsNoRowNode(node) {
-			queryType = queryTypeDdl
-			return false
-		}
-
-		switch node.(type) {
-		case *Signal:
-			queryType = queryTypeDdl
-			return false
-		case nil:
-			return false
-		case *TriggerExecutor, *InsertInto, *Update, *DeleteFrom, *LoadData:
-			// TODO: AlterTable belongs here too, but we don't keep track of updated rows there so we can't return an
-			//  accurate ROW_COUNT() anyway.
-			queryType = queryTypeUpdate
-			return false
-		}
-		return true
-	})
-
-	return queryType
-}
-
 func (p *QueryProcess) String() string { return p.Child().String() }
 
 func (p *QueryProcess) DebugString() string {
@@ -134,9 +75,9 @@ func (p *QueryProcess) DebugString() string {
 	return tp.String()
 }
 
-// shouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
+// ShouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
 // any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
-func (p *QueryProcess) shouldSetFoundRows() bool {
+func (p *QueryProcess) ShouldSetFoundRows() bool {
 	var fromLimit *bool
 	var fromTopN *bool
 	transform.Inspect(p.Child(), func(n sql.Node) bool {
@@ -236,7 +177,7 @@ func (t *ProcessIndexableTable) newPartIter(p sql.Partition, iter sql.RowIter) (
 		}
 	}
 
-	return newTrackedRowIter(nil, iter, onNext, onDone), nil
+	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
 }
 
 func (t *ProcessIndexableTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
@@ -289,7 +230,7 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 
 	onDone, onNext := t.notifyFuncsForPartition(p)
 
-	return newTrackedRowIter(nil, iter, onNext, onDone), nil
+	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
 }
 
 func (t *ProcessTable) PartitionRows2(ctx *sql.Context, p sql.Partition) (sql.RowIter2, error) {
@@ -300,7 +241,7 @@ func (t *ProcessTable) PartitionRows2(ctx *sql.Context, p sql.Partition) (sql.Ro
 
 	onDone, onNext := t.notifyFuncsForPartition(p)
 
-	return newTrackedRowIter(nil, iter, onNext, onDone), nil
+	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
 }
 
 // notifyFuncsForPartition returns the OnDone and OnNext NotifyFuncs for the partition given
@@ -326,12 +267,39 @@ func (t *ProcessTable) notifyFuncsForPartition(p sql.Partition) (NotifyFunc, Not
 	return onDone, onNext
 }
 
+func GetQueryType(child sql.Node) queryType {
+	// TODO: behavior of CALL is not specified in the docs. Needs investigation
+	var queryType queryType = QueryTypeSelect
+	transform.Inspect(child, func(node sql.Node) bool {
+		if IsNoRowNode(node) {
+			queryType = QueryTypeDdl
+			return false
+		}
+
+		switch node.(type) {
+		case *Signal:
+			queryType = QueryTypeDdl
+			return false
+		case nil:
+			return false
+		case *TriggerExecutor, *InsertInto, *Update, *DeleteFrom, *LoadData:
+			// TODO: AlterTable belongs here too, but we don't keep track of updated rows there so we can't return an
+			//  accurate ROW_COUNT() anyway.
+			queryType = QueryTypeUpdate
+			return false
+		}
+		return true
+	})
+
+	return queryType
+}
+
 type queryType byte
 
 const (
-	queryTypeSelect = iota
-	queryTypeDdl
-	queryTypeUpdate
+	QueryTypeSelect = iota
+	QueryTypeDdl
+	QueryTypeUpdate
 )
 
 type trackedRowIter struct {
@@ -339,13 +307,13 @@ type trackedRowIter struct {
 	iter               sql.RowIter
 	iter2              sql.RowIter2
 	numRows            int64
-	queryType          queryType
-	shouldSetFoundRows bool
+	QueryType          queryType
+	ShouldSetFoundRows bool
 	onDone             NotifyFunc
 	onNext             NotifyFunc
 }
 
-func newTrackedRowIter(
+func NewTrackedRowIter(
 	node sql.Node,
 	iter sql.RowIter,
 	onNext NotifyFunc,
@@ -424,18 +392,18 @@ func (i *trackedRowIter) Close(ctx *sql.Context) error {
 }
 
 func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
-	switch i.queryType {
-	case queryTypeSelect:
+	switch i.QueryType {
+	case QueryTypeSelect:
 		ctx.SetLastQueryInfo(sql.RowCount, -1)
-	case queryTypeDdl:
+	case QueryTypeDdl:
 		ctx.SetLastQueryInfo(sql.RowCount, 0)
-	case queryTypeUpdate:
+	case QueryTypeUpdate:
 		// This is handled by RowUpdateAccumulator
 	default:
-		panic(fmt.Sprintf("Unexpected query type %v", i.queryType))
+		panic(fmt.Sprintf("Unexpected query type %v", i.QueryType))
 	}
 
-	if i.shouldSetFoundRows {
+	if i.ShouldSetFoundRows {
 		ctx.SetLastQueryInfo(sql.FoundRows, i.numRows)
 	}
 }
@@ -517,12 +485,6 @@ func partitionName(p sql.Partition) string {
 	return string(p.Key())
 }
 
-// IsNoRowNode returns whether this are node interacts only with schema and the catalog, not with any table
-// rows.
-func IsNoRowNode(node sql.Node) bool {
-	return IsDDLNode(node) || IsShowNode(node)
-}
-
 func IsDDLNode(node sql.Node) bool {
 	switch node.(type) {
 	case *CreateTable, *DropTable, *Truncate,
@@ -554,4 +516,10 @@ func IsShowNode(node sql.Node) bool {
 	default:
 		return false
 	}
+}
+
+// IsNoRowNode returns whether this are node interacts only with schema and the catalog, not with any table
+// rows.
+func IsNoRowNode(node sql.Node) bool {
+	return IsDDLNode(node) || IsShowNode(node)
 }

@@ -15,10 +15,6 @@
 package plan
 
 import (
-	"fmt"
-	"io"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -27,7 +23,7 @@ import (
 type BeginEndBlock struct {
 	*Block
 	Label string
-	pRef  *expression.ProcedureReference
+	Pref  *expression.ProcedureReference
 }
 
 // NewBeginEndBlock creates a new *BeginEndBlock node.
@@ -99,7 +95,7 @@ func (b *BeginEndBlock) CollationCoercibility(ctx *sql.Context) (collation sql.C
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (b *BeginEndBlock) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nb := *b
-	nb.pRef = pRef
+	nb.Pref = pRef
 	return &nb
 }
 
@@ -114,63 +110,4 @@ func (b *BeginEndBlock) GetBlockLabel(ctx *sql.Context) string {
 // RepresentsLoop implements the interface RepresentsLabeledBlock.
 func (b *BeginEndBlock) RepresentsLoop() bool {
 	return false
-}
-
-// RowIter implements the interface sql.Node.
-func (b *BeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	b.pRef.PushScope()
-	rowIter, err := b.Block.RowIter(ctx, row)
-	if err != nil {
-		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
-			err = nil
-		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
-			if controlFlow.IsExit {
-				err = nil
-			} else {
-				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
-			}
-		}
-		if nErr := b.pRef.PopScope(ctx); err == nil && nErr != nil {
-			err = nErr
-		}
-		return sql.RowsToRowIter(), err
-	}
-	return &beginEndIter{
-		BeginEndBlock: b,
-		rowIter:       rowIter,
-	}, nil
-}
-
-// beginEndIter is the sql.RowIter of *BeginEndBlock.
-type beginEndIter struct {
-	*BeginEndBlock
-	rowIter sql.RowIter
-}
-
-var _ sql.RowIter = (*beginEndIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
-	row, err := b.rowIter.Next(ctx)
-	if err != nil {
-		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
-			err = io.EOF
-		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
-			if controlFlow.IsExit {
-				err = nil
-			} else {
-				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
-			}
-		}
-		if nErr := b.pRef.PopScope(ctx); nErr != nil && err == io.EOF {
-			err = nErr
-		}
-		return nil, err
-	}
-	return row, nil
-}
-
-// Close implements the interface sql.RowIter.
-func (b *beginEndIter) Close(ctx *sql.Context) error {
-	return b.rowIter.Close(ctx)
 }

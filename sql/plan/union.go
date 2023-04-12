@@ -16,8 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -119,43 +117,6 @@ func (u *Union) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &ret, nil
 }
 
-// RowIter implements the Node interface.
-func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Union")
-	var iter sql.RowIter
-	var err error
-	iter, err = u.left.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	iter = &unionIter{
-		cur: iter,
-		nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
-			return u.right.RowIter(ctx, row)
-		},
-	}
-	if u.Distinct {
-		iter = newDistinctIter(ctx, iter)
-	}
-	if u.Limit != nil && len(u.SortFields) > 0 {
-		limit, err := getInt64Value(ctx, u.Limit)
-		if err != nil {
-			return nil, err
-		}
-		iter = newTopRowsIter(u.SortFields, limit, false, iter, len(u.Schema()))
-	} else if u.Limit != nil {
-		limit, err := getInt64Value(ctx, u.Limit)
-		if err != nil {
-			return nil, err
-		}
-		iter = &limitIter{limit: limit, childIter: iter}
-	} else if len(u.SortFields) > 0 {
-		iter = newSortIter(u.SortFields, iter)
-	}
-	return sql.NewSpanIter(span, iter), nil
-}
-
 // WithChildren implements the Node interface.
 func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
@@ -215,37 +176,4 @@ func (u Union) DebugString() string {
 	children = append(children, sql.DebugString(u.left), sql.DebugString(u.right))
 	_ = pr.WriteChildren(children...)
 	return pr.String()
-}
-
-type unionIter struct {
-	cur      sql.RowIter
-	nextIter func(ctx *sql.Context) (sql.RowIter, error)
-}
-
-func (ui *unionIter) Next(ctx *sql.Context) (sql.Row, error) {
-	res, err := ui.cur.Next(ctx)
-	if err == io.EOF {
-		if ui.nextIter == nil {
-			return nil, io.EOF
-		}
-		err = ui.cur.Close(ctx)
-		if err != nil {
-			return nil, err
-		}
-		ui.cur, err = ui.nextIter(ctx)
-		ui.nextIter = nil
-		if err != nil {
-			return nil, err
-		}
-		return ui.cur.Next(ctx)
-	}
-	return res, err
-}
-
-func (ui *unionIter) Close(ctx *sql.Context) error {
-	if ui.cur != nil {
-		return ui.cur.Close(ctx)
-	} else {
-		return nil
-	}
 }
