@@ -840,6 +840,8 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 		return nil, nil
 	}
 
+	// scope is missing the table alias u0.id
+
 	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
 	// ones of the same name. This matches the MySQL scope precedence rules.
 	indexSchema(scope.Schema())

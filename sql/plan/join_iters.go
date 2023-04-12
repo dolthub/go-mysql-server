@@ -56,7 +56,7 @@ func newJoinIter(ctx *sql.Context, j *JoinNode, row sql.Row) (sql.RowIter, error
 		parentRow:         row,
 		primary:           l,
 		secondaryProvider: j.right,
-		cond:              j.Filter,
+		cond:              j.Filter, // TODO: get fields are wrong
 		joinType:          j.Op,
 		rowSize:           len(row) + len(j.left.Schema()) + len(j.right.Schema()),
 		scopeLen:          j.ScopeLen,
@@ -151,7 +151,7 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		matches, err := conditionIsTrue(ctx, row, i.cond)
+		matches, err := conditionIsTrue(ctx, row, i.cond) // TODO: get fields are off by 1, likely because of prepend
 		if err != nil {
 			return nil, err
 		}
@@ -634,7 +634,7 @@ func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (i *crossJoinIterator) removeParentRow(r sql.Row) sql.Row {
 	copy(r[i.scopeLen:], r[len(i.parentRow):])
-	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
+	r = r[:len(r)-len(i.parentRow)+i.scopeLen] // TODO: not quite sure this does what we think it does
 	return r
 }
 

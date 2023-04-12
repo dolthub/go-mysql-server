@@ -515,7 +515,7 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 	var result sql.Node
 	var err error
 
-	switch r := r.(type) {
+	switch r := r.(type) { // TODO: should this recurse for subqueryAlias?
 	case *crossJoin:
 		result, err = b.buildCrossJoin(r, input, children...)
 	case *innerJoin:

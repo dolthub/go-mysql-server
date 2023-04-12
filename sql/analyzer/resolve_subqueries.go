@@ -49,6 +49,18 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 // finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
 // fixing parent scopes before recursing into child nodes.
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	//if p, ok := node.(*plan.Project); ok {
+	//	if scope == nil {
+	//		scope = newScopeWithDepth(0)
+	//	}
+	//	scope.nodes = append(scope.nodes, p)
+	//	newChild, same, err := finalizeSubqueriesHelper(ctx, a, p.Child, scope, sel)
+	//	if err != nil {
+	//		return nil, transform.SameTree, err
+	//	}
+	//	p.Child = newChild
+	//	return p, same, nil
+	//}
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			newSqa, same2, err := analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -255,7 +267,8 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 	cacheable := true
 	transform.Inspect(n, func(node sql.Node) bool {
 		if er, ok := node.(sql.Expressioner); ok {
-			for _, expr := range er.Expressions() {
+			exprs := er.Expressions()
+			for _, expr := range exprs {
 				if !exprIsCacheable(expr, lowestAllowedIdx) {
 					cacheable = false
 					return false
