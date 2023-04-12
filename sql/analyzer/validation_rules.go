@@ -462,6 +462,53 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	return n, transform.SameTree, nil
 }
 
+func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var err error
+	transform.Inspect(n, func(n sql.Node) bool {
+		if n == nil {
+			return false
+		}
+
+		if plan.IsDDLNode(n) {
+			return false
+		}
+
+		if er, ok := n.(sql.Expressioner); ok {
+			for _, e := range er.Expressions() {
+				// An expression consisting of just a * is allowed.
+				if _, s := e.(*expression.Star); s {
+					return false
+				}
+				// Otherwise, * can only be used inside acceptable aggregation functions.
+				// Detect any uses of * outside such functions.
+				sql.Inspect(e, func(e sql.Expression) bool {
+					if e == nil {
+						return err == nil
+					}
+					if err != nil {
+						return false
+					}
+					switch e.(type) {
+					case *expression.Star:
+						err = analyzererrors.ErrStarUnsupported.New()
+						return false
+					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
+						if _, s := e.Children()[0].(*expression.Star); s {
+							return false
+						}
+					}
+					return true
+				})
+			}
+		}
+		return err == nil
+	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	return n, transform.SameTree, nil
+}
+
 func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Validate that the number of columns in an operand or a top level
 	// expression are as expected. The current rules are:
