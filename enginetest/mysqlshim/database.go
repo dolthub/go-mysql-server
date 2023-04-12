@@ -20,11 +20,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Database represents a database for a local MySQL server.
