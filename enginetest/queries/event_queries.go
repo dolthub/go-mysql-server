@@ -30,7 +30,19 @@ var EventTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "CREATE EVENT event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
+				Query:    "CREATE EVENT event_with_starts_and_ends ON SCHEDULE EVERY '1:2' MINUTE_SECOND STARTS CURRENT_TIMESTAMP + INTERVAL 1 HOUR ENDS CURRENT_TIMESTAMP + INTERVAL 1 DAY DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT event_with_starts_only ON SCHEDULE EVERY '1:2' MINUTE_SECOND STARTS CURRENT_TIMESTAMP + INTERVAL 1 HOUR DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT event_with_ends_only ON SCHEDULE EVERY '1:2' MINUTE_SECOND ENDS CURRENT_TIMESTAMP + INTERVAL 1 DAY DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CREATE EVENT event_without_starts_and_ends ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{

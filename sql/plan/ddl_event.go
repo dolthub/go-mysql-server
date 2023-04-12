@@ -192,13 +192,13 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 		nc.At = ts
 	} else {
 		every, ok := e[0].(*expression.Interval)
-		if ok {
+		if !ok {
 			return nil, fmt.Errorf("expected `*expression.Interval` but got `%T`", e[0])
 		}
 		nc.Every = every
 
 		var ts *OnScheduleTimestamp
-		if len(e) == 2 {
+		if len(e) > 1 {
 			ts, ok = e[1].(*OnScheduleTimestamp)
 			if !ok {
 				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[1])

@@ -223,8 +223,7 @@ type StoredProcedureDatabase interface {
 }
 
 // EventDatabase is a database that supports the creation and execution of events. The engine will
-// handle execution logic for events. Integrators only need to store and retrieve EventDetails,
-// while verifying that all events have a unique name without regard to case-sensitivity.
+// handle execution logic for events. Integrators only need to store and retrieve EventDetails.
 type EventDatabase interface {
 	Database
 	// GetEvent returns the desired EventDetails and if it exists in the database.
