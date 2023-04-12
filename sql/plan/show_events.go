@@ -21,6 +21,7 @@ import (
 
 type ShowEvents struct {
 	db sql.Database
+	Events []sql.EventDetails
 }
 
 var _ sql.Databaser = (*ShowEvents)(nil)
@@ -91,16 +92,7 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, err
 	}
 
-	eventDb, ok := s.db.(sql.EventDatabase)
-	if !ok {
-		return nil, sql.ErrEventsNotSupported.New(s.db.Name())
-	}
-	events, err := eventDb.GetEvents(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, event := range events {
+	for _, event := range s.Events {
 		eventType := "RECURRING"
 		var executeAt, intervalVal, intervalField, starts, ends, status interface{}
 		if event.HasExecuteAt {

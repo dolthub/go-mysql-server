@@ -52,7 +52,7 @@ type BaseDatabase struct {
 	fkColl            *ForeignKeyCollection
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
-	events            []sql.EventDetails
+	events            []sql.EventDefinition
 	primaryKeyIndexes bool
 	collation         sql.CollationID
 }
@@ -323,19 +323,19 @@ func (d *BaseDatabase) DropStoredProcedure(ctx *sql.Context, name string) error 
 }
 
 // GetEvent implements sql.EventDatabase
-func (d *BaseDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDetails, bool, error) {
+func (d *BaseDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
 	name = strings.ToLower(name)
 	for _, ed := range d.events {
 		if name == strings.ToLower(ed.Name) {
 			return ed, true, nil
 		}
 	}
-	return sql.EventDetails{}, false, nil
+	return sql.EventDefinition{}, false, nil
 }
 
 // GetEvents implements sql.EventDatabase
-func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
-	var eds []sql.EventDetails
+func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+	var eds []sql.EventDefinition
 	for _, ed := range d.events {
 		eds = append(eds, ed)
 	}
@@ -343,7 +343,7 @@ func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d *BaseDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
+func (d *BaseDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
 	loweredName := strings.ToLower(ed.Name)
 	for _, existingEd := range d.events {
 		if strings.ToLower(existingEd.Name) == loweredName {
@@ -372,7 +372,7 @@ func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDetails) error {
+func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
 	loweredName := strings.ToLower(ed.Name)
 	found := false
 	for i, existingEd := range d.events {

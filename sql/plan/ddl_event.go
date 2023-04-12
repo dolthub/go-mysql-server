@@ -224,52 +224,12 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 
 // RowIter implements the sql.Node interface.
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	eventDetails := sql.EventDetails{
-		Name:                 c.EventName,
-		Definer:              c.Definer,
-		OnCompletionPreserve: c.OnCompPreserve,
-		Status:               c.Status.String(),
-		Comment:              c.Comment,
-		Definition:           c.DefinitionString,
-	}
-
 	eventCreationTime := time.Now()
-	var err error
-	if c.At != nil {
-		eventDetails.HasExecuteAt = true
-		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		delta, err := c.Every.EvalDelta(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		interval := NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
-		iVal, iField := interval.GetIntervalValAndField()
-		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
-
-		if c.Starts != nil {
-			eventDetails.HasStarts = true
-			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
-			eventDetails.Starts = eventCreationTime
-		}
-		if c.Ends != nil {
-			eventDetails.HasEnds = true
-			eventDetails.Ends, err = c.Ends.EvalTime(ctx)
-			if err != nil {
-				return nil, err
-			}
-		}
+	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime)
+	if err != nil {
+		return nil, err
 	}
 
-	eventDetails.Created = eventCreationTime
 	eventDetails.LastAltered = eventCreationTime
 
 	eventDb, ok := c.db.(sql.EventDatabase)
@@ -282,6 +242,59 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		eventDb:      eventDb,
 		ifNotExists:  c.IfNotExists,
 	}, nil
+}
+
+// GetEventDetails returns EventDetails based on CreateEvent object.
+// It expects all timestamp and interval values to be resolved.
+// This function gets called either from RowIter of CreateEvent plan,
+// or from anywhere that getting EventDetails from EventDefinition retrieved from a database.
+func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime time.Time) (sql.EventDetails, error) {
+	eventDetails := sql.EventDetails{
+		Name:                 c.EventName,
+		Definer:              c.Definer,
+		OnCompletionPreserve: c.OnCompPreserve,
+		Status:               c.Status.String(),
+		Comment:              c.Comment,
+		Definition:           c.DefinitionString,
+	}
+
+	var err error
+	if c.At != nil {
+		eventDetails.HasExecuteAt = true
+		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx)
+		if err != nil {
+			return sql.EventDetails{}, err
+		}
+	} else {
+		delta, err := c.Every.EvalDelta(ctx, nil)
+		if err != nil {
+			return sql.EventDetails{}, err
+		}
+		interval := NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+		iVal, iField := interval.GetIntervalValAndField()
+		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
+
+		if c.Starts != nil {
+			eventDetails.HasStarts = true
+			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
+			if err != nil {
+				return sql.EventDetails{}, err
+			}
+		} else {
+			// If STARTS is not defined, it defaults to CURRENT_TIMESTAMP
+			eventDetails.Starts = eventCreationTime
+		}
+		if c.Ends != nil {
+			eventDetails.HasEnds = true
+			eventDetails.Ends, err = c.Ends.EvalTime(ctx)
+			if err != nil {
+				return sql.EventDetails{}, err
+			}
+		}
+	}
+
+	eventDetails.Created = eventCreationTime
+	return eventDetails, nil
 }
 
 // createEventIter is the row iterator for *CreateEvent.
@@ -309,7 +322,14 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	err := c.eventDb.SaveEvent(ctx, c.eventDetails)
+	var eventDefinition = sql.EventDefinition{
+		Name: c.eventDetails.Name,
+		CreateStatement: c.eventDetails.CreateEventStatement(),
+		CreatedAt: c.eventDetails.Created,
+		LastAltered: c.eventDetails.LastAltered,
+	}
+
+	err := c.eventDb.SaveEvent(ctx, eventDefinition)
 	if err != nil {
 		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
 			ctx.Session.Warn(&sql.Warning{
@@ -328,7 +348,8 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.eventDetails.Status = EventStatus_Disable.String()
-				err = c.eventDb.UpdateEvent(ctx, c.eventDetails)
+				eventDefinition.CreateStatement = c.eventDetails.CreateEventStatement()
+				err = c.eventDb.UpdateEvent(ctx, eventDefinition)
 				if err != nil {
 					return nil, err
 				}

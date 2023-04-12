@@ -339,18 +339,18 @@ func (pdb PrivilegedDatabase) DropStoredProcedure(ctx *sql.Context, name string)
 }
 
 // GetEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDetails, bool, error) {
+func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
 	if pdb.db.Name() == "information_schema" {
-		return sql.EventDetails{}, false, nil
+		return sql.EventDefinition{}, false, nil
 	}
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.GetEvent(ctx, name)
 	}
-	return sql.EventDetails{}, false, sql.ErrEventsNotSupported.New(pdb.db.Name())
+	return sql.EventDefinition{}, false, sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
 // GetEvents implements sql.EventDatabase
-func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
+func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 	if pdb.db.Name() == "information_schema" {
 		return nil, nil
 	}
@@ -361,7 +361,7 @@ func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDetails, e
 }
 
 // SaveEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
+func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.SaveEvent(ctx, ed)
 	}
@@ -377,7 +377,7 @@ func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDetails) error {
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.UpdateEvent(ctx, ed)
 	}

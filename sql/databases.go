@@ -227,16 +227,16 @@ type StoredProcedureDatabase interface {
 type EventDatabase interface {
 	Database
 	// GetEvent returns the desired EventDetails and if it exists in the database.
-	GetEvent(ctx *Context, name string) (EventDetails, bool, error)
+	GetEvent(ctx *Context, name string) (EventDefinition, bool, error)
 	// GetEvents returns all EventDetails for the database.
-	GetEvents(ctx *Context) ([]EventDetails, error)
+	GetEvents(ctx *Context) ([]EventDefinition, error)
 	// SaveEvent stores the given EventDetails to the database. The integrator should verify that
 	// the name of the new event is unique amongst existing stored procedures.
-	SaveEvent(ctx *Context, ed EventDetails) error
+	SaveEvent(ctx *Context, ed EventDefinition) error
 	// DropEvent removes the EventDetails with the matching name from the database.
 	DropEvent(ctx *Context, name string) error
 	// UpdateEvent updates existing event stored in the database with the given EventDetails with the updates.
-	UpdateEvent(ctx *Context, ed EventDetails) error
+	UpdateEvent(ctx *Context, ed EventDefinition) error
 	// TODO: add ExecuteEvent() method that executes given event and updates the LastExecutedAt value
 }
 

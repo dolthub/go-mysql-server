@@ -104,6 +104,7 @@ var OnceAfterDefault = []Rule{
 	{hoistSelectExistsId, hoistSelectExists},
 	{finalizeUnionsId, finalizeUnions},
 	{loadTriggersId, loadTriggers},
+	{loadEventsId, loadEvents},
 	{processTruncateId, processTruncate},
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},

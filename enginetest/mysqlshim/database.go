@@ -21,9 +21,6 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // Database represents a database for a local MySQL server.
@@ -204,27 +201,27 @@ func (d Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 }
 
 // GetEvent implements sql.EventDatabase
-func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDetails, bool, error) {
+func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
 	name = strings.ToLower(name)
 	events, err := d.GetEvents(ctx)
 	if err != nil {
-		return sql.EventDetails{}, false, err
+		return sql.EventDefinition{}, false, err
 	}
 	for _, event := range events {
 		if name == strings.ToLower(event.Name) {
 			return event, true, nil
 		}
 	}
-	return sql.EventDetails{}, false, nil
+	return sql.EventDefinition{}, false, nil
 }
 
 // GetEvents implements sql.EventDatabase
-func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
+func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 	events, err := d.shim.QueryRows("", fmt.Sprintf("SHOW EVENTS WHERE Db = '%s';", d.name))
 	if err != nil {
 		return nil, err
 	}
-	eventDetails := make([]sql.EventDetails, len(events))
+	eventDefinition := make([]sql.EventDefinition, len(events))
 	for i, event := range events {
 		// Db, Name, Definer, Time Zone, Type, ...
 		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event[1]))
@@ -232,66 +229,18 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDetails, error) {
 			return nil, err
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
-		createStmt := eventStmt[0][3].(string)
-		ce, err := parse.Parse(ctx, createStmt)
-		if err != nil {
-			return nil, err
-		}
-		createEvent, ok := ce.(*plan.CreateEvent)
-		if !ok {
-			return nil, sql.ErrEventCreateStatementInvalid.New(createStmt)
-		}
-		// CREATE EVENT statement in SHOW CREATE EVENT is always constructed from EventDetails,
-		// which stores resolved/evaluated values only. Therefore, AT, STARTS and ENDS clauses will
-		// have evaluated timestamp string values that can be converted back to time.Time values.
-		var at, starts, ends time.Time
-		var every string
-		var interval *expression.TimeDelta
-		if createEvent.At != nil {
-			at, err = createEvent.At.EvalTime(ctx)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			interval, err = createEvent.Every.EvalDelta(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-			iVal, iField := plan.NewEveryInterval(interval.Years, interval.Months, interval.Days, interval.Hours, interval.Minutes, interval.Seconds).GetIntervalValAndField()
-			every = fmt.Sprintf("%s %s", iVal, iField)
-			if createEvent.Starts != nil {
-				starts, err = createEvent.Starts.EvalTime(ctx)
-				if err != nil {
-					return nil, err
-				}
-			}
-			if createEvent.Ends != nil {
-				ends, err = createEvent.Ends.EvalTime(ctx)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-		eventDetails[i] = sql.EventDetails{
+		eventDefinition[i] = sql.EventDefinition{
 			Name:                 eventStmt[0][0].(string),
-			Definer:              createEvent.Definer,
-			ExecuteAt:            at,
-			ExecuteEvery:         every,
-			Starts:               starts,
-			Ends:                 ends,
-			OnCompletionPreserve: createEvent.OnCompPreserve,
-			Status:               createEvent.Status.String(),
-			Comment:              createEvent.Comment,
-			Definition:           createEvent.DefinitionString,
-			// TODO: other fields should be added such as Created, LastAltered, ...
+			CreateStatement:      eventStmt[0][3].(string),
+			// TODO: other fields should be added such as Created, LastAltered
 		}
 	}
-	return eventDetails, nil
+	return eventDefinition, nil
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
-	return d.shim.Exec(d.name, ed.CreateEventStatement())
+func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+	return d.shim.Exec(d.name, ed.CreateStatement)
 }
 
 // DropEvent implements sql.EventDatabase
@@ -300,12 +249,12 @@ func (d Database) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d Database) UpdateEvent(ctx *sql.Context, ed sql.EventDetails) error {
+func (d Database) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
 	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", ed.Name))
 	if err != nil {
 		return err
 	}
-	return d.shim.Exec(d.name, ed.CreateEventStatement())
+	return d.shim.Exec(d.name, ed.CreateStatement)
 }
 
 // CreateView implements the interface sql.ViewDatabase.

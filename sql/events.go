@@ -21,6 +21,19 @@ import (
 
 const EventTimeStampFormat = "2006-01-02 15:04:05"
 
+// EventDefinition defines an event. Integrators are not expected to parse or understand the event definitions,
+// but must store and return them when asked.
+type EventDefinition struct {
+	// The name of this event. Event names in a database are unique.
+	Name string
+	// The text of the statement to create this event.
+	CreateStatement string
+	// The time that the event was created.
+	CreatedAt time.Time
+	// The time that the event was last altered.
+	LastAltered time.Time
+}
+
 // EventDetails are the details of the event.
 type EventDetails struct {
 	Name                 string
