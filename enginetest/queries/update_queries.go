@@ -736,6 +736,10 @@ var UpdateErrorTests = []QueryErrorTest{
 		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
 	},
 	{
+		Query:       `UPDATE people SET height_inches = IF(SUM(*) % 2 = 0, 42, height_inches)`,
+		ExpectedErr: analyzererrors.ErrStarUnsupported,
+	},
+	{
 		Query:       `UPDATE people SET height_inches = IF(ROW_NUMBER() OVER() % 2 = 0, 42, height_inches)`,
 		ExpectedErr: analyzererrors.ErrWindowUnsupported,
 	},
