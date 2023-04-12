@@ -149,7 +149,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	rows, err := sql.NodeToRows(ctx, p)
+	rows, err := NodeToRows(ctx, p)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -227,7 +227,7 @@ func TestGroupByCollations(t *testing.T) {
 				plan.NewResolvedTable(child, nil, nil),
 			)
 
-			rows, err := sql.NodeToRows(ctx, p)
+			rows, err := NodeToRows(ctx, p)
 			require.NoError(err)
 
 			expected := []sql.Row{
@@ -261,7 +261,7 @@ func BenchmarkGroupBy(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				ctx := sql.NewEmptyContext()
-				iter, err := node.RowIter(ctx, nil)
+				iter, err := DefaultBuilder.Build(ctx, node, nil)
 				require.NoError(err)
 
 				rows, err := sql.RowIterToRows(ctx, nil, iter)
@@ -317,7 +317,7 @@ func benchmarkTable(t testing.TB) sql.Table {
 func NodeToRows(ctx *sql.Context, n sql.Node) ([]sql.Row, error) {
 	// TODO can't have sql depend on rowexec
 	// move execution tests to rowexec
-	i, err := Builder.Build(ctx, n)
+	i, err := DefaultBuilder.Build(ctx, n, nil)
 	if err != nil {
 		return nil, err
 	}

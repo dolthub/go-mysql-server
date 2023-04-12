@@ -3,24 +3,9 @@ package rowexec
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"gopkg.in/src-d/go-errors.v1"
 	"io"
-	"os"
 )
-
-const (
-	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-)
-
-var fakeReadCommitted bool
-
-func init() {
-	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
-	if ok {
-		fakeReadCommitted = true
-	}
-}
 
 type rowFunc func(ctx *sql.Context) (sql.Row, error)
 
@@ -91,7 +76,7 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	// TODO: In the future we should ensure that analyzer supports implicit commits instead of directly
 	// accessing autocommit here.
 	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
-	autocommit, err := IsSessionAutocommit(ctx)
+	autocommit, err := plan.IsSessionAutocommit(ctx)
 	if err != nil {
 		return err
 	}
@@ -113,36 +98,4 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	return nil
-}
-
-// IsSessionAutocommit returns true if the current session is using implicit transaction management
-// through autocommit.
-func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if ReadCommitted(ctx) {
-		return true, nil
-	}
-
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return types.ConvertToBool(autoCommitSessionVar)
-}
-
-func ReadCommitted(ctx *sql.Context) bool {
-	if !fakeReadCommitted {
-		return false
-	}
-
-	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
-	if err != nil {
-		return false
-	}
-
-	valStr, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return valStr == "READ-COMMITTED"
 }

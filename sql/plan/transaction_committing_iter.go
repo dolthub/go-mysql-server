@@ -17,7 +17,22 @@ package plan
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"os"
 )
+
+const (
+	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
+)
+
+var fakeReadCommitted bool
+
+func init() {
+	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
+	if ok {
+		fakeReadCommitted = true
+	}
+}
 
 // TransactionCommittingNode implements autocommit logic. It wraps relevant queries and ensures the database commits
 // the transaction.
@@ -67,4 +82,36 @@ func (*TransactionCommittingNode) CollationCoercibility(ctx *sql.Context) (colla
 // Child implements the sql.UnaryNode interface.
 func (t *TransactionCommittingNode) Child() sql.Node {
 	return t.UnaryNode.Child
+}
+
+// IsSessionAutocommit returns true if the current session is using implicit transaction management
+// through autocommit.
+func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
+	if ReadCommitted(ctx) {
+		return true, nil
+	}
+
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return types.ConvertToBool(autoCommitSessionVar)
+}
+
+func ReadCommitted(ctx *sql.Context) bool {
+	if !fakeReadCommitted {
+		return false
+	}
+
+	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
+	if err != nil {
+		return false
+	}
+
+	valStr, ok := val.(string)
+	if !ok {
+		return false
+	}
+
+	return valStr == "READ-COMMITTED"
 }

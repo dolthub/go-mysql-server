@@ -23,8 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-var Builder = &builder{}
-
 func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
 	switch n := n.(type) {
 	case *plan.CreateForeignKey:
@@ -181,7 +179,7 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 		return b.buildDropView(ctx, n, row)
 	case *plan.GroupBy:
 		return b.buildGroupBy(ctx, n, row)
-	case plan.RowUpdateAccumulator:
+	case *plan.RowUpdateAccumulator:
 		return b.buildRowUpdateAccumulator(ctx, n, row)
 	case *plan.Block:
 		return b.buildBlock(ctx, n, row)
@@ -347,6 +345,8 @@ func (b *builder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.
 		return b.buildExchangePartition(ctx, n, row)
 	case *plan.HashLookup:
 		return b.buildHashLookup(ctx, n, row)
+	case *plan.Iterate:
+		return &iterateIter{n.Label}, nil
 	default:
 		return nil, fmt.Errorf("unknown Node type %T", n)
 	}

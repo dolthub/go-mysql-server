@@ -16,22 +16,12 @@ package plan
 
 import (
 	"fmt"
-	"os"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 //go:generate stringer -type=JoinType -linecomment
-
-const (
-	inMemoryJoinKey        = "INMEMORY_JOINS"
-	inMemoryJoinSessionVar = "inmemory_joins"
-)
-
-var useInMemoryJoins = shouldUseMemoryJoinsByEnv()
 
 type JoinType uint16
 
@@ -230,11 +220,6 @@ func (i JoinType) AsLookup() JoinType {
 	default:
 		return i
 	}
-}
-
-func shouldUseMemoryJoinsByEnv() bool {
-	v := strings.TrimSpace(strings.ToLower(os.Getenv(inMemoryJoinKey)))
-	return v == "on" || v == "1"
 }
 
 // JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.

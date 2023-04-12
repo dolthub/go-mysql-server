@@ -252,7 +252,7 @@ func TestSortAscending(t *testing.T) {
 		sql.NewRow("d"),
 	}
 
-	actual, err := sql.NodeToRows(ctx, s)
+	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }
@@ -292,7 +292,7 @@ func TestSortDescending(t *testing.T) {
 		sql.NewRow(nil),
 	}
 
-	actual, err := sql.NodeToRows(ctx, s)
+	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
 	require.Equal(expected, actual)
 }

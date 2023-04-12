@@ -18,6 +18,7 @@ import (
 	"context"
 	sql2 "database/sql"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"io"
 	"net"
 	"strings"
@@ -245,7 +246,7 @@ func TestShowProcessList(t *testing.T) {
 
 	n := plan.NewShowProcessList()
 
-	iter, err := n.RowIter(ctx, nil)
+	iter, err := rowexec.DefaultBuilder.Build(ctx, n, nil)
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(ctx, n.Schema(), iter)
 	require.NoError(err)
@@ -320,7 +321,7 @@ func TestTrackProcess(t *testing.T) {
 	_, ok = rhs.Table.(*plan.ProcessIndexableTable)
 	require.True(ok)
 
-	iter, err := proc.RowIter(ctx, nil)
+	iter, err := rowexec.DefaultBuilder.Build(ctx, proc, nil)
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
@@ -357,7 +358,8 @@ func TestLockTables(t *testing.T) {
 	})
 	node.Catalog = analyzer.NewCatalog(sql.NewDatabaseProvider())
 
-	_, err := node.RowIter(sql.NewEmptyContext(), nil)
+	_, err := rowexec.DefaultBuilder.Build(sql.NewEmptyContext(), node, nil)
+
 	require.NoError(err)
 
 	require.Equal(1, t1.writeLocks)

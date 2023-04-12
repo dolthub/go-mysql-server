@@ -268,7 +268,7 @@ func (b *builder) buildInsertDestination(ctx *sql.Context, n *plan.InsertDestina
 	return b.buildNodeExec(ctx, n.Child, row)
 }
 
-func (b *builder) buildRowUpdateAccumulator(ctx *sql.Context, n plan.RowUpdateAccumulator, row sql.Row) (sql.RowIter, error) {
+func (b *builder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpdateAccumulator, row sql.Row) (sql.RowIter, error) {
 	rowIter, err := b.buildNodeExec(ctx, n.Child(), row)
 	if err != nil {
 		return nil, err

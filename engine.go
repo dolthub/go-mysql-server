@@ -224,7 +224,6 @@ func (e *Engine) QueryNodeWithBindings(
 	var (
 		analyzed sql.Node
 		iter     sql.RowIter
-		iter2    sql.RowIter2
 		err      error
 	)
 
@@ -274,12 +273,7 @@ func (e *Engine) QueryNodeWithBindings(
 		useIter2 = allNode2(analyzed)
 	}
 
-	if useIter2 {
-		iter2, err = analyzed.(sql.Node2).RowIter2(ctx, nil)
-		iter = iter2
-	} else {
-		iter, err = analyzed.RowIter(ctx, nil)
-	}
+	iter, err = e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
@@ -292,7 +286,6 @@ func (e *Engine) QueryNodeWithBindings(
 	if useIter2 {
 		iter = rowFormatSelectorIter{
 			iter:    iter,
-			iter2:   iter2,
 			isNode2: useIter2,
 		}
 	}
@@ -542,14 +535,7 @@ func (t rowFormatSelectorIter) Next(context *sql.Context) (sql.Row, error) {
 }
 
 func (t rowFormatSelectorIter) Close(context *sql.Context) error {
-	if t.iter2 != nil {
-		return t.iter2.Close(context)
-	}
 	return t.iter.Close(context)
-}
-
-func (t rowFormatSelectorIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.iter2.Next2(ctx, frame)
 }
 
 func (t rowFormatSelectorIter) IsNode2() bool {

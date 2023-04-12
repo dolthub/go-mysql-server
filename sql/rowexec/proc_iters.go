@@ -359,3 +359,23 @@ func (l *leaveIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (l *leaveIter) Close(ctx *sql.Context) error {
 	return nil
 }
+
+// iterateIter is the sql.RowIter of *Iterate.
+type iterateIter struct {
+	Label string
+}
+
+var _ sql.RowIter = (*iterateIter)(nil)
+
+// Next implements the interface sql.RowIter.
+func (i *iterateIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return nil, loopError{
+		Label:  i.Label,
+		IsExit: false,
+	}
+}
+
+// Close implements the interface sql.RowIter.
+func (i *iterateIter) Close(ctx *sql.Context) error {
+	return nil
+}

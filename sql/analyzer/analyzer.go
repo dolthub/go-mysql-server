@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"os"
 	"reflect"
 	"strings"
@@ -265,6 +266,7 @@ func (ab *Builder) Build() *Analyzer {
 		Parallelism:  ab.parallelism,
 		Coster:       NewDefaultCoster(),
 		Carder:       NewDefaultCarder(),
+		ExecBuilder:  rowexec.DefaultBuilder,
 	}
 }
 
@@ -289,6 +291,8 @@ type Analyzer struct {
 	Carder Carder
 	// Coster estimates the incremental CPU+memory cost for execution operators.
 	Coster Coster
+	// ExecBuilder converts a sql.Node tree into an executable iterator.
+	ExecBuilder sql.NodeExecBuilder
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
