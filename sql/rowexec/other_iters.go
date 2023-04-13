@@ -294,7 +294,6 @@ type exchangeRowIter struct {
 }
 
 var _ sql.RowIter = (*exchangeRowIter)(nil)
-var _ sql.RowIter2 = (*exchangeRowIter)(nil)
 
 func (i *exchangeRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.rows == nil {
@@ -305,19 +304,6 @@ func (i *exchangeRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, i.waiter()
 	}
 	return r, nil
-}
-
-func (i *exchangeRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	if i.rows2 == nil {
-		panic("Next2 called for a Next iterator")
-	}
-	r, ok := <-i.rows2
-	if !ok {
-		return i.waiter()
-	}
-
-	frame.Append(r...)
-	return nil
 }
 
 func (i *exchangeRowIter) Close(ctx *sql.Context) error {

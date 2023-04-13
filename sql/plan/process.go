@@ -276,7 +276,6 @@ const (
 type trackedRowIter struct {
 	node               sql.Node
 	iter               sql.RowIter
-	iter2              sql.RowIter2
 	numRows            int64
 	QueryType          queryType
 	ShouldSetFoundRows bool
@@ -290,8 +289,7 @@ func NewTrackedRowIter(
 	onNext NotifyFunc,
 	onDone NotifyFunc,
 ) *trackedRowIter {
-	iter2, _ := iter.(sql.RowIter2)
-	return &trackedRowIter{node: node, iter: iter, iter2: iter2, onDone: onDone, onNext: onNext}
+	return &trackedRowIter{node: node, iter: iter, onDone: onDone, onNext: onNext}
 }
 
 func (i *trackedRowIter) done() {

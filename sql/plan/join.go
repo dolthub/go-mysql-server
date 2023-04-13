@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
 
@@ -448,4 +449,17 @@ func NewAntiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 
 func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeSemi, cond)
+}
+
+// IsNullRejecting returns whether the expression always returns false for
+// nil inputs.
+func IsNullRejecting(e sql.Expression) bool {
+	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e.(type) {
+		case *expression.NullSafeEquals, *expression.IsNull:
+			return true
+		default:
+			return false
+		}
+	})
 }

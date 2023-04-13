@@ -24,9 +24,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -213,19 +211,6 @@ func (i *joinIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-// IsNullRejecting returns whether the expression always returns false for
-// nil inputs.
-func IsNullRejecting(e sql.Expression) bool {
-	return !transform.InspectExpr(e, func(e sql.Expression) bool {
-		switch e.(type) {
-		case *expression.NullSafeEquals, *expression.IsNull:
-			return true
-		default:
-			return false
-		}
-	})
-}
-
 func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
 	leftIter, err := b.Build(ctx, j.Left(), row)
 
@@ -240,7 +225,7 @@ func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, ro
 		cond:              j.Filter,
 		scopeLen:          j.ScopeLen,
 		rowSize:           len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
-		nullRej:           !(j.Filter != nil && IsNullRejecting(j.Filter)),
+		nullRej:           !(j.Filter != nil && plan.IsNullRejecting(j.Filter)),
 		b:                 b,
 	}, nil
 }

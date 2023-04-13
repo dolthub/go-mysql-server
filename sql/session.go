@@ -473,12 +473,9 @@ func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 	if !span.IsRecording() {
 		return iter
 	} else {
-		var iter2 RowIter2
-		iter2, _ = iter.(RowIter2)
 		return &spanIter{
-			span:  span,
-			iter:  iter,
-			iter2: iter2,
+			span: span,
+			iter: iter,
 		}
 	}
 }
@@ -486,7 +483,6 @@ func NewSpanIter(span trace.Span, iter RowIter) RowIter {
 type spanIter struct {
 	span  trace.Span
 	iter  RowIter
-	iter2 RowIter2
 	count int
 	max   time.Duration
 	min   time.Duration
@@ -495,7 +491,6 @@ type spanIter struct {
 }
 
 var _ RowIter = (*spanIter)(nil)
-var _ RowIter2 = (*spanIter)(nil)
 
 func (i *spanIter) updateTimings(start time.Time) {
 	elapsed := time.Since(start)

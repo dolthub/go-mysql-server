@@ -94,16 +94,6 @@ type RowIter interface {
 	Closer
 }
 
-// RowIter2 is an iterator that fills a row frame buffer with rows from its source
-type RowIter2 interface {
-	//RowIter
-
-	// Next2 produces the next row, and stores it in the RowFrame provided.
-	// It will return io.EOF if it's the last row. After retrieving the
-	// last row, Close will be automatically called.
-	//Next2(ctx *Context, frame *RowFrame) error
-}
-
 // RowIterToRows converts a row iterator to a slice of rows.
 func RowIterToRows(ctx *Context, sch Schema, i RowIter) ([]Row, error) {
 	var rows []Row
@@ -212,10 +202,4 @@ func (i *sliceRowIter) Next(*Context) (Row, error) {
 func (i *sliceRowIter) Close(*Context) error {
 	i.rows = nil
 	return nil
-}
-
-// RowIterTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
-type RowIterTypeSelector interface {
-	RowIter
-	IsNode2() bool
 }

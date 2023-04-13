@@ -605,28 +605,6 @@ func TestShowCharset(t *testing.T) {
 	}
 }
 
-type tableFuncExecBuilder struct {
-	builder sql.NodeExecBuilder
-}
-
-func (b *tableFuncExecBuilder) Build(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
-	ret, err := b.builder.Build(ctx, n, row)
-	if err != nil {
-		switch n := n.(type) {
-		case *SimpleTableFunction:
-			if n.returnedResults == true {
-				return nil, io.EOF
-			}
-
-			n.returnedResults = true
-			return &SimpleTableFunctionRowIter{}, nil
-		default:
-			return nil, err
-		}
-	}
-	return ret, nil
-}
-
 func TestTableFunctions(t *testing.T) {
 	var tableFunctionScriptTests = []queries.ScriptTest{
 		{
@@ -724,6 +702,7 @@ func TestTableFunctions(t *testing.T) {
 				return nil, nil
 			}
 		})
+
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
 

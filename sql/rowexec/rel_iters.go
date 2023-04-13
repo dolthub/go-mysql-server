@@ -723,23 +723,18 @@ func (li *limitIter) Close(ctx *sql.Context) error {
 }
 
 type sortIter struct {
-	sortFields  sql.SortFields
-	childIter   sql.RowIter
-	childIter2  sql.RowIter2
-	sortedRows  []sql.Row
-	sortedRows2 []sql.Row2
-	idx         int
+	sortFields sql.SortFields
+	childIter  sql.RowIter
+	sortedRows []sql.Row
+	idx        int
 }
 
 var _ sql.RowIter = (*sortIter)(nil)
-var _ sql.RowIter2 = (*sortIter)(nil)
 
 func newSortIter(s sql.SortFields, child sql.RowIter) *sortIter {
-	childIter2, _ := child.(sql.RowIter2)
 	return &sortIter{
 		sortFields: s,
 		childIter:  child,
-		childIter2: childIter2,
 		idx:        -1,
 	}
 }

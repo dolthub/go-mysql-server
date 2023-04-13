@@ -313,5 +313,5 @@ func (b *BaseBuilder) buildTransactionCommittingNode(ctx *sql.Context, n *plan.T
 	if err != nil {
 		return nil, err
 	}
-	return transactionCommittingIter{childIter: iter, childIter2: nil}, nil
+	return transactionCommittingIter{childIter: iter}, nil
 }

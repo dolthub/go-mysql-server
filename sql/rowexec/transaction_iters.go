@@ -71,7 +71,6 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 // during the Close() operation
 type transactionCommittingIter struct {
 	childIter           sql.RowIter
-	childIter2          sql.RowIter2
 	transactionDatabase string
 }
 

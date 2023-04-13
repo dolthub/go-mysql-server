@@ -24,7 +24,6 @@ import (
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable
-
 	fmt.Stringer
 	// Type returns the expression type.
 	Type() Type
@@ -314,15 +313,6 @@ type Expression2 interface {
 	Eval2(ctx *Context, row Row2) (Value, error)
 	// Type2 returns the expression type.
 	Type2() Type2
-}
-
-// Node2 is an experimental future interface alternative to Node to provide faster access.
-type Node2 interface {
-	Node
-
-	// RowIter2 produces a row iterator from this node. The current row frame being
-	// evaluated is provided, as well the context of the query.
-	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
 
 var SystemVariables SystemVariableRegistry

@@ -24,11 +24,9 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
-	rows2      RowIter2
 }
 
 var _ RowIter = (*TableRowIter)(nil)
-var _ RowIter2 = (*TableRowIter)(nil)
 
 // NewTableRowIter returns a new iterator over the rows in the partitions of the table given.
 func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *TableRowIter {
