@@ -7493,6 +7493,13 @@ SELECT * FROM my_cte;`,
 			},
 		},
 	},
+	// Regression test for https://github.com/dolthub/dolt/issues/5656
+	{
+		Query: "select count((select * from (select pk from one_pk limit 1) as sq)) from one_pk;",
+		Expected: []sql.Row{
+			{4},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
