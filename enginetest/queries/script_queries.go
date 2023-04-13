@@ -20,7 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1396,15 +1396,15 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 			{
 				Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 			{
 				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 		},
 	},

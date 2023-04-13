@@ -74,6 +74,7 @@ var DefaultRules = []Rule{
 	{qualifyColumnsId, qualifyColumns},
 	{resolveOrderbyLiteralsId, resolveOrderByLiterals},
 	{resolveFunctionsId, resolveFunctions},
+	{validateStarExpressionsId, validateStarExpressions},
 	{replaceCountStarId, replaceCountStar},
 	{flattenTableAliasesId, flattenTableAliases},
 	{pushdownSortId, pushdownSort},

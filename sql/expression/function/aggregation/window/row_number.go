@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -93,7 +94,7 @@ func (r *RowNumber) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r *RowNumber) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("eval called on window function")
+	return nil, analyzererrors.ErrWindowUnsupported.New(r.FunctionName())
 }
 
 // Children implements sql.Expression
