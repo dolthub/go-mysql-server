@@ -891,11 +891,11 @@ func TestCollationCoercion(t *testing.T) {
 					require.Equal(t, 1, len(rows))
 					require.Equal(t, 1, len(rows[0]))
 					if i == 0 {
-						num, err := types.Int64.Convert(rows[0][0])
+						num, _, err := types.Int64.Convert(rows[0][0])
 						require.NoError(t, err)
 						require.Equal(t, test.Coercibility, num.(int64))
 					} else {
-						str, err := types.LongText.Convert(rows[0][0])
+						str, _, err := types.LongText.Convert(rows[0][0])
 						require.NoError(t, err)
 						require.Equal(t, test.Collation.Name(), str.(string))
 					}

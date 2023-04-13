@@ -205,7 +205,7 @@ func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table
 					privs = append(privs, "Trigger")
 				}
 			}
-			formattedSet, err := tablesPrivTblSchema[tablesPrivTblColIndex_Table_priv].Type.Convert(strings.Join(privs, ","))
+			formattedSet, _, err := tablesPrivTblSchema[tablesPrivTblColIndex_Table_priv].Type.Convert(strings.Join(privs, ","))
 			if err != nil {
 				return nil, err
 			}

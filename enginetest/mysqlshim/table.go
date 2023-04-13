@@ -139,7 +139,7 @@ func (t Table) Truncate(ctx *sql.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, err := types.Int64.Convert(rows[0][0])
+	rowCount, _, err := types.Int64.Convert(rows[0][0])
 	if err != nil {
 		return 0, err
 	}
@@ -338,7 +338,7 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, err := types.Uint64.Convert(rows[0][0])
+	rowCount, _, err := types.Uint64.Convert(rows[0][0])
 	if err != nil {
 		return 0, err
 	}

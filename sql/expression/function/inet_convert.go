@@ -241,7 +241,7 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert val into int
-	ipv4int, err := types.Int32.Convert(val)
+	ipv4int, _, err := types.Int32.Convert(val)
 	if ipv4int != nil && err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 	}

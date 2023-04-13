@@ -121,11 +121,11 @@ func (t EnumType) Compare(a interface{}, b interface{}) (int, error) {
 
 	// Attempt to convert the values to their enum values, but don't error
 	// out if they aren't valid enum values.
-	ai, err := t.Convert(a)
+	ai, _, err := t.Convert(a)
 	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
-	bi, err := t.Convert(b)
+	bi, _, err := t.Convert(b)
 	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
@@ -150,15 +150,15 @@ func (t EnumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t EnumType) Convert(v interface{}) (interface{}, error) {
+func (t EnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
 	case int:
 		if _, ok := t.At(value); ok {
-			return uint16(value), nil
+			return uint16(value), sql.InRange, nil
 		}
 	case uint:
 		return t.Convert(int(value))
@@ -186,23 +186,23 @@ func (t EnumType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, nil
+			return nil, sql.InRange, nil
 		}
 		return t.Convert(value.Decimal.IntPart())
 	case string:
 		if index := t.IndexOf(value); index != -1 {
-			return uint16(index), nil
+			return uint16(index), sql.InRange, nil
 		}
 	case []byte:
 		return t.Convert(string(value))
 	}
 
-	return nil, ErrConvertingToEnum.New(v)
+	return nil, sql.InRange, ErrConvertingToEnum.New(v)
 }
 
 // MustConvert implements the Type interface.
 func (t EnumType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -232,7 +232,7 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

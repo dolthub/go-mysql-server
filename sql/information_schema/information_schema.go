@@ -1668,7 +1668,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			rowFormat = "Dynamic"
 		}
 
-		y2k, _ := types.Timestamp.Convert("2000-01-01 00:00:00")
+		y2k, _, _ := types.Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			tableCollation = t.Collation().String()
 			if db.Name() != InformationSchemaDatabaseName {

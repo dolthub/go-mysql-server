@@ -59,7 +59,7 @@ func (b *defaultBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueD
 				return nil, err
 			}
 			// cast all row values to the most permissive type
-			vals[j], err = n.Schema()[j].Type.Convert(p)
+			vals[j], _, err = n.Schema()[j].Type.Convert(p)
 			if err != nil {
 				return nil, err
 			}
@@ -128,7 +128,7 @@ func (b *defaultBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row
 	if err != nil {
 		return nil, err
 	}
-	strData, err := types.LongBlob.Convert(data)
+	strData, _, err := types.LongBlob.Convert(data)
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}
@@ -534,7 +534,7 @@ func (b *defaultBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.Extern
 		if err != nil {
 			return nil, err
 		}
-		exprParamVal, err = paramDefinition.Type.Convert(exprParamVal)
+		exprParamVal, _, err = paramDefinition.Type.Convert(exprParamVal)
 		if err != nil {
 			return nil, err
 		}

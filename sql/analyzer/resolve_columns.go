@@ -1021,9 +1021,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
 			return n, transform.SameTree, nil
 		}
-		if !ok || len(g.GroupByExprs) == 0 {
-			return n, transform.SameTree, nil
-		}
 
 		// The reason we have two sets of columns, one for grouping and
 		// one for aggregate is because an alias can redefine a column name

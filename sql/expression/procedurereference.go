@@ -58,7 +58,7 @@ type ProcedureReferencable interface {
 
 // InitializeVariable sets the initial value for the variable.
 func (ppr *ProcedureReference) InitializeVariable(name string, sqlType sql.Type, val interface{}) error {
-	convertedVal, err := sqlType.Convert(val)
+	convertedVal, _, err := sqlType.Convert(val)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (ppr *ProcedureReference) SetVariable(name string, val interface{}, valType
 	for scope != nil {
 		if varRefVal, ok := scope.variables[lowerName]; ok {
 			//TODO: do some actual type checking using the given value's type
-			val, err := varRefVal.SqlType.Convert(val)
+			val, _, err := varRefVal.SqlType.Convert(val)
 			if err != nil {
 				return err
 			}

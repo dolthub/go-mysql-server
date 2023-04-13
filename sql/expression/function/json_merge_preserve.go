@@ -124,7 +124,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		return nil, err
 	}
 
-	initialJSON, err = j.Type().Convert(initialJSON)
+	initialJSON, _, err = j.Type().Convert(initialJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 			return nil, err
 		}
 
-		js, jErr = j.Type().Convert(js)
+		js, _, jErr = j.Type().Convert(js)
 		if jErr != nil {
 			return nil, err
 		}

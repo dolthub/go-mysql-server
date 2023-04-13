@@ -35,7 +35,7 @@ func (s IntSequenceTable) NewInstance(_ *sql.Context, _ sql.Database, args []sql
 	if !ok {
 		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
 	}
-	length, err := types.Int64.Convert(lenExp.Value())
+	length, _, err := types.Int64.Convert(lenExp.Value())
 	if !ok {
 		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
 	}

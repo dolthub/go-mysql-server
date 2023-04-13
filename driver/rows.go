@@ -112,7 +112,7 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 			}
 		}
 
-		sqlValue, err := r.cols[col].Type.Convert(v)
+		sqlValue, _, err := r.cols[col].Type.Convert(v)
 		if err != nil {
 			break
 		}

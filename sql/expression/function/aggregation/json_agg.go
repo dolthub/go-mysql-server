@@ -159,7 +159,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// Update the map.
-	keyAsString, err := types.LongText.Convert(key)
+	keyAsString, _, err := types.LongText.Convert(key)
 	if err != nil {
 		return nil
 	}

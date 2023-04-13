@@ -69,7 +69,7 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
-		convertedVal, err := sysVar.Type.Convert(val)
+		convertedVal, _, err := sysVar.Type.Convert(val)
 		if err != nil {
 			return err
 		}
@@ -138,7 +138,7 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	if !sysVar.Dynamic {
 		return sql.ErrSystemVariableReadOnly.New(name)
 	}
-	convertedVal, err := sysVar.Type.Convert(val)
+	convertedVal, _, err := sysVar.Type.Convert(val)
 	if err != nil {
 		return err
 	}

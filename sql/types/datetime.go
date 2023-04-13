@@ -150,15 +150,15 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(v interface{}) (interface{}, error) {
+func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	res, err := ConvertToTime(v, t)
 	if err != nil {
-		return nil, err
+		return nil, sql.OutOfRange, err
 	}
-	return res, nil
+	return res, sql.InRange, nil
 }
 
 func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
@@ -310,7 +310,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 }
 
 func (t datetimeType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -340,12 +340,12 @@ func (t datetimeType) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -390,9 +390,9 @@ func (t datetimeType) String() string {
 	case sqltypes.Date:
 		return "date"
 	case sqltypes.Datetime:
-		return "datetime"
+		return "datetime(6)"
 	case sqltypes.Timestamp:
-		return "timestamp"
+		return "timestamp(6)"
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}

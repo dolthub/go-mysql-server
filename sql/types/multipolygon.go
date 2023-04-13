@@ -56,25 +56,25 @@ func (t MultiPolygonType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t MultiPolygonType) Convert(v interface{}) (interface{}, error) {
+func (t MultiPolygonType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
-		return nil, nil
+		return nil, sql.InRange, nil
 	case []byte:
-		mpoly, err := GeometryType{}.Convert(buf)
+		mpoly, _, err := GeometryType{}.Convert(buf)
 		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.ErrInvalidGISData.New("MultiPolygon.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("MultiPolygon.Convert")
 		}
-		return mpoly, err
+		return mpoly, sql.OutOfRange, err
 	case string:
 		return t.Convert([]byte(buf))
 	case MultiPolygon:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
-		return buf, nil
+		return buf, sql.InRange, nil
 	default:
-		return nil, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -100,7 +100,7 @@ func (t MultiPolygonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

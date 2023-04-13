@@ -61,9 +61,9 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 		{
 			name:      "inserting a negative into an unsigned int results in 0",
 			colType:   types.Uint64,
-			value:     -1,
-			valueType: types.Int8,
-			expected:  uint64(0),
+			value:     int64(-1),
+			expected:  uint64(1<<64 - 1),
+			valueType: types.Uint64,
 		},
 	}
 

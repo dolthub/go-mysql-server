@@ -304,7 +304,7 @@ func TestDatetimeConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.val, test.expectedVal), func(t *testing.T) {
-			val, err := test.typ.Convert(test.val)
+			val, _, err := test.typ.Convert(test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -324,8 +324,8 @@ func TestDatetimeString(t *testing.T) {
 		expectedStr string
 	}{
 		{MustCreateDatetimeType(sqltypes.Date), "date"},
-		{MustCreateDatetimeType(sqltypes.Datetime), "datetime"},
-		{MustCreateDatetimeType(sqltypes.Timestamp), "timestamp"},
+		{MustCreateDatetimeType(sqltypes.Datetime), "datetime(6)"},
+		{MustCreateDatetimeType(sqltypes.Timestamp), "timestamp(6)"},
 	}
 
 	for _, test := range tests {

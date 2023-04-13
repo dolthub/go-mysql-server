@@ -43,11 +43,11 @@ func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	as, err := t.Convert(a)
+	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
 	}
-	bs, err := t.Convert(b)
+	bs, _, err := t.Convert(b)
 	if err != nil {
 		return 0, err
 	}
@@ -64,9 +64,9 @@ func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t YearType_) Convert(v interface{}) (interface{}, error) {
+func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
@@ -88,16 +88,16 @@ func (t YearType_) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(int64(value))
 	case int64:
 		if value == 0 {
-			return int16(0), nil
+			return int16(0), sql.InRange, nil
 		}
 		if value >= 1 && value <= 69 {
-			return int16(value + 2000), nil
+			return int16(value + 2000), sql.InRange, nil
 		}
 		if value >= 70 && value <= 99 {
-			return int16(value + 1900), nil
+			return int16(value + 1900), sql.InRange, nil
 		}
 		if value >= 1901 && value <= 2155 {
-			return int16(value), nil
+			return int16(value), sql.InRange, nil
 		}
 	case uint64:
 		return t.Convert(int64(value))
@@ -109,7 +109,7 @@ func (t YearType_) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, nil
+			return nil, sql.InRange, nil
 		}
 		return t.Convert(value.Decimal.IntPart())
 	case string:
@@ -117,26 +117,26 @@ func (t YearType_) Convert(v interface{}) (interface{}, error) {
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
 			i, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return nil, err
+				return nil, sql.OutOfRange, err
 			}
 			if i == 0 {
-				return int16(2000), nil
+				return int16(2000), sql.InRange, nil
 			}
 			return t.Convert(i)
 		}
 	case time.Time:
 		year := value.Year()
 		if year == 0 || (year >= 1901 && year <= 2155) {
-			return int16(year), nil
+			return int16(year), sql.InRange, nil
 		}
 	}
 
-	return nil, ErrConvertingToYear.New(v)
+	return nil, sql.InRange, ErrConvertingToYear.New(v)
 }
 
 // MustConvert implements the Type interface.
 func (t YearType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
+	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
 	}
@@ -165,7 +165,7 @@ func (t YearType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

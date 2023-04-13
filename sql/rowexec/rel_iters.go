@@ -266,7 +266,7 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			val = v
 		}
 
-		value, err := j.schema[i].Type.Convert(val)
+		value, _, err := j.schema[i].Type.Convert(val)
 		if err != nil {
 			return nil, err
 		}

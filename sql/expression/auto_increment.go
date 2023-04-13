@@ -110,7 +110,8 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = nil
 	} else if cmp < 0 {
 		// if given is negative, don't do any auto_increment logic
-		return i.Type().Convert(given)
+		ret, _, err := i.Type().Convert(given)
+		return ret, err
 	}
 
 	// Update integrator AUTO_INCREMENT sequence with our value
@@ -124,7 +125,8 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = seq
 	}
 
-	return i.Type().Convert(given)
+	ret, _, err := i.Type().Convert(given)
+	return ret, err
 }
 
 func (i *AutoIncrement) String() string {
