@@ -465,14 +465,6 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
-		if n == nil {
-			return false
-		}
-
-		if plan.IsDDLNode(n) {
-			return false
-		}
-
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				// An expression consisting of just a * is allowed.
@@ -482,9 +474,6 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 				// Otherwise, * can only be used inside acceptable aggregation functions.
 				// Detect any uses of * outside such functions.
 				sql.Inspect(e, func(e sql.Expression) bool {
-					if e == nil {
-						return err == nil
-					}
 					if err != nil {
 						return false
 					}
