@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *defaultBuilder) buildStripRowNode(ctx *sql.Context, n *plan.StripRowNode, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildStripRowNode(ctx *sql.Context, n *plan.StripRowNode, row sql.Row) (sql.RowIter, error) {
 	childIter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (b *defaultBuilder) buildStripRowNode(ctx *sql.Context, n *plan.StripRowNod
 	}, nil
 }
 
-func (b *defaultBuilder) buildConcat(ctx *sql.Context, n *plan.Concat, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildConcat(ctx *sql.Context, n *plan.Concat, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Concat")
 	li, err := b.buildNodeExec(ctx, n.Left(), row)
 	if err != nil {
@@ -54,7 +54,7 @@ func (b *defaultBuilder) buildConcat(ctx *sql.Context, n *plan.Concat, row sql.R
 	return sql.NewSpanIter(span, i), nil
 }
 
-func (b *defaultBuilder) buildReleaser(ctx *sql.Context, n *plan.Releaser, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildReleaser(ctx *sql.Context, n *plan.Releaser, row sql.Row) (sql.RowIter, error) {
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		n.Release()
@@ -64,11 +64,11 @@ func (b *defaultBuilder) buildReleaser(ctx *sql.Context, n *plan.Releaser, row s
 	return &releaseIter{child: iter, release: n.Release}, nil
 }
 
-func (b *defaultBuilder) buildDeallocateQuery(ctx *sql.Context, n *plan.DeallocateQuery, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDeallocateQuery(ctx *sql.Context, n *plan.DeallocateQuery, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.NewRow(types.OkResult{})), nil
 }
 
-func (b *defaultBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (sql.RowIter, error) {
 	row, sch, err := n.Pref.FetchCursor(ctx, n.Name)
 	if err == io.EOF {
 		scope := n.Pref.InnermostScope
@@ -124,23 +124,23 @@ func (b *defaultBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row
 	return b.buildSet(ctx, n.InnerSet, row)
 }
 
-func (b *defaultBuilder) buildSignalName(ctx *sql.Context, n *plan.SignalName, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildSignalName(ctx *sql.Context, n *plan.SignalName, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T has no exchange iterator", n)
 }
 
-func (b *defaultBuilder) buildRepeat(ctx *sql.Context, n *plan.Repeat, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRepeat(ctx *sql.Context, n *plan.Repeat, row sql.Row) (sql.RowIter, error) {
 	return b.buildLoop(ctx, n.Loop, row)
 }
 
-func (b *defaultBuilder) buildDeferredFilteredTable(ctx *sql.Context, n *plan.DeferredFilteredTable, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDeferredFilteredTable(ctx *sql.Context, n *plan.DeferredFilteredTable, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T has no execution iterator", n)
 }
 
-func (b *defaultBuilder) buildNamedWindows(ctx *sql.Context, n *plan.NamedWindows, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildNamedWindows(ctx *sql.Context, n *plan.NamedWindows, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T has no execution iterator", n)
 }
 
-func (b *defaultBuilder) buildExchange(ctx *sql.Context, n *plan.Exchange, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildExchange(ctx *sql.Context, n *plan.Exchange, row sql.Row) (sql.RowIter, error) {
 	var t sql.Table
 	transform.Inspect(n.Child, func(n sql.Node) bool {
 		if table, ok := n.(sql.Table); ok {
@@ -203,23 +203,23 @@ func (b *defaultBuilder) buildExchange(ctx *sql.Context, n *plan.Exchange, row s
 	return &exchangeRowIter{shutdownHook: shutdownHook, waiter: waiter, rows: rowsCh}, nil
 }
 
-func (b *defaultBuilder) buildExchangePartition(ctx *sql.Context, n *plan.ExchangePartition, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildExchangePartition(ctx *sql.Context, n *plan.ExchangePartition, row sql.Row) (sql.RowIter, error) {
 	return n.Table.PartitionRows(ctx, n.Partition)
 }
 
-func (b *defaultBuilder) buildEmptyTable(ctx *sql.Context, n *plan.EmptyTable, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildEmptyTable(ctx *sql.Context, n *plan.EmptyTable, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildDeclareCursor(ctx *sql.Context, n *plan.DeclareCursor, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDeclareCursor(ctx *sql.Context, n *plan.DeclareCursor, row sql.Row) (sql.RowIter, error) {
 	return &declareCursorIter{n}, nil
 }
 
-func (b *defaultBuilder) buildTransformedNamedNode(ctx *sql.Context, n *plan.TransformedNamedNode, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildTransformedNamedNode(ctx *sql.Context, n *plan.TransformedNamedNode, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Child, row)
 }
 
-func (b *defaultBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults, row sql.Row) (sql.RowIter, error) {
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
 
@@ -243,7 +243,7 @@ func (b *defaultBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResu
 	return &cachedResultsIter{n, ci, cache, dispose}, nil
 }
 
-func (b *defaultBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
 	var returnRows []sql.Row
 	var returnNode sql.Node
 	var returnSch sql.Schema
@@ -309,15 +309,15 @@ func (b *defaultBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row
 	}, nil
 }
 
-func (b *defaultBuilder) buildDeferredAsOfTable(ctx *sql.Context, n *plan.DeferredAsOfTable, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDeferredAsOfTable(ctx *sql.Context, n *plan.DeferredAsOfTable, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T has no execution iterator", n)
 }
 
-func (b *defaultBuilder) buildNothing(ctx *sql.Context, n plan.Nothing, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildNothing(ctx *sql.Context, n plan.Nothing, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, row sql.Row) (sql.RowIter, error) {
 	if _, ok := n.Destination.(*plan.CreateTable); ok {
 		return n.ProcessCreateTable(ctx, b, row)
 	}
@@ -330,11 +330,11 @@ func (b *defaultBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier,
 	return n.CopyTableOver(ctx, n.Source.Schema()[0].Source, drt.Name())
 }
 
-func (b *defaultBuilder) buildUnresolvedTable(ctx *sql.Context, n *plan.UnresolvedTable, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildUnresolvedTable(ctx *sql.Context, n *plan.UnresolvedTable, row sql.Row) (sql.RowIter, error) {
 	return nil, plan.ErrUnresolvedTable.New()
 }
 
-func (b *defaultBuilder) buildPrependNode(ctx *sql.Context, n *plan.PrependNode, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildPrependNode(ctx *sql.Context, n *plan.PrependNode, row sql.Row) (sql.RowIter, error) {
 	childIter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
@@ -346,7 +346,7 @@ func (b *defaultBuilder) buildPrependNode(ctx *sql.Context, n *plan.PrependNode,
 	}, nil
 }
 
-func (b *defaultBuilder) buildQueryProcess(ctx *sql.Context, n *plan.QueryProcess, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildQueryProcess(ctx *sql.Context, n *plan.QueryProcess, row sql.Row) (sql.RowIter, error) {
 	iter, err := b.Build(ctx, n.Child(), row)
 	if err != nil {
 		return nil, err
@@ -361,7 +361,7 @@ func (b *defaultBuilder) buildQueryProcess(ctx *sql.Context, n *plan.QueryProces
 	return trackedIter, nil
 }
 
-func (b *defaultBuilder) buildAnalyzeTable(ctx *sql.Context, n *plan.AnalyzeTable, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildAnalyzeTable(ctx *sql.Context, n *plan.AnalyzeTable, row sql.Row) (sql.RowIter, error) {
 	// Assume table is in current database
 	database := ctx.GetCurrentDatabase()
 	if database == "" {

@@ -20,22 +20,24 @@ import (
 
 type ExecBuilderFunc func(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error)
 
-type defaultBuilder struct {
+type BaseBuilder struct {
 	customSources ExecBuilderFunc
 }
 
-func (b *defaultBuilder) WithCustomSources(custom ExecBuilderFunc) *defaultBuilder {
+func (b *BaseBuilder) WithCustomSources(custom ExecBuilderFunc) *BaseBuilder {
 	b.customSources = custom
 	return b
 }
 
-var DefaultBuilder = &defaultBuilder{}
+var DefaultBuilder = &BaseBuilder{}
 
-var _ sql.NodeExecBuilder = (*defaultBuilder)(nil)
+var _ sql.NodeExecBuilder = (*BaseBuilder)(nil)
 
-func (b *defaultBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
 	if b.customSources != nil {
-		if ret, _ := b.customSources(ctx, n, r); ret != nil {
+		if ret, err := b.customSources(ctx, n, r); err != nil {
+			return nil, err
+		} else if ret != nil {
 			return ret, nil
 		}
 	}

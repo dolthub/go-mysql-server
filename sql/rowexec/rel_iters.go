@@ -579,7 +579,7 @@ type recursiveCteIter struct {
 	temp []sql.Row
 	// duplicate lookup if [deduplicated] set
 	cache sql.KeyValueCache
-	b     *defaultBuilder
+	b     *BaseBuilder
 }
 
 var _ sql.RowIter = (*recursiveCteIter)(nil)

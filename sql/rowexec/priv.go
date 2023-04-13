@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *defaultBuilder) buildFlushPrivileges(ctx *sql.Context, n *plan.FlushPrivileges, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildFlushPrivileges(ctx *sql.Context, n *plan.FlushPrivileges, row sql.Row) (sql.RowIter, error) {
 	gts, ok := n.MysqlDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -37,7 +37,7 @@ func (b *defaultBuilder) buildFlushPrivileges(ctx *sql.Context, n *plan.FlushPri
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
-func (b *defaultBuilder) buildDropUser(ctx *sql.Context, n *plan.DropUser, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDropUser(ctx *sql.Context, n *plan.DropUser, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -82,7 +82,7 @@ func (b *defaultBuilder) buildDropUser(ctx *sql.Context, n *plan.DropUser, row s
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
-func (b *defaultBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -116,7 +116,7 @@ func (b *defaultBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, r
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
-func (b *defaultBuilder) buildDropRole(ctx *sql.Context, n *plan.DropRole, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDropRole(ctx *sql.Context, n *plan.DropRole, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -166,11 +166,11 @@ func (b *defaultBuilder) buildDropRole(ctx *sql.Context, n *plan.DropRole, row s
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
-func (b *defaultBuilder) buildRevokeProxy(ctx *sql.Context, n *plan.RevokeProxy, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRevokeProxy(ctx *sql.Context, n *plan.RevokeProxy, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T has no execution iterator", n)
 }
 
-func (b *defaultBuilder) buildGrantRole(ctx *sql.Context, n *plan.GrantRole, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildGrantRole(ctx *sql.Context, n *plan.GrantRole, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -204,15 +204,15 @@ func (b *defaultBuilder) buildGrantRole(ctx *sql.Context, n *plan.GrantRole, row
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
-func (b *defaultBuilder) buildGrantProxy(ctx *sql.Context, n *plan.GrantProxy, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildGrantProxy(ctx *sql.Context, n *plan.GrantProxy, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T has no execution iterator", n)
 }
 
-func (b *defaultBuilder) buildRenameUser(ctx *sql.Context, n *plan.RenameUser, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRenameUser(ctx *sql.Context, n *plan.RenameUser, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func (b *defaultBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -278,11 +278,11 @@ func (b *defaultBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.R
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
-func (b *defaultBuilder) buildRevokeAll(ctx *sql.Context, n *plan.RevokeAll, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRevokeAll(ctx *sql.Context, n *plan.RevokeAll, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func (b *defaultBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
@@ -367,7 +367,7 @@ func (b *defaultBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
-func (b *defaultBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")

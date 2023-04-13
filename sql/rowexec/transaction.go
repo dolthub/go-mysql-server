@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *defaultBuilder) buildRollbackSavepoint(ctx *sql.Context, n *plan.RollbackSavepoint, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRollbackSavepoint(ctx *sql.Context, n *plan.RollbackSavepoint, row sql.Row) (sql.RowIter, error) {
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
 		return sql.RowsToRowIter(), nil
@@ -44,7 +44,7 @@ func (b *defaultBuilder) buildRollbackSavepoint(ctx *sql.Context, n *plan.Rollba
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildReleaseSavepoint(ctx *sql.Context, n *plan.ReleaseSavepoint, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildReleaseSavepoint(ctx *sql.Context, n *plan.ReleaseSavepoint, row sql.Row) (sql.RowIter, error) {
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
 		return sql.RowsToRowIter(), nil
@@ -64,7 +64,7 @@ func (b *defaultBuilder) buildReleaseSavepoint(ctx *sql.Context, n *plan.Release
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildCreateSavepoint(ctx *sql.Context, n *plan.CreateSavepoint, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCreateSavepoint(ctx *sql.Context, n *plan.CreateSavepoint, row sql.Row) (sql.RowIter, error) {
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
 		return sql.RowsToRowIter(), nil
@@ -84,7 +84,7 @@ func (b *defaultBuilder) buildCreateSavepoint(ctx *sql.Context, n *plan.CreateSa
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildStartTransaction(ctx *sql.Context, n *plan.StartTransaction, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildStartTransaction(ctx *sql.Context, n *plan.StartTransaction, row sql.Row) (sql.RowIter, error) {
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
 		return sql.RowsToRowIter(), nil
@@ -113,7 +113,7 @@ func (b *defaultBuilder) buildStartTransaction(ctx *sql.Context, n *plan.StartTr
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildStartReplica(ctx *sql.Context, n *plan.StartReplica, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildStartReplica(ctx *sql.Context, n *plan.StartReplica, row sql.Row) (sql.RowIter, error) {
 	if n.ReplicaController == nil {
 		return nil, plan.ErrNoReplicationController.New()
 	}
@@ -122,7 +122,7 @@ func (b *defaultBuilder) buildStartReplica(ctx *sql.Context, n *plan.StartReplic
 	return sql.RowsToRowIter(), err
 }
 
-func (b *defaultBuilder) buildUnlockTables(ctx *sql.Context, n *plan.UnlockTables, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildUnlockTables(ctx *sql.Context, n *plan.UnlockTables, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.UnlockTables")
 	defer span.End()
 
@@ -133,7 +133,7 @@ func (b *defaultBuilder) buildUnlockTables(ctx *sql.Context, n *plan.UnlockTable
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildCommit(ctx *sql.Context, n *plan.Commit, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCommit(ctx *sql.Context, n *plan.Commit, row sql.Row) (sql.RowIter, error) {
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
 		return sql.RowsToRowIter(), nil
@@ -156,12 +156,12 @@ func (b *defaultBuilder) buildCommit(ctx *sql.Context, n *plan.Commit, row sql.R
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildNoopTriggerRollback(ctx *sql.Context, n *plan.NoopTriggerRollback, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildNoopTriggerRollback(ctx *sql.Context, n *plan.NoopTriggerRollback, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Child, row)
 
 }
 
-func (b *defaultBuilder) buildKill(ctx *sql.Context, n *plan.Kill, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildKill(ctx *sql.Context, n *plan.Kill, row sql.Row) (sql.RowIter, error) {
 	return &lazyRowIter{
 		func(ctx *sql.Context) (sql.Row, error) {
 			ctx.ProcessList.Kill(n.ConnID)
@@ -173,7 +173,7 @@ func (b *defaultBuilder) buildKill(ctx *sql.Context, n *plan.Kill, row sql.Row) 
 	}, nil
 }
 
-func (b *defaultBuilder) buildResetReplica(ctx *sql.Context, n *plan.ResetReplica, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildResetReplica(ctx *sql.Context, n *plan.ResetReplica, row sql.Row) (sql.RowIter, error) {
 	if n.ReplicaController == nil {
 		return nil, plan.ErrNoReplicationController.New()
 	}
@@ -182,7 +182,7 @@ func (b *defaultBuilder) buildResetReplica(ctx *sql.Context, n *plan.ResetReplic
 	return sql.RowsToRowIter(), err
 }
 
-func (b *defaultBuilder) buildRollback(ctx *sql.Context, n *plan.Rollback, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRollback(ctx *sql.Context, n *plan.Rollback, row sql.Row) (sql.RowIter, error) {
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
 		return sql.RowsToRowIter(), nil
@@ -206,7 +206,7 @@ func (b *defaultBuilder) buildRollback(ctx *sql.Context, n *plan.Rollback, row s
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildChangeReplicationSource(ctx *sql.Context, n *plan.ChangeReplicationSource, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildChangeReplicationSource(ctx *sql.Context, n *plan.ChangeReplicationSource, row sql.Row) (sql.RowIter, error) {
 	if n.ReplicaController == nil {
 		return nil, plan.ErrNoReplicationController.New()
 	}
@@ -215,7 +215,7 @@ func (b *defaultBuilder) buildChangeReplicationSource(ctx *sql.Context, n *plan.
 	return sql.RowsToRowIter(), err
 }
 
-func (b *defaultBuilder) buildLockTables(ctx *sql.Context, n *plan.LockTables, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildLockTables(ctx *sql.Context, n *plan.LockTables, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.LockTables")
 	defer span.End()
 
@@ -237,7 +237,7 @@ func (b *defaultBuilder) buildLockTables(ctx *sql.Context, n *plan.LockTables, r
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildSignal(ctx *sql.Context, n *plan.Signal, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildSignal(ctx *sql.Context, n *plan.Signal, row sql.Row) (sql.RowIter, error) {
 	//TODO: implement CLASS_ORIGIN
 	//TODO: implement SUBCLASS_ORIGIN
 	//TODO: implement CONSTRAINT_CATALOG
@@ -275,7 +275,7 @@ func (b *defaultBuilder) buildSignal(ctx *sql.Context, n *plan.Signal, row sql.R
 	}
 }
 
-func (b *defaultBuilder) buildStopReplica(ctx *sql.Context, n *plan.StopReplica, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildStopReplica(ctx *sql.Context, n *plan.StopReplica, row sql.Row) (sql.RowIter, error) {
 	if n.ReplicaController == nil {
 		return nil, plan.ErrNoReplicationController.New()
 	}
@@ -284,7 +284,7 @@ func (b *defaultBuilder) buildStopReplica(ctx *sql.Context, n *plan.StopReplica,
 	return sql.RowsToRowIter(), err
 }
 
-func (b *defaultBuilder) buildChangeReplicationFilter(ctx *sql.Context, n *plan.ChangeReplicationFilter, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildChangeReplicationFilter(ctx *sql.Context, n *plan.ChangeReplicationFilter, row sql.Row) (sql.RowIter, error) {
 	if n.ReplicaController == nil {
 		return nil, plan.ErrNoReplicationController.New()
 	}
@@ -293,11 +293,11 @@ func (b *defaultBuilder) buildChangeReplicationFilter(ctx *sql.Context, n *plan.
 	return sql.RowsToRowIter(), err
 }
 
-func (b *defaultBuilder) buildExecuteQuery(ctx *sql.Context, n *plan.ExecuteQuery, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildExecuteQuery(ctx *sql.Context, n *plan.ExecuteQuery, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T does not have an execution iterator", n)
 }
 
-func (b *defaultBuilder) buildUse(ctx *sql.Context, n *plan.Use, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildUse(ctx *sql.Context, n *plan.Use, row sql.Row) (sql.RowIter, error) {
 	db, err := n.Catalog.Database(ctx, n.Database().Name())
 	if err != nil {
 		return nil, err
@@ -308,7 +308,7 @@ func (b *defaultBuilder) buildUse(ctx *sql.Context, n *plan.Use, row sql.Row) (s
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *defaultBuilder) buildTransactionCommittingNode(ctx *sql.Context, n *plan.TransactionCommittingNode, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildTransactionCommittingNode(ctx *sql.Context, n *plan.TransactionCommittingNode, row sql.Row) (sql.RowIter, error) {
 	iter, err := b.Build(ctx, n.Child(), row)
 	if err != nil {
 		return nil, err
