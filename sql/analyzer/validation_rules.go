@@ -463,6 +463,14 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 }
 
 func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	// Validate that all occurences of the '*' placeholder expression are in a context that makes sense.
+	//
+	// That is, all uses of '*' should be either:
+	// - The top level of an expression.
+	// - The input to a COUNT or JSONARRAY function.
+	//
+	// We do not use plan.InspectExpressions here because we're treating
+	// the top-level expressions of sql.Node differently from subexpressions.
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		if er, ok := n.(sql.Expressioner); ok {
