@@ -353,7 +353,10 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildHashLookup(ctx, n, row)
 	case *plan.Iterate:
 		return b.buildIterate(ctx, n, row)
+	case sql.ExecSourceRel:
+		// escape hatch for custom data sources
+		return n.RowIter(ctx, row)
 	default:
-		return nil, fmt.Errorf("unknown Node type %T", n)
+		return nil, fmt.Errorf("exec builder found unknown Node type %T", n)
 	}
 }

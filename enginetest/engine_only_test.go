@@ -687,21 +687,7 @@ func TestTableFunctions(t *testing.T) {
 	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{}, memory.IntSequenceTable{})
 
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
-	engine.Analyzer.ExecBuilder = rowexec.DefaultBuilder.WithCustomSources(
-		func(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
-			switch n := n.(type) {
-			case SimpleTableFunction:
-				if n.returnedResults == true {
-					return nil, io.EOF
-				}
-				n.returnedResults = true
-				return &SimpleTableFunctionRowIter{}, nil
-			case memory.IntSequenceTable:
-				return memory.NewSequenceTableFnRowIter(n.Len), nil
-			default:
-				return nil, nil
-			}
-		})
+	engine.Analyzer.ExecBuilder = rowexec.DefaultBuilder
 
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
@@ -886,6 +872,7 @@ func TestCollationCoercion(t *testing.T) {
 
 var _ sql.TableFunction = (*SimpleTableFunction)(nil)
 var _ sql.CollationCoercible = (*SimpleTableFunction)(nil)
+var _ sql.ExecSourceRel = (*SimpleTableFunction)(nil)
 
 // SimpleTableFunction an extremely simple implementation of TableFunction for testing.
 // When evaluated, returns a single row: {"foo", 123}
@@ -895,6 +882,14 @@ type SimpleTableFunction struct {
 
 func (s SimpleTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
 	return SimpleTableFunction{}, nil
+}
+
+func (s SimpleTableFunction) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
+	if s.returnedResults == true {
+		return nil, io.EOF
+	}
+	s.returnedResults = true
+	return &SimpleTableFunctionRowIter{}, nil
 }
 
 func (s SimpleTableFunction) Resolved() bool {

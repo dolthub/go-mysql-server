@@ -79,8 +79,16 @@ type Node interface {
 	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
 }
 
+// NodeExecBuilder converts a sql.Node tree into a RowIter.
 type NodeExecBuilder interface {
 	Build(ctx *Context, n Node, r Row) (RowIter, error)
+}
+
+// ExecSourceRel is a node that has no children and is directly
+// row generating.
+type ExecSourceRel interface {
+	Node
+	RowIter(ctx *Context, r Row) (RowIter, error)
 }
 
 // Nameable is something that has a name.

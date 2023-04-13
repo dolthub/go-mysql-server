@@ -24,22 +24,11 @@ var _ sql.NodeExecBuilder = (*BaseBuilder)(nil)
 
 type ExecBuilderFunc func(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error)
 
-type BaseBuilder struct {
-	customSources ExecBuilderFunc
-}
-
-func (b *BaseBuilder) WithCustomSources(custom ExecBuilderFunc) *BaseBuilder {
-	b.customSources = custom
-	return b
-}
+// BaseBuilder converts a plan tree into a RowIter tree. All relational nodes
+// have a build statement. Custom source nodes that provide rows that implement
+// sql.ExecSourceRel are also built into the tree.
+type BaseBuilder struct{}
 
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
-	if b.customSources != nil {
-		if ret, err := b.customSources(ctx, n, r); err != nil {
-			return nil, err
-		} else if ret != nil {
-			return ret, nil
-		}
-	}
 	return b.buildNodeExec(ctx, n, r)
 }
