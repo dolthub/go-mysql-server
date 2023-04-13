@@ -16,8 +16,9 @@ package analyzer
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
