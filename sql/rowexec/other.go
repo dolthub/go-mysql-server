@@ -260,7 +260,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 				return err
 			}
 			subIterNode := s
-			subIterSch := n.Schema()
+			subIterSch := s.Schema()
 			if blockSubIter, ok := subIter.(plan.BlockRowIter); ok {
 				subIterNode = blockSubIter.RepresentingNode()
 				subIterSch = blockSubIter.Schema()
@@ -301,7 +301,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 		}
 	}
 
-	n = n.WithSchema(returnSch)
+	n.SetSchema(returnSch)
 	return &blockIter{
 		internalIter: sql.RowsToRowIter(returnRows...),
 		repNode:      returnNode,

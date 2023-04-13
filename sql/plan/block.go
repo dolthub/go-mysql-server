@@ -98,10 +98,8 @@ func (b *Block) Schema() sql.Schema {
 	return b.rowIterSch
 }
 
-func (b *Block) WithSchema(sch sql.Schema) *Block {
-	ret := *b
-	ret.rowIterSch = sch
-	return &ret
+func (b *Block) SetSchema(sch sql.Schema) {
+	b.rowIterSch = sch
 }
 
 // Children implements the sql.Node interface.

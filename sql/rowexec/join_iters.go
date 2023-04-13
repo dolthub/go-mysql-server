@@ -573,10 +573,6 @@ func newCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 	}), nil
 }
 
-type rowIterProvider interface {
-	//RowIter(*sql.Context, sql.Row) (sql.RowIter, error)
-}
-
 type crossJoinIterator struct {
 	l  sql.RowIter
 	r  sql.RowIter
