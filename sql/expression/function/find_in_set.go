@@ -101,7 +101,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 0, nil
 	}
 
-	// TODO: SET type uses binary arithmetic?
+	// TODO: SET type uses binary arithmetic; we currently don't support this column type
 	rVal, _, err := types.LongText.Convert(right)
 	if err != nil {
 		return nil, err
