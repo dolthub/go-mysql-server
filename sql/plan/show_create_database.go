@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -52,31 +51,6 @@ func (s *ShowCreateDatabase) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *s
 	nc.db = db
 	return &nc, nil
-}
-
-// RowIter implements the sql.Node interface.
-func (s *ShowCreateDatabase) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var name = s.db.Name()
-
-	var buf bytes.Buffer
-
-	buf.WriteString("CREATE DATABASE ")
-	if s.IfNotExists {
-		buf.WriteString("/*!32312 IF NOT EXISTS*/ ")
-	}
-
-	buf.WriteRune('`')
-	buf.WriteString(name)
-	buf.WriteRune('`')
-	buf.WriteString(fmt.Sprintf(
-		" /*!40100 DEFAULT CHARACTER SET %s COLLATE %s */",
-		sql.Collation_Default.CharacterSet().String(),
-		sql.Collation_Default.String(),
-	))
-
-	return sql.RowsToRowIter(
-		sql.NewRow(name, buf.String()),
-	), nil
 }
 
 // Schema implements the sql.Node interface.

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -52,34 +50,6 @@ func (v *ValueDerivedTable) Schema() sql.Schema {
 	}
 
 	return schema
-}
-
-// RowIter implements the Node interface.
-func (v *ValueDerivedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rows := make([]sql.Row, len(v.ExpressionTuples))
-	for i, et := range v.ExpressionTuples {
-		vals := make([]interface{}, len(et))
-		for j, e := range et {
-			var err error
-			p, err := e.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-			// cast all row values to the most permissive type
-			vals[j], _, err = v.sch[j].Type.Convert(p)
-			if err != nil {
-				return nil, err
-			}
-			// decimalType.Convert() does not use the given type precision and scale information
-			if t, ok := v.sch[j].Type.(sql.DecimalType); ok {
-				vals[j] = vals[j].(decimal.Decimal).Round(int32(t.Scale()))
-			}
-		}
-
-		rows[i] = sql.NewRow(vals...)
-	}
-
-	return sql.RowsToRowIter(rows...), nil
 }
 
 // WithChildren implements the Node interface.

@@ -363,68 +363,35 @@ func (h *Handler) doQuery(
 	}
 
 	var rowChan chan sql.Row
-	var row2Chan chan sql.Row2
 
-	var rowIter2 sql.RowIter2
-	if ri2, ok := rowIter.(sql.RowIterTypeSelector); ok && ri2.IsNode2() {
-		rowIter2 = rowIter.(sql.RowIter2)
-		row2Chan = make(chan sql.Row2, 512)
-	} else {
-		rowChan = make(chan sql.Row, 512)
-	}
+	rowChan = make(chan sql.Row, 512)
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	// Read rows off the row iterator and send them to the row channel.
 	eg.Go(func() error {
 		defer wg.Done()
-		if rowIter2 != nil {
-			defer close(row2Chan)
-
-			frame := sql.NewRowFrame()
-			defer frame.Recycle()
-
-			for {
-				frame.Clear()
-				err := rowIter2.Next2(ctx, frame)
+		defer close(rowChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				row, err := rowIter.Next(ctx)
+				if err == io.EOF {
+					return nil
+				}
 				if err != nil {
-					if err == io.EOF {
-						return rowIter2.Close(ctx)
-					}
-					cerr := rowIter2.Close(ctx)
-					if cerr != nil {
-						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
-					}
 					return err
 				}
 				select {
-				case row2Chan <- frame.Row2Copy():
+				case rowChan <- row:
 				case <-ctx.Done():
 					return nil
-				}
-			}
-		} else {
-			defer close(rowChan)
-			for {
-				select {
-				case <-ctx.Done():
-					return nil
-				default:
-					row, err := rowIter.Next(ctx)
-					if err == io.EOF {
-						return nil
-					}
-					if err != nil {
-						return err
-					}
-					select {
-					case rowChan <- row:
-					case <-ctx.Done():
-						return nil
-					}
 				}
 			}
 		}
+
 	})
 
 	pollCtx, cancelF := ctx.NewSubContext()
@@ -465,68 +432,34 @@ func (h *Handler) doQuery(
 				continue
 			}
 
-			if rowIter2 != nil {
-				select {
-				case <-ctx.Done():
+			select {
+			case <-ctx.Done():
+				return nil
+			case row, ok := <-rowChan:
+				if !ok {
 					return nil
-				case row, ok := <-row2Chan:
-					if !ok {
-						return nil
-					}
-					// TODO: OK result for Row2
-					// if sql.IsOkResult(row) {
-					// 	if len(r.Rows) > 0 {
-					// 		panic("Got OkResult mixed with RowResult")
-					// 	}
-					// 	r = resultFromOkResult(row[0].(sql.OkResult))
-					// 	continue
-					// }
-
-					outputRow, err := row2ToSQL(schema, row)
-					if err != nil {
-						return err
-					}
-
-					ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-					r.Rows = append(r.Rows, outputRow)
-					r.RowsAffected++
-				case <-timer.C:
-					if h.readTimeout != 0 {
-						// Cancel and return so Vitess can call the CloseConnection callback
-						ctx.GetLogger().Tracef("connection timeout")
-						return ErrRowTimeout.New()
-					}
 				}
-			} else {
-				select {
-				case <-ctx.Done():
-					return nil
-				case row, ok := <-rowChan:
-					if !ok {
-						return nil
+				if types.IsOkResult(row) {
+					if len(r.Rows) > 0 {
+						panic("Got OkResult mixed with RowResult")
 					}
-					if types.IsOkResult(row) {
-						if len(r.Rows) > 0 {
-							panic("Got OkResult mixed with RowResult")
-						}
-						r = resultFromOkResult(row[0].(types.OkResult))
-						continue
-					}
+					r = resultFromOkResult(row[0].(types.OkResult))
+					continue
+				}
 
-					outputRow, err := rowToSQL(ctx, schema, row)
-					if err != nil {
-						return err
-					}
+				outputRow, err := rowToSQL(ctx, schema, row)
+				if err != nil {
+					return err
+				}
 
-					ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-					r.Rows = append(r.Rows, outputRow)
-					r.RowsAffected++
-				case <-timer.C:
-					if h.readTimeout != 0 {
-						// Cancel and return so Vitess can call the CloseConnection callback
-						ctx.GetLogger().Tracef("connection timeout")
-						return ErrRowTimeout.New()
-					}
+				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+				r.Rows = append(r.Rows, outputRow)
+				r.RowsAffected++
+			case <-timer.C:
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
 				}
 			}
 			if !timer.Stop() {

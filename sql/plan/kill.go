@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -29,8 +28,6 @@ const (
 	KillType_Connection KillType = 1
 )
 
-var _ sql.Node = (*Kill)(nil)
-
 func (kt KillType) String() string {
 	if kt == KillType_Query {
 		return "QUERY"
@@ -41,8 +38,8 @@ func (kt KillType) String() string {
 }
 
 type Kill struct {
-	kt     KillType
-	connID uint32
+	Kt     KillType
+	ConnID uint32
 }
 
 var _ sql.Node = (*Kill)(nil)
@@ -83,37 +80,6 @@ func (k *Kill) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
-func (k *Kill) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &lazyRowIter{
-		func(ctx *sql.Context) (sql.Row, error) {
-			ctx.ProcessList.Kill(k.connID)
-			if k.kt == KillType_Connection {
-				ctx.KillConnection(k.connID)
-			}
-			return sql.NewRow(types.NewOkResult(0)), nil
-		},
-	}, nil
-}
-
 func (k *Kill) String() string {
-	return fmt.Sprintf("KILL %s %d", k.kt.String(), k.connID)
-}
-
-type rowFunc func(ctx *sql.Context) (sql.Row, error)
-
-type lazyRowIter struct {
-	next rowFunc
-}
-
-func (i *lazyRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.next != nil {
-		res, err := i.next(ctx)
-		i.next = nil
-		return res, err
-	}
-	return nil, io.EOF
-}
-
-func (i *lazyRowIter) Close(ctx *sql.Context) error {
-	return nil
+	return fmt.Sprintf("KILL %s %d", k.Kt.String(), k.ConnID)
 }

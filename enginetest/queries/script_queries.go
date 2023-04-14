@@ -20,7 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1396,15 +1396,15 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 			{
 				Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 			{
 				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 		},
 	},
@@ -2899,6 +2899,35 @@ var ScriptTests = []ScriptTest{
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Unknown table 'non_existent_table'",
 				SkipResultsCheck:                true,
+			},
+		},
+	},
+	{
+		Name: "rename views with RENAME TABLE ... TO .. statement",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+			{
+				Query:    "rename table v1 to view1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
+			},
+			{
+				Query:    "rename table view1 to newViewName, t1 to newTableName",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
 			},
 		},
 	},

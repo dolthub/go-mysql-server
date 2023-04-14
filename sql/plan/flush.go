@@ -23,7 +23,7 @@ import (
 // FlushPrivileges reads privileges from mysql tables and registers any unregistered privileges found.
 type FlushPrivileges struct {
 	writesToBinlog bool
-	mysqlDb        sql.Database
+	MysqlDb        sql.Database
 }
 
 var _ sql.Node = (*FlushPrivileges)(nil)
@@ -34,13 +34,13 @@ var _ sql.Databaser = (*FlushPrivileges)(nil)
 func NewFlushPrivileges(ft bool) *FlushPrivileges {
 	return &FlushPrivileges{
 		writesToBinlog: ft,
-		mysqlDb:        sql.UnresolvedDatabase("mysql"),
+		MysqlDb:        sql.UnresolvedDatabase("mysql"),
 	}
 }
 
 // RowIter implements the interface sql.Node.
 func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	gts, ok := f.mysqlDb.(*mysql_db.MySQLDb)
+	gts, ok := f.MysqlDb.(*mysql_db.MySQLDb)
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
@@ -80,7 +80,7 @@ func (*FlushPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.C
 
 // Resolved implements the interface sql.Node.
 func (f *FlushPrivileges) Resolved() bool {
-	_, ok := f.mysqlDb.(sql.UnresolvedDatabase)
+	_, ok := f.MysqlDb.(sql.UnresolvedDatabase)
 	return !ok
 }
 
@@ -92,12 +92,12 @@ func (*FlushPrivileges) Schema() sql.Schema { return types.OkResultSchema }
 
 // Database implements the sql.Databaser interface.
 func (f *FlushPrivileges) Database() sql.Database {
-	return f.mysqlDb
+	return f.MysqlDb
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (f *FlushPrivileges) WithDatabase(db sql.Database) (sql.Node, error) {
 	fp := *f
-	fp.mysqlDb = db
+	fp.MysqlDb = db
 	return &fp, nil
 }

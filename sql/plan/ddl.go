@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -41,18 +40,18 @@ const (
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
-	db sql.Database
+	Db sql.Database
 }
 
 // Resolved implements the Resolvable interface.
 func (c *ddlNode) Resolved() bool {
-	_, ok := c.db.(sql.UnresolvedDatabase)
+	_, ok := c.Db.(sql.UnresolvedDatabase)
 	return !ok
 }
 
 // Database implements the sql.Databaser interface.
 func (c *ddlNode) Database() sql.Database {
-	return c.db
+	return c.Db
 }
 
 // Schema implements the Node interface.
@@ -123,11 +122,11 @@ type CreateTable struct {
 	name         string
 	CreateSchema sql.PrimaryKeySchema
 	ifNotExists  IfNotExistsOption
-	fkDefs       []*sql.ForeignKeyConstraint
+	FkDefs       []*sql.ForeignKeyConstraint
 	fkParentTbls []sql.ForeignKeyTable
-	chDefs       sql.CheckConstraints
-	idxDefs      []*IndexDefinition
-	collation    sql.CollationID
+	ChDefs       sql.CheckConstraints
+	IdxDefs      []*IndexDefinition
+	Collation    sql.CollationID
 	like         sql.Node
 	temporary    TempTableOption
 	selectNode   sql.Node
@@ -149,10 +148,10 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 		ddlNode:      ddlNode{db},
 		name:         name,
 		CreateSchema: tableSpec.Schema,
-		fkDefs:       tableSpec.FkDefs,
-		chDefs:       tableSpec.ChDefs,
-		idxDefs:      tableSpec.IdxDefs,
-		collation:    tableSpec.Collation,
+		FkDefs:       tableSpec.FkDefs,
+		ChDefs:       tableSpec.ChDefs,
+		IdxDefs:      tableSpec.IdxDefs,
+		Collation:    tableSpec.Collation,
 		ifNotExists:  ifn,
 		temporary:    temp,
 	}
@@ -176,11 +175,11 @@ func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tab
 	}
 
 	return &CreateTable{
-		ddlNode:      ddlNode{db: db},
+		ddlNode:      ddlNode{Db: db},
 		CreateSchema: tableSpec.Schema,
-		fkDefs:       tableSpec.FkDefs,
-		chDefs:       tableSpec.ChDefs,
-		idxDefs:      tableSpec.IdxDefs,
+		FkDefs:       tableSpec.FkDefs,
+		ChDefs:       tableSpec.ChDefs,
+		IdxDefs:      tableSpec.IdxDefs,
 		name:         name,
 		selectNode:   selectNode,
 		ifNotExists:  ifn,
@@ -201,7 +200,7 @@ func (c *CreateTable) TargetSchema() sql.Schema {
 // WithDatabase implements the sql.Databaser interface.
 func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *c
-	nc.db = db
+	nc.Db = db
 	return &nc, nil
 }
 
@@ -226,7 +225,7 @@ func (c *CreateTable) Resolved() bool {
 		}
 	}
 
-	for _, chDef := range c.chDefs {
+	for _, chDef := range c.ChDefs {
 		if !chDef.Expr.Resolved() {
 			return false
 		}
@@ -241,152 +240,24 @@ func (c *CreateTable) Resolved() bool {
 	return true
 }
 
-// RowIter implements the Node interface.
-func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var err error
-	var vd sql.ViewDatabase
-
-	// If it's set to Invalid, then no collation has been explicitly defined
-	if c.collation == sql.Collation_Unspecified {
-		c.collation = GetDatabaseCollation(ctx, c.db)
-		// Need to set each type's collation to the correct type as well
-		for _, col := range c.CreateSchema.Schema {
-			if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
-				col.Type, err = collatedType.WithNewCollation(c.collation)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
-	err = c.validateDefaultPosition()
-	if err != nil {
-		return sql.RowsToRowIter(), err
-	}
-
-	maybePrivDb := c.db
-	if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
-		maybePrivDb = privDb.Unwrap()
-	}
-
-	if c.temporary == IsTempTable {
-		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
-		if !ok {
-			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
-		}
-		err = creatable.CreateTemporaryTable(ctx, c.name, c.CreateSchema, c.collation)
-	} else {
-		switch creatable := maybePrivDb.(type) {
-		case sql.IndexedTableCreator:
-			var pkIdxDef sql.IndexDef
-			var hasPkIdxDef bool
-			for _, idxDef := range c.idxDefs {
-				if idxDef.Constraint == sql.IndexConstraint_Primary {
-					hasPkIdxDef = true
-					pkIdxDef = sql.IndexDef{
-						Name:       idxDef.IndexName,
-						Columns:    idxDef.Columns,
-						Constraint: idxDef.Constraint,
-						Storage:    idxDef.Using,
-						Comment:    idxDef.Comment,
-					}
-				}
-			}
-			if hasPkIdxDef {
-				err = creatable.CreateIndexedTable(ctx, c.name, c.CreateSchema, pkIdxDef, c.collation)
-				if sql.ErrUnsupportedIndexPrefix.Is(err) {
-					return sql.RowsToRowIter(), err
-				}
-			} else {
-				creatable, ok := maybePrivDb.(sql.TableCreator)
-				if !ok {
-					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
-				}
-				err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
-			}
-		case sql.TableCreator:
-			err = creatable.CreateTable(ctx, c.name, c.CreateSchema, c.collation)
-		default:
-			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
-		}
-	}
-
-	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
-		return sql.RowsToRowIter(), err
-	}
-
-	vd, _ = maybePrivDb.(sql.ViewDatabase)
-	if vd != nil {
-		_, ok, err := vd.GetViewDefinition(ctx, c.name)
-		if err != nil {
-			return nil, err
-		}
-
-		if ok {
-			return nil, sql.ErrTableAlreadyExists.New(c.name)
-		}
-	}
-
-	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
-	//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
-	tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
-	if err != nil {
-		return sql.RowsToRowIter(), err
-	}
-	if !ok {
-		return sql.RowsToRowIter(), sql.ErrTableCreatedNotFound.New()
-	}
-
-	var nonPrimaryIdxes []*IndexDefinition
-	for _, def := range c.idxDefs {
-		if def.Constraint != sql.IndexConstraint_Primary {
-			nonPrimaryIdxes = append(nonPrimaryIdxes, def)
-		}
-	}
-
-	if len(nonPrimaryIdxes) > 0 {
-		err = c.createIndexes(ctx, tableNode, nonPrimaryIdxes)
-		if err != nil {
-			return sql.RowsToRowIter(), err
-		}
-	}
-
-	if len(c.fkDefs) > 0 {
-		err = c.createForeignKeys(ctx, tableNode)
-		if err != nil {
-			return sql.RowsToRowIter(), err
-		}
-	}
-
-	if len(c.chDefs) > 0 {
-		err = c.createChecks(ctx, tableNode)
-		if err != nil {
-			return sql.RowsToRowIter(), err
-		}
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
-}
-
 // ForeignKeys returns any foreign keys that will be declared on this table.
 func (c *CreateTable) ForeignKeys() []*sql.ForeignKeyConstraint {
-	return c.fkDefs
+	return c.FkDefs
 }
 
 // WithParentForeignKeyTables adds the tables that are referenced in each foreign key. The table indices is assumed
 // to match the foreign key indices in their respective slices.
 func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) (*CreateTable, error) {
-	if len(c.fkDefs) != len(refTbls) {
+	if len(c.FkDefs) != len(refTbls) {
 		return nil, fmt.Errorf("table `%s` defines `%d` foreign keys but found `%d` referenced tables",
-			c.name, len(c.fkDefs), len(refTbls))
+			c.name, len(c.FkDefs), len(refTbls))
 	}
 	nc := *c
 	nc.fkParentTbls = refTbls
 	return &nc, nil
 }
 
-func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
+func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return ErrNotIndexable.New()
@@ -427,7 +298,7 @@ func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 	return nil
 }
 
-func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) error {
+func (c *CreateTable) CreateForeignKeys(ctx *sql.Context, tableNode sql.Table) error {
 	fkTbl, ok := tableNode.(sql.ForeignKeyTable)
 	if !ok {
 		return sql.ErrNoForeignKeySupport.New(c.name)
@@ -438,7 +309,7 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 		return err
 	}
 
-	for i, fkDef := range c.fkDefs {
+	for i, fkDef := range c.FkDefs {
 		if fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
 			return sql.ErrForeignKeySetDefault.New()
 		}
@@ -466,13 +337,13 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 	return nil
 }
 
-func (c *CreateTable) createChecks(ctx *sql.Context, tableNode sql.Table) error {
+func (c *CreateTable) CreateChecks(ctx *sql.Context, tableNode sql.Table) error {
 	chAlterable, ok := tableNode.(sql.CheckAlterableTable)
 	if !ok {
 		return ErrNoCheckConstraintSupport.New(c.name)
 	}
 
-	for _, ch := range c.chDefs {
+	for _, ch := range c.ChDefs {
 		check, err := NewCheckDefinition(ctx, ch)
 		if err != nil {
 			return err
@@ -519,10 +390,10 @@ func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if c.temporary == IsTempTable {
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_CreateTempTable))
+			sql.NewPrivilegedOperation(c.Db.Name(), "", "", sql.PrivilegeType_CreateTempTable))
 	} else {
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_Create))
+			sql.NewPrivilegedOperation(c.Db.Name(), "", "", sql.PrivilegeType_Create))
 	}
 }
 
@@ -557,13 +428,13 @@ func (c *CreateTable) DebugString() string {
 	var children []string
 	children = append(children, c.schemaDebugString())
 
-	if len(c.fkDefs) > 0 {
+	if len(c.FkDefs) > 0 {
 		children = append(children, c.foreignKeysDebugString())
 	}
-	if len(c.idxDefs) > 0 {
+	if len(c.IdxDefs) > 0 {
 		children = append(children, c.indexesDebugString())
 	}
-	if len(c.chDefs) > 0 {
+	if len(c.ChDefs) > 0 {
 		children = append(children, c.checkConstraintsDebugString())
 	}
 
@@ -575,7 +446,7 @@ func (c *CreateTable) foreignKeysDebugString() string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("ForeignKeys")
 	var children []string
-	for _, def := range c.fkDefs {
+	for _, def := range c.FkDefs {
 		children = append(children, sql.DebugString(def))
 	}
 	p.WriteChildren(children...)
@@ -586,7 +457,7 @@ func (c *CreateTable) indexesDebugString() string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("Indexes")
 	var children []string
-	for _, def := range c.idxDefs {
+	for _, def := range c.IdxDefs {
 		children = append(children, sql.DebugString(def))
 	}
 	p.WriteChildren(children...)
@@ -597,7 +468,7 @@ func (c *CreateTable) checkConstraintsDebugString() string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("CheckConstraints")
 	var children []string
-	for _, def := range c.chDefs {
+	for _, def := range c.ChDefs {
 		children = append(children, sql.DebugString(def))
 	}
 	p.WriteChildren(children...)
@@ -616,13 +487,13 @@ func (c *CreateTable) schemaDebugString() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.CreateSchema.Schema)+len(c.chDefs))
+	exprs := make([]sql.Expression, len(c.CreateSchema.Schema)+len(c.ChDefs))
 	i := 0
 	for _, col := range c.CreateSchema.Schema {
 		exprs[i] = expression.WrapExpression(col.Default)
 		i++
 	}
-	for _, ch := range c.chDefs {
+	for _, ch := range c.ChDefs {
 		exprs[i] = ch.Expr
 		i++
 	}
@@ -641,10 +512,10 @@ func (c *CreateTable) TableSpec() *TableSpec {
 	tableSpec := TableSpec{}
 
 	ret := tableSpec.WithSchema(c.CreateSchema)
-	ret = ret.WithForeignKeys(c.fkDefs)
-	ret = ret.WithIndices(c.idxDefs)
-	ret = ret.WithCheckConstraints(c.chDefs)
-	ret.Collation = c.collation
+	ret = ret.WithForeignKeys(c.FkDefs)
+	ret = ret.WithIndices(c.IdxDefs)
+	ret = ret.WithCheckConstraints(c.ChDefs)
+	ret.Collation = c.Collation
 
 	return ret
 }
@@ -662,7 +533,7 @@ func (c *CreateTable) Temporary() TempTableOption {
 }
 
 func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	length := len(c.CreateSchema.Schema) + len(c.chDefs)
+	length := len(c.CreateSchema.Schema) + len(c.ChDefs)
 	if len(exprs) != length {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
@@ -682,16 +553,16 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	}
 	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
-	ncd, err := c.chDefs.FromExpressions(exprs[i:])
+	ncd, err := c.ChDefs.FromExpressions(exprs[i:])
 	if err != nil {
 		return nil, err
 	}
 
-	nc.chDefs = ncd
+	nc.ChDefs = ncd
 	return &nc, nil
 }
 
-func (c *CreateTable) validateDefaultPosition() error {
+func (c *CreateTable) ValidateDefaultPosition() error {
 	colsAfterThis := make(map[string]*sql.Column)
 	for i := len(c.CreateSchema.Schema) - 1; i >= 0; i-- {
 		col := c.CreateSchema.Schema[i]
@@ -708,7 +579,7 @@ func (c *CreateTable) validateDefaultPosition() error {
 type DropTable struct {
 	Tables       []sql.Node
 	ifExists     bool
-	triggerNames []string
+	TriggerNames []string
 }
 
 var _ sql.Node = (*DropTable)(nil)
@@ -725,7 +596,7 @@ func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
 // WithTriggers returns this node but with the given triggers.
 func (d *DropTable) WithTriggers(triggers []string) sql.Node {
 	nd := *d
-	nd.triggerNames = triggers
+	nd.TriggerNames = triggers
 	return &nd
 }
 
@@ -748,66 +619,6 @@ func (d *DropTable) TableNames() ([]string, error) {
 // IfExists returns ifExists variable.
 func (d *DropTable) IfExists() bool {
 	return d.ifExists
-}
-
-// RowIter implements the Node interface.
-func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var err error
-	var curdb sql.Database
-
-	for _, table := range d.Tables {
-		tbl := table.(*ResolvedTable)
-		curdb = tbl.Database
-
-		droppable := tbl.Database.(sql.TableDropper)
-
-		if fkTable, err := getForeignKeyTable(tbl); err == nil {
-			fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
-			if err != nil {
-				return nil, err
-			}
-			if fkChecks.(int8) == 1 {
-				parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
-				if err != nil {
-					return nil, err
-				}
-				if len(parentFks) > 0 {
-					return nil, sql.ErrForeignKeyDropTable.New(fkTable.Name(), parentFks[0].Name)
-				}
-			}
-			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, fk := range fks {
-				if err = fkTable.DropForeignKey(ctx, fk.Name); err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		err = droppable.DropTable(ctx, tbl.Name())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(d.triggerNames) > 0 {
-		triggerDb, ok := curdb.(sql.TriggerDatabase)
-		if !ok {
-			tblNames, _ := d.TableNames()
-			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, tblNames, d.triggerNames)
-		}
-		//TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
-		for _, trigger := range d.triggerNames {
-			err = triggerDb.DropTrigger(ctx, trigger)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // Children implements the Node interface.

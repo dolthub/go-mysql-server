@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -34,7 +33,7 @@ type ShowCreateTable struct {
 	Indexes          []sql.Index
 	Checks           sql.CheckConstraints
 	targetSchema     sql.Schema
-	primaryKeySchema sql.PrimaryKeySchema
+	PrimaryKeySchema sql.PrimaryKeySchema
 	asOf             sql.Expression
 }
 
@@ -110,7 +109,7 @@ func (sc *ShowCreateTable) TargetSchema() sql.Schema {
 }
 
 func (sc ShowCreateTable) WithPrimaryKeySchema(schema sql.PrimaryKeySchema) (sql.Node, error) {
-	sc.primaryKeySchema = schema
+	sc.PrimaryKeySchema = schema
 	return &sc, nil
 }
 
@@ -164,18 +163,6 @@ func (sc *ShowCreateTable) AsOf() sql.Expression {
 	return sc.asOf
 }
 
-// RowIter implements the Node interface
-func (sc *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &showCreateTablesIter{
-		table:    sc.Child,
-		isView:   sc.IsView,
-		indexes:  sc.Indexes,
-		checks:   sc.Checks,
-		schema:   sc.targetSchema,
-		pkSchema: sc.primaryKeySchema,
-	}, nil
-}
-
 // String implements the fmt.Stringer interface.
 func (sc *ShowCreateTable) String() string {
 	t := "TABLE"
@@ -194,201 +181,4 @@ func (sc *ShowCreateTable) String() string {
 	}
 
 	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)
-}
-
-type showCreateTablesIter struct {
-	table        sql.Node
-	schema       sql.Schema
-	didIteration bool
-	isView       bool
-	indexes      []sql.Index
-	checks       sql.CheckConstraints
-	pkSchema     sql.PrimaryKeySchema
-}
-
-func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.didIteration {
-		return nil, io.EOF
-	}
-
-	i.didIteration = true
-
-	var row sql.Row
-	switch table := i.table.(type) {
-	case *ResolvedTable:
-		// MySQL behavior is to allow show create table for views, but not show create view for tables.
-		if i.isView {
-			return nil, ErrNotView.New(table.Name())
-		}
-
-		composedCreateTableStatement, err := i.produceCreateTableStatement(ctx, table.Table, i.schema, i.pkSchema)
-		if err != nil {
-			return nil, err
-		}
-		row = sql.NewRow(
-			table.Name(),                 // "Table" string
-			composedCreateTableStatement, // "Create Table" string
-		)
-	case *SubqueryAlias:
-		characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-		if err != nil {
-			return nil, err
-		}
-		collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-		if err != nil {
-			return nil, err
-		}
-		row = sql.NewRow(
-			table.Name(),                      // "View" string
-			produceCreateViewStatement(table), // "Create View" string
-			characterSetClient,
-			collationConnection,
-		)
-	default:
-		panic(fmt.Sprintf("unexpected type %T", i.table))
-	}
-
-	return row, nil
-}
-
-type NameAndSchema interface {
-	sql.Nameable
-	Schema() sql.Schema
-}
-
-func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
-	colStmts := make([]string, len(schema))
-	var primaryKeyCols []string
-
-	var pkOrdinals []int
-	if len(pkSchema.Schema) > 0 {
-		pkOrdinals = pkSchema.PkOrdinals
-	}
-
-	// Statement creation parts for each column
-	for i, col := range schema {
-
-		var colDefault string
-		// TODO: The columns that are rendered in defaults should be backticked
-		if col.Default != nil {
-			// TODO : string literals should have character set introducer
-			colDefault = col.Default.String()
-			if colDefault != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {
-				v, err := col.Default.Eval(ctx, nil)
-				if err != nil {
-					return "", err
-				}
-				colDefault = fmt.Sprintf("'%v'", v)
-			}
-		}
-
-		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
-			pkOrdinals = append(pkOrdinals, i)
-		}
-
-		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col.Name, col.Type, col.Nullable, col.AutoIncrement, col.Default != nil, colDefault, col.Comment)
-	}
-
-	for _, i := range pkOrdinals {
-		primaryKeyCols = append(primaryKeyCols, schema[i].Name)
-	}
-
-	if len(primaryKeyCols) > 0 {
-		colStmts = append(colStmts, sql.GenerateCreateTablePrimaryKeyDefinition(primaryKeyCols))
-	}
-
-	for _, index := range i.indexes {
-		// The primary key may or may not be declared as an index by the table. Don't print it twice if it's here.
-		if isPrimaryKeyIndex(index, table) {
-			continue
-		}
-
-		prefixLengths := index.PrefixLengths()
-		var indexCols []string
-		for i, expr := range index.Expressions() {
-			col := GetColumnFromIndexExpr(expr, table)
-			if col != nil {
-				indexDef := sql.QuoteIdentifier(col.Name)
-				if len(prefixLengths) > i && prefixLengths[i] != 0 {
-					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
-				}
-				indexCols = append(indexCols, indexDef)
-			}
-		}
-
-		colStmts = append(colStmts, sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(), index.ID(), indexCols, index.Comment()))
-	}
-
-	fkt, err := getForeignKeyTable(table)
-	if err == nil && fkt != nil {
-		fks, err := fkt.GetDeclaredForeignKeys(ctx)
-		if err != nil {
-			return "", err
-		}
-		for _, fk := range fks {
-			onDelete := ""
-			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferentialAction_DefaultAction {
-				onDelete = string(fk.OnDelete)
-			}
-			onUpdate := ""
-			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
-				onUpdate = string(fk.OnUpdate)
-			}
-			colStmts = append(colStmts, sql.GenerateCreateTableForiegnKeyDefinition(fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
-		}
-	}
-
-	if i.checks != nil {
-		for _, check := range i.checks {
-			colStmts = append(colStmts, sql.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
-		}
-	}
-
-	return sql.GenerateCreateTableStatement(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name()), nil
-}
-
-// isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.
-func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
-	var pks []*sql.Column
-
-	for _, col := range table.Schema() {
-		if col.PrimaryKey {
-			pks = append(pks, col)
-		}
-	}
-
-	if len(index.Expressions()) != len(pks) {
-		return false
-	}
-
-	for _, expr := range index.Expressions() {
-		if col := GetColumnFromIndexExpr(expr, table); col != nil {
-			found := false
-			for _, pk := range pks {
-				if col == pk {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return false
-			}
-		} else {
-			return false
-		}
-	}
-
-	return true
-}
-
-func produceCreateViewStatement(view *SubqueryAlias) string {
-	return fmt.Sprintf(
-		"CREATE VIEW `%s` AS %s",
-		view.Name(),
-		view.TextDefinition,
-	)
-}
-
-func (i *showCreateTablesIter) Close(*sql.Context) error {
-	return nil
 }

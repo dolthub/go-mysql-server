@@ -16,12 +16,9 @@ package plan
 
 import (
 	"fmt"
-	"io"
-	"sync"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type CreateProcedure struct {
@@ -67,13 +64,13 @@ func NewCreateProcedure(
 
 // Database implements the sql.Databaser interface.
 func (c *CreateProcedure) Database() sql.Database {
-	return c.db
+	return c.Db
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (c *CreateProcedure) WithDatabase(database sql.Database) (sql.Node, error) {
 	cp := *c
-	cp.db = database
+	cp.Db = database
 	return &cp, nil
 }
 
@@ -110,7 +107,7 @@ func (c *CreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_CreateRoutine))
+		sql.NewPrivilegedOperation(c.Db.Name(), "", "", sql.PrivilegeType_CreateRoutine))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -166,52 +163,4 @@ func (c *CreateProcedure) DebugString() string {
 	}
 	return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
 		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, sql.DebugString(c.Procedure))
-}
-
-// RowIter implements the sql.Node interface.
-func (c *CreateProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &createProcedureIter{
-		spd: sql.StoredProcedureDetails{
-			Name:            c.Name,
-			CreateStatement: c.CreateProcedureString,
-			CreatedAt:       c.CreatedAt,
-			ModifiedAt:      c.ModifiedAt,
-		},
-		db: c.db,
-	}, nil
-}
-
-// createProcedureIter is the row iterator for *CreateProcedure.
-type createProcedureIter struct {
-	once sync.Once
-	spd  sql.StoredProcedureDetails
-	db   sql.Database
-}
-
-// Next implements the sql.RowIter interface.
-func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
-	run := false
-	c.once.Do(func() {
-		run = true
-	})
-	if !run {
-		return nil, io.EOF
-	}
-	//TODO: if "automatic_sp_privileges" is true then the creator automatically gets EXECUTE and ALTER ROUTINE on this procedure
-	pdb, ok := c.db.(sql.StoredProcedureDatabase)
-	if !ok {
-		return nil, sql.ErrStoredProceduresNotSupported.New(c.db.Name())
-	}
-
-	err := pdb.SaveStoredProcedure(ctx, c.spd)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.Row{types.NewOkResult(0)}, nil
-}
-
-// Close implements the sql.RowIter interface.
-func (c *createProcedureIter) Close(ctx *sql.Context) error {
-	return nil
 }

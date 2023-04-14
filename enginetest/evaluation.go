@@ -29,7 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -766,7 +765,7 @@ func ExtractQueryNode(node sql.Node) sql.Node {
 	switch node := node.(type) {
 	case *plan.QueryProcess:
 		return ExtractQueryNode(node.Child())
-	case *analyzer.Releaser:
+	case *plan.Releaser:
 		return ExtractQueryNode(node.Child)
 	default:
 		return node

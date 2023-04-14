@@ -223,7 +223,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
-			if err := n.handleGlobalPrivileges(user); err != nil {
+			if err := n.HandleGlobalPrivileges(user); err != nil {
 				return nil, err
 			}
 			if n.WithGrantOption {
@@ -249,7 +249,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
-			if err := n.handleDatabasePrivileges(user, database); err != nil {
+			if err := n.HandleDatabasePrivileges(user, database); err != nil {
 				return nil, err
 			}
 			if n.WithGrantOption {
@@ -276,7 +276,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
-			if err := n.handleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
+			if err := n.HandleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
 				return nil, err
 			}
 			if n.WithGrantOption {
@@ -375,8 +375,8 @@ func (n *Grant) grantAllTablePrivileges(user *mysql_db.User, dbName string, tblN
 	)
 }
 
-// handleGlobalPrivileges handles giving a user their global privileges.
-func (n *Grant) handleGlobalPrivileges(user *mysql_db.User) error {
+// HandleGlobalPrivileges handles giving a user their global privileges.
+func (n *Grant) HandleGlobalPrivileges(user *mysql_db.User) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -466,8 +466,8 @@ func (n *Grant) handleGlobalPrivileges(user *mysql_db.User) error {
 	return nil
 }
 
-// handleDatabasePrivileges handles giving a user their database privileges.
-func (n *Grant) handleDatabasePrivileges(user *mysql_db.User, dbName string) error {
+// HandleDatabasePrivileges handles giving a user their database privileges.
+func (n *Grant) HandleDatabasePrivileges(user *mysql_db.User, dbName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -531,8 +531,8 @@ func (n *Grant) handleDatabasePrivileges(user *mysql_db.User, dbName string) err
 	return nil
 }
 
-// handleTablePrivileges handles giving a user their table privileges.
-func (n *Grant) handleTablePrivileges(user *mysql_db.User, dbName string, tblName string) error {
+// HandleTablePrivileges handles giving a user their table privileges.
+func (n *Grant) HandleTablePrivileges(user *mysql_db.User, dbName string, tblName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return fmt.Errorf("GRANT has not yet implemented column privileges")

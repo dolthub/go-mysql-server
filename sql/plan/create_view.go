@@ -87,46 +87,6 @@ func (cv *CreateView) Resolved() bool {
 	return !ok && cv.Child.Resolved()
 }
 
-// RowIter implements the Node interface. When executed, this function creates
-// (or replaces) the view. It can error if the CraeteView's IsReplace member is
-// set to false and the view already exists. The RowIter returned is always
-// empty.
-func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	registry := ctx.GetViewRegistry()
-	if cv.IsReplace {
-		if dropper, ok := cv.database.(sql.ViewDatabase); ok {
-			err := dropper.DropView(ctx, cv.Name)
-			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
-				return sql.RowsToRowIter(), err
-			}
-		} else {
-			err := registry.Delete(cv.database.Name(), cv.Name)
-			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
-				return sql.RowsToRowIter(), err
-			}
-		}
-	}
-	names, err := cv.database.GetTableNames(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range names {
-		if strings.ToLower(n) == strings.ToLower(cv.Name) {
-			return nil, sql.ErrTableAlreadyExists.New(n)
-		}
-	}
-
-	// TODO: isUpdatable should be defined at CREATE VIEW time
-	// isUpdatable := GetIsUpdatableFromCreateView(cv)
-
-	creator, ok := cv.database.(sql.ViewDatabase)
-	if ok {
-		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition, cv.CreateViewString)
-	} else {
-		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), cv.View())
-	}
-}
-
 // Schema implements the Node interface. It always returns nil.
 func (cv *CreateView) Schema() sql.Schema { return nil }
 

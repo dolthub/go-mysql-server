@@ -16,9 +16,7 @@ package plan
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -119,110 +117,4 @@ func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowGrants) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// generatePrivStrings creates a formatted GRANT <privilege_list> on <global/database/table> to <user@host> string
-func generatePrivStrings(db, tbl, user string, privs []sql.PrivilegeType) string {
-	sb := strings.Builder{}
-	withGrantOption := ""
-	for i, priv := range privs {
-		privStr := priv.String()
-		if privStr == sql.PrivilegeType_GrantOption.String() {
-			if len(privs) > 1 {
-				withGrantOption = " WITH GRANT OPTION"
-			}
-		} else {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(privStr)
-		}
-	}
-	// handle special case for empty global and database privileges
-	privStr := sb.String()
-	if len(privStr) == 0 {
-		if db == "*" {
-			privStr = "USAGE"
-		} else {
-			return ""
-		}
-	}
-	return fmt.Sprintf("GRANT %s ON %s.%s TO %s%s", privStr, db, tbl, user, withGrantOption)
-}
-
-// RowIter implements the interface sql.Node.
-func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	if n.For == nil || n.CurrentUser {
-		client := ctx.Session.Client()
-		n.For = &UserName{
-			Name: client.User,
-			Host: client.Address,
-		}
-	}
-	user := mysqlDb.GetUser(n.For.Name, n.For.Host, false)
-	if user == nil {
-		return nil, sql.ErrShowGrantsUserDoesNotExist.New(n.For.Name, n.For.Host)
-	}
-
-	//TODO: implement USING, perhaps by creating a new context with the chosen roles set as the active roles
-	var rows []sql.Row
-	userStr := user.UserHostToString("`")
-	privStr := generatePrivStrings("*", "*", userStr, user.PrivilegeSet.ToSlice())
-	rows = append(rows, sql.Row{privStr})
-
-	for _, db := range user.PrivilegeSet.GetDatabases() {
-		dbStr := fmt.Sprintf("`%s`", db.Name())
-		if privStr = generatePrivStrings(dbStr, "*", userStr, db.ToSlice()); len(privStr) != 0 {
-			rows = append(rows, sql.Row{privStr})
-		}
-
-		for _, tbl := range db.GetTables() {
-			tblStr := fmt.Sprintf("`%s`", tbl.Name())
-			privStr = generatePrivStrings(dbStr, tblStr, userStr, tbl.ToSlice())
-			rows = append(rows, sql.Row{privStr})
-		}
-	}
-
-	// TODO: display column privileges
-
-	sb := strings.Builder{}
-	roleEdges := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
-		ToHost: user.Host,
-		ToUser: user.User,
-	})
-	for i, roleEdge := range roleEdges {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(roleEdge.(*mysql_db.RoleEdge).FromString("`"))
-	}
-	if sb.Len() > 0 {
-		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})
-	}
-
-	sb.Reset()
-	for i, dynamicPrivWithWgo := range user.PrivilegeSet.ToSliceDynamic(true) {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(dynamicPrivWithWgo)
-	}
-	if sb.Len() > 0 {
-		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s WITH GRANT OPTION", sb.String(), user.UserHostToString("`"))})
-	}
-	sb.Reset()
-	for i, dynamicPrivWithoutWgo := range user.PrivilegeSet.ToSliceDynamic(false) {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(dynamicPrivWithoutWgo)
-	}
-	if sb.Len() > 0 {
-		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s", sb.String(), user.UserHostToString("`"))})
-	}
-	return sql.RowsToRowIter(rows...), nil
 }

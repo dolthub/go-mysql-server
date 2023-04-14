@@ -16,7 +16,6 @@ package plan
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -24,8 +23,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// cachedResultsGlobalCache manages the caches created by CachedResults nodes.
-var cachedResultsGlobalCache = NewCachedResultsManager()
+// CachedResultsGlobalCache manages the caches created by CachedResults nodes.
+var CachedResultsGlobalCache = NewCachedResultsManager()
 
 var ErrEmptyCachedResult = errors.New("CachedResult contains no rows")
 var ErrRowIterDisposed = errors.New("attempted to call RowIter() on a disposed Node")
@@ -38,7 +37,7 @@ var ErrRowIterDisposed = errors.New("attempted to call RowIter() on a disposed N
 func NewCachedResults(n sql.Node) *CachedResults {
 	return &CachedResults{
 		UnaryNode: UnaryNode{n},
-		id:        cachedResultsGlobalCache.allocateUniqueId(),
+		Id:        CachedResultsGlobalCache.allocateUniqueId(),
 	}
 }
 
@@ -60,48 +59,24 @@ func NewCachedResults(n sql.Node) *CachedResults {
 // fall back to a passthrough iterator.
 type CachedResults struct {
 	UnaryNode
-	id    uint64
-	mutex sync.Mutex
-	//noCache is set when the memory manager is unable to build
+	Id    uint64
+	Mutex sync.Mutex
+	//NoCache is set when the memory manager is unable to build
 	// a cache, so we fallback to a passthrough RowIter
-	noCache bool
-	// finalized is set when we exhaust the child iter, and subsequent
+	NoCache bool
+	// Finalized is set when we exhaust the child iter, and subsequent
 	// RowIters will read from the cache rather than the child
-	finalized bool
-	// disposed is set after this CachedResults is invalidated
-	disposed bool
+	Finalized bool
+	// Disposed is set after this CachedResults is invalidated
+	Disposed bool
 }
 
 var _ sql.Node = (*CachedResults)(nil)
 var _ sql.CollationCoercible = (*CachedResults)(nil)
 
-func (n *CachedResults) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
-
-	if n.disposed {
-		return nil, fmt.Errorf("%w: %T", ErrRowIterDisposed, n)
-	}
-
-	if rows := n.getCachedResults(); rows != nil {
-		return sql.RowsToRowIter(rows...), nil
-	} else if n.noCache {
-		return n.UnaryNode.Child.RowIter(ctx, r)
-	} else if n.finalized {
-		return emptyIter, nil
-	}
-
-	ci, err := n.UnaryNode.Child.RowIter(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	cache, dispose := ctx.Memory.NewRowsCache()
-	return &cachedResultsIter{n, ci, cache, dispose}, nil
-}
-
 func (n *CachedResults) Dispose() {
-	n.disposed = true
-	cachedResultsGlobalCache.disposeCachedResultsById(n.id)
+	n.Disposed = true
+	CachedResultsGlobalCache.disposeCachedResultsById(n.Id)
 }
 
 func (n *CachedResults) String() string {
@@ -137,63 +112,14 @@ func (n *CachedResults) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return sql.GetCoercibility(ctx, n.Child)
 }
 
-func (n *CachedResults) getCachedResults() []sql.Row {
-	return cachedResultsGlobalCache.getCachedResultsById(n.id)
+func (n *CachedResults) GetCachedResults() []sql.Row {
+	return CachedResultsGlobalCache.getCachedResultsById(n.Id)
 }
 
-type cachedResultsIter struct {
-	parent  *CachedResults
-	iter    sql.RowIter
-	cache   sql.RowsCache
-	dispose sql.DisposeFunc
-}
+var EmptyIter = &emptyCacheIter{}
 
-func (i *cachedResultsIter) Next(ctx *sql.Context) (sql.Row, error) {
-	r, err := i.iter.Next(ctx)
-	if i.cache != nil {
-		if err != nil {
-			if err == io.EOF {
-				i.saveResultsInGlobalCache()
-				i.parent.finalized = true
-			}
-			i.cleanUp()
-		} else {
-			aerr := i.cache.Add(r)
-			if aerr != nil {
-				i.cleanUp()
-				i.parent.mutex.Lock()
-				defer i.parent.mutex.Unlock()
-				i.parent.noCache = true
-			}
-		}
-	}
-	return r, err
-}
-
-func (i *cachedResultsIter) saveResultsInGlobalCache() {
-	if cachedResultsGlobalCache.addNewCache(i.parent.id, i.cache, i.dispose) {
-		i.cache = nil
-		i.dispose = nil
-	}
-}
-
-func (i *cachedResultsIter) cleanUp() {
-	if i.dispose != nil {
-		i.dispose()
-		i.cache = nil
-		i.dispose = nil
-	}
-}
-
-func (i *cachedResultsIter) Close(ctx *sql.Context) error {
-	i.cleanUp()
-	return i.iter.Close(ctx)
-}
-
-var emptyIter = &emptyCacheIter{}
-
-func isEmptyIter(i sql.RowIter) bool {
-	return i == emptyIter
+func IsEmptyIter(i sql.RowIter) bool {
+	return i == EmptyIter
 }
 
 type emptyCacheIter struct{}
@@ -250,7 +176,7 @@ func (crm *cachedResultsManager) getCachedResultsById(id uint64) []sql.Row {
 	}
 }
 
-func (crm *cachedResultsManager) addNewCache(id uint64, cache sql.RowsCache, dispose sql.DisposeFunc) bool {
+func (crm *cachedResultsManager) AddNewCache(id uint64, cache sql.RowsCache, dispose sql.DisposeFunc) bool {
 	crm.mutex.Lock()
 	defer crm.mutex.Unlock()
 

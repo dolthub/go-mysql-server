@@ -68,23 +68,6 @@ func (sq *SubqueryAlias) Schema() sql.Schema {
 	return schema
 }
 
-// RowIter implements the Node interface.
-func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.SubqueryAlias")
-
-	if !sq.OuterScopeVisibility {
-		row = nil
-	}
-	iter, err := sq.Child.RowIter(ctx, row)
-
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, iter), nil
-}
-
 // WithChildren implements the Node interface.
 func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
