@@ -233,8 +233,19 @@ func CreateLongText(collation sql.CollationID) sql.StringType {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t StringType) MaxTextResponseByteLength() uint32 {
-	return t.maxResponseByteLength
+func (t StringType) MaxTextResponseByteLength(ctx *sql.Context) uint32 {
+	// TODO: Move this down into the if block and clean up logic
+	characterSetResults := ctx.GetCharacterSetResults()
+	charsetMaxLength := uint32(characterSetResults.MaxLength())
+
+	// TODO: What happens if character_set_results is set to NULL?
+
+	maxTextResponseByteLength := uint32(t.maxByteLength)
+	if t.baseType == sqltypes.Text && t.maxByteLength != LongTextBlobMax {
+		maxTextResponseByteLength = maxTextResponseByteLength * charsetMaxLength
+	}
+
+	return maxTextResponseByteLength
 }
 
 func (t StringType) Length() int64 {

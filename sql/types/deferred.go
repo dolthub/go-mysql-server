@@ -54,7 +54,7 @@ func (t deferredType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t deferredType) MaxTextResponseByteLength() uint32 {
+func (t deferredType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	// deferredType is never actually sent over the wire
 	return 0
 }

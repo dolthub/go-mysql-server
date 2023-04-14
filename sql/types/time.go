@@ -72,7 +72,7 @@ var _ TimeType = TimespanType_{}
 var _ sql.CollationCoercible = TimespanType_{}
 
 // MaxTextResponseByteLength implements the Type interface
-func (t TimespanType_) MaxTextResponseByteLength() uint32 {
+func (t TimespanType_) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	// 10 digits are required for a text representation without microseconds, but with microseconds
 	// requires 17, so return 17 as an upper limit (i.e. len(+123:00:00.999999"))
 	return 17

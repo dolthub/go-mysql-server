@@ -460,7 +460,7 @@ func (t GeometryType) Equals(otherType sql.Type) (ok bool) {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t GeometryType) MaxTextResponseByteLength() uint32 {
+func (t GeometryType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return GeometryMaxByteLength
 }
 

@@ -72,7 +72,7 @@ func MustCreateBitType(numOfBits uint8) BitType {
 }
 
 // MaxTextResponseByteLength implements Type interface
-func (t BitType_) MaxTextResponseByteLength() uint32 {
+func (t BitType_) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	// Because this is a text serialization format, each bit requires one byte in the text response format
 	return uint32(t.numOfBits)
 }
