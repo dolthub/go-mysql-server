@@ -7,7 +7,8 @@ type RuleId int
 const (
 	// once before
 	applyDefaultSelectLimitId      RuleId = iota // applyDefaultSelectLimit
-	validateOffsetAndLimitId                     //validateOffsetAndLimit
+	validateOffsetAndLimitId                     // validateOffsetAndLimit
+	validateStarExpressionsId                    // validateStarExpressions
 	validateCreateTableId                        // validateCreateTable
 	validateExprSemId                            // validateExprSem
 	resolveVariablesId                           // resolveVariables
@@ -28,7 +29,7 @@ const (
 	validateDropConstraintId                     // validateDropConstraint
 	loadCheckConstraintsId                       // loadCheckConstraints
 	assignCatalogId                              // assignCatalog
-	resolveAnalyzeTablesId                       //resolveAnalyzeTables
+	resolveAnalyzeTablesId                       // resolveAnalyzeTables
 	resolveCreateSelectId                        // resolveCreateSelect
 	resolveSubqueriesId                          // resolveSubqueries
 	setViewTargetSchemaId                        // setViewTargetSchema
