@@ -193,11 +193,8 @@ func (b *BaseBuilder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row 
 	}
 
 	// TODO: currently there is no way to see views AS OF a particular time
-	maybeVdb := n.Database()
-	if privilegedDatabase, ok := maybeVdb.(mysql_db.PrivilegedDatabase); ok {
-		maybeVdb = privilegedDatabase.Unwrap()
-	}
-	if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {
+	db := n.Database()
+	if vdb, ok := db.(sql.ViewDatabase); ok {
 		views, err := vdb.AllViews(ctx)
 		if err != nil {
 			return nil, err
@@ -211,7 +208,7 @@ func (b *BaseBuilder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row 
 		}
 	}
 
-	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(maybeVdb.Name()) {
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(db.Name()) {
 		row := sql.Row{view.Name()}
 		if n.Full {
 			row = append(row, "VIEW")

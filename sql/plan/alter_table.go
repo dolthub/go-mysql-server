@@ -53,6 +53,127 @@ func (r *RenameTable) String() string {
 	return fmt.Sprintf("Rename table %s to %s", r.OldNames, r.NewNames)
 }
 
+func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	// TODO: 'ALTER TABLE newViewName RENAME view1' should fail on renaming views - should be fixed in vitess
+	renamer, ok := r.Db.(sql.TableRenamer)
+	if !ok {
+		return nil, sql.ErrRenameTableNotSupported.New(r.Db.Name())
+	}
+	viewDb, vok := r.Db.(sql.ViewDatabase)
+
+	for i, oldName := range r.OldNames {
+		if success, err := r.attemptRenameTable(ctx, oldName, r.NewNames[i]); err != nil {
+			return nil, err
+		} else if success {
+			err = renamer.RenameTable(ctx, oldName, r.NewNames[i])
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			if success, err = r.attemptRenameView(ctx, viewDb, vok, oldName, r.NewNames[i]); err != nil {
+				return nil, err
+			} else if !success {
+				return nil, sql.ErrTableNotFound.New(oldName)
+			}
+		}
+	}
+
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+}
+
+func (r *RenameTable) attemptRenameTable(ctx *sql.Context, oldName, newName string) (bool, error) {
+	var tbl sql.Table
+	var ok bool
+	tbl, ok, err := r.Db.GetTableInsensitive(ctx, oldName)
+	if err != nil {
+		return false, err
+	} else if !ok {
+		return false, nil
+	}
+
+	if fkTable, ok := tbl.(sql.ForeignKeyTable); ok {
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return false, err
+		}
+		for _, parentFk := range parentFks {
+			//TODO: support renaming tables across databases for foreign keys
+			if strings.ToLower(parentFk.Database) != strings.ToLower(parentFk.ParentDatabase) {
+				return false, fmt.Errorf("updating foreign key table names across databases is not yet supported")
+			}
+			parentFk.ParentTable = newName
+			childTbl, ok, err := r.Db.GetTableInsensitive(ctx, parentFk.Table)
+			if err != nil {
+				return false, err
+			}
+			if !ok {
+				return false, sql.ErrTableNotFound.New(parentFk.Table)
+			}
+			childFkTbl, ok := childTbl.(sql.ForeignKeyTable)
+			if !ok {
+				return false, fmt.Errorf("referenced table `%s` supports foreign keys but declaring table `%s` does not", parentFk.ParentTable, parentFk.Table)
+			}
+			err = childFkTbl.UpdateForeignKey(ctx, parentFk.Name, parentFk)
+			if err != nil {
+				return false, err
+			}
+		}
+
+		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+		if err != nil {
+			return false, err
+		}
+		for _, fk := range fks {
+			fk.Table = newName
+			err = fkTable.UpdateForeignKey(ctx, fk.Name, fk)
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+
+	return true, nil
+}
+
+func (r *RenameTable) attemptRenameView(ctx *sql.Context, viewDb sql.ViewDatabase, vok bool, oldName, newName string) (bool, error) {
+	if vok {
+		oldView, exists, err := viewDb.GetViewDefinition(ctx, oldName)
+		if err != nil {
+			return false, err
+		} else if !exists {
+			return false, nil
+		}
+
+		err = viewDb.DropView(ctx, oldName)
+		if err != nil {
+			return false, err
+		}
+
+		err = viewDb.CreateView(ctx, newName, oldView.TextDefinition, oldView.CreateViewStatement)
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	} else {
+		viewRegistry := ctx.GetViewRegistry()
+		view, exists := viewRegistry.View(r.Db.Name(), oldName)
+		if !exists {
+			return false, nil
+		}
+
+		err := viewRegistry.Delete(r.Db.Name(), oldName)
+		if err != nil {
+			return false, nil
+		}
+		err = viewRegistry.Register(r.Db.Name(), sql.NewView(newName, view.Definition(), view.TextDefinition(), view.CreateStatement()))
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	}
+}
+
 func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
 }
