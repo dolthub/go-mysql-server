@@ -22,7 +22,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -7493,6 +7493,13 @@ SELECT * FROM my_cte;`,
 			},
 		},
 	},
+	// Regression test for https://github.com/dolthub/dolt/issues/5656
+	{
+		Query: "select count((select * from (select pk from one_pk limit 1) as sq)) from one_pk;",
+		Expected: []sql.Row{
+			{4},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -8355,11 +8362,11 @@ var ErrorQueries = []QueryErrorTest{
 	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
 	{
 		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzer.ErrAggregationUnsupported,
+		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzer.ErrAggregationUnsupported,
+		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "select ((1, 2)) from dual",
@@ -8549,6 +8556,10 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:       "drop table myview;",
 		ExpectedErr: sql.ErrUnknownTable,
+	},
+	{
+		Query:       "select SUM(*) from dual;",
+		ExpectedErr: analyzererrors.ErrStarUnsupported,
 	},
 }
 

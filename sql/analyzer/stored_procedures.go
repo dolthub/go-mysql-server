@@ -69,6 +69,9 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 					procToRegister = analyzedProc
 				}
 
+				procToRegister.CreatedAt = procedure.CreatedAt
+				procToRegister.ModifiedAt = procedure.ModifiedAt
+
 				err = scope.procedures.Register(database.Name(), procToRegister)
 				if err != nil {
 					return nil, err

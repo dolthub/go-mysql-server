@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
@@ -206,7 +207,7 @@ func TestValidateSchemaSource(t *testing.T) {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrValidationSchemaSource.Is(err))
+				require.True(analyzererrors.ErrValidationSchemaSource.Is(err))
 			}
 		})
 	}
@@ -337,7 +338,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrUnionSchemasMatch.Is(err))
+				require.True(analyzererrors.ErrUnionSchemasMatch.Is(err))
 			}
 		})
 	}
@@ -516,7 +517,7 @@ func TestValidateIndexCreation(t *testing.T) {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrUnknownIndexColumns.Is(err))
+				require.True(analyzererrors.ErrUnknownIndexColumns.Is(err))
 			}
 		})
 	}
@@ -636,7 +637,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrIntervalInvalidUse.Is(err))
+				require.True(analyzererrors.ErrIntervalInvalidUse.Is(err))
 			}
 		})
 	}
@@ -685,7 +686,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 
 	_, _, err = validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector)
 	require.Error(err)
-	require.True(ErrSubqueryFieldIndex.Is(err))
+	require.True(analyzererrors.ErrSubqueryFieldIndex.Is(err))
 
 	node = plan.NewProject([]sql.Expression{
 		plan.NewSubquery(plan.NewProject(
