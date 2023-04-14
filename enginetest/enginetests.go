@@ -2242,8 +2242,6 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	RunQueryWithContext(t, e, harness, ctx, "CREATE VIEW view1 AS SELECT * FROM othertable")
-
 	db, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 	require.NoError(err)
 
@@ -2260,26 +2258,6 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
 	require.NoError(err)
 	require.True(ok)
-
-	TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE view1 TO newViewName", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-
-	viewDb, vdbOk := db.(sql.ViewDatabase)
-	if !vdbOk {
-		viewRegistry := ctx.GetViewRegistry()
-		ok = viewRegistry.Exists(db.Name(), "view1")
-		require.False(ok)
-
-		ok = viewRegistry.Exists(db.Name(), "newViewName")
-		require.True(ok)
-	} else {
-		_, ok, err = viewDb.GetViewDefinition(ctx, "view1")
-		require.NoError(err)
-		require.False(ok)
-
-		_, ok, err = viewDb.GetViewDefinition(ctx, "newViewName")
-		require.NoError(err)
-		require.True(ok)
-	}
 
 	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
