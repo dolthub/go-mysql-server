@@ -60,7 +60,7 @@ func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	viewRegistry := ctx.GetViewRegistry()
 
 	for i, oldName := range r.OldNames {
-		if tbl, exists := r.tableExist(ctx, oldName); exists {
+		if tbl, exists := r.tableExists(ctx, oldName); exists {
 			err := r.renameTable(ctx, renamer, tbl, oldName, r.NewNames[i])
 			if err != nil {
 				return nil, err
@@ -78,7 +78,28 @@ func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
-func (r *RenameTable) tableExist(ctx *sql.Context, name string) (sql.Table, bool) {
+func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(r, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	var operations []sql.PrivilegedOperation
+	for _, oldName := range r.OldNames {
+		operations = append(operations, sql.NewPrivilegedOperation(r.Db.Name(), oldName, "", sql.PrivilegeType_Alter, sql.PrivilegeType_Drop))
+	}
+	for _, newName := range r.NewNames {
+		operations = append(operations, sql.NewPrivilegedOperation(r.Db.Name(), newName, "", sql.PrivilegeType_Create, sql.PrivilegeType_Insert))
+	}
+	return opChecker.UserHasPrivileges(ctx, operations...)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RenameTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
+func (r *RenameTable) tableExists(ctx *sql.Context, name string) (sql.Table, bool) {
 	tbl, ok, err := r.Db.GetTableInsensitive(ctx, name)
 	if err != nil || !ok {
 		return nil, false
@@ -176,27 +197,6 @@ func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *
 		}
 		return true, nil
 	}
-}
-
-func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(r, children...)
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	var operations []sql.PrivilegedOperation
-	for _, oldName := range r.OldNames {
-		operations = append(operations, sql.NewPrivilegedOperation(r.Db.Name(), oldName, "", sql.PrivilegeType_Alter, sql.PrivilegeType_Drop))
-	}
-	for _, newName := range r.NewNames {
-		operations = append(operations, sql.NewPrivilegedOperation(r.Db.Name(), newName, "", sql.PrivilegeType_Create, sql.PrivilegeType_Insert))
-	}
-	return opChecker.UserHasPrivileges(ctx, operations...)
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (*RenameTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 7
 }
 
 type AddColumn struct {
