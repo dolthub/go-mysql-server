@@ -7500,6 +7500,28 @@ SELECT * FROM my_cte;`,
 			{4},
 		},
 	},
+	{
+		Query: "select find_in_set('second row', s) from mytable;",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{0},
+		},
+	},
+	{
+		Query: "select find_in_set(s, 'first row,second row,third row') from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
+		Query: "select i from mytable where find_in_set(s, 'first row,second row,third row') = 2;",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
