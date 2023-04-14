@@ -66,7 +66,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 	var maxByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
-		// ...SET member values should not themselves contain commas.
+		// SET member values should not themselves contain commas.
 		if strings.Contains(value, ",") {
 			return nil, fmt.Errorf("values cannot contain a comma")
 		}

@@ -285,7 +285,7 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 					parameterMode = "OUT"
 				}
 
-				charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(param.Type)
+				charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(ctx, param.Type)
 				numericPrecision, numericScale := getColumnPrecisionAndScale(param.Type)
 				// float types get nil for numericScale, but it gets 0 for this table
 				if _, ok := param.Type.(NumberType); ok {
