@@ -216,28 +216,19 @@ func TestStringCreateString(t *testing.T) {
 			10, false},
 
 		// Out of bounds error cases
-		{sqltypes.Binary, charBinaryMax + 1, sql.Collation_binary, StringType{},
-			0, true},
-		{sqltypes.Blob, LongTextBlobMax + 1, sql.Collation_binary, StringType{},
-			0, true},
-		{sqltypes.Char, charBinaryMax + 1, sql.Collation_Default, StringType{},
-			0, true},
-		{sqltypes.Text, LongTextBlobMax + 1, sql.Collation_Default, StringType{},
-			0, true},
+		{sqltypes.Binary, charBinaryMax + 1, sql.Collation_binary, StringType{}, 0, true},
+		{sqltypes.Blob, LongTextBlobMax + 1, sql.Collation_binary, StringType{}, 0, true},
+		{sqltypes.Char, charBinaryMax + 1, sql.Collation_Default, StringType{}, 0, true},
+		{sqltypes.Text, LongTextBlobMax + 1, sql.Collation_Default, StringType{}, 0, true},
 
 		// JSON strings can also come in over the wire as VARBINARY types, and JSON allows a much larger length limit (1GB).
-		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType{},
-			0, true},
-		{sqltypes.VarChar, varcharVarbinaryMax + 1, sql.Collation_Default, StringType{},
-			0, true},
+		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType{}, 0, true},
+		{sqltypes.VarChar, varcharVarbinaryMax + 1, sql.Collation_Default, StringType{}, 0, true},
 
 		// Default collation is not valid for these types
-		{sqltypes.Binary, 10, sql.Collation_Default, StringType{},
-			0, true},
-		{sqltypes.Blob, 10, sql.Collation_Default, StringType{},
-			0, true},
-		{sqltypes.VarBinary, 10, sql.Collation_Default, StringType{},
-			0, true},
+		{sqltypes.Binary, 10, sql.Collation_Default, StringType{}, 0, true},
+		{sqltypes.Blob, 10, sql.Collation_Default, StringType{}, 0, true},
+		{sqltypes.VarBinary, 10, sql.Collation_Default, StringType{}, 0, true},
 	}
 
 	ctx := sql.NewContext(

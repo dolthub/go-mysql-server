@@ -227,7 +227,6 @@ func (t StringType) MaxTextResponseByteLength(ctx *sql.Context) uint32 {
 	// since the max bytes field in a column definition response over the wire is a uint32 and multiplying
 	// longTextBlobMax by anything over 1 would cause it to overflow.
 	if t.baseType == sqltypes.Text && t.maxByteLength != LongTextBlobMax {
-		// TODO: What happens if character_set_results is set to NULL?
 		characterSetResults := ctx.GetCharacterSetResults()
 		charsetMaxLength := uint32(characterSetResults.MaxLength())
 		return uint32(t.maxByteLength) * charsetMaxLength
