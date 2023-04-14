@@ -2793,9 +2793,6 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	var views []ViewDefinition
 	dbName := db.Name()
 
-	if privilegedDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
-		db = privilegedDatabase.Unwrap()
-	}
 	if vdb, ok := db.(ViewDatabase); ok {
 		dbViews, err := vdb.AllViews(ctx)
 		if err != nil {

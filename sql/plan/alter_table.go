@@ -53,6 +53,31 @@ func (r *RenameTable) String() string {
 	return fmt.Sprintf("Rename table %s to %s", r.OldNames, r.NewNames)
 }
 
+func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	// TODO: 'ALTER TABLE newViewName RENAME view1' should fail on renaming views - should be fixed in vitess
+	renamer, _ := r.Db.(sql.TableRenamer)
+	viewDb, _ := r.Db.(sql.ViewDatabase)
+	viewRegistry := ctx.GetViewRegistry()
+
+	for i, oldName := range r.OldNames {
+		if tbl, exists := r.tableExists(ctx, oldName); exists {
+			err := r.renameTable(ctx, renamer, tbl, oldName, r.NewNames[i])
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			success, err := r.renameView(ctx, viewDb, viewRegistry, oldName, r.NewNames[i])
+			if err != nil {
+				return nil, err
+			} else if !success {
+				return nil, sql.ErrTableNotFound.New(oldName)
+			}
+		}
+	}
+
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+}
+
 func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
 }
@@ -72,6 +97,106 @@ func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*RenameTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
+}
+
+func (r *RenameTable) tableExists(ctx *sql.Context, name string) (sql.Table, bool) {
+	tbl, ok, err := r.Db.GetTableInsensitive(ctx, name)
+	if err != nil || !ok {
+		return nil, false
+	}
+	return tbl, true
+}
+
+func (r *RenameTable) renameTable(ctx *sql.Context, renamer sql.TableRenamer, tbl sql.Table, oldName, newName string) error {
+	if renamer == nil {
+		return sql.ErrRenameTableNotSupported.New(r.Db.Name())
+	}
+
+	if fkTable, ok := tbl.(sql.ForeignKeyTable); ok {
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return err
+		}
+		for _, parentFk := range parentFks {
+			//TODO: support renaming tables across databases for foreign keys
+			if strings.ToLower(parentFk.Database) != strings.ToLower(parentFk.ParentDatabase) {
+				return fmt.Errorf("updating foreign key table names across databases is not yet supported")
+			}
+			parentFk.ParentTable = newName
+			childTbl, ok, err := r.Db.GetTableInsensitive(ctx, parentFk.Table)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return sql.ErrTableNotFound.New(parentFk.Table)
+			}
+			childFkTbl, ok := childTbl.(sql.ForeignKeyTable)
+			if !ok {
+				return fmt.Errorf("referenced table `%s` supports foreign keys but declaring table `%s` does not", parentFk.ParentTable, parentFk.Table)
+			}
+			err = childFkTbl.UpdateForeignKey(ctx, parentFk.Name, parentFk)
+			if err != nil {
+				return err
+			}
+		}
+
+		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+		if err != nil {
+			return err
+		}
+		for _, fk := range fks {
+			fk.Table = newName
+			err = fkTable.UpdateForeignKey(ctx, fk.Name, fk)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err := renamer.RenameTable(ctx, oldName, newName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *sql.ViewRegistry, oldName, newName string) (bool, error) {
+	if viewDb != nil {
+		oldView, exists, err := viewDb.GetViewDefinition(ctx, oldName)
+		if err != nil {
+			return false, err
+		} else if !exists {
+			return false, nil
+		}
+
+		err = viewDb.DropView(ctx, oldName)
+		if err != nil {
+			return false, err
+		}
+
+		err = viewDb.CreateView(ctx, newName, oldView.TextDefinition, oldView.CreateViewStatement)
+		if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	} else {
+		view, exists := vr.View(r.Db.Name(), oldName)
+		if !exists {
+			return false, nil
+		}
+
+		err := vr.Delete(r.Db.Name(), oldName)
+		if err != nil {
+			return false, nil
+		}
+		err = vr.Register(r.Db.Name(), sql.NewView(newName, view.Definition(), view.TextDefinition(), view.CreateStatement()))
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	}
 }
 
 type AddColumn struct {
