@@ -27,7 +27,7 @@ type Call struct {
 	Params    []sql.Expression
 	asOf      sql.Expression
 	Procedure *Procedure
-	pRef      *expression.ProcedureReference
+	Pref      *expression.ProcedureReference
 }
 
 var _ sql.Node = (*Call)(nil)
@@ -128,7 +128,7 @@ func (c *Call) WithProcedure(proc *Procedure) *Call {
 // WithParamReference returns a new *Call containing the given *expression.ProcedureReference.
 func (c *Call) WithParamReference(pRef *expression.ProcedureReference) *Call {
 	nc := *c
-	nc.pRef = pRef
+	nc.Pref = pRef
 	return &nc
 }
 
@@ -170,31 +170,6 @@ func (c *Call) DebugString() string {
 	return tp.String()
 }
 
-// RowIter implements the sql.Node interface.
-func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	for i, paramExpr := range c.Params {
-		val, err := paramExpr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		paramName := c.Procedure.Params[i].Name
-		paramType := c.Procedure.Params[i].Type
-		err = c.pRef.InitializeVariable(paramName, paramType, val)
-		if err != nil {
-			return nil, err
-		}
-	}
-	c.pRef.PushScope()
-	innerIter, err := c.Procedure.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	return &callIter{
-		call:      c,
-		innerIter: innerIter,
-	}, nil
-}
-
 // Database implements the sql.Databaser interface.
 func (c *Call) Database() sql.Database {
 	if c.db == nil {
@@ -214,75 +189,4 @@ func (c *Call) Dispose() {
 	if c.Procedure != nil {
 		disposeNode(c.Procedure)
 	}
-}
-
-// callIter is the row iterator for *Call.
-type callIter struct {
-	call      *Call
-	innerIter sql.RowIter
-}
-
-// Next implements the sql.RowIter interface.
-func (iter *callIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return iter.innerIter.Next(ctx)
-}
-
-// Close implements the sql.RowIter interface.
-func (iter *callIter) Close(ctx *sql.Context) error {
-	err := iter.innerIter.Close(ctx)
-	if err != nil {
-		return err
-	}
-	err = iter.call.pRef.CloseAllCursors(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Set all user and system variables from INOUT and OUT params
-	for i, param := range iter.call.Procedure.Params {
-		if param.Direction == ProcedureParamDirection_Inout ||
-			(param.Direction == ProcedureParamDirection_Out && iter.call.pRef.VariableHasBeenSet(param.Name)) {
-			val, err := iter.call.pRef.GetVariableValue(param.Name)
-			if err != nil {
-				return err
-			}
-
-			typ := iter.call.pRef.GetVariableType(param.Name)
-
-			switch callParam := iter.call.Params[i].(type) {
-			case *expression.UserVar:
-				err = ctx.SetUserVariable(ctx, callParam.Name, val, typ)
-				if err != nil {
-					return err
-				}
-			case *expression.SystemVar:
-				// This should have been caught by the analyzer, so a major bug exists somewhere
-				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
-			case *expression.ProcedureParam:
-				err = callParam.Set(val, param.Type)
-				if err != nil {
-					return err
-				}
-			}
-		} else if param.Direction == ProcedureParamDirection_Out { // VariableHasBeenSet was false
-			// For OUT only, if a var was not set within the procedure body, then we set the vars to nil.
-			// If the var had a value before the call then it is basically removed.
-			switch callParam := iter.call.Params[i].(type) {
-			case *expression.UserVar:
-				err = ctx.SetUserVariable(ctx, callParam.Name, nil, iter.call.pRef.GetVariableType(param.Name))
-				if err != nil {
-					return err
-				}
-			case *expression.SystemVar:
-				// This should have been caught by the analyzer, so a major bug exists somewhere
-				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
-			case *expression.ProcedureParam:
-				err := callParam.Set(nil, param.Type)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }

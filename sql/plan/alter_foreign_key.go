@@ -25,24 +25,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func getForeignKeyTable(t sql.Table) (sql.ForeignKeyTable, error) {
-	switch t := t.(type) {
-	case sql.ForeignKeyTable:
-		return t, nil
-	case sql.TableWrapper:
-		return getForeignKeyTable(t.Underlying())
-	case *ResolvedTable:
-		return getForeignKeyTable(t.Table)
-	default:
-		return nil, sql.ErrNoForeignKeySupport.New(t.Name())
-	}
-}
-
 type CreateForeignKey struct {
 	// In the cases where we have multiple ALTER statements, we need to resolve the table at execution time rather than
 	// during analysis. Otherwise, you could add a column in the preceding alter and we may have analyzed to a table
 	// that did not yet have that column.
-	dbProvider sql.DatabaseProvider
+	DbProvider sql.DatabaseProvider
 	FkDef      *sql.ForeignKeyConstraint
 }
 
@@ -53,7 +40,7 @@ var _ sql.CollationCoercible = (*CreateForeignKey)(nil)
 
 func NewAlterAddForeignKey(fkDef *sql.ForeignKeyConstraint) *CreateForeignKey {
 	return &CreateForeignKey{
-		dbProvider: nil,
+		DbProvider: nil,
 		FkDef:      fkDef,
 	}
 }
@@ -64,7 +51,7 @@ func (p *CreateForeignKey) Database() string {
 
 // Resolved implements the interface sql.Node.
 func (p *CreateForeignKey) Resolved() bool {
-	return p.dbProvider != nil
+	return p.DbProvider != nil
 }
 
 // Children implements the interface sql.Node.
@@ -95,65 +82,14 @@ func (p *CreateForeignKey) Schema() sql.Schema {
 
 // DatabaseProvider implements the interface sql.MultiDatabaser.
 func (p *CreateForeignKey) DatabaseProvider() sql.DatabaseProvider {
-	return p.dbProvider
+	return p.DbProvider
 }
 
 // WithDatabaseProvider implements the interface sql.MultiDatabaser.
 func (p *CreateForeignKey) WithDatabaseProvider(provider sql.DatabaseProvider) (sql.Node, error) {
 	np := *p
-	np.dbProvider = provider
+	np.DbProvider = provider
 	return &np, nil
-}
-
-// RowIter implements the interface sql.Node.
-func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	if p.FkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault || p.FkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
-		return nil, sql.ErrForeignKeySetDefault.New()
-	}
-	db, err := p.dbProvider.Database(ctx, p.FkDef.Database)
-	if err != nil {
-		return nil, err
-	}
-	tbl, ok, err := db.GetTableInsensitive(ctx, p.FkDef.Table)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(p.FkDef.Table)
-	}
-
-	refDb, err := p.dbProvider.Database(ctx, p.FkDef.ParentDatabase)
-	if err != nil {
-		return nil, err
-	}
-	refTbl, ok, err := refDb.GetTableInsensitive(ctx, p.FkDef.ParentTable)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(p.FkDef.ParentTable)
-	}
-
-	fkTbl, ok := tbl.(sql.ForeignKeyTable)
-	if !ok {
-		return nil, sql.ErrNoForeignKeySupport.New(p.FkDef.Table)
-	}
-	refFkTbl, ok := refTbl.(sql.ForeignKeyTable)
-	if !ok {
-		return nil, sql.ErrNoForeignKeySupport.New(p.FkDef.ParentTable)
-	}
-
-	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
-	if err != nil {
-		return nil, err
-	}
-
-	err = ResolveForeignKey(ctx, fkTbl, refFkTbl, *p.FkDef, true, fkChecks.(int8) == 1)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // String implements the interface sql.Node.
@@ -353,7 +289,7 @@ type DropForeignKey struct {
 	// In the cases where we have multiple ALTER statements, we need to resolve the table at execution time rather than
 	// during analysis. Otherwise, you could add a foreign key in the preceding alter and we may have analyzed to a
 	// table that did not yet have that foreign key.
-	dbProvider sql.DatabaseProvider
+	DbProvider sql.DatabaseProvider
 	database   string
 	Table      string
 	Name       string
@@ -366,7 +302,7 @@ var _ sql.CollationCoercible = (*DropForeignKey)(nil)
 
 func NewAlterDropForeignKey(db, table, name string) *DropForeignKey {
 	return &DropForeignKey{
-		dbProvider: nil,
+		DbProvider: nil,
 		database:   db,
 		Table:      table,
 		Name:       name,
@@ -375,31 +311,6 @@ func NewAlterDropForeignKey(db, table, name string) *DropForeignKey {
 
 func (p *DropForeignKey) Database() string {
 	return p.database
-}
-
-// RowIter implements the interface sql.Node.
-func (p *DropForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	db, err := p.dbProvider.Database(ctx, p.database)
-	if err != nil {
-		return nil, err
-	}
-	tbl, ok, err := db.GetTableInsensitive(ctx, p.Table)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(p.Table)
-	}
-	fkTbl, ok := tbl.(sql.ForeignKeyTable)
-	if !ok {
-		return nil, sql.ErrNoForeignKeySupport.New(p.Name)
-	}
-	err = fkTbl.DropForeignKey(ctx, p.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 // WithChildren implements the interface sql.Node.
@@ -425,19 +336,19 @@ func (p *DropForeignKey) Schema() sql.Schema {
 
 // DatabaseProvider implements the interface sql.MultiDatabaser.
 func (p *DropForeignKey) DatabaseProvider() sql.DatabaseProvider {
-	return p.dbProvider
+	return p.DbProvider
 }
 
 // WithDatabaseProvider implements the interface sql.MultiDatabaser.
 func (p *DropForeignKey) WithDatabaseProvider(provider sql.DatabaseProvider) (sql.Node, error) {
 	np := *p
-	np.dbProvider = provider
+	np.DbProvider = provider
 	return &np, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (p *DropForeignKey) Resolved() bool {
-	return p.dbProvider != nil
+	return p.DbProvider != nil
 }
 
 // Children implements the interface sql.Node.

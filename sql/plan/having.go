@@ -68,18 +68,6 @@ func (h *Having) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewHaving(exprs[0], h.Child), nil
 }
 
-// RowIter implements the sql.Node interface.
-func (h *Having) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Having")
-	iter, err := h.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, NewFilterIter(h.Cond, iter)), nil
-}
-
 func (h *Having) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Having(%s)", h.Cond)

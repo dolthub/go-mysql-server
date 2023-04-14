@@ -109,7 +109,7 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 	if err != nil {
 		if goerrors.Is(err, sqlparser.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-			return plan.Nothing, parsed, remainder, nil
+			return plan.NothingImpl, parsed, remainder, nil
 		}
 		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}

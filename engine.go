@@ -16,7 +16,6 @@ package sqle
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -224,7 +223,6 @@ func (e *Engine) QueryNodeWithBindings(
 	var (
 		analyzed sql.Node
 		iter     sql.RowIter
-		iter2    sql.RowIter2
 		err      error
 	)
 
@@ -269,17 +267,7 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
-	useIter2 := false
-	if enableRowIter2 {
-		useIter2 = allNode2(analyzed)
-	}
-
-	if useIter2 {
-		iter2, err = analyzed.(sql.Node2).RowIter2(ctx, nil)
-		iter = iter2
-	} else {
-		iter, err = analyzed.RowIter(ctx, nil)
-	}
+	iter, err = e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
@@ -287,14 +275,6 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 
 		return nil, nil, err
-	}
-
-	if useIter2 {
-		iter = rowFormatSelectorIter{
-			iter:    iter,
-			iter2:   iter2,
-			isNode2: useIter2,
-		}
 	}
 
 	return analyzed.Schema(), iter, nil
@@ -478,95 +458,6 @@ func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, analyzed s
 
 	ctx.GetLogger().Tracef("plan after re-opt: %s", analyzed.String())
 	return analyzed, nil
-}
-
-// allNode2 returns whether all the nodes in the tree implement Node2.
-func allNode2(n sql.Node) bool {
-	allNode2 := true
-	transform.Inspect(n, func(n sql.Node) bool {
-		switch n := n.(type) {
-		case *plan.ResolvedTable:
-			table := n.Table
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
-			}
-			if _, ok := table.(sql.Table2); !ok {
-				allNode2 = false
-				return false
-			}
-		}
-		if _, ok := n.(sql.Node2); n != nil && !ok {
-			allNode2 = false
-			return false
-		}
-		return true
-	})
-	if !allNode2 {
-		return allNode2
-	}
-
-	// All expressions in the tree must likewise be Expression2, and all types Type2, or we can't use rowFrame iteration
-	// TODO: likely that some nodes rely on expressions but don't implement sql.Expressioner, or implement it incompletely
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		if e == nil {
-			return false
-		}
-		if _, ok := e.(sql.Expression2); !ok {
-			allNode2 = false
-			return false
-		}
-		if _, ok := e.Type().(sql.Type2); !ok {
-			allNode2 = false
-			return false
-		}
-		return true
-	})
-
-	return allNode2
-}
-
-// rowFormatSelectorIter is a wrapping row iter that implements RowIterTypeSelector so that clients consuming rows from it
-// know whether it's safe to iterate as RowIter or RowIter2.
-type rowFormatSelectorIter struct {
-	iter    sql.RowIter
-	iter2   sql.RowIter2
-	isNode2 bool
-}
-
-var _ sql.RowIterTypeSelector = rowFormatSelectorIter{}
-var _ sql.RowIter = rowFormatSelectorIter{}
-var _ sql.RowIter2 = rowFormatSelectorIter{}
-
-func (t rowFormatSelectorIter) Next(context *sql.Context) (sql.Row, error) {
-	return t.iter.Next(context)
-}
-
-func (t rowFormatSelectorIter) Close(context *sql.Context) error {
-	if t.iter2 != nil {
-		return t.iter2.Close(context)
-	}
-	return t.iter.Close(context)
-}
-
-func (t rowFormatSelectorIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.iter2.Next2(ctx, frame)
-}
-
-func (t rowFormatSelectorIter) IsNode2() bool {
-	return t.isNode2
-}
-
-const (
-	enableIter2EnvVar = "ENABLE_ROW_ITER_2"
-)
-
-var enableRowIter2 bool
-
-func init() {
-	_, ok := os.LookupEnv(enableIter2EnvVar)
-	if ok {
-		enableRowIter2 = true
-	}
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) error {

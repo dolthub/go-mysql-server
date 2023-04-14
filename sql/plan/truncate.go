@@ -78,39 +78,6 @@ func (p *Truncate) DatabaseName() string {
 	return p.db
 }
 
-// RowIter implements the Node interface.
-func (p *Truncate) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	truncatable, err := GetTruncatable(p.Child)
-	if err != nil {
-		return nil, err
-	}
-	//TODO: when performance schema summary tables are added, reset the columns to 0/NULL rather than remove rows
-	//TODO: close all handlers that were opened with "HANDLER OPEN"
-
-	removed, err := truncatable.Truncate(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, col := range truncatable.Schema() {
-		if col.AutoIncrement {
-			aiTable, ok := truncatable.(sql.AutoIncrementTable)
-			if ok {
-				setter := aiTable.AutoIncrementSetter(ctx)
-				err = setter.SetAutoIncrementValue(ctx, uint64(1))
-				if err != nil {
-					return nil, err
-				}
-				err = setter.Close(ctx)
-				if err != nil {
-					return nil, err
-				}
-			}
-			break
-		}
-	}
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(removed))), nil
-}
-
 // Schema implements the Node interface.
 func (p *Truncate) Schema() sql.Schema {
 	return types.OkResultSchema

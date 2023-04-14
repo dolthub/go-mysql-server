@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -63,30 +62,6 @@ func NewAlterDropCheck(table sql.Node, name string) *DropCheck {
 	}
 }
 
-func getCheckAlterable(node sql.Node) (sql.CheckAlterableTable, error) {
-	switch node := node.(type) {
-	case sql.CheckAlterableTable:
-		return node, nil
-	case *ResolvedTable:
-		return getCheckAlterableTable(node.Table)
-	default:
-		return nil, ErrNoCheckConstraintSupport.New(node.String())
-	}
-}
-
-func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
-	switch t := t.(type) {
-	case sql.CheckAlterableTable:
-		return t, nil
-	case sql.TableWrapper:
-		return getCheckAlterableTable(t.Underlying())
-	case *ResolvedTable:
-		return getCheckAlterableTable(t.Table)
-	default:
-		return nil, ErrNoCheckConstraintSupport.New(t.Name())
-	}
-}
-
 // Expressions implements the sql.Expressioner interface.
 func (c *CreateCheck) Expressions() []sql.Expression {
 	return []sql.Expression{c.Check.Expr}
@@ -106,48 +81,6 @@ func (c *CreateCheck) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 	nc := *c
 	nc.Check.Expr = exprs[0]
 	return &nc, nil
-}
-
-// Execute inserts the rows in the database.
-func (c *CreateCheck) Execute(ctx *sql.Context) error {
-	chAlterable, err := getCheckAlterable(c.UnaryNode.Child)
-	if err != nil {
-		return err
-	}
-
-	// check existing rows in table
-	var res interface{}
-	rowIter, err := c.UnaryNode.Child.RowIter(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	for {
-		row, err := rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return err
-		}
-
-		res, err = sql.EvaluateCondition(ctx, c.Check.Expr, row)
-		if err != nil {
-			return err
-		}
-
-		if sql.IsFalse(res) {
-			return ErrCheckViolated.New(c.Check.Name)
-		}
-	}
-
-	check, err := NewCheckDefinition(ctx, c.Check)
-	if err != nil {
-		return err
-	}
-
-	return chAlterable.CreateCheck(ctx, check)
 }
 
 // WithChildren implements the Node interface.
@@ -171,14 +104,6 @@ func (c *CreateCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 
 func (c *CreateCheck) Schema() sql.Schema { return nil }
 
-func (c *CreateCheck) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	err := c.Execute(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(), nil
-}
-
 func (c CreateCheck) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AddCheck(%s)", c.Check.Name)
@@ -187,24 +112,6 @@ func (c CreateCheck) String() string {
 		fmt.Sprintf("Expr(%s)", c.Check.Expr.String()),
 	)
 	return pr.String()
-}
-
-// Execute inserts the rows in the database.
-func (p *DropCheck) Execute(ctx *sql.Context) error {
-	chAlterable, err := getCheckAlterable(p.UnaryNode.Child)
-	if err != nil {
-		return err
-	}
-	return chAlterable.DropCheck(ctx, p.Name)
-}
-
-// RowIter implements the Node interface.
-func (p *DropCheck) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	err := p.Execute(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(), nil
 }
 
 // WithChildren implements the Node interface.

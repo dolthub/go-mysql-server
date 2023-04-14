@@ -18,9 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -59,24 +56,6 @@ func (p *Project) Schema() sql.Schema {
 func (p *Project) Resolved() bool {
 	return p.UnaryNode.Child.Resolved() &&
 		expression.ExpressionsResolved(p.Projections...)
-}
-
-// RowIter implements the Node interface.
-func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Project", trace.WithAttributes(
-		attribute.Int("projections", len(p.Projections)),
-	))
-
-	i, err := p.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, &projectIter{
-		p:         p.Projections,
-		childIter: i,
-	}), nil
 }
 
 func (p *Project) String() string {
@@ -146,56 +125,4 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	}
 
 	return NewProject(exprs, p.Child), nil
-}
-
-type projectIter struct {
-	p         []sql.Expression
-	childIter sql.RowIter
-}
-
-func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
-	childRow, err := i.childIter.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return ProjectRow(ctx, i.p, childRow)
-}
-
-func (i *projectIter) Close(ctx *sql.Context) error {
-	return i.childIter.Close(ctx)
-}
-
-// ProjectRow evaluates a set of projections.
-func ProjectRow(
-	ctx *sql.Context,
-	projections []sql.Expression,
-	row sql.Row,
-) (sql.Row, error) {
-	var err error
-	var secondPass []int
-	var fields sql.Row
-	for i, expr := range projections {
-		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
-		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
-		// This ensures that all columns referenced by expressions will have already been evaluated.
-		// Since literals do not reference other columns, they're evaluated on the first pass.
-		if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok && !defaultVal.IsLiteral() {
-			fields = append(fields, nil)
-			secondPass = append(secondPass, i)
-			continue
-		}
-		f, fErr := expr.Eval(ctx, row)
-		if fErr != nil {
-			return nil, fErr
-		}
-		fields = append(fields, f)
-	}
-	for _, index := range secondPass {
-		fields[index], err = projections[index].Eval(ctx, fields)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return sql.NewRow(fields...), nil
 }

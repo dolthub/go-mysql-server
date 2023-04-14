@@ -15,9 +15,6 @@
 package plan
 
 import (
-	"io"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -43,11 +40,6 @@ func (d *Describe) Schema() sql.Schema {
 		Name: "type",
 		Type: VarChar25000,
 	}}
-}
-
-// RowIter implements the Node interface.
-func (d *Describe) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &describeIter{schema: d.Child.Schema()}, nil
 }
 
 // WithChildren implements the Node interface.
@@ -76,28 +68,9 @@ func (d Describe) String() string {
 	return p.String()
 }
 
-type describeIter struct {
-	schema sql.Schema
-	i      int
-}
-
-func (i *describeIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.i >= len(i.schema) {
-		return nil, io.EOF
-	}
-
-	f := i.schema[i.i]
-	i.i++
-	return sql.NewRow(f.Name, f.Type.String()), nil
-}
-
-func (i *describeIter) Close(*sql.Context) error {
-	return nil
-}
-
 // DescribeQuery returns the description of the query plan.
 type DescribeQuery struct {
-	child  sql.Node
+	UnaryNode
 	Format string
 }
 
@@ -105,7 +78,7 @@ var _ sql.Node = (*DescribeQuery)(nil)
 var _ sql.CollationCoercible = (*DescribeQuery)(nil)
 
 func (d *DescribeQuery) Resolved() bool {
-	return d.child.Resolved()
+	return d.Child.Resolved()
 }
 
 func (d *DescribeQuery) Children() []sql.Node {
@@ -121,7 +94,7 @@ func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.child.CheckPrivileges(ctx, opChecker)
+	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -136,7 +109,7 @@ var DescribeSchema = sql.Schema{
 
 // NewDescribeQuery creates a new DescribeQuery node.
 func NewDescribeQuery(format string, child sql.Node) *DescribeQuery {
-	return &DescribeQuery{child, format}
+	return &DescribeQuery{UnaryNode{Child: child}, format}
 }
 
 // Schema implements the Node interface.
@@ -144,31 +117,13 @@ func (d *DescribeQuery) Schema() sql.Schema {
 	return DescribeSchema
 }
 
-// RowIter implements the Node interface.
-func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var rows []sql.Row
-	var formatString string
-	if d.Format == "debug" {
-		formatString = sql.DebugString(d.child)
-	} else {
-		formatString = d.child.String()
-	}
-
-	for _, l := range strings.Split(formatString, "\n") {
-		if strings.TrimSpace(l) != "" {
-			rows = append(rows, sql.NewRow(l))
-		}
-	}
-	return sql.RowsToRowIter(rows...), nil
-}
-
 func (d *DescribeQuery) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
 	if d.Format == "debug" {
-		_ = pr.WriteChildren(sql.DebugString(d.child))
+		_ = pr.WriteChildren(sql.DebugString(d.Child))
 	} else {
-		_ = pr.WriteChildren(d.child.String())
+		_ = pr.WriteChildren(d.Child.String())
 	}
 	return pr.String()
 }
@@ -176,13 +131,13 @@ func (d *DescribeQuery) String() string {
 func (d *DescribeQuery) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	_ = pr.WriteChildren(sql.DebugString(d.child))
+	_ = pr.WriteChildren(sql.DebugString(d.Child))
 	return pr.String()
 }
 
 // Query returns the query node being described
 func (d *DescribeQuery) Query() sql.Node {
-	return d.child
+	return d.Child
 }
 
 // WithQuery returns a copy of this node with the query node given

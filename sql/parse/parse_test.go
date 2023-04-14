@@ -3007,11 +3007,11 @@ CREATE TABLE t2
 		},
 		{
 			input: "",
-			plan:  plan.Nothing,
+			plan:  plan.NothingImpl,
 		},
 		{
 			input: "/* just a comment */",
-			plan:  plan.Nothing,
+			plan:  plan.NothingImpl,
 		},
 		{
 			input: `/*!40101 SET NAMES utf8 */`,

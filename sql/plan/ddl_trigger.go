@@ -16,14 +16,11 @@ package plan
 
 import (
 	"fmt"
-	"io"
-	"sync"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type TriggerOrder struct {
@@ -60,7 +57,7 @@ func NewCreateTrigger(triggerDb sql.Database,
 	createdAt time.Time,
 	definer string) *CreateTrigger {
 	return &CreateTrigger{
-		ddlNode:             ddlNode{db: triggerDb},
+		ddlNode:             ddlNode{Db: triggerDb},
 		TriggerName:         triggerName,
 		TriggerTime:         triggerTime,
 		TriggerEvent:        triggerEvent,
@@ -75,12 +72,12 @@ func NewCreateTrigger(triggerDb sql.Database,
 }
 
 func (c *CreateTrigger) Database() sql.Database {
-	return c.db
+	return c.Db
 }
 
 func (c *CreateTrigger) WithDatabase(database sql.Database) (sql.Node, error) {
 	ct := *c
-	ct.db = database
+	ct.Db = database
 	return &ct, nil
 }
 
@@ -132,51 +129,6 @@ func (c *CreateTrigger) DebugString() string {
 		order = fmt.Sprintf("%s %s ", c.TriggerOrder.PrecedesOrFollows, c.TriggerOrder.OtherTriggerName)
 	}
 	return fmt.Sprintf("CREATE TRIGGER %s %s %s ON %s FOR EACH ROW %s%s", c.TriggerName, c.TriggerTime, c.TriggerEvent, sql.DebugString(c.Table), order, sql.DebugString(c.Body))
-}
-
-type createTriggerIter struct {
-	once       sync.Once
-	definition sql.TriggerDefinition
-	db         sql.Database
-	ctx        *sql.Context
-}
-
-func (c *createTriggerIter) Next(ctx *sql.Context) (sql.Row, error) {
-	run := false
-	c.once.Do(func() {
-		run = true
-	})
-
-	if !run {
-		return nil, io.EOF
-	}
-
-	tdb, ok := c.db.(sql.TriggerDatabase)
-	if !ok {
-		return nil, sql.ErrTriggersNotSupported.New(c.db.Name())
-	}
-
-	err := tdb.CreateTrigger(ctx, c.definition)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.Row{types.NewOkResult(0)}, nil
-}
-
-func (c *createTriggerIter) Close(*sql.Context) error {
-	return nil
-}
-
-func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &createTriggerIter{
-		definition: sql.TriggerDefinition{
-			Name:            c.TriggerName,
-			CreateStatement: c.CreateTriggerString,
-			CreatedAt:       c.CreatedAt,
-		},
-		db: c.db,
-	}, nil
 }
 
 // OrderTriggers is a utility method that first sorts triggers into their precedence. It then splits the triggers into

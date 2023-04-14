@@ -175,7 +175,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	// to the expense of positive errors, where a rule reports a change when the plan
 	// is the same before/after.
 	// .Resolved() might be useful for fixing these bugs.
-	return sq.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
+	return sq.WithQuery(StripPassthroughNodes(analyzed)).WithExecBuilder(a.ExecBuilder), transform.NewTree, nil
 }
 
 // analyzeSubqueryAlias runs analysis on the specified subquery alias, |sqa|. The |finalize| parameter indicates if this is
