@@ -159,7 +159,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			sch, err = validatePrimaryKey(initialSch, sch, n.(*plan.AlterPK))
+			sch, err = validatePrimaryKey(ctx, initialSch, sch, n.(*plan.AlterPK))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -610,7 +610,7 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-			err := validatePrefixLength(schCol, idxCol)
+			err := validatePrefixLength(ctx, schCol, idxCol)
 			if err != nil {
 				return err
 			}
@@ -683,7 +683,7 @@ func getTableIndexNames(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string
 }
 
 // validatePrimaryKey validates a primary key add or drop operation.
-func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
+func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
 	tableName := getTableName(ai.Table)
 	switch ai.Action {
 	case plan.PrimaryKeyAction_Create:
@@ -698,7 +698,7 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 
 		for _, idxCol := range ai.Columns {
 			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
-			err := validatePrefixLength(schCol, idxCol)
+			err := validatePrefixLength(ctx, schCol, idxCol)
 			if err != nil {
 				return nil, err
 			}

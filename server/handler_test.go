@@ -38,7 +38,6 @@ import (
 )
 
 func TestHandlerOutput(t *testing.T) {
-
 	e := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
 	handler := &Handler{
@@ -655,7 +654,26 @@ func TestSchemaToFields(t *testing.T) {
 
 	require.Equal(len(schema), len(expected))
 
-	fields := schemaToFields(schema)
+	handler := &Handler{
+		e: setupMemDB(require),
+		sm: NewSessionManager(
+			testSessionBuilder,
+			sql.NoopTracer,
+			func(ctx *sql.Context, db string) bool { return db == "test" },
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn := newConn(1)
+	handler.NewConnection(conn)
+
+	ctx, err := handler.sm.NewContextWithQuery(conn, "SELECT 1")
+	require.NoError(err)
+
+	fields := schemaToFields(ctx, schema)
 	for i := 0; i < len(fields); i++ {
 		t.Run(schema[i].Name, func(t *testing.T) {
 			assert.Equal(t, expected[i], fields[i])
