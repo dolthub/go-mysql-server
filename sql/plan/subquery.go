@@ -171,7 +171,7 @@ func (p *prependNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 
 	return &prependRowIter{
-		row:       p.row,
+		row:       row, // TODO: hmmmmmm
 		childIter: childIter,
 	}, nil
 }
@@ -236,7 +236,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) { // TODO: add join here?
 		switch n := n.(type) {
 		case sql.Table, sql.Projector, *ValueDerivedTable:
 			return &prependNode{
