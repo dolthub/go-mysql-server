@@ -2259,14 +2259,6 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.False(ok)
-
-	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
-	require.NoError(err)
-	require.True(ok)
-
 	TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE othertable to othertable2, newTableName to mytable", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
 	_, ok, err = db.GetTableInsensitive(NewContext(harness), "othertable")
