@@ -14,7 +14,11 @@
 
 package sql
 
-import "github.com/dolthub/go-mysql-server/sql/encodings"
+import (
+	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/encodings"
+)
 
 // CharacterSet represents the character set of a string.
 type CharacterSet struct {
@@ -204,7 +208,7 @@ var SupportedCharsets = []CharacterSetID{
 // ParseCharacterSet takes in a string representing a CharacterSet and returns the result if a match is found, or an
 // error if not.
 func ParseCharacterSet(str string) (CharacterSetID, error) {
-	if cs, ok := characterSetStringToID[str]; ok {
+	if cs, ok := characterSetStringToID[strings.ToLower(str)]; ok {
 		return cs, nil
 	}
 	// It is valid recognize an empty string as the invalid charset, as some analyzer steps may temporarily use the
