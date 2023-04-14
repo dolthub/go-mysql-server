@@ -85,6 +85,7 @@ const (
 	finalizeSubqueriesId         // finalizeSubqueries
 	finalizeUnionsId             // finalizeUnions
 	loadTriggersId               // loadTriggers
+	loadEventsId                 // loadEvents
 	processTruncateId            // processTruncate
 	resolveAlterColumnId         // resolveAlterColumn
 	resolveGeneratorsId          // resolveGenerators

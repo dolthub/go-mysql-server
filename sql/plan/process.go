@@ -532,6 +532,7 @@ func IsDDLNode(node sql.Node) bool {
 		*CreateView, *DropView,
 		*CreateIndex, *AlterIndex, *DropIndex,
 		*CreateProcedure, *DropProcedure,
+		*CreateEvent, *DropEvent,
 		*CreateForeignKey, *DropForeignKey,
 		*CreateCheck, *DropCheck,
 		*CreateTrigger, *DropTrigger, *AlterPK,
@@ -549,7 +550,8 @@ func IsShowNode(node sql.Node) bool {
 		*ShowDatabases, *ShowCreateDatabase,
 		*ShowColumns, *ShowIndexes,
 		*ShowProcessList, *ShowTableStatus,
-		*ShowVariables, ShowWarnings:
+		*ShowVariables, ShowWarnings,
+		*ShowEvents, *ShowCreateEvent:
 		return true
 	default:
 		return false

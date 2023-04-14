@@ -1819,6 +1819,12 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 	})
 }
 
+func TestEvents(t *testing.T, h Harness) {
+	for _, script := range queries.EventTests {
+		TestScript(t, h, script)
+	}
+}
+
 func TestTriggerErrors(t *testing.T, harness Harness) {
 	for _, script := range queries.TriggerErrorTests {
 		TestScript(t, harness, script)

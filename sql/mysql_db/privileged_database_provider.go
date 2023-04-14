@@ -111,6 +111,7 @@ var _ sql.TableDropper = PrivilegedDatabase{}
 var _ sql.TableRenamer = PrivilegedDatabase{}
 var _ sql.TriggerDatabase = PrivilegedDatabase{}
 var _ sql.StoredProcedureDatabase = PrivilegedDatabase{}
+var _ sql.EventDatabase = PrivilegedDatabase{}
 var _ sql.TableCopierDatabase = PrivilegedDatabase{}
 var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
@@ -335,6 +336,52 @@ func (pdb PrivilegedDatabase) DropStoredProcedure(ctx *sql.Context, name string)
 		return db.DropStoredProcedure(ctx, name)
 	}
 	return sql.ErrStoredProceduresNotSupported.New(pdb.db.Name())
+}
+
+// GetEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
+	if pdb.db.Name() == "information_schema" {
+		return sql.EventDefinition{}, false, nil
+	}
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.GetEvent(ctx, name)
+	}
+	return sql.EventDefinition{}, false, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// GetEvents implements sql.EventDatabase
+func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+	if pdb.db.Name() == "information_schema" {
+		return nil, nil
+	}
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.GetEvents(ctx)
+	}
+	return nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// SaveEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.SaveEvent(ctx, ed)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// DropEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.DropEvent(ctx, name)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// UpdateEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.UpdateEvent(ctx, ed)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
 }
 
 // CopyTableData implements the interface sql.TableCopierDatabase.

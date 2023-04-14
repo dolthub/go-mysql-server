@@ -58,7 +58,7 @@ func GetTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		return GetTransactionDatabase(ctx, n.(sql.UnaryNode).Child())
 	case *plan.Use, *plan.CreateProcedure, *plan.DropProcedure, *plan.CreateTrigger, *plan.DropTrigger,
 		*plan.CreateTable, *plan.InsertInto, *plan.AlterIndex, *plan.AlterAutoIncrement, *plan.AlterPK,
-		*plan.DropColumn, *plan.RenameColumn, *plan.ModifyColumn:
+		*plan.DropColumn, *plan.RenameColumn, *plan.ModifyColumn, *plan.CreateEvent, *plan.DropEvent:
 		database := n.(sql.Databaser).Database()
 		if database != nil {
 			dbName = database.Name()
