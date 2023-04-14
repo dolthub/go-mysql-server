@@ -106,10 +106,10 @@ var (
 	// ErrInvalidJSONText is returned when a JSON string cannot be parsed or unmarshalled
 	ErrInvalidJSONText = errors.NewKind("Invalid JSON text: %s")
 
-	// ErrDeleteRowNotFound
+	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
-	// ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
+	// ErrDuplicateAliasOrTable should be returned when a query contains a duplicate alias / table name.
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
@@ -175,10 +175,10 @@ var (
 	// ErrVersionedStoredProceduresNotSupported is returned when attempting to retrieve a versioned stored procedure on a database that doesn't support them.
 	ErrVersionedStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support versioned stored procedures`)
 
-	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
+	// ErrStoredProcedureAlreadyExists is returned when a stored procedure does not exist.
 	ErrStoredProcedureAlreadyExists = errors.NewKind(`stored procedure "%s" already exists`)
 
-	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
+	// ErrStoredProcedureDoesNotExist is returned when a stored procedure does not exist.
 	ErrStoredProcedureDoesNotExist = errors.NewKind(`stored procedure "%s" does not exist`)
 
 	// ErrProcedureCreateStatementInvalid is returned when a StoredProcedureDatabase returns a CREATE PROCEDURE statement that is invalid.
@@ -226,6 +226,21 @@ var (
 
 	// ErrCallIncorrectParameterCount is returned when a CALL statement has the incorrect number of parameters.
 	ErrCallIncorrectParameterCount = errors.NewKind("`%s` expected `%d` parameters but got `%d`")
+
+	// ErrEventsNotSupported is returned when attempting to create an event on a database that doesn't support them.
+	ErrEventsNotSupported = errors.NewKind("database '%s' doesn't support events")
+
+	// ErrEventAlreadyExists is returned when an event does not exist.
+	ErrEventAlreadyExists = errors.NewKind("Event '%s' already exists")
+
+	// ErrEventDoesNotExist is returned when an event does not exist.
+	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
+
+	// ErrUnknownEvent is returned when a query references an event that doesn't exist
+	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
+
+	// ErrEventCreateStatementInvalid is returned when an EventDatabase returns a CREATE EVENT statement that is invalid
+	ErrEventCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
 
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)

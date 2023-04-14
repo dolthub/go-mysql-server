@@ -44,6 +44,19 @@ type CharsetCollationEngineTestQuery struct {
 // engine. Return values should all have the `utf8mb4` encoding, as it's returning the internal encoding type.
 var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	{
+		Name: "Uppercase and lowercase collations",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query:    "CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf16_unicode_ci, v2 VARCHAR(255) COLLATE UTF16_UNICODE_CI);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE test2 (v1 VARCHAR(255) CHARACTER SET utf16, v2 VARCHAR(255) CHARACTER SET UTF16);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "Insert multiple character sets",
 		SetUpScript: []string{
 			"CREATE TABLE test (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
