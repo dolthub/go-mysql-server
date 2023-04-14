@@ -117,18 +117,18 @@ func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateEvent) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_Event))
+		sql.NewPrivilegedOperation(c.Db.Name(), "", "", sql.PrivilegeType_Event))
 }
 
 // Database implements the sql.Databaser interface.
 func (c *CreateEvent) Database() sql.Database {
-	return c.db
+	return c.Db
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (c *CreateEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 	ce := *c
-	ce.db = database
+	ce.Db = database
 	return &ce, nil
 }
 
@@ -232,9 +232,9 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	eventDetails.LastAltered = eventCreationTime
 
-	eventDb, ok := c.db.(sql.EventDatabase)
+	eventDb, ok := c.Db.(sql.EventDatabase)
 	if !ok {
-		return nil, sql.ErrEventsNotSupported.New(c.db.Name())
+		return nil, sql.ErrEventsNotSupported.New(c.Db.Name())
 	}
 
 	return &createEventIter{
@@ -552,7 +552,7 @@ func (d *DropEvent) Schema() sql.Schema {
 
 // RowIter implements the sql.Node interface.
 func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	eventDb, ok := d.db.(sql.EventDatabase)
+	eventDb, ok := d.Db.(sql.EventDatabase)
 	if !ok {
 		if d.IfExists {
 			return sql.RowsToRowIter(), nil
@@ -582,12 +582,12 @@ func (d *DropEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropEvent) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.db.Name(), "", "", sql.PrivilegeType_Event))
+		sql.NewPrivilegedOperation(d.Db.Name(), "", "", sql.PrivilegeType_Event))
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (d *DropEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 	nde := *d
-	nde.db = database
+	nde.Db = database
 	return &nde, nil
 }
