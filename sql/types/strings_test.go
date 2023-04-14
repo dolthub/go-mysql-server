@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -170,55 +171,79 @@ func TestStringCreateBlobInvalidBaseTypes(t *testing.T) {
 
 func TestStringCreateString(t *testing.T) {
 	tests := []struct {
-		baseType     query.Type
-		length       int64
-		collation    sql.CollationID
-		expectedType StringType
-		expectedErr  bool
+		baseType             query.Type
+		length               int64
+		collation            sql.CollationID
+		expectedType         StringType
+		expectedMaxTextBytes uint32
+		expectedErr          bool
 	}{
 		{sqltypes.Binary, 10, sql.Collation_binary,
-			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary},
+			10, false},
 		{sqltypes.Blob, 10, sql.Collation_binary,
-			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
+			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary},
+			TinyTextBlobMax, false},
 		{sqltypes.Char, 10, sql.Collation_Default,
-			StringType{sqltypes.Char, 10, 40, sql.Collation_Default}, false},
+			StringType{sqltypes.Char, 10, 40, sql.Collation_Default},
+			40, false},
 		{sqltypes.Text, 10, sql.Collation_Default,
-			// TODO: Test MaxTextResponseBytes: uint32(TinyTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength())
-			StringType{sqltypes.Text, TinyTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TinyTextBlobMax, sql.Collation_Default}, false},
+			StringType{sqltypes.Text, TinyTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TinyTextBlobMax, sql.Collation_Default},
+			uint32(TinyTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), false},
 		{sqltypes.Text, 1000, sql.Collation_Default,
-			// TODO: Test MaxTextResponseBytes: uint32(TextBlobMax * sql.Collation_Default.CharacterSet().MaxLength())
-			StringType{sqltypes.Text, TextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TextBlobMax, sql.Collation_Default}, false},
+			StringType{sqltypes.Text, TextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TextBlobMax, sql.Collation_Default},
+			uint32(TextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), false},
 		{sqltypes.Text, 1000000, sql.Collation_Default,
-			// TODO: Test MaxTextResponseBytes: uint32(MediumTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength())
-			StringType{sqltypes.Text, MediumTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), MediumTextBlobMax, sql.Collation_Default}, false},
+			StringType{sqltypes.Text, MediumTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), MediumTextBlobMax, sql.Collation_Default},
+			uint32(MediumTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), false},
 		{sqltypes.Text, LongTextBlobMax, sql.Collation_Default,
-			// TODO: Test MaxTextResponseBytes: uint32(LongTextBlobMax)
-			StringType{sqltypes.Text, LongTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), LongTextBlobMax, sql.Collation_Default}, false},
+			StringType{sqltypes.Text, LongTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), LongTextBlobMax, sql.Collation_Default},
+			uint32(LongTextBlobMax), false},
 		{sqltypes.VarBinary, 10, sql.Collation_binary,
-			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary},
+			10, false},
 		{sqltypes.VarChar, 10, sql.Collation_Default,
-			StringType{sqltypes.VarChar, 10, 40, sql.Collation_Default}, false},
+			StringType{sqltypes.VarChar, 10, 40, sql.Collation_Default},
+			40, false},
 		{sqltypes.Char, 10, sql.Collation_binary,
-			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary},
+			10, false},
 		{sqltypes.Text, 10, sql.Collation_binary,
-			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
+			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary},
+			TinyTextBlobMax, false},
 		{sqltypes.VarChar, 10, sql.Collation_binary,
-			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary},
+			10, false},
 
-		{sqltypes.Binary, charBinaryMax + 1, sql.Collation_binary, StringType{}, true},
-		{sqltypes.Blob, LongTextBlobMax + 1, sql.Collation_binary, StringType{}, true},
-		{sqltypes.Char, charBinaryMax + 1, sql.Collation_Default, StringType{}, true},
-		{sqltypes.Text, LongTextBlobMax + 1, sql.Collation_Default, StringType{}, true},
+		// Out of bounds error cases
+		{sqltypes.Binary, charBinaryMax + 1, sql.Collation_binary, StringType{},
+			0, true},
+		{sqltypes.Blob, LongTextBlobMax + 1, sql.Collation_binary, StringType{},
+			0, true},
+		{sqltypes.Char, charBinaryMax + 1, sql.Collation_Default, StringType{},
+			0, true},
+		{sqltypes.Text, LongTextBlobMax + 1, sql.Collation_Default, StringType{},
+			0, true},
 
 		// JSON strings can also come in over the wire as VARBINARY types, and JSON allows a much larger length limit (1GB).
-		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType{}, true},
-		{sqltypes.VarChar, varcharVarbinaryMax + 1, sql.Collation_Default, StringType{}, true},
+		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType{},
+			0, true},
+		{sqltypes.VarChar, varcharVarbinaryMax + 1, sql.Collation_Default, StringType{},
+			0, true},
 
 		// Default collation is not valid for these types
-		{sqltypes.Binary, 10, sql.Collation_Default, StringType{}, true},
-		{sqltypes.Blob, 10, sql.Collation_Default, StringType{}, true},
-		{sqltypes.VarBinary, 10, sql.Collation_Default, StringType{}, true},
+		{sqltypes.Binary, 10, sql.Collation_Default, StringType{},
+			0, true},
+		{sqltypes.Blob, 10, sql.Collation_Default, StringType{},
+			0, true},
+		{sqltypes.VarBinary, 10, sql.Collation_Default, StringType{},
+			0, true},
 	}
+
+	ctx := sql.NewContext(
+		context.Background(),
+		sql.WithSession(sql.NewBaseSession()),
+	)
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.baseType, test.length, test.collation), func(t *testing.T) {
@@ -228,6 +253,7 @@ func TestStringCreateString(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedType, typ)
+				assert.Equal(t, test.expectedMaxTextBytes, typ.MaxTextResponseByteLength(ctx))
 			}
 		})
 	}
