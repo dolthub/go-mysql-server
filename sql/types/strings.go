@@ -62,11 +62,10 @@ var (
 )
 
 type StringType struct {
-	baseType              query.Type
-	maxCharLength         int64
-	maxByteLength         int64
-	maxResponseByteLength uint32
-	collation             sql.CollationID
+	baseType      query.Type
+	maxCharLength int64
+	maxByteLength int64
+	collation     sql.CollationID
 }
 
 var _ sql.StringType = StringType{}
@@ -126,7 +125,6 @@ func CreateString(baseType query.Type, length int64, collation sql.CollationID) 
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Text, sqltypes.Blob:
 		maxCharLength = length / charsetMaxLength
 	}
-	maxResponseByteLength := maxByteLength
 
 	// Make sure that length is valid depending on the base type, since they each handle lengths differently
 	switch baseType {
@@ -166,21 +164,9 @@ func CreateString(baseType query.Type, length int64, collation sql.CollationID) 
 			maxByteLength = LongTextBlobMax
 			maxCharLength = LongTextBlobMax / charsetMaxLength
 		}
-
-		maxResponseByteLength = maxByteLength
-		if baseType == sqltypes.Text && maxByteLength != LongTextBlobMax {
-			// For TEXT types, MySQL returns the maxByteLength multiplied by the size of the largest
-			// multibyte character in the associated charset for the maximum field bytes in the response
-			// metadata. It seems like returning the maxByteLength would be sufficient, but we do this to
-			// emulate MySQL's behavior exactly.
-			// The one exception is LongText types, which cannot be multiplied by a multibyte char multiplier,
-			// since the max bytes field in a column definition response over the wire is a uint32 and multiplying
-			// longTextBlobMax by anything over 1 would cause it to overflow.
-			maxResponseByteLength = maxByteLength * charsetMaxLength
-		}
 	}
 
-	return StringType{baseType, maxCharLength, maxByteLength, uint32(maxResponseByteLength), collation}, nil
+	return StringType{baseType, maxCharLength, maxByteLength, collation}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
@@ -234,18 +220,20 @@ func CreateLongText(collation sql.CollationID) sql.StringType {
 
 // MaxTextResponseByteLength implements the Type interface
 func (t StringType) MaxTextResponseByteLength(ctx *sql.Context) uint32 {
-	// TODO: Move this down into the if block and clean up logic
-	characterSetResults := ctx.GetCharacterSetResults()
-	charsetMaxLength := uint32(characterSetResults.MaxLength())
-
-	// TODO: What happens if character_set_results is set to NULL?
-
-	maxTextResponseByteLength := uint32(t.maxByteLength)
+	// For TEXT types, MySQL returns the maxByteLength multiplied by the size of the largest
+	// multibyte character in the associated charset for the maximum field bytes in the response
+	// metadata.
+	// The one exception is LongText types, which cannot be multiplied by a multibyte char multiplier,
+	// since the max bytes field in a column definition response over the wire is a uint32 and multiplying
+	// longTextBlobMax by anything over 1 would cause it to overflow.
 	if t.baseType == sqltypes.Text && t.maxByteLength != LongTextBlobMax {
-		maxTextResponseByteLength = maxTextResponseByteLength * charsetMaxLength
+		// TODO: What happens if character_set_results is set to NULL?
+		characterSetResults := ctx.GetCharacterSetResults()
+		charsetMaxLength := uint32(characterSetResults.MaxLength())
+		return uint32(t.maxByteLength) * charsetMaxLength
+	} else {
+		return uint32(t.maxByteLength)
 	}
-
-	return maxTextResponseByteLength
 }
 
 func (t StringType) Length() int64 {
