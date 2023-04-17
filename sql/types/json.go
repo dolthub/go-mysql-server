@@ -100,7 +100,7 @@ func (t JsonType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t JsonType) MaxTextResponseByteLength() uint32 {
+func (t JsonType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return uint32(MaxJsonFieldByteLength*sql.Collation_Default.CharacterSet().MaxLength()) - 1
 }
 

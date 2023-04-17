@@ -87,7 +87,7 @@ func (t PolygonType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t PolygonType) MaxTextResponseByteLength() uint32 {
+func (t PolygonType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return GeometryMaxByteLength
 }
 

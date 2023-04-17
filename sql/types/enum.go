@@ -109,7 +109,7 @@ func MustCreateEnumType(values []string, collation sql.CollationID) sql.EnumType
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t EnumType) MaxTextResponseByteLength() uint32 {
+func (t EnumType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return t.maxResponseByteLength
 }
 

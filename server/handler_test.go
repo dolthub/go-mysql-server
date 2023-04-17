@@ -35,10 +35,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestHandlerOutput(t *testing.T) {
-
 	e := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
 	handler := &Handler{
@@ -655,12 +655,77 @@ func TestSchemaToFields(t *testing.T) {
 
 	require.Equal(len(schema), len(expected))
 
-	fields := schemaToFields(schema)
+	handler := &Handler{
+		e: setupMemDB(require),
+		sm: NewSessionManager(
+			testSessionBuilder,
+			sql.NoopTracer,
+			func(ctx *sql.Context, db string) bool { return db == "test" },
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn := newConn(1)
+	handler.NewConnection(conn)
+
+	ctx, err := handler.sm.NewContextWithQuery(conn, "SELECT 1")
+	require.NoError(err)
+
+	fields := schemaToFields(ctx, schema)
 	for i := 0; i < len(fields); i++ {
 		t.Run(schema[i].Name, func(t *testing.T) {
 			assert.Equal(t, expected[i], fields[i])
 		})
 	}
+}
+
+// TestHandlerMaxTextResponseBytes tests that the handler calculates the correct max text response byte
+// metadata for TEXT types, including honoring the character_set_results session variable. This is tested
+// here, instead of in string type unit tests, because of the dependency on system variables being loaded.
+func TestHandlerMaxTextResponseBytes(t *testing.T) {
+	variables.InitSystemVariables()
+	session := sql.NewBaseSession()
+	ctx := sql.NewContext(
+		context.Background(),
+		sql.WithSession(session),
+	)
+
+	tinyTextUtf8mb4 := types.MustCreateString(sqltypes.Text, types.TinyTextBlobMax, sql.Collation_Default)
+	textUtf8mb4 := types.MustCreateString(sqltypes.Text, types.TextBlobMax, sql.Collation_Default)
+	mediumTextUtf8mb4 := types.MustCreateString(sqltypes.Text, types.MediumTextBlobMax, sql.Collation_Default)
+	longTextUtf8mb4 := types.MustCreateString(sqltypes.Text, types.LongTextBlobMax, sql.Collation_Default)
+
+	// When character_set_results is set to utf8mb4, the multibyte character multiplier is 4
+	require.NoError(t, session.SetSessionVariable(ctx, "character_set_results", "utf8mb4"))
+	require.EqualValues(t, types.TinyTextBlobMax*4, tinyTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.TextBlobMax*4, textUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.MediumTextBlobMax*4, mediumTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.LongTextBlobMax, longTextUtf8mb4.MaxTextResponseByteLength(ctx))
+
+	// When character_set_results is set to utf8mb3, the multibyte character multiplier is 3
+	require.NoError(t, session.SetSessionVariable(ctx, "character_set_results", "utf8mb3"))
+	require.EqualValues(t, types.TinyTextBlobMax*3, tinyTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.TextBlobMax*3, textUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.MediumTextBlobMax*3, mediumTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.LongTextBlobMax, longTextUtf8mb4.MaxTextResponseByteLength(ctx))
+
+	// When character_set_results is set to utf8, the multibyte character multiplier is 3
+	require.NoError(t, session.SetSessionVariable(ctx, "character_set_results", "utf8"))
+	require.EqualValues(t, types.TinyTextBlobMax*3, tinyTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.TextBlobMax*3, textUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.MediumTextBlobMax*3, mediumTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.LongTextBlobMax, longTextUtf8mb4.MaxTextResponseByteLength(ctx))
+
+	// When character_set_results is set to NULL, the multibyte character multiplier is taken from
+	// the type's charset (4 in this case)
+	require.NoError(t, session.SetSessionVariable(ctx, "character_set_results", nil))
+	require.EqualValues(t, types.TinyTextBlobMax*4, tinyTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.TextBlobMax*4, textUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.MediumTextBlobMax*4, mediumTextUtf8mb4.MaxTextResponseByteLength(ctx))
+	require.EqualValues(t, types.LongTextBlobMax, longTextUtf8mb4.MaxTextResponseByteLength(ctx))
 }
 
 func TestHandlerTimeout(t *testing.T) {

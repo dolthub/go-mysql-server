@@ -114,7 +114,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 	if types.IsOkResultSchema(analyzed.Schema()) {
 		return nil, nil
 	}
-	return schemaToFields(analyzed.Schema()), nil
+	return schemaToFields(ctx, analyzed.Schema()), nil
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
@@ -420,7 +420,7 @@ func (h *Handler) doQuery(
 		defer wg.Done()
 		for {
 			if r == nil {
-				r = &sqltypes.Result{Fields: schemaToFields(schema)}
+				r = &sqltypes.Result{Fields: schemaToFields(ctx, schema)}
 			}
 
 			if r.RowsAffected == rowsBatch {
@@ -691,7 +691,7 @@ func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
 	return o, nil
 }
 
-func schemaToFields(s sql.Schema) []*query.Field {
+func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 	fields := make([]*query.Field, len(s))
 	for i, c := range s {
 		var charset uint32 = mysql.CharacterSetUtf8
@@ -703,7 +703,7 @@ func schemaToFields(s sql.Schema) []*query.Field {
 			Name:         c.Name,
 			Type:         c.Type.Type(),
 			Charset:      charset,
-			ColumnLength: c.Type.MaxTextResponseByteLength(),
+			ColumnLength: c.Type.MaxTextResponseByteLength(ctx),
 		}
 	}
 

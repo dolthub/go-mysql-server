@@ -267,7 +267,7 @@ func (t DecimalType_) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t DecimalType_) MaxTextResponseByteLength() uint32 {
+func (t DecimalType_) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	if t.scale == 0 {
 		// if no digits are reserved for the right-hand side of the decimal point,
 		// just return precision plus one byte for sign

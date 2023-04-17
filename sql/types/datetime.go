@@ -323,7 +323,7 @@ func (t datetimeType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t datetimeType) MaxTextResponseByteLength() uint32 {
+func (t datetimeType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	switch t.baseType {
 	case sqltypes.Date:
 		return uint32(len(sql.DateLayout))

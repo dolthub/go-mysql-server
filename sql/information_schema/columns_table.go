@@ -209,7 +209,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 		}
 	}
 
-	charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(col.Type)
+	charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(ctx, col.Type)
 
 	numericPrecision, numericScale := getColumnPrecisionAndScale(col.Type)
 	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
@@ -539,7 +539,7 @@ func getColumnPrecisionAndScale(colType sql.Type) (interface{}, interface{}) {
 	}
 }
 
-func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {
+func getCharAndCollNamesAndCharMaxAndOctetLens(ctx *sql.Context, colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {
 	var (
 		charName     interface{}
 		collName     interface{}
@@ -551,8 +551,8 @@ func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, i
 		collName = colColl.Name()
 		charName = colColl.CharacterSet().String()
 		if types.IsEnum(colType) || types.IsSet(colType) {
-			charOctetLen = int64(colType.MaxTextResponseByteLength())
-			charMaxLen = int64(colType.MaxTextResponseByteLength()) / colColl.CharacterSet().MaxLength()
+			charOctetLen = int64(colType.MaxTextResponseByteLength(ctx))
+			charMaxLen = int64(colType.MaxTextResponseByteLength(ctx)) / colColl.CharacterSet().MaxLength()
 		}
 	}
 	if st, ok := colType.(sql.StringType); ok {
