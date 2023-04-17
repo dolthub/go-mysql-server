@@ -2946,7 +2946,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:"select i, find_in_set('a', s) from set_tbl;",
+				Query: "select i, find_in_set('a', s) from set_tbl;",
 				Expected: []sql.Row{
 					{0, 0},
 					{1, 1},
@@ -4177,7 +4177,7 @@ var BrokenScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:"select i, find_in_set('A', s) from collate_tbl;",
+				Query: "select i, find_in_set('A', s) from collate_tbl;",
 				Expected: []sql.Row{
 					{0, 0},
 					{1, 1},
