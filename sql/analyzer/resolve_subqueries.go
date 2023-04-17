@@ -69,7 +69,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		if jp, ok := c.Node.(*plan.JoinNode); ok {
 			joinParent = jp
 		}
-		 return true
+		return true
 	}
 
 	var conFunc transform.CtxFunc = func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
