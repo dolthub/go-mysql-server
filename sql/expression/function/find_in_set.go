@@ -101,15 +101,35 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 0, nil
 	}
 
-	// TODO: SET type uses binary arithmetic; we currently don't support this column type
-	rVal, _, err := types.LongText.Convert(right)
+	var r string
+	rType := f.Right.Type()
+	if rType.Equals(types.SetType{}) {
+		// TODO: set type should take advantage of bit arithmetic
+		r, err = rType.(types.SetType).BitsToString(right.(uint64))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var rVal interface{}
+		rVal, _, err = types.LongText.Convert(right)
+		if err != nil {
+			return nil, err
+		}
+		r = rVal.(string)
+	}
+
+	collationPreference, _ := f.CollationCoercibility(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	r := rVal.(string)
+	strType := types.CreateLongText(collationPreference)
 	for i, r := range strings.Split(r, ",") {
-		if l == strings.ToLower(r) {
+		cmp, err := strType.Compare(l, r)
+		if err != nil {
+			return nil, err
+		}
+		if cmp == 0 {
 			return i + 1, nil
 		}
 	}

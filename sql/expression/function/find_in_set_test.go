@@ -77,7 +77,7 @@ func TestFindInSet(t *testing.T) {
 		{
 			name: "special characters ok",
 			left: "test@example.com",
-			right: "nottest@example.com,hello@example.com,TEST@eXaMpLe.COM",
+			right: "nottest@example.com,hello@example.com,test@example.com",
 			expected: 3,
 		},
 		{
