@@ -16,22 +16,13 @@ package plan
 
 import (
 	"fmt"
-	"os"
-	"strings"
-
-	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 //go:generate stringer -type=JoinType -linecomment
-
-const (
-	inMemoryJoinKey        = "INMEMORY_JOINS"
-	inMemoryJoinSessionVar = "inmemory_joins"
-)
-
-var useInMemoryJoins = shouldUseMemoryJoinsByEnv()
 
 type JoinType uint16
 
@@ -232,11 +223,6 @@ func (i JoinType) AsLookup() JoinType {
 	}
 }
 
-func shouldUseMemoryJoinsByEnv() bool {
-	v := strings.TrimSpace(strings.ToLower(os.Getenv(inMemoryJoinKey)))
-	return v == "on" || v == "1"
-}
-
 // JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
@@ -346,24 +332,6 @@ func makeNullable(cols []*sql.Column) []*sql.Column {
 		result[i] = &col
 	}
 	return result
-}
-
-// RowIter implements the Node interface.
-func (j *JoinNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	switch {
-	case j.Op.IsFullOuter():
-		return newFullJoinIter(ctx, j, row)
-	case j.Op.IsPartial():
-		return newExistsIter(ctx, j, row)
-	case j.Op.IsCross():
-		return newCrossJoinIter(ctx, j, row)
-	case j.Op.IsPlaceholder():
-		panic(fmt.Sprintf("%s is a placeholder, RowIter called", j.Op))
-	case j.Op.IsMerge():
-		return newMergeJoinIter(ctx, j, row)
-	default:
-		return newJoinIter(ctx, j, row)
-	}
 }
 
 func (j *JoinNode) WithScopeLen(i int) *JoinNode {
@@ -480,4 +448,17 @@ func NewAntiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 
 func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeSemi, cond)
+}
+
+// IsNullRejecting returns whether the expression always returns false for
+// nil inputs.
+func IsNullRejecting(e sql.Expression) bool {
+	return !transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e.(type) {
+		case *expression.NullSafeEquals, *expression.IsNull:
+			return true
+		default:
+			return false
+		}
+	})
 }

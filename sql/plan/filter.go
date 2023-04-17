@@ -40,19 +40,6 @@ func (f *Filter) Resolved() bool {
 	return f.UnaryNode.Child.Resolved() && f.Expression.Resolved()
 }
 
-// RowIter implements the Node interface.
-func (f *Filter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Filter")
-
-	i, err := f.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, NewFilterIter(f.Expression, i)), nil
-}
-
 // WithChildren implements the Node interface.
 func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {

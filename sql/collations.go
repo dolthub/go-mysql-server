@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"io"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/cespare/xxhash"
@@ -33,8 +34,15 @@ type Collation struct {
 	IsCompiled   bool
 	SortLength   uint8
 	PadAttribute string
-	Sorter       func(r rune) int32
+	Sorter       CollationSorter
 }
+
+// CollationSorter is a collation's sort function. When given a rune, an integer is returned that represents that rune's
+// order when sorted against all other runes. That integer is referred to as a sort order. When two runes have the same
+// sort order, they are considered equivalent. For example, case-insensitive collations return the same sort order for
+// uppercase and lowercase variants of a character, while case-sensitive collations return different sort orders.
+// Comparing sort orders from different collations is meaningless, and therefore represents a logical error.
+type CollationSorter func(r rune) int32
 
 // CollationsIterator iterates over every collation available, ordered by their ID (ascending).
 type CollationsIterator struct {
@@ -758,7 +766,7 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 		if collationStr == nil || len(*collationStr) == 0 {
 			return Collation_Unspecified, nil
 		}
-		if collation, ok := collationStringToID[*collationStr]; ok {
+		if collation, ok := collationStringToID[strings.ToLower(*collationStr)]; ok {
 			if binaryAttribute {
 				return collation.CharacterSet().BinaryCollation(), nil
 			}
@@ -776,7 +784,7 @@ func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribu
 			}
 			return characterSet.DefaultCollation(), nil
 		}
-		collation, exists := collationStringToID[*collationStr]
+		collation, exists := collationStringToID[strings.ToLower(*collationStr)]
 		if !exists {
 			return Collation_Unspecified, ErrCollationUnknown.New(*collationStr)
 		}
@@ -911,7 +919,7 @@ func (c CollationID) HashToBytes(str string) ([]byte, error) {
 
 // Sorter returns this collation's sort function. As collations are a work-in-progress, it is recommended to avoid
 // using any collations that return a nil sort function.
-func (c CollationID) Sorter() func(r rune) int32 {
+func (c CollationID) Sorter() CollationSorter {
 	return collationArray[c].Sorter
 }
 

@@ -111,10 +111,12 @@ var _ sql.TableDropper = PrivilegedDatabase{}
 var _ sql.TableRenamer = PrivilegedDatabase{}
 var _ sql.TriggerDatabase = PrivilegedDatabase{}
 var _ sql.StoredProcedureDatabase = PrivilegedDatabase{}
+var _ sql.EventDatabase = PrivilegedDatabase{}
 var _ sql.TableCopierDatabase = PrivilegedDatabase{}
 var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
 var _ sql.CollatedDatabase = PrivilegedDatabase{}
+var _ sql.ViewDatabase = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
 func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database) sql.Database {
@@ -335,6 +337,84 @@ func (pdb PrivilegedDatabase) DropStoredProcedure(ctx *sql.Context, name string)
 		return db.DropStoredProcedure(ctx, name)
 	}
 	return sql.ErrStoredProceduresNotSupported.New(pdb.db.Name())
+}
+
+// GetEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
+	if pdb.db.Name() == "information_schema" {
+		return sql.EventDefinition{}, false, nil
+	}
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.GetEvent(ctx, name)
+	}
+	return sql.EventDefinition{}, false, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// GetEvents implements sql.EventDatabase
+func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+	if pdb.db.Name() == "information_schema" {
+		return nil, nil
+	}
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.GetEvents(ctx)
+	}
+	return nil, sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// SaveEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.SaveEvent(ctx, ed)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// DropEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.DropEvent(ctx, name)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// UpdateEvent implements sql.EventDatabase
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.UpdateEvent(ctx, ed)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// CreateView implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.CreateView(ctx, name, selectStatement, createViewStmt)
+	}
+	return sql.ErrViewsNotSupported.New(pdb.db.Name())
+}
+
+// DropView implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) DropView(ctx *sql.Context, name string) error {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.DropView(ctx, name)
+	}
+	return sql.ErrViewsNotSupported.New(pdb.db.Name())
+}
+
+// GetViewDefinition implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.GetViewDefinition(ctx, viewName)
+	}
+	return sql.ViewDefinition{}, false, sql.ErrViewsNotSupported.New(pdb.db.Name())
+}
+
+// AllViews implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.AllViews(ctx)
+	}
+	return nil, sql.ErrViewsNotSupported.New(pdb.db.Name())
 }
 
 // CopyTableData implements the interface sql.TableCopierDatabase.

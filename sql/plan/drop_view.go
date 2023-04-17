@@ -22,11 +22,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var errDropViewChild = errors.NewKind("any child of DropView must be of type SingleDropView")
+var ErrDropViewChild = errors.NewKind("any child of DropView must be of type SingleDropView")
 
 type SingleDropView struct {
 	database sql.Database
-	viewName string
+	ViewName string
 }
 
 var _ sql.Node = (*SingleDropView)(nil)
@@ -64,7 +64,7 @@ func (dv *SingleDropView) Schema() sql.Schema { return nil }
 // generate the string.
 func (dv *SingleDropView) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("SingleDropView(%s.%s)", dv.database.Name(), dv.viewName)
+	_ = pr.WriteNode("SingleDropView(%s.%s)", dv.database.Name(), dv.ViewName)
 
 	return pr.String()
 }
@@ -111,7 +111,7 @@ func (dv *SingleDropView) WithDatabase(database sql.Database) (sql.Node, error) 
 // node to fail if any of the views in children does not exist.
 type DropView struct {
 	children []sql.Node
-	ifExists bool
+	IfExists bool
 }
 
 var _ sql.Node = (*DropView)(nil)
@@ -120,7 +120,7 @@ var _ sql.CollationCoercible = (*DropView)(nil)
 // NewDropView creates a DropView node with the specified parameters,
 // setting its catalog to nil.
 func NewDropView(children []sql.Node, ifExists bool) *DropView {
-	return &DropView{children: children, ifExists: ifExists}
+	return &DropView{children: children, IfExists: ifExists}
 }
 
 // Children implements the Node interface. It returns the children of the
@@ -138,36 +138,6 @@ func (dvs *DropView) Resolved() bool {
 		}
 	}
 	return true
-}
-
-// RowIter implements the Node interface. When executed, this function drops
-// all the views defined by the node's children. It errors if the flag ifExists
-// is set to false and there is some view that does not exist.
-func (dvs *DropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	for _, child := range dvs.children {
-		drop, ok := child.(*SingleDropView)
-		if !ok {
-			return sql.RowsToRowIter(), errDropViewChild.New()
-		}
-
-		if dropper, ok := drop.database.(sql.ViewDatabase); ok {
-			err := dropper.DropView(ctx, drop.viewName)
-			if err != nil {
-				allowedError := dvs.ifExists && sql.ErrViewDoesNotExist.Is(err)
-				if !allowedError {
-					return sql.RowsToRowIter(), err
-				}
-			}
-		} else {
-			err := ctx.GetViewRegistry().Delete(drop.database.Name(), drop.viewName)
-			allowedError := dvs.ifExists && sql.ErrViewDoesNotExist.Is(err)
-			if !allowedError {
-				return sql.RowsToRowIter(), err
-			}
-		}
-	}
-
-	return sql.RowsToRowIter(), nil
 }
 
 // Schema implements the Node interface. It always returns nil.

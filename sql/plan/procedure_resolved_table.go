@@ -68,15 +68,6 @@ func (t *ProcedureResolvedTable) Children() []sql.Node {
 	return []sql.Node{t.ResolvedTable}
 }
 
-// RowIter implements the sql.Node interface.
-func (t *ProcedureResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rt, err := t.newestTable(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return rt.RowIter(ctx, row)
-}
-
 // WithChildren implements the sql.Node interface.
 func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -117,7 +108,7 @@ func (t *ProcedureResolvedTable) Name() string {
 
 // Partitions implements the sql.Table interface.
 func (t *ProcedureResolvedTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	rt, err := t.newestTable(ctx)
+	rt, err := t.NewestTable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -126,15 +117,15 @@ func (t *ProcedureResolvedTable) Partitions(ctx *sql.Context) (sql.PartitionIter
 
 // PartitionRows implements the sql.Table interface.
 func (t *ProcedureResolvedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	rt, err := t.newestTable(ctx)
+	rt, err := t.NewestTable(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return rt.PartitionRows(ctx, partition)
 }
 
-// newestTable fetches the newest copy of the contained table from the database.
-func (t *ProcedureResolvedTable) newestTable(ctx *sql.Context) (*ResolvedTable, error) {
+// NewestTable fetches the newest copy of the contained table from the database.
+func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, error) {
 	// If no database was given, such as with the "dual" table, then we return the given table as-is.
 	if t.ResolvedTable.Database == nil {
 		return t.ResolvedTable, nil

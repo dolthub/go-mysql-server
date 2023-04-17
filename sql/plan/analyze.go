@@ -2,7 +2,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -90,50 +89,4 @@ func (n *AnalyzeTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*AnalyzeTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-// TODO: support cross / multi db analyze
-func (n *AnalyzeTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// Assume table is in current database
-	database := ctx.GetCurrentDatabase()
-	if database == "" {
-		return nil, sql.ErrNoDatabaseSelected.New()
-	}
-
-	return &analyzeTableIter{
-		idx:    0,
-		tables: n.Tables,
-		stats:  n.Stats,
-	}, nil
-}
-
-type analyzeTableIter struct {
-	idx    int
-	tables []sql.DbTable
-	stats  sql.StatsReadWriter
-}
-
-var _ sql.RowIter = &analyzeTableIter{}
-
-func (itr *analyzeTableIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if itr.idx >= len(itr.tables) {
-		return nil, io.EOF
-	}
-
-	t := itr.tables[itr.idx]
-
-	msgType := "status"
-	msgText := "OK"
-	err := itr.stats.Analyze(ctx, t.Db, t.Table)
-	if err != nil {
-		msgType = "Error"
-		msgText = err.Error()
-	}
-	itr.idx++
-	return sql.Row{t.Table, "analyze", msgType, msgText}, nil
-}
-
-func (itr *analyzeTableIter) Close(ctx *sql.Context) error {
-	return nil
 }

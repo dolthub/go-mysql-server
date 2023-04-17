@@ -375,10 +375,3 @@ type UnresolvedTable interface {
 	// AsOf returns this table's asof expression.
 	AsOf() Expression
 }
-
-// Table2 is an experimental future interface alternative to Table to provide faster access.
-type Table2 interface {
-	Table
-
-	PartitionRows2(ctx *Context, part Partition) (RowIter2, error)
-}

@@ -52,7 +52,7 @@ var _ sql.CollationCoercible = (*AlterDefaultDrop)(nil)
 // NewAlterDefaultSet returns a *AlterDefaultSet node.
 func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
 	return &AlterDefaultSet{
-		ddlNode:    ddlNode{db: database},
+		ddlNode:    ddlNode{Db: database},
 		Table:      table,
 		ColumnName: columnName,
 		Default:    defVal,
@@ -102,7 +102,7 @@ func (d *AlterDefaultSet) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
 
-	return NewAlterDefaultSet(d.db, children[0], d.ColumnName, d.Default), nil
+	return NewAlterDefaultSet(d.Db, children[0], d.ColumnName, d.Default), nil
 }
 
 // Children implements the sql.Node interface.
@@ -157,7 +157,7 @@ func (d *AlterDefaultSet) TargetSchema() sql.Schema {
 
 func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) {
 	na := *d
-	na.db = database
+	na.Db = database
 	return &na, nil
 }
 
@@ -170,7 +170,7 @@ func (d AlterDefaultSet) WithDefault(expr sql.Expression) (sql.Node, error) {
 // NewAlterDefaultDrop returns a *AlterDefaultDrop node.
 func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName string) *AlterDefaultDrop {
 	return &AlterDefaultDrop{
-		ddlNode:    ddlNode{db: database},
+		ddlNode:    ddlNode{Db: database},
 		Table:      table,
 		ColumnName: columnName,
 	}
@@ -247,7 +247,7 @@ func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, er
 // CheckPrivileges implements the interface sql.Node.
 func (d *AlterDefaultDrop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.db.Name(), getTableName(d.Table), d.ColumnName, sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(d.Db.Name(), getTableName(d.Table), d.ColumnName, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -258,7 +258,7 @@ func (d *AlterDefaultDrop) CollationCoercibility(ctx *sql.Context) (collation sq
 // WithDatabase implements the sql.Databaser interface.
 func (d *AlterDefaultDrop) WithDatabase(db sql.Database) (sql.Node, error) {
 	nd := *d
-	nd.db = db
+	nd.Db = db
 	return &nd, nil
 }
 

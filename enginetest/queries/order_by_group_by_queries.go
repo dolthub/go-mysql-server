@@ -16,7 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 )
 
 var OrderByGroupByScriptTests = []ScriptTest{
@@ -245,7 +245,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "select id, team from members group by team",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 		},
 	},

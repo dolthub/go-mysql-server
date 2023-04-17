@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -156,7 +157,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				if sq, ok := e.(*plan.Subquery); ok {
 					newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
 					if err != nil {
-						if ErrValidationResolved.Is(err) {
+						if analyzererrors.ErrValidationResolved.Is(err) {
 							// if a parent is unresolved, we want to dig deeper to find the unresolved
 							// child dependency
 							_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
@@ -246,7 +247,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	if err != nil {
 		// We ignore certain errors during non-final passes of the analyzer, deferring them to later analysis passes.
 		// Specifically, if the subquery isn't resolved or a column can't be found in the scope node, wait until a later pass.
-		if !finalize && (ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err)) {
+		if !finalize && (analyzererrors.ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err)) {
 			// keep the work we have and defer remainder of analysis of this subquery until a later pass
 			return sq.WithQuery(analyzed), transform.NewTree, nil
 		}
@@ -258,7 +259,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	// to the expense of positive errors, where a rule reports a change when the plan
 	// is the same before/after.
 	// .Resolved() might be useful for fixing these bugs.
-	return sq.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
+	return sq.WithQuery(StripPassthroughNodes(analyzed)).WithExecBuilder(a.ExecBuilder), transform.NewTree, nil
 }
 
 // analyzeSubqueryAlias runs analysis on the specified subquery alias, |sqa|. The |finalize| parameter indicates if this is

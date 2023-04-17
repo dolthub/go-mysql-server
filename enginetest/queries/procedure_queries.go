@@ -2363,6 +2363,50 @@ var ProcedureShowStatus = []ScriptTest{
 					},
 				},
 			},
+			{
+				Query: "SHOW PROCEDURE STATUS",
+				Expected: []sql.Row{
+					{
+						"mydb",                // Db
+						"p1",                  // Name
+						"PROCEDURE",           // Type
+						"",                    // Definer
+						time.Unix(0, 0).UTC(), // Modified
+						time.Unix(0, 0).UTC(), // Created
+						"DEFINER",             // Security_type
+						"hi",                  // Comment
+						"utf8mb4",             // character_set_client
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
+					},
+					{
+						"mydb",                // Db
+						"p2",                  // Name
+						"PROCEDURE",           // Type
+						"user@%",              // Definer
+						time.Unix(0, 0).UTC(), // Modified
+						time.Unix(0, 0).UTC(), // Created
+						"INVOKER",             // Security_type
+						"",                    // Comment
+						"utf8mb4",             // character_set_client
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
+					},
+					{
+						"mydb",                // Db
+						"p21",                 // Name
+						"PROCEDURE",           // Type
+						"",                    // Definer
+						time.Unix(0, 0).UTC(), // Modified
+						time.Unix(0, 0).UTC(), // Created
+						"DEFINER",             // Security_type
+						"",                    // Comment
+						"utf8mb4",             // character_set_client
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
+					},
+				},
+			},
 		},
 	},
 }

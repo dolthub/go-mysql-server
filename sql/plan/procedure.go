@@ -173,11 +173,6 @@ func (p *Procedure) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.GetCoercibility(ctx, p.Body)
 }
 
-// RowIter implements the sql.Node interface.
-func (p *Procedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return p.Body.RowIter(ctx, row)
-}
-
 // implementsRepresentsBlock implements the RepresentsBlock interface.
 func (p *Procedure) implementsRepresentsBlock() {}
 

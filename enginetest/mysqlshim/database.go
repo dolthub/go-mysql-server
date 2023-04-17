@@ -36,6 +36,7 @@ var _ sql.TableRenamer = Database{}
 var _ sql.TriggerDatabase = Database{}
 var _ sql.StoredProcedureDatabase = Database{}
 var _ sql.ViewDatabase = Database{}
+var _ sql.EventDatabase = Database{}
 
 // Name implements the interface sql.Database.
 func (d Database) Name() string {
@@ -197,6 +198,63 @@ func (d Database) SaveStoredProcedure(ctx *sql.Context, spd sql.StoredProcedureD
 // DropStoredProcedure implements the interface sql.StoredProcedureDatabase.
 func (d Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 	return d.shim.Exec(d.name, fmt.Sprintf("DROP PROCEDURE `%s`;", name))
+}
+
+// GetEvent implements sql.EventDatabase
+func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
+	name = strings.ToLower(name)
+	events, err := d.GetEvents(ctx)
+	if err != nil {
+		return sql.EventDefinition{}, false, err
+	}
+	for _, event := range events {
+		if name == strings.ToLower(event.Name) {
+			return event, true, nil
+		}
+	}
+	return sql.EventDefinition{}, false, nil
+}
+
+// GetEvents implements sql.EventDatabase
+func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
+	events, err := d.shim.QueryRows("", fmt.Sprintf("SHOW EVENTS WHERE Db = '%s';", d.name))
+	if err != nil {
+		return nil, err
+	}
+	eventDefinition := make([]sql.EventDefinition, len(events))
+	for i, event := range events {
+		// Db, Name, Definer, Time Zone, Type, ...
+		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event[1]))
+		if err != nil {
+			return nil, err
+		}
+		// Event, sql_mode, time_zone, Create Event, ...
+		eventDefinition[i] = sql.EventDefinition{
+			Name:            eventStmt[0][0].(string),
+			CreateStatement: eventStmt[0][3].(string),
+			// TODO: other fields should be added such as Created, LastAltered
+		}
+	}
+	return eventDefinition, nil
+}
+
+// SaveEvent implements sql.EventDatabase
+func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+	return d.shim.Exec(d.name, ed.CreateStatement)
+}
+
+// DropEvent implements sql.EventDatabase
+func (d Database) DropEvent(ctx *sql.Context, name string) error {
+	return d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", name))
+}
+
+// UpdateEvent implements sql.EventDatabase
+func (d Database) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", ed.Name))
+	if err != nil {
+		return err
+	}
+	return d.shim.Exec(d.name, ed.CreateStatement)
 }
 
 // CreateView implements the interface sql.ViewDatabase.

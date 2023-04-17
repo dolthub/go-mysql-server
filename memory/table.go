@@ -71,7 +71,6 @@ type Table struct {
 }
 
 var _ sql.Table = (*Table)(nil)
-var _ sql.Table2 = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
@@ -394,7 +393,6 @@ type tableIter struct {
 }
 
 var _ sql.RowIter = (*tableIter)(nil)
-var _ sql.RowIter2 = (*tableIter)(nil)
 
 func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := i.getRow(ctx)
@@ -422,23 +420,6 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return row, nil
-}
-
-func (i *tableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	r, err := i.Next(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, v := range r {
-		x, err := sql.ConvertToValue(v)
-		if err != nil {
-			return err
-		}
-		frame.Append(x)
-	}
-
-	return nil
 }
 
 func (i *tableIter) colIsProjected(idx int) bool {
@@ -508,7 +489,6 @@ type spatialTableIter struct {
 }
 
 var _ sql.RowIter = (*spatialTableIter)(nil)
-var _ sql.RowIter2 = (*spatialTableIter)(nil)
 
 func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := i.getRow(ctx)
@@ -546,23 +526,6 @@ func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		resultRow[i] = row[j]
 	}
 	return resultRow, nil
-}
-
-func (i *spatialTableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	r, err := i.Next(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, v := range r {
-		x, err := sql.ConvertToValue(v)
-		if err != nil {
-			return err
-		}
-		frame.Append(x)
-	}
-
-	return nil
 }
 
 func (i *spatialTableIter) Close(ctx *sql.Context) error {
@@ -1853,15 +1816,6 @@ func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error
 
 func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
-}
-
-func (t *Table) PartitionRows2(ctx *sql.Context, partition sql.Partition) (sql.RowIter2, error) {
-	iter, err := t.PartitionRows(ctx, partition)
-	if err != nil {
-		return nil, err
-	}
-
-	return iter.(*tableIter), nil
 }
 
 func (t *Table) verifyRowTypes(row sql.Row) {

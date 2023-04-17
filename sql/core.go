@@ -68,9 +68,6 @@ type Node interface {
 	Schema() Schema
 	// Children nodes.
 	Children() []Node
-	// RowIter produces a row iterator from this node. The current row being evaluated is provided, as well the context
-	// of the query.
-	RowIter(ctx *Context, row Row) (RowIter, error)
 	// WithChildren returns a copy of the node with children replaced.
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
@@ -80,6 +77,18 @@ type Node interface {
 	// whether a user (contained in the context, along with their active roles) has the necessary privileges to execute
 	// this node (and its children).
 	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
+}
+
+// NodeExecBuilder converts a sql.Node tree into a RowIter.
+type NodeExecBuilder interface {
+	Build(ctx *Context, n Node, r Row) (RowIter, error)
+}
+
+// ExecSourceRel is a node that has no children and is directly
+// row generating.
+type ExecSourceRel interface {
+	Node
+	RowIter(ctx *Context, r Row) (RowIter, error)
 }
 
 // Nameable is something that has a name.
@@ -312,15 +321,6 @@ type Expression2 interface {
 	Eval2(ctx *Context, row Row2) (Value, error)
 	// Type2 returns the expression type.
 	Type2() Type2
-}
-
-// Node2 is an experimental future interface alternative to Node to provide faster access.
-type Node2 interface {
-	Node
-
-	// RowIter2 produces a row iterator from this node. The current row frame being
-	// evaluated is provided, as well the context of the query.
-	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
 
 var SystemVariables SystemVariableRegistry

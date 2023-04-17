@@ -38,6 +38,7 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
@@ -299,7 +300,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	} {
 		for _, tt := range querySet {
 			t.Run(tt.WriteQuery, func(t *testing.T) {
-				AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzer.ErrReadOnlyDatabase)
+				AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzererrors.ErrReadOnlyDatabase)
 			})
 		}
 	}
@@ -1818,6 +1819,12 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 	})
 }
 
+func TestEvents(t *testing.T, h Harness) {
+	for _, script := range queries.EventTests {
+		TestScript(t, h, script)
+	}
+}
+
 func TestTriggerErrors(t *testing.T, harness Harness) {
 	for _, script := range queries.TriggerErrorTests {
 		TestScript(t, harness, script)
@@ -1889,10 +1896,6 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 
 	db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
 	require.NoError(t, err)
-
-	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
-		db = pdb.Unwrap()
-	}
 
 	vdb, ok := db.(sql.ViewDatabase)
 	require.True(t, ok, "expected sql.ViewDatabase")
@@ -5982,9 +5985,9 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "desc t33", []sql.Row{
 			{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
-			{"v1_new", "timestamp", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
+			{"v1_new", "timestamp(6)", "YES", "", "(NOW())", "DEFAULT_GENERATED"},
 			{"v2", "varchar(100)", "YES", "", "NULL", ""},
-			{"v3", "datetime", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
+			{"v3", "datetime(6)", "YES", "", "(CURRENT_TIMESTAMP())", "DEFAULT_GENERATED"},
 		}, nil, nil)
 
 		AssertErr(t, e, harness, "alter table t33 add column v4 date default CURRENT_TIMESTAMP()", nil,
