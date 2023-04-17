@@ -2903,6 +2903,35 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "rename views with RENAME TABLE ... TO .. statement",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+			{
+				Query:    "rename table v1 to view1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
+			},
+			{
+				Query:    "rename table view1 to newViewName, t1 to newTableName",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
+			},
+		},
+	},
+	{
 		Name: "find_in_set tests",
 		SetUpScript: []string{
 			"create table set_tbl (i int primary key, s set('a','b','c'));",
