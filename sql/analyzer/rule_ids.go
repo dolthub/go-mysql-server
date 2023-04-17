@@ -44,8 +44,6 @@ const (
 	validateCreateTriggerId                      // validateCreateTrigger
 	validateCreateProcedureId                    // validateCreateProcedure
 	loadInfoSchemaId                             // loadInfoSchema
-	validateReadOnlyDatabaseId                   // validateReadOnlyDatabase
-	validateReadOnlyTransactionId                // validateReadOnlyTransaction
 	validateDatabaseSetId                        // validateDatabaseSet
 	validatePrivilegesId                         // validatePrivileges
 	reresolveTablesId                            // reresolveTables
@@ -113,19 +111,8 @@ const (
 	applyFKsId                   // applyFKs
 
 	// validate
-	validateResolvedId          // validateResolved
-	validateOrderById           // validateOrderBy
-	validateGroupById           // validateGroupBy
-	validateSchemaSourceId      // validateSchemaSource
-	validateIndexCreationId     // validateIndexCreation
-	validateOperandsId          // validateOperands
-	validateCaseResultTypesId   // validateCaseResultTypes
-	validateIntervalUsageId     // validateIntervalUsage
-	validateExplodeUsageId      // validateExplodeUsage
-	validateSubqueryColumnsId   // validateSubqueryColumns
-	validateUnionSchemasMatchId // validateUnionSchemasMatch
-	validateAggregationsId      // validateAggregations
-	validateDeleteFromId        // validateDeleteFrom
+	validateAfterId  // validateAfter
+	validateBeforeId // validateBefore
 
 	// after all
 	cacheSubqueryResultsId        // cacheSubqueryResults

@@ -29,29 +29,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func validateHelper(fn ValidatorFunc, ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch e := r.(type) {
+			case semError:
+				err = e.error
+			default:
+				panic(e)
+			}
+		}
+	}()
+	fn(ctx, a, n, scope, sel)
+	return
+}
+
 func TestValidateResolved(t *testing.T) {
 	require := require.New(t)
 
-	vr := getValidationRule(validateResolvedId)
+	ctx := sql.NewEmptyContext()
+	vr := validateIsResolved2
 
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
 
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	err = validateHelper(vr, ctx, nil, dummyNode{false}, nil, DefaultRuleSelector)
 	require.Error(err)
 }
 
 func TestValidateOrderBy(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+	vr := validateOrderBy2
 
-	vr := getValidationRule(validateOrderById)
-
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	err = validateHelper(vr, ctx, nil, dummyNode{false}, nil, DefaultRuleSelector)
 	require.NoError(err)
 
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, plan.NewSort(
+	err = validateHelper(vr, ctx, nil, plan.NewSort(
 		[]sql.SortField{{Column: aggregation.NewCount(nil), Order: sql.Descending}},
 		nil,
 	), nil, DefaultRuleSelector)
@@ -61,11 +77,12 @@ func TestValidateOrderBy(t *testing.T) {
 func TestValidateGroupBy(t *testing.T) {
 	require := require.New(t)
 
-	vr := getValidationRule(validateGroupById)
+	ctx := sql.NewEmptyContext()
+	vr := validateGroupBy2
 
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	err = validateHelper(vr, ctx, nil, dummyNode{false}, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
@@ -99,17 +116,18 @@ func TestValidateGroupBy(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil, DefaultRuleSelector)
+	err = validateHelper(vr, ctx, nil, p, nil, DefaultRuleSelector)
 	require.NoError(err)
 }
 
 func TestValidateGroupByErr(t *testing.T) {
 	require := require.New(t)
-	vr := getValidationRule(validateGroupById)
+	ctx := sql.NewEmptyContext()
+	vr := validateGroupBy2
 
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	err = validateHelper(vr, ctx, nil, dummyNode{false}, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
@@ -144,7 +162,7 @@ func TestValidateGroupByErr(t *testing.T) {
 
 	err = sql.SystemVariables.SetGlobal("sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY")
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil, DefaultRuleSelector)
+	err = validateHelper(vr, ctx, nil, p, nil, DefaultRuleSelector)
 	require.Error(err)
 }
 
@@ -197,12 +215,12 @@ func TestValidateSchemaSource(t *testing.T) {
 			true,
 		},
 	}
-
-	rule := getValidationRule(validateSchemaSourceId)
+	ctx := sql.NewEmptyContext()
+	rule := validateSchemaSource2
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			err := validateHelper(rule, ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -328,12 +346,12 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			false,
 		},
 	}
-
-	rule := getValidationRule(validateUnionSchemasMatchId)
+	ctx := sql.NewEmptyContext()
+	rule := validateUnionSchemasMatch2
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			err := validateHelper(rule, ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -440,12 +458,12 @@ func TestValidateOperands(t *testing.T) {
 			false,
 		},
 	}
-
-	rule := getValidationRule(validateOperandsId)
+	ctx := sql.NewEmptyContext()
+	rule := validateOperands2
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			err := validateHelper(rule, ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -508,11 +526,12 @@ func TestValidateIndexCreation(t *testing.T) {
 		},
 	}
 
-	rule := getValidationRule(validateIndexCreationId)
+	ctx := sql.NewEmptyContext()
+	rule := validateIndexCreation2
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			err := validateHelper(rule, ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {

@@ -26,36 +26,6 @@ import (
 
 const MaxBytePrefix = 3072
 
-// validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
-// at execution time, and should be moved here over time.
-func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	ct, ok := n.(*plan.CreateTable)
-	if !ok {
-		return n, transform.SameTree, nil
-	}
-
-	err := validateIndexes(ctx, ct.TableSpec())
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	// passed validateIndexes, so they all must be valid indexes
-	// extract map of columns that have indexes defined over them
-	keyedColumns := make(map[string]bool)
-	for _, index := range ct.TableSpec().IdxDefs {
-		for _, col := range index.Columns {
-			keyedColumns[col.Name] = true
-		}
-	}
-
-	err = validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return n, transform.SameTree, nil
-}
-
 func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var sch sql.Schema
 	var indexes []string
@@ -248,10 +218,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// TODO: more validation possible to do here
-	err := validateAutoIncrement(newSch, keyedColumns)
-	if err != nil {
-		return nil, err
-	}
+	validateAutoIncrement(newSch, keyedColumns)
 
 	return newSch, nil
 }
@@ -269,10 +236,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
 
-	err := validateAutoIncrement(newSch, keyedColumns)
-	if err != nil {
-		return nil, err
-	}
+	validateAutoIncrement(newSch, keyedColumns)
 
 	// TODO: When a column is being modified, we should ideally check that any existing table check constraints
 	//       are still valid (e.g. if the column type changed) and throw an error if they are invalidated.
@@ -455,10 +419,10 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 }
 
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
-func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn) error {
+func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn) {
 	// Throw prefix length error for non-string types with prefixes
 	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
-		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+		panic(sql.ErrInvalidIndexPrefix.New(schCol.Name))
 	}
 
 	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
@@ -469,31 +433,28 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 
 	// Prefix length is longer than max
 	if prefixByteLength > MaxBytePrefix {
-		return sql.ErrKeyTooLong.New()
+		panic(sql.ErrKeyTooLong.New())
 	}
 
 	// The specified prefix length is longer than the column
 	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength(ctx))
 	if prefixByteLength > maxByteLength {
-		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
+		panic(sql.ErrInvalidIndexPrefix.New(schCol.Name))
 	}
 
 	// Prefix length is only required for BLOB and TEXT columns
 	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
-		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
+		panic(sql.ErrInvalidBlobTextKey.New(schCol.Name))
 	}
 
-	return nil
+	return
 }
 
 // validateIndexType prevents creating invalid indexes
 func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema) error {
 	for _, idxCol := range cols {
 		schCol := sch[sch.IndexOfColName(idxCol.Name)]
-		err := validatePrefixLength(ctx, schCol, idxCol)
-		if err != nil {
-			return err
-		}
+		validatePrefixLength(ctx, schCol, idxCol)
 	}
 	return nil
 }
@@ -568,34 +529,34 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
-func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) error {
+func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
 			// keyedColumns == nil means they are trying to add auto_increment column
 			if !col.PrimaryKey && !keyedColumns[col.Name] {
 				// AUTO_INCREMENT col must be a key
-				return sql.ErrInvalidAutoIncCols.New()
+				panic(sql.ErrInvalidAutoIncCols.New())
 			}
 			if col.Default != nil {
 				// AUTO_INCREMENT col cannot have default
-				return sql.ErrInvalidAutoIncCols.New()
+				panic(sql.ErrInvalidAutoIncCols.New())
 			}
 			if seen {
 				// there can be at most one AUTO_INCREMENT col
-				return sql.ErrInvalidAutoIncCols.New()
+				panic(sql.ErrInvalidAutoIncCols.New())
 			}
 			seen = true
 		}
 	}
-	return nil
+	return
 }
 
 const textIndexPrefix = 1000
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 // TODO: this method is very similar to validateIndexType...
-func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
+func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range tableSpec.Schema.Schema {
 		lwrNames[strings.ToLower(col.Name)] = col
@@ -608,24 +569,21 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 		for _, idxCol := range idx.Columns {
 			schCol, ok := lwrNames[strings.ToLower(idxCol.Name)]
 			if !ok {
-				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
+				panic(sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName))
 			}
-			err := validatePrefixLength(ctx, schCol, idxCol)
-			if err != nil {
-				return err
-			}
+			validatePrefixLength(ctx, schCol, idxCol)
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {
 			if len(idx.Columns) != 1 {
-				return sql.ErrTooManyKeyParts.New(1)
+				panic(sql.ErrTooManyKeyParts.New(1))
 			}
 			schCol, _ := lwrNames[strings.ToLower(idx.Columns[0].Name)]
 			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
 			if !ok {
-				return sql.ErrBadSpatialIdxCol.New()
+				panic(sql.ErrBadSpatialIdxCol.New())
 			}
 			if schCol.Nullable {
-				return sql.ErrNullableSpatialIdx.New()
+				panic(sql.ErrNullableSpatialIdx.New())
 			}
 			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
 				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
@@ -638,11 +596,11 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 	if !hasPkIndexDef {
 		for _, col := range tableSpec.Schema.Schema {
 			if col.PrimaryKey && types.IsTextBlob(col.Type) {
-				return sql.ErrInvalidBlobTextKey.New(col.Name)
+				panic(sql.ErrInvalidBlobTextKey.New(col.Name))
 			}
 		}
 	}
-	return nil
+	return
 }
 
 // getTableIndexColumns returns the columns over which indexes are defined
@@ -698,10 +656,7 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 
 		for _, idxCol := range ai.Columns {
 			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
-			err := validatePrefixLength(ctx, schCol, idxCol)
-			if err != nil {
-				return nil, err
-			}
+			validatePrefixLength(ctx, schCol, idxCol)
 		}
 
 		// Set the primary keys

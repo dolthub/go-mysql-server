@@ -73,34 +73,3 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 
 	return nil, transform.SameTree, sql.ErrUnknownConstraint.New(dropConstraint.Name)
 }
-
-// validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
-func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	switch n := n.(type) {
-	case *plan.DropCheck:
-		rt, ok := n.Child.(*plan.ResolvedTable)
-		if !ok {
-			return nil, transform.SameTree, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
-		}
-
-		ct, ok := rt.Table.(sql.CheckTable)
-		if ok {
-			checks, err := ct.GetChecks(ctx)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			for _, check := range checks {
-				if strings.ToLower(check.Name) == strings.ToLower(n.Name) {
-					return n, transform.SameTree, nil
-				}
-			}
-
-			return nil, transform.SameTree, sql.ErrUnknownConstraint.New(n.Name)
-		}
-
-		return nil, transform.SameTree, plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
-	default:
-		return n, transform.SameTree, nil
-	}
-}

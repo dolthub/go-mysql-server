@@ -23,9 +23,6 @@ import (
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
-	{validateOffsetAndLimitId, validateLimitAndOffset},
-	{validateCreateTableId, validateCreateTable},
-	{validateExprSemId, validateExprSem},
 	{resolveVariablesId, resolveVariables},
 	{resolveNamedWindowsId, replaceNamedWindows},
 	{resolveSetVariablesId, resolveSetVariables},
@@ -41,13 +38,11 @@ var OnceBeforeDefault = []Rule{
 	{setTargetSchemasId, setTargetSchemas},
 	{loadCheckConstraintsId, loadChecks},
 	{resolveAlterColumnId, resolveAlterColumn},
-	{validateDropTablesId, validateDropTables},
 	{resolveCreateLikeId, resolveCreateLike},
 	{resolveAnalyzeTablesId, resolveAnalyzeTables},
 	{assignCatalogId, assignCatalog},
 	{parseColumnDefaultsId, parseColumnDefaults},
 	{resolveDropConstraintId, resolveDropConstraint},
-	{validateDropConstraintId, validateDropConstraint},
 	{resolveCreateSelectId, resolveCreateSelect},
 	{resolveSubqueriesId, resolveSubqueries},
 	{setViewTargetSchemaId, setViewTargetSchema},
@@ -60,12 +55,7 @@ var OnceBeforeDefault = []Rule{
 	{validateCreateTriggerId, validateCreateTrigger},
 	{loadInfoSchemaId, loadInfoSchema},
 	{resolveColumnDefaultsId, resolveColumnDefaults},
-	{validateColumnDefaultsId, validateColumnDefaults},
-	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
-	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
-	{validateDatabaseSetId, validateDatabaseSet},
-	{validateDeleteFromId, validateDeleteFrom},
-	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{validateBeforeId, validateBefore},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -133,21 +123,13 @@ var OnceAfterDefault = []Rule{
 
 // DefaultValidationRules to apply while analyzing nodes.
 var DefaultValidationRules = []Rule{
-	{validateResolvedId, validateIsResolved},
-	{validateOrderById, validateOrderBy},
-	{validateGroupById, validateGroupBy},
-	{validateSchemaSourceId, validateSchemaSource},
-	{validateIndexCreationId, validateIndexCreation},
-	{validateOperandsId, validateOperands},
-	{validateIntervalUsageId, validateIntervalUsage},
-	{validateSubqueryColumnsId, validateSubqueryColumns},
-	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
-	{validateAggregationsId, validateAggregations},
+	{validateAfterId, validateAfter},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
+
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},
