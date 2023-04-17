@@ -1126,7 +1126,6 @@ func TestConvertPrepared(t *testing.T, harness Harness) {
 			TestPreparedQuery(t, harness, query, []sql.Row{{tt.ExpCnt}}, nil)
 		})
 	}
-
 }
 
 func TestScripts(t *testing.T, harness Harness) {

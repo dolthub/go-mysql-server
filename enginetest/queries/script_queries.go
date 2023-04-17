@@ -2902,6 +2902,35 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "find_in_set tests",
+		SetUpScript: []string{
+			"create table set_tbl (i int primary key, s set('a','b','c'));",
+			"insert into set_tbl values (0, '');",
+			"insert into set_tbl values (1, 'a');",
+			"insert into set_tbl values (2, 'b');",
+			"insert into set_tbl values (3, 'c');",
+			"insert into set_tbl values (4, 'a,b');",
+			"insert into set_tbl values (6, 'b,c');",
+			"insert into set_tbl values (7, 'a,c');",
+			"insert into set_tbl values (8, 'a,b,c');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:"select i, find_in_set('a', s) from set_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

@@ -69,12 +69,6 @@ func TestFindInSet(t *testing.T) {
 			expected: 0,
 		},
 		{
-			name: "case insensitive",
-			left: "ABC",
-			right: "a,ab,abc",
-			expected: 3,
-		},
-		{
 			name: "special characters ok",
 			left: "test@example.com",
 			right: "nottest@example.com,hello@example.com,test@example.com",

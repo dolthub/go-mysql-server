@@ -55,7 +55,7 @@ func (f *FindInSet) Type() sql.Type { return types.Int64 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*FindInSet) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 5
+	return ctx.GetCollation(), 5
 }
 
 func (f *FindInSet) String() string {
@@ -94,7 +94,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := strings.ToLower(lVal.(string))
+	l := lVal.(string)
 
 	// always returns 0 when left contains a comma
 	if strings.Contains(l, ",") {
@@ -103,9 +103,9 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var r string
 	rType := f.Right.Type()
-	if rType.Equals(types.SetType{}) {
+	if setType, ok := rType.(types.SetType); ok {
 		// TODO: set type should take advantage of bit arithmetic
-		r, err = rType.(types.SetType).BitsToString(right.(uint64))
+		r, err = setType.BitsToString(right.(uint64))
 		if err != nil {
 			return nil, err
 		}
