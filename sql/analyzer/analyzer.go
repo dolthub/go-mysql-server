@@ -372,7 +372,9 @@ func DefaultRuleSelector(id RuleId) bool {
 	switch id {
 	// prepared statement rules are incompatible with default rules
 	case reresolveTablesId,
-		resolvePreparedInsertId:
+		resolvePreparedInsertId,
+		validatePrePrepareAfterId,
+		validatePostPrepareAfterId:
 		return false
 	}
 	return true
@@ -466,7 +468,6 @@ func prePrepareRuleSelector(id RuleId) bool {
 	case
 		// OnceBeforeDefault
 		reresolveTablesId,
-		validatePrivilegesId,
 
 		// Default
 
@@ -475,8 +476,11 @@ func prePrepareRuleSelector(id RuleId) bool {
 		resolvePreparedInsertId,
 
 		// DefaultValidation
+		// we only want to run the prePreparedRules
+		validatePostPrepareBeforeId,
+		validatePostPrepareAfterId,
+		validateBeforeId,
 		validateAfterId,
-		validateUnionSchemasMatchId,
 
 		// OnceAfterAll
 		TrackProcessId,
@@ -507,7 +511,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		assignCatalogId,
 		resolveColumnDefaultsId,
 		resolveTableFunctionsId,
-		validatePrivilegesId,
 
 		// DefaultRules
 		resolveOrderbyLiteralsId,
@@ -529,7 +532,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		finalizeUnionsId,
 
 		// DefaultValidationRules
-		validateAfterId,
+		validatePostPrepareAfterId,
 
 		// OnceAfterAll
 		parallelizeId,

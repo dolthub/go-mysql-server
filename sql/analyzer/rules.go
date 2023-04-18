@@ -126,7 +126,8 @@ var OnceAfterDefault = []Rule{
 // DefaultValidationRules to apply while analyzing nodes.
 var DefaultValidationRules = []Rule{
 	{validateAfterId, validateAfter},
-	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
+	{validatePrePrepareAfterId, validatePrePreparedAfter},
+	{validatePostPrepareAfterId, validatePostPreparedAfter},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

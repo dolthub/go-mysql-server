@@ -44,6 +44,8 @@ const (
 	validateCreateTriggerId                      // validateCreateTrigger
 	validateCreateProcedureId                    // validateCreateProcedure
 	loadInfoSchemaId                             // loadInfoSchema
+	validateReadOnlyDatabaseId                   // validateReadOnlyDatabase
+	validateReadOnlyTransactionId                // validateReadOnlyTransaction
 	validateDatabaseSetId                        // validateDatabaseSet
 	validatePrivilegesId                         // validatePrivileges
 	reresolveTablesId                            // reresolveTables
@@ -112,8 +114,11 @@ const (
 
 	// validate
 	validateAfterId             // validateAfter
+	validatePrePrepareAfterId   // validatePrePrepareAfter
+	validatePostPrepareAfterId  // validatePostPrepareAfter
+	validatePrePrepareBeforeId  // validatePrePrepareAfter
+	validatePostPrepareBeforeId // validatePrePrepareBefore
 	validateBeforeId            // validateBefore
-	validateUnionSchemasMatchId // validateUnionSchemasMatch
 
 	// after all
 	cacheSubqueryResultsId        // cacheSubqueryResults

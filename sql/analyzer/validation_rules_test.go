@@ -347,11 +347,11 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 	}
 	ctx := sql.NewEmptyContext()
-	rule := getValidationRule(validateUnionSchemasMatchId)
+	rule := validateUnionSchemasMatch
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector)
+			err := validateHelper(rule, ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {

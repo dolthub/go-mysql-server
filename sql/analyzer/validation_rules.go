@@ -36,7 +36,7 @@ type ValidatorFunc = func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 
 type semError struct{ error }
 
-var validationRulesBefore = []func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
+var validateBefore = validateGen([]ValidatorFunc{
 	validateLimitAndOffset,
 	validateDeleteFrom,
 	validatePrivileges,
@@ -45,31 +45,10 @@ var validationRulesBefore = []func(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	validateDropConstraint,
 	validateReadOnlyDatabase,
 	validateReadOnlyTransaction,
-	//validateColumnDefaults,
 	validateDatabaseSet,
-}
+})
 
-// validateAll runs all validation rules
-func validateBefore(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (ret sql.Node, same transform.TreeIdentity, err error) {
-	ret = n
-	same = transform.SameTree
-	defer func() {
-		if r := recover(); r != nil {
-			switch e := r.(type) {
-			case semError:
-				err = e.error
-			default:
-				panic(e)
-			}
-		}
-	}()
-	for _, v := range validationRulesBefore {
-		v(ctx, a, n, scope, sel)
-	}
-	return
-}
-
-var validationRulesAfter = []func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
+var validateAfter = validateGen([]ValidatorFunc{
 	validateIsResolved,
 	validateOrderBy,
 	validateGroupBy,
@@ -79,27 +58,61 @@ var validationRulesAfter = []func(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 	validateOperands,
 	validateSubqueryColumns,
 	validateAggregations,
-}
+	validateUnionSchemasMatch,
+})
 
 // validateAll runs all validation rules
-func validateAfter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (ret sql.Node, same transform.TreeIdentity, err error) {
-	ret = n
-	same = transform.SameTree
-	defer func() {
-		if r := recover(); r != nil {
-			switch e := r.(type) {
-			case semError:
-				err = e.error
-			default:
-				panic(e)
+func validateGen(rules []ValidatorFunc) RuleFunc {
+	return func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (ret sql.Node, same transform.TreeIdentity, err error) {
+		ret = n
+		same = transform.SameTree
+		defer func() {
+			if r := recover(); r != nil {
+				switch e := r.(type) {
+				case semError:
+					err = e.error
+				default:
+					panic(e)
+				}
 			}
+		}()
+		for _, v := range rules {
+			v(ctx, a, n, scope, sel)
 		}
-	}()
-	for _, v := range validationRulesAfter {
-		v(ctx, a, n, scope, sel)
+		return
 	}
-	return
 }
+
+var validatePrePreparedBefore = validateGen([]ValidatorFunc{
+	// all except validatePrivs
+	validateLimitAndOffset,
+	validateDeleteFrom,
+	validateCreateTable,
+	validateExprSem,
+	validateDropConstraint,
+	validateReadOnlyDatabase,
+	validateReadOnlyTransaction,
+	validateDatabaseSet,
+})
+
+var validatePrePreparedAfter = validateGen([]ValidatorFunc{
+	validateOrderBy,
+	validateSchemaSource,
+	validateIndexCreation,
+	validateIntervalUsage,
+	validateSubqueryColumns,
+	validateAggregations,
+})
+
+var validatePostPreparedBefore = validateGen([]ValidatorFunc{
+	validatePrivileges,
+})
+
+var validatePostPreparedAfter = validateGen([]ValidatorFunc{
+	validateIsResolved,
+	validateGroupBy,
+	validateOperands,
+})
 
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
 func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
@@ -461,7 +474,7 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
-	validateSchema2 := func(t *plan.ResolvedTable) {
+	validateSchema := func(t *plan.ResolvedTable) {
 		for _, col := range t.Schema() {
 			if col.Source == "" {
 				panic(semError{analyzererrors.ErrValidationSchemaSource.New()})
@@ -472,10 +485,10 @@ func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	case *plan.TableAlias:
 		// table aliases should not be validated
 		if child, ok := n.Child.(*plan.ResolvedTable); ok {
-			validateSchema2(child)
+			validateSchema(child)
 		}
 	case *plan.ResolvedTable:
-		validateSchema2(n)
+		validateSchema(n)
 	}
 }
 
@@ -509,46 +522,26 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	}
 }
 
-func validateSchema2(t *plan.ResolvedTable) {
-	for _, col := range t.Schema() {
-		if col.Source == "" {
-			panic(semError{analyzererrors.ErrValidationSchemaSource.New()})
-		}
-	}
-}
-
-func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	span, ctx := ctx.Span("validate_union_schemas_match")
 	defer span.End()
 
-	var firstmismatch []string
 	transform.Inspect(n, func(n sql.Node) bool {
 		if u, ok := n.(*plan.Union); ok {
 			ls := u.Left().Schema()
 			rs := u.Right().Schema()
 			if len(ls) != len(rs) {
-				firstmismatch = []string{
-					fmt.Sprintf("%d columns", len(ls)),
-					fmt.Sprintf("%d columns", len(rs)),
-				}
-				return false
+				panic(semError{analyzererrors.ErrUnionSchemasMatch.New(fmt.Sprintf("%d columns", len(ls)), fmt.Sprintf("%d columns", len(rs)))})
 			}
 			for i := range ls {
 				if !reflect.DeepEqual(ls[i].Type, rs[i].Type) {
-					firstmismatch = []string{
-						ls[i].Type.String(),
-						rs[i].Type.String(),
-					}
-					return false
+					panic(semError{analyzererrors.ErrUnionSchemasMatch.New(ls[i].Type.String(), rs[i].Type.String())})
 				}
 			}
 		}
 		return true
 	})
-	if firstmismatch != nil {
-		return nil, transform.SameTree, analyzererrors.ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
-	}
-	return n, transform.SameTree, nil
+	return
 }
 
 func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
@@ -843,7 +836,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 
 			}
 		}
-		return false
+		return true
 	}
 
 	transform.Inspect(n, func(node sql.Node) bool {
@@ -864,7 +857,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		default:
 			// DDL statements have an implicit commits which makes them valid to be executed in READ ONLY transactions.
 			if plan.IsDDLNode(n) {
-				panic(semError{sql.ErrReadOnlyTransaction.New()})
+				return false
 			}
 		}
 		return true
