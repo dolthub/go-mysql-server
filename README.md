@@ -1,4 +1,6 @@
-# go-mysql-server
+<img height="240" src="./mascot.png"/>
+
+# A MySQL compatible database engine written in pure Go
 
 **go-mysql-server** is a data-source agnostic SQL engine and server
 which runs queries on data sources you provide, using the MySQL
