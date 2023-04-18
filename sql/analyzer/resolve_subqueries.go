@@ -50,6 +50,75 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 // finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
 // fixing parent scopes before recursing into child nodes.
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	var joinParent sql.Node
+	var selFunc transform.SelectorFunc = func(c transform.Context) bool {
+		if jp, ok := c.Node.(*plan.JoinNode); ok {
+			joinParent = jp
+		}
+		return true
+	}
+
+	var conFunc transform.CtxFunc = func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		n := c.Node
+		if sqa, ok := n.(*plan.SubqueryAlias); ok {
+			var newSqa sql.Node
+			var same2 transform.TreeIdentity
+			var err error
+			if sqa.OuterScopeVisibility && joinParent != nil {
+				subScope := scope.newScopeFromSubqueryExpression(joinParent.Children()[0])
+				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+			} else {
+				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+			}
+
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+
+			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, newSqa.(*plan.SubqueryAlias).Child, scope.newScopeFromSubqueryAlias(sqa), sel)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+
+			if same1 && same2 {
+				return n, transform.SameTree, nil
+			} else {
+				newNode, err = newSqa.WithChildren(newNode)
+				return newNode, transform.NewTree, err
+			}
+		}
+		return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if sq, ok := e.(*plan.Subquery); ok {
+				newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
+				if err != nil {
+					if analyzererrors.ErrValidationResolved.Is(err) {
+						// if a parent is unresolved, we want to dig deeper to find the unresolved
+						// child dependency
+						_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
+						if err != nil {
+							return e, transform.SameTree, err
+						}
+					}
+					return e, transform.SameTree, err
+				}
+				newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.newScopeFromSubqueryExpression(node), sel)
+				if err != nil {
+					return e, transform.SameTree, err
+				}
+
+				if same1 && same2 {
+					return e, transform.SameTree, nil
+				} else {
+					return newSq.(*plan.Subquery).WithQuery(newExpr), transform.NewTree, nil
+				}
+			} else {
+				return e, transform.SameTree, nil
+			}
+		})
+	}
+
+	return transform.NodeWithCtx(node, selFunc, conFunc)
+
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			newSqa, same2, err := analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -423,15 +492,33 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if j, ok := n.(*plan.JoinNode); ok {
 			nj := j.WithScopeLen(scopeLen)
+			hack := false
+			if rightSubqueryAlias, ok := nj.Right().(*plan.SubqueryAlias); ok {
+				hack = rightSubqueryAlias.OuterScopeVisibility
+			}
 			if _, ok := nj.Left().(*plan.StripRowNode); !ok {
-				nj, err := nj.WithChildren(
-					plan.NewStripRowNode(nj.Left(), scopeLen),
-					plan.NewStripRowNode(nj.Right(), scopeLen),
-				)
+				var nnj sql.Node
+				var err error
+				if !hack {
+					nnj, err = nj.WithChildren(
+						plan.NewStripRowNode(nj.Left(), scopeLen),
+						plan.NewStripRowNode(nj.Right(), scopeLen),
+					)
+				} else {
+
+					// TODO: ResolveCoercibility then GetCoercibility
+					rightScope := scope.newScope(nj.Left())
+					rightScopeLen := len(rightScope.Schema())
+					nnj, err = nj.WithChildren(
+						plan.NewStripRowNode(nj.Left(), scopeLen),
+						plan.NewStripRowNode(nj.Right(), rightScopeLen), // TODO: scope length should change if nj.Right can see left
+					)
+				}
+
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				return nj, transform.NewTree, nil
+				return nnj, transform.NewTree, nil
 			} else {
 				return nj, transform.NewTree, nil
 			}

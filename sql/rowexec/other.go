@@ -33,7 +33,7 @@ func (b *BaseBuilder) buildStripRowNode(ctx *sql.Context, n *plan.StripRowNode, 
 
 	return &stripRowIter{
 		childIter,
-		n.NumCols,
+		n.NumCols, // TODO: runtime adjustment?
 	}, nil
 }
 
@@ -341,7 +341,7 @@ func (b *BaseBuilder) buildPrependNode(ctx *sql.Context, n *plan.PrependNode, ro
 	}
 
 	return &prependRowIter{
-		row:       n.Row,
+		row:       row,
 		childIter: childIter,
 	}, nil
 }
