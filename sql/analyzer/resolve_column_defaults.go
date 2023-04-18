@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -434,6 +436,85 @@ var validColumnDefaultFuncs = map[string]struct{}{
 	"weight_string":                      {},
 	"year":                               {},
 	"yearweek":                           {},
+}
+
+// Resolving column defaults is a multi-phase process, with different analyzer rules for each phase.
+//
+//   - parseColumnDefaults: Some integrators (dolt but not GMS) store their column defaults as strings, which we need to
+//     parse into expressions before we can analyze them any further.
+//   - resolveColumnDefaults: Once we have an expression for a default value, it may contain expressions that need
+//     simplification before further phases of processing can take place.
+//
+// After this stage, expressions in column default values are handled by the normal analyzer machinery responsible for
+// resolving expressions, including things like columns and functions. Every node that needs to do this for its default
+// values implements `sql.Expressioner` to expose such expressions. There is custom logic in `resolveColumns` to help
+// identify the correct indexes for column references, which can vary based on the node type.
+//
+// Finally there are cleanup phases:
+//   - validateColumnDefaults: ensures that newly created column defaults from a DDL statement are legal for the type of
+//     column, various other business logic checks to match MySQL's logic.
+//   - stripTableNamesFromDefault: column defaults headed for storage or serialization in a query result need the table
+//     names in any GetField expressions stripped out so that they serialize to strings without such table names. Table
+//     names in GetField expressions are expected in much of the rest of the analyzer, so we do this after the bulk of
+//     analyzer work.
+//
+// The `information_schema.columns` table also needs access to the default values of every column in the database, and
+// because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
+// here, as well as in the `resolve_functions` rule.
+// TODO this somehow modifies the tree, should move edits into resolveColumnDefaults
+func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("validateColumnDefaults")
+	defer span.End()
+
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch node := n.(type) {
+		case *plan.AlterDefaultSet:
+			table := getResolvedTable(node)
+			sch := table.Schema()
+			index := sch.IndexOfColName(node.ColumnName)
+			col := sch[index]
+
+			eWrapper := expression.WrapExpression(node.Default)
+			err := validateColumnDefault(ctx, col, eWrapper)
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			return node, transform.SameTree, nil
+		case sql.SchemaTarget:
+			switch node.(type) {
+			case *plan.AlterPK, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultDrop, *plan.CreateTable, *plan.DropColumn:
+				// DDL nodes must validate any new column defaults, continue to logic below
+			default:
+				// other node types are not altering the schema and therefore don't need validation of column defaults
+				return n, transform.SameTree, nil
+			}
+
+			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
+			// we need to count the column indexes in the very hacky way outlined above.
+			colIndex := 0
+			return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				colIndex++
+
+				err = validateColumnDefault(ctx, col, eWrapper)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				return e, transform.SameTree, nil
+			})
+		default:
+			return node, transform.SameTree, nil
+		}
+	})
 }
 
 func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -877,6 +958,90 @@ func resolveColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapp
 	}
 
 	return expression.WrapExpression(newDefault), transform.NewTree, nil
+}
+
+// validateColumnDefault validates that the column default expression is valid for the column type and returns an error
+// if not
+func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) error {
+	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return nil
+	}
+
+	if newDefault == nil {
+		return nil
+	}
+
+	// Some column types can only have a NULL for a literal default, must be an expression otherwise
+	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
+	if isLiteralRestrictedType && newDefault.IsLiteral() {
+		lit, err := newDefault.Expression.Eval(ctx, nil)
+		if err != nil {
+			return err
+		}
+		if lit != nil {
+			return sql.ErrInvalidTextBlobColumnDefault.New()
+		}
+	}
+
+	var err error
+	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
+		switch e.(type) {
+		case sql.FunctionExpression, *expression.UnresolvedFunction:
+			var funcName string
+			switch expr := e.(type) {
+			case sql.FunctionExpression:
+				funcName = expr.FunctionName()
+			case *expression.UnresolvedFunction:
+				funcName = expr.Name()
+			}
+
+			if _, isValid := validColumnDefaultFuncs[funcName]; !isValid {
+				err = sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)
+				return false
+			}
+			if !newDefault.IsParenthesized() {
+				if funcName == "now" || funcName == "current_timestamp" {
+					// now and current_timestamps are the only functions that don't have to be enclosed in
+					// parens when used as a column default value, but ONLY when they are used with a
+					// datetime or timestamp column, otherwise it's invalid.
+					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
+						return true
+					} else {
+						err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+						return false
+					}
+				}
+			}
+			return true
+		case *plan.Subquery:
+			err = sql.ErrColumnDefaultSubquery.New(col.Name)
+			return false
+		case *deferredColumn:
+			err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
+			return false
+		case *expression.GetField:
+			if newDefault.IsParenthesized() == false {
+				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
+				return false
+			} else {
+				return true
+			}
+		default:
+			return true
+		}
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// validate type of default expression
+	if err = newDefault.CheckType(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {

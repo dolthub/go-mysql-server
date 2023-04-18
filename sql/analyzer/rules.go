@@ -56,6 +56,7 @@ var OnceBeforeDefault = []Rule{
 	{validateCreateTriggerId, validateCreateTrigger},
 	{loadInfoSchemaId, loadInfoSchema},
 	{resolveColumnDefaultsId, resolveColumnDefaults},
+	{validateColumnDefaultsId, validateColumnDefaults},
 	{validateBeforeId, validateBefore},
 }
 

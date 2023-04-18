@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"reflect"
 	"strings"
 
@@ -46,7 +45,7 @@ var validationRulesBefore = []func(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	validateDropConstraint,
 	validateReadOnlyDatabase,
 	validateReadOnlyTransaction,
-	validateColumnDefaults,
+	//validateColumnDefaults,
 	validateDatabaseSet,
 }
 
@@ -142,138 +141,138 @@ func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 // because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
 // here, as well as in the `resolve_functions` rule.
 
-func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) {
-	span, ctx := ctx.Span("validateColumnDefaults")
-	defer span.End()
-
-	transform.Inspect(n, func(n sql.Node) bool {
-		switch node := n.(type) {
-		case *plan.AlterDefaultSet:
-			table := getResolvedTable(node)
-			sch := table.Schema()
-			index := sch.IndexOfColName(node.ColumnName)
-			col := sch[index]
-
-			eWrapper := expression.WrapExpression(node.Default)
-			validateColumnDefault(ctx, col, eWrapper)
-			return true
-		case sql.SchemaTarget:
-			switch node.(type) {
-			case *plan.AlterPK, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultDrop, *plan.CreateTable, *plan.DropColumn:
-				// DDL nodes must validate any new column defaults, continue to logic below
-			default:
-				// other node types are not altering the schema and therefore don't need validation of column defaults
-				return true
-			}
-
-			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
-			// we need to count the column indexes in the very hacky way outlined above.
-			colIndex := 0
-			if ne, ok := n.(sql.Expressioner); ok {
-				for _, e := range ne.Expressions() {
-					transform.InspectExpr(e, func(e sql.Expression) bool {
-						eWrapper, ok := e.(*expression.Wrapper)
-						if !ok {
-							return false
-						}
-
-						col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
-						if err != nil {
-							panic(semError{err})
-						}
-						colIndex++
-
-						validateColumnDefault(ctx, col, eWrapper)
-
-						return false
-					})
-				}
-			}
-		default:
-		}
-		return true
-	})
-	return
-}
-
-// validateColumnDefault validates that the column default expression is valid for the column type and returns an error
-// if not
-func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) {
-	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
-	if !ok {
-		return
-	}
-
-	if newDefault == nil {
-		return
-	}
-
-	// Some column types can only have a NULL for a literal default, must be an expression otherwise
-	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
-	if isLiteralRestrictedType && newDefault.IsLiteral() {
-		lit, err := newDefault.Expression.Eval(ctx, nil)
-		if err != nil {
-			panic(semError{err})
-		}
-		if lit != nil {
-			panic(semError{sql.ErrInvalidTextBlobColumnDefault.New()})
-		}
-	}
-
-	var err error
-	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
-		switch e.(type) {
-		case sql.FunctionExpression, *expression.UnresolvedFunction:
-			var funcName string
-			switch expr := e.(type) {
-			case sql.FunctionExpression:
-				funcName = expr.FunctionName()
-			case *expression.UnresolvedFunction:
-				funcName = expr.Name()
-			}
-
-			if _, isValid := validColumnDefaultFuncs[funcName]; !isValid {
-				panic(semError{sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)})
-			}
-			if !newDefault.IsParenthesized() {
-				if funcName == "now" || funcName == "current_timestamp" {
-					// now and current_timestamps are the only functions that don't have to be enclosed in
-					// parens when used as a column default value, but ONLY when they are used with a
-					// datetime or timestamp column, otherwise it's invalid.
-					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
-						return true
-					} else {
-						panic(semError{sql.ErrColumnDefaultDatetimeOnlyFunc.New()})
-					}
-				}
-			}
-			return true
-		case *plan.Subquery:
-			panic(semError{sql.ErrColumnDefaultSubquery.New(col.Name)})
-		case *deferredColumn:
-			panic(semError{sql.ErrInvalidColumnDefaultValue.New(col.Name)})
-		case *expression.GetField:
-			if newDefault.IsParenthesized() == false {
-				panic(semError{sql.ErrInvalidColumnDefaultValue.New(col.Name)})
-			} else {
-				return true
-			}
-		default:
-			return true
-		}
-	})
-
-	if err != nil {
-		return
-	}
-
-	// validate type of default expression
-	if err = newDefault.CheckType(ctx); err != nil {
-		return
-	}
-
-	return
-}
+//func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) {
+//	span, ctx := ctx.Span("validateColumnDefaults")
+//	defer span.End()
+//
+//	transform.Inspect(n, func(n sql.Node) bool {
+//		switch node := n.(type) {
+//		case *plan.AlterDefaultSet:
+//			table := getResolvedTable(node)
+//			sch := table.Schema()
+//			index := sch.IndexOfColName(node.ColumnName)
+//			col := sch[index]
+//
+//			eWrapper := expression.WrapExpression(node.Default)
+//			validateColumnDefault(ctx, col, eWrapper)
+//			return true
+//		case sql.SchemaTarget:
+//			switch node.(type) {
+//			case *plan.AlterPK, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultDrop, *plan.CreateTable, *plan.DropColumn:
+//				// DDL nodes must validate any new column defaults, continue to logic below
+//			default:
+//				// other node types are not altering the schema and therefore don't need validation of column defaults
+//				return true
+//			}
+//
+//			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
+//			// we need to count the column indexes in the very hacky way outlined above.
+//			colIndex := 0
+//			if ne, ok := n.(sql.Expressioner); ok {
+//				for _, e := range ne.Expressions() {
+//					transform.InspectExpr(e, func(e sql.Expression) bool {
+//						eWrapper, ok := e.(*expression.Wrapper)
+//						if !ok {
+//							return false
+//						}
+//
+//						col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+//						if err != nil {
+//							panic(semError{err})
+//						}
+//						colIndex++
+//
+//						validateColumnDefault(ctx, col, eWrapper)
+//
+//						return false
+//					})
+//				}
+//			}
+//		default:
+//		}
+//		return true
+//	})
+//	return
+//}
+//
+//// validateColumnDefault validates that the column default expression is valid for the column type and returns an error
+//// if not
+//func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) {
+//	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+//	if !ok {
+//		return
+//	}
+//
+//	if newDefault == nil {
+//		return
+//	}
+//
+//	// Some column types can only have a NULL for a literal default, must be an expression otherwise
+//	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
+//	if isLiteralRestrictedType && newDefault.IsLiteral() {
+//		lit, err := newDefault.Expression.Eval(ctx, nil)
+//		if err != nil {
+//			panic(semError{err})
+//		}
+//		if lit != nil {
+//			panic(semError{sql.ErrInvalidTextBlobColumnDefault.New()})
+//		}
+//	}
+//
+//	var err error
+//	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
+//		switch e.(type) {
+//		case sql.FunctionExpression, *expression.UnresolvedFunction:
+//			var funcName string
+//			switch expr := e.(type) {
+//			case sql.FunctionExpression:
+//				funcName = expr.FunctionName()
+//			case *expression.UnresolvedFunction:
+//				funcName = expr.Name()
+//			}
+//
+//			if _, isValid := validColumnDefaultFuncs[funcName]; !isValid {
+//				panic(semError{sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)})
+//			}
+//			if !newDefault.IsParenthesized() {
+//				if funcName == "now" || funcName == "current_timestamp" {
+//					// now and current_timestamps are the only functions that don't have to be enclosed in
+//					// parens when used as a column default value, but ONLY when they are used with a
+//					// datetime or timestamp column, otherwise it's invalid.
+//					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
+//						return true
+//					} else {
+//						panic(semError{sql.ErrColumnDefaultDatetimeOnlyFunc.New()})
+//					}
+//				}
+//			}
+//			return true
+//		case *plan.Subquery:
+//			panic(semError{sql.ErrColumnDefaultSubquery.New(col.Name)})
+//		case *deferredColumn:
+//			panic(semError{sql.ErrInvalidColumnDefaultValue.New(col.Name)})
+//		case *expression.GetField:
+//			if newDefault.IsParenthesized() == false {
+//				panic(semError{sql.ErrInvalidColumnDefaultValue.New(col.Name)})
+//			} else {
+//				return true
+//			}
+//		default:
+//			return true
+//		}
+//	})
+//
+//	if err != nil {
+//		return
+//	}
+//
+//	// validate type of default expression
+//	if err = newDefault.CheckType(ctx); err != nil {
+//		return
+//	}
+//
+//	return
+//}
 
 // validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
 func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
@@ -325,7 +324,9 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		}
 	}
 
-	validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
+	if err := validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns); err != nil {
+		panic(semError{err})
+	}
 }
 
 // validateLimitAndOffset ensures that only integer literals are used for limit and offset values

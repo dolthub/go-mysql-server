@@ -218,7 +218,9 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// TODO: more validation possible to do here
-	validateAutoIncrement(newSch, keyedColumns)
+	if err := validateAutoIncrement(newSch, keyedColumns); err != nil {
+		return nil, err
+	}
 
 	return newSch, nil
 }
@@ -236,7 +238,9 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
 
-	validateAutoIncrement(newSch, keyedColumns)
+	if err := validateAutoIncrement(newSch, keyedColumns); err != nil {
+		return nil, err
+	}
 
 	// TODO: When a column is being modified, we should ideally check that any existing table check constraints
 	//       are still valid (e.g. if the column type changed) and throw an error if they are invalidated.
@@ -419,10 +423,10 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 }
 
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
-func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn) {
+func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn) error {
 	// Throw prefix length error for non-string types with prefixes
 	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
-		panic(semError{sql.ErrInvalidIndexPrefix.New(schCol.Name)})
+		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
 	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
@@ -433,28 +437,30 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 
 	// Prefix length is longer than max
 	if prefixByteLength > MaxBytePrefix {
-		panic(semError{sql.ErrKeyTooLong.New()})
+		return sql.ErrKeyTooLong.New()
 	}
 
 	// The specified prefix length is longer than the column
 	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength(ctx))
 	if prefixByteLength > maxByteLength {
-		panic(semError{sql.ErrInvalidIndexPrefix.New(schCol.Name)})
+		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
 	// Prefix length is only required for BLOB and TEXT columns
 	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
-		panic(semError{sql.ErrInvalidBlobTextKey.New(schCol.Name)})
+		return sql.ErrInvalidBlobTextKey.New(schCol.Name)
 	}
 
-	return
+	return nil
 }
 
 // validateIndexType prevents creating invalid indexes
 func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema) error {
 	for _, idxCol := range cols {
 		schCol := sch[sch.IndexOfColName(idxCol.Name)]
-		validatePrefixLength(ctx, schCol, idxCol)
+		if err := validatePrefixLength(ctx, schCol, idxCol); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -529,27 +535,27 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
-func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) {
+func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
 			// keyedColumns == nil means they are trying to add auto_increment column
 			if !col.PrimaryKey && !keyedColumns[col.Name] {
 				// AUTO_INCREMENT col must be a key
-				panic(semError{sql.ErrInvalidAutoIncCols.New()})
+				return sql.ErrInvalidAutoIncCols.New()
 			}
 			if col.Default != nil {
 				// AUTO_INCREMENT col cannot have default
-				panic(semError{sql.ErrInvalidAutoIncCols.New()})
+				return sql.ErrInvalidAutoIncCols.New()
 			}
 			if seen {
 				// there can be at most one AUTO_INCREMENT col
-				panic(semError{sql.ErrInvalidAutoIncCols.New()})
+				return sql.ErrInvalidAutoIncCols.New()
 			}
 			seen = true
 		}
 	}
-	return
+	return nil
 }
 
 const textIndexPrefix = 1000
@@ -571,7 +577,9 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) {
 			if !ok {
 				panic(semError{sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)})
 			}
-			validatePrefixLength(ctx, schCol, idxCol)
+			if err := validatePrefixLength(ctx, schCol, idxCol); err != nil {
+				panic(semError{err})
+			}
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {
 			if len(idx.Columns) != 1 {
@@ -656,7 +664,9 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 
 		for _, idxCol := range ai.Columns {
 			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
-			validatePrefixLength(ctx, schCol, idxCol)
+			if err := validatePrefixLength(ctx, schCol, idxCol); err != nil {
+				return nil, err
+			}
 		}
 
 		// Set the primary keys
