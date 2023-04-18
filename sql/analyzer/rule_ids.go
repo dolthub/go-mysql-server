@@ -111,8 +111,9 @@ const (
 	applyFKsId                   // applyFKs
 
 	// validate
-	validateAfterId  // validateAfter
-	validateBeforeId // validateBefore
+	validateAfterId             // validateAfter
+	validateBeforeId            // validateBefore
+	validateUnionSchemasMatchId // validateUnionSchemasMatch
 
 	// after all
 	cacheSubqueryResultsId        // cacheSubqueryResults

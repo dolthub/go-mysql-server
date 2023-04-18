@@ -476,6 +476,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 		// DefaultValidation
 		validateAfterId,
+		validateUnionSchemasMatchId,
 
 		// OnceAfterAll
 		TrackProcessId,

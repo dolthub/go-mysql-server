@@ -347,11 +347,11 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 	}
 	ctx := sql.NewEmptyContext()
-	rule := validateUnionSchemasMatch
+	rule := getValidationRule(validateUnionSchemasMatchId)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			err := validateHelper(rule, ctx, nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -647,11 +647,12 @@ func TestValidateIntervalUsage(t *testing.T) {
 		},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			_, _, err := validateIntervalUsage(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			err := validateHelper(validateIntervalUsage, ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -688,7 +689,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		)), "select bar from subtest where foo > 1"),
 	}, plan.NewResolvedTable(table, nil, nil))
 
-	_, _, err := validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector)
+	err := validateHelper(validateSubqueryColumns, ctx, nil, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	node = plan.NewProject([]sql.Expression{
@@ -703,7 +704,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		)), "select bar from subtest where foo > 1"),
 	}, plan.NewResolvedTable(table, nil, nil))
 
-	_, _, err = validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector)
+	err = validateHelper(validateSubqueryColumns, ctx, nil, node, nil, DefaultRuleSelector)
 	require.Error(err)
 	require.True(analyzererrors.ErrSubqueryFieldIndex.Is(err))
 
@@ -716,7 +717,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		), "select 1"),
 	}, dummyNode{true})
 
-	_, _, err = validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector)
+	err = validateHelper(validateSubqueryColumns, ctx, nil, node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 }

@@ -153,6 +153,7 @@ type Projector interface {
 
 // Expressioner is a node that contains expressions.
 type Expressioner interface {
+	Node
 	// Expressions returns the list of expressions contained by the node.
 	Expressions() []Expression
 	// WithExpressions returns a copy of the node with expressions replaced.

@@ -139,7 +139,7 @@ func TestRemoveOnceAfterRule(t *testing.T) {
 func TestRemoveValidationRule(t *testing.T) {
 	require := require.New(t)
 
-	a := NewBuilder(nil).RemoveValidationRule(validateResolvedId).Build()
+	a := NewBuilder(nil).RemoveValidationRule(validateAfterId).Build()
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 

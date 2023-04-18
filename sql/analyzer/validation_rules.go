@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"reflect"
@@ -24,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -37,7 +37,7 @@ type ValidatorFunc = func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 
 type semError struct{ error }
 
-var validationRulesBefore = [9]func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
+var validationRulesBefore = []func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
 	validateLimitAndOffset,
 	validateDeleteFrom,
 	validatePrivileges,
@@ -47,6 +47,7 @@ var validationRulesBefore = [9]func(ctx *sql.Context, a *Analyzer, n sql.Node, s
 	validateReadOnlyDatabase,
 	validateReadOnlyTransaction,
 	validateColumnDefaults,
+	validateDatabaseSet,
 }
 
 // validateAll runs all validation rules
@@ -69,13 +70,12 @@ func validateBefore(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	return
 }
 
-var validationRulesAfter = [10]func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
+var validationRulesAfter = []func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
 	validateIsResolved,
 	validateOrderBy,
 	validateGroupBy,
 	validateSchemaSource,
 	validateIndexCreation,
-	validateUnionSchemasMatch,
 	validateIntervalUsage,
 	validateOperands,
 	validateSubqueryColumns,
@@ -99,6 +99,22 @@ func validateAfter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 	for _, v := range validationRulesAfter {
 		v(ctx, a, n, scope, sel)
 	}
+	return
+}
+
+// validateDatabaseSet returns an error if any database node that requires a database doesn't have one
+func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
+	transform.Inspect(n, func(n sql.Node) bool {
+		switch n.(type) {
+		// TODO: there are probably other kinds of nodes that need this too
+		case *plan.ShowTables, *plan.ShowTriggers, *plan.CreateTable:
+			n := n.(sql.Databaser)
+			if _, ok := n.Database().(sql.UnresolvedDatabase); ok {
+				panic(semError{sql.ErrNoDatabaseSelected.New()})
+			}
+		}
+		return true
+	})
 	return
 }
 
@@ -657,7 +673,7 @@ func validateSchema2(t *plan.ResolvedTable) {
 	}
 }
 
-func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
+func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_union_schemas_match")
 	defer span.End()
 
@@ -686,12 +702,25 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return true
 	})
 	if firstmismatch != nil {
-		panic(semError{analyzererrors.ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])})
+		return nil, transform.SameTree, analyzererrors.ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
 	}
+	return n, transform.SameTree, nil
 }
 
 func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
+	var invalid bool
+	transform.InspectExpressionsWithNode(n, func(node sql.Node, e sql.Expression) bool {
+		// If it's already invalid just skip everything else.
+		if invalid {
+			return false
+		}
+
+		// Interval can be used without DATE_ADD/DATE_SUB functions in CREATE/ALTER EVENTS statements.
+		switch node.(type) {
+		case *plan.CreateEvent:
+			return false
+		}
+
 		switch e := e.(type) {
 		case *function.DateAdd, *function.DateSub:
 			return false
@@ -700,10 +729,16 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				return false
 			}
 		case *expression.Interval:
-			panic(semError{analyzererrors.ErrIntervalInvalidUse.New()})
+			invalid = true
 		}
 		return true
+
 	})
+	if invalid {
+		panic(semError{analyzererrors.ErrIntervalInvalidUse.New()})
+	}
+
+	return
 }
 
 func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -790,14 +825,20 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 					switch e.(type) {
 					case *plan.InSubquery, *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 						*expression.LessThan, *expression.GreaterThanOrEqual, *expression.LessThanOrEqual:
-						panic(semError{types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())})
+						if err := types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type()); err != nil {
+							panic(semError{err})
+						}
 					case *expression.InTuple, *expression.HashInTuple:
 						t, ok := e.Children()[1].(expression.Tuple)
 						if ok && len(t.Children()) == 1 {
 							// A single element Tuple treats itself like the element it contains.
-							panic(semError{types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())})
+							if err := types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type()); err != nil {
+								panic(semError{err})
+							}
 						} else {
-							panic(semError{types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())})
+							if err := types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type()); err != nil {
+								panic(semError{err})
+							}
 						}
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
@@ -856,8 +897,6 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 			// calculations here. This needs to be rationalized
 			// across the analyzer.
 			switch n := n.(type) {
-			//case *plan.IndexedInSubqueryFilter:
-			//	return false
 			case *plan.JoinNode:
 				return !n.Op.IsLookup()
 			default:
@@ -873,13 +912,13 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 								panic(semError{analyzererrors.ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)})
 							}
 						}
-						return false
+						return true
 					})
 				}
 			}
-			return false
+			return true
 		})
-		return false
+		return true
 	})
 }
 
@@ -898,13 +937,13 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 			}
 		}
-		return false
+		return true
 	}
 
 	transform.Inspect(n, func(node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.LockTables, *plan.UnlockTables:
-			transform.Inspect(node, readOnlyDBSearch)
+			transform.Inspect(n, readOnlyDBSearch)
 		case *plan.InsertInto:
 			// ReadOnlyDatabase can be an insertion Source,
 			// only inspect the Destination tree
@@ -928,7 +967,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				transform.Inspect(n, readOnlyDBSearch)
 			}
 		}
-		return false
+		return true
 	})
 }
 
@@ -984,7 +1023,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				panic(semError{sql.ErrReadOnlyTransaction.New()})
 			}
 		}
-		return false
+		return true
 	})
 }
 
@@ -1008,7 +1047,7 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 			checkForAggregationFunctions(n.Expressions())
 		default:
 		}
-		return false
+		return true
 	})
 }
 
@@ -1020,7 +1059,7 @@ func checkForAggregationFunctions(exprs []sql.Expression) {
 			if _, ok := ie.(sql.Aggregation); ok {
 				panic(semError{analyzererrors.ErrAggregationUnsupported.New(e.String())})
 			}
-			return false
+			return true
 		})
 	}
 }
@@ -1082,7 +1121,7 @@ func findFirstWindowAggregationColumnReference(w *plan.Window) (index int, gf *e
 func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		validateSem(e)
-		return false
+		return true
 	})
 }
 
