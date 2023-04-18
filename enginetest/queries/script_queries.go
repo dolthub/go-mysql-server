@@ -2914,6 +2914,20 @@ var ScriptTests = []ScriptTest{
 			"insert into set_tbl values (6, 'b,c');",
 			"insert into set_tbl values (7, 'a,c');",
 			"insert into set_tbl values (8, 'a,b,c');",
+
+			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
+			"insert into collate_tbl values (0, '');",
+			"insert into collate_tbl values (1, 'a');",
+			"insert into collate_tbl values (2, 'b');",
+			"insert into collate_tbl values (3, 'c');",
+			"insert into collate_tbl values (4, 'a,b');",
+			"insert into collate_tbl values (6, 'b,c');",
+			"insert into collate_tbl values (7, 'a,c');",
+			"insert into collate_tbl values (8, 'a,b,c');",
+
+			"create table enum_tbl (i int primary key, s enum('a','b','c'));",
+			"insert into enum_tbl values (0, 'a'), (1, 'b'), (2, 'c');",
+			"select i, s, find_in_set('a', s) from enum_tbl;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2929,22 +2943,6 @@ var ScriptTests = []ScriptTest{
 					{8, 1},
 				},
 			},
-		},
-	},
-	{
-		Name: "find_in_set tests",
-		SetUpScript: []string{
-			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
-			"insert into collate_tbl values (0, '');",
-			"insert into collate_tbl values (1, 'a');",
-			"insert into collate_tbl values (2, 'b');",
-			"insert into collate_tbl values (3, 'c');",
-			"insert into collate_tbl values (4, 'a,b');",
-			"insert into collate_tbl values (6, 'b,c');",
-			"insert into collate_tbl values (7, 'a,c');",
-			"insert into collate_tbl values (8, 'a,b,c');",
-		},
-		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select i, find_in_set('A', s) from collate_tbl;",
 				Expected: []sql.Row{
@@ -2956,6 +2954,14 @@ var ScriptTests = []ScriptTest{
 					{6, 0},
 					{7, 1},
 					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('a', s) from enum_tbl;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 0},
+					{2, 0},
 				},
 			},
 		},

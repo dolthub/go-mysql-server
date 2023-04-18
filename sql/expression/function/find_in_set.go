@@ -110,6 +110,11 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if enumType, ok := rType.(types.EnumType); ok {
+		r, ok = enumType.At(int(right.(uint16)))
+		if !ok {
+			return nil, fmt.Errorf("enum missing index %v", r)
+		}
 	} else {
 		var rVal interface{}
 		rVal, _, err = types.LongText.Convert(right)
