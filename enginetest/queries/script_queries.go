@@ -2931,6 +2931,35 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "find_in_set tests",
+		SetUpScript: []string{
+			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
+			"insert into collate_tbl values (0, '');",
+			"insert into collate_tbl values (1, 'a');",
+			"insert into collate_tbl values (2, 'b');",
+			"insert into collate_tbl values (3, 'c');",
+			"insert into collate_tbl values (4, 'a,b');",
+			"insert into collate_tbl values (6, 'b,c');",
+			"insert into collate_tbl values (7, 'a,c');",
+			"insert into collate_tbl values (8, 'a,b,c');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, find_in_set('A', s) from collate_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -4129,36 +4158,6 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT DISTINCT YM.YW AS YW,\n  (SELECT YW FROM YF WHERE YF.XB = YM.XB) AS YF_YW,\n  (\n    SELECT YW\n    FROM yp\n    WHERE\n      yp.XJ = YM.XJ AND\n      (yp.XL = YM.XL OR (yp.XL IS NULL AND YM.XL IS NULL)) AND\n      yp.XT = nd.XT\n    ) AS YJ,\n  XE AS XE,\n  XI AS YO,\n  XK AS XK,\n  XM AS XM,\n  CASE\n    WHEN YM.XO <> 'Z'\n  THEN YM.XO\n  ELSE NULL\n  END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n    FROM XA\n  ) YM\n  INNER JOIN XS nd\n    ON nd.XV = XF\n  WHERE\n    XB IN (SELECT XB FROM YF) AND\n    (XF IS NOT NULL AND XF <> 'Z')\n  UNION\n  SELECT DISTINCT YL.YW AS YW,\n    (\n      SELECT YW\n      FROM YF\n      WHERE YF.XB = YL.XB\n    ) AS YF_YW,\n    (\n      SELECT YW FROM yp\n      WHERE\n        yp.XJ = YL.XJ AND\n        (yp.XL = YL.XL OR (yp.XL IS NULL AND YL.XL IS NULL)) AND\n        yp.XT = YN.XT\n    ) AS YJ,\n    XE AS XE,\n    XI AS YO,\n    XK AS XK,\n    XM AS XM,\n    CASE WHEN YL.XO <> 'Z' THEN YL.XO ELSE NULL END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n      FROM XA\n  ) YL\n  INNER JOIN XS YN\n    ON YN.XC = YL.XC\n  WHERE\n    XB IN (SELECT XB FROM YF) AND \n    (XF IS NULL OR XF = 'Z');",
 				Expected: []sql.Row{{"", "", "", "", "", "", "", ""}},
-			},
-		},
-	},
-	// TODO: we don't look at the collation for tables
-	{
-		Name: "find_in_set tests",
-		SetUpScript: []string{
-			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
-			"insert into collate_tbl values (0, '');",
-			"insert into collate_tbl values (1, 'a');",
-			"insert into collate_tbl values (2, 'b');",
-			"insert into collate_tbl values (3, 'c');",
-			"insert into collate_tbl values (4, 'a,b');",
-			"insert into collate_tbl values (6, 'b,c');",
-			"insert into collate_tbl values (7, 'a,c');",
-			"insert into collate_tbl values (8, 'a,b,c');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, find_in_set('A', s) from collate_tbl;",
-				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{2, 0},
-					{3, 0},
-					{4, 1},
-					{6, 0},
-					{7, 1},
-					{8, 1},
-				},
 			},
 		},
 	},
