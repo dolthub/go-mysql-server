@@ -16,6 +16,8 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"reflect"
 	"strings"
 
@@ -29,8 +31,289 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+var ErrInvalidCheck = fmt.Errorf("error validating check")
+
+type ValidatorFunc = func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector)
+
+type semError struct{ error }
+
+var validationRulesBefore = [9]func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
+	validateLimitAndOffset,
+	validateDeleteFrom,
+	validatePrivileges,
+	validateCreateTable,
+	validateExprSem,
+	validateDropConstraint,
+	validateReadOnlyDatabase,
+	validateReadOnlyTransaction,
+	validateColumnDefaults,
+}
+
+// validateAll runs all validation rules
+func validateBefore(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (ret sql.Node, same transform.TreeIdentity, err error) {
+	ret = n
+	same = transform.SameTree
+	defer func() {
+		if r := recover(); r != nil {
+			switch e := r.(type) {
+			case semError:
+				err = e.error
+			default:
+				panic(e)
+			}
+		}
+	}()
+	for _, v := range validationRulesBefore {
+		v(ctx, a, n, scope, sel)
+	}
+	return
+}
+
+var validationRulesAfter = [10]func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector){
+	validateIsResolved,
+	validateOrderBy,
+	validateGroupBy,
+	validateSchemaSource,
+	validateIndexCreation,
+	validateUnionSchemasMatch,
+	validateIntervalUsage,
+	validateOperands,
+	validateSubqueryColumns,
+	validateAggregations,
+}
+
+// validateAll runs all validation rules
+func validateAfter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (ret sql.Node, same transform.TreeIdentity, err error) {
+	ret = n
+	same = transform.SameTree
+	defer func() {
+		if r := recover(); r != nil {
+			switch e := r.(type) {
+			case semError:
+				err = e.error
+			default:
+				panic(e)
+			}
+		}
+	}()
+	for _, v := range validationRulesAfter {
+		v(ctx, a, n, scope, sel)
+	}
+	return
+}
+
+// Resolving column defaults is a multi-phase process, with different analyzer rules for each phase.
+//
+// * parseColumnDefaults: Some integrators (dolt but not GMS) store their column defaults as strings, which we need to
+// 	parse into expressions before we can analyze them any further.
+// * resolveColumnDefaults: Once we have an expression for a default value, it may contain expressions that need
+// 	simplification before further phases of processing can take place.
+//
+// After this stage, expressions in column default values are handled by the normal analyzer machinery responsible for
+// resolving expressions, including things like columns and functions. Every node that needs to do this for its default
+// values implements `sql.Expressioner` to expose such expressions. There is custom logic in `resolveColumns` to help
+// identify the correct indexes for column references, which can vary based on the node type.
+//
+// Finally there are cleanup phases:
+// * validateColumnDefaults: ensures that newly created column defaults from a DDL statement are legal for the type of
+// 	column, various other business logic checks to match MySQL's logic.
+// * stripTableNamesFromDefault: column defaults headed for storage or serialization in a query result need the table
+// 	names in any GetField expressions stripped out so that they serialize to strings without such table names. Table
+// 	names in GetField expressions are expected in much of the rest of the analyzer, so we do this after the bulk of
+// 	analyzer work.
+//
+// The `information_schema.columns` table also needs access to the default values of every column in the database, and
+// because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
+// here, as well as in the `resolve_functions` rule.
+
+func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) {
+	span, ctx := ctx.Span("validateColumnDefaults")
+	defer span.End()
+
+	transform.Inspect(n, func(n sql.Node) bool {
+		switch node := n.(type) {
+		case *plan.AlterDefaultSet:
+			table := getResolvedTable(node)
+			sch := table.Schema()
+			index := sch.IndexOfColName(node.ColumnName)
+			col := sch[index]
+
+			eWrapper := expression.WrapExpression(node.Default)
+			validateColumnDefault(ctx, col, eWrapper)
+			return true
+		case sql.SchemaTarget:
+			switch node.(type) {
+			case *plan.AlterPK, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultDrop, *plan.CreateTable, *plan.DropColumn:
+				// DDL nodes must validate any new column defaults, continue to logic below
+			default:
+				// other node types are not altering the schema and therefore don't need validation of column defaults
+				return true
+			}
+
+			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
+			// we need to count the column indexes in the very hacky way outlined above.
+			colIndex := 0
+			if ne, ok := n.(sql.Expressioner); ok {
+				for _, e := range ne.Expressions() {
+					transform.InspectExpr(e, func(e sql.Expression) bool {
+						eWrapper, ok := e.(*expression.Wrapper)
+						if !ok {
+							return false
+						}
+
+						col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+						if err != nil {
+							panic(semError{err})
+						}
+						colIndex++
+
+						validateColumnDefault(ctx, col, eWrapper)
+
+						return false
+					})
+				}
+			}
+		default:
+		}
+		return true
+	})
+	return
+}
+
+// validateColumnDefault validates that the column default expression is valid for the column type and returns an error
+// if not
+func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) {
+	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return
+	}
+
+	if newDefault == nil {
+		return
+	}
+
+	// Some column types can only have a NULL for a literal default, must be an expression otherwise
+	isLiteralRestrictedType := types.IsTextBlob(col.Type) || types.IsJSON(col.Type) || types.IsGeometry(col.Type)
+	if isLiteralRestrictedType && newDefault.IsLiteral() {
+		lit, err := newDefault.Expression.Eval(ctx, nil)
+		if err != nil {
+			panic(semError{err})
+		}
+		if lit != nil {
+			panic(semError{sql.ErrInvalidTextBlobColumnDefault.New()})
+		}
+	}
+
+	var err error
+	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
+		switch e.(type) {
+		case sql.FunctionExpression, *expression.UnresolvedFunction:
+			var funcName string
+			switch expr := e.(type) {
+			case sql.FunctionExpression:
+				funcName = expr.FunctionName()
+			case *expression.UnresolvedFunction:
+				funcName = expr.Name()
+			}
+
+			if _, isValid := validColumnDefaultFuncs[funcName]; !isValid {
+				panic(semError{sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)})
+			}
+			if !newDefault.IsParenthesized() {
+				if funcName == "now" || funcName == "current_timestamp" {
+					// now and current_timestamps are the only functions that don't have to be enclosed in
+					// parens when used as a column default value, but ONLY when they are used with a
+					// datetime or timestamp column, otherwise it's invalid.
+					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
+						return true
+					} else {
+						panic(semError{sql.ErrColumnDefaultDatetimeOnlyFunc.New()})
+					}
+				}
+			}
+			return true
+		case *plan.Subquery:
+			panic(semError{sql.ErrColumnDefaultSubquery.New(col.Name)})
+		case *deferredColumn:
+			panic(semError{sql.ErrInvalidColumnDefaultValue.New(col.Name)})
+		case *expression.GetField:
+			if newDefault.IsParenthesized() == false {
+				panic(semError{sql.ErrInvalidColumnDefaultValue.New(col.Name)})
+			} else {
+				return true
+			}
+		default:
+			return true
+		}
+	})
+
+	if err != nil {
+		return
+	}
+
+	// validate type of default expression
+	if err = newDefault.CheckType(ctx); err != nil {
+		return
+	}
+
+	return
+}
+
+// validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
+func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
+	switch n := n.(type) {
+	case *plan.DropCheck:
+		rt, ok := n.Child.(*plan.ResolvedTable)
+		if !ok {
+			panic(semError{ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")})
+		}
+
+		ct, ok := rt.Table.(sql.CheckTable)
+		if ok {
+			checks, err := ct.GetChecks(ctx)
+			if err != nil {
+				panic(semError{err})
+			}
+
+			for _, check := range checks {
+				if strings.ToLower(check.Name) == strings.ToLower(n.Name) {
+					return
+				}
+			}
+
+			panic(semError{sql.ErrUnknownConstraint.New(n.Name)})
+		}
+
+		panic(semError{plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())})
+	default:
+		return
+	}
+}
+
+// validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
+// at execution time, and should be moved here over time.
+func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
+	ct, ok := n.(*plan.CreateTable)
+	if !ok {
+		return
+	}
+
+	validateIndexes(ctx, ct.TableSpec())
+
+	// passed validateIndexes, so they all must be valid indexes
+	// extract map of columns that have indexes defined over them
+	keyedColumns := make(map[string]bool)
+	for _, index := range ct.TableSpec().IdxDefs {
+		for _, col := range index.Columns {
+			keyedColumns[col.Name] = true
+		}
+	}
+
+	validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
+}
+
 // validateLimitAndOffset ensures that only integer literals are used for limit and offset values
-func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	var err error
 	var i, i64 interface{}
 	transform.Inspect(n, func(n sql.Node) bool {
@@ -39,12 +322,11 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
 				if !types.IsInteger(e.Type()) {
-					err = sql.ErrInvalidType.New(e.Type().String())
-					return false
+					panic(semError{sql.ErrInvalidType.New(e.Type().String())})
 				}
 				i, err = e.Eval(ctx, nil)
 				if err != nil {
-					return false
+					panic(semError{err})
 				}
 
 				i64, _, err = types.Int64.Convert(i)
@@ -52,62 +334,50 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return false
 				}
 				if i64.(int64) < 0 {
-					err = sql.ErrInvalidSyntax.New("negative limit")
-					return false
+					panic(semError{sql.ErrInvalidSyntax.New("negative limit")})
 				}
 			case *expression.BindVar:
-				return true
 			default:
-				err = sql.ErrInvalidType.New(e.Type().String())
-				return false
+				panic(semError{sql.ErrInvalidType.New(e.Type().String())})
 			}
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
 				if !types.IsInteger(e.Type()) {
-					err = sql.ErrInvalidType.New(e.Type().String())
-					return false
+					panic(semError{sql.ErrInvalidType.New(e.Type().String())})
 				}
 				i, err = e.Eval(ctx, nil)
 				if err != nil {
-					return false
+					panic(semError{err})
 				}
-
 				i64, _, err = types.Int64.Convert(i)
 				if err != nil {
-					return false
+					panic(semError{err})
 				}
 				if i64.(int64) < 0 {
-					err = sql.ErrInvalidSyntax.New("negative offset")
-					return false
+					panic(semError{sql.ErrInvalidSyntax.New("negative offset")})
 				}
 			case *expression.BindVar:
-				return true
 			default:
-				err = sql.ErrInvalidType.New(e.Type().String())
-				return false
+				panic(semError{sql.ErrInvalidType.New(e.Type().String())})
 			}
 		default:
-			return true
 		}
 		return true
 	})
-	return n, transform.SameTree, err
 }
 
-func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	span, ctx := ctx.Span("validate_is_resolved")
 	defer span.End()
 
 	if !n.Resolved() {
-		return nil, transform.SameTree, unresolvedError(n)
+		unresolvedError(n)
 	}
-
-	return n, transform.SameTree, nil
 }
 
 // unresolvedError returns an appropriate error message for the unresolved node given
-func unresolvedError(n sql.Node) error {
+func unresolvedError(n sql.Node) {
 	var err error
 	var walkFn func(sql.Expression) bool
 	walkFn = func(e sql.Expression) bool {
@@ -119,23 +389,19 @@ func unresolvedError(n sql.Node) error {
 			}
 		case *deferredColumn:
 			if e.Table() != "" {
-				err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
+				panic(semError{sql.ErrTableColumnNotFound.New(e.Table(), e.Name())})
 			} else {
-				err = sql.ErrColumnNotFound.New(e.Name())
+				panic(semError{sql.ErrColumnNotFound.New(e.Name())})
 			}
 			return false
 		}
 		return true
 	}
 	transform.InspectExpressions(n, walkFn)
-
-	if err != nil {
-		return err
-	}
-	return analyzererrors.ErrValidationResolved.New(n)
+	panic(semError{analyzererrors.ErrValidationResolved.New(n)})
 }
 
-func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	span, ctx := ctx.Span("validate_order_by")
 	defer span.End()
 
@@ -144,22 +410,18 @@ func validateOrderBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		for _, field := range n.SortFields {
 			switch field.Column.(type) {
 			case sql.Aggregation:
-				return nil, transform.SameTree, analyzererrors.ErrValidationOrderBy.New()
+				panic(semError{analyzererrors.ErrValidationOrderBy.New()})
 			}
 		}
 	}
-
-	return n, transform.SameTree, nil
 }
 
 // validateDeleteFrom checks for invalid settings, such as deleting from multiple databases, specifying a delete target
 // table multiple times, or using a DELETE FROM JOIN without specifying any explicit delete target tables, and returns
 // an error if any validation issues were detected.
-func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	span, ctx := ctx.Span("validate_order_by")
 	defer span.End()
-
-	var validationError error
 	transform.InspectUp(n, func(n sql.Node) bool {
 		df, ok := n.(*plan.DeleteFrom)
 		if !ok {
@@ -179,13 +441,11 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			for _, target := range df.GetDeleteTargets() {
 				deletable, err := plan.GetDeletable(target)
 				if err != nil {
-					validationError = err
-					return true
+					panic(semError{err})
 				}
 				tableName := deletable.Name()
 				if _, ok := sourceTables[tableName]; !ok {
-					validationError = fmt.Errorf("table %q not found in DELETE FROM sources", tableName)
-					return true
+					panic(semError{fmt.Errorf("table %q not found in DELETE FROM sources", tableName)})
 				}
 			}
 		}
@@ -198,76 +458,58 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				// Check for multiple databases
 				databases[plan.GetDatabaseName(target)] = struct{}{}
 				if len(databases) > 1 {
-					validationError = fmt.Errorf("multiple databases specified as delete from targets")
+					panic(semError{fmt.Errorf("multiple databases specified as delete from targets")})
 					return true
 				}
 
 				// Check for duplicate targets
 				nameable, ok := target.(sql.Nameable)
 				if !ok {
-					validationError = fmt.Errorf("target node does not implement sql.Nameable: %T", target)
+					panic(semError{fmt.Errorf("target node does not implement sql.Nameable: %T", target)})
 					return true
 				}
 
 				if _, ok := tables[nameable.Name()]; ok {
-					validationError = fmt.Errorf("duplicate tables specified as delete from targets")
+					panic(semError{fmt.Errorf("duplicate tables specified as delete from targets")})
 					return true
 				}
 				tables[nameable.Name()] = struct{}{}
 			}
 		}
 
-		// DELETE FROM JOIN with no target tables specified
-		deleteFromJoin := false
 		transform.Inspect(df.Child, func(node sql.Node) bool {
-			if _, ok := node.(*plan.JoinNode); ok {
-				deleteFromJoin = true
-				return false
+			if _, ok := node.(*plan.JoinNode); ok && !df.HasExplicitTargets() {
+				panic(semError{fmt.Errorf("delete from statement with join requires specifying explicit delete target tables")})
 			}
 			return true
 		})
-		if deleteFromJoin {
-			if df.HasExplicitTargets() == false {
-				validationError = fmt.Errorf("delete from statement with join requires specifying explicit delete target tables")
-				return true
-			}
-		}
 		return false
 	})
-
-	if validationError != nil {
-		return nil, transform.SameTree, validationError
-	} else {
-		return n, transform.SameTree, nil
-	}
 }
 
 // checkSqlMode checks if the option is set for the Session in ctx
-func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
+func checkSqlMode(ctx *sql.Context, option string) bool {
 	// session variable overrides global
 	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
 	if err != nil {
-		return false, err
+		panic(semError{err})
 	}
 	val, ok := sysVal.(string)
 	if !ok {
-		return false, sql.ErrSystemVariableCodeFail.New("sql_mode", val)
+		panic(semError{sql.ErrSystemVariableCodeFail.New("sql_mode", val)})
 	}
-	return strings.Contains(val, option), nil
+	return strings.Contains(val, option)
 }
 
-func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	span, ctx := ctx.Span("validate_group_by")
 	defer span.End()
 
 	// only enforce strict group by when this variable is set
-	if isStrict, err := checkSqlMode(ctx, "ONLY_FULL_GROUP_BY"); err != nil {
-		return n, transform.SameTree, err
-	} else if !isStrict {
-		return n, transform.SameTree, nil
+	if isStrict := checkSqlMode(ctx, "ONLY_FULL_GROUP_BY"); !isStrict {
+		return
 	}
 
-	var err error
 	var parent sql.Node
 	transform.Inspect(n, func(n sql.Node) bool {
 		defer func() {
@@ -300,15 +542,31 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		for _, expr := range gb.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					err = analyzererrors.ErrValidationGroupBy.New(expr.String())
+					panic(semError{analyzererrors.ErrValidationGroupBy.New(expr.String())})
 					return false
 				}
 			}
 		}
 		return true
 	})
+}
 
-	return n, transform.SameTree, err
+func stringContains(strs []string, target string) bool {
+	for _, s := range strs {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
+
+func tableColsContains(strs []tableCol, target tableCol) bool {
+	for _, s := range strs {
+		if s == target {
+			return true
+		}
+	}
+	return false
 }
 
 func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {
@@ -342,29 +600,32 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 	return valid
 }
 
-func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("validate_schema_source")
-	defer span.End()
-
+func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
+	validateSchema2 := func(t *plan.ResolvedTable) {
+		for _, col := range t.Schema() {
+			if col.Source == "" {
+				panic(semError{analyzererrors.ErrValidationSchemaSource.New()})
+			}
+		}
+	}
 	switch n := n.(type) {
 	case *plan.TableAlias:
 		// table aliases should not be validated
 		if child, ok := n.Child.(*plan.ResolvedTable); ok {
-			return n, transform.SameTree, validateSchema(child)
+			validateSchema2(child)
 		}
 	case *plan.ResolvedTable:
-		return n, transform.SameTree, validateSchema(n)
+		validateSchema2(n)
 	}
-	return n, transform.SameTree, nil
 }
 
-func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	span, ctx := ctx.Span("validate_index_creation")
 	defer span.End()
 
 	ci, ok := n.(*plan.CreateIndex)
 	if !ok {
-		return n, transform.SameTree, nil
+		return
 	}
 
 	schema := ci.Table.Schema()
@@ -384,22 +645,19 @@ func validateIndexCreation(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	}
 
 	if len(unknownColumns) > 0 {
-		return nil, transform.SameTree, analyzererrors.ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))
+		panic(semError{analyzererrors.ErrUnknownIndexColumns.New(table, strings.Join(unknownColumns, ", "))})
 	}
-
-	return n, transform.SameTree, nil
 }
 
-func validateSchema(t *plan.ResolvedTable) error {
+func validateSchema2(t *plan.ResolvedTable) {
 	for _, col := range t.Schema() {
 		if col.Source == "" {
-			return analyzererrors.ErrValidationSchemaSource.New()
+			panic(semError{analyzererrors.ErrValidationSchemaSource.New()})
 		}
 	}
-	return nil
 }
 
-func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	span, ctx := ctx.Span("validate_union_schemas_match")
 	defer span.End()
 
@@ -428,25 +686,12 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return true
 	})
 	if firstmismatch != nil {
-		return nil, transform.SameTree, analyzererrors.ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])
+		panic(semError{analyzererrors.ErrUnionSchemasMatch.New(firstmismatch[0], firstmismatch[1])})
 	}
-	return n, transform.SameTree, nil
 }
 
-func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var invalid bool
-	transform.InspectExpressionsWithNode(n, func(node sql.Node, e sql.Expression) bool {
-		// If it's already invalid just skip everything else.
-		if invalid {
-			return false
-		}
-
-		// Interval can be used without DATE_ADD/DATE_SUB functions in CREATE/ALTER EVENTS statements.
-		switch node.(type) {
-		case *plan.CreateEvent:
-			return false
-		}
-
+func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *function.DateAdd, *function.DateSub:
 			return false
@@ -455,17 +700,10 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				return false
 			}
 		case *expression.Interval:
-			invalid = true
+			panic(semError{analyzererrors.ErrIntervalInvalidUse.New()})
 		}
-
 		return true
 	})
-
-	if invalid {
-		return nil, transform.SameTree, analyzererrors.ErrIntervalInvalidUse.New()
-	}
-
-	return n, transform.SameTree, nil
 }
 
 func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -512,7 +750,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	return n, transform.SameTree, nil
 }
 
-func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	// Validate that the number of columns in an operand or a top level
 	// expression are as expected. The current rules are:
 	// * Every top level expression of a node must have 1 column.
@@ -526,7 +764,6 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 
 	// We do not use plan.InspectExpressions here because we're treating
 	// top-level expressions of sql.Node differently from subexpressions.
-	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		if n == nil {
 			return false
@@ -544,27 +781,23 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						// hash lookup expressions are tuples with >= 1 columns
 						return true
 					}
-					err = sql.ErrInvalidOperandColumns.New(1, nc)
-					return false
+					panic(semError{sql.ErrInvalidOperandColumns.New(1, nc)})
 				}
 				sql.Inspect(e, func(e sql.Expression) bool {
 					if e == nil {
-						return err == nil
-					}
-					if err != nil {
-						return false
+						return true
 					}
 					switch e.(type) {
 					case *plan.InSubquery, *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 						*expression.LessThan, *expression.GreaterThanOrEqual, *expression.LessThanOrEqual:
-						err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+						panic(semError{types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())})
 					case *expression.InTuple, *expression.HashInTuple:
 						t, ok := e.Children()[1].(expression.Tuple)
 						if ok && len(t.Children()) == 1 {
 							// A single element Tuple treats itself like the element it contains.
-							err = types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+							panic(semError{types.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())})
 						} else {
-							err = types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
+							panic(semError{types.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())})
 						}
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
@@ -573,7 +806,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						for _, e := range e.Children() {
 							nc := types.NumColumns(e.Type())
 							if nc != 1 {
-								err = sql.ErrInvalidOperandColumns.New(1, nc)
+								panic(semError{sql.ErrInvalidOperandColumns.New(1, nc)})
 							}
 						}
 					case expression.Tuple:
@@ -584,29 +817,25 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 						for _, e := range e.Children() {
 							nc := types.NumColumns(e.Type())
 							if nc != 1 {
-								err = sql.ErrInvalidOperandColumns.New(1, nc)
+								panic(semError{sql.ErrInvalidOperandColumns.New(1, nc)})
 							}
 						}
 					}
-					return err == nil
+					return true
 				})
 			}
 		}
-		return err == nil
+		return true
 	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return n, transform.SameTree, nil
 }
 
-func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	// Then validate that every subquery has field indexes within the correct range
 	// TODO: Why is this only for subqueries?
 
 	// TODO: Currently disabled.
 	if true {
-		return n, transform.SameTree, nil
+		return
 	}
 
 	var outOfRangeIndexExpression sql.Expression
@@ -627,6 +856,8 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 			// calculations here. This needs to be rationalized
 			// across the analyzer.
 			switch n := n.(type) {
+			//case *plan.IndexedInSubqueryFilter:
+			//	return false
 			case *plan.JoinNode:
 				return !n.Op.IsLookup()
 			default:
@@ -639,45 +870,21 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 							if gf.Index() >= outerScopeRowLen+childSchemaLen {
 								outOfRangeIndexExpression = gf
 								outOfRangeColumns = outerScopeRowLen + childSchemaLen
+								panic(semError{analyzererrors.ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)})
 							}
 						}
-						return outOfRangeIndexExpression == nil
+						return false
 					})
 				}
 			}
-			return outOfRangeIndexExpression == nil
+			return false
 		})
-		return outOfRangeIndexExpression == nil
+		return false
 	})
-	if outOfRangeIndexExpression != nil {
-		return nil, transform.SameTree, analyzererrors.ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
-	}
-
-	return n, transform.SameTree, nil
-}
-
-func stringContains(strs []string, target string) bool {
-	for _, s := range strs {
-		if s == target {
-			return true
-		}
-	}
-	return false
-}
-
-func tableColsContains(strs []tableCol, target tableCol) bool {
-	for _, s := range strs {
-		if s == target {
-			return true
-		}
-	}
-	return false
 }
 
 // validateReadOnlyDatabase invalidates queries that attempt to write to ReadOnlyDatabases.
-func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	valid := true
-	var readOnlyDB sql.ReadOnlyDatabase
+func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	enforceReadOnly := scope.EnforcesReadOnly()
 
 	// if a ReadOnlyDatabase is found, invalidate the query
@@ -685,132 +892,100 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		if rt, ok := node.(*plan.ResolvedTable); ok {
 			if ro, ok := rt.Database.(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
-					readOnlyDB = ro
-					valid = false
+					panic(semError{analyzererrors.ErrReadOnlyDatabase.New(ro.Name())})
 				} else if enforceReadOnly {
-					valid = false
+					panic(semError{sql.ErrProcedureCallAsOfReadOnly.New()})
 				}
 			}
 		}
-		return valid
+		return false
 	}
 
 	transform.Inspect(n, func(node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 			transform.Inspect(node, readOnlyDBSearch)
-			return false
-
 		case *plan.InsertInto:
 			// ReadOnlyDatabase can be an insertion Source,
 			// only inspect the Destination tree
 			transform.Inspect(n.Destination, readOnlyDBSearch)
-			return false
-
 		case *plan.CreateTable:
 			if ro, ok := n.Database().(sql.ReadOnlyDatabase); ok {
 				if ro.IsReadOnly() {
-					readOnlyDB = ro
-					valid = false
+					panic(semError{analyzererrors.ErrReadOnlyDatabase.New(ro.Name())})
 				} else if enforceReadOnly {
-					valid = false
+					panic(semError{sql.ErrProcedureCallAsOfReadOnly.New()})
 				}
 			}
 			// "CREATE TABLE ... LIKE ..." and
 			// "CREATE TABLE ... AS ..."
 			// can both use ReadOnlyDatabases as a source,
 			// so don't descend here.
-			return false
-
 		default:
 			// CreateTable is the only DDL node allowed
 			// to contain a ReadOnlyDatabase
 			if plan.IsDDLNode(n) {
 				transform.Inspect(n, readOnlyDBSearch)
-				return false
 			}
 		}
-
-		return valid
+		return false
 	})
-	if !valid {
-		if enforceReadOnly {
-			return nil, transform.SameTree, sql.ErrProcedureCallAsOfReadOnly.New()
-		} else {
-			return nil, transform.SameTree, analyzererrors.ErrReadOnlyDatabase.New(readOnlyDB.Name())
-		}
-	}
-
-	return n, transform.SameTree, nil
 }
 
 // validateReadOnlyTransaction invalidates read only transactions that try to perform improper write operations.
-func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	t := ctx.GetTransaction()
 
 	if t == nil {
-		return n, transform.SameTree, nil
+		return
 	}
 
 	// If this is a normal read write transaction don't enforce read-only. Otherwise we must prevent an invalid query.
 	if !t.IsReadOnly() && !scope.EnforcesReadOnly() {
-		return n, transform.SameTree, nil
+		return
 	}
-
-	valid := true
 
 	isTempTable := func(table sql.Table) bool {
 		tt, isTempTable := table.(sql.TemporaryTable)
 		if !isTempTable {
-			valid = false
+			panic(semError{sql.ErrReadOnlyTransaction.New()})
 		}
-
 		return tt.IsTemporary()
 	}
 
 	temporaryTableSearch := func(node sql.Node) bool {
 		if rt, ok := node.(*plan.ResolvedTable); ok {
-			valid = isTempTable(rt.Table)
+			if !isTempTable(rt.Table) {
+				panic(semError{sql.ErrReadOnlyTransaction.New()})
+
+			}
 		}
-		return valid
+		return false
 	}
 
 	transform.Inspect(n, func(node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.UnlockTables:
 			transform.Inspect(node, temporaryTableSearch)
-			return false
 		case *plan.InsertInto:
 			transform.Inspect(n.Destination, temporaryTableSearch)
-			return false
 		case *plan.LockTables:
 			// TODO: Technically we should allow for the locking of temporary tables but the LockTables implementation
 			// needs substantial refactoring.
-			valid = false
-			return false
+			panic(semError{sql.ErrReadOnlyTransaction.New()})
 		case *plan.CreateTable:
 			// MySQL explicitly blocks the creation of temporary tables in a read only transaction.
 			if n.Temporary() == plan.IsTempTable {
-				valid = false
+				panic(semError{sql.ErrReadOnlyTransaction.New()})
 			}
-
-			return false
 		default:
 			// DDL statements have an implicit commits which makes them valid to be executed in READ ONLY transactions.
 			if plan.IsDDLNode(n) {
-				valid = true
-				return false
+				panic(semError{sql.ErrReadOnlyTransaction.New()})
 			}
-
-			return valid
 		}
+		return false
 	})
-
-	if !valid {
-		return nil, transform.SameTree, sql.ErrReadOnlyTransaction.New()
-	}
-
-	return n, transform.SameTree, nil
 }
 
 // validateAggregations returns an error if an Aggregation expression has been used in
@@ -822,62 +997,55 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // See https://github.com/dolthub/go-mysql-server/issues/542 for some queries
 // that should be supported but that currently trigger this validation because
 // aggregation expressions end up in the wrong place.
-func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var validationErr error
+func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.GroupBy:
-			validationErr = checkForAggregationFunctions(n.GroupByExprs)
+			checkForAggregationFunctions(n.GroupByExprs)
 		case *plan.Window:
-			validationErr = checkForNonAggregatedColumnReferences(n)
+			checkForNonAggregatedColumnReferences(n)
 		case sql.Expressioner:
-			validationErr = checkForAggregationFunctions(n.Expressions())
+			checkForAggregationFunctions(n.Expressions())
 		default:
 		}
-		return validationErr == nil
+		return false
 	})
-
-	return n, transform.SameTree, validationErr
 }
 
 // checkForAggregationFunctions returns an ErrAggregationUnsupported error if any aggregation
 // functions are found in the specified expressions.
-func checkForAggregationFunctions(exprs []sql.Expression) error {
-	var validationErr error
+func checkForAggregationFunctions(exprs []sql.Expression) {
 	for _, e := range exprs {
 		sql.Inspect(e, func(ie sql.Expression) bool {
 			if _, ok := ie.(sql.Aggregation); ok {
-				validationErr = analyzererrors.ErrAggregationUnsupported.New(e.String())
+				panic(semError{analyzererrors.ErrAggregationUnsupported.New(e.String())})
 			}
-			return validationErr == nil
+			return false
 		})
 	}
-	return validationErr
 }
 
 // checkForNonAggregatedColumnReferences returns an ErrNonAggregatedColumnWithoutGroupBy error
 // if an aggregate function with the implicit/all-rows grouping is mixed with aggregate window
 // functions that reference a non-aggregated column.
 // You cannot mix aggregations on the implicit/all-rows grouping with window aggregations.
-func checkForNonAggregatedColumnReferences(w *plan.Window) error {
+func checkForNonAggregatedColumnReferences(w *plan.Window) {
 	for _, expr := range w.ProjectedExprs() {
 		if agg, ok := expr.(sql.Aggregation); ok {
 			if agg.Window() == nil {
 				index, gf := findFirstWindowAggregationColumnReference(w)
-
 				if index > 0 {
-					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index+1, gf.String())
+					panic(semError{sql.ErrNonAggregatedColumnWithoutGroupBy.New(index+1, gf.String())})
 				} else {
 					// We should always have an index and GetField value to use, but just in case
 					// something changes that, return a similar error message without those details.
-					return fmt.Errorf("in aggregated query without GROUP BY, expression in " +
+					panic(semError{fmt.Errorf("in aggregated query without GROUP BY, expression in " +
 						"SELECT list contains nonaggregated column; " +
-						"this is incompatible with sql_mode=only_full_group_by")
+						"this is incompatible with sql_mode=only_full_group_by")})
 				}
 			}
 		}
 	}
-	return nil
 }
 
 // findFirstWindowAggregationColumnReference returns the index and GetField expression for the
@@ -911,13 +1079,11 @@ func findFirstWindowAggregationColumnReference(w *plan.Window) (index int, gf *e
 	return -1, nil
 }
 
-func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var err error
+func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
 	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		err = validateSem(e)
-		return err == nil
+		validateSem(e)
+		return false
 	})
-	return n, transform.SameTree, err
 }
 
 // validateSem is a way to add validation logic for
@@ -928,24 +1094,20 @@ func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 func validateSem(e sql.Expression) error {
 	switch e := e.(type) {
 	case *expression.And:
-		if err := logicalSem(e.BinaryExpression); err != nil {
-			return err
-		}
+		logicalSem2(e.BinaryExpression)
 	case *expression.Or:
-		if err := logicalSem(e.BinaryExpression); err != nil {
-			return err
-		}
+		logicalSem2(e.BinaryExpression)
 	default:
 	}
 	return nil
 }
 
-func logicalSem(e expression.BinaryExpression) error {
+func logicalSem2(e expression.BinaryExpression) error {
 	if lc := fds(e.Left); lc != 1 {
-		return sql.ErrInvalidOperandColumns.New(1, lc)
+		panic(semError{sql.ErrInvalidOperandColumns.New(1, lc)})
 	}
 	if rc := fds(e.Right); rc != 1 {
-		return sql.ErrInvalidOperandColumns.New(1, rc)
+		panic(semError{sql.ErrInvalidOperandColumns.New(1, rc)})
 	}
 	return nil
 }
@@ -962,4 +1124,35 @@ func fds(e sql.Expression) int {
 	default:
 		return types.NumColumns(e.Type())
 	}
+}
+
+// validatePrivileges verifies the given statement (node n) by checking that the calling user has the necessary privileges
+// to execute it.
+// TODO: add the remaining statements that interact with the grant tables
+func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) {
+	mysqlDb := a.Catalog.MySQLDb
+	switch n.(type) {
+	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
+		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
+		mysqlDb.Enabled = true
+	}
+	if !mysqlDb.Enabled {
+		return
+	}
+
+	client := ctx.Session.Client()
+	user := mysqlDb.GetUser(client.User, client.Address, false)
+	if user == nil {
+		panic(semError{mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)})
+	}
+	if plan.IsDualTable(getTable(n)) {
+		return
+	}
+	if rt := getResolvedTable(n); rt != nil && rt.Database.Name() == sql.InformationSchemaDatabaseName {
+		return
+	}
+	if !n.CheckPrivileges(ctx, a.Catalog.MySQLDb) {
+		panic(semError{sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))})
+	}
+	return
 }

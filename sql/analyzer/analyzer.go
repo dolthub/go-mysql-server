@@ -475,7 +475,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 		resolvePreparedInsertId,
 
 		// DefaultValidation
-		validateAllId,
+		validateAfterId,
 
 		// OnceAfterAll
 		TrackProcessId,
@@ -528,7 +528,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		finalizeUnionsId,
 
 		// DefaultValidationRules
-		validateAllId,
+		validateAfterId,
 
 		// OnceAfterAll
 		parallelizeId,

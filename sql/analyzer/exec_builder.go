@@ -172,7 +172,7 @@ func (b *ExecBuilder) buildConcatJoin(j *concatJoin, input sql.Schema, children 
 		return nil, err
 	}
 
-	return plan.NewJoin(children[0], right, j.op, filters).WithScopeLen(j.g.m.scopeLen).WithSiblingLen(len(input)), nil
+	return plan.NewJoin(children[0], right, j.op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
 func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {

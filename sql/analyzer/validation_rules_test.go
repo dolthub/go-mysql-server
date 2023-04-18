@@ -48,7 +48,7 @@ func TestValidateResolved(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	vr := validateIsResolved2
+	vr := validateIsResolved
 
 	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
@@ -60,7 +60,7 @@ func TestValidateResolved(t *testing.T) {
 func TestValidateOrderBy(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
-	vr := validateOrderBy2
+	vr := validateOrderBy
 
 	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
@@ -78,7 +78,7 @@ func TestValidateGroupBy(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	vr := validateGroupBy2
+	vr := validateGroupBy
 
 	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
@@ -123,7 +123,7 @@ func TestValidateGroupBy(t *testing.T) {
 func TestValidateGroupByErr(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
-	vr := validateGroupBy2
+	vr := validateGroupBy
 
 	err := validateHelper(vr, ctx, nil, dummyNode{true}, nil, DefaultRuleSelector)
 	require.NoError(err)
@@ -216,7 +216,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 	}
 	ctx := sql.NewEmptyContext()
-	rule := validateSchemaSource2
+	rule := validateSchemaSource
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -347,7 +347,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 	}
 	ctx := sql.NewEmptyContext()
-	rule := validateUnionSchemasMatch2
+	rule := validateUnionSchemasMatch
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -459,7 +459,7 @@ func TestValidateOperands(t *testing.T) {
 		},
 	}
 	ctx := sql.NewEmptyContext()
-	rule := validateOperands2
+	rule := validateOperands
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -527,7 +527,7 @@ func TestValidateIndexCreation(t *testing.T) {
 	}
 
 	ctx := sql.NewEmptyContext()
-	rule := validateIndexCreation2
+	rule := validateIndexCreation
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)

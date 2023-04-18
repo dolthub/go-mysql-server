@@ -422,7 +422,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn) {
 	// Throw prefix length error for non-string types with prefixes
 	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
-		panic(sql.ErrInvalidIndexPrefix.New(schCol.Name))
+		panic(semError{sql.ErrInvalidIndexPrefix.New(schCol.Name)})
 	}
 
 	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
@@ -433,18 +433,18 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 
 	// Prefix length is longer than max
 	if prefixByteLength > MaxBytePrefix {
-		panic(sql.ErrKeyTooLong.New())
+		panic(semError{sql.ErrKeyTooLong.New()})
 	}
 
 	// The specified prefix length is longer than the column
 	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength(ctx))
 	if prefixByteLength > maxByteLength {
-		panic(sql.ErrInvalidIndexPrefix.New(schCol.Name))
+		panic(semError{sql.ErrInvalidIndexPrefix.New(schCol.Name)})
 	}
 
 	// Prefix length is only required for BLOB and TEXT columns
 	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
-		panic(sql.ErrInvalidBlobTextKey.New(schCol.Name))
+		panic(semError{sql.ErrInvalidBlobTextKey.New(schCol.Name)})
 	}
 
 	return
@@ -536,15 +536,15 @@ func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) {
 			// keyedColumns == nil means they are trying to add auto_increment column
 			if !col.PrimaryKey && !keyedColumns[col.Name] {
 				// AUTO_INCREMENT col must be a key
-				panic(sql.ErrInvalidAutoIncCols.New())
+				panic(semError{sql.ErrInvalidAutoIncCols.New()})
 			}
 			if col.Default != nil {
 				// AUTO_INCREMENT col cannot have default
-				panic(sql.ErrInvalidAutoIncCols.New())
+				panic(semError{sql.ErrInvalidAutoIncCols.New()})
 			}
 			if seen {
 				// there can be at most one AUTO_INCREMENT col
-				panic(sql.ErrInvalidAutoIncCols.New())
+				panic(semError{sql.ErrInvalidAutoIncCols.New()})
 			}
 			seen = true
 		}
@@ -569,21 +569,21 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) {
 		for _, idxCol := range idx.Columns {
 			schCol, ok := lwrNames[strings.ToLower(idxCol.Name)]
 			if !ok {
-				panic(sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName))
+				panic(semError{sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)})
 			}
 			validatePrefixLength(ctx, schCol, idxCol)
 		}
 		if idx.Constraint == sql.IndexConstraint_Spatial {
 			if len(idx.Columns) != 1 {
-				panic(sql.ErrTooManyKeyParts.New(1))
+				panic(semError{sql.ErrTooManyKeyParts.New(1)})
 			}
 			schCol, _ := lwrNames[strings.ToLower(idx.Columns[0].Name)]
 			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
 			if !ok {
-				panic(sql.ErrBadSpatialIdxCol.New())
+				panic(semError{sql.ErrBadSpatialIdxCol.New()})
 			}
 			if schCol.Nullable {
-				panic(sql.ErrNullableSpatialIdx.New())
+				panic(semError{sql.ErrNullableSpatialIdx.New()})
 			}
 			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
 				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
@@ -596,7 +596,7 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) {
 	if !hasPkIndexDef {
 		for _, col := range tableSpec.Schema.Schema {
 			if col.PrimaryKey && types.IsTextBlob(col.Type) {
-				panic(sql.ErrInvalidBlobTextKey.New(col.Name))
+				panic(semError{sql.ErrInvalidBlobTextKey.New(col.Name)})
 			}
 		}
 	}

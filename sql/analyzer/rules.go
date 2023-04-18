@@ -38,6 +38,7 @@ var OnceBeforeDefault = []Rule{
 	{setTargetSchemasId, setTargetSchemas},
 	{loadCheckConstraintsId, loadChecks},
 	{resolveAlterColumnId, resolveAlterColumn},
+	{validateDropTablesId, validateDropTables},
 	{resolveCreateLikeId, resolveCreateLike},
 	{resolveAnalyzeTablesId, resolveAnalyzeTables},
 	{assignCatalogId, assignCatalog},
