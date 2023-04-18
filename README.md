@@ -1,5 +1,7 @@
 # go-mysql-server
 
+![go gopher wearing mysql t-shirt](./mascot.png)
+
 **go-mysql-server** is a data-source agnostic SQL engine and server
 which runs queries on data sources you provide, using the MySQL
 dialect and wire protocol. A simple in-memory database implementation
