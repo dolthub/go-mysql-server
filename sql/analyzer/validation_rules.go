@@ -16,14 +16,15 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/vitess/go/mysql"
 	"reflect"
 	"strings"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
