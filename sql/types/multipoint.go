@@ -89,7 +89,7 @@ func (t MultiPointType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t MultiPointType) MaxTextResponseByteLength() uint32 {
+func (t MultiPointType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return GeometryMaxByteLength
 }
 

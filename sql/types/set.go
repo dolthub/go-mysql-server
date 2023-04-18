@@ -66,7 +66,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 	var maxByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
-		// ...SET member values should not themselves contain commas.
+		// SET member values should not themselves contain commas.
 		if strings.Contains(value, ",") {
 			return nil, fmt.Errorf("values cannot contain a comma")
 		}
@@ -184,7 +184,7 @@ func (t SetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error)
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t SetType) MaxTextResponseByteLength() uint32 {
+func (t SetType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return t.maxResponseByteLength
 }
 

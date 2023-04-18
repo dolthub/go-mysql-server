@@ -159,7 +159,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			sch, err = validatePrimaryKey(initialSch, sch, n.(*plan.AlterPK))
+			sch, err = validatePrimaryKey(ctx, initialSch, sch, n.(*plan.AlterPK))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -397,7 +397,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
-		err := validateIndexType(ai.Columns, sch)
+		err := validateIndexType(ctx, ai.Columns, sch)
 		if err != nil {
 			return nil, err
 		}
@@ -455,7 +455,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 }
 
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
-func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
+func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn) error {
 	// Throw prefix length error for non-string types with prefixes
 	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
@@ -473,7 +473,7 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 	}
 
 	// The specified prefix length is longer than the column
-	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength())
+	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength(ctx))
 	if prefixByteLength > maxByteLength {
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
@@ -487,10 +487,10 @@ func validatePrefixLength(schCol *sql.Column, idxCol sql.IndexColumn) error {
 }
 
 // validateIndexType prevents creating invalid indexes
-func validateIndexType(cols []sql.IndexColumn, sch sql.Schema) error {
+func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema) error {
 	for _, idxCol := range cols {
 		schCol := sch[sch.IndexOfColName(idxCol.Name)]
-		err := validatePrefixLength(schCol, idxCol)
+		err := validatePrefixLength(ctx, schCol, idxCol)
 		if err != nil {
 			return err
 		}
@@ -610,7 +610,7 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 			if !ok {
 				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
 			}
-			err := validatePrefixLength(schCol, idxCol)
+			err := validatePrefixLength(ctx, schCol, idxCol)
 			if err != nil {
 				return err
 			}
@@ -683,7 +683,7 @@ func getTableIndexNames(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string
 }
 
 // validatePrimaryKey validates a primary key add or drop operation.
-func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
+func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
 	tableName := getTableName(ai.Table)
 	switch ai.Action {
 	case plan.PrimaryKeyAction_Create:
@@ -698,7 +698,7 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 
 		for _, idxCol := range ai.Columns {
 			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
-			err := validatePrefixLength(schCol, idxCol)
+			err := validatePrefixLength(ctx, schCol, idxCol)
 			if err != nil {
 				return nil, err
 			}

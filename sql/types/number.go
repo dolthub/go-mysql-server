@@ -311,7 +311,7 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t NumberTypeImpl_) MaxTextResponseByteLength() uint32 {
+func (t NumberTypeImpl_) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	// MySQL integer type limits: https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
 	// This is for a text response format, NOT a binary encoding
 	switch t.baseType {

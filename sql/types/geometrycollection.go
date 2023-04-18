@@ -98,7 +98,7 @@ func (t GeomCollType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t GeomCollType) MaxTextResponseByteLength() uint32 {
+func (t GeomCollType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return GeometryMaxByteLength
 }
 

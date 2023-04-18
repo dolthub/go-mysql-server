@@ -140,7 +140,7 @@ func (t SystemBoolType_) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t SystemBoolType_) MaxTextResponseByteLength() uint32 {
+func (t SystemBoolType_) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	// system types are not sent directly across the wire
 	return 0
 }

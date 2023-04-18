@@ -113,7 +113,7 @@ func (t TupleType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t TupleType) MaxTextResponseByteLength() uint32 {
+func (t TupleType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	// TupleTypes are never actually sent over the wire directly
 	return 0
 }

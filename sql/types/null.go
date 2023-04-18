@@ -49,7 +49,7 @@ func (t nullType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t nullType) MaxTextResponseByteLength() uint32 {
+func (t nullType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	return 0
 }
 
