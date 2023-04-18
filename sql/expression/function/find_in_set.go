@@ -119,12 +119,11 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		r = rVal.(string)
 	}
 
-	collationPreference, _ := f.CollationCoercibility(ctx)
-	if err != nil {
-		return nil, err
-	}
+	leftColl, leftCoer := sql.GetCoercibility(ctx, f.Left)
+	rightColl, rightCoer := sql.GetCoercibility(ctx, f.Right)
+	collPref, _ := sql.ResolveCoercibility(leftColl, leftCoer, rightColl, rightCoer)
 
-	strType := types.CreateLongText(collationPreference)
+	strType := types.CreateLongText(collPref)
 	for i, r := range strings.Split(r, ",") {
 		cmp, err := strType.Compare(l, r)
 		if err != nil {
