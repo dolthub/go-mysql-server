@@ -21,7 +21,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/oliveagle/jsonpath"
+	"github.com/dolthub/jsonpath"
 	"github.com/shopspring/decimal"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
