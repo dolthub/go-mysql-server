@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -380,6 +381,14 @@ func (j *JoinNode) String() string {
 func (j *JoinNode) DebugString() string {
 	pr := sql.NewTreePrinter()
 	var children []string
+
+	var columns []string
+	columns = make([]string, len(j.Schema()))
+	for i, c := range j.Schema() {
+		columns[i] = strings.ToLower(c.Name)
+	}
+	children = append(children, fmt.Sprintf("columns: %v", columns))
+
 	if j.Filter != nil {
 		if j.Op.IsMerge() {
 			filters := expression.SplitConjunction(j.Filter)

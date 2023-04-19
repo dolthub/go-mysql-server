@@ -8,10 +8,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-type ExecBuilder struct{}
+type ExecBuilder struct {
+	a *Analyzer
+}
 
-func NewExecBuilder() *ExecBuilder {
-	return &ExecBuilder{}
+func NewExecBuilder(a *Analyzer) *ExecBuilder {
+	return &ExecBuilder{
+		a: a,
+	}
 }
 
 func (b *ExecBuilder) buildRel(r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -24,7 +28,7 @@ func (b *ExecBuilder) buildRel(r relExpr, input sql.Schema, children ...sql.Node
 }
 
 func (b *ExecBuilder) buildFilters(scope *Scope, s sql.Schema, filters ...sql.Expression) (sql.Expression, error) {
-	f, _, err := FixFieldIndexesOnExpressions(scope, nil, s, filters...)
+	f, _, err := FixFieldIndexesOnExpressions(scope, b.a, s, filters...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +90,7 @@ func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.N
 	// the key lookup only has visibility into the left half of the join,
 	// so we hide the right input cols
 	sch := input[:len(input)-len(l.parent.right.relProps.OutputCols())]
-	keyExprs, _, err := FixFieldIndexesOnExpressions(l.parent.g.m.scope, nil, sch, l.keyExprs...)
+	keyExprs, _, err := FixFieldIndexesOnExpressions(l.parent.g.m.scope, b.a, sch, l.keyExprs...)
 
 	if err != nil {
 		return nil, err
@@ -285,7 +289,7 @@ func (b *ExecBuilder) buildEmptyTable(r *emptyTable, _ sql.Schema, _ ...sql.Node
 }
 
 func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, input, r.projections...)
+	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, b.a, input, r.projections...)
 	if err != nil {
 		return nil, err
 	}

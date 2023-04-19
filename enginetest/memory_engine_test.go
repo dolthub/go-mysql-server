@@ -158,6 +158,51 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestRenderPlan renders the plan for a query.
+func TestRenderPlan(t *testing.T) {
+	t.Skip()
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	engine, err := harness.NewEngine(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var setupScript setup.SetupScript = []string{
+		"CREATE table xy (x int primary key, y int, index y_idx(y));",
+		"create table rs (r int primary key, s int, index s_idx(s));",
+		"CREATE table uv (u int primary key, v int);",
+		"CREATE table ab (a int primary key, b int);",
+
+		"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+		"insert into rs values (0,0), (1,0), (2,0), (4,4), (5,4);",
+		"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+		"insert into ab values (0,2), (1,2), (2,2), (3,1);",
+	}
+	ctx := enginetest.NewContext(harness)
+	for _, statement := range setupScript {
+		enginetest.RunQueryWithContext(t, engine, harness, ctx, statement)
+	}
+
+	q := `select *
+from
+(
+    (xy JOIN ab on xy.x = ab.a) JOIN
+    (rs JOIN uv on rs.r = uv.u)
+    on xy.y = rs.s and rs.s = uv.v
+);`
+
+	t.Run("render plan for "+q, func(t *testing.T) {
+		t.Logf("query: %s", q)
+		ctx = ctx.WithQuery(q)
+
+		a, err := engine.AnalyzeQuery(ctx, q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("node: \n%s", sql.DebugString(a))
+	})
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	t.Skip()

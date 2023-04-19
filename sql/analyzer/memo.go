@@ -164,8 +164,8 @@ func (m *Memo) updateBest(grp *exprGroup, n relExpr, cost float64) {
 	grp.updateBest(n, cost)
 }
 
-func (m *Memo) bestRootPlan() (sql.Node, error) {
-	b := NewExecBuilder()
+func (m *Memo) bestRootPlan(a *Analyzer) (sql.Node, error) {
+	b := NewExecBuilder(a)
 	return buildBestJoinPlan(b, m.root, nil)
 }
 

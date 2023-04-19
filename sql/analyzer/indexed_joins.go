@@ -202,7 +202,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 		a.Log(m.String())
 	}
 
-	return m.bestRootPlan()
+	return m.bestRootPlan(a)
 }
 
 // addLookupJoins prefixes memo join group expressions with indexed join
