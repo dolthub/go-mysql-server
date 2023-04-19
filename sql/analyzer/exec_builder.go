@@ -180,7 +180,17 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 	if err != nil {
 		return nil, err
 	}
-	outerAttrs, err := b.buildFilters(j.g.m.scope, j.right.relProps.OutputCols(), expression.Tuple(j.outerAttrs))
+	var rightSchema sql.Schema
+	if _, ok := children[0].(*plan.RecursiveTable); ok {
+		rightSchema = input
+	} else if sqa, ok := children[0].(*plan.SubqueryAlias); ok && sqa.OuterScopeVisibility {
+		rightSchema = input
+	}  else {
+		rightSchema = j.right.relProps.OutputCols()
+	}
+	outerAttrs, err := b.buildFilters(j.g.m.scope, rightSchema, expression.Tuple(j.outerAttrs))
+
+	//outerAttrs, err := b.buildFilters(j.g.m.scope, j.right.relProps.OutputCols(), expression.Tuple(j.outerAttrs))
 	if err != nil {
 		return nil, err
 	}

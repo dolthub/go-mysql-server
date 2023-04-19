@@ -50,7 +50,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 // finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
 // fixing parent scopes before recursing into child nodes.
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	var joinParent sql.Node
+	var joinParent *plan.JoinNode
 	var selFunc transform.SelectorFunc = func(c transform.Context) bool {
 		if jp, ok := c.Node.(*plan.JoinNode); ok {
 			joinParent = jp
@@ -64,7 +64,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			var newSqa sql.Node
 			var same2 transform.TreeIdentity
 			var err error
-			if sqa.OuterScopeVisibility && joinParent != nil {
+			if sqa.OuterScopeVisibility && joinParent != nil && !joinParent.Op.IsLeftOuter() {
 				subScope := scope.newScopeFromSubqueryExpression(joinParent.Children()[0])
 				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 			} else {

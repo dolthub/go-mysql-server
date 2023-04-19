@@ -392,6 +392,16 @@ func convertFiltersToIndexedAccess(
 			// this probably fails for *plan.Union also, we just don't have tests for it
 			return false
 		case *plan.JoinNode:
+			// TODO: this is bad, we should do something else
+			// TODO: need to avoid changing hashlookup indexes iff the parent is a subquery alias with outerscope visibility
+			// avoid changing this very specific case
+			if _, ok := n.Left().(*plan.RecursiveTable); ok {
+				if _, ok := n.Right().(*plan.HashLookup); ok {
+					if len(scope.nodes) != 0 {
+						return false // TODO: now this may appear janky, that's because it is
+					}
+				}
+			}
 			// avoid changing anti and semi join condition indexes
 			return !n.Op.IsPartial() && !n.Op.IsFullOuter()
 		}
@@ -956,5 +966,9 @@ func pushdownFixIndices(a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transf
 	if _, ok := n.(*plan.JoinNode); ok {
 		return n, transform.SameTree, nil
 	}
+	// TODO: stop plan.HashLookup from going down this again
+	//if _, ok := n.(*plan.HashLookup); ok {
+	//	return n, transform.SameTree, nil
+	//}
 	return FixFieldIndexesForExpressions(a, n, scope)
 }

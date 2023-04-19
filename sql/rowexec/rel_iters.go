@@ -660,10 +660,15 @@ func (r *recursiveCteIter) resetIter(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
-	r.iter, err = r.b.buildNodeExec(ctx, r.rec, r.row)
+	r.iter, err = r.b.buildNodeExec(ctx, r.rec, r.row) // TODO: hmmm; should this be r.temp instead of r.row?
 	if err != nil {
 		return err
 	}
+
+	//if r.working != nil {
+	//	r.working.Buf = r.temp
+	//	r.temp = make([]sql.Row, 0)
+	//}
 	return nil
 }
 

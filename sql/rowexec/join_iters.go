@@ -96,6 +96,7 @@ func (i *joinIter) loadPrimary(ctx *sql.Context) error {
 
 func (i *joinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) {
 	if i.secondary == nil {
+		//rowIter, err := i.b.Build(ctx, i.secondaryProvider, i.parentRow)
 		rowIter, err := i.b.Build(ctx, i.secondaryProvider, i.primaryRow)
 
 		if err != nil {
@@ -188,7 +189,13 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	row := make(sql.Row, i.rowSize)
 
 	copy(row, primary)
-	copy(row[len(primary):], secondary)
+	x := i.rowSize - len(primary)
+	if len(secondary) > x {
+		copy(row[len(primary):], secondary[len(secondary) - x:]) // todo: missing strip from secondary?
+	} else {
+		copy(row[len(primary):], secondary)
+	}
+
 
 	return row
 }
