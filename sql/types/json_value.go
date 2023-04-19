@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/oliveagle/jsonpath"
+	"github.com/dolthub/jsonpath"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
