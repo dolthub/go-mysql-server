@@ -17,24 +17,41 @@
 package serial
 
 import (
-	flatbuffers "github.com/google/flatbuffers/go"
+	flatbuffers "github.com/dolthub/flatbuffers/v23/go"
 )
 
 type PrivilegeSetColumn struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetColumn {
+func InitPrivilegeSetColumnRoot(o *PrivilegeSetColumn, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if PrivilegeSetColumnNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetColumn, error) {
 	x := &PrivilegeSetColumn{}
-	x.Init(buf, n+offset)
+	return x, InitPrivilegeSetColumnRoot(x, buf, offset)
+}
+
+func GetRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetColumn {
+	x := &PrivilegeSetColumn{}
+	InitPrivilegeSetColumnRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetColumn {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetColumn, error) {
 	x := &PrivilegeSetColumn{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitPrivilegeSetColumnRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsPrivilegeSetColumn(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetColumn {
+	x := &PrivilegeSetColumn{}
+	InitPrivilegeSetColumnRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -81,8 +98,10 @@ func (rcv *PrivilegeSetColumn) MutatePrivs(j int, n int32) bool {
 	return false
 }
 
+const PrivilegeSetColumnNumFields = 2
+
 func PrivilegeSetColumnStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(PrivilegeSetColumnNumFields)
 }
 func PrivilegeSetColumnAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(name), 0)
@@ -101,17 +120,34 @@ type PrivilegeSetTable struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetTable {
+func InitPrivilegeSetTableRoot(o *PrivilegeSetTable, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if PrivilegeSetTableNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetTable, error) {
 	x := &PrivilegeSetTable{}
-	x.Init(buf, n+offset)
+	return x, InitPrivilegeSetTableRoot(x, buf, offset)
+}
+
+func GetRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetTable {
+	x := &PrivilegeSetTable{}
+	InitPrivilegeSetTableRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetTable {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetTable, error) {
 	x := &PrivilegeSetTable{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitPrivilegeSetTableRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsPrivilegeSetTable(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetTable {
+	x := &PrivilegeSetTable{}
+	InitPrivilegeSetTableRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -170,6 +206,21 @@ func (rcv *PrivilegeSetTable) Columns(obj *PrivilegeSetColumn, j int) bool {
 	return false
 }
 
+func (rcv *PrivilegeSetTable) TryColumns(obj *PrivilegeSetColumn, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if PrivilegeSetColumnNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (rcv *PrivilegeSetTable) ColumnsLength() int {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
@@ -178,8 +229,10 @@ func (rcv *PrivilegeSetTable) ColumnsLength() int {
 	return 0
 }
 
+const PrivilegeSetTableNumFields = 3
+
 func PrivilegeSetTableStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(PrivilegeSetTableNumFields)
 }
 func PrivilegeSetTableAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(name), 0)
@@ -204,17 +257,34 @@ type PrivilegeSetDatabase struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetDatabase {
+func InitPrivilegeSetDatabaseRoot(o *PrivilegeSetDatabase, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if PrivilegeSetDatabaseNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetDatabase, error) {
 	x := &PrivilegeSetDatabase{}
-	x.Init(buf, n+offset)
+	return x, InitPrivilegeSetDatabaseRoot(x, buf, offset)
+}
+
+func GetRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetDatabase {
+	x := &PrivilegeSetDatabase{}
+	InitPrivilegeSetDatabaseRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetDatabase {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSetDatabase, error) {
 	x := &PrivilegeSetDatabase{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitPrivilegeSetDatabaseRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsPrivilegeSetDatabase(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSetDatabase {
+	x := &PrivilegeSetDatabase{}
+	InitPrivilegeSetDatabaseRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -273,6 +343,21 @@ func (rcv *PrivilegeSetDatabase) Tables(obj *PrivilegeSetTable, j int) bool {
 	return false
 }
 
+func (rcv *PrivilegeSetDatabase) TryTables(obj *PrivilegeSetTable, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if PrivilegeSetTableNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (rcv *PrivilegeSetDatabase) TablesLength() int {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
@@ -281,8 +366,10 @@ func (rcv *PrivilegeSetDatabase) TablesLength() int {
 	return 0
 }
 
+const PrivilegeSetDatabaseNumFields = 3
+
 func PrivilegeSetDatabaseStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(PrivilegeSetDatabaseNumFields)
 }
 func PrivilegeSetDatabaseAddName(builder *flatbuffers.Builder, name flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(name), 0)
@@ -307,17 +394,34 @@ type PrivilegeSet struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsPrivilegeSet(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSet {
+func InitPrivilegeSetRoot(o *PrivilegeSet, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if PrivilegeSetNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsPrivilegeSet(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSet, error) {
 	x := &PrivilegeSet{}
-	x.Init(buf, n+offset)
+	return x, InitPrivilegeSetRoot(x, buf, offset)
+}
+
+func GetRootAsPrivilegeSet(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSet {
+	x := &PrivilegeSet{}
+	InitPrivilegeSetRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsPrivilegeSet(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSet {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsPrivilegeSet(buf []byte, offset flatbuffers.UOffsetT) (*PrivilegeSet, error) {
 	x := &PrivilegeSet{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitPrivilegeSetRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsPrivilegeSet(buf []byte, offset flatbuffers.UOffsetT) *PrivilegeSet {
+	x := &PrivilegeSet{}
+	InitPrivilegeSetRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -385,6 +489,21 @@ func (rcv *PrivilegeSet) Databases(obj *PrivilegeSetDatabase, j int) bool {
 	return false
 }
 
+func (rcv *PrivilegeSet) TryDatabases(obj *PrivilegeSetDatabase, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if PrivilegeSetDatabaseNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (rcv *PrivilegeSet) DatabasesLength() int {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
@@ -419,8 +538,10 @@ func (rcv *PrivilegeSet) MutateGlobalDynamicWgo(j int, n bool) bool {
 	return false
 }
 
+const PrivilegeSetNumFields = 4
+
 func PrivilegeSetStart(builder *flatbuffers.Builder) {
-	builder.StartObject(4)
+	builder.StartObject(PrivilegeSetNumFields)
 }
 func PrivilegeSetAddGlobalStatic(builder *flatbuffers.Builder, globalStatic flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(globalStatic), 0)
@@ -454,17 +575,34 @@ type User struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsUser(buf []byte, offset flatbuffers.UOffsetT) *User {
+func InitUserRoot(o *User, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if UserNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsUser(buf []byte, offset flatbuffers.UOffsetT) (*User, error) {
 	x := &User{}
-	x.Init(buf, n+offset)
+	return x, InitUserRoot(x, buf, offset)
+}
+
+func GetRootAsUser(buf []byte, offset flatbuffers.UOffsetT) *User {
+	x := &User{}
+	InitUserRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsUser(buf []byte, offset flatbuffers.UOffsetT) *User {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsUser(buf []byte, offset flatbuffers.UOffsetT) (*User, error) {
 	x := &User{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitUserRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsUser(buf []byte, offset flatbuffers.UOffsetT) *User {
+	x := &User{}
+	InitUserRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -504,6 +642,22 @@ func (rcv *User) PrivilegeSet(obj *PrivilegeSet) *PrivilegeSet {
 		return obj
 	}
 	return nil
+}
+
+func (rcv *User) TryPrivilegeSet(obj *PrivilegeSet) (*PrivilegeSet, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Indirect(o + rcv._tab.Pos)
+		if obj == nil {
+			obj = new(PrivilegeSet)
+		}
+		obj.Init(rcv._tab.Bytes, x)
+		if PrivilegeSetNumFields < obj.Table().NumFields() {
+			return nil, flatbuffers.ErrTableHasUnknownFields
+		}
+		return obj, nil
+	}
+	return nil, nil
 }
 
 func (rcv *User) Plugin() []byte {
@@ -562,8 +716,10 @@ func (rcv *User) Identity() []byte {
 	return nil
 }
 
+const UserNumFields = 9
+
 func UserStart(builder *flatbuffers.Builder) {
-	builder.StartObject(9)
+	builder.StartObject(UserNumFields)
 }
 func UserAddUser(builder *flatbuffers.Builder, user flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(user), 0)
@@ -600,17 +756,34 @@ type RoleEdge struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsRoleEdge(buf []byte, offset flatbuffers.UOffsetT) *RoleEdge {
+func InitRoleEdgeRoot(o *RoleEdge, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if RoleEdgeNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsRoleEdge(buf []byte, offset flatbuffers.UOffsetT) (*RoleEdge, error) {
 	x := &RoleEdge{}
-	x.Init(buf, n+offset)
+	return x, InitRoleEdgeRoot(x, buf, offset)
+}
+
+func GetRootAsRoleEdge(buf []byte, offset flatbuffers.UOffsetT) *RoleEdge {
+	x := &RoleEdge{}
+	InitRoleEdgeRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsRoleEdge(buf []byte, offset flatbuffers.UOffsetT) *RoleEdge {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsRoleEdge(buf []byte, offset flatbuffers.UOffsetT) (*RoleEdge, error) {
 	x := &RoleEdge{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitRoleEdgeRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsRoleEdge(buf []byte, offset flatbuffers.UOffsetT) *RoleEdge {
+	x := &RoleEdge{}
+	InitRoleEdgeRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -667,8 +840,10 @@ func (rcv *RoleEdge) MutateWithAdminOption(n bool) bool {
 	return rcv._tab.MutateBoolSlot(12, n)
 }
 
+const RoleEdgeNumFields = 5
+
 func RoleEdgeStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(RoleEdgeNumFields)
 }
 func RoleEdgeAddFromHost(builder *flatbuffers.Builder, fromHost flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(fromHost), 0)
@@ -693,17 +868,34 @@ type ReplicaSourceInfo struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) *ReplicaSourceInfo {
+func InitReplicaSourceInfoRoot(o *ReplicaSourceInfo, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if ReplicaSourceInfoNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) (*ReplicaSourceInfo, error) {
 	x := &ReplicaSourceInfo{}
-	x.Init(buf, n+offset)
+	return x, InitReplicaSourceInfoRoot(x, buf, offset)
+}
+
+func GetRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) *ReplicaSourceInfo {
+	x := &ReplicaSourceInfo{}
+	InitReplicaSourceInfoRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) *ReplicaSourceInfo {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) (*ReplicaSourceInfo, error) {
 	x := &ReplicaSourceInfo{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitReplicaSourceInfoRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsReplicaSourceInfo(buf []byte, offset flatbuffers.UOffsetT) *ReplicaSourceInfo {
+	x := &ReplicaSourceInfo{}
+	InitReplicaSourceInfoRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -784,8 +976,10 @@ func (rcv *ReplicaSourceInfo) MutateConnectRetryCount(n uint64) bool {
 	return rcv._tab.MutateUint64Slot(16, n)
 }
 
+const ReplicaSourceInfoNumFields = 7
+
 func ReplicaSourceInfoStart(builder *flatbuffers.Builder) {
-	builder.StartObject(7)
+	builder.StartObject(ReplicaSourceInfoNumFields)
 }
 func ReplicaSourceInfoAddHost(builder *flatbuffers.Builder, host flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(host), 0)
@@ -816,17 +1010,34 @@ type MySQLDb struct {
 	_tab flatbuffers.Table
 }
 
-func GetRootAsMySQLDb(buf []byte, offset flatbuffers.UOffsetT) *MySQLDb {
+func InitMySQLDbRoot(o *MySQLDb, buf []byte, offset flatbuffers.UOffsetT) error {
 	n := flatbuffers.GetUOffsetT(buf[offset:])
+	o.Init(buf, n+offset)
+	if MySQLDbNumFields < o.Table().NumFields() {
+		return flatbuffers.ErrTableHasUnknownFields
+	}
+	return nil
+}
+
+func TryGetRootAsMySQLDb(buf []byte, offset flatbuffers.UOffsetT) (*MySQLDb, error) {
 	x := &MySQLDb{}
-	x.Init(buf, n+offset)
+	return x, InitMySQLDbRoot(x, buf, offset)
+}
+
+func GetRootAsMySQLDb(buf []byte, offset flatbuffers.UOffsetT) *MySQLDb {
+	x := &MySQLDb{}
+	InitMySQLDbRoot(x, buf, offset)
 	return x
 }
 
-func GetSizePrefixedRootAsMySQLDb(buf []byte, offset flatbuffers.UOffsetT) *MySQLDb {
-	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+func TryGetSizePrefixedRootAsMySQLDb(buf []byte, offset flatbuffers.UOffsetT) (*MySQLDb, error) {
 	x := &MySQLDb{}
-	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x, InitMySQLDbRoot(x, buf, offset+flatbuffers.SizeUint32)
+}
+
+func GetSizePrefixedRootAsMySQLDb(buf []byte, offset flatbuffers.UOffsetT) *MySQLDb {
+	x := &MySQLDb{}
+	InitMySQLDbRoot(x, buf, offset+flatbuffers.SizeUint32)
 	return x
 }
 
@@ -851,6 +1062,21 @@ func (rcv *MySQLDb) User(obj *User, j int) bool {
 	return false
 }
 
+func (rcv *MySQLDb) TryUser(obj *User, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if UserNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (rcv *MySQLDb) UserLength() int {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
@@ -869,6 +1095,21 @@ func (rcv *MySQLDb) RoleEdges(obj *RoleEdge, j int) bool {
 		return true
 	}
 	return false
+}
+
+func (rcv *MySQLDb) TryRoleEdges(obj *RoleEdge, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if RoleEdgeNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 func (rcv *MySQLDb) RoleEdgesLength() int {
@@ -891,6 +1132,21 @@ func (rcv *MySQLDb) ReplicaSourceInfo(obj *ReplicaSourceInfo, j int) bool {
 	return false
 }
 
+func (rcv *MySQLDb) TryReplicaSourceInfo(obj *ReplicaSourceInfo, j int) (bool, error) {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		if ReplicaSourceInfoNumFields < obj.Table().NumFields() {
+			return false, flatbuffers.ErrTableHasUnknownFields
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (rcv *MySQLDb) ReplicaSourceInfoLength() int {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
@@ -899,8 +1155,10 @@ func (rcv *MySQLDb) ReplicaSourceInfoLength() int {
 	return 0
 }
 
+const MySQLDbNumFields = 3
+
 func MySQLDbStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(MySQLDbNumFields)
 }
 func MySQLDbAddUser(builder *flatbuffers.Builder, user flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(user), 0)

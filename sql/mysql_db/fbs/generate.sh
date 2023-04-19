@@ -10,8 +10,12 @@ if [ ! -z "$(ls $GEN_DIR)" ]; then
     rm $GEN_DIR/*.go
 fi
 
+# Last generated with github.com/dolthub/flatbuffers v23.3.3-dh.2
+
+FLATC=${FLATC:=flatc}
+
 # generate golang (de)serialization package
-flatc -o $GEN_DIR --gen-onefile --filename-suffix "" --gen-mutable --go-namespace "serial" --go mysql_db.fbs
+"$FLATC" -o $GEN_DIR --gen-onefile --filename-suffix "" --gen-mutable --go-namespace "serial" --go mysql_db.fbs
 
 # prefix files with copyright header
 for FILE in $GEN_DIR/*.go;
