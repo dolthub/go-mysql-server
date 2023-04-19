@@ -191,11 +191,10 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	copy(row, primary)
 	x := i.rowSize - len(primary)
 	if len(secondary) > x {
-		copy(row[len(primary):], secondary[len(secondary) - x:]) // todo: missing strip from secondary?
+		copy(row[len(primary):], secondary[len(secondary)-x:]) // todo: missing strip from secondary?
 	} else {
 		copy(row[len(primary):], secondary)
 	}
-
 
 	return row
 }

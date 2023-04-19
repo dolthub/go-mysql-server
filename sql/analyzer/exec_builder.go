@@ -185,7 +185,7 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 		rightSchema = input
 	} else if sqa, ok := children[0].(*plan.SubqueryAlias); ok && sqa.OuterScopeVisibility {
 		rightSchema = input
-	}  else {
+	} else {
 		rightSchema = j.right.relProps.OutputCols()
 	}
 	outerAttrs, err := b.buildFilters(j.g.m.scope, rightSchema, expression.Tuple(j.outerAttrs))

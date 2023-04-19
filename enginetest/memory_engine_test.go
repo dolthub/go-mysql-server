@@ -211,7 +211,7 @@ func TestSingleScript(t *testing.T) {
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `
+					Query: `
 SELECT (
     SELECT i
     FROM mytable
@@ -244,7 +244,6 @@ FROM DUAL;`,
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-
 
 	//t.Skip()
 	//var scripts = []queries.ScriptTest{
