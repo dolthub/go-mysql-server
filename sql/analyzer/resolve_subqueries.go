@@ -485,16 +485,11 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // TODO(max): join iterators should inline remove parentRow + scope,
 // deprecate this rule.
 func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	scopeLen := len(scope.Schema())
-	if scopeLen == 0 {
-		return n, transform.SameTree, nil
-	}
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if j, ok := n.(*plan.JoinNode); ok {
-			if j.ScopeLen > 0 {
-				scopeLen = j.ScopeLen
-			}
-			nj := j.WithScopeLen(scopeLen)
+	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := n.(type) {
+		case *plan.JoinNode:
+			scopeLen := n.ScopeLen
+			nj := n.WithScopeLen(scopeLen)
 			if _, ok := nj.Left().(*plan.StripRowNode); !ok {
 				nj, err := nj.WithChildren(
 					plan.NewStripRowNode(nj.Left(), scopeLen),
@@ -507,7 +502,19 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 			} else {
 				return nj, transform.NewTree, nil
 			}
+		case sql.Expressioner:
+			return transform.NodeExprs(n.(sql.Node), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if sqe, ok := e.(*plan.Subquery); ok {
+					newQ, _, err := setJoinScopeLen(ctx, a, sqe.Query, scope, sel)
+					if err != nil {
+						return e, transform.SameTree, err
+					}
+					return sqe.WithQuery(newQ), transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
+			})
 		}
+
 		return n, transform.SameTree, nil
 	})
 }

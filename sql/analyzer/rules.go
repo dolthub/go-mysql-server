@@ -116,7 +116,6 @@ var OnceAfterDefault = []Rule{
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{replaceSortPkId, replacePkSort},
-	{setJoinScopeLenId, setJoinScopeLen},
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
@@ -148,6 +147,7 @@ var DefaultValidationRules = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
+	{setJoinScopeLenId, setJoinScopeLen},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},

@@ -79,6 +79,7 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 		memos:          s.memos,
 		recursionDepth: s.recursionDepth + 1,
 		procedures:     s.procedures,
+		joinSiblings:   s.joinSiblings,
 	}
 }
 
@@ -105,7 +106,13 @@ func (s *Scope) newScopeInJoin(node sql.Node) *Scope {
 			break
 		}
 	}
-	subScope := s.newScope(node)
+	subScope := &Scope{
+		nodes:          s.nodes,
+		memos:          s.memos,
+		recursionDepth: s.recursionDepth + 1,
+		procedures:     s.procedures,
+		joinSiblings:   s.joinSiblings,
+	}
 	subScope.joinSiblings = append(subScope.joinSiblings, node)
 	return subScope
 }
@@ -136,10 +143,13 @@ func (s *Scope) newScopeFromSubqueryAlias(sqa *plan.SubqueryAlias) *Scope {
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
 		if s.currentNodeIsFromSubqueryExpression {
 			sqa.OuterScopeVisibility = true
+			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		} else if len(s.joinSiblings) > 0 {
+			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		}
+
 	}
 
 	return subScope

@@ -85,6 +85,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 		subqueryCtx, cancelFunc := ctx.NewSubContext()
 		defer cancelFunc()
 
+		scope.SetJoin(false)
 		// TODO we could detect tree modifications here, skip rebuilding
 		left, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Left(), scope, "default-rules", NewFinalizeUnionSel(sel))
 		if err != nil {
