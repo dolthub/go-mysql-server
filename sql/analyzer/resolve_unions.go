@@ -91,10 +91,14 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			return nil, transform.SameTree, err
 		}
 
+		scope.SetJoin(false)
+
 		right, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Right(), scope, "default-rules", NewFinalizeUnionSel(sel))
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		scope.SetJoin(false)
 
 		newn, err := n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
 		if err != nil {
