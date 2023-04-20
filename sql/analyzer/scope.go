@@ -37,6 +37,16 @@ type Scope struct {
 	enforceReadOnly bool
 
 	procedures *ProcedureCache
+
+	inJoin       bool
+	joinSiblings []sql.Node
+}
+
+func (s *Scope) SetJoin(b bool) {
+	if s == nil {
+		return
+	}
+	s.inJoin = b
 }
 
 func (s *Scope) IsEmpty() bool {
@@ -80,6 +90,39 @@ func (s *Scope) newScopeFromSubqueryExpression(node sql.Node) *Scope {
 	return subScope
 }
 
+// newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
+// node.
+func (s *Scope) newScopeInJoin(node sql.Node) *Scope {
+	for {
+		var done bool
+		switch n := node.(type) {
+		case *plan.StripRowNode:
+			node = n.Child
+		default:
+			done = true
+		}
+		if done {
+			break
+		}
+	}
+	subScope := s.newScope(node)
+	subScope.joinSiblings = append(subScope.joinSiblings, node)
+	return subScope
+}
+
+// newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
+// node.
+//func (s *Scope) newScopeApplyJoin() *Scope {
+//	if s == nil {
+//		return s
+//	}
+//subScope := s
+//for _, s := range s.joinSiblings {
+//	subScope = subScope.newScope(s)
+//}
+//return subScope
+//}
+
 // newScopeFromSubqueryAlias returns a new subscope created from the specified SubqueryAlias. Subquery aliases, or
 // derived tables, generally do NOT have any visibility to outer scopes, but when they are nested inside a subquery
 // expression, they may reference tables from the scopes outside the subquery expression's scope.
@@ -93,6 +136,8 @@ func (s *Scope) newScopeFromSubqueryAlias(sqa *plan.SubqueryAlias) *Scope {
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
 		if s.currentNodeIsFromSubqueryExpression {
 			sqa.OuterScopeVisibility = true
+			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+		} else if len(s.joinSiblings) > 0 {
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		}
 	}
@@ -226,6 +271,11 @@ func (s *Scope) Schema() sql.Schema {
 				// TODO: log this
 				// panic(fmt.Sprintf("Unsupported scope node %T", n))
 			}
+		}
+	}
+	if s != nil && s.inJoin {
+		for _, n := range s.joinSiblings {
+			schema = append(schema, n.Schema()...)
 		}
 	}
 	return schema
