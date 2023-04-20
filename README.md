@@ -88,12 +88,12 @@ func main() {
 		Address:  fmt.Sprintf("%s:%d", address, port),
 	}
 
-    s, err := server.NewDefaultServer(config, engine)
+	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
 		panic(err)
 	}
 	
-    if err = s.Start(); err != nil {
+	if err = s.Start(); err != nil {
 		panic(err)
 	}
 }
