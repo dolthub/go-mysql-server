@@ -129,7 +129,7 @@ func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sq
 		return node, transform.SameTree, nil
 	}
 
-	n, sameC, err := transform.OneNodeExprsWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	n, sameC, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		for _, schema := range schemas {
 			fixed, same, err := FixFieldIndexes(scope, a, schema, e)
 			if err == nil {
