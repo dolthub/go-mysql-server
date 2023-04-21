@@ -541,7 +541,7 @@ func (j JSONReplace) IsUnsupported() bool {
 // Otherwise, a path-value pair for a non-existing path in the document is ignored and has no effect.
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-set
-type JSONSet struct {
+/*type JSONSet struct {
 	sql.Expression
 }
 
@@ -565,7 +565,7 @@ func (j JSONSet) Description() string {
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (j JSONSet) IsUnsupported() bool {
 	return true
-}
+}*/
 
 //////////////////////////////
 // JSON attribute functions //
