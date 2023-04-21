@@ -136,7 +136,6 @@ func (s *Scope) newScopeFromSubqueryAlias(sqa *plan.SubqueryAlias) *Scope {
 			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		}
-
 	}
 
 	return subScope
