@@ -206,7 +206,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "the problem query",
+			Name: "the problem query",
 			SetUpScript: []string{
 				"CREATE TABLE loc (id char(32),_name varchar(100),parent_id char(32));",
 				"INSERT INTO loc (id,_name,parent_id) VALUES ('c5bbfcce3b144056a285a3f4369a36c8','Building-00000001','51070a3cac7e4da9b8bd2f4432e7723d');",
@@ -215,7 +215,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `
+					Query: `
 WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
     SELECT 0, CAST(CONCAT("|", id, "|") AS char(1000)), CAST(CONCAT("|", CONCAT(_name, "|")) AS char(1000)), T.id
     FROM loc T
