@@ -64,9 +64,17 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			var newSqa sql.Node
 			var same2 transform.TreeIdentity
 			var err error
-			if sqa.OuterScopeVisibility && joinParent != nil && !joinParent.Op.IsLeftOuter() && c.ChildNum == 1 {
-				subScope := scope.newScopeInJoin(joinParent.Children()[0])
-				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+			if sqa.OuterScopeVisibility && joinParent != nil && !joinParent.Op.IsLeftOuter() {
+				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok {
+					if stripChild.Child == sqa {
+						subScope := scope.newScopeInJoin(joinParent.Children()[0])
+						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+					} else {
+						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+					}
+				} else {
+					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+				}
 			} else {
 				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
 			}
@@ -485,12 +493,31 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // TODO(max): join iterators should inline remove parentRow + scope,
 // deprecate this rule.
 func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.JoinNode:
-			scopeLen := n.ScopeLen
-			nj := n.WithScopeLen(scopeLen)
+	scopeLen := len(scope.Schema())
+	if scopeLen == 0 {
+		return n, transform.SameTree, nil
+	}
+
+	joinlessScopeLen := scopeLen
+	if scope.inJoin {
+		scope.SetJoin(false)
+		joinlessScopeLen = len(scope.Schema())
+		scope.SetJoin(true)
+	}
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if j, ok := n.(*plan.JoinNode); ok {
+			nj := j.WithScopeLen(scopeLen)
 			if _, ok := nj.Left().(*plan.StripRowNode); !ok {
+				if _, ok := nj.Right().(*plan.HashLookup); ok {
+					nnj, err := nj.WithChildren(
+						plan.NewStripRowNode(nj.Left(), joinlessScopeLen),
+						plan.NewStripRowNode(nj.Right(), joinlessScopeLen),
+					)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					return nnj, transform.NewTree, nil
+				}
 				nj, err := nj.WithChildren(
 					plan.NewStripRowNode(nj.Left(), scopeLen),
 					plan.NewStripRowNode(nj.Right(), scopeLen),
@@ -502,19 +529,7 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 			} else {
 				return nj, transform.NewTree, nil
 			}
-		case sql.Expressioner:
-			return transform.NodeExprs(n.(sql.Node), func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if sqe, ok := e.(*plan.Subquery); ok {
-					newQ, _, err := setJoinScopeLen(ctx, a, sqe.Query, scope, sel)
-					if err != nil {
-						return e, transform.SameTree, err
-					}
-					return sqe.WithQuery(newQ), transform.NewTree, nil
-				}
-				return e, transform.SameTree, nil
-			})
 		}
-
 		return n, transform.SameTree, nil
 	})
 }

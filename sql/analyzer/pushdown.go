@@ -953,7 +953,7 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 // pushdownFixIndices fixes field indices for non-join expressions (replanJoin
 // is responsible for join filters and conditions.)
 func pushdownFixIndices(a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	switch n.(type) {
+	switch n := n.(type) {
 	case *plan.JoinNode, *plan.HashLookup:
 		return n, transform.SameTree, nil
 	}

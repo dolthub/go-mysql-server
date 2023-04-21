@@ -78,7 +78,10 @@ func (srn *StripRowNode) String() string {
 }
 
 func (srn *StripRowNode) DebugString() string {
-	return sql.DebugString(srn.Child)
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("StripRow: %d", srn.NumCols)
+	_ = pr.WriteChildren(sql.DebugString(srn.Child))
+	return pr.String()
 }
 
 func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
