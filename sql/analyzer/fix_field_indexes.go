@@ -61,9 +61,6 @@ func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expre
 				newIndex := scopeLen + i
 				if e.Name() == col.Name && e.Table() == col.Source {
 					if newIndex != e.Index() {
-						if e.Name() == "parent_id" {
-							print()
-						}
 						a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
 						return expression.NewGetFieldWithTable(
 							newIndex,
@@ -87,9 +84,6 @@ func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expre
 					if e.Name() == col.Name && e.Table() == col.Source {
 						newIndex := scopeLen - offset + i
 						if e.Index() != newIndex {
-							if e.Name() == "parent_id" {
-								print()
-							}
 							a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
 							return expression.NewGetFieldWithTable(
 								newIndex,
@@ -136,10 +130,6 @@ func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sq
 	}
 
 	n, sameC, err := transform.OneNodeExprsWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if _, ok := n.(*plan.HashLookup); ok {
-			print()
-		}
-
 		for _, schema := range schemas {
 			fixed, same, err := FixFieldIndexes(scope, a, schema, e)
 			if err == nil {
