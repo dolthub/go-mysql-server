@@ -4,9 +4,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -16,10 +18,11 @@ import (
 )
 
 type PlanBuilder struct {
-	ctx   *sql.Context
-	cat   sql.Catalog
-	tabId uint16
-	colI  uint16
+	ctx             *sql.Context
+	cat             *analyzer.Catalog
+	tabId           uint16
+	colI            uint16
+	currentDatabase sql.Database
 }
 
 func (b *PlanBuilder) newScope() *scope {
@@ -214,8 +217,6 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 
 	// build individual table, collect column definitions
 	switch t := (te).(type) {
-	default:
-		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
 	case *ast.AliasedTableExpr:
 		// TODO: Add support for qualifier.
 		switch e := t.Expr.(type) {
@@ -270,13 +271,7 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 		}
 
 	case *ast.TableFuncExpr:
-		return b.buildTableFunc(inScope)
-		exprs, err := selectExprsToExpressions(ctx, t.Exprs)
-		if err != nil {
-			return nil, err
-		}
-
-		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
+		return b.buildTableFunc(inScope, t)
 
 	case *ast.JoinTableExpr:
 		return b.buildJoin(inScope, t)
@@ -288,14 +283,119 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 		if len(t.Exprs) == 1 {
 			switch j := t.Exprs[0].(type) {
 			case *ast.JoinTableExpr:
-				return joinTableExpr(ctx, j)
+				return b.buildJoin(inScope, j)
 			default:
 				b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
 			}
 		} else {
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
 		}
+	default:
+		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
 	}
+	return
+}
+
+func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
+	//TODO what are valid mysql table arguments
+	args := make([]sql.Expression, 0, len(t.Exprs))
+	for _, e := range t.Exprs {
+		switch e := e.(type) {
+		case *ast.AliasedExpr:
+			expr := b.buildScalar(inScope, e.Expr)
+
+			if !e.As.IsEmpty() {
+				b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
+			}
+
+			if selectExprNeedsAlias(e, expr) {
+				b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
+			}
+
+			args = append(args, expr)
+		default:
+			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
+		}
+	}
+
+	utf := expression.NewUnresolvedTableFunction(t.Name, args)
+
+	tableFunction, err := b.cat.TableFunction(b.ctx, utf.Name())
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	database := b.currentDb()
+
+	var hasBindVarArgs bool
+	for _, arg := range utf.Arguments {
+		if _, ok := arg.(*expression.BindVar); ok {
+			hasBindVarArgs = true
+			break
+		}
+	}
+
+	outScope = inScope.push()
+	outScope.ast = t
+	if hasBindVarArgs {
+		// TODO deferred tableFunction
+	}
+
+	newInstance, err := tableFunction.NewInstance(b.ctx, database, utf.Arguments)
+	if err != nil {
+		b.handleErr(err)
+	}
+	outScope.node = newInstance
+	for _, c := range newInstance.Schema() {
+		outScope.addColumn(scopeColumn{
+			db:    database.Name(),
+			table: "",
+			col:   c.Name,
+			typ:   c.Type,
+		})
+	}
+	return
+}
+
+func (b *PlanBuilder) currentDb() sql.Database {
+	if b.currentDatabase == nil {
+		database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+			database = privilegedDatabase.Unwrap()
+		}
+		b.currentDatabase = database
+	}
+	return b.currentDatabase
+}
+func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
+	switch e := se.(type) {
+	case *ast.StarExpr:
+		if e.TableName.IsEmpty() {
+			// TODO all columns from inscope
+			return expression.NewStar()
+		}
+		// TODO lookup table's columns
+		return expression.NewQualifiedStar(e.TableName.Name.String())
+	case *ast.AliasedExpr:
+		expr := b.buildScalar(inScope, e.Expr)
+
+		if !e.As.IsEmpty() {
+			return expression.NewAlias(e.As.String(), expr)
+		}
+
+		if selectExprNeedsAlias(e, expr) {
+			return expression.NewAlias(e.InputExpression, expr)
+		}
+
+		return expr
+	default:
+		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
+	}
+	return nil
 }
 
 func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
@@ -335,12 +435,12 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 	return outScope
 }
 
-func (b *PlanBuilder) renameSource(scope *scope, table string, cols []string) (outScope *scope) {
+func (b *PlanBuilder) renameSource(scope *scope, table string, cols []string) {
 	if table != "" {
 		scope.setTableAlias(table)
 	}
 	if len(cols) > 0 {
-		scope.set
+		scope.setColAlias(cols)
 	}
 }
 
@@ -438,7 +538,11 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		c := b.buildScalar(inScope, v.Expr)
 		return expression.NewNot(c)
 	case *ast.SQLVal:
-		return convertVal(ctx, v)
+		val, err := convertVal(b.ctx, v)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return val
 	case ast.BoolVal:
 		return expression.NewLiteral(bool(v), types.Boolean)
 	case *ast.NullVal:
@@ -452,7 +556,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		}
 		return expression.NewUnresolvedColumn(v.Name.String())
 	case *ast.FuncExpr:
-		exprs, err := selectExprsToExpressions(ctx, v.Exprs)
+		exprs, err := selectExprsTolExpressions(ctx, v.Exprs)
 		if err != nil {
 			return nil
 		}
@@ -585,8 +689,10 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		col := b.buildScalar(inScope, v.Name)
 		return expression.NewUnresolvedFunction("values", false, nil, col)
 	case *ast.ExistsExpr:
-		subqueryExp := b.buildScalar(inScope, v.Subquery)
-		sq, ok := subqueryExp.(*plan.Subquery)
+		sqScope := b.buildSelectStmt(inScope, v.Subquery.Select)
+		// rebuild subquery
+		// renameColumns
+		sq, ok := sqScope.node.(*plan.Subquery)
 		if !ok {
 			return nil
 		}
