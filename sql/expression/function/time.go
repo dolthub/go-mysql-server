@@ -1383,7 +1383,7 @@ func (c CurrTime) WithChildren(children ...sql.Expression) (sql.Expression, erro
 const maxCurrTimestampPrecision = 6
 
 type CurrTimestamp struct {
-	args []sql.Expression
+	Args []sql.Expression
 }
 
 func (c *CurrTimestamp) IsNonDeterministic() bool {
@@ -1413,16 +1413,16 @@ func NewCurrTimestamp(args ...sql.Expression) (sql.Expression, error) {
 }
 
 func (c *CurrTimestamp) String() string {
-	if len(c.args) == 0 {
+	if len(c.Args) == 0 {
 		return fmt.Sprintf("CURRENT_TIMESTAMP()")
 	}
-	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.args[0].String())
+	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.Args[0].String())
 }
 
 func (c *CurrTimestamp) Type() sql.Type { return types.Datetime }
 
 func (c *CurrTimestamp) IsNullable() bool {
-	for _, arg := range c.args {
+	for _, arg := range c.Args {
 		if arg.IsNullable() {
 			return true
 		}
@@ -1431,7 +1431,7 @@ func (c *CurrTimestamp) IsNullable() bool {
 }
 
 func (c *CurrTimestamp) Resolved() bool {
-	for _, arg := range c.args {
+	for _, arg := range c.Args {
 		if !arg.Resolved() {
 			return false
 		}
@@ -1440,31 +1440,31 @@ func (c *CurrTimestamp) Resolved() bool {
 }
 
 func (c *CurrTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != len(c.args) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), len(c.args))
+	if len(children) != len(c.Args) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), len(c.Args))
 	}
 	return NewCurrTimestamp(children...)
 }
 
 func (c *CurrTimestamp) Children() []sql.Expression {
-	return c.args
+	return c.Args
 }
 
 func (c *CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// If no arguments, just return with 0 precision
-	if len(c.args) == 0 {
+	if len(c.Args) == 0 {
 		t := ctx.QueryTime()
 		_t := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, t.Location())
 		return _t, nil
 	}
 
 	// If argument is null
-	if c.args[0] == nil {
+	if c.Args[0] == nil {
 		return nil, ErrTimeUnexpectedlyNil.New(c.FunctionName())
 	}
 
 	// Evaluate value
-	val, err := c.args[0].Eval(ctx, row)
+	val, err := c.Args[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

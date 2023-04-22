@@ -3056,6 +3056,9 @@ func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {
+	if len(cols) == 0 {
+		return nil
+	}
 	res := make([]string, len(cols))
 	for i, c := range cols {
 		res[i] = c.String()
@@ -3282,7 +3285,7 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 		return nil, err
 	}
 
-	return plan.NewJSONTable(ctx, data, t.Path, paths, t.Alias.String(), sch)
+	return plan.NewJSONTable(data, t.Path, paths, t.Alias.String(), sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
