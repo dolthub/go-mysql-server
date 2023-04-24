@@ -204,54 +204,15 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "the problem query",
-			SetUpScript: []string{
-				"CREATE TABLE loc (id char(32),_name varchar(100),parent_id char(32));",
-				"INSERT INTO loc (id,_name,parent_id) VALUES ('c5bbfcce3b144056a285a3f4369a36c8','Building-00000001','51070a3cac7e4da9b8bd2f4432e7723d');",
-				"INSERT INTO loc (id,_name,parent_id) VALUES ('51070a3cac7e4da9b8bd2f4432e7723d','Campus-00000000',NULL);",
-				"INSERT INTO loc (id,_name,parent_id) VALUES ('a0a7c77ee95d4d0a8f9dd0beea5ead1b','Elevator-00000002','c5bbfcce3b144056a285a3f4369a36c8');",
-			},
+			Name:        "trigger with signal and user var",
+			SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `
-WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
-    SELECT 0, CAST(CONCAT("|", id, "|") AS char(1000)), CAST(CONCAT("|", CONCAT(_name, "|")) AS char(1000)), T.id
-    FROM loc T
-    WHERE T.parent_id IS NULL
-
-    UNION ALL
-
-    SELECT __tree.tree_depth + 1, CONCAT(__tree.tree_path, T2.id, "|"), CONCAT(__tree.tree_ordering, CONCAT(T2._name, "|")), T2.id
-    FROM __tree, loc T2
-    WHERE __tree.tree_pk = T2.parent_id
-)
-    
-SELECT count(*)
-FROM __tree, loc 
-LEFT OUTER JOIN loc T2 ON loc.parent_id = T2.id
-
-WHERE (__tree.tree_pk = loc.id) AND loc.id IN (
-    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
-        SELECT 0, CAST(CONCAT("|", id, "|") AS char(1000)), CAST(CONCAT("|", CONCAT(_name, "|")) AS char(1000)), T.id
-        FROM loc T
-        WHERE T.parent_id IS NULL
-
-        UNION ALL
-
-        SELECT __tree.tree_depth + 1, CONCAT(__tree.tree_path, T2.id, "|"), CONCAT(__tree.tree_ordering, CONCAT(T2._name, "|")), T2.id
-        FROM __tree, loc T2
-        WHERE __tree.tree_pk = T2.parent_id
-    )
-
-    SELECT U0.id
-    FROM loc U0 , __tree
-    WHERE __tree.tree_pk = loc.id AND U0.id IN ('a0a7c77ee95d4d0a8f9dd0beea5ead1b', '51070a3cac7e4da9b8bd2f4432e7723d', 'c5bbfcce3b144056a285a3f4369a36c8')
-);`,
-					Expected: []sql.Row{
-						{3}, // :)
-					},
+					Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
+					Expected: []sql.Row{},
 				},
 			},
 		},
@@ -263,35 +224,11 @@ WHERE (__tree.tree_pk = loc.id) AND loc.id IN (
 		if err != nil {
 			panic(err)
 		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
-
-	//t.Skip()
-	//var scripts = []queries.ScriptTest{
-	//	{
-	//		Name:        "trigger with signal and user var",
-	//		SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
-	//		Assertions: []queries.ScriptTestAssertion{
-	//			{
-	//				Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
-	//				Expected: []sql.Row{},
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//for _, test := range scripts {
-	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-	//	engine, err := harness.NewEngine(t)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	engine.Analyzer.Debug = true
-	//	engine.Analyzer.Verbose = true
-	//
-	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
-	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
