@@ -59,7 +59,6 @@ var parallelVals = []int{
 	2,
 }
 
-
 // TODO: delete this
 func TestConvenience(t *testing.T) {
 	TestQueriesSimple(t)
