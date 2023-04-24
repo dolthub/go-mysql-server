@@ -343,44 +343,6 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 	return plan.NewResolvedTable(toTable, to.Database, to.AsOf).WithComment(from.Comment()).(*plan.ResolvedTable)
 }
 
-// TODO: delete this
-// validateDropTables2 returns an error if the database is not droppable.
-func validateDropTables2(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	dt, ok := n.(*plan.DropTable)
-	if !ok {
-		return n, transform.SameTree, nil
-	}
-
-	// validates that each table in DropTable is ResolvedTable and each database of
-	// each table is TableDropper (each table can be of different database later on)
-	var resolvedTables []sql.Node
-	for _, table := range dt.Tables {
-		switch t := table.(type) {
-		case *plan.ResolvedTable:
-			_, ok = t.Database.(sql.TableDropper)
-			if !ok {
-				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database.Name())
-			}
-			resolvedTables = append(resolvedTables, table)
-		case *plan.UnresolvedTable:
-			if dt.IfExists() {
-				ctx.Session.Warn(&sql.Warning{
-					Level:   "Note",
-					Code:    mysql.ERBadTable,
-					Message: sql.ErrUnknownTable.New(t.Name()).Error(),
-				})
-			} else {
-				return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
-			}
-		default:
-			return nil, transform.SameTree, sql.ErrUnknownTable.New(getTableName(table))
-		}
-	}
-
-	newn, _ := n.WithChildren(resolvedTables...)
-	return newn, transform.NewTree, nil
-}
-
 // pruneDropTables removes all nodes that are not `*plan.ResolvedTable` from `plan.DropTable.Tables`
 func pruneDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
