@@ -2969,42 +2969,50 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "recursive cte within subquery within two joins",
 		SetUpScript: []string{
-			"create table keyless (c0 int, c1 int)",
-			"insert into keyless values (0,0), (1,1), (1,1), (2,2)",
+			"CREATE TABLE loc (id char(32),_name varchar(100),parent_id char(32));",
+			"INSERT INTO loc (id,_name,parent_id) VALUES ('c5bbfcce3b144056a285a3f4369a36c8','Building-00000001','51070a3cac7e4da9b8bd2f4432e7723d');",
+			"INSERT INTO loc (id,_name,parent_id) VALUES ('51070a3cac7e4da9b8bd2f4432e7723d','Campus-00000000',NULL);",
+			"INSERT INTO loc (id,_name,parent_id) VALUES ('a0a7c77ee95d4d0a8f9dd0beea5ead1b','Elevator-00000002','c5bbfcce3b144056a285a3f4369a36c8');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `
-	
-	SELECT *
-	FROM keyless
-	WHERE keyless.c0 IN (
-	
-		WITH RECURSIVE cte(depth, i, j) AS (
-		    SELECT 0, T1.c0, T1.c1
-		    FROM keyless T1
-		    WHERE T1.c0 = 0
-	
-		    UNION ALL
-	
-		    SELECT cte.depth + 1, cte.i, T2.c1 + 1
-		    FROM cte, keyless T2
-		    WHERE cte.depth = T2.c0
-		)
-	
-		SELECT U0.c0
-		FROM keyless U0, cte
-		WHERE cte.j = keyless.c0
-	
-	)
-    ORDER BY c0;
-;`,
+WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+    SELECT 0, CAST(CONCAT("|", id, "|") AS char(1000)), CAST(CONCAT("|", CONCAT(_name, "|")) AS char(1000)), T.id
+    FROM loc T
+    WHERE T.parent_id IS NULL
+
+    UNION ALL
+
+    SELECT __tree.tree_depth + 1, CONCAT(__tree.tree_path, T2.id, "|"), CONCAT(__tree.tree_ordering, CONCAT(T2._name, "|")), T2.id
+    FROM __tree, loc T2
+    WHERE __tree.tree_pk = T2.parent_id
+)
+    
+SELECT count(*)
+FROM __tree, loc 
+LEFT OUTER JOIN loc T2 ON loc.parent_id = T2.id
+
+WHERE (__tree.tree_pk = loc.id) AND loc.id IN (
+    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+        SELECT 0, CAST(CONCAT("|", id, "|") AS char(1000)), CAST(CONCAT("|", CONCAT(_name, "|")) AS char(1000)), T.id
+        FROM loc T
+        WHERE T.parent_id IS NULL
+
+        UNION ALL
+
+        SELECT __tree.tree_depth + 1, CONCAT(__tree.tree_path, T2.id, "|"), CONCAT(__tree.tree_ordering, CONCAT(T2._name, "|")), T2.id
+        FROM __tree, loc T2
+        WHERE __tree.tree_pk = T2.parent_id
+    )
+
+    SELECT U0.id
+    FROM loc U0 , __tree
+    WHERE __tree.tree_pk = loc.id AND U0.id IN ('a0a7c77ee95d4d0a8f9dd0beea5ead1b', '51070a3cac7e4da9b8bd2f4432e7723d', 'c5bbfcce3b144056a285a3f4369a36c8')
+);`,
 
 				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{1, 1},
-					{2, 2},
+					{3},
 				},
 			},
 		},
