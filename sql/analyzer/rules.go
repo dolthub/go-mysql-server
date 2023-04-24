@@ -34,6 +34,7 @@ var OnceBeforeDefault = []Rule{
 	{resolveCtesId, resolveCommonTableExpressions},
 	{liftRecursiveCtesId, hoistRecursiveCte},
 	{validateCreateProcedureId, validateCreateProcedure},
+	{resolveCreateProcedureId, resolveCreateProcedure},
 	{resolveDatabasesId, resolveDatabases},
 	{resolveTablesId, resolveTables},
 	{reresolveTablesId, reresolveTables},

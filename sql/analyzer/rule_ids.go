@@ -44,6 +44,7 @@ const (
 	validateColumnDefaultsId                     // validateColumnDefaults
 	validateCreateTriggerId                      // validateCreateTrigger
 	validateCreateProcedureId                    // validateCreateProcedure
+	resolveCreateProcedureId                     // resolveCreateProcedure
 	loadInfoSchemaId                             // loadInfoSchema
 	validateReadOnlyDatabaseId                   // validateReadOnlyDatabase
 	validateReadOnlyTransactionId                // validateReadOnlyTransaction
