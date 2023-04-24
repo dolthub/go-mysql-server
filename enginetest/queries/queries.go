@@ -7963,7 +7963,11 @@ WITH RECURSIVE cte(i, j) AS (
 )
 SELECT *
 FROM mytable;`,
-		Expected: []sql.Row{{"0.0720000000"}},
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
 	},
 
 }
