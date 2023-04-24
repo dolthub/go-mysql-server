@@ -7946,6 +7946,26 @@ var BrokenQueries = []QueryTest{
 		Query:    "select 2000.0 / 250000000.0 * (24.0 * 6.0 * 6.25 * 10.0);",
 		Expected: []sql.Row{{"0.0720000000"}},
 	},
+	{
+		// This panics
+		// The non-recursive part of the UNION ALL returns too many rows, causing index out of bounds errors
+		// Without the join on mytable and cte, this error is caught
+		Query:    `
+WITH RECURSIVE cte(i, j) AS (
+    SELECT 0, 1, 2
+    FROM mytable
+
+    UNION ALL
+    
+    SELECT *
+    FROM mytable, cte
+    WHERE cte.i = mytable.i   
+)
+SELECT *
+FROM mytable;`,
+		Expected: []sql.Row{{"0.0720000000"}},
+	},
+
 }
 
 var VersionedQueries = []QueryTest{
