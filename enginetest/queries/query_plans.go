@@ -7694,6 +7694,84 @@ With c as (
 			"             └─ columns: [i]\n" +
 			"",
 	},
+	{
+		Query: `
+SELECT COUNT(*)
+FROM keyless
+WHERE keyless.c0 IN (
+    WITH RECURSIVE cte(depth, i, j) AS (
+        SELECT 0, T1.c0, T1.c1
+        FROM keyless T1
+        WHERE T1.c0 = 0
+
+        UNION ALL
+
+        SELECT cte.depth + 1, cte.i, T2.c1 + 1
+        FROM cte, keyless T2
+        WHERE cte.depth = T2.c0
+    )
+
+    SELECT U0.c0
+    FROM keyless U0, cte
+    WHERE cte.j = keyless.c0
+);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as COUNT(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Filter\n" +
+			"         ├─ InSubquery\n" +
+			"         │   ├─ left: keyless.c0:0\n" +
+			"         │   └─ right: Subquery\n" +
+			"         │       ├─ cacheable: false\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [U0.c0:2]\n" +
+			"         │           └─ Filter\n" +
+			"         │               ├─ Eq\n" +
+			"         │               │   ├─ cte.j:5\n" +
+			"         │               │   └─ keyless.c0:0\n" +
+			"         │               └─ CrossJoin\n" +
+			"         │                   ├─ TableAlias(U0)\n" +
+			"         │                   │   └─ Table\n" +
+			"         │                   │       ├─ name: keyless\n" +
+			"         │                   │       └─ columns: [c0]\n" +
+			"         │                   └─ SubqueryAlias\n" +
+			"         │                       ├─ name: cte\n" +
+			"         │                       ├─ outerVisibility: true\n" +
+			"         │                       ├─ cacheable: true\n" +
+			"         │                       └─ RecursiveCTE\n" +
+			"         │                           └─ Union all\n" +
+			"         │                               ├─ Project\n" +
+			"         │                               │   ├─ columns: [0 (tinyint), T1.c0:2, T1.c1:3]\n" +
+			"         │                               │   └─ Filter\n" +
+			"         │                               │       ├─ Eq\n" +
+			"         │                               │       │   ├─ T1.c0:2\n" +
+			"         │                               │       │   └─ 0 (tinyint)\n" +
+			"         │                               │       └─ TableAlias(T1)\n" +
+			"         │                               │           └─ Table\n" +
+			"         │                               │               ├─ name: keyless\n" +
+			"         │                               │               └─ columns: [c0 c1]\n" +
+			"         │                               └─ Project\n" +
+			"         │                                   ├─ columns: [(cte.depth:2!null + 1 (tinyint)), cte.i:3, (T2.c1:6 + 1 (tinyint))]\n" +
+			"         │                                   └─ HashJoin\n" +
+			"         │                                       ├─ Eq\n" +
+			"         │                                       │   ├─ cte.depth:2!null\n" +
+			"         │                                       │   └─ T2.c0:5\n" +
+			"         │                                       ├─ RecursiveTable(cte)\n" +
+			"         │                                       └─ HashLookup\n" +
+			"         │                                           ├─ source: TUPLE(cte.depth:2!null)\n" +
+			"         │                                           ├─ target: TUPLE(T2.c0:2)\n" +
+			"         │                                           └─ CachedResults\n" +
+			"         │                                               └─ TableAlias(T2)\n" +
+			"         │                                                   └─ Table\n" +
+			"         │                                                       ├─ name: keyless\n" +
+			"         │                                                       └─ columns: [c0 c1]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: keyless\n" +
+			"             └─ columns: [c0 c1]\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
