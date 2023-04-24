@@ -15,6 +15,7 @@
 package function
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -45,7 +46,6 @@ type JSONSet struct {
 }
 
 var _ sql.FunctionExpression = (*JSONContains)(nil)
-var _ sql.CollationCoercible = (*JSONContains)(nil)
 
 // NewJSONSet creates a new JSONSet function.
 func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
@@ -147,13 +147,25 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if isPath {
+			// if any path arg is null, we return null
+			if expr == nil {
+				return nil, nil
+			}
+
 			// make sure path is string
 			if _, ok := expr.(string); !ok {
 				return nil, fmt.Errorf("Invalid JSON path expression")
 			}
 			path = expr.(string)
 
-			path, pass, err = processPath(ctx, parsed, path, pass)
+			// re-assemble map from val so that previous changes will be used
+			var jsonMap map[string]interface{}
+			err = json.Unmarshal([]byte(val), &jsonMap)
+			if err != nil {
+				return nil, err
+			}
+
+			path, pass, err = processPath(ctx, types.JSONDocument{Val: jsonMap}, path, pass)
 			if err != nil {
 				return nil, err
 			}
@@ -171,11 +183,18 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return val, nil
 }
 
-// processPath checks the provided json path for the correct mysql syntax and processes it to use the appropriate sjson syntax
+// processPath checks the given json path for the correct mysql syntax, checks nested paths for their existence
+// in the provided json doc, determines whether JSON_SET will do nothing with no error for this path, and processes
+// the given json path to use the appropriate sjson syntax.
 func processPath(ctx *sql.Context, doc types.JSONDocument, path string, pass bool) (string, bool, error) {
 	// make sure path starts with '$'
 	if path[0] != '$' {
 		return "", false, fmt.Errorf("Invalid JSON path expression")
+	}
+
+	// no wildcards allowed in path
+	if strings.Contains(path, "*") || strings.Contains(path, "**") {
+		return "", false, fmt.Errorf("Path expressions may not contain the * and ** tokens")
 	}
 
 	// if the nested path does not already exist, we do nothing

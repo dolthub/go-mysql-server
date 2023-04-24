@@ -15,7 +15,9 @@
 package function
 
 import (
+	json2 "encoding/json"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
 	"strings"
 	"testing"
@@ -29,18 +31,18 @@ import (
 
 func TestJSONSet(t *testing.T) {
 	_, err := NewJSONSet()
-	require.Error(t, err)
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = NewJSONSet(
 		expression.NewGetField(0, types.LongText, "arg1", false),
 	)
-	require.Error(t, err)
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	_, err = NewJSONSet(
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
-	require.Error(t, err)
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	f1, err := NewJSONSet(
 		expression.NewGetField(0, types.LongText, "arg1", false),
@@ -78,8 +80,13 @@ func TestJSONSet(t *testing.T) {
 		// {f1, sql.Row{json, "$.a[5]", 4}, `{"a": [1, 4], "b": [2, 3], "c": {"d": "foo"}}`, nil},   // update single element with indexing out of range
 		// {f1, sql.Row{json, "$[0]", 4}, `4`, nil},   // struct indexing
 		// {f1, sql.Row{json, "$[0][1]", 4}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 4]`, nil},   // nested struct indexing
-		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")}, // invalid path
-		{f1, sql.Row{nil, "$.a", 10}, nil, nil},                                             // null document
+		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},                            // invalid path
+		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},  // path contains * wildcard
+		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")}, // path contains ** wildcard
+		{f1, sql.Row{nil, "$.a", 10}, nil, nil}, // null document
+		{f1, sql.Row{nil, nil, 10}, nil, nil},   // if any path is null, return null
+		//{f2, sql.Row{json, "$.z", map[string]interface{}{"zz": 1}, "$.z.zz", 42}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"z":{"zz":42}}`, nil}, // accumulates L->R
+		{f2, sql.Row{json, "$.z", map[string]interface{}{"zz": 1}, "$.z.zz", 42}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"z":{"zz":42}}`, nil}, // accumulates L->R
 	}
 
 	for _, tt := range testCases {
@@ -88,7 +95,14 @@ func TestJSONSet(t *testing.T) {
 			if _, ok := path.(string); ok {
 				paths = append(paths, path.(string))
 			} else {
-				paths = append(paths, strconv.Itoa(path.(int)))
+				if path == nil {
+					paths = append(paths, "null")
+				} else if _, ok := path.(int); ok {
+					paths = append(paths, strconv.Itoa(path.(int)))
+				} else {
+					m, _ := json2.Marshal(path)
+					paths = append(paths, string(m))
+				}
 			}
 		}
 
