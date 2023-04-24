@@ -7753,14 +7753,14 @@ WHERE keyless.c0 IN (
 			"         │                               │               ├─ name: keyless\n" +
 			"         │                               │               └─ columns: [c0 c1]\n" +
 			"         │                               └─ Project\n" +
-			"         │                                   ├─ columns: [(cte.depth:2!null + 1 (tinyint)), cte.i:3, (T2.c1:6 + 1 (tinyint))]\n" +
+			"         │                                   ├─ columns: [(cte.depth:3!null + 1 (tinyint)), cte.i:4, (T2.c1:7 + 1 (tinyint))]\n" +
 			"         │                                   └─ HashJoin\n" +
 			"         │                                       ├─ Eq\n" +
-			"         │                                       │   ├─ cte.depth:2!null\n" +
-			"         │                                       │   └─ T2.c0:5\n" +
+			"         │                                       │   ├─ cte.depth:3!null\n" +
+			"         │                                       │   └─ T2.c0:6\n" +
 			"         │                                       ├─ RecursiveTable(cte)\n" +
 			"         │                                       └─ HashLookup\n" +
-			"         │                                           ├─ source: TUPLE(cte.depth:2!null)\n" +
+			"         │                                           ├─ source: TUPLE(cte.depth:3!null)\n" +
 			"         │                                           ├─ target: TUPLE(T2.c0:2)\n" +
 			"         │                                           └─ CachedResults\n" +
 			"         │                                               └─ TableAlias(T2)\n" +
