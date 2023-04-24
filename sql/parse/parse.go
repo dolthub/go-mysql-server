@@ -2169,30 +2169,69 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(c.Table.Qualifier.String()), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
 	}
 
-	var fkDefs []*sql.ForeignKeyConstraint
-	var chDefs []*sql.CheckConstraint
-	for _, unknownConstraint := range c.TableSpec.Constraints {
-		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
+	fkDefs, chDefs, err := ConvertConstraintsDefs(ctx, c.Table, c.TableSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	idxDefs, err := ConvertIndexDefs(ctx, c.TableSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	qualifier := c.Table.Qualifier.String()
+
+	schema, collation, err := TableSpecToSchema(ctx, c.TableSpec, false)
+	if err != nil {
+		return nil, err
+	}
+
+	tableSpec := &plan.TableSpec{
+		Schema:    schema,
+		IdxDefs:   idxDefs,
+		FkDefs:    fkDefs,
+		ChDefs:    chDefs,
+		Collation: collation,
+	}
+
+	if c.OptSelect != nil {
+		selectNode, err := convertSelectStatement(ctx, c.OptSelect.Select)
 		if err != nil {
 			return nil, err
 		}
+
+		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
+	}
+
+	return plan.NewCreateTable(
+		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary), tableSpec), nil
+}
+
+func ConvertConstraintsDefs(ctx *sql.Context, tname sqlparser.TableName, spec *sqlparser.TableSpec) (fks []*sql.ForeignKeyConstraint, checks []*sql.CheckConstraint, err error) {
+	for _, unknownConstraint := range spec.Constraints {
+		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
+		if err != nil {
+			return nil, nil, err
+		}
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			constraint.Database = c.Table.Qualifier.String()
-			constraint.Table = c.Table.Name.String()
+			constraint.Database = tname.Qualifier.String()
+			constraint.Table = tname.Name.String()
 			if constraint.Database == "" {
 				constraint.Database = ctx.GetCurrentDatabase()
 			}
-			fkDefs = append(fkDefs, constraint)
+			fks = append(fks, constraint)
 		case *sql.CheckConstraint:
-			chDefs = append(chDefs, constraint)
+			checks = append(checks, constraint)
 		default:
-			return nil, sql.ErrUnknownConstraintDefinition.New(unknownConstraint.Name, unknownConstraint)
+			return nil, nil, sql.ErrUnknownConstraintDefinition.New(unknownConstraint.Name, unknownConstraint)
 		}
 	}
+	return
+}
 
-	var idxDefs []*plan.IndexDefinition
-	for _, idxDef := range c.TableSpec.Indexes {
+func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*plan.IndexDefinition, err error) {
+	for _, idxDef := range spec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
 			constraint = sql.IndexConstraint_Primary
@@ -2225,7 +2264,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		})
 	}
 
-	for _, colDef := range c.TableSpec.Columns {
+	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
 			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
@@ -2242,33 +2281,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			})
 		}
 	}
-
-	qualifier := c.Table.Qualifier.String()
-
-	schema, collation, err := TableSpecToSchema(ctx, c.TableSpec, false)
-	if err != nil {
-		return nil, err
-	}
-
-	tableSpec := &plan.TableSpec{
-		Schema:    schema,
-		IdxDefs:   idxDefs,
-		FkDefs:    fkDefs,
-		ChDefs:    chDefs,
-		Collation: collation,
-	}
-
-	if c.OptSelect != nil {
-		selectNode, err := convertSelectStatement(ctx, c.OptSelect.Select)
-		if err != nil {
-			return nil, err
-		}
-
-		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
-	}
-
-	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary), tableSpec), nil
+	return nil, err
 }
 
 type namedConstraint struct {
