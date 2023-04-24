@@ -17,12 +17,12 @@ package function
 import (
 	json2 "encoding/json"
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
