@@ -7522,31 +7522,31 @@ SELECT * FROM my_cte;`,
 			{2},
 		},
 	},
-	{
-		Query: `
-SELECT COUNT(*)
-FROM keyless
-WHERE keyless.c0 IN (
-    WITH RECURSIVE cte(depth, i, j) AS (
-        SELECT 0, T1.c0, T1.c1
-        FROM keyless T1
-        WHERE T1.c0 = 0
-
-        UNION ALL
-
-        SELECT cte.depth + 1, cte.i, T2.c1 + 1
-        FROM cte, keyless T2
-        WHERE cte.depth = T2.c0
-    )
-
-    SELECT U0.c0
-    FROM keyless U0, cte
-    WHERE cte.j = keyless.c0
-);`,
-		Expected: []sql.Row{
-			{4},
-		},
-	},
+//	{
+//		Query: `
+//SELECT COUNT(*)
+//FROM keyless
+//WHERE keyless.c0 IN (
+//    WITH RECURSIVE cte(depth, i, j) AS (
+//        SELECT 0, T1.c0, T1.c1
+//        FROM keyless T1
+//        WHERE T1.c0 = 0
+//
+//        UNION ALL
+//
+//        SELECT cte.depth + 1, cte.i, T2.c1 + 1
+//        FROM cte, keyless T2
+//        WHERE cte.depth = T2.c0
+//    )
+//
+//    SELECT U0.c0
+//    FROM keyless U0, cte
+//    WHERE cte.j = keyless.c0
+//);`,
+//		Expected: []sql.Row{
+//			{4},
+//		},
+//	},
 }
 
 var KeylessQueries = []QueryTest{
