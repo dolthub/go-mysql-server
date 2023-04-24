@@ -381,8 +381,8 @@ func validateDropTables2(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return newn, transform.NewTree, nil
 }
 
-// cleanDropTables removes all nodes that are not `*plan.ResolvedTable` from `plan.DropTable.Tables`
-func cleanDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// pruneDropTables removes all nodes that are not `*plan.ResolvedTable` from `plan.DropTable.Tables`
+func pruneDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
 		return n, transform.SameTree, nil
@@ -399,7 +399,7 @@ func cleanDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	return newN, transform.NewTree, nil
 }
 
-// validateDropTables ensures that either each ResolvedTable in DropTable is droppable, any UnresolvedTables are
+// validateDropTables ensures that each ResolvedTable in DropTable is droppable, any UnresolvedTables are
 // skipped due to `IF EXISTS` clause, and there aren't any non-table nodes.
 func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
@@ -410,7 +410,7 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 	for _, table := range dt.Tables {
 		switch t := table.(type) {
 		case *plan.ResolvedTable:
-			if _, ok := t.Database.(sql.TableDropper); ok {
+			if _, ok := t.Database.(sql.TableDropper); !ok {
 				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database.Name())
 			}
 		case *plan.UnresolvedTable:
