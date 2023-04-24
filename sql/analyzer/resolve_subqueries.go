@@ -126,56 +126,6 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 	}
 
 	return transform.NodeWithCtx(node, selFunc, conFunc)
-
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			newSqa, same2, err := analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-
-			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, newSqa.(*plan.SubqueryAlias).Child, scope.newScopeFromSubqueryAlias(sqa), sel)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-
-			if same1 && same2 {
-				return n, transform.SameTree, nil
-			} else {
-				newNode, err = newSqa.WithChildren(newNode)
-				return newNode, transform.NewTree, err
-			}
-		} else {
-			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if sq, ok := e.(*plan.Subquery); ok {
-					newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
-					if err != nil {
-						if analyzererrors.ErrValidationResolved.Is(err) {
-							// if a parent is unresolved, we want to dig deeper to find the unresolved
-							// child dependency
-							_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
-							if err != nil {
-								return e, transform.SameTree, err
-							}
-						}
-						return e, transform.SameTree, err
-					}
-					newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.newScopeFromSubqueryExpression(node), sel)
-					if err != nil {
-						return e, transform.SameTree, err
-					}
-
-					if same1 && same2 {
-						return e, transform.SameTree, nil
-					} else {
-						return newSq.(*plan.Subquery).WithQuery(newExpr), transform.NewTree, nil
-					}
-				} else {
-					return e, transform.SameTree, nil
-				}
-			})
-		}
-	})
 }
 
 func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
