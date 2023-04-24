@@ -22,6 +22,7 @@ const (
 	resolveTablesId                              // resolveTables
 	loadStoredProceduresId                       // loadStoredProcedures
 	validateDropTablesId                         // validateDropTables
+	cleanDropTablesId                            // cleanDropTables
 	setTargetSchemasId                           // setTargetSchemas
 	resolveCreateLikeId                          // resolveCreateLike
 	parseColumnDefaultsId                        // parseColumnDefaults
