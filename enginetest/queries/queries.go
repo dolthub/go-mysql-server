@@ -7950,7 +7950,7 @@ var BrokenQueries = []QueryTest{
 		// This panics
 		// The non-recursive part of the UNION ALL returns too many rows, causing index out of bounds errors
 		// Without the join on mytable and cte, this error is caught
-		Query:    `
+		Query: `
 WITH RECURSIVE cte(i, j) AS (
     SELECT 0, 1, 2
     FROM mytable
@@ -7969,7 +7969,6 @@ FROM mytable;`,
 			{3, "third row"},
 		},
 	},
-
 }
 
 var VersionedQueries = []QueryTest{
