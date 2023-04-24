@@ -525,48 +525,6 @@ func (j JSONReplace) IsUnsupported() bool {
 	return true
 }
 
-// JSON_SET(json_doc, path, val[, path, val] ...)
-//
-// JSONSet Inserts or updates data in a JSON document and returns the result. Returns NULL if any argument is NULL or
-// path, if given, does not locate an object. An error occurs if the json_doc argument is not a valid JSON document or
-// any path argument is not a valid path expression or contains a * or ** wildcard. The path-value pairs are evaluated
-// left to right. The document produced by evaluating one pair becomes the new value against which the next pair is
-// evaluated. A path-value pair for an existing path in the document overwrites the existing document value with the
-// new value. A path-value pair for a non-existing path in the document adds the value to the document if the path
-// identifies one of these types of values:
-//   - A member not present in an existing object. The member is added to the object and associated with the new value.
-//   - A position past the end of an existing array. The array is extended with the new value. If the existing value is
-//     not an array, it is auto-wrapped as an array, then extended with the new value.
-//
-// Otherwise, a path-value pair for a non-existing path in the document is ignored and has no effect.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-set
-type JSONSet struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONSet{}
-
-// NewJSONSet creates a new JSONSet function.
-func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONSet{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONSet) FunctionName() string {
-	return "json_set"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONSet) Description() string {
-	return "inserts data into JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONSet) IsUnsupported() bool {
-	return true
-}
-
 //////////////////////////////
 // JSON attribute functions //
 //////////////////////////////
