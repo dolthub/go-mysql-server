@@ -2976,7 +2976,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: `
 	
-	SELECT COUNT(*)
+	SELECT *
 	FROM keyless
 	WHERE keyless.c0 IN (
 	
@@ -2996,10 +2996,15 @@ var ScriptTests = []ScriptTest{
 		FROM keyless U0, cte
 		WHERE cte.j = keyless.c0
 	
-	);`,
+	)
+    ORDER BY c0;
+;`,
 
 				Expected: []sql.Row{
-					{4},
+					{0,0},
+					{1,1},
+					{1,1},
+					{2,2},
 				},
 			},
 		},
