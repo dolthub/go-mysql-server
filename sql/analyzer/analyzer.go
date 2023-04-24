@@ -27,6 +27,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -452,10 +453,85 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 	}
 }
 
+func NewInsertIntoBatchSelector(sel BatchSelector) BatchSelector {
+	return func(batch string) bool {
+		switch batch {
+		case "once-before":
+			return false
+		default:
+			return sel(batch)
+		}
+	}
+}
+
+func NewInsertIntoRuleSelector(sel RuleSelector) RuleSelector {
+	return func(id RuleId) bool {
+		switch id {
+		case
+			// OnceBeforeDefault
+			applyDefaultSelectLimitId,
+			applyBinlogReplicaControllerId,
+			validateOffsetAndLimitId,
+			validateCreateTableId,
+			validateExprSemId,
+			resolveVariablesId,
+			resolveNamedWindowsId,
+			resolveSetVariablesId,
+			resolveViewsId,
+			liftCtesId,
+			resolveCtesId,
+			liftRecursiveCtesId,
+			validateCreateProcedureId,
+			resolveDatabasesId,
+			//resolveTablesId,
+			reresolveTablesId,
+			//setInsertColumnsId,
+			setTargetSchemasId,
+			//loadCheckConstraintsId,
+			resolveAlterColumnId,
+			validateDropTablesId,
+			resolveCreateLikeId,
+			resolveAnalyzeTablesId,
+			assignCatalogId,
+			//parseColumnDefaultsId,
+			resolveDropConstraintId,
+			validateDropConstraintId,
+			resolveCreateSelectId,
+			//resolveSubqueriesId,
+			setViewTargetSchemaId,
+			//resolveUnionsId,
+			resolveDescribeQueryId,
+			disambiguateTableFunctionsId,
+			checkUniqueTableNamesId,
+			resolveTableFunctionsId,
+			resolveDeclarationsId,
+			validateCreateTriggerId,
+			loadInfoSchemaId,
+			resolveColumnDefaultsId,
+			validateColumnDefaultsId,
+			//validateReadOnlyDatabaseId,
+			validateReadOnlyTransactionId,
+			validateDatabaseSetId,
+			validateDeleteFromId,
+			validatePrivilegesId:
+			return false
+		}
+		return sel(id)
+	}
+}
+
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
-	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
+	var err error
+	switch n.(type) {
+	case *plan.InsertInto:
+		n, _, err = a.analyzeInsert(ctx, n, scope, NewInsertIntoBatchSelector(SelectAllBatches), NewInsertIntoRuleSelector(DefaultRuleSelector))
+		//n, _, err = a.analyzeInsert(ctx, n, scope, SelectAllBatches, NewInsertIntoRuleSelector(DefaultRuleSelector))
+	default:
+		n, _, err = a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
+	}
+
 	return n, err
 }
 
@@ -610,6 +686,86 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 		allSame = transform.SameTree
 		err     error
 	)
+	a.Log("starting analysis of node of type: %T", n)
+	for _, batch := range a.Batches {
+		if batchSelector(batch.Desc) {
+			a.PushDebugContext(batch.Desc)
+			n, same, err = batch.Eval(ctx, a, n, scope, ruleSelector)
+			allSame = allSame && same
+			if err != nil {
+				a.Log("Encountered error: %v", err)
+				a.PopDebugContext()
+				return n, transform.SameTree, err
+			}
+			a.PopDebugContext()
+		}
+	}
+
+	defer func() {
+		if n != nil {
+			span.SetAttributes(attribute.Bool("IsResolved", n.Resolved()))
+		}
+		span.End()
+	}()
+
+	return n, allSame, err
+}
+
+func (a *Analyzer) analyzeInsert(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("analyzeInsert")
+
+	if scope.RecursionDepth() > maxBatchRecursion {
+		return n, transform.SameTree, ErrMaxAnalysisIters.New(maxBatchRecursion)
+	}
+
+	var err error
+	same := transform.SameTree
+	allSame := transform.SameTree
+
+	// manually call rules from batch OnceBefore
+	n, same, err = resolveTables(ctx, a, n, scope, ruleSelector) // not sure how to modify
+	allSame = allSame && same
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	n, same, err = setInsertColumns(ctx, a, n, scope, ruleSelector) // this is specific to InsertInto
+	allSame = allSame && same
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	n, same, err = loadChecks(ctx, a, n, scope, ruleSelector) // can remove special case for InsertInto
+	allSame = allSame && same
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	n, same, err = parseColumnDefaults(ctx, a, n, scope, ruleSelector)
+	allSame = allSame && same
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	n, same, err = resolveSubqueries(ctx, a, n, scope, ruleSelector)
+	allSame = allSame && same
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	n, same, err = resolveUnions(ctx, a, n, scope, ruleSelector)
+	allSame = allSame && same
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	n, same, err = validateReadOnlyDatabase(ctx, a, n, scope, ruleSelector)
+	allSame = allSame && same
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	// TODO: manually call all rules here
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
 		if batchSelector(batch.Desc) {

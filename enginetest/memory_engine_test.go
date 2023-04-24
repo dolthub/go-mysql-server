@@ -59,6 +59,21 @@ var parallelVals = []int{
 	2,
 }
 
+
+// TODO: delete this
+func TestConvenience(t *testing.T) {
+	TestQueriesSimple(t)
+	TestScripts(t)
+
+	TestInsertInto(t)
+	TestInsertIntoErrors(t)
+	TestInsertIgnoreInto(t)
+	TestSpatialInsertInto(t)
+
+	TestChecksOnInsert(t)
+	TestReadOnlyDatabases(t)
+}
+
 // TestQueries tests the given queries on an engine under a variety of circumstances:
 // 1) Partitioned tables / non partitioned tables
 // 2) Mergeable / unmergeable / native / no indexes
