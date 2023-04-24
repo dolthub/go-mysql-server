@@ -2967,7 +2967,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "recursive cte within subquery within two joins",
+		Name:         "recursive cte within subquery within two joins",
 		SkipPrepared: true,
 		SetUpScript: []string{
 			"create table keyless (c0 int, c1 int)",
