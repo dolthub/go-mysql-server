@@ -85,7 +85,6 @@ func TestJSONSet(t *testing.T) {
 		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")}, // path contains ** wildcard
 		{f1, sql.Row{nil, "$.a", 10}, nil, nil}, // null document
 		{f1, sql.Row{nil, nil, 10}, nil, nil},   // if any path is null, return null
-		//{f2, sql.Row{json, "$.z", map[string]interface{}{"zz": 1}, "$.z.zz", 42}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"z":{"zz":42}}`, nil}, // accumulates L->R
 		{f2, sql.Row{json, "$.z", map[string]interface{}{"zz": 1}, "$.z.zz", 42}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"z":{"zz":42}}`, nil}, // accumulates L->R
 	}
 
