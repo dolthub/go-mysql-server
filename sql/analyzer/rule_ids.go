@@ -22,6 +22,7 @@ const (
 	resolveTablesId                              // resolveTables
 	loadStoredProceduresId                       // loadStoredProcedures
 	validateDropTablesId                         // validateDropTables
+	pruneDropTablesId                            // pruneDropTables
 	setTargetSchemasId                           // setTargetSchemas
 	resolveCreateLikeId                          // resolveCreateLike
 	parseColumnDefaultsId                        // parseColumnDefaults
@@ -43,6 +44,7 @@ const (
 	validateColumnDefaultsId                     // validateColumnDefaults
 	validateCreateTriggerId                      // validateCreateTrigger
 	validateCreateProcedureId                    // validateCreateProcedure
+	resolveCreateProcedureId                     // resolveCreateProcedure
 	loadInfoSchemaId                             // loadInfoSchema
 	validateReadOnlyDatabaseId                   // validateReadOnlyDatabase
 	validateReadOnlyTransactionId                // validateReadOnlyTransaction

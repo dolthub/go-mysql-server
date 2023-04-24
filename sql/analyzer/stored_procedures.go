@@ -163,8 +163,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 	return node, transform.NewTree, nil
 }
 
-// validateCreateProcedure handles CreateProcedure nodes, resolving references to the parameters, along with ensuring
-// that all logic contained within the stored procedure body is valid.
+// validateCreateProcedure handles CreateProcedure nodes, ensuring that all nodes in Procedure are supported.
 func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	cp, ok := node.(*plan.CreateProcedure)
 	if !ok {
@@ -175,6 +174,18 @@ func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
+
+	return node, transform.SameTree, nil
+}
+
+// resolveCreateProcedure handles CreateProcedure nodes, resolving references to the parameters, along with ensuring
+// that all logic contained within the stored procedure body is valid.
+func resolveCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	cp, ok := node.(*plan.CreateProcedure)
+	if !ok {
+		return node, transform.SameTree, nil
+	}
+
 	proc, _, err := resolveDeclarations(ctx, a, cp.Procedure, scope, sel)
 	if err != nil {
 		return nil, transform.SameTree, err
