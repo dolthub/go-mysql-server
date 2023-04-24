@@ -2281,7 +2281,7 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 			})
 		}
 	}
-	return nil, err
+	return
 }
 
 type namedConstraint struct {
