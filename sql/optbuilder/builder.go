@@ -1,10 +1,9 @@
-package parse
+package optbuilder
 
 import (
 	"encoding/hex"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
@@ -17,18 +16,6 @@ import (
 	"strings"
 )
 
-type PlanBuilder struct {
-	ctx             *sql.Context
-	cat             *analyzer.Catalog
-	tabId           uint16
-	colI            uint16
-	currentDatabase sql.Database
-}
-
-func (b *PlanBuilder) newScope() *scope {
-	return &scope{}
-}
-
 type scope struct {
 	b      *PlanBuilder
 	parent *scope
@@ -36,6 +23,16 @@ type scope struct {
 	node   sql.Node
 
 	cols []scopeColumn
+}
+
+func (s *scope) outerScopeLen() int {
+	var cnt int
+	sco := s.parent
+	for sco != nil {
+		cnt += len(sco.cols)
+		sco = sco.parent
+	}
+	return cnt
 }
 
 func (s *scope) setTableAlias(t string) {
@@ -56,6 +53,12 @@ func (s *scope) setColAlias(cols []string) {
 func (s *scope) push() *scope {
 	return &scope{
 		parent: s,
+	}
+}
+
+func (s *scope) replace() *scope {
+	return &scope{
+		parent: s.parent,
 	}
 }
 
@@ -87,10 +90,16 @@ type scopeColumn struct {
 	scalar sql.Expression
 }
 
-type agg struct {
+type PlanBuilder struct {
+	ctx             *sql.Context
+	cat             sql.Catalog
+	tabId           uint16
+	colI            uint16
+	currentDatabase sql.Database
 }
 
-type subquery struct {
+func (b *PlanBuilder) newScope() *scope {
+	return &scope{}
 }
 
 func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
@@ -108,20 +117,58 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 }
 
 func (b *PlanBuilder) buildUnion(inScope *scope, s *ast.Union) (outScope *scope) {
-
+	panic("todo")
 }
 
 func (b *PlanBuilder) buildParenSelect(inScope *scope, s *ast.ParenSelect) (outScope *scope) {
-
+	panic("todo")
 }
 
 func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
-	// TODO with nodes
-	// TODO windows
-	// build from scope
+	// TODO CTEs
 	fromScope := b.buildFrom(inScope, s.From)
-	// build where scope
+	// TODO windows
+	b.buildWhere(fromScope, s.Where)
+	//TODO aggregation will split scopes
+	// fromScope (into agg) -> projection (out of agg)
+	projScope := fromScope.replace()
 
+	b.analyzeProjectionList(fromScope, projScope, s.SelectExprs)
+	b.buildProjection(fromScope, projScope)
+	return
+}
+
+func (b *PlanBuilder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
+	b.analyzeSelectList(inScope, outScope, selectExprs)
+}
+
+func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
+	// use inScope to construct projections for projScope
+	var exprs []sql.Expression
+	outerLen := inScope.outerScopeLen()
+	for _, se := range selectExprs {
+		pe := b.selectExprToExpression(inScope, se)
+		if star, ok := pe.(*expression.Star); ok {
+			for i, c := range inScope.cols {
+				if c.table == star.Table || star.Table == "" {
+					gf := expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, true)
+					exprs = append(exprs, gf)
+					outScope.addColumn(scopeColumn{col: gf.String(), scalar: gf, typ: gf.Type()})
+				}
+			}
+		} else {
+			exprs = append(exprs, pe)
+			outScope.addColumn(scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()})
+		}
+	}
+}
+
+func (b *PlanBuilder) buildProjection(inScope, outScope *scope) {
+	projections := make([]sql.Expression, len(outScope.cols))
+	for i, sc := range outScope.cols {
+		projections[i] = sc.scalar
+	}
+	outScope.node = plan.NewProject(projections, inScope.node)
 }
 
 // TODO outScope will be populated with a source node and column sets
@@ -505,8 +552,6 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 
 func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	switch v := e.(type) {
-	default:
-		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	case *ast.Default:
 		return expression.NewDefaultColumn(v.ColName)
 	case *ast.SubstrExpr:
@@ -548,63 +593,60 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		if !v.Qualifier.IsEmpty() {
-			return expression.NewUnresolvedQualifiedColumn(
-				v.Qualifier.Name.String(),
-				v.Name.String(),
-			)
+		table := strings.ToLower(v.Qualifier.String())
+		col := strings.ToLower(v.Name.String())
+		checkScope := inScope
+		outerLen := inScope.outerScopeLen()
+		for checkScope != nil {
+			for i, c := range checkScope.cols {
+				if c.col == col && c.table == table {
+					return expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, true)
+				}
+			}
+			checkScope = checkScope.parent
 		}
-		return expression.NewUnresolvedColumn(v.Name.String())
+		b.handleErr(sql.ErrColumnNotFound.New(v))
 	case *ast.FuncExpr:
-		exprs, err := selectExprsTolExpressions(ctx, v.Exprs)
-		if err != nil {
-			return nil
+		args := make([]sql.Expression, len(v.Exprs))
+		for i, e := range v.Exprs {
+			args[i] = b.selectExprToExpression(inScope, e)
 		}
 
 		// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
 		if v.Distinct && v.Name.Lowered() == "count" {
-			return aggregation.NewCountDistinct(exprs...)
+			panic("preprocess aggregates into aggInfo")
+			return aggregation.NewCountDistinct(args...)
 		}
 
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
 		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
 		if v.Distinct {
-			if len(exprs) != 1 {
+			if len(args) != 1 {
 				return nil
 			}
 
-			exprs[0] = expression.NewDistinctExpression(exprs[0])
+			args[0] = expression.NewDistinctExpression(args[0])
 		}
-		over, err := windowDefToWindow(ctx, (*ast.WindowDef)(v.Over))
+		if v.Over != nil {
+			panic("todo preprocess window functions int windowInfo")
+		}
+
+		name := v.Name.Lowered()
+		f, err := b.cat.Function(b.ctx, name)
 		if err != nil {
-			return nil
+			b.handleErr(err)
 		}
-		return expression.NewUnresolvedFunction(v.Name.Lowered(),
-			isAggregateFunc(v), over, exprs...)
+
+		rf, err := f.NewInstance(args)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		return rf
+
 	case *ast.GroupConcatExpr:
-		exprs, err := selectExprsToExpressions(ctx, v.Exprs)
-		if err != nil {
-			return nil
-		}
-
-		separatorS := ","
-		if !v.Separator.DefaultSeparator {
-			separatorS = v.Separator.SeparatorString
-		}
-
-		sortFields, err := orderByToSortFields(ctx, v.OrderBy)
-		if err != nil {
-			return nil
-		}
-
-		//TODO: this should be acquired at runtime, not at parse time, so fix this
-		gcml, err := ctx.GetSessionVariable(ctx, "group_concat_max_len")
-		if err != nil {
-			return nil
-		}
-		groupConcatMaxLen := gcml.(uint64)
-
-		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
+		// TODO this is an aggregation
+		panic("todo should have been processed into an aggInfo")
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
 	case *ast.AndExpr:
@@ -657,15 +699,16 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.UnaryExpr:
 		return b.buildScalar(inScope, v)
 	case *ast.Subquery:
-		node, err := convert(ctx, v.Select, "")
-		b.buildSelectStmt(inScope, v.Select)
-		if err != nil {
-			return nil
-		}
+		//node, err := convert(ctx, v.Select, "")
+		//if err != nil {
+		//	return nil
+		//}
+		selScope := b.buildSelectStmt(inScope, v.Select)
 
+		//b.renameSource(selScope, "", v.Columns)
 		// TODO: get the original select statement, not the reconstruction
 		selectString := ast.String(v.Select)
-		return plan.NewSubquery(node, selectString)
+		return plan.NewSubquery(selScope.node, selectString)
 	case *ast.CaseExpr:
 		return b.buildScalar(inScope, v)
 	case *ast.IntervalExpr:
@@ -689,13 +732,11 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		col := b.buildScalar(inScope, v.Name)
 		return expression.NewUnresolvedFunction("values", false, nil, col)
 	case *ast.ExistsExpr:
-		sqScope := b.buildSelectStmt(inScope, v.Subquery.Select)
+		selScope := b.buildSelectStmt(inScope, v.Subquery.Select)
 		// rebuild subquery
 		// renameColumns
-		sq, ok := sqScope.node.(*plan.Subquery)
-		if !ok {
-			return nil
-		}
+		selectString := ast.String(v.Subquery.Select)
+		sq := plan.NewSubquery(selScope.node, selectString)
 		return plan.NewExistsSubquery(sq)
 	case *ast.TimestampFuncExpr:
 		var (
@@ -718,7 +759,10 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		var unit sql.Expression = expression.NewLiteral(strings.ToUpper(v.Unit), types.LongText)
 		expr := b.buildScalar(inScope, v.Expr)
 		return function.NewExtract(unit, expr)
+	default:
+		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	}
+	return nil
 }
 
 func (b *PlanBuilder) buildLiteral(ctx *sql.Context, v *ast.SQLVal) (sql.Expression, error) {
@@ -801,8 +845,10 @@ func (b *PlanBuilder) analyzeAggregation() {
 
 }
 
-func (b *PlanBuilder) buildWhere() {
-
+func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
+	filter := b.buildScalar(inScope, where.Expr)
+	filterNode := plan.NewFilter(filter, inScope.node)
+	inScope.node = filterNode
 }
 
 func (b *PlanBuilder) analyzeHaving() {

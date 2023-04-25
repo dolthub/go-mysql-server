@@ -393,7 +393,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 }
 
 func mustNewGroupByConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) *GroupConcat {
-	gc, err := NewGroupConcat(distinct, orderBy, separator, selectExprs, maxLen)
+	gc := NewGroupConcat(distinct, orderBy, separator, selectExprs, maxLen)
 	if err != nil {
 		panic(err)
 	}

@@ -20,6 +20,10 @@ import (
 )
 
 type Catalog interface {
+	FunctionProvider
+	TableFunctionProvider
+	ExternalStoredProcedureProvider
+
 	// AllDatabases returns all databases known to this catalog
 	AllDatabases(ctx *Context) []Database
 
