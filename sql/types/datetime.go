@@ -207,8 +207,8 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		parsed := false
 		for _, fmt := range TimestampDatetimeLayouts {
-			if t, err := time.Parse(fmt, value); err == nil {
-				res = t.UTC()
+			if t, err := time.ParseInLocation(fmt, value, time.Local); err == nil {
+				res = t.Local()
 				parsed = true
 				break
 			}
@@ -217,7 +217,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
 	case time.Time:
-		res = value.UTC()
+		res = value.Local()
 		// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
 		// is zero values, which are important when converting from postgres defaults.
 	case int:
