@@ -45,7 +45,6 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 		case expression.Tuple:
 			return expression.NewInTuple(left, right)
 		case *plan.Subquery:
-			panic("todo subqueries need special treatment")
 			return plan.NewInSubquery(left, right)
 		default:
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
@@ -56,7 +55,6 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 		case expression.Tuple:
 			return expression.NewNotInTuple(left, right)
 		case *plan.Subquery:
-			panic("todo subqueries need special treatment")
 			return plan.NewNotInSubquery(left, right)
 		default:
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("NOT IN %T", right))

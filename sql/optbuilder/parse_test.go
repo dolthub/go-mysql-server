@@ -166,6 +166,30 @@ Project
 		// todo windows
 		// todo group by
 		// todo having
+		{
+			in: "select * from xy where x in (select u from uv where x = u)",
+			exp: `
+Project
+ ├─ columns: [xy.x:0, xy.y:1]
+ └─ Filter
+     ├─ InSubquery
+     │   ├─ left: xy.x:0
+     │   └─ right: Subquery
+     │       ├─ cacheable: false
+     │       └─ Project
+     │           ├─ columns: [uv.u:2]
+     │           └─ Filter
+     │               ├─ Eq
+     │               │   ├─ xy.x:2
+     │               │   └─ uv.u:2
+     │               └─ Table
+     │                   ├─ name: uv
+     │                   └─ columns: [u v]
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y]
+`,
+		},
 	}
 
 	ctx := sql.NewEmptyContext()
