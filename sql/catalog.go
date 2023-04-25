@@ -12,12 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+
 package sql
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
+
+
 
 type Catalog interface {
 	// AllDatabases returns all databases known to this catalog
@@ -81,3 +90,18 @@ func (dt *DbTable) String() string {
 	}
 	return fmt.Sprintf("%s.%s", dt.Db, dt.Table)
 }
+
+func (c *catalog) IndexByName(ctx Context, db, table, index string) (Index, error) {
+	tbl, err := c.Table(ctx, db, table)
+	if err != nil {
+	return nil, err
+	}
+	index, ok := tbl.Indexes().GetByName(index)
+	if !ok {
+	return nil, sql.ErrIndexNotFound.New(index)
+	}
+	if statsIndex, ok := index.(StatisticsIndex); ok {
+	return statsIndex, nil
+	}
+	return index, nil
+	}

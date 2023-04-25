@@ -55,7 +55,9 @@ type HistogramBucket struct {
 	UpperBound float64 // inclusive
 	Frequency  float64
 }
-
+type StatisticsIndex interface {
+	RowCount() uint64
+}
 // Histogram is all statistics we care about for each column
 type Histogram struct {
 	Buckets       []*HistogramBucket
