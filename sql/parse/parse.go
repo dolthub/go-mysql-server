@@ -141,42 +141,7 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 }
 
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
-c
-}
-
-func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.Node, error) {
-	names := make([]sql.DbTable, len(n.Tables))
-	for i, table := range n.Tables {
-		names[i] = sql.DbTable{Db: table.Qualifier.String(), Table: table.Name.String()}
-	}
-	return plan.NewAnalyze(names), nil
-}
-
-func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {
-	connID64, err := getInt64Value(ctx, kill.ConnID, "Error parsing KILL, expected int literal")
-	if err != nil {
-		return nil, err
-	}
-	connID32 := uint32(connID64)
-	if int64(connID32) != connID64 {
-		return nil, sql.ErrUnsupportedFeature.New("int literal is not unsigned 32-bit.")
-	}
-	if kill.Connection {
-		return plan.NewKill(plan.KillType_Connection, connID32), nil
-	}
-	return plan.NewKill(plan.KillType_Query, connID32), nil
-}
-
-func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query string) (*plan.Block, error) {
-	var statements []sql.Node
-	for _, s := range parserStatements {
-		statement, err := convert(ctx, s, sqlparser.String(s))
-		if err != nil {
-			return nil, err
-		}
-		statements = append(statements, statement)
-	}
-	return plan.NewBlock(statements), nil	if ss, ok := stmt.(sqlparser.SelectStatement); ok {
+	if ss, ok := stmt.(sqlparser.SelectStatement); ok {
 		node, err := convertSelectStatement(ctx, ss)
 		if err != nil {
 			return nil, err
@@ -336,6 +301,41 @@ func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query
 	}
 }
 
+func convertAnalyze(ctx *sql.Context, n *sqlparser.Analyze, query string) (sql.Node, error) {
+	names := make([]sql.DbTable, len(n.Tables))
+	for i, table := range n.Tables {
+		names[i] = sql.DbTable{Db: table.Qualifier.String(), Table: table.Name.String()}
+	}
+	return plan.NewAnalyze(names), nil
+}
+
+func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {
+	connID64, err := getInt64Value(ctx, kill.ConnID, "Error parsing KILL, expected int literal")
+	if err != nil {
+		return nil, err
+	}
+	connID32 := uint32(connID64)
+	if int64(connID32) != connID64 {
+		return nil, sql.ErrUnsupportedFeature.New("int literal is not unsigned 32-bit.")
+	}
+	if kill.Connection {
+		return plan.NewKill(plan.KillType_Connection, connID32), nil
+	}
+	return plan.NewKill(plan.KillType_Query, connID32), nil
+}
+
+func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query string) (*plan.Block, error) {
+	var statements []sql.Node
+	for _, s := range parserStatements {
+		statement, err := convert(ctx, s, sqlparser.String(s))
+		if err != nil {
+			return nil, err
+		}
+		statements = append(statements, statement)
+	}
+	return plan.NewBlock(statements), nil
+}
+
 func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
 	block, err := convertBlock(ctx, n.Statements, query)
 	if err != nil {
@@ -414,6 +414,108 @@ func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql
 	default:
 		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(n))
 	}
+}
+
+func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
+	child, err := convert(ctx, n.Statement, "")
+	if err != nil {
+		return nil, err
+	}
+
+	explainFmt := sqlparser.TreeStr
+	switch strings.ToLower(n.ExplainFormat) {
+	case "", sqlparser.TreeStr:
+	// tree format, do nothing
+	case "debug":
+		explainFmt = "debug"
+	default:
+		return nil, errInvalidDescribeFormat.New(
+			n.ExplainFormat,
+			strings.Join(describeSupportedFormats, ", "),
+		)
+	}
+
+	return plan.NewDescribeQuery(explainFmt, child), nil
+}
+
+func convertPrepare(ctx *sql.Context, n *sqlparser.Prepare) (sql.Node, error) {
+	expr := n.Expr
+	if strings.HasPrefix(n.Expr, "@") {
+		varName := strings.ToLower(strings.Trim(n.Expr, "@"))
+		_, val, err := ctx.GetUserVariable(ctx, varName)
+		if err != nil {
+			return nil, err
+		}
+		strVal, _, err := types.LongText.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+		if strVal == nil {
+			expr = "NULL"
+		} else {
+			expr = strVal.(string)
+		}
+	}
+
+	childStmt, err := sqlparser.Parse(expr)
+	if err != nil {
+		return nil, err
+	}
+
+	child, err := convert(ctx, childStmt, expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewPrepareQuery(n.Name, child), nil
+}
+
+func convertExecute(ctx *sql.Context, n *sqlparser.Execute) (sql.Node, error) {
+	exprs := make([]sql.Expression, len(n.VarList))
+	for i, e := range n.VarList {
+		if strings.HasPrefix(e, "@") {
+			exprs[i] = expression.NewUserVar(strings.TrimPrefix(e, "@"))
+		} else {
+			exprs[i] = expression.NewUnresolvedProcedureParam(e)
+		}
+	}
+	return plan.NewExecuteQuery(n.Name, exprs...), nil
+}
+
+func convertDeallocate(ctx *sql.Context, n *sqlparser.Deallocate) (sql.Node, error) {
+	return plan.NewDeallocateQuery(n.Name), nil
+}
+
+func convertUse(n *sqlparser.Use) (sql.Node, error) {
+	name := n.DBName.String()
+	return plan.NewUse(sql.UnresolvedDatabase(name)), nil
+}
+
+func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
+	var setVarExprs []*sqlparser.SetVarExpr
+	for _, setExpr := range n.Exprs {
+		switch strings.ToLower(setExpr.Name.String()) {
+		case "names":
+			// Special case: SET NAMES expands to 3 different system variables.
+			setVarExprs = append(setVarExprs, getSetVarExprsFromSetNamesExpr(setExpr)...)
+		case "charset":
+			// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables.
+			csd, err := ctx.GetSessionVariable(ctx, "character_set_database")
+			if err != nil {
+				return nil, err
+			}
+			setVarExprs = append(setVarExprs, getSetVarExprsFromSetCharsetExpr(setExpr, []byte(csd.(string)))...)
+		default:
+			setVarExprs = append(setVarExprs, setExpr)
+		}
+	}
+
+	exprs, err := setExprsToExpressions(ctx, setVarExprs)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewSet(exprs), nil
 }
 
 func getSetVarExprsFromSetNamesExpr(expr *sqlparser.SetVarExpr) []*sqlparser.SetVarExpr {
@@ -1096,7 +1198,23 @@ func ctesToWith(ctx *sql.Context, with *sqlparser.With, node sql.Node) (sql.Node
 
 	return plan.NewWith(node, ctes, with.Recursive), nil
 }
-con
+
+func intoToInto(ctx *sql.Context, into *sqlparser.Into, node sql.Node) (sql.Node, error) {
+	if into.Outfile != "" || into.Dumpfile != "" {
+		return nil, sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
+	}
+
+	vars := make([]sql.Expression, len(into.Variables))
+	for i, val := range into.Variables {
+		if strings.HasPrefix(val.String(), "@") {
+			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
+		} else {
+			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
+		}
+	}
+	return plan.NewInto(node, vars), nil
+}
+
 func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
 	cte, ok := expr.(*sqlparser.CommonTableExpr)
 	if !ok {
@@ -2938,9 +3056,6 @@ func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {
-	if len(cols) == 0 {
-		return nil
-	}
 	res := make([]string, len(cols))
 	for i, c := range cols {
 		res[i] = c.String()
@@ -3167,7 +3282,7 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 		return nil, err
 	}
 
-	return plan.NewJSONTable(data, t.Path, paths, t.Alias.String(), sch)
+	return plan.NewJSONTable(ctx, data, t.Path, paths, t.Alias.String(), sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {

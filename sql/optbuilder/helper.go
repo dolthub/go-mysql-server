@@ -207,7 +207,7 @@ func getPkOrdinals(ts *sqlparser.TableSpec) []int {
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
+func (b *PlanBuilder) tableSpecToSchema(inScope *scope, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
 	tableCollation := sql.Collation_Unspecified
 	if !forceInvalidCollation {
 		if len(tableSpec.Options) > 0 {
@@ -217,19 +217,19 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceIn
 				var err error
 				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
 				}
 			} else if len(charsetSubmatches) == 5 {
 				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
 				}
 				tableCollation = charset.DefaultCollation()
 			} else if len(collationSubmatches) == 5 {
 				var err error
 				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
 				}
 			}
 		}
@@ -243,26 +243,23 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceIn
 				cd.Type.Collate = tableCollation.Name()
 			}
 		}
-		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
-		if err != nil {
-			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
-		}
+		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
-			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ErrPrimaryKeyOnNullField.New()
+			b.handleErr(ErrPrimaryKeyOnNullField.New())
 		}
 
 		schema = append(schema, column)
 	}
 
-	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, nil
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
-func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinition) (*sql.Column, error) {
+func (b *PlanBuilder) columnDefinitionToColumn(inScope *scope, cd *sqlparser.ColumnDefinition, indexes []*sqlparser.IndexDefinition) *sql.Column {
 	internalTyp, err := types.ColumnTypeToType(&cd.Type)
 	if err != nil {
-		return nil, err
+		b.handleErr(err)
 	}
 
 	// Primary key info can either be specified in the column's type info (for in-line declarations), or in a slice of
@@ -288,10 +285,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		comment = string(cd.Type.Comment.Val)
 	}
 
-	defaultVal, err := convertDefaultExpression(ctx, cd.Type.Default)
-	if err != nil {
-		return nil, err
-	}
+	defaultVal := b.convertDefaultExpression(inScope, cd.Type.Default)
 
 	extra := ""
 
@@ -300,17 +294,18 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	if cd.Type.SRID != nil {
-		sridVal, sErr := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
-		if sErr != nil {
-			return nil, sErr
+		sridVal, err := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
+		if err != nil {
+			b.handleErr(err)
 		}
+
 		if uint32(sridVal) != types.CartesianSRID && uint32(sridVal) != types.GeoSpatialSRID {
-			return nil, sql.ErrUnsupportedFeature.New("unsupported SRID value")
+			b.handleErr(sql.ErrUnsupportedFeature.New("unsupported SRID value"))
 		}
 		if s, ok := internalTyp.(sql.SpatialColumnType); ok {
 			internalTyp = s.SetSRID(uint32(sridVal))
 		} else {
-			return nil, sql.ErrInvalidType.New(fmt.Sprintf("cannot define SRID for %s", internalTyp))
+			b.handleErr(sql.ErrInvalidType.New(fmt.Sprintf("cannot define SRID for %s", internalTyp)))
 		}
 	}
 
@@ -323,17 +318,14 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		AutoIncrement: bool(cd.Type.Autoincrement),
 		Comment:       comment,
 		Extra:         extra,
-	}, nil
+	}
 }
 
-func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sql.ColumnDefaultValue, error) {
+func (b *PlanBuilder) convertDefaultExpression(inScope *scope, defaultExpr sqlparser.Expr) *sql.ColumnDefaultValue {
 	if defaultExpr == nil {
-		return nil, nil
+		return nil
 	}
-	parsedExpr, err := ExprToExpression(ctx, defaultExpr)
-	if err != nil {
-		return nil, err
-	}
+	parsedExpr := b.buildScalar(inScope, defaultExpr)
 
 	// Function expressions must be enclosed in parentheses (except for current_timestamp() and now())
 	_, isParenthesized := defaultExpr.(*sqlparser.ParenExpr)
@@ -352,10 +344,17 @@ func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sq
 				isLiteral = false
 			} else {
 				// All other functions must *always* be enclosed in parens
-				return nil, sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
+				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
+				b.handleErr(err)
 			}
 		}
 	}
 
-	return ExpressionToColumnDefaultValue(ctx, parsedExpr, isLiteral, isParenthesized)
+	return &sql.ColumnDefaultValue{
+		Expression:    parsedExpr,
+		OutType:       nil,
+		Literal:       isLiteral,
+		ReturnNil:     true,
+		Parenthesized: isParenthesized,
+	}
 }

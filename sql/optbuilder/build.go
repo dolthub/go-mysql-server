@@ -19,8 +19,7 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 
 	case *ast.Analyze:
-		//return convertAnalyze(ctx, n, query)
-		panic("todo")
+		return b.buildAnalyze(inScope, n, query)
 	case *ast.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -28,8 +27,7 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		if query == "" {
 			b.handleErr(sql.ErrUnsupportedFeature.New("SHOW in subquery"))
 		}
-		//return convertShow(ctx, n, query)
-		panic("todo")
+		return b.buildShow(inScope, n, query)
 	case *ast.DDL:
 		//return convertDDL(ctx, query, n)
 		panic("todo")

@@ -135,6 +135,7 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 
 	b.analyzeProjectionList(fromScope, projScope, s.SelectExprs)
 	b.buildProjection(fromScope, projScope)
+	outScope = projScope
 	return
 }
 
@@ -153,7 +154,7 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 				if c.table == star.Table || star.Table == "" {
 					gf := expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, true)
 					exprs = append(exprs, gf)
-					outScope.addColumn(scopeColumn{col: gf.String(), scalar: gf, typ: gf.Type()})
+					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type()})
 				}
 			}
 		} else {
@@ -219,7 +220,7 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	if b.isLateral(te.RightExpr) {
 		rightInScope = leftScope
 	}
-	rightScope := b.buildDataSource(rightInScope, te.LeftExpr)
+	rightScope := b.buildDataSource(rightInScope, te.RightExpr)
 
 	b.validateJoinTableNames(leftScope, rightScope)
 
@@ -270,8 +271,10 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 		case ast.TableName:
 			// TODO this can be a CTE
 			outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
-			outScope.setTableAlias(t.As.String())
-			outScope.node = plan.NewTableAlias(t.As.String(), outScope.node)
+			if t.As.String() != "" {
+				outScope.setTableAlias(t.As.String())
+				outScope.node = plan.NewTableAlias(t.As.String(), outScope.node)
+			}
 		case *ast.Subquery:
 			if t.As.IsEmpty() {
 				// This should be caught by the parser, but here just in case
@@ -456,10 +459,7 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 		paths[i] = col.Type.Path
 	}
 
-	sch, _, err := TableSpecToSchema(b.ctx, t.Spec, false)
-	if err != nil {
-		b.handleErr(err)
-	}
+	sch, _ := b.tableSpecToSchema(inScope, t.Spec, false)
 
 	outScope = inScope.push()
 	outScope.ast = t
@@ -533,7 +533,6 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 		b.handleErr(err)
 	}
 
-	//node = plan.NewUnresolvedTableAsOf(e.Name.String(), e.Qualifier.String(), asOfExpr)
 	rt := plan.NewResolvedTable(tab, database, asOfLit)
 	outScope.node = rt
 	if asofBindVar {
@@ -576,7 +575,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		str := b.buildScalar(inScope, v.Str)
 		function.NewTrim(str, pat, v.Dir)
 	case *ast.ComparisonExpr:
-		return b.buildScalar(inScope, v)
+		return b.buildComparison(inScope, v)
 	case *ast.IsExpr:
 		return b.buildScalar(inScope, v)
 	case *ast.NotExpr:
@@ -599,7 +598,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		outerLen := inScope.outerScopeLen()
 		for checkScope != nil {
 			for i, c := range checkScope.cols {
-				if c.col == col && c.table == table {
+				if c.col == col && (c.table == table || table == "") {
 					return expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, true)
 				}
 			}
@@ -846,6 +845,9 @@ func (b *PlanBuilder) analyzeAggregation() {
 }
 
 func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
+	if where == nil {
+		return
+	}
 	filter := b.buildScalar(inScope, where.Expr)
 	filterNode := plan.NewFilter(filter, inScope.node)
 	inScope.node = filterNode

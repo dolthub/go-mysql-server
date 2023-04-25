@@ -24,15 +24,15 @@ import (
 type ColumnDefaultValue struct {
 	// Expression is the expression representing this default value
 	Expression
-	// outType converts the output of the expression into this type, when not nil
-	outType Type
-	// literal indicates whether the default value is a literal value or expression
-	literal bool
-	// returnNil indicates whether a nil value from the default value expression is returned as null or an error
-	returnNil bool
-	// parenthesized indicates whether the value was specified in parens or not; this is typically the opposite of the literal field,
+	// OutType converts the output of the expression into this type, when not nil
+	OutType Type
+	// Literal indicates whether the default value is a Literal value or expression
+	Literal bool
+	// ReturnNil indicates whether a nil value from the default value expression is returned as null or an error
+	ReturnNil bool
+	// Parenthesized indicates whether the value was specified in parens or not; this is typically the opposite of the Literal field,
 	// but they can both be false in the case of now/current_timestamp for datetimes and timestamps.
-	parenthesized bool
+	Parenthesized bool
 }
 
 var _ Expression = (*ColumnDefaultValue)(nil)
@@ -42,10 +42,10 @@ var _ CollationCoercible = (*ColumnDefaultValue)(nil)
 func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool, parenthesized bool, mayReturnNil bool) (*ColumnDefaultValue, error) {
 	return &ColumnDefaultValue{
 		Expression:    expr,
-		outType:       outType,
-		literal:       representsLiteral,
-		returnNil:     mayReturnNil,
-		parenthesized: parenthesized,
+		OutType:       outType,
+		Literal:       representsLiteral,
+		ReturnNil:     mayReturnNil,
+		Parenthesized: parenthesized,
 	}, nil
 }
 
@@ -75,16 +75,16 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if val == nil && !e.returnNil {
+	if val == nil && !e.ReturnNil {
 		return nil, ErrColumnDefaultReturnedNull.New()
 	}
 
-	if e.outType != nil {
+	if e.OutType != nil {
 		var inRange ConvertInRange
-		if val, inRange, err = e.outType.Convert(val); err != nil {
+		if val, inRange, err = e.OutType.Convert(val); err != nil {
 			return nil, ErrIncompatibleDefaultType.New()
 		} else if !inRange {
-			return nil, ErrValueOutOfRange.New(val, e.outType)
+			return nil, ErrValueOutOfRange.New(val, e.OutType)
 		}
 	}
 
@@ -96,7 +96,7 @@ func (e *ColumnDefaultValue) IsLiteral() bool {
 	if e == nil {
 		return true // we return the literal nil, hence true
 	}
-	return e.literal
+	return e.Literal
 }
 
 // IsParenthesized returns whether this column default was specified in parentheses, using the expression default value form.
@@ -108,7 +108,7 @@ func (e *ColumnDefaultValue) IsParenthesized() bool {
 	if e == nil {
 		return false // we return the literal nil, hence false
 	}
-	return e.parenthesized
+	return e.Parenthesized
 }
 
 // IsNullable implements sql.Expression
@@ -116,7 +116,7 @@ func (e *ColumnDefaultValue) IsNullable() bool {
 	if e == nil {
 		return true
 	}
-	if !e.returnNil {
+	if !e.ReturnNil {
 		return false
 	}
 	return e.Expression.IsNullable()
@@ -127,7 +127,7 @@ func (e *ColumnDefaultValue) Resolved() bool {
 	if e == nil {
 		return true
 	}
-	if e.outType == nil {
+	if e.OutType == nil {
 		return false
 	}
 	return e.Expression.Resolved()
@@ -143,7 +143,7 @@ func (e *ColumnDefaultValue) String() string {
 	// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
 	// The default value specified in a DEFAULT clause can be a literal constant or an expression. With one exception,
 	// enclose expression default values within parentheses to distinguish them from literal constant default values.
-	if e.literal {
+	if e.Literal {
 		return e.Expression.String()
 	} else {
 		return fmt.Sprintf("(%s)", e.Expression.String())
@@ -155,9 +155,9 @@ func (e *ColumnDefaultValue) DebugString() string {
 		return ""
 	}
 
-	if e.literal {
+	if e.Literal {
 		return DebugString(e.Expression)
-	} else if e.parenthesized {
+	} else if e.Parenthesized {
 		return fmt.Sprintf("parenthesized(%s)", DebugString(e.Expression))
 	} else {
 		return fmt.Sprintf("(%s)", DebugString(e.Expression))
@@ -169,10 +169,10 @@ func (e *ColumnDefaultValue) Type() Type {
 	if e == nil {
 		return nil
 	}
-	if e.outType == nil {
+	if e.OutType == nil {
 		return e.Expression.Type()
 	}
-	return e.outType
+	return e.OutType
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -193,23 +193,23 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 	}
 	if e == nil {
 		isLiteral := len(children[0].Children()) == 0 //impossible to know, best guess
-		return NewColumnDefaultValue(children[0], e.outType, isLiteral, !isLiteral, true)
+		return NewColumnDefaultValue(children[0], e.OutType, isLiteral, !isLiteral, true)
 	} else {
-		return NewColumnDefaultValue(children[0], e.outType, e.literal, e.parenthesized, e.returnNil)
+		return NewColumnDefaultValue(children[0], e.OutType, e.Literal, e.Parenthesized, e.ReturnNil)
 	}
 }
 
 // CheckType validates that the ColumnDefaultValue has the correct type.
 func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
-	if e.outType != nil && e.literal {
+	if e.OutType != nil && e.Literal {
 		val, err := e.Expression.Eval(ctx, nil)
 		if err != nil {
 			return err
 		}
-		if val == nil && !e.returnNil {
+		if val == nil && !e.ReturnNil {
 			return ErrIncompatibleDefaultType.New()
 		}
-		_, inRange, err := e.outType.Convert(val)
+		_, inRange, err := e.OutType.Convert(val)
 		if err != nil {
 			return ErrIncompatibleDefaultType.Wrap(err)
 		} else if !inRange {
