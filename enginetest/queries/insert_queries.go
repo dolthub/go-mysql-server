@@ -1882,7 +1882,7 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into alphabet values ('z') on duplicate key update letter = values(letter)",
+				Query:       "insert into alphabet values ('z') on duplicate key update letter = values(letter)",
 				ExpectedErr: sql.ErrCheckConstraintViolated,
 			},
 		},
