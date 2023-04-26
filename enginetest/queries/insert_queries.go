@@ -1869,6 +1869,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/5799
 		Name: "check IN TUPLE constraint with duplicate key update",
 		SetUpScript: []string{
 			"create table alphabet (letter varchar(1), constraint `good_letters` check (letter in ('a','l','e','c')))",
