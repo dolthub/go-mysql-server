@@ -315,7 +315,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 
 		newNode, sameNode, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			evalSymbols := symbols
-			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
+			_, isTuple := e.(expression.Tuple)
+			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && !isTuple && onDupUpdateLeftExprs[e] {
 				evalSymbols = onDupUpdateSymbols
 			}
 			return qualifyExpression(e, n, evalSymbols)
