@@ -64,7 +64,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			var newSqa sql.Node
 			var same2 transform.TreeIdentity
 			var err error
-			if sqa.OuterScopeVisibility && joinParent != nil && !joinParent.Op.IsLeftOuter() {
+			if sqa.OuterScopeVisibility && joinParent != nil {
 				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
 					subScope := scope.newScopeInJoin(joinParent.Children()[0])
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
