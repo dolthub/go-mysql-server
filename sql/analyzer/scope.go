@@ -117,6 +117,18 @@ func (s *Scope) newScopeInJoin(node sql.Node) *Scope {
 	return subScope
 }
 
+// newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
+// node.
+func (s *Scope) newScopeNoJoin() *Scope {
+	return &Scope{
+		nodes:           s.nodes,
+		memos:           s.memos,
+		recursionDepth:  s.recursionDepth + 1,
+		procedures:      s.procedures,
+		enforceReadOnly: s.enforceReadOnly,
+	}
+}
+
 // newScopeFromSubqueryAlias returns a new subscope created from the specified SubqueryAlias. Subquery aliases, or
 // derived tables, generally do NOT have any visibility to outer scopes, but when they are nested inside a subquery
 // expression, they may reference tables from the scopes outside the subquery expression's scope.

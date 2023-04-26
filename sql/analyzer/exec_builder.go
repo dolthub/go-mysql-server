@@ -182,8 +182,7 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 	}
 	tmpScope := j.g.m.scope
 	if tmpScope != nil {
-		tmpScope = tmpScope.newScopeInJoin(nil)
-		tmpScope.joinSiblings = []sql.Node{}
+		tmpScope = tmpScope.newScopeNoJoin()
 	}
 	outerAttrs, err := b.buildFilters(tmpScope, j.right.relProps.OutputCols(), expression.Tuple(j.outerAttrs))
 	if err != nil {

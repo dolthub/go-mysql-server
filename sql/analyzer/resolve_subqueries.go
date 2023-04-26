@@ -447,8 +447,7 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return n, transform.SameTree, nil
 	}
 
-	tmpScope := scope.newScopeInJoin(nil)
-	tmpScope.joinSiblings = []sql.Node{}
+	tmpScope := scope.newScopeNoJoin()
 	joinlessScopeLen := len(tmpScope.Schema())
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
