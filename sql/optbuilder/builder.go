@@ -23,6 +23,8 @@ type scope struct {
 	node   sql.Node
 
 	cols []scopeColumn
+
+	ctes map[string]*scope
 }
 
 func (s *scope) outerScopeLen() int {
@@ -57,9 +59,19 @@ func (s *scope) push() *scope {
 }
 
 func (s *scope) replace() *scope {
+	if s == nil {
+		return &scope{}
+	}
 	return &scope{
 		parent: s.parent,
 	}
+}
+
+func (s *scope) addCte(name string, cteScope *scope) {
+	if s.ctes == nil {
+		s.ctes = make(map[string]*scope)
+	}
+	s.ctes[name] = cteScope
 }
 
 func (s *scope) addColumn(col scopeColumn) {
@@ -82,12 +94,13 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 type columnId uint16
 
 type scopeColumn struct {
-	db     string
-	table  string
-	col    string
-	id     columnId
-	typ    sql.Type
-	scalar sql.Expression
+	db       string
+	table    string
+	col      string
+	id       columnId
+	typ      sql.Type
+	scalar   sql.Expression
+	nullable bool
 }
 
 type PlanBuilder struct {
@@ -105,6 +118,10 @@ func (b *PlanBuilder) newScope() *scope {
 func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
 	switch s := s.(type) {
 	case *ast.Select:
+		if s.With != nil {
+			cteScope := b.buildWith(inScope, s.With)
+			return b.buildSelect(cteScope, s)
+		}
 		return b.buildSelect(inScope, s)
 	case *ast.ParenSelect:
 		return b.buildParenSelect(inScope, s)
@@ -149,15 +166,20 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 	outerLen := inScope.outerScopeLen()
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)
-		if star, ok := pe.(*expression.Star); ok {
+		switch e := pe.(type) {
+		case *expression.GetField:
+			gf := expression.NewGetFieldWithTable(outerLen+e.Index(), e.Type(), e.Table(), e.Name(), e.IsNullable())
+			exprs = append(exprs, gf)
+			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable()})
+		case *expression.Star:
 			for i, c := range inScope.cols {
-				if c.table == star.Table || star.Table == "" {
-					gf := expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, true)
+				if c.table == e.Table || e.Table == "" {
+					gf := expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, c.nullable)
 					exprs = append(exprs, gf)
-					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type()})
+					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable()})
 				}
 			}
-		} else {
+		default:
 			exprs = append(exprs, pe)
 			outScope.addColumn(scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()})
 		}
@@ -270,6 +292,10 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 		switch e := t.Expr.(type) {
 		case ast.TableName:
 			// TODO this can be a CTE
+			if cteScope, ok := inScope.ctes[e.Name.String()]; ok {
+				outScope = cteScope
+				return
+			}
 			outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
 			if t.As.String() != "" {
 				outScope.setTableAlias(t.As.String())
@@ -531,6 +557,8 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 			}
 		}
 		b.handleErr(err)
+	} else if tab == nil {
+		b.handleErr(sql.ErrTableNotFound.New(name))
 	}
 
 	rt := plan.NewResolvedTable(tab, database, asOfLit)
@@ -541,9 +569,11 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 
 	for _, c := range tab.Schema() {
 		outScope.addColumn(scopeColumn{
-			db:    strings.ToLower(db),
-			table: strings.ToLower(tab.Name()),
-			col:   strings.ToLower(c.Name),
+			db:       strings.ToLower(db),
+			table:    strings.ToLower(tab.Name()),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
 		})
 	}
 	return outScope
@@ -599,7 +629,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		for checkScope != nil {
 			for i, c := range checkScope.cols {
 				if c.col == col && (c.table == table || table == "") {
-					return expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, true)
+					return expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, c.nullable)
 				}
 			}
 			checkScope = checkScope.parent
@@ -861,8 +891,41 @@ func (b *PlanBuilder) buildDistinct() {
 
 }
 
-func (b *PlanBuilder) buildOrderBy() {
+func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil && limit.Offset != nil {
+		return b.buildScalar(inScope, limit.Offset)
+	} else if limit != nil {
+		return b.buildScalar(inScope, limit.Rowcount)
+	}
+	return nil
+}
 
+func (b *PlanBuilder) buildOrderBy(inScope *scope, ob ast.OrderBy) sql.SortFields {
+	var sortFields sql.SortFields
+	for _, o := range ob {
+		e := b.buildScalar(inScope, o.Expr)
+
+		var so sql.SortOrder
+		switch strings.ToLower(o.Direction) {
+		default:
+			err := errInvalidSortOrder.New(o.Direction)
+			b.handleErr(err)
+		case ast.AscScr:
+			so = sql.Ascending
+		case ast.DescScr:
+			so = sql.Descending
+		}
+
+		e2, _ := e.(sql.Expression2)
+		sf := sql.SortField{
+			Column:  e,
+			Column2: e2,
+			Order:   so,
+		}
+		sortFields = append(sortFields, sf)
+	}
+	return sortFields
 }
 
 type parseErr struct {

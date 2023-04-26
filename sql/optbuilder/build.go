@@ -14,9 +14,9 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(n)))
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, n)
-		if into := n.GetInto(); into != nil {
-			panic("todo")
-		}
+		//if into := n.GetInto(); into != nil {
+		//	panic("todo")
+		//}
 
 	case *ast.Analyze:
 		return b.buildAnalyze(inScope, n, query)

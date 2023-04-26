@@ -158,14 +158,6 @@ Project
                  └─ columns: [u v]
 `,
 		},
-		// TODO subqueries
-		// TODO subquery expressions
-		// TODO json_table
-		// TODO CTES
-		// todo named windows
-		// todo windows
-		// todo group by
-		// todo having
 		{
 			in: "select * from xy where x in (select u from uv where x = u)",
 			exp: `
@@ -189,6 +181,77 @@ Project
          ├─ name: xy
          └─ columns: [x y]
 `,
+		},
+		// TODO subqueries
+		// TODO subquery expressions
+		// TODO json_table
+		// TODO CTES
+		// todo named windows
+		// todo windows
+		// todo group by
+		// todo having
+		{
+			in: "with cte as (select 1) select * from cte",
+			exp: `
+Project
+ ├─ columns: [cte.1:0]
+ └─ SubqueryAlias
+     ├─ name: cte
+     ├─ outerVisibility: false
+     ├─ cacheable: false
+     └─ Project
+         ├─ columns: [1 (tinyint)]
+         └─ Table
+             ├─ name: 
+             └─ columns: []
+`,
+		},
+		{
+			in: "with recursive cte(s) as (select x from xy union select s from cte join xy on y = s) select * from cte",
+			exp: `
+Project
+ ├─ columns: [cte.s:0!null]
+ └─ RecursiveCTE
+     └─ Union distinct
+         ├─ RecursiveTable(cte)
+         └─ Project
+             ├─ columns: [cte.s:0!null]
+             └─ InnerJoin
+                 ├─ Eq
+                 │   ├─ xy.y:2!null
+                 │   └─ cte.s:0!null
+                 ├─ RecursiveTable(cte)
+                 └─ Table
+                     ├─ name: xy
+                     └─ columns: [x y]
+`,
+		},
+	}
+
+	_ = []struct {
+		in  string
+		exp string
+	}{
+		{
+			// A subquery containing a derived table, used in the WHERE clause of a top-level query, has visibility
+			// to tables and columns in the top-level query.
+			in: "SELECT * FROM xy WHERE xy.y > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
+		},
+		{
+			// A subquery containing a derived table, used in the HAVING clause of a top-level query, has visibility
+			// to tables and columns in the top-level query.
+			in: "SELECT * FROM t1 HAVING t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
+		},
+		{
+			in: "SELECT (SELECT dt.z FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+		},
+		{
+			in: "SELECT (SELECT max(dt.z) FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+		},
+		{
+			// A subquery containing a derived table, projected in a SELECT query, has visibility to tables and columns
+			// in the top-level query.
+			in: "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
 		},
 	}
 
