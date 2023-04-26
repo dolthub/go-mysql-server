@@ -64,6 +64,9 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			var newSqa sql.Node
 			var same2 transform.TreeIdentity
 			var err error
+			// NOTE: this only really fixes one level of subquery with two joins.
+			// This patch will likely not fix cases with more deeply nested joins and subqueries.
+			// A real fix would be to re-examine indexes after everything.
 			if sqa.OuterScopeVisibility && joinParent != nil {
 				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
 					subScope := scope.newScopeInJoin(joinParent.Children()[0])

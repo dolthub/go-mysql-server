@@ -7523,6 +7523,7 @@ SELECT * FROM my_cte;`,
 		},
 	},
 	{
+		// Original Issue: https://github.com/dolthub/dolt/issues/5714
 		Query: `
 	
 	SELECT COUNT(*)
@@ -7545,6 +7546,39 @@ SELECT * FROM my_cte;`,
 		FROM keyless U0, cte
 		WHERE cte.j = keyless.c0
 	
+	)
+    ORDER BY c0;
+;`,
+
+		Expected: []sql.Row{
+			{4},
+		},
+	},
+	{
+		// Original Issue: https://github.com/dolthub/dolt/issues/5714
+		// Similar, but this time the subquery is on the left
+		Query: `
+	
+	SELECT COUNT(*)
+	FROM keyless
+	WHERE keyless.c0 IN (
+	
+		WITH RECURSIVE cte(depth, i, j) AS (
+		    SELECT 0, T1.c0, T1.c1
+		    FROM keyless T1
+		    WHERE T1.c0 = 0
+	
+		    UNION ALL
+	
+		    SELECT cte.depth + 1, cte.i, T2.c1 + 1
+		    FROM cte, keyless T2
+		    WHERE cte.depth = T2.c0
+		)
+	
+		SELECT U0.c0
+		FROM cte, keyless U0 
+		WHERE cte.j = keyless.c0
+		
 	)
     ORDER BY c0;
 ;`,
