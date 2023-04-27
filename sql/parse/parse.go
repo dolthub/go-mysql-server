@@ -1301,14 +1301,14 @@ func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlte
 		case *plan.RenameColumn:
 			switch statements[j].(type) {
 			case *plan.DropColumn,
-				 *plan.AddColumn,
-				 *plan.AlterIndex:
+				*plan.AddColumn,
+				*plan.AlterIndex:
 				return true
 			}
 		case *plan.DropColumn:
 			switch statements[j].(type) {
 			case *plan.AddColumn,
-				 *plan.AlterIndex:
+				*plan.AlterIndex:
 				return true
 			}
 		case *plan.AddColumn:
