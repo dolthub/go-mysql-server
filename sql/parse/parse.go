@@ -19,6 +19,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1293,6 +1294,31 @@ func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlte
 			return nil, err
 		}
 	}
+
+	// certain alter statements need to happen before others
+	sort.Slice(statements, func(i, j int) bool {
+		switch statements[i].(type) {
+		case *plan.RenameColumn:
+			switch statements[j].(type) {
+			case *plan.DropColumn,
+				 *plan.AddColumn,
+				 *plan.AlterIndex:
+				return true
+			}
+		case *plan.DropColumn:
+			switch statements[j].(type) {
+			case *plan.AddColumn,
+				 *plan.AlterIndex:
+				return true
+			}
+		case *plan.AddColumn:
+			switch statements[j].(type) {
+			case *plan.AlterIndex:
+				return true
+			}
+		}
+		return false
+	})
 	return plan.NewBlock(statements), nil
 }
 

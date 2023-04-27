@@ -2986,6 +2986,60 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+
+	{
+		Name: "multi-alter ddl column statements",
+		SetUpScript: []string{
+			"create table tbl_i (i int primary key)",
+			"create table tbl_ij (i int primary key, j int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table tbl_i add column j int, drop column j",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "alter table tbl_i add column j int, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "alter table tbl_ij add index (j), drop column j;",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "alter table tbl_ij drop column j, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "alter table tbl_ij drop column k, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "alter table tbl_i add index(j), add column j int;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tbl_i",
+				Expected: []sql.Row{
+					{"tbl_i", "CREATE TABLE `tbl_i` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table tbl_ij add index (j), drop column j, add column j int;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tbl_ij",
+				Expected: []sql.Row{
+					{"tbl_ij", "CREATE TABLE `tbl_ij` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -4151,59 +4205,6 @@ var BrokenScriptTests = []ScriptTest{
 					{"v5", "int", "NO", "", "", ""},
 					{"v6", "int", "NO", "", "", ""},
 					{"v7", "int", "NO", "", "", ""},
-				},
-			},
-		},
-	},
-	{
-		Name: "multi-alter ddl column statements",
-		SetUpScript: []string{
-			"create table tbl_i (i int primary key)",
-			"create table tbl_ij (i int primary key, j int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "alter table tbl_i add column j int, drop column j",
-				ExpectedErr: sql.ErrCantDropFieldOrKey,
-			},
-			{
-				Query: "alter table tbl_i add column j int, rename column j to k;",
-				ExpectedErr: sql.ErrUnknownColumn,
-			},
-			{
-				Query: "alter table tbl_ij add index (j), drop column j;",
-				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
-			},
-			{
-				Query: "alter table tbl_ij drop column j, rename column j to k;",
-				ExpectedErr: sql.ErrUnknownColumn,
-			},
-			{
-				Query: "alter table tbl_ij drop column k, rename column j to k;",
-				ExpectedErr: sql.ErrCantDropFieldOrKey,
-			},
-			{
-				Query: "alter table tbl_i add index(j), add column j int;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table tbl_i",
-				Expected: []sql.Row{
-					{"CREATE TABLE `tbl_i` (\n  `i` int NOT NULL,\n  `j` int DEFAULT NULL,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"},
-				},
-			},
-			{
-				Query: "alter table tbl_ij add index (j), drop column j, add column j int;",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table tbl_ij",
-				Expected: []sql.Row{
-					{"CREATE TABLE `tbl_ij` (\n  `i` int NOT NULL,\n  `j` int DEFAULT NULL,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"},
 				},
 			},
 		},
