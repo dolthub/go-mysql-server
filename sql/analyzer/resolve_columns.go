@@ -240,12 +240,14 @@ func dedupStrings(in []string) []string {
 }
 
 // findOnDupUpdateLeftExprs gathers all the left expressions for statements in InsertInto.OnDupExprs
-// the
-func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[sql.Expression]bool {
-	onDupUpdateLeftExprs := map[sql.Expression]bool{}
+// onDupExprs are always set with a column on the left
+func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[*expression.UnresolvedColumn]bool {
+	onDupUpdateLeftExprs := map[*expression.UnresolvedColumn]bool{}
 	for _, e := range onDupExprs {
 		if sf, ok := e.(*expression.SetField); ok {
-			onDupUpdateLeftExprs[sf.Left] = true
+			if uc, ok := sf.Left.(*expression.UnresolvedColumn); ok {
+				onDupUpdateLeftExprs[uc] = true
+			}
 		}
 	}
 	return onDupUpdateLeftExprs
@@ -260,7 +262,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 	symbols := getAvailableNamesByScope(n, scope)
 
 	var onDupUpdateSymbols availableNames
-	var onDupUpdateLeftExprs map[sql.Expression]bool
+	var onDupUpdateLeftExprs map[*expression.UnresolvedColumn]bool
 	if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 {
 		inNoSrc := plan.NewInsertInto(
 			in.Database(),
@@ -315,7 +317,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 
 		newNode, sameNode, err := transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			evalSymbols := symbols
-			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && onDupUpdateLeftExprs[e] {
+			uc, isCol := e.(*expression.UnresolvedColumn)
+			if in, ok := n.(*plan.InsertInto); ok && len(in.OnDupExprs) > 0 && isCol && onDupUpdateLeftExprs[uc] {
 				evalSymbols = onDupUpdateSymbols
 			}
 			return qualifyExpression(e, n, evalSymbols)

@@ -1868,6 +1868,26 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/5799
+		Name: "check IN TUPLE constraint with duplicate key update",
+		SetUpScript: []string{
+			"create table alphabet (letter varchar(1), constraint `good_letters` check (letter in ('a','l','e','c')))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// dolt table import with -u option generates a duplicate key update with values(col)
+				Query: "insert into alphabet values ('a') on duplicate key update letter = values(letter)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into alphabet values ('z') on duplicate key update letter = values(letter)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
 }
 
 var InsertDuplicateKeyKeyless = []ScriptTest{
