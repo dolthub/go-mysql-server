@@ -4163,23 +4163,23 @@ var BrokenScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "alter table tbl_i add column j int, drop column j",
+				Query:       "alter table tbl_i add column j int, drop column j",
 				ExpectedErr: sql.ErrCantDropFieldOrKey,
 			},
 			{
-				Query: "alter table tbl_i add column j int, rename column j to k;",
+				Query:       "alter table tbl_i add column j int, rename column j to k;",
 				ExpectedErr: sql.ErrUnknownColumn,
 			},
 			{
-				Query: "alter table tbl_ij add index (j), drop column j;",
+				Query:       "alter table tbl_ij add index (j), drop column j;",
 				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 			},
 			{
-				Query: "alter table tbl_ij drop column j, rename column j to k;",
+				Query:       "alter table tbl_ij drop column j, rename column j to k;",
 				ExpectedErr: sql.ErrUnknownColumn,
 			},
 			{
-				Query: "alter table tbl_ij drop column k, rename column j to k;",
+				Query:       "alter table tbl_ij drop column k, rename column j to k;",
 				ExpectedErr: sql.ErrCantDropFieldOrKey,
 			},
 			{
