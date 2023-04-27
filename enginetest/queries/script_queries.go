@@ -4132,7 +4132,7 @@ var BrokenScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "ALTER TABLE RENAME on a column when another column has a default dependency on it",
+		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",
 		SetUpScript: []string{
 			"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));",
 		},
