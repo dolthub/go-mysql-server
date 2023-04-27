@@ -3019,6 +3019,22 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Keyless Table with Unique Index",
+		SetUpScript: []string{
+			"create table a (x int, val int unique)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO a VALUES (1, 1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO a VALUES (1, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -4091,9 +4107,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
-					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"uk1", "int", "NO", "MUL", "NULL", "auto_increment"},
+					{"uk1", "int", "YES", "", "NULL", ""},
 				},
 			},
 		},
@@ -4101,23 +4117,25 @@ var BrokenScriptTests = []ScriptTest{
 	{
 		Name: "ALTER TABLE MODIFY column with multiple KEYS",
 		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(uk1, uk2))",
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
 			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
-					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"mk1", "int", "NO", "MUL", "NULL", "auto_increment"},
+					{"mk1", "int", "YES", "", "NULL", ""},
 				},
 			},
 		},
 	},
 	{
 		Name:        "ALTER TABLE RENAME on a column when another column has a default dependency on it",
-		SetUpScript: []string{"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));"},
+		SetUpScript: []string{
+			"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));",
+		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "alter table test rename column v2 to mycol",
@@ -4155,9 +4173,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
 			{
@@ -4167,23 +4185,25 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
-			{ // This last modification ends up with a UNIQUE constraint on pk
+			{
+				// This last modification ends up with a UNIQUE constraint on pk
+				// This is caused by Table.dropColumnFromSchema, not dropping the pkOrdinal, but this causes other problems specific to GMS
 				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v2`, ADD COLUMN v7 int NOT NULL",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v4", "int", "NO", "", "", ""},
-					{"v5", "int", "NO", "", "", ""},
-					{"v6", "int", "NO", "", "", ""},
-					{"v7", "int", "NO", "", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v4", "int", "NO", "", "NULL", ""},
+					{"v5", "int", "NO", "", "NULL", ""},
+					{"v6", "int", "NO", "", "NULL", ""},
+					{"v7", "int", "NO", "", "NULL", ""},
 				},
 			},
 		},
