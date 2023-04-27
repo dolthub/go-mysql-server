@@ -2970,27 +2970,6 @@ var ScriptTests = []ScriptTest{
 		Name: "multi-alter ddl column statements",
 		SetUpScript: []string{
 			"create table tbl_i (i int primary key)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "alter table tbl_i add column j int, add index (j)",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "show create table tbl_i",
-				Expected: []sql.Row{
-					{"tbl_i", "CREATE TABLE `tbl_i` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
-			},
-		},
-	},
-
-	{
-		Name: "multi-alter ddl column statements",
-		SetUpScript: []string{
-			"create table tbl_i (i int primary key)",
 			"create table tbl_ij (i int primary key, j int)",
 		},
 		Assertions: []ScriptTestAssertion{
