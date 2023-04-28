@@ -2874,6 +2874,15 @@ CREATE TABLE t2
 			),
 		},
 		{
+			input: `alter table t add index (i), add column i int, drop column i, rename column i to j`,
+			plan: plan.NewBlock([]sql.Node{
+				plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i", "j"),
+				plan.NewDropColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i"),
+				plan.NewAddColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), &sql.Column{Name: "i", Type: types.Int32, Nullable: true, Source: "t"}, nil),
+				plan.NewAlterCreateIndex(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "", sql.IndexUsing_BTree, sql.IndexConstraint_None, []sql.IndexColumn{{Name: "i", Length: 0}}, ""),
+			}),
+		},
+		{
 			input: `DESCRIBE FORMAT=TREE SELECT * FROM foo`,
 			plan: plan.NewDescribeQuery(
 				"tree",
