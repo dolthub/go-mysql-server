@@ -131,13 +131,12 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 		//g.addOutCol(col)
 		scalar := col.scalar
 		if col.scalar == nil {
-			scalar = expression.NewGetFieldWithTable(-1, col.typ, col.table, col.col, col.nullable)
+			id := b.exprs[col.table+"."+col.col]
+			scalar = expression.NewGetFieldWithTable(int(id), col.typ, col.table, col.col, col.nullable)
 		}
 		groupings = append(groupings, scalar)
 	}
 
-	// TODO add to aggIn
-	// cache string name
 	return groupings
 }
 
@@ -171,7 +170,6 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	}
 	for _, e := range projScope.cols {
 		// projection dependencies
-		// TODO deduplicate
 		if e.table != "" && !selectStr[e.col] {
 			selectExprs = append(selectExprs, e.scalar)
 			selectStr[e.col] = true
@@ -179,7 +177,6 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
-		// TODO deduplicate
 		if !selectStr[e.col] {
 			selectExprs = append(selectExprs, e.scalar)
 			selectStr[e.col] = true
