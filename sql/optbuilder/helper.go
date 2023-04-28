@@ -3,15 +3,17 @@ package optbuilder
 import (
 	"encoding/hex"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"gopkg.in/src-d/go-errors.v1"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
 var (

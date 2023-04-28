@@ -1,9 +1,10 @@
 package optbuilder
 
 import (
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 func (b *PlanBuilder) buildAnalyze(inScope *scope, n *sqlparser.Analyze, query string) (outScope *scope) {

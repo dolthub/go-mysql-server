@@ -2,13 +2,15 @@ package optbuilder
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestPlanBuilder(t *testing.T) {
