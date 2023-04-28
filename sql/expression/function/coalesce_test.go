@@ -72,10 +72,17 @@ func TestComposeCoalasce(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, v)
 
-	c, err := NewCoalesce(nil, c1, c2)
+	c3, err := NewCoalesce(nil, c1, c2)
 	require.NoError(t, err)
-	require.Equal(t, types.Int32, c.Type())
-	v, err = c.Eval(ctx, nil)
+	require.Equal(t, types.Int32, c3.Type())
+	v, err = c3.Eval(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, v)
+
+	c4, err := NewCoalesce(expression.NewLiteral(nil, types.Null), c1, c2)
+	require.NoError(t, err)
+	require.Equal(t, types.Int32, c4.Type())
+	v, err = c4.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, v)
 }

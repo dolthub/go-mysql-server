@@ -74,6 +74,14 @@ func (i *IndexDefinition) String() string {
 	return i.IndexName
 }
 
+func (i *IndexDefinition) IsSpatial() bool {
+	return i.Constraint == sql.IndexConstraint_Spatial
+}
+
+func (i *IndexDefinition) IsUnique() bool {
+	return i.Constraint == sql.IndexConstraint_Unique
+}
+
 // ColumnNames returns each column's name without the length property.
 func (i *IndexDefinition) ColumnNames() []string {
 	colNames := make([]string, len(i.Columns))

@@ -52,6 +52,14 @@ func TestAnd(t *testing.T) {
 			).Eval(sql.NewEmptyContext(), sql.NewRow())
 			require.NoError(err)
 			require.Equal(tt.expected, result)
+
+			// also test JoinAnd
+			result, err = JoinAnd(
+				NewLiteral(tt.left, types.Boolean),
+				NewLiteral(tt.right, types.Boolean),
+			).Eval(sql.NewEmptyContext(), sql.NewRow())
+			require.NoError(err)
+			require.Equal(tt.expected, result)
 		})
 	}
 }
@@ -81,6 +89,14 @@ func TestOr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			result, err := NewOr(
+				NewLiteral(tt.left, types.Boolean),
+				NewLiteral(tt.right, types.Boolean),
+			).Eval(sql.NewEmptyContext(), sql.NewRow())
+			require.NoError(err)
+			require.Equal(tt.expected, result)
+
+			// also test JoinOr
+			result, err = JoinOr(
 				NewLiteral(tt.left, types.Boolean),
 				NewLiteral(tt.right, types.Boolean),
 			).Eval(sql.NewEmptyContext(), sql.NewRow())

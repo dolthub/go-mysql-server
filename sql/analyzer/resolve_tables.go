@@ -343,24 +343,38 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 	return plan.NewResolvedTable(toTable, to.Database, to.AsOf).WithComment(from.Comment()).(*plan.ResolvedTable)
 }
 
-// validateDropTables returns an error if the database is not droppable.
+// pruneDropTables removes all nodes that are not `*plan.ResolvedTable` from `plan.DropTable.Tables`
+func pruneDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	dt, ok := n.(*plan.DropTable)
+	if !ok {
+		return n, transform.SameTree, nil
+	}
+
+	var resolvedTables []sql.Node
+	for _, table := range dt.Tables {
+		if t, ok := table.(*plan.ResolvedTable); ok {
+			resolvedTables = append(resolvedTables, t)
+		}
+	}
+
+	newN, _ := n.WithChildren(resolvedTables...)
+	return newN, transform.NewTree, nil
+}
+
+// validateDropTables ensures that each ResolvedTable in DropTable is droppable, any UnresolvedTables are
+// skipped due to `IF EXISTS` clause, and there aren't any non-table nodes.
 func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
 		return n, transform.SameTree, nil
 	}
 
-	// validates that each table in DropTable is ResolvedTable and each database of
-	// each table is TableDropper (each table can be of different database later on)
-	var resolvedTables []sql.Node
 	for _, table := range dt.Tables {
 		switch t := table.(type) {
 		case *plan.ResolvedTable:
-			_, ok = t.Database.(sql.TableDropper)
-			if !ok {
+			if _, ok := t.Database.(sql.TableDropper); !ok {
 				return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(t.Database.Name())
 			}
-			resolvedTables = append(resolvedTables, table)
 		case *plan.UnresolvedTable:
 			if dt.IfExists() {
 				ctx.Session.Warn(&sql.Warning{
@@ -368,15 +382,13 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					Code:    mysql.ERBadTable,
 					Message: sql.ErrUnknownTable.New(t.Name()).Error(),
 				})
-			} else {
-				return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
+				continue
 			}
+			return nil, transform.SameTree, sql.ErrUnknownTable.New(t.Name())
 		default:
 			return nil, transform.SameTree, sql.ErrUnknownTable.New(getTableName(table))
 		}
 	}
 
-	newn, _ := n.WithChildren(resolvedTables...)
-	return newn, transform.NewTree, nil
-
+	return n, transform.SameTree, nil
 }

@@ -79,6 +79,7 @@ func (s *Scope) newScope(node sql.Node) *Scope {
 		memos:          s.memos,
 		recursionDepth: s.recursionDepth + 1,
 		procedures:     s.procedures,
+		joinSiblings:   s.joinSiblings,
 	}
 }
 
@@ -105,23 +106,28 @@ func (s *Scope) newScopeInJoin(node sql.Node) *Scope {
 			break
 		}
 	}
-	subScope := s.newScope(node)
+	subScope := &Scope{
+		nodes:          s.nodes,
+		memos:          s.memos,
+		recursionDepth: s.recursionDepth + 1,
+		procedures:     s.procedures,
+		joinSiblings:   s.joinSiblings,
+	}
 	subScope.joinSiblings = append(subScope.joinSiblings, node)
 	return subScope
 }
 
 // newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
 // node.
-//func (s *Scope) newScopeApplyJoin() *Scope {
-//	if s == nil {
-//		return s
-//	}
-//subScope := s
-//for _, s := range s.joinSiblings {
-//	subScope = subScope.newScope(s)
-//}
-//return subScope
-//}
+func (s *Scope) newScopeNoJoin() *Scope {
+	return &Scope{
+		nodes:           s.nodes,
+		memos:           s.memos,
+		recursionDepth:  s.recursionDepth + 1,
+		procedures:      s.procedures,
+		enforceReadOnly: s.enforceReadOnly,
+	}
+}
 
 // newScopeFromSubqueryAlias returns a new subscope created from the specified SubqueryAlias. Subquery aliases, or
 // derived tables, generally do NOT have any visibility to outer scopes, but when they are nested inside a subquery
@@ -136,8 +142,10 @@ func (s *Scope) newScopeFromSubqueryAlias(sqa *plan.SubqueryAlias) *Scope {
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
 		if s.currentNodeIsFromSubqueryExpression {
 			sqa.OuterScopeVisibility = true
+			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		} else if len(s.joinSiblings) > 0 {
+			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		}
 	}

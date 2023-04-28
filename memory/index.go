@@ -84,86 +84,11 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
-// NewLookup implements the interface sql.Index.
 func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}
-	if len(ranges) == 0 {
-		return nil, nil
-	}
-	if len(ranges[0]) != len(idx.Exprs) {
-		return nil, fmt.Errorf("expected different key count: %s=>%d/%d", idx.Name, len(idx.Exprs), len(ranges[0]))
-	}
-
-	var rangeCollectionExpr sql.Expression
-	for _, rang := range ranges {
-		var rangeExpr sql.Expression
-		for i, rce := range rang {
-			var rangeColumnExpr sql.Expression
-			switch rce.Type() {
-			// Both Empty and All may seem like strange inclusions, but if only one range is given we need some
-			// expression to evaluate, otherwise our expression would be a nil expression which would panic.
-			case sql.RangeType_Empty:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(2, types.Int8))
-			case sql.RangeType_All:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(1, types.Int8))
-			case sql.RangeType_EqualNull:
-				rangeColumnExpr = expression.NewIsNull(idx.Exprs[i])
-			case sql.RangeType_GreaterThan:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
-					rangeColumnExpr = expression.NewGreaterThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
-				} else {
-					rangeColumnExpr = expression.NewNot(expression.NewIsNull(idx.Exprs[i]))
-				}
-			case sql.RangeType_GreaterOrEqual:
-				rangeColumnExpr = expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
-			case sql.RangeType_LessThanOrNull:
-				rangeColumnExpr = or(
-					expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					expression.NewIsNull(idx.Exprs[i]),
-				)
-			case sql.RangeType_LessOrEqualOrNull:
-				rangeColumnExpr = or(
-					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					expression.NewIsNull(idx.Exprs[i]),
-				)
-			case sql.RangeType_ClosedClosed:
-				rangeColumnExpr = and(
-					expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-				)
-			case sql.RangeType_OpenOpen:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
-					rangeColumnExpr = and(
-						expression.NewGreaterThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-						expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					)
-				} else {
-					// Lower bound is (NULL, ...)
-					rangeColumnExpr = expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
-				}
-			case sql.RangeType_OpenClosed:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
-					rangeColumnExpr = and(
-						expression.NewGreaterThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-						expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					)
-				} else {
-					// Lower bound is (NULL, ...]
-					rangeColumnExpr = expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
-				}
-			case sql.RangeType_ClosedOpen:
-				rangeColumnExpr = and(
-					expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-					expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-				)
-			}
-			rangeExpr = and(rangeExpr, rangeColumnExpr)
-		}
-		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
-	}
-	return rangeCollectionExpr, nil
+	return expression.NewRangeFilterExpr(idx.Exprs, ranges)
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
@@ -265,24 +190,4 @@ func getType(val interface{}) (interface{}, sql.Type) {
 
 func (idx *Index) Order() sql.IndexOrder {
 	return sql.IndexOrderAsc
-}
-
-func or(expressions ...sql.Expression) sql.Expression {
-	if len(expressions) == 1 {
-		return expressions[0]
-	}
-	if expressions[0] == nil {
-		return or(expressions[1:]...)
-	}
-	return expression.NewOr(expressions[0], or(expressions[1:]...))
-}
-
-func and(expressions ...sql.Expression) sql.Expression {
-	if len(expressions) == 1 {
-		return expressions[0]
-	}
-	if expressions[0] == nil {
-		return and(expressions[1:]...)
-	}
-	return expression.NewAnd(expressions[0], and(expressions[1:]...))
 }

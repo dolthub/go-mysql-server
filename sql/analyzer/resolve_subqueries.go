@@ -64,9 +64,16 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			var newSqa sql.Node
 			var same2 transform.TreeIdentity
 			var err error
-			if sqa.OuterScopeVisibility && joinParent != nil && !joinParent.Op.IsLeftOuter() && c.ChildNum == 1 {
-				subScope := scope.newScopeInJoin(joinParent.Children()[0])
-				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+			// NOTE: this only really fixes one level of subquery with two joins.
+			// This patch will likely not fix cases with more deeply nested joins and subqueries.
+			// A real fix would be to re-examine indexes after everything.
+			if sqa.OuterScopeVisibility && joinParent != nil {
+				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
+					subScope := scope.newScopeInJoin(joinParent.Children()[0])
+					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+				} else {
+					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+				}
 			} else {
 				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
 			}
@@ -118,56 +125,6 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 	}
 
 	return transform.NodeWithCtx(node, selFunc, conFunc)
-
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			newSqa, same2, err := analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-
-			newNode, same1, err := finalizeSubqueriesHelper(ctx, a, newSqa.(*plan.SubqueryAlias).Child, scope.newScopeFromSubqueryAlias(sqa), sel)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-
-			if same1 && same2 {
-				return n, transform.SameTree, nil
-			} else {
-				newNode, err = newSqa.WithChildren(newNode)
-				return newNode, transform.NewTree, err
-			}
-		} else {
-			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if sq, ok := e.(*plan.Subquery); ok {
-					newSq, same2, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, true)
-					if err != nil {
-						if analyzererrors.ErrValidationResolved.Is(err) {
-							// if a parent is unresolved, we want to dig deeper to find the unresolved
-							// child dependency
-							_, _, err := finalizeSubqueriesHelper(ctx, a, sq.Query, scope.newScopeFromSubqueryExpression(node), sel)
-							if err != nil {
-								return e, transform.SameTree, err
-							}
-						}
-						return e, transform.SameTree, err
-					}
-					newExpr, same1, err := finalizeSubqueriesHelper(ctx, a, newSq.(*plan.Subquery).Query, scope.newScopeFromSubqueryExpression(node), sel)
-					if err != nil {
-						return e, transform.SameTree, err
-					}
-
-					if same1 && same2 {
-						return e, transform.SameTree, nil
-					} else {
-						return newSq.(*plan.Subquery).WithQuery(newExpr), transform.NewTree, nil
-					}
-				} else {
-					return e, transform.SameTree, nil
-				}
-			})
-		}
-	})
 }
 
 func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
@@ -489,13 +446,24 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	if scopeLen == 0 {
 		return n, transform.SameTree, nil
 	}
+
+	tmpScope := scope.newScopeNoJoin()
+	joinlessScopeLen := len(tmpScope.Schema())
+
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if j, ok := n.(*plan.JoinNode); ok {
-			if j.ScopeLen > 0 {
-				scopeLen = j.ScopeLen
-			}
 			nj := j.WithScopeLen(scopeLen)
 			if _, ok := nj.Left().(*plan.StripRowNode); !ok {
+				if _, ok := nj.Right().(*plan.HashLookup); ok {
+					nnj, err := nj.WithChildren(
+						plan.NewStripRowNode(nj.Left(), joinlessScopeLen),
+						plan.NewStripRowNode(nj.Right(), joinlessScopeLen),
+					)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					return nnj, transform.NewTree, nil
+				}
 				nj, err := nj.WithChildren(
 					plan.NewStripRowNode(nj.Left(), scopeLen),
 					plan.NewStripRowNode(nj.Right(), scopeLen),
