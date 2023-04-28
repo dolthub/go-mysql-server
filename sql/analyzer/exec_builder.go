@@ -180,7 +180,11 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 	if err != nil {
 		return nil, err
 	}
-	outerAttrs, err := b.buildFilters(j.g.m.scope, j.right.relProps.OutputCols(), expression.Tuple(j.outerAttrs))
+	tmpScope := j.g.m.scope
+	if tmpScope != nil {
+		tmpScope = tmpScope.newScopeNoJoin()
+	}
+	outerAttrs, err := b.buildFilters(tmpScope, j.right.relProps.OutputCols(), expression.Tuple(j.outerAttrs))
 	if err != nil {
 		return nil, err
 	}

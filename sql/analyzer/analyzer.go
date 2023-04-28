@@ -528,7 +528,6 @@ func postPrepareRuleSelector(id RuleId) bool {
 		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
 		finalizeSubqueriesId,
-		finalizeUnionsId,
 
 		// DefaultValidationRules
 		validateResolvedId,
