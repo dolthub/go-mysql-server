@@ -3002,6 +3002,10 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrTableColumnNotFound,
 			},
 			{
+				Query:       "alter table tbl_i add column j int, modify column j varchar(10)",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
 				Query:       "alter table tbl_ij add index (j), drop column j;",
 				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 			},
@@ -4260,4 +4264,19 @@ var BrokenScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"create table tbl_I (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table tbl_i add column j int, add check (j < 10);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
+
 }
