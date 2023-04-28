@@ -197,18 +197,22 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	gb := inScope.groupBy
 
 	if name == "count" {
-		agg := aggregation.NewCount(expression.NewLiteral(1, types.Int64))
-		gf := gb.getAgg(strings.ToLower(agg.String()))
-		if gf != nil {
-			// TODO check agg scope output, see if we've already computed
-			// if so use reference here
-			return gf
-		}
+		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
+			agg := aggregation.NewCount(expression.NewLiteral(1, types.Int64))
+			gf := gb.getAgg(strings.ToLower(agg.String()))
+			if gf != nil {
+				// TODO check agg scope output, see if we've already computed
+				// if so use reference here
+				return gf
+			}
 
-		col := scopeColumn{col: agg.String(), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-		gb.addOutCol(col)
-		gb.addAggStr(agg)
-		return expression.NewGetFieldWithTable(-1, agg.Type(), "", agg.String(), agg.IsNullable())
+			col := scopeColumn{col: agg.String(), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+			b.newColumn(gb.outScope, col)
+			//gb.addOutCol(col)
+			gb.addAggStr(agg)
+			id := b.exprs[agg.String()]
+			return expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
+		}
 	}
 
 	var args []sql.Expression
@@ -248,12 +252,14 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	}
 
 	col := scopeColumn{col: agg.String(), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-	gb.addOutCol(col)
+	//gb.addOutCol(col)
+	b.newColumn(gb.outScope, col)
 	gb.addAggStr(agg)
 
 	//TODO we need to return a reference here, so that top-level
 	// projection references the group by output.
-	return expression.NewGetFieldWithTable(-1, agg.Type(), "", agg.String(), agg.IsNullable())
+	id := b.exprs[agg.String()]
+	return expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
 }
 
 func isAggregateFunc(name string) bool {

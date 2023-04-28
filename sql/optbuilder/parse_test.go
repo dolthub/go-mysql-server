@@ -231,8 +231,8 @@ Project
 			in: "select x, sum(y) from xy group by x order by x - count(y)",
 			exp: `
 Project
- ├─ columns: [xy.x:0!null, SUM(xy.y):-1!null as sum(y)]
- └─ Sort((xy.x:0!null - COUNT(xy.y):-1!null) ASC nullsFirst)
+ ├─ columns: [xy.x:0!null, SUM(xy.y):3!null as sum(y)]
+ └─ Sort((xy.x:0!null - COUNT(xy.y):6!null) ASC nullsFirst)
      └─ GroupBy
          ├─ select: xy.y:1!null, xy.x:0!null, SUM(xy.y:1!null), COUNT(xy.y:1!null)
          ├─ group: xy.x:0!null

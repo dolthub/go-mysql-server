@@ -121,8 +121,24 @@ type PlanBuilder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
 	tabId           uint16
-	colI            uint16
+	colId           columnId
+	exprs           map[string]columnId
 	currentDatabase sql.Database
+}
+
+func (b *PlanBuilder) newColumn(s *scope, col scopeColumn) {
+	b.colId++
+	col.id = b.colId
+	s.cols = append(s.cols, col)
+	if b.exprs == nil {
+		b.exprs = make(map[string]columnId)
+	}
+	if col.table != "" {
+		b.exprs[fmt.Sprintf("%s.%s", col.table, col.col)] = b.colId
+	} else {
+		b.exprs[col.col] = b.colId
+
+	}
 }
 
 func (b *PlanBuilder) newScope() *scope {
@@ -199,33 +215,39 @@ func (b *PlanBuilder) analyzeProjectionList(inScope, outScope *scope, selectExpr
 func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
 	// use inScope to construct projections for projScope
 	var exprs []sql.Expression
-	outerLen := inScope.outerScopeLen()
+	//outerLen := inScope.outerScopeLen()
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)
 		switch e := pe.(type) {
 		case *expression.GetField:
-			gf := expression.NewGetFieldWithTable(outerLen+e.Index(), e.Type(), e.Table(), e.Name(), e.IsNullable())
+			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), e.Table(), e.Name(), e.IsNullable())
 			exprs = append(exprs, gf)
-			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable()})
-			//outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: nil, typ: gf.Type(), nullable: gf.IsNullable()})
+			id := b.exprs[gf.String()]
+			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 		case *expression.Star:
-			for i, c := range inScope.cols {
+			for _, c := range inScope.cols {
 				if c.table == e.Table || e.Table == "" {
-					gf := expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, c.nullable)
+					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 					exprs = append(exprs, gf)
-					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable()})
+					id := b.exprs[gf.String()]
+					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 				}
 			}
 		case *expression.Alias:
+			b.colId++
 			if gf, ok := e.Child.(*expression.GetField); ok {
-				outScope.addColumn(scopeColumn{table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()})
+				col := scopeColumn{table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				b.newColumn(outScope, col)
 			} else {
-				outScope.addColumn(scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: gf.IsNullable()})
+				col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: pe.IsNullable()}
+				b.newColumn(outScope, col)
 			}
 			exprs = append(exprs, e)
 		default:
+			b.colId++
 			exprs = append(exprs, pe)
-			outScope.addColumn(scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()})
+			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()}
+			b.newColumn(outScope, col)
 		}
 	}
 }
@@ -467,7 +489,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	}
 	outScope.node = newInstance
 	for _, c := range newInstance.Schema() {
-		outScope.addColumn(scopeColumn{
+		b.newColumn(outScope, scopeColumn{
 			db:    database.Name(),
 			table: "",
 			col:   c.Name,
@@ -535,7 +557,7 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 	outScope.ast = t
 	for _, col := range sch.Schema {
 		col.Source = strings.ToLower(t.Alias.String())
-		outScope.addColumn(scopeColumn{
+		b.newColumn(outScope, scopeColumn{
 			db:    "",
 			table: col.Source,
 			col:   col.Name,
@@ -612,7 +634,7 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 	}
 
 	for _, c := range tab.Schema() {
-		outScope.addColumn(scopeColumn{
+		b.newColumn(outScope, scopeColumn{
 			db:       strings.ToLower(db),
 			table:    strings.ToLower(tab.Name()),
 			col:      strings.ToLower(c.Name),
@@ -1111,7 +1133,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 	// if ordinal into proj
 	// get the reference to the i'th output
 	outScope = fromScope.replace()
-	outerLen := fromScope.outerScopeLen()
+	//outerLen := fromScope.outerScopeLen()
 
 	for _, o := range order {
 		var descending bool
@@ -1135,7 +1157,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				b.handleErr(err)
 			}
 			c.descending = descending
-			c.scalar = expression.NewGetFieldWithTable(-1, c.typ, c.table, c.col, c.nullable)
+			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 			outScope.addColumn(c)
 			fromScope.addExtraColumn(c)
 		case *ast.SQLVal:
@@ -1154,9 +1176,9 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				target := projScope.cols[intIdx]
 				var gf *expression.GetField
 				if target.scalar != nil {
-					gf = expression.NewGetFieldWithTable(outerLen+int(intIdx), target.typ, "", target.scalar.String(), target.nullable)
+					gf = expression.NewGetFieldWithTable(int(target.id), target.typ, "", target.scalar.String(), target.nullable)
 				} else {
-					gf = expression.NewGetFieldWithTable(outerLen+int(intIdx), target.typ, target.table, target.col, target.nullable)
+					gf = expression.NewGetFieldWithTable(int(target.id), target.typ, target.table, target.col, target.nullable)
 				}
 				outScope.addColumn(scopeColumn{
 					table:      gf.Table(),
@@ -1165,20 +1187,28 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 					typ:        gf.Type(),
 					nullable:   gf.IsNullable(),
 					descending: descending,
+					id:         target.id,
 				})
 				expr = gf
 			}
 		default:
 			// we could add to aggregates here, ref GF in aggOut
 			expr = b.buildScalar(fromScope, e)
-			outScope.addColumn(scopeColumn{
+			col := scopeColumn{
 				table:      "",
 				col:        expr.String(),
 				scalar:     expr,
 				typ:        expr.Type(),
 				nullable:   expr.IsNullable(),
 				descending: descending,
-			})
+			}
+			id := b.exprs[expr.String()]
+			if id == 0 {
+				b.newColumn(outScope, col)
+			} else {
+				col.id = id
+				outScope.addColumn(col)
+			}
 		}
 	}
 	return
