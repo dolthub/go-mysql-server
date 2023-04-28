@@ -41,48 +41,49 @@ func columnsToStrings(cols sqlparser.Columns) []string {
 // Convert an integer, represented by the specified string in the specified
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
-func convertInt(value string, base int) (sql.Expression, error) {
+func (b *PlanBuilder) convertInt(value string, base int) *expression.Literal {
 	if i8, err := strconv.ParseInt(value, base, 8); err == nil {
-		return expression.NewLiteral(int8(i8), types.Int8), nil
+		return expression.NewLiteral(int8(i8), types.Int8)
 	}
 	if ui8, err := strconv.ParseUint(value, base, 8); err == nil {
-		return expression.NewLiteral(uint8(ui8), types.Uint8), nil
+		return expression.NewLiteral(uint8(ui8), types.Uint8)
 	}
 	if i16, err := strconv.ParseInt(value, base, 16); err == nil {
-		return expression.NewLiteral(int16(i16), types.Int16), nil
+		return expression.NewLiteral(int16(i16), types.Int16)
 	}
 	if ui16, err := strconv.ParseUint(value, base, 16); err == nil {
-		return expression.NewLiteral(uint16(ui16), types.Uint16), nil
+		return expression.NewLiteral(uint16(ui16), types.Uint16)
 	}
 	if i32, err := strconv.ParseInt(value, base, 32); err == nil {
-		return expression.NewLiteral(int32(i32), types.Int32), nil
+		return expression.NewLiteral(int32(i32), types.Int32)
 	}
 	if ui32, err := strconv.ParseUint(value, base, 32); err == nil {
-		return expression.NewLiteral(uint32(ui32), types.Uint32), nil
+		return expression.NewLiteral(uint32(ui32), types.Uint32)
 	}
 	if i64, err := strconv.ParseInt(value, base, 64); err == nil {
-		return expression.NewLiteral(int64(i64), types.Int64), nil
+		return expression.NewLiteral(int64(i64), types.Int64)
 	}
 	if ui64, err := strconv.ParseUint(value, base, 64); err == nil {
-		return expression.NewLiteral(uint64(ui64), types.Uint64), nil
+		return expression.NewLiteral(uint64(ui64), types.Uint64)
 	}
 	if decimal, _, err := types.InternalDecimalType.Convert(value); err == nil {
-		return expression.NewLiteral(decimal, types.InternalDecimalType), nil
+		return expression.NewLiteral(decimal, types.InternalDecimalType)
 	}
 
-	return nil, fmt.Errorf("could not convert %s to any numerical type", value)
+	b.handleErr(fmt.Errorf("could not convert %s to any numerical type", value))
+	return nil
 }
 
-func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
+func (b *PlanBuilder) convertVal(ctx *sql.Context, v *sqlparser.SQLVal) sql.Expression {
 	switch v.Type {
 	case sqlparser.StrVal:
-		return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+		return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation()))
 	case sqlparser.IntVal:
-		return convertInt(string(v.Val), 10)
+		return b.convertInt(string(v.Val), 10)
 	case sqlparser.FloatVal:
 		val, err := strconv.ParseFloat(string(v.Val), 64)
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
 
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
@@ -93,17 +94,17 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := types.CreateDecimalType(p, s)
 				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation()))
 				}
 				dVal, _, err := dt.Convert(ogVal)
 				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation()))
 				}
-				return expression.NewLiteral(dVal, dt), nil
+				return expression.NewLiteral(dVal, dt)
 			}
 		}
 
-		return expression.NewLiteral(val, types.Float64), nil
+		return expression.NewLiteral(val, types.Float64)
 	case sqlparser.HexNum:
 		//TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
@@ -117,32 +118,33 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		dst := make([]byte, hex.DecodedLen(len(valBytes)))
 		_, err := hex.Decode(dst, valBytes)
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
-		return expression.NewLiteral(dst, types.LongBlob), nil
+		return expression.NewLiteral(dst, types.LongBlob)
 	case sqlparser.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
-		return expression.NewLiteral(val, types.LongBlob), nil
+		return expression.NewLiteral(val, types.LongBlob)
 	case sqlparser.ValArg:
-		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":")), nil
+		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":"))
 	case sqlparser.BitVal:
 		if len(v.Val) == 0 {
-			return expression.NewLiteral(0, types.Uint64), nil
+			return expression.NewLiteral(0, types.Uint64)
 		}
 
 		res, err := strconv.ParseUint(string(v.Val), 2, 64)
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
 
-		return expression.NewLiteral(res, types.Uint64), nil
+		return expression.NewLiteral(res, types.Uint64)
 	}
 
-	return nil, sql.ErrInvalidSQLValType.New(v.Type)
+	b.handleErr(sql.ErrInvalidSQLValType.New(v.Type))
+	return nil
 }
 
 func selectExprNeedsAlias(e *sqlparser.AliasedExpr, expr sql.Expression) bool {

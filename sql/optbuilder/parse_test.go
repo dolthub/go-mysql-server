@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
@@ -226,6 +227,65 @@ Project
                      └─ columns: [x y]
 `,
 		},
+		{
+			in: "select x, sum(y) from xy group by x order by x - count(y)",
+			exp: `
+Project
+ ├─ columns: [xy.x:0!null, SUM(xy.y):-1!null as sum(y)]
+ └─ Sort((xy.x:0!null - COUNT(xy.y):-1!null) ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.y:1!null, xy.x:0!null, SUM(xy.y:1!null), COUNT(xy.y:1!null)
+         ├─ group: xy.x:0!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y]
+`,
+		},
+		{
+			in: "select sum(x) from xy group by x order by y",
+			exp: `
+Project
+ ├─ columns: [SUM(xy.x):-1!null as sum(x)]
+ └─ Sort(xy.y:-1!null ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:0!null, SUM(xy.x:0!null)
+         ├─ group: xy.x:-1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y]
+`,
+		},
+		{
+			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY count(x) DESC",
+			exp: `
+Project
+ ├─ columns: [xy.y:1!null, COUNT(xy.x):-1!null as count(x)]
+ └─ Sort(COUNT(xy.x:0!null) DESC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:0!null, xy.y:1!null, COUNT(xy.x:0!null)
+         ├─ group: xy.y:1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y]
+`,
+		},
+		{
+			in: "select count(x) from xy",
+			exp: `
+Project
+ ├─ columns: [COUNT(1):-1!null as count(1)]
+ └─ Sort()
+     └─ GroupBy
+         ├─ select: COUNT(1 (bigint))
+         ├─ group: 
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y]
+`,
+		},
+		{
+			in: "select x+1, count(x) from xy join uv on x = u group by x+1 order by y having sum(y) > 2",
+		},
 	}
 
 	_ = []struct {
@@ -294,6 +354,7 @@ func newTestCatalog() *testCatalog {
 	mydb.AddTable("xy", cat.tables["xy"])
 	mydb.AddTable("uv", cat.tables["uv"])
 	cat.databases["mydb"] = mydb
+	cat.funcs = function.NewRegistry()
 	return cat
 }
 

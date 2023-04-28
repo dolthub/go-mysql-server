@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
@@ -22,9 +23,10 @@ type scope struct {
 	ast    ast.SQLNode
 	node   sql.Node
 
-	cols []scopeColumn
-
-	ctes map[string]*scope
+	cols      []scopeColumn
+	extraCols []scopeColumn
+	ctes      map[string]*scope
+	groupBy   *groupBy
 }
 
 func (s *scope) outerScopeLen() int {
@@ -74,7 +76,18 @@ func (s *scope) addCte(name string, cteScope *scope) {
 	s.ctes[name] = cteScope
 }
 
+func (s *scope) getCte(name string) *scope {
+	if s == nil || s.ctes == nil {
+		return nil
+	}
+	return s.ctes[strings.ToLower(name)]
+}
+
 func (s *scope) addColumn(col scopeColumn) {
+	s.cols = append(s.cols, col)
+}
+
+func (s *scope) addExtraColumn(col scopeColumn) {
 	s.cols = append(s.cols, col)
 }
 
@@ -94,13 +107,14 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 type columnId uint16
 
 type scopeColumn struct {
-	db       string
-	table    string
-	col      string
-	id       columnId
-	typ      sql.Type
-	scalar   sql.Expression
-	nullable bool
+	db         string
+	table      string
+	col        string
+	id         columnId
+	typ        sql.Type
+	scalar     sql.Expression
+	nullable   bool
+	descending bool
 }
 
 type PlanBuilder struct {
@@ -142,16 +156,38 @@ func (b *PlanBuilder) buildParenSelect(inScope *scope, s *ast.ParenSelect) (outS
 }
 
 func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
-	// TODO CTEs
 	fromScope := b.buildFrom(inScope, s.From)
 	// TODO windows
 	b.buildWhere(fromScope, s.Where)
-	//TODO aggregation will split scopes
-	// fromScope (into agg) -> projection (out of agg)
 	projScope := fromScope.replace()
 
+	// create SELECT list
+	// aggregates in select list added to fromScope.groupBy.outCols
+	// args to aggregates added to fromScope.groupBy.inCols
+	// select gets ref of agg output
 	b.analyzeProjectionList(fromScope, projScope, s.SelectExprs)
-	b.buildProjection(fromScope, projScope)
+
+	// find aggregations in order by
+	orderByScope := b.analyzeOrderBy(fromScope, projScope, s.OrderBy)
+	// TODO having, noop for now
+	// find aggregations in having
+	having := b.analyzeHaving(fromScope, projScope, s.Having)
+
+	// collect:
+	// - group by expressions
+	// - agg in, out, proj
+	// then build
+	needsAgg := b.needsAggregation(fromScope, s)
+	if needsAgg {
+		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
+		// make Project -> group by
+		outScope = b.buildAggregation(fromScope, projScope, having, groupingCols)
+	} else {
+		outScope = fromScope
+	}
+
+	b.buildOrderBy(outScope, orderByScope)
+	b.buildProjection(outScope, projScope)
 	outScope = projScope
 	return
 }
@@ -171,6 +207,7 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 			gf := expression.NewGetFieldWithTable(outerLen+e.Index(), e.Type(), e.Table(), e.Name(), e.IsNullable())
 			exprs = append(exprs, gf)
 			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable()})
+			//outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: nil, typ: gf.Type(), nullable: gf.IsNullable()})
 		case *expression.Star:
 			for i, c := range inScope.cols {
 				if c.table == e.Table || e.Table == "" {
@@ -179,6 +216,13 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable()})
 				}
 			}
+		case *expression.Alias:
+			if gf, ok := e.Child.(*expression.GetField); ok {
+				outScope.addColumn(scopeColumn{table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()})
+			} else {
+				outScope.addColumn(scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: gf.IsNullable()})
+			}
+			exprs = append(exprs, e)
 		default:
 			exprs = append(exprs, pe)
 			outScope.addColumn(scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()})
@@ -292,7 +336,7 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 		switch e := t.Expr.(type) {
 		case ast.TableName:
 			// TODO this can be a CTE
-			if cteScope, ok := inScope.ctes[e.Name.String()]; ok {
+			if cteScope := inScope.getCte(e.Name.String()); cteScope != nil {
 				outScope = cteScope
 				return
 			}
@@ -612,33 +656,44 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		c := b.buildScalar(inScope, v.Expr)
 		return expression.NewNot(c)
 	case *ast.SQLVal:
-		val, err := convertVal(b.ctx, v)
-		if err != nil {
-			b.handleErr(err)
-		}
-		return val
+		return b.convertVal(b.ctx, v)
 	case ast.BoolVal:
 		return expression.NewLiteral(bool(v), types.Boolean)
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		table := strings.ToLower(v.Qualifier.String())
-		col := strings.ToLower(v.Name.String())
 		checkScope := inScope
-		outerLen := inScope.outerScopeLen()
 		for checkScope != nil {
-			for i, c := range checkScope.cols {
-				if c.col == col && (c.table == table || table == "") {
-					return expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, c.nullable)
-				}
+			c, idx := b.resolveColumn(inScope, v)
+			if idx >= 0 {
+				return expression.NewGetFieldWithTable(checkScope.outerScopeLen()+idx, c.typ, c.table, c.col, c.nullable)
 			}
 			checkScope = checkScope.parent
 		}
 		b.handleErr(sql.ErrColumnNotFound.New(v))
 	case *ast.FuncExpr:
+		name := v.Name.Lowered()
+		if isAggregateFunc(name) {
+			// TODO this assumes aggregate is in the same scope
+			// also need to avoid nested aggregates
+			return b.buildAggregateFunc(inScope, name, v)
+		} else if isWindowFunc(name) {
+			panic("todo window funcs")
+		}
+
+		f, err := b.cat.Function(b.ctx, name)
+		if err != nil {
+			b.handleErr(err)
+		}
+
 		args := make([]sql.Expression, len(v.Exprs))
 		for i, e := range v.Exprs {
 			args[i] = b.selectExprToExpression(inScope, e)
+		}
+
+		rf, err := f.NewInstance(args)
+		if err != nil {
+			b.handleErr(err)
 		}
 
 		// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
@@ -660,21 +715,11 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			panic("todo preprocess window functions int windowInfo")
 		}
 
-		name := v.Name.Lowered()
-		f, err := b.cat.Function(b.ctx, name)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		rf, err := f.NewInstance(args)
-		if err != nil {
-			b.handleErr(err)
-		}
-
 		return rf
 
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
+		//return b.buildAggregateFunc(inScope, "group_concat", v)
 		panic("todo should have been processed into an aggInfo")
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
@@ -724,7 +769,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return expression.NewTuple(exprs...)
 
 	case *ast.BinaryExpr:
-		return b.buildScalar(inScope, v)
+		return b.buildBinaryScalar(inScope, v)
 	case *ast.UnaryExpr:
 		return b.buildScalar(inScope, v)
 	case *ast.Subquery:
@@ -759,7 +804,15 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		expression.NewCollatedExpression(innerExpr, collation)
 	case *ast.ValuesFuncExpr:
 		col := b.buildScalar(inScope, v.Name)
-		return expression.NewUnresolvedFunction("values", false, nil, col)
+		fn, err := b.cat.Function(b.ctx, "values")
+		if err != nil {
+			b.handleErr(err)
+		}
+		values, err := fn.NewInstance([]sql.Expression{col})
+		if err != nil {
+			b.handleErr(err)
+		}
+		return values
 	case *ast.ExistsExpr:
 		selScope := b.buildSelectStmt(inScope, v.Subquery.Select)
 		// rebuild subquery
@@ -794,16 +847,179 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	return nil
 }
 
-func (b *PlanBuilder) buildLiteral(ctx *sql.Context, v *ast.SQLVal) (sql.Expression, error) {
+func (b *PlanBuilder) buildGetField(inScope *scope, v *ast.ColName) *expression.GetField {
+	table := strings.ToLower(v.Qualifier.String())
+	col := strings.ToLower(v.Name.String())
+	checkScope := inScope
+	outerLen := inScope.outerScopeLen()
+	for checkScope != nil {
+		for i, c := range checkScope.cols {
+			if c.col == col && (c.table == table || table == "") {
+				return expression.NewGetFieldWithTable(outerLen+i, c.typ, c.table, c.col, c.nullable)
+			}
+		}
+		checkScope = checkScope.parent
+	}
+	b.handleErr(sql.ErrColumnNotFound.New(v))
+	return nil
+}
+
+func (b *PlanBuilder) resolveColumn(inScope *scope, v *ast.ColName) (scopeColumn, int) {
+	table := strings.ToLower(v.Qualifier.String())
+	col := strings.ToLower(v.Name.String())
+	for i, c := range inScope.cols {
+		if c.col == col && (c.table == table || table == "") {
+			return c, i
+		}
+	}
+	b.handleErr(sql.ErrColumnNotFound.New(v))
+	return scopeColumn{}, -1
+}
+
+func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
+	switch strings.ToLower(e.Operator) {
+	case ast.MinusStr:
+		expr := b.buildScalar(inScope, e.Expr)
+		return expression.NewUnaryMinus(expr)
+	case ast.PlusStr:
+		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expressio return b.buildScalar(inScope, e.Expr)
+		expr := b.buildScalar(inScope, e.Expr)
+		return expression.NewBinary(expr)
+	case ast.BangStr:
+		c := b.buildScalar(inScope, e.Expr)
+		return expression.NewNot(c)
+	default:
+		lowerOperator := strings.TrimSpace(strings.ToLower(e.Operator))
+		if strings.HasPrefix(lowerOperator, "_") {
+			// This is a character set introducer, so we need to decode the string to our internal encoding (`utf8mb4`)
+			charSet, err := sql.ParseCharacterSet(lowerOperator[1:])
+			if err != nil {
+				b.handleErr(err)
+			}
+			if charSet.Encoder() == nil {
+				err := sql.ErrUnsupportedFeature.New("unsupported character set: " + charSet.Name())
+				b.handleErr(err)
+			}
+
+			// Due to how vitess orders expressions, COLLATE is a child rather than a parent, so we need to handle it in a special way
+			collation := charSet.DefaultCollation()
+			if collateExpr, ok := e.Expr.(*ast.CollateExpr); ok {
+				// We extract the expression out of CollateExpr as we're only concerned about the collation string
+				e.Expr = collateExpr.Expr
+				// TODO: rename this from Charset to Collation
+				collation, err = sql.ParseCollation(nil, &collateExpr.Charset, false)
+				if err != nil {
+					b.handleErr(err)
+				}
+				if collation.CharacterSet() != charSet {
+					err := sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
+					b.handleErr(err)
+				}
+			}
+
+			// Character set introducers only work on string literals
+			expr := b.buildScalar(inScope, e.Expr)
+			if _, ok := expr.(*expression.Literal); !ok || !types.IsText(expr.Type()) {
+				err := sql.ErrCharSetIntroducer.New()
+				b.handleErr(err)
+			}
+			literal, _ := expr.Eval(b.ctx, nil)
+
+			// Internally all strings are `utf8mb4`, so we need to decode the string (which applies the introducer)
+			if strLiteral, ok := literal.(string); ok {
+				decodedLiteral, ok := charSet.Encoder().Decode(encodings.StringToBytes(strLiteral))
+				if !ok {
+					err := sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
+					b.handleErr(err)
+				}
+				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), types.CreateLongText(collation))
+			} else if byteLiteral, ok := literal.([]byte); ok {
+				decodedLiteral, ok := charSet.Encoder().Decode(byteLiteral)
+				if !ok {
+					err := sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
+					b.handleErr(err)
+				}
+				return expression.NewLiteral(decodedLiteral, types.CreateLongText(collation))
+			} else {
+				// Should not be possible
+				err := fmt.Errorf("expression literal returned type `%s` but literal value had type `%T`",
+					expr.Type().String(), literal)
+				b.handleErr(err)
+			}
+		}
+		err := sql.ErrUnsupportedFeature.New("unary operator: " + e.Operator)
+		b.handleErr(err)
+	}
+	return nil
+}
+
+func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
+	switch strings.ToLower(be.Operator) {
+	case
+		ast.PlusStr,
+		ast.MinusStr,
+		ast.MultStr,
+		ast.DivStr,
+		ast.ShiftLeftStr,
+		ast.ShiftRightStr,
+		ast.BitAndStr,
+		ast.BitOrStr,
+		ast.BitXorStr,
+		ast.IntDivStr,
+		ast.ModStr:
+
+		l := b.buildScalar(inScope, be.Left)
+
+		r := b.buildScalar(inScope, be.Right)
+
+		_, lok := l.(*expression.Interval)
+		_, rok := r.(*expression.Interval)
+		if lok && be.Operator == "-" {
+			err := sql.ErrUnsupportedSyntax.New("subtracting from an interval")
+			b.handleErr(err)
+		} else if (lok || rok) && be.Operator != "+" && be.Operator != "-" {
+			err := sql.ErrUnsupportedSyntax.New("only + and - can be used to add or subtract intervals from dates")
+			b.handleErr(err)
+		} else if lok && rok {
+			err := sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
+			b.handleErr(err)
+		}
+
+		switch strings.ToLower(be.Operator) {
+		case ast.DivStr:
+			return expression.NewDiv(l, r)
+		case ast.ModStr:
+			return expression.NewMod(l, r)
+		case ast.BitAndStr, ast.BitOrStr, ast.BitXorStr, ast.ShiftRightStr, ast.ShiftLeftStr:
+			return expression.NewBitOp(l, r, be.Operator)
+		case ast.IntDivStr:
+			return expression.NewIntDiv(l, r)
+		default:
+			return expression.NewArithmetic(l, r, be.Operator)
+		}
+	case
+		ast.JSONExtractOp,
+		ast.JSONUnquoteExtractOp:
+		err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
+		b.handleErr(err)
+
+	default:
+		err := sql.ErrUnsupportedFeature.New(be.Operator)
+		b.handleErr(err)
+	}
+	return nil
+}
+
+func (b *PlanBuilder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression {
 	switch v.Type {
 	case ast.StrVal:
-		return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 	case ast.IntVal:
-		return convertInt(string(v.Val), 10)
+		return b.convertInt(string(v.Val), 10)
 	case ast.FloatVal:
 		val, err := strconv.ParseFloat(string(v.Val), 64)
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
 
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
@@ -814,17 +1030,17 @@ func (b *PlanBuilder) buildLiteral(ctx *sql.Context, v *ast.SQLVal) (sql.Express
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := types.CreateDecimalType(p, s)
 				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 				}
 				dVal, _, err := dt.Convert(ogVal)
 				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 				}
-				return expression.NewLiteral(dVal, dt), nil
+				return expression.NewLiteral(dVal, dt)
 			}
 		}
 
-		return expression.NewLiteral(val, types.Float64), nil
+		return expression.NewLiteral(val, types.Float64)
 	case ast.HexNum:
 		//TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
@@ -838,32 +1054,33 @@ func (b *PlanBuilder) buildLiteral(ctx *sql.Context, v *ast.SQLVal) (sql.Express
 		dst := make([]byte, hex.DecodedLen(len(valBytes)))
 		_, err := hex.Decode(dst, valBytes)
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
-		return expression.NewLiteral(dst, types.LongBlob), nil
+		return expression.NewLiteral(dst, types.LongBlob)
 	case ast.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
-		return expression.NewLiteral(val, types.LongBlob), nil
+		return expression.NewLiteral(val, types.LongBlob)
 	case ast.ValArg:
-		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":")), nil
+		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":"))
 	case ast.BitVal:
 		if len(v.Val) == 0 {
-			return expression.NewLiteral(0, types.Uint64), nil
+			return expression.NewLiteral(0, types.Uint64)
 		}
 
 		res, err := strconv.ParseUint(string(v.Val), 2, 64)
 		if err != nil {
-			return nil, err
+			b.handleErr(err)
 		}
 
-		return expression.NewLiteral(res, types.Uint64), nil
+		return expression.NewLiteral(res, types.Uint64)
 	}
 
-	return nil, sql.ErrInvalidSQLValType.New(v.Type)
+	b.handleErr(sql.ErrInvalidSQLValType.New(v.Type))
+	return nil
 }
 
 func (b *PlanBuilder) buildFilter() {
@@ -883,12 +1100,100 @@ func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
 	inScope.node = filterNode
 }
 
-func (b *PlanBuilder) analyzeHaving() {
+func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
+	// - regular col
+	// - ordinal into proj
+	// - getfield output of proj
 
+	// if regular col, make sure in aggOut or add
+	// (sort before projecting final group by result)
+
+	// if ordinal into proj
+	// get the reference to the i'th output
+	outScope = fromScope.replace()
+	outerLen := fromScope.outerScopeLen()
+
+	for _, o := range order {
+		var descending bool
+		switch strings.ToLower(o.Direction) {
+		default:
+			err := errInvalidSortOrder.New(o.Direction)
+			b.handleErr(err)
+		case ast.AscScr:
+			descending = false
+		case ast.DescScr:
+			descending = true
+		}
+
+		var expr sql.Expression
+		switch e := o.Expr.(type) {
+		case *ast.ColName:
+			// add to extra cols
+			c, idx := b.resolveColumn(fromScope, e)
+			if idx == -1 {
+				err := sql.ErrColumnNotFound.New(e.Name)
+				b.handleErr(err)
+			}
+			c.descending = descending
+			c.scalar = expression.NewGetFieldWithTable(-1, c.typ, c.table, c.col, c.nullable)
+			outScope.addColumn(c)
+			fromScope.addExtraColumn(c)
+		case *ast.SQLVal:
+			// integer literal into projScope
+			// else throw away
+			if e.Type == ast.IntVal {
+				lit := b.convertInt(string(e.Val), 10)
+				idx, _, err := types.Int64.Convert(lit.Value())
+				if err != nil {
+					b.handleErr(err)
+				}
+				intIdx, ok := idx.(int64)
+				if !ok {
+					b.handleErr(fmt.Errorf("expected integer order by literal"))
+				}
+				target := projScope.cols[intIdx]
+				var gf *expression.GetField
+				if target.scalar != nil {
+					gf = expression.NewGetFieldWithTable(outerLen+int(intIdx), target.typ, "", target.scalar.String(), target.nullable)
+				} else {
+					gf = expression.NewGetFieldWithTable(outerLen+int(intIdx), target.typ, target.table, target.col, target.nullable)
+				}
+				outScope.addColumn(scopeColumn{
+					table:      gf.Table(),
+					col:        gf.Name(),
+					scalar:     gf,
+					typ:        gf.Type(),
+					nullable:   gf.IsNullable(),
+					descending: descending,
+				})
+				expr = gf
+			}
+		default:
+			// we could add to aggregates here, ref GF in aggOut
+			expr = b.buildScalar(fromScope, e)
+			outScope.addColumn(scopeColumn{
+				table:      "",
+				col:        expr.String(),
+				scalar:     expr,
+				typ:        expr.Type(),
+				nullable:   expr.IsNullable(),
+				descending: descending,
+			})
+		}
+	}
+	return
 }
 
-func (b *PlanBuilder) buildDistinct() {
-
+func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) sql.Expression {
+	// build having filter expr
+	// aggregates added to fromScope.groupBy
+	// can see projScope outputs
+	if having == nil {
+		return nil
+	}
+	// TODO add aggregates to groupBy scopes
+	//return b.build(projScope)
+	return nil
 }
 
 func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
@@ -901,31 +1206,23 @@ func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expressio
 	return nil
 }
 
-func (b *PlanBuilder) buildOrderBy(inScope *scope, ob ast.OrderBy) sql.SortFields {
+func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
+	// TODO build Sort node over input
 	var sortFields sql.SortFields
-	for _, o := range ob {
-		e := b.buildScalar(inScope, o.Expr)
-
-		var so sql.SortOrder
-		switch strings.ToLower(o.Direction) {
-		default:
-			err := errInvalidSortOrder.New(o.Direction)
-			b.handleErr(err)
-		case ast.AscScr:
-			so = sql.Ascending
-		case ast.DescScr:
+	for _, c := range orderByScope.cols {
+		so := sql.Ascending
+		if c.descending {
 			so = sql.Descending
 		}
-
-		e2, _ := e.(sql.Expression2)
 		sf := sql.SortField{
-			Column:  e,
-			Column2: e2,
-			Order:   so,
+			Column: c.scalar,
+			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
 	}
-	return sortFields
+	sort := plan.NewSort(sortFields, inScope.node)
+	inScope.node = sort
+	return
 }
 
 type parseErr struct {

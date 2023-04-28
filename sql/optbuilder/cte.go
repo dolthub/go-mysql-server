@@ -101,9 +101,10 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	distinct := union.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, union.Limit)
 
-	sortFields := b.buildOrderBy(inScope, union.OrderBy)
+	orderByScope := b.analyzeOrderBy(rightInScope, inScope, union.OrderBy)
+	b.buildOrderBy(rightInScope, orderByScope)
 
-	rightScope.node = plan.NewRecursiveCte(leftScope.node, rightScope.node, name, columns, distinct, limit, sortFields)
+	rightScope.node = plan.NewRecursiveCte(leftScope.node, rightScope.node, name, columns, distinct, limit, nil)
 	b.renameSource(rightScope, name, columns)
 	inScope.addCte(name, rightScope)
 }
