@@ -4271,12 +4271,11 @@ var BrokenScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "alter table tbl_i add column j int, add check (j < 10);",
+				Query: "alter table tbl_i add column j int, add check (j < 10);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 		},
 	},
-
 }
