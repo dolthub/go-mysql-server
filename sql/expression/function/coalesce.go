@@ -16,8 +16,9 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
