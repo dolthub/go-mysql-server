@@ -705,6 +705,11 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*query.Field {
 			Charset:      charset,
 			ColumnLength: c.Type.MaxTextResponseByteLength(ctx),
 		}
+
+		if types.IsDecimal(c.Type) {
+			decimalType := c.Type.(sql.DecimalType)
+			fields[i].Decimals = uint32(decimalType.Scale())
+		}
 	}
 
 	return fields
