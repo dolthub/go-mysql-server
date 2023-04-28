@@ -1281,6 +1281,18 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
+// convertMultiAlterDDL converts MultiAlterDDL statements
+// If there are multiple alter statements, they are sorted in order of their precedence and placed inside a plan.Block
+// Currently, the precedence of DDL statements is:
+// 1.  RENAME COLUMN
+// 2.  DROP COLUMN
+// 3.  MODIFY COLUMN
+// 4.  ADD COLUMN
+// 5.  DROP CHECK/CONSTRAINT
+// 7.  CREATE CHECK/CONSTRAINT
+// 8.  RENAME INDEX
+// 9.  DROP INDEX
+// 10. ADD INDEX
 func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
 	statementsLen := len(c.Statements)
 	if statementsLen == 1 {
