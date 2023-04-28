@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -56,7 +58,7 @@ func (c *Coalesce) Type() sql.Type {
 			continue
 		}
 		t := arg.Type()
-		if t == nil {
+		if t == nil || t == types.Null {
 			continue
 		}
 		return t

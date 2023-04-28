@@ -2967,6 +2967,26 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "coalesce tests",
+		SetUpScript: []string{
+			"create table c select coalesce(NULL, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from c;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='c';",
+				Expected: []sql.Row{
+					{"coalesce(NULL,1)", "tinyint"},
+				},
+			},
+		},
+	},
+	{
 		Name: "multi-alter ddl column statements",
 		SetUpScript: []string{
 			"create table tbl_i (i int primary key)",
