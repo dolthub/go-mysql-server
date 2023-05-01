@@ -406,7 +406,11 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			if len(ai.Columns) != 1 {
 				return nil, sql.ErrTooManyKeyParts.New(1)
 			}
-			schCol := sch[sch.IndexOfColName(ai.Columns[0].Name)]
+			idx := sch.IndexOfColName(ai.Columns[0].Name)
+			if idx == -1 {
+				return nil, sql.ErrColumnNotFound.New(ai.Columns[0].Name)
+			}
+			schCol := sch[idx]
 			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
 			if !ok {
 				return nil, sql.ErrBadSpatialIdxCol.New()
@@ -489,7 +493,11 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 // validateIndexType prevents creating invalid indexes
 func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema) error {
 	for _, idxCol := range cols {
-		schCol := sch[sch.IndexOfColName(idxCol.Name)]
+		idx := sch.IndexOfColName(idxCol.Name)
+		if idx == -1 {
+			return sql.ErrColumnNotFound.New(idxCol.Name)
+		}
+		schCol := sch[idx]
 		err := validatePrefixLength(ctx, schCol, idxCol)
 		if err != nil {
 			return err
