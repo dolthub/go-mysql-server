@@ -26,8 +26,9 @@ import (
 
 type RenameTable struct {
 	ddlNode
-	OldNames []string
-	NewNames []string
+	OldNames    []string
+	NewNames    []string
+	alterTblDef bool
 }
 
 var _ sql.Node = (*RenameTable)(nil)
@@ -35,11 +36,12 @@ var _ sql.Databaser = (*RenameTable)(nil)
 var _ sql.CollationCoercible = (*RenameTable)(nil)
 
 // NewRenameTable creates a new RenameTable node
-func NewRenameTable(db sql.Database, oldNames, newNames []string) *RenameTable {
+func NewRenameTable(db sql.Database, oldNames, newNames []string, alterTbl bool) *RenameTable {
 	return &RenameTable{
-		ddlNode:  ddlNode{db},
-		OldNames: oldNames,
-		NewNames: newNames,
+		ddlNode:     ddlNode{db},
+		OldNames:    oldNames,
+		NewNames:    newNames,
+		alterTblDef: alterTbl,
 	}
 }
 
@@ -170,6 +172,10 @@ func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *
 			return false, nil
 		}
 
+		if r.alterTblDef {
+			return false, sql.ErrNotBaseTable.New(fmt.Sprintf("'%s.%s'", r.Db.Name(), oldName))
+		}
+
 		err = viewDb.DropView(ctx, oldName)
 		if err != nil {
 			return false, err
@@ -185,6 +191,10 @@ func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *
 		view, exists := vr.View(r.Db.Name(), oldName)
 		if !exists {
 			return false, nil
+		}
+
+		if r.alterTblDef {
+			return false, sql.ErrNotBaseTable.New(fmt.Sprintf("'%s.%s'", r.Db.Name(), oldName))
 		}
 
 		err := vr.Delete(r.Db.Name(), oldName)

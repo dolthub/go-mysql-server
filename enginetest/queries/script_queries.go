@@ -3015,6 +3015,27 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "renaming views with ALTER TABLE ... RENAME .. statement should fail",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+			{
+				Query:       "alter table v1 rename to view1",
+				ExpectedErr: sql.ErrNotBaseTable,
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

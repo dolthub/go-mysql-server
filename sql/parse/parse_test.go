@@ -1103,27 +1103,19 @@ CREATE TABLE t2
 		},
 		{
 			input: `RENAME TABLE foo TO bar`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"}, false),
 		},
 		{
 			input: `RENAME TABLE foo TO bar, baz TO qux`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo", "baz"}, []string{"bar", "qux"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo", "baz"}, []string{"bar", "qux"}, false),
 		},
 		{
 			input: `ALTER TABLE foo RENAME bar`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"}, true),
 		},
 		{
 			input: `ALTER TABLE foo RENAME TO bar`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"}, true),
 		},
 		{
 			input: `ALTER TABLE foo RENAME COLUMN bar TO baz`,
