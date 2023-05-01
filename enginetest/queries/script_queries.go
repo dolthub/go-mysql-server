@@ -4237,4 +4237,39 @@ var BrokenScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "renaming table name that is referenced in existing view",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"insert into t1 values (1,1);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from v1;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "rename table t1 to t2;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t2"}, {"v1"}},
+			},
+			{
+				Query:          "select * from v1;",
+				ExpectedErrStr: "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them",
+			},
+			{
+				Query:                 "show create view v1;",
+				Expected:              []sql.Row{{"v1", "CREATE VIEW `v1` AS select * from t1", "utf8mb4", "utf8mb4_0900_bin"}},
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{{"Warning", 1356, "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"}},
+			},
+		},
+	},
 }
