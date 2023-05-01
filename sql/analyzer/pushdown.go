@@ -808,73 +808,78 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		if !ok {
 			return tc.Node, transform.SameTree, nil
 		}
-
-		// TODO: what to do about joins?
-
-		rs := getResolvedTable(s)
-		if rs == nil {
-			return n, transform.SameTree, nil
-		}
-		table := rs.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
-		idxTbl, ok := table.(sql.IndexAddressableTable)
-		if !ok {
-			return s, transform.SameTree, nil
-		}
-		idxs, err := idxTbl.GetIndexes(ctx)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		// TODO: support secondary indexes?
-		var pkIndex sql.Index
-		for _, idx := range idxs {
-			if idx.ID() == "PRIMARY" {
-				pkIndex = idx
-				break
-			}
-		}
-		if pkIndex == nil {
-			return s, transform.SameTree, nil
-		}
-
-		pkColNames := pkIndex.Expressions()
 		tableAliases, err := getTableAliases(s, scope)
 		if err != nil {
-			return n, transform.SameTree, nil
+			return tc.Node, transform.SameTree, nil
 		}
 		sfs := normalizeExpressions(tableAliases, s.SortFields.ToExpressions()...)
-		if len(sfs) > len(pkColNames) {
-			return n, transform.SameTree, nil
-		}
-		for i, fieldExpr := range sfs {
-			if s.SortFields[0].Order != s.SortFields[i].Order {
+		newN, same, err := transform.Node(s, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+			rs, ok := n.(*plan.ResolvedTable)
+			if !ok {
 				return n, transform.SameTree, nil
 			}
-			if fieldExpr.String() != pkColNames[i] {
+			table := rs.Table
+			if w, ok := table.(sql.TableWrapper); ok {
+				table = w.Underlying()
+			}
+			idxTbl, ok := table.(sql.IndexAddressableTable)
+			if !ok {
 				return n, transform.SameTree, nil
 			}
-		}
+			idxs, err := idxTbl.GetIndexes(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 
-		// TODO: projections?? table aliases??
+			// TODO: support secondary indexes?
+			var pkIndex sql.Index
+			for _, idx := range idxs {
+				if idx.ID() == "PRIMARY" {
+					pkIndex = idx
+					break
+				}
+			}
+			if pkIndex == nil {
+				return n, transform.SameTree, nil
+			}
 
-		// Create lookup based off of PrimaryKey
-		indexBuilder := sql.NewIndexBuilder(pkIndex)
-		lookup, err := indexBuilder.Build(ctx)
+			pkColNames := pkIndex.Expressions()
+			if len(sfs) > len(pkColNames) {
+				return n, transform.SameTree, nil
+			}
+			for i, fieldExpr := range sfs {
+				if s.SortFields[0].Order != s.SortFields[i].Order {
+					return n, transform.SameTree, nil
+				}
+				if fieldExpr.String() != pkColNames[i] {
+					return n, transform.SameTree, nil
+				}
+			}
+
+			// Create lookup based off of PrimaryKey
+			indexBuilder := sql.NewIndexBuilder(pkIndex)
+			lookup, err := indexBuilder.Build(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if !pkIndex.CanSupport(lookup.Ranges...) {
+				return n, transform.SameTree, nil
+			}
+			newNode, err := plan.NewStaticIndexedAccessForResolvedTable(rs, lookup)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			return newNode, transform.NewTree, err
+		})
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		if !pkIndex.CanSupport(lookup.Ranges...) {
-			return n, transform.SameTree, nil
+		if same {
+			return tc.Node, transform.SameTree, nil
 		}
-		newNode, err := plan.NewStaticIndexedAccessForResolvedTable(rs, lookup)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		return newNode, transform.NewTree, err
+		// drop the sort node parent, in favor of the optimized child
+		return newN.(*plan.Sort).Child, same, nil
 	})
 }
 
