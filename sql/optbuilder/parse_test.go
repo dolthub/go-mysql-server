@@ -273,10 +273,10 @@ Project
 			in: "select count(x) from xy",
 			exp: `
 Project
- ├─ columns: [COUNT(1):-1!null as count(1)]
+ ├─ columns: [COUNT(xy.x):3!null as count(x)]
  └─ Sort()
      └─ GroupBy
-         ├─ select: COUNT(1 (bigint))
+         ├─ select: xy.x:0!null, COUNT(xy.x:0!null)
          ├─ group: 
          └─ Table
              ├─ name: xy
@@ -284,34 +284,95 @@ Project
 `,
 		},
 		{
+			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y DESC",
+		},
+		{
+			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y",
+		},
+		{
+			in: "SELECT count(kv.k) AS count_1, kv.v + kv.w AS lx FROM kv GROUP BY kv.v + kv.w",
+		},
+		{
+			in: "SELECT count(*), k+v AS r FROM kv GROUP BY k, v",
+		},
+		{
+			in: "SELECT count(*), k+v AS r FROM kv GROUP BY k+v",
+		},
+		{
+			in: "SELECT count(*) FROM kv GROUP BY 1+2",
+		},
+		{
+			in: "SELECT count(*), upper(s) FROM kv GROUP BY upper(s)",
+		},
+		{
+			in: "SELECT v, count(*), w FROM kv GROUP BY 1, 3",
+		},
+		{
 			in: "select x+1, count(x) from xy join uv on x = u group by x+1 order by y having sum(y) > 2",
+		},
+		{
+			in: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 1",
+		},
+		{
+			in: "SELECT x, sum(x) FROM xy group by 1 having avg(y) > 1 order by 1",
+		},
+		{
+			// TODO: error (y) is not aggregated
+			in: "SELECT x, sum(x) FROM xy group by 1 having x+y order by 1",
 		},
 	}
 
-	_ = []struct {
+	derivedTests := []struct {
 		in  string
 		exp string
 	}{
 		{
 			// A subquery containing a derived table, used in the WHERE clause of a top-level query, has visibility
 			// to tables and columns in the top-level query.
-			in: "SELECT * FROM xy WHERE xy.y > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
+			in: "SELECT * FROM xy WHERE xy.y > (SELECT dt.u FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.x) dt);",
+			exp: `
+Project
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
+ └─ Filter
+     ├─ GreaterThan
+     │   ├─ xy.y:1!null
+     │   └─ Subquery
+     │       ├─ cacheable: false
+     │       └─ Project
+     │           ├─ columns: [dt.u:3!null]
+     │           └─ SubqueryAlias
+     │               ├─ name: dt
+     │               ├─ outerVisibility: false
+     │               ├─ cacheable: false
+     │               └─ Project
+     │                   ├─ columns: [uv.u:3!null as u]
+     │                   └─ Filter
+     │                       ├─ Eq
+     │                       │   ├─ uv.v:4!null
+     │                       │   └─ xy.x:0!null
+     │                       └─ Table
+     │                           ├─ name: uv
+     │                           └─ columns: [u v w]
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
 			// A subquery containing a derived table, used in the HAVING clause of a top-level query, has visibility
 			// to tables and columns in the top-level query.
-			in: "SELECT * FROM t1 HAVING t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
+			in: "SELECT * FROM xy HAVING xy.z > (SELECT dt.u FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt);",
 		},
 		{
-			in: "SELECT (SELECT dt.z FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+			in: "SELECT (SELECT dt.z FROM (SELECT uv.a AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 		},
 		{
-			in: "SELECT (SELECT max(dt.z) FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+			in: "SELECT (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 		},
 		{
 			// A subquery containing a derived table, projected in a SELECT query, has visibility to tables and columns
 			// in the top-level query.
-			in: "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
+			in: "SELECT xy.*, (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 		},
 	}
 
@@ -333,6 +394,18 @@ Project
 			require.True(t, outScope.node.Resolved())
 		})
 	}
+
+	for _, tt := range derivedTests {
+		t.Run(tt.in, func(t *testing.T) {
+			stmt, err := sqlparser.Parse(tt.in)
+			require.NoError(t, err)
+
+			outScope := b.build(nil, stmt, tt.in)
+			print(sql.DebugString(outScope.node))
+			require.Equal(t, tt.exp, "\n"+sql.DebugString(outScope.node))
+			require.True(t, outScope.node.Resolved())
+		})
+	}
 }
 
 func newTestCatalog() *testCatalog {
@@ -344,10 +417,12 @@ func newTestCatalog() *testCatalog {
 	cat.tables["xy"] = memory.NewTable("xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64},
 		{Name: "y", Type: types.Int64},
+		{Name: "z", Type: types.Int64},
 	}, 0), nil)
 	cat.tables["uv"] = memory.NewTable("uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64},
 		{Name: "v", Type: types.Int64},
+		{Name: "w", Type: types.Int64},
 	}, 0), nil)
 
 	mydb := memory.NewDatabase("mydb")

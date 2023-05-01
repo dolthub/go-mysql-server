@@ -29,6 +29,10 @@ type scope struct {
 	groupBy   *groupBy
 }
 
+func (s *scope) initGroupBy() {
+	s.groupBy = &groupBy{outScope: s.replace()}
+}
+
 func (s *scope) outerScopeLen() int {
 	var cnt int
 	sco := s.parent
@@ -88,7 +92,7 @@ func (s *scope) addColumn(col scopeColumn) {
 }
 
 func (s *scope) addExtraColumn(col scopeColumn) {
-	s.cols = append(s.cols, col)
+	s.extraCols = append(s.extraCols, col)
 }
 
 func (s *scope) addColumns(cols []scopeColumn) {
@@ -187,7 +191,7 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	orderByScope := b.analyzeOrderBy(fromScope, projScope, s.OrderBy)
 	// TODO having, noop for now
 	// find aggregations in having
-	having := b.analyzeHaving(fromScope, projScope, s.Having)
+	b.analyzeHaving(fromScope, s.Having)
 
 	// collect:
 	// - group by expressions
@@ -196,6 +200,7 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	needsAgg := b.needsAggregation(fromScope, s)
 	if needsAgg {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
+		having := b.buildHaving(fromScope, projScope, s.Having)
 		// make Project -> group by
 		outScope = b.buildAggregation(fromScope, projScope, having, groupingCols)
 	} else {
@@ -234,7 +239,6 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 				}
 			}
 		case *expression.Alias:
-			b.colId++
 			if gf, ok := e.Child.(*expression.GetField); ok {
 				col := scopeColumn{table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
 				b.newColumn(outScope, col)
@@ -244,7 +248,6 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 			}
 			exprs = append(exprs, e)
 		default:
-			b.colId++
 			exprs = append(exprs, pe)
 			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()}
 			b.newColumn(outScope, col)
@@ -686,7 +689,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.ColName:
 		checkScope := inScope
 		for checkScope != nil {
-			c, idx := b.resolveColumn(inScope, v)
+			c, idx := b.resolveColumn(checkScope, v)
 			if idx >= 0 {
 				return expression.NewGetFieldWithTable(checkScope.outerScopeLen()+idx, c.typ, c.table, c.col, c.nullable)
 			}
@@ -894,7 +897,6 @@ func (b *PlanBuilder) resolveColumn(inScope *scope, v *ast.ColName) (scopeColumn
 			return c, i
 		}
 	}
-	b.handleErr(sql.ErrColumnNotFound.New(v))
 	return scopeColumn{}, -1
 }
 
@@ -1214,18 +1216,6 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 	return
 }
 
-func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) sql.Expression {
-	// build having filter expr
-	// aggregates added to fromScope.groupBy
-	// can see projScope outputs
-	if having == nil {
-		return nil
-	}
-	// TODO add aggregates to groupBy scopes
-	//return b.build(projScope)
-	return nil
-}
-
 func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
 	if limit != nil && limit.Offset != nil {
@@ -1238,6 +1228,9 @@ func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expressio
 
 func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
 	// TODO build Sort node over input
+	if len(orderByScope.cols) == 0 {
+		return
+	}
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
 		so := sql.Ascending

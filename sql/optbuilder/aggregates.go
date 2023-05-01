@@ -147,6 +147,10 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	// - aggregate expressions
 	// - output projection
 	// - HAVING filter
+	if fromScope.groupBy == nil {
+		fromScope.initGroupBy()
+	}
+
 	group := fromScope.groupBy
 	outScope := group.outScope
 	// select columns:
@@ -184,12 +188,16 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	}
 	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
 	outScope.node = gb
+
+	if having != nil {
+		outScope.node = plan.NewHaving(having, outScope.node)
+	}
 	return outScope
 }
 
 func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
 	if inScope.groupBy == nil {
-		inScope.groupBy = &groupBy{outScope: inScope.replace()}
+		inScope.initGroupBy()
 	}
 	gb := inScope.groupBy
 
@@ -280,4 +288,41 @@ func isWindowFunc(name string) bool {
 	default:
 		return false
 	}
+}
+
+func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
+	// build having filter expr
+	// aggregates added to fromScope.groupBy
+	// can see projScope outputs
+	if having == nil {
+		return
+	}
+
+	ast.Walk(func(node ast.SQLNode) (bool, error) {
+		switch n := node.(type) {
+		case *ast.FuncExpr:
+			name := n.Name.Lowered()
+			if isAggregateFunc(name) {
+				// record aggregate
+				_ = b.buildAggregateFunc(fromScope, name, n)
+			} else if isWindowFunc(name) {
+				panic("todo window funcs")
+			}
+		}
+		return true, nil
+	}, having)
+}
+
+func (b *PlanBuilder) buildHaving(fromScope, projScope *scope, having *ast.Where) sql.Expression {
+	// expressions in having can be from aggOut or projScop
+	if fromScope.groupBy == nil {
+		fromScope.initGroupBy()
+	}
+	havingScope := fromScope.push()
+	for _, c := range projScope.cols {
+		if c.table == "" {
+			havingScope.addColumn(c)
+		}
+	}
+	return b.buildScalar(havingScope, having.Expr)
 }
