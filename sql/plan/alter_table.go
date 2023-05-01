@@ -56,7 +56,6 @@ func (r *RenameTable) String() string {
 }
 
 func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// TODO: 'ALTER TABLE newViewName RENAME view1' should fail on renaming views - should be fixed in vitess
 	renamer, _ := r.Db.(sql.TableRenamer)
 	viewDb, _ := r.Db.(sql.ViewDatabase)
 	viewRegistry := ctx.GetViewRegistry()
