@@ -468,7 +468,7 @@ func (d *DropColumn) String() string {
 // TODO: move this check to analyzer
 func (d *DropColumn) Validate(ctx *sql.Context, tbl sql.Table) error {
 	colIdx := d.targetSchema.IndexOfColName(d.Column)
-	if colIdx < 0 {
+	if colIdx == -1 {
 		return sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
 	}
 

@@ -472,8 +472,10 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope,
 			table := getResolvedTable(node)
 			sch := table.Schema()
 			index := sch.IndexOfColName(node.ColumnName)
+			if index == -1 {
+				return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnName)
+			}
 			col := sch[index]
-
 			eWrapper := expression.WrapExpression(node.Default)
 			err := validateColumnDefault(ctx, col, eWrapper)
 			if err != nil {
@@ -577,6 +579,9 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 			table := getResolvedTable(node)
 			sch := table.Schema()
 			index := sch.IndexOfColName(node.ColumnName)
+			if index == -1 {
+				return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnName)
+			}
 			col := sch[index]
 
 			eWrapper := expression.WrapExpression(node.Default)

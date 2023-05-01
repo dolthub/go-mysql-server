@@ -19,6 +19,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1280,6 +1281,18 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL 
 	}
 }
 
+// convertMultiAlterDDL converts MultiAlterDDL statements
+// If there are multiple alter statements, they are sorted in order of their precedence and placed inside a plan.Block
+// Currently, the precedence of DDL statements is:
+// 1.  RENAME COLUMN
+// 2.  DROP COLUMN
+// 3.  MODIFY COLUMN
+// 4.  ADD COLUMN
+// 5.  DROP CHECK/CONSTRAINT
+// 7.  CREATE CHECK/CONSTRAINT
+// 8.  RENAME INDEX
+// 9.  DROP INDEX
+// 10. ADD INDEX
 func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
 	statementsLen := len(c.Statements)
 	if statementsLen == 1 {
@@ -1293,6 +1306,77 @@ func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlte
 			return nil, err
 		}
 	}
+
+	// TODO: add correct precedence for ADD/DROP PRIMARY KEY and (maybe) FOREIGN KEY
+	// certain alter statements need to happen before others
+	sort.Slice(statements, func(i, j int) bool {
+		switch ii := statements[i].(type) {
+		case *plan.RenameColumn:
+			switch statements[j].(type) {
+			case *plan.DropColumn,
+				*plan.ModifyColumn,
+				*plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropColumn:
+			switch statements[j].(type) {
+			case *plan.ModifyColumn,
+				*plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.ModifyColumn:
+			switch statements[j].(type) {
+			case *plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.AddColumn:
+			switch statements[j].(type) {
+			case *plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropConstraint:
+			switch statements[j].(type) {
+			case *plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropCheck:
+			switch statements[j].(type) {
+			case *plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.CreateCheck:
+			switch statements[j].(type) {
+			case *plan.AlterIndex:
+				return true
+			}
+		// AlterIndex precedence is Rename, Drop, then Create
+		// So statement[i] < statement[j] = statement[i].action > statement[j].action
+		case *plan.AlterIndex:
+			switch jj := statements[j].(type) {
+			case *plan.AlterIndex:
+				return ii.Action > jj.Action
+			}
+		}
+		return false
+	})
 	return plan.NewBlock(statements), nil
 }
 
