@@ -801,48 +801,20 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	return indexes, nil
 }
 
+// replacePkSort applies an IndexAccess when there is an `OrderBy` over a prefix of any `PrimaryKey`s
 func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		n := tc.Node
-
-		// Find order by nodes
-		s, ok := n.(*plan.Sort)
+		s, ok := tc.Node.(*plan.Sort)
 		if !ok {
+			return tc.Node, transform.SameTree, nil
+		}
+
+		// TODO: what to do about joins?
+
+		rs := getResolvedTable(s)
+		if rs == nil {
 			return n, transform.SameTree, nil
 		}
-
-		// Must be sorting by ascending
-		for _, field := range s.SortFields {
-			if field.Order != sql.Ascending {
-				return n, transform.SameTree, nil
-			}
-		}
-
-		// Check for any alias projections
-		var rs *plan.ResolvedTable
-		aliasMap := make(map[string]string)
-		pj, ok := s.UnaryNode.Child.(*plan.Project)
-		var decoratingParent sql.Node
-		if ok {
-			n := pj.Child
-			if rs, ok = n.(*plan.ResolvedTable); !ok {
-				return s, transform.SameTree, nil
-			}
-			// Extract aliases
-			for _, expr := range pj.Expressions() {
-				if alias, ok := expr.(*expression.Alias); ok {
-					aliasMap[alias.Name()] = alias.UnaryExpression.Child.String()
-				}
-			}
-		} else {
-			n := s.Child
-			// Otherwise, sorts immediate child must be ResolvedTable
-			if rs, ok = n.(*plan.ResolvedTable); !ok {
-				return s, transform.SameTree, nil
-			}
-		}
-
-		// Extract primary key columns from index to maintain order
 		table := rs.Table
 		if w, ok := table.(sql.TableWrapper); ok {
 			table = w.Underlying()
@@ -856,13 +828,9 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return nil, transform.SameTree, err
 		}
 
-		// Extract primary index
+		// TODO: support secondary indexes?
 		var pkIndex sql.Index
 		for _, idx := range idxs {
-			oi, ok := idx.(sql.OrderedIndex)
-			if !ok || oi.Order() != sql.IndexOrderAsc {
-				continue
-			}
 			if idx.ID() == "PRIMARY" {
 				pkIndex = idx
 				break
@@ -872,36 +840,25 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return s, transform.SameTree, nil
 		}
 
-		// Get primary key column names; these are qualified
 		pkColNames := pkIndex.Expressions()
-
-		// Extract SortField Column Names
-		var sfColNames []string
-		for _, field := range s.SortFields {
-			gf, ok := field.Column.(*expression.GetField)
-			if !ok {
+		tableAliases, err := getTableAliases(s, scope)
+		if err != nil {
+			return n, transform.SameTree, nil
+		}
+		sfs := normalizeExpressions(tableAliases, s.SortFields.ToExpressions()...)
+		if len(sfs) > len(pkColNames) {
+			return n, transform.SameTree, nil
+		}
+		for i, fieldExpr := range sfs {
+			if s.SortFields[0].Order != s.SortFields[i].Order {
 				return n, transform.SameTree, nil
 			}
-			// Resolve aliases; aliases should have empty table in GetField
-			if name, ok := aliasMap[gf.String()]; ok {
-				sfColNames = append(sfColNames, name)
-			} else {
-				sfColNames = append(sfColNames, gf.String())
+			if fieldExpr.String() != pkColNames[i] {
+				return n, transform.SameTree, nil
 			}
 		}
 
-		// SortField is definitely not a prefix to PrimaryKey
-		if len(sfColNames) > len(pkColNames) {
-			return s, transform.SameTree, nil
-		}
-
-		// Check if SortField is a prefix to PrimaryKey
-		for i := 0; i < len(sfColNames); i++ {
-			// Stop when column names stop matching
-			if sfColNames[i] != pkColNames[i] {
-				return s, transform.SameTree, nil
-			}
-		}
+		// TODO: projections?? table aliases??
 
 		// Create lookup based off of PrimaryKey
 		indexBuilder := sql.NewIndexBuilder(pkIndex)
@@ -917,23 +874,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return nil, transform.SameTree, err
 		}
 
-		var resNode sql.Node = newNode
-		if decoratingParent != nil {
-			resNode, err = decoratingParent.WithChildren(resNode)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-		}
-		// Don't forget aliases
-		if pj != nil {
-			resNode, err = pj.WithChildren(resNode)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return resNode, transform.NewTree, nil
-		}
-
-		return resNode, transform.NewTree, nil
+		return newNode, transform.NewTree, err
 	})
 }
 
