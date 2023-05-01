@@ -233,72 +233,7 @@ func (b *BaseBuilder) buildDropCheck(ctx *sql.Context, n *plan.DropCheck, row sq
 }
 
 func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, row sql.Row) (sql.RowIter, error) {
-	renamer, ok := n.Db.(sql.TableRenamer)
-	if !ok {
-		return nil, sql.ErrRenameTableNotSupported.New(n.Db.Name())
-	}
-
-	var err error
-	for i, oldName := range n.OldNames {
-		var tbl sql.Table
-		var ok bool
-		tbl, ok, err = n.Db.GetTableInsensitive(ctx, oldName)
-		if err != nil {
-			return nil, err
-		}
-
-		if !ok {
-			return nil, sql.ErrTableNotFound.New(oldName)
-		}
-
-		if fkTable, ok := tbl.(sql.ForeignKeyTable); ok {
-			parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, parentFk := range parentFks {
-				//TODO: support renaming tables across databases for foreign keys
-				if strings.ToLower(parentFk.Database) != strings.ToLower(parentFk.ParentDatabase) {
-					return nil, fmt.Errorf("updating foreign key table names across databases is not yet supported")
-				}
-				parentFk.ParentTable = n.NewNames[i]
-				childTbl, ok, err := n.Db.GetTableInsensitive(ctx, parentFk.Table)
-				if err != nil {
-					return nil, err
-				}
-				if !ok {
-					return nil, sql.ErrTableNotFound.New(parentFk.Table)
-				}
-				childFkTbl, ok := childTbl.(sql.ForeignKeyTable)
-				if !ok {
-					return nil, fmt.Errorf("referenced table `%s` supports foreign keys but declaring table `%s` does not", parentFk.ParentTable, parentFk.Table)
-				}
-				err = childFkTbl.UpdateForeignKey(ctx, parentFk.Name, parentFk)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, fk := range fks {
-				fk.Table = n.NewNames[i]
-				err = fkTable.UpdateForeignKey(ctx, fk.Name, fk)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		err = renamer.RenameTable(ctx, tbl.Name(), n.NewNames[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+	return n.RowIter(ctx, row)
 }
 
 func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, row sql.Row) (sql.RowIter, error) {
@@ -856,7 +791,6 @@ func (b *BaseBuilder) buildAlterDB(ctx *sql.Context, n *plan.AlterDB, row sql.Ro
 
 func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, row sql.Row) (sql.RowIter, error) {
 	var err error
-	var vd sql.ViewDatabase
 
 	// If it's set to Invalid, then no collation has been explicitly defined
 	if n.Collation == sql.Collation_Unspecified {
@@ -928,13 +862,11 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		return sql.RowsToRowIter(), err
 	}
 
-	vd, _ = maybePrivDb.(sql.ViewDatabase)
-	if vd != nil {
-		_, ok, err := vd.GetViewDefinition(ctx, n.Name())
+	if vdb, vok := n.Db.(sql.ViewDatabase); vok {
+		_, ok, err := vdb.GetViewDefinition(ctx, n.Name())
 		if err != nil {
 			return nil, err
 		}
-
 		if ok {
 			return nil, sql.ErrTableAlreadyExists.New(n.Name())
 		}

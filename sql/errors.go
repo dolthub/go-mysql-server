@@ -555,6 +555,9 @@ var (
 	// are automatically rolled back. Clients receiving this error must retry the transaction.
 	ErrLockDeadlock = errors.NewKind("serialization failure: %s, try restarting transaction.")
 
+	// ErrViewsNotSupported is returned when attempting to access a view on a database that doesn't support them.
+	ErrViewsNotSupported = errors.NewKind("database '%s' doesn't support views")
+
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")
 
