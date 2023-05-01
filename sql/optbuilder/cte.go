@@ -2,10 +2,12 @@ package optbuilder
 
 import (
 	"fmt"
+	"strings"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"strings"
 )
 
 func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {

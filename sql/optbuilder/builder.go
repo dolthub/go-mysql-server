@@ -3,6 +3,11 @@ package optbuilder
 import (
 	"encoding/hex"
 	"fmt"
+	"strconv"
+	"strings"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -12,9 +17,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"strconv"
-	"strings"
 )
 
 type scope struct {
