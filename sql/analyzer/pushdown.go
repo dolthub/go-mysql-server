@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"strings"
 )
 
 // filterHasBindVar looks for any BindVars found in filter nodes
@@ -813,14 +814,17 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return tc.Node, transform.SameTree, nil
 		}
 		sfExprs := normalizeExpressions(tableAliases, s.SortFields.ToExpressions()...)
-		noJoinSel := func(tc transform.Context) bool {
-			if _, ok := tc.Node.(*plan.JoinNode); ok {
+		skipSel := func(tc transform.Context) bool {
+			switch tc.Node.(type) {
+			// TODO: possible that we should fix these
+			case *plan.JoinNode, *plan.Distinct:
 				return false
+			default:
+				return true
 			}
-			return true
 		}
 		sfAliases := aliasedExpressionsInNode(s)
-		newN, same, err := transform.NodeWithCtx(s, noJoinSel, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		newN, same, err := transform.NodeWithCtx(s, skipSel, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			n := tc.Node
 			rs, ok := n.(*plan.ResolvedTable)
 			if !ok {
@@ -860,7 +864,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 					return n, transform.SameTree, nil
 				}
 				fieldName := fieldExpr.String()
-				if alias, ok := sfAliases[pkColNames[i]]; ok && alias == fieldName {
+				if alias, ok := sfAliases[strings.ToLower(pkColNames[i])]; ok && alias == fieldName {
 					continue
 				}
 				if pkColNames[i] != fieldExpr.String() {

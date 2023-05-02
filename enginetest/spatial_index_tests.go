@@ -111,7 +111,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
-				noIdx: true,
+				noIdx: false, // still expect index access using primary key
 				q:     "select pk, st_aswkt(p) from point_tbl_pk where pk = 0 or st_intersects(p, point(1,1)) order by pk",
 				exp: []sql.Row{
 					{0, "POINT(0 0)"},
