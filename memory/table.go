@@ -1089,7 +1089,7 @@ func (t *FilteredTable) Projections() []string {
 // for range lookups.
 type IndexedTable struct {
 	*Table
-	Idx *Index
+	Lookup sql.IndexLookup
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
@@ -1134,10 +1134,15 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 	if err != nil {
 		return nil, err
 	}
-	if t.Idx != nil {
-		sf := make(sql.SortFields, len(t.Idx.Exprs))
-		for i, e := range t.Idx.Exprs {
+	if t.Lookup.Index != nil {
+		idx := t.Lookup.Index.(*Index)
+		sf := make(sql.SortFields, len(idx.Exprs))
+		for i, e := range idx.Exprs {
 			sf[i] = sql.SortField{Column: e}
+			if t.Lookup.IsReverse {
+				sf[i].Order = sql.Descending
+				// TODO: null ordering?
+			}
 		}
 		var sorter *expression.Sorter
 		if i, ok := iter.(*tableIter); ok {
@@ -1159,11 +1164,12 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		sort.Stable(sorter)
 		//sort.Reverse(sorter)
 	}
+
 	return iter, nil
 }
 
 func (t *Table) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
-	return &IndexedTable{Table: t, Idx: i.Index.(*Index)}
+	return &IndexedTable{Table: t, Lookup: i}
 }
 
 // WithProjections implements sql.ProjectedTable
