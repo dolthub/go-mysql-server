@@ -938,6 +938,20 @@ func (b *PlanBuilder) resolveColumn(inScope *scope, v *ast.ColName) (scopeColumn
 	return scopeColumn{}, -1
 }
 
+func (b *PlanBuilder) resolveOuterColumn(inScope *scope, v *ast.ColName) (scopeColumn, int) {
+	table := strings.ToLower(v.Qualifier.String())
+	col := strings.ToLower(v.Name.String())
+	checkScope := inScope.parent
+	for checkScope != nil {
+		for i, c := range checkScope.cols {
+			if c.col == col && (c.table == table || table == "") {
+				return c, i
+			}
+		}
+	}
+	return scopeColumn{}, -1
+}
+
 func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
 	switch strings.ToLower(e.Operator) {
 	case ast.MinusStr:

@@ -75,6 +75,9 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 	// 3) an index into selects
 	// 4) a simple non-aggregate expression
 	groupings := make([]sql.Expression, 0)
+	if fromScope.groupBy == nil {
+		fromScope.initGroupBy()
+	}
 	g := fromScope.groupBy
 	for _, e := range groupby {
 		var col scopeColumn
@@ -130,9 +133,9 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 				nullable: expr.IsNullable(),
 			}
 		}
-		if _, ok := g.grouping[col.col]; ok {
-			continue
-		}
+		//if _, ok := g.grouping[col.col]; ok {
+		//	continue
+		//}
 		if col.scalar == nil {
 			gf := expression.NewGetFieldWithTable(0, col.typ, col.table, col.col, col.nullable)
 			id, ok := fromScope.getExpr(gf.String())
@@ -318,6 +321,8 @@ func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
 
 	ast.Walk(func(node ast.SQLNode) (bool, error) {
 		switch n := node.(type) {
+		case *ast.Subquery:
+			return false, nil
 		case *ast.FuncExpr:
 			name := n.Name.Lowered()
 			if isAggregateFunc(name) {
@@ -330,8 +335,11 @@ func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
 			// add to extra cols
 			c, idx := b.resolveColumn(fromScope, n)
 			if idx == -1 {
-				err := sql.ErrColumnNotFound.New(n.Name)
-				b.handleErr(err)
+				c, idx = b.resolveOuterColumn(fromScope, n)
+				if idx == -1 {
+					err := sql.ErrColumnNotFound.New(n.Name)
+					b.handleErr(err)
+				}
 			}
 			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 			fromScope.addExtraColumn(c)

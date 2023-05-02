@@ -3295,7 +3295,7 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 		return nil, err
 	}
 
-	return plan.NewJSONTable(ctx, data, t.Path, paths, t.Alias.String(), sch)
+	return plan.NewJSONTable(data, t.Path, paths, t.Alias.String(), sch)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {

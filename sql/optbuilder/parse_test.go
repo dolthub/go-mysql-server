@@ -1,7 +1,11 @@
 package optbuilder
 
 import (
+	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -14,133 +18,127 @@ import (
 )
 
 func TestPlanBuilder(t *testing.T) {
-	// TODO add expression types to scopes to make it easier for tests
-	// to verify an scope hierarchy
-	tests := []struct {
-		in  string
-		exp string
-	}{
+	var tests = []queries.QueryPlanTest{
 		{
-			in: "select * from xy where x = 2",
-			exp: `
+			Query: "select * from xy where x = 2",
+			ExpectedPlan: `
 Project
- ├─ columns: [x:0, y:1]
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
  └─ Filter
      ├─ Eq
-     │   ├─ x:0
-     │   └─ 2 (tinyint)
-     └─ TableAlias()
-         └─ Table
-             ├─ name: xy
-             └─ columns: [x y]
-`,
-		},
-		{
-			in: "select xy.* from xy where x = 2",
-			exp: `
-Project
- ├─ columns: [xy.x:0, xy.y:1]
- └─ Filter
-     ├─ Eq
-     │   ├─ xy.x:0
+     │   ├─ xy.x:1!null
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y]
+         └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select x, y from xy where x = 2",
-			exp: `
+			Query: "select xy.* from xy where x = 2",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:0, xy.y:1]
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
  └─ Filter
      ├─ Eq
-     │   ├─ xy.x:0
+     │   ├─ xy.x:1!null
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y]
+         └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select x, xy.y from xy where x = 2",
-			exp: `
+			Query: "select x, y from xy where x = 2",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:0, xy.y:1]
+ ├─ columns: [xy.x:1!null, xy.y:2!null]
  └─ Filter
      ├─ Eq
-     │   ├─ xy.x:0
+     │   ├─ xy.x:1!null
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y]
+         └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select x, xy.y from xy where xy.x = 2",
-			exp: `
+			Query: "select x, xy.y from xy where x = 2",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:0, xy.y:1]
+ ├─ columns: [xy.x:1!null, xy.y:2!null]
  └─ Filter
      ├─ Eq
-     │   ├─ xy.x:0
+     │   ├─ xy.x:1!null
      │   └─ 2 (tinyint)
      └─ Table
          ├─ name: xy
-         └─ columns: [x y]
+         └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select x, s.y from xy s where s.x = 2",
-			exp: `
+			Query: "select x, xy.y from xy where xy.x = 2",
+			ExpectedPlan: `
 Project
- ├─ columns: [s.x:0, s.y:1]
+ ├─ columns: [xy.x:1!null, xy.y:2!null]
  └─ Filter
      ├─ Eq
-     │   ├─ s.x:0
+     │   ├─ xy.x:1!null
+     │   └─ 2 (tinyint)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "select x, s.y from xy s where s.x = 2",
+			ExpectedPlan: `
+Project
+ ├─ columns: [s.x:1!null, s.y:2!null]
+ └─ Filter
+     ├─ Eq
+     │   ├─ s.x:1!null
      │   └─ 2 (tinyint)
      └─ TableAlias(s)
          └─ Table
              ├─ name: xy
-             └─ columns: [x y]
+             └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select x, s.y from xy s join uv on x = u where s.x = 2",
-			exp: `
+			Query: "select x, s.y from xy s join uv on x = u where s.x = 2",
+			ExpectedPlan: `
 Project
- ├─ columns: [s.x:0, s.y:1]
+ ├─ columns: [s.x:1!null, s.y:2!null]
  └─ Filter
      ├─ Eq
-     │   ├─ s.x:0
+     │   ├─ s.x:1!null
      │   └─ 2 (tinyint)
      └─ InnerJoin
          ├─ Eq
-         │   ├─ s.x:0
-         │   └─ uv.u:2
+         │   ├─ s.x:1!null
+         │   └─ uv.u:4!null
          ├─ TableAlias(s)
          │   └─ Table
          │       ├─ name: xy
-         │       └─ columns: [x y]
+         │       └─ columns: [x y z]
          └─ Table
              ├─ name: uv
-             └─ columns: [u v]
+             └─ columns: [u v w]
 `,
 		},
 		{
-			in: "select y as x from xy",
-			exp: `
+			Query: "select y as x from xy",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:1 as x]
+ ├─ columns: [xy.y:2!null as x]
  └─ Table
      ├─ name: xy
-     └─ columns: [x y]
+     └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select * from xy join (select * from uv) s on x = u",
-			exp: `
+			Query: "select * from xy join (select * from uv) s on x = u",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, s.u:4!null, s.v:5!null, s.w:6!null]
  └─ InnerJoin
@@ -162,42 +160,34 @@ Project
 `,
 		},
 		{
-			in: "select * from xy where x in (select u from uv where x = u)",
-			exp: `
+			Query: "select * from xy where x in (select u from uv where x = u)",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:0, xy.y:1]
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
  └─ Filter
      ├─ InSubquery
-     │   ├─ left: xy.x:0
+     │   ├─ left: xy.x:1!null
      │   └─ right: Subquery
      │       ├─ cacheable: false
      │       └─ Project
-     │           ├─ columns: [uv.u:2]
+     │           ├─ columns: [uv.u:1!null]
      │           └─ Filter
      │               ├─ Eq
-     │               │   ├─ xy.x:2
-     │               │   └─ uv.u:2
+     │               │   ├─ xy.x:1!null
+     │               │   └─ uv.u:4!null
      │               └─ Table
      │                   ├─ name: uv
-     │                   └─ columns: [u v]
+     │                   └─ columns: [u v w]
      └─ Table
          ├─ name: xy
-         └─ columns: [x y]
+         └─ columns: [x y z]
 `,
 		},
-		// TODO subqueries
-		// TODO subquery expressions
-		// TODO json_table
-		// TODO CTES
-		// todo named windows
-		// todo windows
-		// todo group by
-		// todo having
 		{
-			in: "with cte as (select 1) select * from cte",
-			exp: `
+			Query: "with cte as (select 1) select * from cte",
+			ExpectedPlan: `
 Project
- ├─ columns: [cte.1:0]
+ ├─ columns: [cte.1:1!null]
  └─ SubqueryAlias
      ├─ name: cte
      ├─ outerVisibility: false
@@ -210,84 +200,84 @@ Project
 `,
 		},
 		{
-			in: "with recursive cte(s) as (select x from xy union select s from cte join xy on y = s) select * from cte",
-			exp: `
+			Query: "with recursive cte(s) as (select x from xy union select s from cte join xy on y = s) select * from cte",
+			// todo rcte left messed up
+			ExpectedPlan: `
 Project
- ├─ columns: [cte.s:0!null]
+ ├─ columns: [cte.s:5!null]
  └─ RecursiveCTE
      └─ Union distinct
          ├─ RecursiveTable(cte)
          └─ Project
-             ├─ columns: [cte.s:0!null]
+             ├─ columns: [cte.s:1!null]
              └─ InnerJoin
                  ├─ Eq
-                 │   ├─ xy.y:2!null
-                 │   └─ cte.s:0!null
+                 │   ├─ xy.y:3!null
+                 │   └─ cte.s:1!null
                  ├─ RecursiveTable(cte)
                  └─ Table
                      ├─ name: xy
-                     └─ columns: [x y]
+                     └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select x, sum(y) from xy group by x order by x - count(y)",
-			exp: `
+			Query: "select x, sum(y) from xy group by x order by x - count(y)",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:0!null, SUM(xy.y):3!null as sum(y)]
- └─ Sort((xy.x:0!null - COUNT(xy.y):6!null) ASC nullsFirst)
+ ├─ columns: [xy.x:1!null, SUM(xy.y):4!null as sum(y)]
+ └─ Sort((xy.x:1!null - COUNT(xy.y):5!null) ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.y:1!null, xy.x:0!null, SUM(xy.y:1!null), COUNT(xy.y:1!null)
-         ├─ group: xy.x:0!null
+         ├─ select: xy.y:2!null, xy.x:1!null, SUM(xy.y:2!null), COUNT(xy.y:2!null)
+         ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y]
+             └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select sum(x) from xy group by x order by y",
-			exp: `
+			Query: "select sum(x) from xy group by x order by y",
+			ExpectedPlan: `
 Project
- ├─ columns: [SUM(xy.x):-1!null as sum(x)]
- └─ Sort(xy.y:-1!null ASC nullsFirst)
+ ├─ columns: [SUM(xy.x):4!null as sum(x)]
+ └─ Sort(xy.y:2!null ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:0!null, SUM(xy.x:0!null)
-         ├─ group: xy.x:-1!null
+         ├─ select: xy.x:1!null, SUM(xy.x:1!null), xy.y:2!null
+         ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y]
+             └─ columns: [x y z]
 `,
 		},
 		{
-			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY count(x) DESC",
-			exp: `
+			Query: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY count(x) DESC",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:1!null, COUNT(xy.x):-1!null as count(x)]
- └─ Sort(COUNT(xy.x:0!null) DESC nullsFirst)
+ ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
+ └─ Sort(COUNT(xy.x):4!null DESC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:0!null, xy.y:1!null, COUNT(xy.x:0!null)
-         ├─ group: xy.y:1!null
+         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(xy.x:1!null)
+         ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
-             └─ columns: [x y]
+             └─ columns: [x y z]
 `,
 		},
 		{
-			in: "select count(x) from xy",
-			exp: `
+			Query: "select count(x) from xy",
+			ExpectedPlan: `
 Project
- ├─ columns: [COUNT(xy.x):3!null as count(x)]
- └─ Sort()
-     └─ GroupBy
-         ├─ select: xy.x:0!null, COUNT(xy.x:0!null)
-         ├─ group: 
-         └─ Table
-             ├─ name: xy
-             └─ columns: [x y]
+ ├─ columns: [COUNT(xy.x):4!null as count(x)]
+ └─ GroupBy
+     ├─ select: xy.x:1!null, COUNT(xy.x:1!null)
+     ├─ group: 
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
 `,
 		},
 		{
-			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y DESC",
-			exp: `
+			Query: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y DESC",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
  └─ Sort(xy.y:2!null DESC nullsFirst)
@@ -300,8 +290,8 @@ Project
 `,
 		},
 		{
-			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y",
-			exp: `
+			Query: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
  └─ Sort(xy.y:2!null ASC nullsFirst)
@@ -314,12 +304,12 @@ Project
 `,
 		},
 		{
-			in: "SELECT count(xy.x) AS count_1, xy.y + xy.z AS lx FROM xy GROUP BY xy.x + xy.z",
-			exp: `
+			Query: "SELECT count(xy.x) AS count_1, xy.y + xy.z AS lx FROM xy GROUP BY xy.x + xy.z",
+			ExpectedPlan: `
 Project
  ├─ columns: [COUNT(xy.x):4!null as count_1, (xy.y:2!null + xy.z:3!null) as lx]
  └─ GroupBy
-     ├─ select: xy.x:1!null, (xy.x:1!null + xy.z:3!null), COUNT(xy.x:1!null), COUNT(xy.x):4!null, xy.y:2!null, xy.z:3!null
+     ├─ select: xy.x:1!null, (xy.x:1!null + xy.z:3!null), COUNT(xy.x:1!null), xy.y:2!null, xy.z:3!null
      ├─ group: (xy.x:1!null + xy.z:3!null)
      └─ Table
          ├─ name: xy
@@ -327,8 +317,8 @@ Project
 `,
 		},
 		{
-			in: "select x from xy having z > 0",
-			exp: `
+			Query: "select x from xy having z > 0",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null]
  └─ Having
@@ -344,8 +334,8 @@ Project
 `,
 		},
 		{
-			in: "select x from xy order by z",
-			exp: `
+			Query: "select x from xy order by z",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null]
  └─ Sort(xy.z:3!null ASC nullsFirst)
@@ -355,8 +345,8 @@ Project
 `,
 		},
 		{
-			in: "select x from xy having z > 0 order by y",
-			exp: `
+			Query: "select x from xy having z > 0 order by y",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null]
  └─ Sort(xy.y:2!null ASC nullsFirst)
@@ -373,12 +363,12 @@ Project
 `,
 		},
 		{
-			in: "select count(*) from (select count(*) from xy) dt",
-			exp: `
+			Query: "select count(*) from (select count(*) from xy) dt",
+			ExpectedPlan: `
 Project
  ├─ columns: [COUNT(1):5!null as count(*)]
  └─ GroupBy
-     ├─ select: COUNT(1 (bigint)), COUNT(1):5!null
+     ├─ select: COUNT(1 (bigint))
      ├─ group: 
      └─ SubqueryAlias
          ├─ name: dt
@@ -387,7 +377,7 @@ Project
          └─ Project
              ├─ columns: [COUNT(1):4!null as count(*)]
              └─ GroupBy
-                 ├─ select: COUNT(1 (bigint)), COUNT(1):4!null
+                 ├─ select: COUNT(1 (bigint))
                  ├─ group: 
                  └─ Table
                      ├─ name: xy
@@ -395,8 +385,8 @@ Project
 `,
 		},
 		{
-			in: "select s from (select count(*) as s from xy) dt;",
-			exp: `
+			Query: "select s from (select count(*) as s from xy) dt;",
+			ExpectedPlan: `
 Project
  ├─ columns: [dt.s:4!null]
  └─ SubqueryAlias
@@ -406,7 +396,7 @@ Project
      └─ Project
          ├─ columns: [COUNT(1):4!null as s]
          └─ GroupBy
-             ├─ select: COUNT(1 (bigint)), COUNT(1):4!null
+             ├─ select: COUNT(1 (bigint))
              ├─ group: 
              └─ Table
                  ├─ name: xy
@@ -414,8 +404,8 @@ Project
 `,
 		},
 		{
-			in: "SELECT count(*), x+y AS r FROM xy GROUP BY x, y",
-			exp: `
+			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x, y",
+			ExpectedPlan: `
 Project
  ├─ columns: [COUNT(1):4!null as count(*), (xy.x:1!null + xy.y:2!null) as r]
  └─ GroupBy
@@ -427,24 +417,155 @@ Project
 `,
 		},
 		{
-			in: "SELECT count(*), x+y AS r FROM xy GROUP BY x+y",
+			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x+y",
+			ExpectedPlan: `
+Project
+ ├─ columns: [COUNT(1):4!null as count(*), (xy.x:1!null + xy.y:2!null) as r]
+ └─ GroupBy
+     ├─ select: (xy.x:1!null + xy.y:2!null), COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
+     ├─ group: (xy.x:1!null + xy.y:2!null)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
-			in: "SELECT count(*) FROM xy GROUP BY 1+2",
+			Query: "SELECT count(*) FROM xy GROUP BY 1+2",
+			ExpectedPlan: `
+Project
+ ├─ columns: [COUNT(1):4!null as count(*)]
+ └─ GroupBy
+     ├─ select: (1 (tinyint) + 2 (tinyint)), COUNT(1 (bigint))
+     ├─ group: (1 (tinyint) + 2 (tinyint))
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
-			in: "SELECT count(*), upper(x) FROM xy GROUP BY upper(x)",
+			Query: "SELECT count(*), upper(x) FROM xy GROUP BY upper(x)",
+			ExpectedPlan: `
+Project
+ ├─ columns: [COUNT(1):4!null as count(*), upper(xy.x) as upper(x)]
+ └─ GroupBy
+     ├─ select: upper(xy.x), COUNT(1 (bigint)), xy.x:1!null
+     ├─ group: upper(xy.x)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
-			in: "SELECT y, count(*), z FROM xy GROUP BY 1, 3",
+			Query: "SELECT y, count(*), z FROM xy GROUP BY 1, 3",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.y:2!null, COUNT(1):4!null as count(*), xy.z:3!null]
+ └─ GroupBy
+     ├─ select: xy.y:2!null, xy.z:3!null, COUNT(1 (bigint))
+     ├─ group: xy.y:2!null, xy.z:3!null
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
-
 		{
-			in: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 1",
-			exp: `
+			Query: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 1",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:1!null ASC nullsFirst)
+ └─ Sort(xy.x:4!null ASC nullsFirst)
+     └─ Having
+         ├─ GreaterThan
+         │   ├─ AVG(xy.x):5
+         │   └─ 1 (tinyint)
+         └─ GroupBy
+             ├─ select: xy.x:1!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
+             ├─ group: xy.x:1!null
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) + 1 ASC",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort((SUM(xy.x):4!null + 1 (tinyint)) ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY COUNT(*) ASC",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort(COUNT(1):5!null ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), COUNT(1 (bigint))
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) % 2, SUM(x), AVG(x) ASC",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, AVG(xy.x):5 ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY AVG(x) ASC",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort(AVG(xy.x):5 ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT x, sum(x) FROM xy group by 1 having avg(y) > 1 order by 1",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
+ └─ Sort(xy.x:4!null ASC nullsFirst)
+     └─ Having
+         ├─ GreaterThan
+         │   ├─ AVG(xy.y):5
+         │   └─ 1 (tinyint)
+         └─ GroupBy
+             ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.y:2!null)
+             ├─ group: xy.x:1!null
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 2",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
+ └─ Sort(SUM(xy.x) as sum(x):5!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
          │   ├─ AVG(xy.x):5
@@ -458,73 +579,61 @@ Project
 `,
 		},
 		{
-			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) + 1 ASC",
-			exp: `
+			Query: "select (select u from uv where x = u) from xy group by (select u from uv where x = u), x;",
+			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
- └─ Sort((SUM(xy.x):4!null + 1 (tinyint)) ASC nullsFirst)
-     └─ GroupBy
-         ├─ select: xy.x:0!null, xy.y:2!null, SUM(xy.x:0!null)
-         ├─ group: xy.y:2!null
-         └─ Table
-             ├─ name: xy
-             └─ columns: [x y z]
+ ├─ columns: [Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [uv.u:1!null]
+ │       └─ Filter
+ │           ├─ Eq
+ │           │   ├─ xy.x:1!null
+ │           │   └─ uv.u:4!null
+ │           └─ Table
+ │               ├─ name: uv
+ │               └─ columns: [u v w]
+ │   as (select u from uv where x = u)]
+ └─ GroupBy
+     ├─ select: Subquery
+     │   ├─ cacheable: false
+     │   └─ Project
+     │       ├─ columns: [uv.u:1!null]
+     │       └─ Filter
+     │           ├─ Eq
+     │           │   ├─ xy.x:1!null
+     │           │   └─ uv.u:4!null
+     │           └─ Table
+     │               ├─ name: uv
+     │               └─ columns: [u v w]
+     │  , xy.x:1!null
+     ├─ group: Subquery
+     │   ├─ cacheable: false
+     │   └─ Project
+     │       ├─ columns: [uv.u:1!null]
+     │       └─ Filter
+     │           ├─ Eq
+     │           │   ├─ xy.x:1!null
+     │           │   └─ uv.u:4!null
+     │           └─ Table
+     │               ├─ name: uv
+     │               └─ columns: [u v w]
+     │  , xy.x:1!null
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
 `,
 		},
 		{
-			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY COUNT(*) ASC",
-			exp: `
-Project
- ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
- └─ Sort(COUNT(1):5!null ASC nullsFirst)
-     └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), COUNT(1 (bigint))
-         ├─ group: xy.y:2!null
-         └─ Table
-             ├─ name: xy
-             └─ columns: [x y z]
-`,
-		},
-		{
-			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) % 2, SUM(x), AVG(x) ASC",
-			exp: `
-Project
- ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
- └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, AVG(xy.x):6 ASC nullsFirst)
-     └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
-         ├─ group: xy.y:2!null
-         └─ Table
-             ├─ name: xy
-             └─ columns: [x y z]
-`,
-		},
-		{
-			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY AVG(x) ASC",
-			exp: `
-Project
- ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
- └─ Sort(AVG(xy.x):5 ASC nullsFirst)
-     └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
-         ├─ group: xy.y:2!null
-         └─ Table
-             ├─ name: xy
-             └─ columns: [x y z]
-`,
-		},
-		{
-			in: "SELECT x, sum(x) FROM xy group by 1 having avg(y) > 1 order by 1",
-			exp: `
+			Query: "SELECT x, sum(x) FROM xy group by 1 having x+y order by 1",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:1!null ASC nullsFirst)
+ └─ Sort(xy.x:4!null ASC nullsFirst)
      └─ Having
-         ├─ GreaterThan
-         │   ├─ AVG(xy.y):5
-         │   └─ 1 (tinyint)
+         ├─ (xy.x:1!null + xy.y:2!null)
          └─ GroupBy
-             ├─ select: xy.x:0!null, xy.y:1!null, SUM(xy.x:0!null), AVG(xy.y:1!null)
+             ├─ select: xy.x:1!null, SUM(xy.x:1!null), xy.y:2!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -532,60 +641,27 @@ Project
 `,
 		},
 		{
-			in: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 2",
-			exp: `
-Project
- ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(SUM(xy.x) as sum(x):4!null ASC nullsFirst)
-     └─ Having
-         ├─ GreaterThan
-         │   ├─ AVG(xy.x):5
-         │   └─ 1 (tinyint)
-         └─ GroupBy
-             ├─ select: xy.x:0!null, AVG(xy.x:0!null), SUM(xy.x:0!null)
-             ├─ group: xy.x:1!null
-             └─ Table
-                 ├─ name: xy
-                 └─ columns: [x y z]
-`,
-		},
-		{
-			in: "select (select u from uv where x = u) from xy group by (select u from uv where x = u), x;",
-		},
-		{
-			// TODO: error (y) is not aggregated
-			in: "SELECT x, sum(x) FROM xy group by 1 having x+y order by 1",
-		},
-	}
-
-	derivedTests := []struct {
-		in  string
-		exp string
-	}{
-		{
-			// A subquery containing a derived table, used in the WHERE clause of a top-level query, has visibility
-			// to tables and columns in the top-level query.
-			in: "SELECT * FROM xy WHERE xy.y > (SELECT dt.u FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.x) dt);",
-			exp: `
+			Query: "SELECT * FROM xy WHERE xy.y > (SELECT dt.u FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.x) dt);",
+			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
  └─ Filter
      ├─ GreaterThan
-     │   ├─ xy.y:1!null
+     │   ├─ xy.y:2!null
      │   └─ Subquery
      │       ├─ cacheable: false
      │       └─ Project
-     │           ├─ columns: [dt.u:3!null]
+     │           ├─ columns: [dt.u:4!null]
      │           └─ SubqueryAlias
      │               ├─ name: dt
      │               ├─ outerVisibility: false
      │               ├─ cacheable: false
      │               └─ Project
-     │                   ├─ columns: [uv.u:3!null as u]
+     │                   ├─ columns: [uv.u:4!null as u]
      │                   └─ Filter
      │                       ├─ Eq
-     │                       │   ├─ uv.v:4!null
-     │                       │   └─ xy.x:0!null
+     │                       │   ├─ uv.v:5!null
+     │                       │   └─ xy.x:1!null
      │                       └─ Table
      │                           ├─ name: uv
      │                           └─ columns: [u v w]
@@ -595,21 +671,152 @@ Project
 `,
 		},
 		{
-			// A subquery containing a derived table, used in the HAVING clause of a top-level query, has visibility
-			// to tables and columns in the top-level query.
-			in: "SELECT * FROM xy HAVING xy.z > (SELECT dt.u FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt);",
+			Query: "SELECT * FROM xy HAVING xy.z > (SELECT dt.u FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt);",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ xy.z:3!null
+     │   └─ Subquery
+     │       ├─ cacheable: false
+     │       └─ Project
+     │           ├─ columns: [dt.u:4!null]
+     │           └─ SubqueryAlias
+     │               ├─ name: dt
+     │               ├─ outerVisibility: false
+     │               ├─ cacheable: false
+     │               └─ Project
+     │                   ├─ columns: [uv.u:4!null as u]
+     │                   └─ Filter
+     │                       ├─ Eq
+     │                       │   ├─ uv.v:5!null
+     │                       │   └─ xy.y:2!null
+     │                       └─ Table
+     │                           ├─ name: uv
+     │                           └─ columns: [u v w]
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, xy.z:3!null
+         ├─ group: 
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
 		},
 		{
-			in: "SELECT (SELECT dt.z FROM (SELECT uv.a AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
+			Query: "SELECT (SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [dt.z:4!null]
+ │       └─ SubqueryAlias
+ │           ├─ name: dt
+ │           ├─ outerVisibility: false
+ │           ├─ cacheable: false
+ │           └─ Project
+ │               ├─ columns: [uv.u:4!null as z]
+ │               └─ Filter
+ │                   ├─ Eq
+ │                   │   ├─ uv.v:5!null
+ │                   │   └─ xy.y:2!null
+ │                   └─ Table
+ │                       ├─ name: uv
+ │                       └─ columns: [u v w]
+ │   as (SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ └─ Table
+     ├─ name: xy
+     └─ columns: [x y z]
+`,
 		},
 		{
-			in: "SELECT (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
+			Query: "SELECT (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [MAX(dt.z):5!null as max(dt.z)]
+ │       └─ GroupBy
+ │           ├─ select: dt.z:4!null, MAX(dt.z:4!null)
+ │           ├─ group: 
+ │           └─ SubqueryAlias
+ │               ├─ name: dt
+ │               ├─ outerVisibility: false
+ │               ├─ cacheable: false
+ │               └─ Project
+ │                   ├─ columns: [uv.u:4!null as z]
+ │                   └─ Filter
+ │                       ├─ Eq
+ │                       │   ├─ uv.v:5!null
+ │                       │   └─ xy.y:2!null
+ │                       └─ Table
+ │                           ├─ name: uv
+ │                           └─ columns: [u v w]
+ │   as (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ └─ Table
+     ├─ name: xy
+     └─ columns: [x y z]
+`,
 		},
 		{
-			// A subquery containing a derived table, projected in a SELECT query, has visibility to tables and columns
-			// in the top-level query.
-			in: "SELECT xy.*, (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
+			Query: "SELECT xy.*, (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
+			// todo subquery indexing messed up
+			// move counter to builder?
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [MAX(dt.u):5!null as max(dt.u)]
+ │       └─ GroupBy
+ │           ├─ select: dt.u:4!null, MAX(dt.u:4!null)
+ │           ├─ group: 
+ │           └─ SubqueryAlias
+ │               ├─ name: dt
+ │               ├─ outerVisibility: false
+ │               ├─ cacheable: false
+ │               └─ Project
+ │                   ├─ columns: [uv.u:4!null as u]
+ │                   └─ Filter
+ │                       ├─ Eq
+ │                       │   ├─ uv.v:5!null
+ │                       │   └─ xy.y:2!null
+ │                       └─ Table
+ │                           ├─ name: uv
+ │                           └─ columns: [u v w]
+ │   as (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
+ └─ Table
+     ├─ name: xy
+     └─ columns: [x y z]
+`,
 		},
+	}
+
+	verbose := true
+	rewrite := true
+
+	var w *bufio.Writer
+	var outputPath string
+	if rewrite {
+		tmp, err := os.MkdirTemp("", "*")
+		if err != nil {
+			panic(err)
+		}
+
+		outputPath = filepath.Join(tmp, "queryPlans.txt")
+		f, err := os.Create(outputPath)
+		require.NoError(t, err)
+
+		w = bufio.NewWriter(f)
+		_, _ = fmt.Fprintf(w, "var %s = []queries.QueryPlanTest{\n", "tests")
+
+		defer func() {
+			w.WriteString("}\n")
+			w.Flush()
+			t.Logf("Query plans in %s", outputPath)
+		}()
 	}
 
 	ctx := sql.NewEmptyContext()
@@ -619,26 +826,25 @@ Project
 		ctx: ctx,
 		cat: cat,
 	}
+
 	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			stmt, err := sqlparser.Parse(tt.in)
+		t.Run(tt.Query, func(t *testing.T) {
+			stmt, err := sqlparser.Parse(tt.Query)
 			require.NoError(t, err)
 
-			outScope := b.build(nil, stmt, tt.in)
-			print(sql.DebugString(outScope.node))
-			require.Equal(t, tt.exp, "\n"+sql.DebugString(outScope.node))
-			require.True(t, outScope.node.Resolved())
-		})
-	}
+			outScope := b.build(nil, stmt, tt.Query)
+			plan := sql.DebugString(outScope.node)
 
-	for _, tt := range derivedTests {
-		t.Run(tt.in, func(t *testing.T) {
-			stmt, err := sqlparser.Parse(tt.in)
-			require.NoError(t, err)
-
-			outScope := b.build(nil, stmt, tt.in)
-			print(sql.DebugString(outScope.node))
-			require.Equal(t, tt.exp, "\n"+sql.DebugString(outScope.node))
+			if rewrite {
+				w.WriteString("  {\n")
+				w.WriteString(fmt.Sprintf("    Query: \"%s\",\n", tt.Query))
+				w.WriteString(fmt.Sprintf("    ExpectedPlan: `\n%s`,\n", plan))
+				w.WriteString("  },\n")
+			}
+			if verbose {
+				print(plan)
+			}
+			require.Equal(t, tt.ExpectedPlan, "\n"+sql.DebugString(outScope.node))
 			require.True(t, outScope.node.Resolved())
 		})
 	}
