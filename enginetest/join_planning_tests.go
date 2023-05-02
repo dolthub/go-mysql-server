@@ -268,12 +268,12 @@ var JoinPlanningTests = []struct {
 				// scope and parent row are non-nil
 				q: `
 select * from uv where u > (
- select x from ab, (
-   select x from xy where x != (
-     select r from rs where r = 1
-   ) order by 1
- ) sq
- order by 1 limit 1
+  select x from ab, (
+    select x from xy where x != (
+      select r from rs where r = 1
+    ) order by 1
+  ) sq
+  order by 1 limit 1
 )
 order by 1;`,
 				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCross, plan.JoinTypeAnti},
@@ -424,15 +424,15 @@ order by 1;`,
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
-     				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
-     				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
+      				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
 				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
-     				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
-     				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
+      				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
+      				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
 				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
@@ -440,15 +440,15 @@ order by 1;`,
 				q: `SELECT *
 FROM ab A0
 WHERE EXISTS (
-   SELECT U0.a
-   FROM
-   (
-       ab U0
-       LEFT OUTER JOIN
-       rs U1
-       ON (U0.a = U1.s)
-   )
-   WHERE (U1.s IS NULL AND U0.a = A0.a)
+    SELECT U0.a
+    FROM
+    (
+        ab U0
+        LEFT OUTER JOIN
+        rs U1
+        ON (U0.a = U1.s)
+    )
+    WHERE (U1.s IS NULL AND U0.a = A0.a)
 );`,
 				types: []plan.JoinType{plan.JoinTypeRightSemiLookup, plan.JoinTypeLeftOuterHash},
 				exp: []sql.Row{
@@ -465,18 +465,18 @@ WHERE EXISTS (
 			{
 				q: `
 select x from xy where
- not exists (select a from ab where a = x and a = 1) and
- not exists (select a from ab where a = x and a = 2)`,
+  not exists (select a from ab where a = x and a = 1) and
+  not exists (select a from ab where a = x and a = 2)`,
 				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeAntiLookup},
 				exp:   []sql.Row{{0}, {3}},
 			},
 			{
 				q: `
 select * from xy where x in (
-   with recursive tree(s) AS (
-       SELECT 1
-   )
-   SELECT u FROM uv, tree where u = s
+    with recursive tree(s) AS (
+        SELECT 1
+    )
+    SELECT u FROM uv, tree where u = s
 )`,
 				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
@@ -552,7 +552,7 @@ select * from xy where x in (
 				q: `
 with recursive rec(x) as (select 1 union select 1)
 select * from xy where x in (
- select * from rec
+  select * from rec
 );`,
 				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
@@ -560,9 +560,9 @@ select * from xy where x in (
 			{
 				q: `
 with recursive rec(x) as (
- select 1
- union
- select rec.x from rec join xy on rec.x = xy.y
+  select 1
+  union
+  select rec.x from rec join xy on rec.x = xy.y
 )
 select * from uv
 where u in (select * from rec);`,
@@ -621,7 +621,7 @@ where u in (select * from rec);`,
 			{
 				q: `select x from xy where x in (
 	select (select u from uv where u = sq.a)
-   from (select a from ab) sq);`,
+    from (select a from ab) sq);`,
 				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{0}, {1}, {2}, {3}},
 			},
