@@ -820,7 +820,6 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			return true
 		}
 		sfAliases := aliasedExpressionsInNode(s)
-		sfAliases = sfAliases
 		newN, same, err := transform.NodeWithCtx(s, noJoinSel, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			n := tc.Node
 			rs, ok := n.(*plan.ResolvedTable)
