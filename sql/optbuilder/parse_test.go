@@ -317,6 +317,19 @@ Project
 `,
 		},
 		{
+			Query: "SELECT count(xy.x) AS count_1, xy.x + xy.z AS lx FROM xy GROUP BY xy.x + xy.z",
+			ExpectedPlan: `
+Project
+ ├─ columns: [COUNT(xy.x):4!null as count_1, (xy.x:1!null + xy.z:3!null) as lx]
+ └─ GroupBy
+     ├─ select: xy.x:1!null, (xy.x:1!null + xy.z:3!null), COUNT(xy.x:1!null), xy.z:3!null
+     ├─ group: (xy.x:1!null + xy.z:3!null)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
+		},
+		{
 			Query: "select x from xy having z > 0",
 			ExpectedPlan: `
 Project
