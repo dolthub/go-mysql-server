@@ -329,7 +329,7 @@ func isOutermostArithmeticOp(e sql.Expression, d, dScale int32) bool {
 	return false
 }
 
-// convertValueToType returns given value converted into the given type. If the value is
+// convertValueToType returns |val| converted into type |typ|. If the value is
 // invalid and cannot be converted to the given type, it returns nil, and it should be
 // interpreted as value of 0. For time types, all the numbers are parsed up to seconds only.
 // E.g: `2022-11-10 12:14:36` is parsed into `20221110121436` and `2022-03-24` is parsed into `20220324`.

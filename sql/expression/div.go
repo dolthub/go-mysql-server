@@ -168,7 +168,6 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return result, nil
-
 }
 
 func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -204,8 +203,8 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	return lval, rval, nil
 }
 
-// convertLeftRight return most appropriate value for left and right from evaluated value,
-// which can might or might not be converted from its original value.
+// convertLeftRight returns the most appropriate type for left and right evaluated values,
+// which may or may not be converted from its original type.
 // It checks for float type column reference, then the both values converted to the same float types.
 // If there is no float type column reference, both values should be handled as decimal type
 // The decimal types of left and right value does NOT need to be the same. Both the types
@@ -290,12 +289,12 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 	return nil, errUnableToCast.New(lval, rval)
 }
 
-// floatOrDecimalType returns either Float64 or decimaltype depending on column reference,
+// floatOrDecimalType returns either Float64 or Decimal type depending on column reference,
 // left and right expressions types and left and right evaluated types.
 // If there is float type column reference, the result type is always float
 // regardless of the column reference on the left or right side of division operation.
 // Otherwise, the return type is always decimal. The expression and evaluated types
-// are used to determine appropriate decimaltype to return that will not result in
+// are used to determine appropriate Decimal type to return that will not result in
 // precision loss.
 func floatOrDecimalType(e sql.Expression) sql.Type {
 	var resType sql.Type
@@ -450,7 +449,7 @@ func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d,
 	return 0
 }
 
-// isOutermostDiv return whether the expression we're currently on is
+// isOutermostDiv returns whether the expression we're currently evaluating is
 // the last division operation of all continuous divisions.
 // E.g. the top 'div' (divided by 1) is the outermost/last division that is calculated:
 //
