@@ -129,7 +129,7 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 	if err != nil {
 		return nil, err
 	}
-	node, err := convertDDL(ctx, createStmt, parseResult.(*sqlparser.DDL))
+	node, err := convertDDL(ctx, createStmt, parseResult.(*sqlparser.DDL), false)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		}
 		return convertShow(ctx, n, query)
 	case *sqlparser.DDL:
-		return convertDDL(ctx, query, n)
+		return convertDDL(ctx, query, n, false)
 	case *sqlparser.MultiAlterDDL:
 		return convertMultiAlterDDL(ctx, query, n)
 	case *sqlparser.DBDDL:
@@ -1238,7 +1238,7 @@ func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTable
 	return plan.NewCommonTableExpression(subquery.(*plan.SubqueryAlias), columns), nil
 }
 
-func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL bool) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
 		if c.TriggerSpec != nil {
@@ -1273,7 +1273,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	case sqlparser.AlterStr:
 		return convertAlterTable(ctx, c)
 	case sqlparser.RenameStr:
-		return convertRenameTable(ctx, c)
+		return convertRenameTable(ctx, c, multiAlterDDL)
 	case sqlparser.TruncateStr:
 		return convertTruncateTable(ctx, c)
 	default:
@@ -1296,12 +1296,12 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
 	statementsLen := len(c.Statements)
 	if statementsLen == 1 {
-		return convertDDL(ctx, query, c.Statements[0])
+		return convertDDL(ctx, query, c.Statements[0], true)
 	}
 	statements := make([]sql.Node, statementsLen)
 	var err error
 	for i := 0; i < statementsLen; i++ {
-		statements[i], err = convertDDL(ctx, query, c.Statements[i])
+		statements[i], err = convertDDL(ctx, query, c.Statements[i], true)
 		if err != nil {
 			return nil, err
 		}
@@ -1935,7 +1935,7 @@ func convertSignalConditionItemName(name sqlparser.SignalConditionItemName) (pla
 	}
 }
 
-func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sql.Node, error) {
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
 	}
@@ -1948,7 +1948,7 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) 
 		toTables = append(toTables, table.Name.String())
 	}
 
-	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables), nil
+	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
 
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {

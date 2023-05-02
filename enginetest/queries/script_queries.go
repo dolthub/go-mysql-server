@@ -3059,6 +3059,56 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "renaming views with RENAME TABLE ... TO .. statement",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+			{
+				Query:    "rename table v1 to view1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
+			},
+			{
+				Query:    "rename table view1 to newViewName, t1 to newTableName",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
+			},
+		},
+	},
+	{
+		Name: "renaming views with ALTER TABLE ... RENAME .. statement should fail",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+			{
+				Query:       "alter table v1 rename to view1",
+				ExpectedErr: sql.ErrNotBaseTable,
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -4275,6 +4325,41 @@ var BrokenScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
+			},
+		},
+	},
+	{
+		Name: "renaming table name that is referenced in existing view",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"insert into t1 values (1,1);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from v1;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "rename table t1 to t2;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t2"}, {"v1"}},
+			},
+			{
+				Query:          "select * from v1;",
+				ExpectedErrStr: "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them",
+			},
+			{
+				Query:                 "show create view v1;",
+				Expected:              []sql.Row{{"v1", "CREATE VIEW `v1` AS select * from t1", "utf8mb4", "utf8mb4_0900_bin"}},
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{{"Warning", 1356, "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"}},
 			},
 		},
 	},
