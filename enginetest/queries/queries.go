@@ -1087,6 +1087,13 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		Query: "SELECT s,i FROM mytable as a order by i;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
 		Query: "SELECT s,i FROM (select i,s FROM mytable) mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},

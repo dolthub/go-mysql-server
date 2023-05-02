@@ -7850,6 +7850,17 @@ WHERE keyless.c0 IN (
 			"             └─ columns: [c0 c1]\n" +
 			"",
 	},
+	{
+		Query: `SELECT s,i FROM mytable as a order by i;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.s:1!null, a.i:0!null]\n" +
+			" └─ TableAlias(a)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
