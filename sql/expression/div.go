@@ -93,31 +93,19 @@ func (d *Div) IsNullable() bool {
 	return d.BinaryExpression.IsNullable()
 }
 
-// Type returns the greatest type for given operation.
+// Type returns the result type for this division expression. For nested division expressions, we prefer sending
+// the result back as a float when possible, since division with floats is more efficient than division with Decimals.
+// However, if this is the outermost division expression in an expression tree, we must return the result as a
+// Decimal type in order to match MySQL's results exactly.
 func (d *Div) Type() sql.Type {
-	//TODO: what if both BindVars? should be constant folded
-	rTyp := d.Right.Type()
-	if types.IsDeferredType(rTyp) {
-		return rTyp
-	}
-	lTyp := d.Left.Type()
-	if types.IsDeferredType(lTyp) {
-		return lTyp
-	}
+	return d.determineResultType(isOutermostDiv(d, 0, d.divScale))
+}
 
-	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return types.Float64
-	}
-
-	// For division operations, the result type is always either a float or decimal.Decimal. When working with
-	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
-	// floats than to divide Decimals, but if this is the outermost division operation, we need to
-	// return a decimal in order to match MySQL's results exactly.
-	if isOutermostDiv(d, 0, d.divScale) {
-		return floatOrDecimalType(d, false)
-	} else {
-		return floatOrDecimalType(d, true)
-	}
+// internalType returns the internal result type for this division expression. For performance reasons, we prefer
+// to use floats internally in division operations wherever possible, since division operations on floats can be
+// orders of magnitude faster than division operations on Decimal types.
+func (d *Div) internalType() sql.Type {
+	return d.determineResultType(false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -217,12 +205,13 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 
 // convertLeftRight returns the most appropriate type for left and right evaluated values,
 // which may or may not be converted from its original type.
-// It checks for float type column reference, then the both values converted to the same float types.
-// If there is no float type column reference, both values should be handled as decimal type
+// It checks for float type column reference, then the both values converted to the same float type.
+// Integer column references are treated as floats internally for performance reason, but the final result
+// from the expression tree is converted to a Decimal in order to match MySQL's behavior.
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
 func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
-	typ := d.Type()
+	typ := d.internalType()
 	lIsTimeType := types.IsTime(d.Left.Type())
 	rIsTimeType := types.IsTime(d.Right.Type())
 
@@ -299,6 +288,37 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 	}
 
 	return nil, errUnableToCast.New(lval, rval)
+}
+
+// determineResultType looks at the expressions in the expression tree with this division operation and determines
+// the result type of this division expression. This involves looking at the types of the expressions in the tree,
+// and looking for float types or Decimal types. If |outermostResult| is false, then we prefer to treat ints as floats
+// (instead of Decimals) for performance reasons, but when |outermostResult| is true, we must treat ints as Decimals
+// in order to match MySQL's behavior.
+func (d *Div) determineResultType(outermostResult bool) sql.Type {
+	//TODO: what if both BindVars? should be constant folded
+	rTyp := d.Right.Type()
+	if types.IsDeferredType(rTyp) {
+		return rTyp
+	}
+	lTyp := d.Left.Type()
+	if types.IsDeferredType(lTyp) {
+		return lTyp
+	}
+
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		return types.Float64
+	}
+
+	// For division operations, the result type is always either a float or decimal.Decimal. When working with
+	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
+	// floats than to divide Decimals, but if this is the outermost division operation, we need to
+	// return a decimal in order to match MySQL's results exactly.
+	if outermostResult {
+		return floatOrDecimalType(d, false)
+	} else {
+		return floatOrDecimalType(d, true)
+	}
 }
 
 // floatOrDecimalType returns either Float64 or Decimal type depending on column reference,

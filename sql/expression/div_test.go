@@ -118,6 +118,30 @@ func TestDiv(t *testing.T) {
 	}
 }
 
+// TestDivUsesFloatsInternally tests that division expression trees internally use floating point types when operating
+// on integers, but when returning the final result from the expression tree, it is returned as a Decimal.
+func TestDivUsesFloatsInternally(t *testing.T) {
+	bottomDiv := NewDiv(
+		NewGetField(0, types.Int32, "", false),
+		NewGetField(1, types.Int64, "", false))
+	middleDiv := NewDiv(bottomDiv,
+		NewGetField(2, types.Int64, "", false))
+	topDiv := NewDiv(middleDiv,
+		NewGetField(3, types.Int64, "", false))
+
+	result, err := topDiv.Eval(sql.NewEmptyContext(), sql.NewRow(250, 2, 5, 2))
+	require.NoError(t, err)
+	dec, isDecimal := result.(decimal.Decimal)
+	require.True(t, isDecimal)
+	require.Equal(t, "12.5", dec.String())
+
+	// Internal nodes should use floats for division with integers (for performance reasons), but the top node
+	// should return a Decimal (to match MySQL's behavior).
+	require.Equal(t, types.Float64, bottomDiv.Type())
+	require.Equal(t, types.Float64, middleDiv.Type())
+	require.True(t, types.IsDecimal(topDiv.Type()))
+}
+
 func TestIntDiv(t *testing.T) {
 	var testCases = []struct {
 		name                string
