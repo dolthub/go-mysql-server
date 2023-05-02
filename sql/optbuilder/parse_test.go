@@ -3,7 +3,6 @@ package optbuilder
 import (
 	"bufio"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
