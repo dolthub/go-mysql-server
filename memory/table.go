@@ -1157,6 +1157,7 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 		}
 
 		sort.Stable(sorter)
+		//sort.Reverse(sorter)
 	}
 	return iter, nil
 }

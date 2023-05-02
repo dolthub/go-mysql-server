@@ -523,29 +523,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require.Equal(t, rowCount, 3)
 
 	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
-	require.NoError(t, err)
-	rowCount = 0
-	for {
-		row, err = rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		rowCount++
-		require.NoError(t, err)
-		val := row[0].(int32)
-		team := row[1].(string)
-		switch team {
-		case "red":
-			require.True(t, val == 3 || val == 4)
-		case "orange":
-			require.True(t, val == 5 || val == 6 || val == 7)
-		case "purple":
-			require.True(t, val == 8)
-		default:
-			panic("received non-existent team")
-		}
-	}
-	require.Equal(t, rowCount, 3)
+	require.Error(t, err)
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {

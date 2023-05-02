@@ -812,8 +812,17 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		if err != nil {
 			return tc.Node, transform.SameTree, nil
 		}
-		sfs := normalizeExpressions(tableAliases, s.SortFields.ToExpressions()...)
-		newN, same, err := transform.Node(s, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		sfExprs := normalizeExpressions(tableAliases, s.SortFields.ToExpressions()...)
+		noJoinSel := func(tc transform.Context) bool {
+			if _, ok := tc.Node.(*plan.JoinNode); ok {
+				return false
+			}
+			return true
+		}
+		sfAliases := aliasedExpressionsInNode(s)
+		sfAliases = sfAliases
+		newN, same, err := transform.NodeWithCtx(s, noJoinSel, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
+			n := tc.Node
 			rs, ok := n.(*plan.ResolvedTable)
 			if !ok {
 				return n, transform.SameTree, nil
@@ -844,14 +853,18 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			}
 
 			pkColNames := pkIndex.Expressions()
-			if len(sfs) > len(pkColNames) {
+			if len(sfExprs) > len(pkColNames) {
 				return n, transform.SameTree, nil
 			}
-			for i, fieldExpr := range sfs {
-				if s.SortFields[0].Order != s.SortFields[i].Order {
+			for i, fieldExpr := range sfExprs {
+				if s.SortFields[0].Order == sql.Descending || s.SortFields[0].Order != s.SortFields[i].Order {
 					return n, transform.SameTree, nil
 				}
-				if fieldExpr.String() != pkColNames[i] {
+				fieldName := fieldExpr.String()
+				if alias, ok := sfAliases[pkColNames[i]]; ok && alias == fieldName {
+					continue
+				}
+				if pkColNames[i] != fieldExpr.String() {
 					return n, transform.SameTree, nil
 				}
 			}
