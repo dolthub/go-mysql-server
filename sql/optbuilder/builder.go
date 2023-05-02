@@ -140,7 +140,7 @@ func (b *PlanBuilder) newColumn(s *scope, col scopeColumn) {
 		b.exprs = make(map[string]columnId)
 	}
 	if col.table != "" {
-		b.exprs[fmt.Sprintf("%s.%s", col.table, col.col)] = b.colId
+		b.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = b.colId
 	} else {
 		b.exprs[col.col] = b.colId
 
@@ -229,21 +229,23 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 		case *expression.GetField:
 			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), e.Table(), e.Name(), e.IsNullable())
 			exprs = append(exprs, gf)
-			id := b.exprs[gf.String()]
+			id := b.exprs[strings.ToLower(gf.String())]
+			gf = gf.WithIndex(int(id)).(*expression.GetField)
 			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 		case *expression.Star:
 			for _, c := range inScope.cols {
 				if c.table == e.Table || e.Table == "" {
 					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 					exprs = append(exprs, gf)
-					id := b.exprs[gf.String()]
+					id := b.exprs[strings.ToLower(gf.String())]
 					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 				}
 			}
 		case *expression.Alias:
 			if gf, ok := e.Child.(*expression.GetField); ok {
-				col := scopeColumn{table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
-				b.newColumn(outScope, col)
+				id := b.exprs[strings.ToLower(gf.String())]
+				col := scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				outScope.addColumn(col)
 			} else {
 				col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: pe.IsNullable()}
 				b.newColumn(outScope, col)
@@ -693,7 +695,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		for checkScope != nil {
 			c, idx := b.resolveColumn(checkScope, v)
 			if idx >= 0 {
-				return expression.NewGetFieldWithTable(checkScope.outerScopeLen()+idx, c.typ, c.table, c.col, c.nullable)
+				return expression.NewGetFieldWithTable(checkScope.outerScopeLen()+idx+1, c.typ, c.table, c.col, c.nullable)
 			}
 			checkScope = checkScope.parent
 		}
@@ -1177,7 +1179,10 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				if !ok {
 					b.handleErr(fmt.Errorf("expected integer order by literal"))
 				}
-				target := projScope.cols[intIdx]
+				if intIdx < 1 {
+					b.handleErr(fmt.Errorf("expected positive integer order by literal"))
+				}
+				target := projScope.cols[intIdx-1]
 				var gf *expression.GetField
 				if target.scalar != nil {
 					gf = expression.NewGetFieldWithTable(int(target.id), target.typ, "", target.scalar.String(), target.nullable)
@@ -1206,7 +1211,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				nullable:   expr.IsNullable(),
 				descending: descending,
 			}
-			id := b.exprs[expr.String()]
+			id := b.exprs[strings.ToLower(expr.String())]
 			if id == 0 {
 				b.newColumn(outScope, col)
 			} else {

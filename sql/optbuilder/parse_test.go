@@ -287,36 +287,170 @@ Project
 		},
 		{
 			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y DESC",
+			exp: `
+Project
+ ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
+ └─ Sort(xy.y:2!null DESC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(xy.x:1!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
 		},
 		{
 			in: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y",
+			exp: `
+Project
+ ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
+ └─ Sort(xy.y:2!null ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(xy.x:1!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
 		},
 		{
-			in: "SELECT count(kv.k) AS count_1, kv.v + kv.w AS lx FROM kv GROUP BY kv.v + kv.w",
+			in: "SELECT count(xy.x) AS count_1, xy.y + xy.z AS lx FROM xy GROUP BY xy.x + xy.z",
+			exp: `
+Project
+ ├─ columns: [COUNT(xy.x):4!null as count_1, (xy.y:2!null + xy.z:3!null) as lx]
+ └─ GroupBy
+     ├─ select: xy.x:1!null, xy.z:3!null, COUNT(xy.x:1!null)
+     ├─ group: (xy.x:1!null + xy.z:3!null)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
-			in: "SELECT count(*), k+v AS r FROM kv GROUP BY k, v",
+			in: "SELECT count(*), x+y AS r FROM xy GROUP BY x, y",
 		},
 		{
-			in: "SELECT count(*), k+v AS r FROM kv GROUP BY k+v",
+			in: "SELECT count(*), x+y AS r FROM xy GROUP BY x+y",
 		},
 		{
-			in: "SELECT count(*) FROM kv GROUP BY 1+2",
+			in: "SELECT count(*) FROM xy GROUP BY 1+2",
 		},
 		{
-			in: "SELECT count(*), upper(s) FROM kv GROUP BY upper(s)",
+			in: "SELECT count(*), upper(x) FROM xy GROUP BY upper(x)",
 		},
 		{
-			in: "SELECT v, count(*), w FROM kv GROUP BY 1, 3",
+			in: "SELECT y, count(*), z FROM xy GROUP BY 1, 3",
 		},
-		{
-			in: "select x+1, count(x) from xy join uv on x = u group by x+1 order by y having sum(y) > 2",
-		},
+
 		{
 			in: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 1",
+			exp: `
+Project
+ ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
+ └─ Sort(xy.x:1!null ASC nullsFirst)
+     └─ Having
+         ├─ GreaterThan
+         │   ├─ AVG(xy.x):5
+         │   └─ 1 (tinyint)
+         └─ GroupBy
+             ├─ select: xy.x:1!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+             ├─ group: xy.x:1!null
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
+		{
+			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) + 1 ASC",
+			exp: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort((SUM(xy.x):4!null + 1 (tinyint)) ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:0!null, xy.y:2!null, SUM(xy.x:0!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY COUNT(*) ASC",
+			exp: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort(COUNT(1):5!null ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), COUNT(1 (bigint))
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) % 2, SUM(x), AVG(x) ASC",
+			exp: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, AVG(xy.x):6 ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			in: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY AVG(x) ASC",
+			exp: `
+Project
+ ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
+ └─ Sort(AVG(xy.x):5 ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+         ├─ group: xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
 		},
 		{
 			in: "SELECT x, sum(x) FROM xy group by 1 having avg(y) > 1 order by 1",
+			exp: `
+Project
+ ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
+ └─ Sort(xy.x:1!null ASC nullsFirst)
+     └─ Having
+         ├─ GreaterThan
+         │   ├─ AVG(xy.y):5
+         │   └─ 1 (tinyint)
+         └─ GroupBy
+             ├─ select: xy.x:0!null, xy.y:1!null, SUM(xy.x:0!null), AVG(xy.y:1!null)
+             ├─ group: xy.x:1!null
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
+		{
+			in: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 2",
+			exp: `
+Project
+ ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
+ └─ Sort(SUM(xy.x) as sum(x):4!null ASC nullsFirst)
+     └─ Having
+         ├─ GreaterThan
+         │   ├─ AVG(xy.x):5
+         │   └─ 1 (tinyint)
+         └─ GroupBy
+             ├─ select: xy.x:0!null, AVG(xy.x:0!null), SUM(xy.x:0!null)
+             ├─ group: xy.x:1!null
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
 		},
 		{
 			// TODO: error (y) is not aggregated
