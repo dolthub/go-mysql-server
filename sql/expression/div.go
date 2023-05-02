@@ -314,11 +314,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
 	// floats than to divide Decimals, but if this is the outermost division operation, we need to
 	// return a decimal in order to match MySQL's results exactly.
-	if outermostResult {
-		return floatOrDecimalType(d, false)
-	} else {
-		return floatOrDecimalType(d, true)
-	}
+	return floatOrDecimalType(d, !outermostResult)
 }
 
 // floatOrDecimalType returns either Float64 or Decimal type depending on column reference,
