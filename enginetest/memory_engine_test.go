@@ -207,14 +207,14 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "delete me",
+			Name: "delete me",
 			SetUpScript: []string{
 				"create table t (i int primary key, j int)",
 				"insert into t values (2, 3), (0, 1), (4, 5)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select * from t order by i desc;`,
+					Query: `select * from t order by i desc;`,
 					Expected: []sql.Row{
 						{4, 5},
 						{2, 3},
