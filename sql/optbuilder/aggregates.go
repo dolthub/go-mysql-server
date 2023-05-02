@@ -2,6 +2,7 @@ package optbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -26,8 +27,8 @@ func (g *groupBy) addInCol(c scopeColumn) {
 	g.inCols = append(g.inCols, c)
 }
 
-func (g *groupBy) addOutCol(c scopeColumn) {
-	g.outScope.addColumn(c)
+func (g *groupBy) addOutCol(c scopeColumn) columnId {
+	return g.outScope.addColumn(c)
 }
 
 func (g *groupBy) hasAggs() bool {
@@ -73,7 +74,7 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 	// 2) a column reference
 	// 3) an index into selects
 	// 4) a simple non-aggregate expression
-	var groupings []sql.Expression
+	groupings := make([]sql.Expression, 0)
 	g := fromScope.groupBy
 	for _, e := range groupby {
 		var col scopeColumn
@@ -132,14 +133,17 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 		if _, ok := g.grouping[col.col]; ok {
 			continue
 		}
-		g.addInCol(col)
-		scalar := col.scalar
 		if col.scalar == nil {
 			gf := expression.NewGetFieldWithTable(0, col.typ, col.table, col.col, col.nullable)
-			id := b.exprs[strings.ToLower(scalar.String())]
-			scalar = gf.WithIndex(int(id))
+			id, ok := fromScope.getExpr(gf.String())
+			if !ok {
+				err := sql.ErrColumnNotFound.New(gf.String())
+				b.handleErr(err)
+			}
+			col.scalar = gf.WithIndex(int(id))
 		}
-		groupings = append(groupings, scalar)
+		g.addInCol(col)
+		groupings = append(groupings, col.scalar)
 	}
 
 	return groupings
@@ -172,25 +176,25 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	}
 	for _, e := range group.aggregations() {
 		// aggregation functions
-		if !selectStr[e.String()] {
+		if !selectStr[strings.ToLower(e.String())] {
 			selectExprs = append(selectExprs, e)
-			selectStr[e.String()] = true
+			selectStr[strings.ToLower(e.String())] = true
 		}
 	}
-	//for _, e := range projScope.cols {
-	//	// projection dependencies -> table cols needed above
-	//	transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
-	//		switch e := e.(type) {
-	//		case *expression.GetField:
-	//			colName := strings.ToLower(e.Name())
-	//			if !selectStr[colName] {
-	//				selectExprs = append(selectExprs, e)
-	//				selectStr[colName] = true
-	//			}
-	//		}
-	//		return false
-	//	})
-	//}
+	for _, e := range projScope.cols {
+		// projection dependencies -> table cols needed above
+		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.GetField:
+				colName := strings.ToLower(e.Name())
+				if !selectStr[colName] {
+					selectExprs = append(selectExprs, e)
+					selectStr[colName] = true
+				}
+			}
+			return false
+		})
+	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
 		if !selectStr[e.col] {
@@ -225,9 +229,8 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 			}
 
 			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-			b.newColumn(gb.outScope, col)
+			id := gb.outScope.addColumn(col)
 			gb.addAggStr(agg)
-			id := b.exprs[aggName]
 			return expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
 		}
 	}
@@ -265,23 +268,20 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	}
 
 	aggName := strings.ToLower(agg.String())
-	prev := gb.getAgg(aggName)
-	if prev != nil {
+	if id, ok := gb.outScope.getExpr(aggName); ok {
 		// TODO check agg scope output, see if we've already computed
 		// if so use reference here
-		id := b.exprs[aggName]
 		gf := expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
 
 		return gf
 	}
 
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-	b.newColumn(gb.outScope, col)
+	id := gb.outScope.addColumn(col)
 	gb.addAggStr(agg)
 
 	//TODO we need to return a reference here, so that top-level
 	// projection references the group by output.
-	id := b.exprs[aggName]
 	return expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
 }
 
@@ -326,6 +326,15 @@ func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
 			} else if isWindowFunc(name) {
 				panic("todo window funcs")
 			}
+		case *ast.ColName:
+			// add to extra cols
+			c, idx := b.resolveColumn(fromScope, n)
+			if idx == -1 {
+				err := sql.ErrColumnNotFound.New(n.Name)
+				b.handleErr(err)
+			}
+			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+			fromScope.addExtraColumn(c)
 		}
 		return true, nil
 	}, having)

@@ -29,6 +29,17 @@ type scope struct {
 	extraCols []scopeColumn
 	ctes      map[string]*scope
 	groupBy   *groupBy
+	exprs     map[string]columnId
+	colId     columnId
+}
+
+func (s *scope) getExpr(name string) (columnId, bool) {
+	n := strings.ToLower(name)
+	id, ok := s.exprs[n]
+	if !ok && s.groupBy != nil {
+		id, ok = s.groupBy.outScope.getExpr(n)
+	}
+	return id, ok
 }
 
 func (s *scope) initGroupBy() {
@@ -47,7 +58,15 @@ func (s *scope) outerScopeLen() int {
 
 func (s *scope) setTableAlias(t string) {
 	for i := range s.cols {
+		beforeColStr := s.cols[i].String()
 		s.cols[i].table = t
+		id, ok := s.getExpr(beforeColStr)
+		if !ok {
+			err := sql.ErrColumnNotFound.New(beforeColStr)
+			s.b.handleErr(err)
+		}
+		delete(s.exprs, beforeColStr)
+		s.exprs[s.cols[i].String()] = id
 	}
 }
 
@@ -72,6 +91,7 @@ func (s *scope) replace() *scope {
 	}
 	return &scope{
 		parent: s.parent,
+		colId:  s.colId,
 	}
 }
 
@@ -89,8 +109,19 @@ func (s *scope) getCte(name string) *scope {
 	return s.ctes[strings.ToLower(name)]
 }
 
-func (s *scope) addColumn(col scopeColumn) {
+func (s *scope) addColumn(col scopeColumn) columnId {
+	s.colId++
+	col.id = s.colId
 	s.cols = append(s.cols, col)
+	if s.exprs == nil {
+		s.exprs = make(map[string]columnId)
+	}
+	if col.table != "" {
+		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = s.colId
+	} else {
+		s.exprs[col.col] = s.colId
+	}
+	return s.colId
 }
 
 func (s *scope) addExtraColumn(col scopeColumn) {
@@ -102,10 +133,11 @@ func (s *scope) addColumns(cols []scopeColumn) {
 }
 
 func (s *scope) appendColumnsFromScope(src *scope) {
-	l := len(s.cols)
-	s.cols = append(s.cols, src.cols...)
+	for _, c := range src.cols {
+		s.addColumn(c)
+	}
 	// these become pass-through columns in the new scope.
-	for i := l; i < len(s.cols); i++ {
+	for i := len(src.cols); i < len(s.cols); i++ {
 		s.cols[i].scalar = nil
 	}
 }
@@ -123,28 +155,18 @@ type scopeColumn struct {
 	descending bool
 }
 
+func (c scopeColumn) String() string {
+	if c.table == "" {
+		return c.col
+	} else {
+		return fmt.Sprintf("%s.%s", c.table, c.col)
+	}
+}
+
 type PlanBuilder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
-	tabId           uint16
-	colId           columnId
-	exprs           map[string]columnId
 	currentDatabase sql.Database
-}
-
-func (b *PlanBuilder) newColumn(s *scope, col scopeColumn) {
-	b.colId++
-	col.id = b.colId
-	s.cols = append(s.cols, col)
-	if b.exprs == nil {
-		b.exprs = make(map[string]columnId)
-	}
-	if col.table != "" {
-		b.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = b.colId
-	} else {
-		b.exprs[col.col] = b.colId
-
-	}
 }
 
 func (b *PlanBuilder) newScope() *scope {
@@ -229,7 +251,11 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 		case *expression.GetField:
 			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), e.Table(), e.Name(), e.IsNullable())
 			exprs = append(exprs, gf)
-			id := b.exprs[strings.ToLower(gf.String())]
+			id, ok := inScope.getExpr(gf.String())
+			if !ok {
+				err := sql.ErrColumnNotFound.New(gf.String())
+				b.handleErr(err)
+			}
 			gf = gf.WithIndex(int(id)).(*expression.GetField)
 			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 		case *expression.Star:
@@ -237,24 +263,32 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 				if c.table == e.Table || e.Table == "" {
 					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 					exprs = append(exprs, gf)
-					id := b.exprs[strings.ToLower(gf.String())]
+					id, ok := inScope.getExpr(gf.String())
+					if !ok {
+						err := sql.ErrColumnNotFound.New(gf.String())
+						b.handleErr(err)
+					}
 					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 				}
 			}
 		case *expression.Alias:
 			if gf, ok := e.Child.(*expression.GetField); ok {
-				id := b.exprs[strings.ToLower(gf.String())]
+				id, ok := inScope.getExpr(gf.String())
+				if !ok {
+					err := sql.ErrColumnNotFound.New(gf.String())
+					b.handleErr(err)
+				}
 				col := scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
 				outScope.addColumn(col)
 			} else {
 				col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: pe.IsNullable()}
-				b.newColumn(outScope, col)
+				outScope.addColumn(col)
 			}
 			exprs = append(exprs, e)
 		default:
 			exprs = append(exprs, pe)
 			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()}
-			b.newColumn(outScope, col)
+			outScope.addColumn(col)
 		}
 	}
 }
@@ -496,7 +530,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	}
 	outScope.node = newInstance
 	for _, c := range newInstance.Schema() {
-		b.newColumn(outScope, scopeColumn{
+		outScope.addColumn(scopeColumn{
 			db:    database.Name(),
 			table: "",
 			col:   c.Name,
@@ -564,7 +598,7 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 	outScope.ast = t
 	for _, col := range sch.Schema {
 		col.Source = strings.ToLower(t.Alias.String())
-		b.newColumn(outScope, scopeColumn{
+		outScope.addColumn(scopeColumn{
 			db:    "",
 			table: col.Source,
 			col:   col.Name,
@@ -641,7 +675,7 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 	}
 
 	for _, c := range tab.Schema() {
-		b.newColumn(outScope, scopeColumn{
+		outScope.addColumn(scopeColumn{
 			db:       strings.ToLower(db),
 			table:    strings.ToLower(tab.Name()),
 			col:      strings.ToLower(c.Name),
@@ -1211,11 +1245,8 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				nullable:   expr.IsNullable(),
 				descending: descending,
 			}
-			id := b.exprs[strings.ToLower(expr.String())]
-			if id == 0 {
-				b.newColumn(outScope, col)
-			} else {
-				col.id = id
+			_, ok := outScope.getExpr(expr.String())
+			if !ok {
 				outScope.addColumn(col)
 			}
 		}

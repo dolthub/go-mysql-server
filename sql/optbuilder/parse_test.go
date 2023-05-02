@@ -142,23 +142,23 @@ Project
 			in: "select * from xy join (select * from uv) s on x = u",
 			exp: `
 Project
- ├─ columns: [xy.x:0, xy.y:1, s.u:2, s.v:3]
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, s.u:4!null, s.v:5!null, s.w:6!null]
  └─ InnerJoin
      ├─ Eq
-     │   ├─ xy.x:0
-     │   └─ s.u:2
+     │   ├─ xy.x:1!null
+     │   └─ s.u:4!null
      ├─ Table
      │   ├─ name: xy
-     │   └─ columns: [x y]
+     │   └─ columns: [x y z]
      └─ SubqueryAlias
          ├─ name: s
          ├─ outerVisibility: false
          ├─ cacheable: false
          └─ Project
-             ├─ columns: [uv.u:0, uv.v:1]
+             ├─ columns: [uv.u:1!null, uv.v:2!null, uv.w:3!null]
              └─ Table
                  ├─ name: uv
-                 └─ columns: [u v]
+                 └─ columns: [u v w]
 `,
 		},
 		{
@@ -319,7 +319,7 @@ Project
 Project
  ├─ columns: [COUNT(xy.x):4!null as count_1, (xy.y:2!null + xy.z:3!null) as lx]
  └─ GroupBy
-     ├─ select: xy.x:1!null, xy.z:3!null, COUNT(xy.x:1!null)
+     ├─ select: xy.x:1!null, (xy.x:1!null + xy.z:3!null), COUNT(xy.x:1!null), COUNT(xy.x):4!null, xy.y:2!null, xy.z:3!null
      ├─ group: (xy.x:1!null + xy.z:3!null)
      └─ Table
          ├─ name: xy
@@ -327,7 +327,104 @@ Project
 `,
 		},
 		{
+			in: "select x from xy having z > 0",
+			exp: `
+Project
+ ├─ columns: [xy.x:1!null]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ xy.z:3!null
+     │   └─ 0 (tinyint)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, xy.z:3!null
+         ├─ group: 
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			in: "select x from xy order by z",
+			exp: `
+Project
+ ├─ columns: [xy.x:1!null]
+ └─ Sort(xy.z:3!null ASC nullsFirst)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
+		},
+		{
+			in: "select x from xy having z > 0 order by y",
+			exp: `
+Project
+ ├─ columns: [xy.x:1!null]
+ └─ Sort(xy.y:2!null ASC nullsFirst)
+     └─ Having
+         ├─ GreaterThan
+         │   ├─ xy.z:3!null
+         │   └─ 0 (tinyint)
+         └─ GroupBy
+             ├─ select: xy.x:1!null, xy.y:2!null, xy.z:3!null
+             ├─ group: 
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
+		{
+			in: "select count(*) from (select count(*) from xy) dt",
+			exp: `
+Project
+ ├─ columns: [COUNT(1):5!null as count(*)]
+ └─ GroupBy
+     ├─ select: COUNT(1 (bigint)), COUNT(1):5!null
+     ├─ group: 
+     └─ SubqueryAlias
+         ├─ name: dt
+         ├─ outerVisibility: false
+         ├─ cacheable: false
+         └─ Project
+             ├─ columns: [COUNT(1):4!null as count(*)]
+             └─ GroupBy
+                 ├─ select: COUNT(1 (bigint)), COUNT(1):4!null
+                 ├─ group: 
+                 └─ Table
+                     ├─ name: xy
+                     └─ columns: [x y z]
+`,
+		},
+		{
+			in: "select s from (select count(*) as s from xy) dt;",
+			exp: `
+Project
+ ├─ columns: [dt.s:4!null]
+ └─ SubqueryAlias
+     ├─ name: dt
+     ├─ outerVisibility: false
+     ├─ cacheable: false
+     └─ Project
+         ├─ columns: [COUNT(1):4!null as s]
+         └─ GroupBy
+             ├─ select: COUNT(1 (bigint)), COUNT(1):4!null
+             ├─ group: 
+             └─ Table
+                 ├─ name: xy
+                 └─ columns: [x y z]
+`,
+		},
+		{
 			in: "SELECT count(*), x+y AS r FROM xy GROUP BY x, y",
+			exp: `
+Project
+ ├─ columns: [COUNT(1):4!null as count(*), (xy.x:1!null + xy.y:2!null) as r]
+ └─ GroupBy
+     ├─ select: xy.x:1!null, xy.y:2!null, COUNT(1 (bigint))
+     ├─ group: xy.x:1!null, xy.y:2!null
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
 			in: "SELECT count(*), x+y AS r FROM xy GROUP BY x+y",
@@ -451,6 +548,9 @@ Project
                  ├─ name: xy
                  └─ columns: [x y z]
 `,
+		},
+		{
+			in: "select (select u from uv where x = u) from xy group by (select u from uv where x = u), x;",
 		},
 		{
 			// TODO: error (y) is not aggregated
