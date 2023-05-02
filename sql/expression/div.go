@@ -109,9 +109,15 @@ func (d *Div) Type() sql.Type {
 		return types.Float64
 	}
 
-	// for division operation, it's either float or decimal.Decimal type
-	// except invalid value will result it either 0 or nil
-	return floatOrDecimalType(d)
+	// For division operations, the result type is always either a float or decimal.Decimal. When working with
+	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
+	// floats than to divide Decimals, but if this is the outermost division operation, we need to
+	// return a decimal in order to match MySQL's results exactly.
+	if isOutermostDiv(d, 0, d.divScale) {
+		return floatOrDecimalType(d, false)
+	} else {
+		return floatOrDecimalType(d, true)
+	}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -155,6 +161,12 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// we do not round the value until it's the last division operation.
 	if isOutermostDiv(d, 0, d.divScale) {
+		// We prefer using floats internally for division operations, but if this expressions output type
+		// is a Decimal, make sure we convert the result and return it as a decimal.
+		if types.IsDecimal(d.Type()) {
+			result = convertValueToType(ctx, types.InternalDecimalType, result, false)
+		}
+
 		if res, ok := result.(decimal.Decimal); ok {
 			finalScale := d.divScale*int32(divPrecisionIncrement) + d.leftmostScale
 			if finalScale > types.DecimalTypeMaxScale {
@@ -290,19 +302,26 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 }
 
 // floatOrDecimalType returns either Float64 or Decimal type depending on column reference,
-// left and right expressions types and left and right evaluated types.
+// left and right expression types and left and right evaluated types.
 // If there is float type column reference, the result type is always float
 // regardless of the column reference on the left or right side of division operation.
+// If |treatIntsAsFloats| is true, then integers are treated as floats instead of Decimals. This
+// is a performance optimization for division operations, since float division can be several orders
+// of magnitude faster than division with Decimals.
 // Otherwise, the return type is always decimal. The expression and evaluated types
 // are used to determine appropriate Decimal type to return that will not result in
 // precision loss.
-func floatOrDecimalType(e sql.Expression) sql.Type {
+func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 	var resType sql.Type
 	var decType sql.Type
 	var maxWhole, maxFrac uint8
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
+			if treatIntsAsFloats && types.IsInteger(c.Type()) {
+				resType = types.Float64
+				return false
+			}
 			if types.IsFloat(c.Type()) {
 				resType = types.Float64
 				return false

@@ -162,7 +162,7 @@ func (a *Arithmetic) Type() sql.Type {
 		return types.Int64
 	}
 
-	return floatOrDecimalType(a)
+	return floatOrDecimalType(a, false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
