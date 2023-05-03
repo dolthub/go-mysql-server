@@ -15,8 +15,9 @@
 package function
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/tidwall/gjson"
+	"strconv"
 	"strings"
 
 	"github.com/tidwall/sjson"
@@ -160,14 +161,7 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			path = expr.(string)
 
-			// re-assemble map from val so that previous changes will be used
-			var jsonMap map[string]interface{}
-			err = json.Unmarshal([]byte(val), &jsonMap)
-			if err != nil {
-				return nil, err
-			}
-
-			path, pass, err = processPath(ctx, types.JSONDocument{Val: jsonMap}, path, pass)
+			path, pass, err = processPath(val, path)
 			if err != nil {
 				return nil, err
 			}
@@ -188,31 +182,104 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // processPath checks the given json path for the correct mysql syntax, checks nested paths for their existence
 // in the provided json doc, determines whether JSON_SET will do nothing with no error for this path, and processes
 // the given json path to use the appropriate sjson syntax.
-func processPath(ctx *sql.Context, doc types.JSONDocument, path string, pass bool) (string, bool, error) {
-	// make sure path starts with '$'
+func processPath(doc, path string) (string, bool, error) {
+	// check path starts with '$'
 	if path[0] != '$' {
 		return "", false, fmt.Errorf("Invalid JSON path expression")
 	}
-
-	// no wildcards allowed in path
-	if strings.Contains(path, "*") || strings.Contains(path, "**") {
+	// check no wildcards in path
+	if strings.Contains(path, "*") {
 		return "", false, fmt.Errorf("Path expressions may not contain the * and ** tokens")
 	}
+	path = path[1:]
 
-	// if the nested path does not already exist, we do nothing
-	if len(strings.Split(path, ".")) > 2 {
-		extractedVal, _ := doc.Extract(ctx, path)
-		if extractedVal == nil {
-			pass = true
+	// tokenize each field of the path
+	var parsed parsedPath
+	parsed.parts = strings.Split(path, ".")
+	if parsed.parts[0] == "" {
+		parsed.parts = parsed.parts[1:]
+	}
+
+	// process each field of the path
+	for i, part := range parsed.parts {
+		formattedPart := part
+
+		// handle any indexing in this field
+		if strings.Contains(part, "[") {
+			// tokenize indexes
+			formattedPart = strings.ReplaceAll(formattedPart, "]", "")
+			indexedParts := strings.Split(formattedPart, "[")
+			if indexedParts[0] == "" {
+				indexedParts = indexedParts[1:]
+			}
+			formattedPart = ""
+
+			// process each token
+			for j, idxPart := range indexedParts {
+				if idx, err := strconv.Atoi(idxPart); err == nil { // if token is an int, it's an index
+					if j == 0 { // if this is the first token of the field
+						if i == 0 && path[1] == '.' { // path cannot start with index after '.'
+							return "", false, fmt.Errorf("Invalid JSON path expression")
+						} else if i == 0 && path[1] != '.' { // ordinal indexing
+							return "", false, fmt.Errorf("Ordinal indexing not supported")
+						}
+					} else {
+						parentVal := gjson.Get(doc, parsed.formattedPath+formattedPart)
+
+						if !parentVal.Exists() { // if parent doesn't exist in json already, do nothing
+							return path, true, nil
+						} else {
+							if parentVal.Type.String() == "JSON" { // parent is an array/map
+								arr := parentVal.Array()
+								if idx >= len(arr) { // if index out of range, append to end
+									formattedPart = formattedPart + ".-1"
+								} else {
+									formattedPart = formattedPart + "." + idxPart
+								}
+							} else {
+								if idx == 0 {
+									// if there are remaining tokens/fields, do nothing
+									if j != len(indexedParts)-1 || i != len(parsed.parts)-1 {
+										return path, true, nil
+									}
+								} else {
+									// parent value will change to array with new value appended to end
+									formattedPart = formattedPart + ".1"
+								}
+							}
+						}
+					}
+				} else { // token is not an index
+					if j == 0 {
+						formattedPart = formattedPart + idxPart
+					} else {
+						formattedPart = formattedPart + "." + idxPart
+					}
+
+				}
+			}
+		}
+
+		if i == 0 {
+			parsed.formattedPath = parsed.formattedPath + formattedPart
+		} else {
+			previousVal := gjson.Get(doc, parsed.formattedPath)
+			if !previousVal.Exists() { // if parent doesn't exist in json already, do nothing
+				return path, true, nil
+			} else {
+				if _, ok := previousVal.Value().(map[string]interface{}); !ok { // if parent isn't a map, do nothing
+					return path, true, nil
+				} else {
+					parsed.formattedPath = parsed.formattedPath + "." + formattedPart
+				}
+			}
 		}
 	}
 
-	// match mysql indexing syntax to sjson syntax
-	path = strings.ReplaceAll(path, "[", ".")
-	path = strings.ReplaceAll(path, "]", "")
+	return parsed.formattedPath, false, nil
+}
 
-	// prune out '$' because sjson doesn't recognize it
-	path = path[2:]
-
-	return path, pass, nil
+type parsedPath struct {
+	parts         []string
+	formattedPath string // stores the path in format usable by sjson
 }
