@@ -142,7 +142,8 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	isPath := true
 	var path string
-	pass := false // indicates whether the path should do nothing
+	pass := false      // indicates whether the path should do nothing
+	returnVal := false // indicates whether we should just return the value
 	for _, e := range j.PathAndVals {
 		expr, err := e.Eval(ctx, row)
 		if err != nil {
@@ -161,13 +162,16 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			path = expr.(string)
 
-			path, pass, err = processPath(val, path)
+			path, pass, returnVal, err = processPath(val, path, returnVal)
 			if err != nil {
 				return nil, err
 			}
 
 			isPath = false
 		} else if !pass {
+			if returnVal {
+				return fmt.Sprintf("%v", expr), nil
+			}
 			val, err = sjson.Set(val, path, expr)
 			if err != nil {
 				return nil, err
@@ -182,14 +186,13 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // processPath checks the given json path for the correct mysql syntax, checks nested paths for their existence
 // in the provided json doc, determines whether JSON_SET will do nothing with no error for this path, and processes
 // the given json path to use the appropriate sjson syntax.
-func processPath(doc, path string) (string, bool, error) {
-	// check path starts with '$'
-	if path[0] != '$' {
-		return "", false, fmt.Errorf("Invalid JSON path expression")
+func processPath(doc, path string, returnVal bool) (string, bool, bool, error) {
+	returnVal, err := checkPath(path)
+	if err != nil {
+		return "", false, false, err
 	}
-	// check no wildcards in path
-	if strings.Contains(path, "*") {
-		return "", false, fmt.Errorf("Path expressions may not contain the * and ** tokens")
+	if returnVal {
+		return "", false, true, nil
 	}
 	path = path[1:]
 
@@ -217,36 +220,39 @@ func processPath(doc, path string) (string, bool, error) {
 			// process each token
 			for j, idxPart := range indexedParts {
 				if idx, err := strconv.Atoi(idxPart); err == nil { // if token is an int, it's an index
-					if j == 0 { // if this is the first token of the field
-						if i == 0 && path[1] == '.' { // path cannot start with index after '.'
-							return "", false, fmt.Errorf("Invalid JSON path expression")
-						} else if i == 0 && path[1] != '.' { // ordinal indexing
-							return "", false, fmt.Errorf("Ordinal indexing not supported")
+					if j == 0 {
+						if i == 0 {
+							return "", false, false, fmt.Errorf("ordinal indexing currently unsupported")
+						} else {
+							return "", false, false, fmt.Errorf("Invalid JSON path expression")
+						}
+					}
+
+					parentVal := gjson.Get(doc, parsed.formattedPath+formattedPart)
+
+					if !parentVal.Exists() { // if parent doesn't exist in json already, do nothing
+						return path, true, false, nil
+					}
+					if arr, ok := parentVal.Value().(map[string]interface{}); ok { // if parent is a map
+						if idx >= len(arr) {
+							return "", false, false, fmt.Errorf("index out of range for maps currently unsupported")
+						} else {
+							formattedPart = formattedPart + "." + idxPart
+						}
+					} else if arr, ok := parentVal.Value().([]interface{}); ok { // if parent is an array
+						if idx >= len(arr) { // if index out of range, append to end
+							formattedPart = formattedPart + ".-1"
+						} else {
+							formattedPart = formattedPart + "." + idxPart
 						}
 					} else {
-						parentVal := gjson.Get(doc, parsed.formattedPath+formattedPart)
-
-						if !parentVal.Exists() { // if parent doesn't exist in json already, do nothing
-							return path, true, nil
-						} else {
-							if parentVal.Type.String() == "JSON" { // parent is an array/map
-								arr := parentVal.Array()
-								if idx >= len(arr) { // if index out of range, append to end
-									formattedPart = formattedPart + ".-1"
-								} else {
-									formattedPart = formattedPart + "." + idxPart
-								}
-							} else {
-								if idx == 0 {
-									// if there are remaining tokens/fields, do nothing
-									if j != len(indexedParts)-1 || i != len(parsed.parts)-1 {
-										return path, true, nil
-									}
-								} else {
-									// parent value will change to array with new value appended to end
-									formattedPart = formattedPart + ".1"
-								}
+						if idx == 0 {
+							// if there are remaining tokens/fields, do nothing
+							if j != len(indexedParts)-1 || i != len(parsed.parts)-1 {
+								return path, true, false, nil
 							}
+						} else {
+							return "", false, false, fmt.Errorf("index out of range for single values currently unsupported")
 						}
 					}
 				} else { // token is not an index
@@ -265,21 +271,44 @@ func processPath(doc, path string) (string, bool, error) {
 		} else {
 			previousVal := gjson.Get(doc, parsed.formattedPath)
 			if !previousVal.Exists() { // if parent doesn't exist in json already, do nothing
-				return path, true, nil
-			} else {
-				if _, ok := previousVal.Value().(map[string]interface{}); !ok { // if parent isn't a map, do nothing
-					return path, true, nil
-				} else {
-					parsed.formattedPath = parsed.formattedPath + "." + formattedPart
-				}
+				return path, true, false, nil
 			}
+			if _, ok := previousVal.Value().(map[string]interface{}); !ok { // if parent isn't a map, do nothing
+				return path, true, false, nil
+			}
+			parsed.formattedPath = parsed.formattedPath + "." + formattedPart
 		}
 	}
 
-	return parsed.formattedPath, false, nil
+	return parsed.formattedPath, false, false, nil
 }
 
 type parsedPath struct {
 	parts         []string
 	formattedPath string // stores the path in format usable by sjson
+}
+
+// checkPath checks the given path for basic syntax correctness and simple edge cases
+func checkPath(path string) (bool, error) {
+	if path == "" {
+		return false, fmt.Errorf("Invalid JSON path expression")
+	}
+	// path starts with '$'
+	if path[0] != '$' {
+		return false, fmt.Errorf("Invalid JSON path expression")
+	}
+	// no wildcards in path
+	if strings.Contains(path, "*") {
+		return false, fmt.Errorf("Path expressions may not contain the * and ** tokens")
+	}
+
+	if path == "$" || path == "$[0]" {
+		return true, nil
+	}
+
+	if len(path) == 2 {
+		return false, fmt.Errorf("Invalid JSON path expression")
+	}
+
+	return false, nil
 }
