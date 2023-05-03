@@ -206,14 +206,14 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "trigger with signal and user var",
+			Name: "trigger with signal and user var",
 			SetUpScript: []string{
 				"create table t (i int primary key, j int)",
 				"insert into t values (3, 1), (2, 2), (1, 3)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select i from t order by i DESC`,
+					Query: `select i from t order by i DESC`,
 					Expected: []sql.Row{
 						{3},
 						{2},
