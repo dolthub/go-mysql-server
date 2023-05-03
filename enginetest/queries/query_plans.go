@@ -7524,7 +7524,8 @@ With c as (
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"             ├─ columns: [i]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
@@ -7545,7 +7546,8 @@ With c as (
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i]\n" +
+			"                 ├─ columns: [i]\n" +
+			"                 └─ reverse: true\n" +
 			"",
 	},
 	{
@@ -7868,7 +7870,8 @@ WHERE keyless.c0 IN (
 			" └─ IndexedTableAccess(mytable)\n" +
 			"     ├─ index: [mytable.i]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [i s]\n" +
+			"     ├─ columns: [i s]\n" +
+			"     └─ reverse: true\n" +
 			"",
 	},
 }
