@@ -16,7 +16,6 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/optbuilder"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -26,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/optbuilder"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"

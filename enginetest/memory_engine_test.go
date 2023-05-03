@@ -16,7 +16,6 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"log"
 	"testing"
 
@@ -26,9 +25,9 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 

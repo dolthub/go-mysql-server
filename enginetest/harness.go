@@ -15,13 +15,12 @@
 package enginetest
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries

@@ -17,9 +17,10 @@ package enginetest
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"strings"
 	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"

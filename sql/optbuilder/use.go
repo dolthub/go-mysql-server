@@ -1,8 +1,9 @@
 package optbuilder
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 func (b *PlanBuilder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
