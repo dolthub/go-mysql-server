@@ -95,6 +95,58 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter keyless table",
+		SetUpScript: []string{
+			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
+			"insert into t values (1, 'one', NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `alter table t modify column c1 int unsigned`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c1", "int unsigned", "YES", "", "NULL", ""},
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    `alter table t drop column c1;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    "alter table t add column new3 int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    `insert into t values ('two', 'two', -2);`,
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+					{"new3", "int", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
+			},
+		},
+	},
+	{
 		Name: "topN stable output",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int)",
