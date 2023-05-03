@@ -861,7 +861,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				return n, transform.SameTree, nil
 			}
 			for i, fieldExpr := range sfExprs {
-				if s.SortFields[0].Order == sql.Descending || s.SortFields[0].Order != s.SortFields[i].Order {
+				if s.SortFields[0].Order != s.SortFields[i].Order {
 					return n, transform.SameTree, nil
 				}
 				fieldName := fieldExpr.String()
