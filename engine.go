@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/optbuilder"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -124,6 +125,7 @@ type Engine struct {
 	IsServerLocked    bool
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
+	Version           analyzer.Version
 }
 
 type ColumnWithRawDefault struct {
@@ -162,6 +164,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		IsServerLocked:    cfg.IsServerLocked,
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
+		Version:           analyzer.VersionOriginal,
 	}
 }
 
@@ -227,7 +230,15 @@ func (e *Engine) QueryNodeWithBindings(
 	)
 
 	if parsed == nil {
-		parsed, err = parse.Parse(ctx, query)
+		switch e.Version {
+		case analyzer.Version1:
+			parsed, err = optbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+			if err != nil {
+				parsed, err = parse.Parse(ctx, query)
+			}
+		default:
+			parsed, err = parse.Parse(ctx, query)
+		}
 		if err != nil {
 			return nil, nil, err
 		}

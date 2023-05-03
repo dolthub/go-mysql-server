@@ -28,7 +28,7 @@ func (g *groupBy) addInCol(c scopeColumn) {
 }
 
 func (g *groupBy) addOutCol(c scopeColumn) columnId {
-	return g.outScope.addColumn(c)
+	return g.outScope.newColumn(c)
 }
 
 func (g *groupBy) hasAggs() bool {
@@ -232,7 +232,7 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 			}
 
 			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-			id := gb.outScope.addColumn(col)
+			id := gb.outScope.newColumn(col)
 			gb.addAggStr(agg)
 			return expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
 		}
@@ -280,7 +280,7 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	}
 
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-	id := gb.outScope.addColumn(col)
+	id := gb.outScope.newColumn(col)
 	gb.addAggStr(agg)
 
 	//TODO we need to return a reference here, so that top-level
@@ -333,13 +333,10 @@ func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
 			}
 		case *ast.ColName:
 			// add to extra cols
-			c, idx := b.resolveColumn(fromScope, n)
+			c, idx := b.resolveColumn(fromScope, n, true)
 			if idx == -1 {
-				c, idx = b.resolveOuterColumn(fromScope, n)
-				if idx == -1 {
-					err := sql.ErrColumnNotFound.New(n.Name)
-					b.handleErr(err)
-				}
+				err := sql.ErrColumnNotFound.New(n.Name)
+				b.handleErr(err)
 			}
 			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 			fromScope.addExtraColumn(c)
@@ -359,7 +356,7 @@ func (b *PlanBuilder) buildHaving(fromScope, projScope *scope, having *ast.Where
 	havingScope := fromScope.push()
 	for _, c := range projScope.cols {
 		if c.table == "" {
-			havingScope.addColumn(c)
+			havingScope.newColumn(c)
 		}
 	}
 	havingScope.groupBy = fromScope.groupBy

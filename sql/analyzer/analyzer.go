@@ -46,6 +46,14 @@ var ErrInvalidNodeType = errors.NewKind("%s: invalid node of type: %T")
 
 const disablePrepareStmtKey = "DISABLE_PREPARED_STATEMENTS"
 
+type Version uint8
+
+const (
+	VersionUnknown Version = iota
+	VersionOriginal
+	Version1
+)
+
 var PreparedStmtDisabled bool
 
 func init() {

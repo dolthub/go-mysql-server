@@ -7,18 +7,26 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	oldparse "github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+func (b *PlanBuilder) reset() {
+	b.colId = 0
+}
+
 func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (outScope *scope) {
+	if inScope == nil {
+		inScope = b.newScope()
+	}
 	switch n := stmt.(type) {
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(n)))
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, n)
 		//if into := n.GetInto(); into != nil {
-		//	panic("todo")
-		//}
+		outScope = inScope.push()
+		//	node, err := oldparse.Parse(b.ctx, query
 
 	case *ast.Analyze:
 		return b.buildAnalyze(inScope, n, query)
@@ -32,34 +40,72 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		return b.buildShow(inScope, n, query)
 	case *ast.DDL:
 		//return convertDDL(ctx, query, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.MultiAlterDDL:
 		//return convertMultiAlterDDL(ctx, query, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.DBDDL:
 		//return convertDBDDL(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Explain:
 		//return convertExplain(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Insert:
 		//return convertInsert(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Delete:
 		//return convertDelete(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Update:
 		//return convertUpdate(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Load:
 		//return convertLoad(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Set:
-		//return convertSet(ctx, n)
-		panic("todo")
+		return b.buildSet(inScope, n)
 	case *ast.Use:
-		//return convertUse(n)
-		panic("todo")
+		return b.buildUse(inScope, n)
 	case *ast.Begin:
 		transChar := sql.ReadWrite
 		if n.TransactionCharacteristic == ast.TxReadOnly {
@@ -79,10 +125,20 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope.node = plan.NewReleaseSavepoint(n.Identifier)
 	case *ast.ChangeReplicationSource:
 		//return convertChangeReplicationSource(n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.ChangeReplicationFilter:
 		//return convertChangeReplicationFilter(n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.StartReplica:
 		outScope.node = plan.NewStartReplica()
 	case *ast.StopReplica:
@@ -91,61 +147,156 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope.node = plan.NewResetReplica(n.All)
 	case *ast.BeginEndBlock:
 		//return convertBeginEndBlock(ctx, n, query)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.IfStatement:
 		//return convertIfBlock(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.CaseStatement:
 		//return convertCaseStatement(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Call:
 		//return convertCall(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Declare:
 		//return convertDeclare(ctx, n, query)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.FetchCursor:
 		//return convertFetch(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.OpenCursor:
 		//return convertOpen(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.CloseCursor:
 		//return convertClose(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Loop:
 		//return convertLoop(ctx, n, query)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Repeat:
 		//return convertRepeat(ctx, n, query)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.While:
 		//return convertWhile(ctx, n, query)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Leave:
 		//return convertLeave(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Iterate:
 		//return convertIterate(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Kill:
 		//return convertKill(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Signal:
 		//return convertSignal(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.LockTables:
 		//return convertLockTables(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.UnlockTables:
 		//return convertUnlockTables(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.CreateUser:
 		//return convertCreateUser(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.RenameUser:
 		//return convertRenameUser(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.DropUser:
 		outScope.node = plan.NewDropUser(n.IfExists, convertAccountName(n.AccountNames...))
 	case *ast.CreateRole:
@@ -154,7 +305,12 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope.node = plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...))
 	case *ast.GrantPrivilege:
 		//return convertGrantPrivilege(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.GrantRole:
 		outScope.node = plan.NewGrantRole(
 			convertAccountName(n.Roles...),
@@ -191,21 +347,46 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
 	case *ast.ShowGrants:
 		//return convertShowGrants(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.ShowPrivileges:
 		outScope.node = plan.NewShowPrivileges()
 	case *ast.Flush:
 		//return convertFlush(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Prepare:
 		//return convertPrepare(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Execute:
 		//return convertExecute(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	case *ast.Deallocate:
 		//return convertDeallocate(ctx, n)
-		panic("todo")
+		outScope = inScope.push()
+		node, err := oldparse.Parse(b.ctx, query)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = node
 	}
 	return
 }

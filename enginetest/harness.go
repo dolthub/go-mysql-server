@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -46,6 +47,11 @@ type Harness interface {
 	// NewEngine creates a new sqle.Engine. The state of the engine returned must match what was previous specified
 	// by Setup, with no other data. See enginetest.NewEngine for help creating an engine suitable in tests.
 	NewEngine(*testing.T) (*sqle.Engine, error)
+}
+
+type VersionedHarness interface {
+	Harness
+	Version() analyzer.Version
 }
 
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.

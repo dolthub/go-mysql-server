@@ -105,6 +105,14 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
+	} else if vh, ok := harness.(VersionedHarness); ok {
+		switch vh.Version() {
+		case analyzer.Version1:
+			a = analyzer.NewBuilder_New(provider).Build()
+		case analyzer.VersionOriginal:
+			a = analyzer.NewDefault(provider)
+		default:
+		}
 	} else {
 		a = analyzer.NewDefault(provider)
 	}
@@ -134,15 +142,19 @@ func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, set
 		supportsIndexes = true
 	}
 
+	if vh, ok := harness.(VersionedHarness); ok {
+		e.Version = vh.Version()
+	}
+
 	// TODO: remove ths, make it explicit everywhere
 	if len(setupData) == 0 {
 		setupData = setup.MydbData
 	}
-	return RunSetupScripts(ctx, e, setupData, supportsIndexes)
+	return e, RunSetupScripts(ctx, e, setupData, supportsIndexes)
 }
 
 // RunSetupScripts runs the given setup scripts on the given engine, returning any error
-func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) (*sqle.Engine, error) {
+func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScript, createIndexes bool) error {
 	for i := range scripts {
 		for _, s := range scripts[i] {
 			if !createIndexes {
@@ -153,15 +165,15 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 			// ctx.GetLogger().Warnf("running query %s\n", s)
 			sch, iter, err := e.Query(ctx, s)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			_, err = sql.RowIterToRows(ctx, sch, iter)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
-	return e, nil
+	return nil
 }
 
 func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Row) {

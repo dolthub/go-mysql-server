@@ -13,7 +13,17 @@ import (
 )
 
 // Parse parses the given SQL sentence and returns the corresponding node.
-func Parse(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, error) {
+func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case parseErr:
+				err = r.err
+			default:
+				panic(r)
+			}
+		}
+	}()
 	n, _, _, err := parse(ctx, cat, query, false)
 	return n, err
 }

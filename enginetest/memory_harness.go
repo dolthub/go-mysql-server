@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"strings"
 	"testing"
 
@@ -43,6 +44,7 @@ type MemoryHarness struct {
 	session                   sql.Session
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
+	version                   analyzer.Version
 }
 
 var _ Harness = (*MemoryHarness)(nil)
@@ -53,6 +55,7 @@ var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ClientHarness = (*MemoryHarness)(nil)
+var _ VersionedHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitalizer IndexDriverInitializer) *MemoryHarness {
@@ -69,6 +72,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
+		version:                   analyzer.VersionOriginal,
 	}
 }
 
@@ -80,6 +84,16 @@ func NewReadOnlyMemoryHarness() *MemoryHarness {
 	h := NewMemoryHarness("default", 1, testNumPartitions, true, nil)
 	h.readonly = true
 	return h
+}
+
+func (m *MemoryHarness) Version() analyzer.Version {
+	return m.version
+}
+
+func (m *MemoryHarness) WithVersion(version analyzer.Version) *MemoryHarness {
+	ret := *m
+	ret.version = version
+	return &ret
 }
 
 // ExternalStoredProcedure implements the sql.ExternalStoredProcedureProvider interface

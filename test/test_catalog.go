@@ -130,3 +130,18 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
 	return nil, nil
 }
+
+func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	//TODO implement me
+	panic("implement me")
+}

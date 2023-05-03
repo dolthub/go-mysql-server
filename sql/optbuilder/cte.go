@@ -74,10 +74,12 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 	// TODO schema for non -recursive portion => recursive table
 	var rTable *plan.RecursiveTable
+	var rInit sql.Node
+	cteScope := leftScope.replace()
 	{
-		newInit := leftScope.node
-		recSch := make(sql.Schema, len(newInit.Schema()))
-		for i, c := range newInit.Schema() {
+		rInit = leftScope.node
+		recSch := make(sql.Schema, len(rInit.Schema()))
+		for i, c := range rInit.Schema() {
 			newC := c.Copy()
 			if len(columns) > 0 {
 				newC.Name = columns[i]
@@ -87,17 +89,24 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 			// we need to promote the type of the left part, so the final schema is the widest possible type
 			newC.Type = newC.Type.Promote()
 			recSch[i] = newC
+
 		}
 
+		for _, c := range leftScope.cols {
+			cteScope.newColumn(c)
+		}
+		b.renameSource(cteScope, name, columns)
+
 		rTable = plan.NewRecursiveTable(name, recSch)
+		cteScope.node = rTable
 	}
 
-	leftScope.node = rTable
-	b.renameSource(leftScope, name, columns)
+	//leftScope.node = rTable
+	//b.renameSource(leftScope, name, columns)
 
 	// add rTable as a cte reference?
 	rightInScope := inScope.replace()
-	rightInScope.addCte(name, leftScope)
+	rightInScope.addCte(name, cteScope)
 	rightScope := b.buildSelectStmt(rightInScope, r)
 
 	distinct := union.Type != ast.UnionAllStr
@@ -106,7 +115,7 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	orderByScope := b.analyzeOrderBy(rightInScope, inScope, union.OrderBy)
 	b.buildOrderBy(rightInScope, orderByScope)
 
-	rightScope.node = plan.NewRecursiveCte(leftScope.node, rightScope.node, name, columns, distinct, limit, nil)
+	rightScope.node = plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, nil)
 	b.renameSource(rightScope, name, columns)
 	inScope.addCte(name, rightScope)
 }

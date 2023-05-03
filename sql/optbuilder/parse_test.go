@@ -805,6 +805,15 @@ Project
      └─ columns: [x y z]
 `,
 		},
+		{
+			Query: "select x, x as y from xy order by y",
+		},
+		{
+			Query: "select x, y as x from xy order by y",
+		},
+		{
+			Query: "select sum(x) as `count(x)` from xy order by `count(x)`;",
+		},
 	}
 
 	verbose := true
@@ -846,6 +855,7 @@ Project
 			require.NoError(t, err)
 
 			outScope := b.build(nil, stmt, tt.Query)
+			defer b.reset()
 			plan := sql.DebugString(outScope.node)
 
 			if rewrite {

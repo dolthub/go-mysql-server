@@ -30,7 +30,6 @@ type scope struct {
 	ctes      map[string]*scope
 	groupBy   *groupBy
 	exprs     map[string]columnId
-	colId     columnId
 }
 
 func (s *scope) getExpr(name string) (columnId, bool) {
@@ -38,6 +37,14 @@ func (s *scope) getExpr(name string) (columnId, bool) {
 	id, ok := s.exprs[n]
 	if !ok && s.groupBy != nil {
 		id, ok = s.groupBy.outScope.getExpr(n)
+	}
+	if !ok && s.ctes != nil {
+		for _, cte := range s.ctes {
+			id, ok = cte.getExpr(n)
+			if ok {
+				break
+			}
+		}
 	}
 	return id, ok
 }
@@ -75,12 +82,21 @@ func (s *scope) setColAlias(cols []string) {
 		s.b.handleErr(fmt.Errorf("invalid column number for column alias"))
 	}
 	for i := range s.cols {
+		beforeColStr := s.cols[i].String()
 		s.cols[i].col = cols[i]
+		id, ok := s.getExpr(beforeColStr)
+		if !ok {
+			err := sql.ErrColumnNotFound.New(beforeColStr)
+			s.b.handleErr(err)
+		}
+		delete(s.exprs, beforeColStr)
+		s.exprs[s.cols[i].String()] = id
 	}
 }
 
 func (s *scope) push() *scope {
 	return &scope{
+		b:      s.b,
 		parent: s,
 	}
 }
@@ -90,8 +106,8 @@ func (s *scope) replace() *scope {
 		return &scope{}
 	}
 	return &scope{
+		b:      s.b,
 		parent: s.parent,
-		colId:  s.colId,
 	}
 }
 
@@ -109,19 +125,32 @@ func (s *scope) getCte(name string) *scope {
 	return s.ctes[strings.ToLower(name)]
 }
 
-func (s *scope) addColumn(col scopeColumn) columnId {
-	s.colId++
-	col.id = s.colId
+func (s *scope) addColumn(col scopeColumn) {
 	s.cols = append(s.cols, col)
 	if s.exprs == nil {
 		s.exprs = make(map[string]columnId)
 	}
 	if col.table != "" {
-		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = s.colId
+		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = col.id
 	} else {
-		s.exprs[col.col] = s.colId
+		s.exprs[col.col] = col.id
 	}
-	return s.colId
+	return
+}
+
+func (s *scope) newColumn(col scopeColumn) columnId {
+	s.b.colId++
+	col.id = s.b.colId
+	s.cols = append(s.cols, col)
+	if s.exprs == nil {
+		s.exprs = make(map[string]columnId)
+	}
+	if col.table != "" {
+		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = col.id
+	} else {
+		s.exprs[col.col] = col.id
+	}
+	return col.id
 }
 
 func (s *scope) addExtraColumn(col scopeColumn) {
@@ -133,8 +162,12 @@ func (s *scope) addColumns(cols []scopeColumn) {
 }
 
 func (s *scope) appendColumnsFromScope(src *scope) {
-	for _, c := range src.cols {
-		s.addColumn(c)
+	s.cols = append(s.cols, src.cols...)
+	if s.exprs == nil {
+		s.exprs = make(map[string]columnId)
+	}
+	for k, v := range src.exprs {
+		s.exprs[k] = v
 	}
 	// these become pass-through columns in the new scope.
 	for i := len(src.cols); i < len(s.cols); i++ {
@@ -167,10 +200,11 @@ type PlanBuilder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
 	currentDatabase sql.Database
+	colId           columnId
 }
 
 func (b *PlanBuilder) newScope() *scope {
-	return &scope{}
+	return &scope{b: b}
 }
 
 func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
@@ -242,6 +276,9 @@ func (b *PlanBuilder) analyzeProjectionList(inScope, outScope *scope, selectExpr
 }
 
 func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
+	// todo ideally we would not create new expressions here.
+	// we want to in-place identify aggregations, expand stars.
+
 	// use inScope to construct projections for projScope
 	var exprs []sql.Expression
 	//outerLen := inScope.outerScopeLen()
@@ -272,23 +309,27 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 				}
 			}
 		case *expression.Alias:
+			var col scopeColumn
 			if gf, ok := e.Child.(*expression.GetField); ok {
 				id, ok := inScope.getExpr(gf.String())
 				if !ok {
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
 				}
-				col := scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				col = scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+			} else {
+				col = scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: pe.IsNullable()}
+			}
+			if e.Unreferencable() {
 				outScope.addColumn(col)
 			} else {
-				col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: pe.IsNullable()}
-				outScope.addColumn(col)
+				outScope.newColumn(col)
 			}
 			exprs = append(exprs, e)
 		default:
 			exprs = append(exprs, pe)
 			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()}
-			outScope.addColumn(col)
+			outScope.newColumn(col)
 		}
 	}
 }
@@ -530,7 +571,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	}
 	outScope.node = newInstance
 	for _, c := range newInstance.Schema() {
-		outScope.addColumn(scopeColumn{
+		outScope.newColumn(scopeColumn{
 			db:    database.Name(),
 			table: "",
 			col:   c.Name,
@@ -571,7 +612,7 @@ func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) 
 		}
 
 		if selectExprNeedsAlias(e, expr) {
-			return expression.NewAlias(e.InputExpression, expr)
+			return expression.NewAlias(e.InputExpression, expr).AsUnreferencable()
 		}
 
 		return expr
@@ -598,7 +639,7 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 	outScope.ast = t
 	for _, col := range sch.Schema {
 		col.Source = strings.ToLower(t.Alias.String())
-		outScope.addColumn(scopeColumn{
+		outScope.newColumn(scopeColumn{
 			db:    "",
 			table: col.Source,
 			col:   col.Name,
@@ -675,7 +716,7 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 	}
 
 	for _, c := range tab.Schema() {
-		outScope.addColumn(scopeColumn{
+		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(db),
 			table:    strings.ToLower(tab.Name()),
 			col:      strings.ToLower(c.Name),
@@ -725,15 +766,11 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		checkScope := inScope
-		for checkScope != nil {
-			c, idx := b.resolveColumn(checkScope, v)
-			if idx >= 0 {
-				return expression.NewGetFieldWithTable(checkScope.outerScopeLen()+idx+1, c.typ, c.table, c.col, c.nullable)
-			}
-			checkScope = checkScope.parent
+		c, idx := b.resolveColumn(inScope, v, true)
+		if idx == -1 {
+			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}
-		b.handleErr(sql.ErrColumnNotFound.New(v))
+		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
 		if isAggregateFunc(name) {
@@ -927,26 +964,19 @@ func (b *PlanBuilder) buildGetField(inScope *scope, v *ast.ColName) *expression.
 	return nil
 }
 
-func (b *PlanBuilder) resolveColumn(inScope *scope, v *ast.ColName) (scopeColumn, int) {
+func (b *PlanBuilder) resolveColumn(inScope *scope, v *ast.ColName, checkParent bool) (scopeColumn, int) {
 	table := strings.ToLower(v.Qualifier.String())
 	col := strings.ToLower(v.Name.String())
-	for i, c := range inScope.cols {
-		if c.col == col && (c.table == table || table == "") {
-			return c, i
-		}
-	}
-	return scopeColumn{}, -1
-}
-
-func (b *PlanBuilder) resolveOuterColumn(inScope *scope, v *ast.ColName) (scopeColumn, int) {
-	table := strings.ToLower(v.Qualifier.String())
-	col := strings.ToLower(v.Name.String())
-	checkScope := inScope.parent
+	checkScope := inScope
 	for checkScope != nil {
 		for i, c := range checkScope.cols {
 			if c.col == col && (c.table == table || table == "") {
 				return c, i
 			}
+		}
+		checkScope = checkScope.parent
+		if !checkParent {
+			checkScope = nil
 		}
 	}
 	return scopeColumn{}, -1
@@ -1205,7 +1235,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
 			// add to extra cols
-			c, idx := b.resolveColumn(fromScope, e)
+			c, idx := b.resolveColumn(fromScope, e, false)
 			if idx == -1 {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
@@ -1261,7 +1291,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 			}
 			_, ok := outScope.getExpr(expr.String())
 			if !ok {
-				outScope.addColumn(col)
+				outScope.newColumn(col)
 			}
 		}
 	}
