@@ -235,9 +235,6 @@ func (i *IndexedTableAccess) String() string {
 		}
 	}
 
-	// TODO: add this
-	//children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
-
 	pr.WriteChildren(children...)
 	return pr.String()
 }
