@@ -855,13 +855,17 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			if pkIndex == nil {
 				return n, transform.SameTree, nil
 			}
+			// Some Primary Keys (like doltHistoryTable) are not in order
+			if oi, ok := pkIndex.(sql.OrderedIndex); ok && oi.Order() == sql.IndexOrderNone {
+				return n, transform.SameTree, nil
+			}
 
 			pkColNames := pkIndex.Expressions()
 			if len(sfExprs) > len(pkColNames) {
 				return n, transform.SameTree, nil
 			}
 			for i, fieldExpr := range sfExprs {
-				if s.SortFields[0].Order == sql.Descending || s.SortFields[0].Order != s.SortFields[i].Order {
+				if s.SortFields[0].Order != s.SortFields[i].Order {
 					return n, transform.SameTree, nil
 				}
 				fieldName := fieldExpr.String()

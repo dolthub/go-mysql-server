@@ -7521,10 +7521,10 @@ With c as (
 			"     │   ├─ mytable.i:0!null\n" +
 			"     │   └─ 3 (tinyint)\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ TopN(Limit: [1 (tinyint)]; mytable.i:0!null DESC nullsFirst)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -7542,10 +7542,10 @@ With c as (
 			"         │   ├─ mytable.i:0!null\n" +
 			"         │   └─ 3 (tinyint)\n" +
 			"         └─ Limit(1)\n" +
-			"             └─ TopN(Limit: [1 (tinyint)]; mytable.i:0!null DESC nullsFirst)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -7859,6 +7859,16 @@ WHERE keyless.c0 IN (
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `SELECT s,i FROM mytable order by i DESC;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.s:1!null, mytable.i:0!null]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [i s]\n" +
 			"",
 	},
 }
