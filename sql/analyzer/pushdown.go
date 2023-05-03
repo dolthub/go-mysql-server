@@ -876,7 +876,6 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			// Create lookup based off of PrimaryKey
 			indexBuilder := sql.NewIndexBuilder(pkIndex)
 			lookup, err := indexBuilder.Build(ctx)
-			lookup.IsReverse = s.SortFields[0].Order == sql.Descending
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

@@ -98,7 +98,6 @@ type IndexLookup struct {
 	IsPointLookup   bool
 	IsEmptyRange    bool
 	IsSpatialLookup bool
-	IsReverse       bool
 }
 
 var emptyLookup = IndexLookup{}
