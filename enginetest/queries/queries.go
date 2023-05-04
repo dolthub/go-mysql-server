@@ -742,6 +742,16 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: `
+Select * from (
+  With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
+  Select * from cte
+  Union
+  Select x from xy where x in (select * from cte)
+ ) dt;`,
+		Expected: []sql.Row{{1}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/5642
 		Query:    "SELECT count(*) FROM mytable WHERE i = 3720481604718463778705849469618542795;",
 		Expected: []sql.Row{{0}},
