@@ -827,6 +827,10 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		sfAliases := aliasedExpressionsInNode(s)
 		newN, same, err := transform.NodeWithCtx(s, skipSel, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			n := tc.Node
+			// TODO: make this work with IndexedTableAccess, if we are sorting by the same col
+			if ita, ok := n.(*plan.IndexedTableAccess); ok && !ita.IsStatic() {
+				return n, transform.SameTree, nil
+			}
 			rs, ok := n.(*plan.ResolvedTable)
 			if !ok {
 				return n, transform.SameTree, nil
@@ -844,8 +848,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				return nil, transform.SameTree, err
 			}
 
-			// TODO: support secondary indexes?
-			var pkIndex sql.Index
+			var pkIndex sql.Index // TODO: support secondary indexes
 			for _, idx := range idxs {
 				if idx.ID() == "PRIMARY" {
 					pkIndex = idx
