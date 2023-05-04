@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	_ "github.com/dolthub/go-mysql-server/inittime"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )

@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/dolthub/go-mysql-server/inittime"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"

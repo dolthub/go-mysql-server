@@ -20,6 +20,7 @@ import (
 	"io"
 
 	sqle "github.com/dolthub/go-mysql-server"
+	_ "github.com/dolthub/go-mysql-server/inittime"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"

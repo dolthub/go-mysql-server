@@ -19,6 +19,8 @@ import (
 	"log"
 	"testing"
 
+	_ "github.com/dolthub/go-mysql-server/inittime"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
