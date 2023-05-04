@@ -17,10 +17,10 @@ package function
 import (
 	"errors"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"strconv"
 	"strings"
 
+	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	"github.com/dolthub/go-mysql-server/sql"
