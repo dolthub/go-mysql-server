@@ -7874,6 +7874,31 @@ WHERE keyless.c0 IN (
 			"     └─ reverse: true\n" +
 			"",
 	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
+		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
+			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
+		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
+			" └─ Table\n" +
+			"     ├─ name: two_pk\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
+		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
+			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" ├─ columns: [pk1 pk2]\n" +
+			" └─ reverse: true\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.

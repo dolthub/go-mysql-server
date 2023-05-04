@@ -1103,6 +1103,33 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+			{1, 0},
+			{1, 1},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
+		Expected: []sql.Row{
+			{0, 1},
+			{0, 0},
+			{1, 1},
+			{1, 0},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
+		Expected: []sql.Row{
+			{1, 1},
+			{1, 0},
+			{0, 1},
+			{0, 0},
+		},
+	},
+	{
 		Query: "SELECT s,i FROM (select i,s FROM mytable) mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
