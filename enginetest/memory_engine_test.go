@@ -207,11 +207,11 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger with signal and user var",
+			Name:        "trigger with signal and user var",
 			SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
+					Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
 					Expected: []sql.Row{},
 				},
 			},
