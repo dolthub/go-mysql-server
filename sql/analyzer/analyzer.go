@@ -437,6 +437,9 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 			resolveUnionsId,
 			parallelizeId:
 			return false
+		case finalizeSubqueriesId,
+			hoistOutOfScopeFiltersId:
+			return true
 		}
 		return sel(id)
 	}
