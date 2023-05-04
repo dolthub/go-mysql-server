@@ -101,6 +101,16 @@ func (a *AddColumn) DebugString() string {
 	return pr.String()
 }
 
+func NewAddColumnResolved(table *ResolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+	column.Source = table.Name()
+	return &AddColumn{
+		ddlNode: ddlNode{Db: table.Database},
+		Table:   table,
+		column:  column,
+		order:   order,
+	}
+}
+
 func NewAddColumn(database sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	column.Source = table.name
 	return &AddColumn{
@@ -311,6 +321,14 @@ var _ sql.Databaser = (*DropColumn)(nil)
 var _ sql.SchemaTarget = (*DropColumn)(nil)
 var _ sql.CollationCoercible = (*DropColumn)(nil)
 
+func NewDropColumnResolved(table *ResolvedTable, column string) *DropColumn {
+	return &DropColumn{
+		ddlNode: ddlNode{Db: table.Database},
+		Table:   table,
+		Column:  column,
+	}
+}
+
 func NewDropColumn(database sql.Database, table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
 		ddlNode: ddlNode{Db: database},
@@ -464,6 +482,15 @@ var _ sql.Databaser = (*RenameColumn)(nil)
 var _ sql.SchemaTarget = (*RenameColumn)(nil)
 var _ sql.CollationCoercible = (*RenameColumn)(nil)
 
+func NewRenameColumnResolved(table *ResolvedTable, columnName string, newColumnName string) *RenameColumn {
+	return &RenameColumn{
+		ddlNode:       ddlNode{Db: table.Database},
+		Table:         table,
+		ColumnName:    columnName,
+		NewColumnName: newColumnName,
+	}
+}
+
 func NewRenameColumn(database sql.Database, table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
 		ddlNode:       ddlNode{Db: database},
@@ -573,6 +600,17 @@ var _ sql.Expressioner = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
 var _ sql.SchemaTarget = (*ModifyColumn)(nil)
 var _ sql.CollationCoercible = (*ModifyColumn)(nil)
+
+func NewModifyColumnResolved(table *ResolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+	column.Source = table.Name()
+	return &ModifyColumn{
+		ddlNode:    ddlNode{Db: table.Database},
+		Table:      table,
+		columnName: columnName,
+		column:     column,
+		order:      order,
+	}
+}
 
 func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	column.Source = table.name
@@ -736,6 +774,15 @@ type AlterTableCollation struct {
 
 var _ sql.Node = (*AlterTableCollation)(nil)
 var _ sql.Databaser = (*AlterTableCollation)(nil)
+
+// NewAlterTableCollationResolved returns a new *AlterTableCollation
+func NewAlterTableCollationResolved(table *ResolvedTable, collation sql.CollationID) *AlterTableCollation {
+	return &AlterTableCollation{
+		ddlNode:   ddlNode{Db: table.Database},
+		Table:     table,
+		Collation: collation,
+	}
+}
 
 // NewAlterTableCollation returns a new *AlterTableCollation
 func NewAlterTableCollation(database sql.Database, table *UnresolvedTable, collation sql.CollationID) *AlterTableCollation {

@@ -766,7 +766,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		c, idx := b.resolveColumn(inScope, v, true)
+		c, idx := b.resolveColumn(inScope, v.Qualifier.String(), v.Name.String(), true)
 		if idx == -1 {
 			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}
@@ -964,9 +964,9 @@ func (b *PlanBuilder) buildGetField(inScope *scope, v *ast.ColName) *expression.
 	return nil
 }
 
-func (b *PlanBuilder) resolveColumn(inScope *scope, v *ast.ColName, checkParent bool) (scopeColumn, int) {
-	table := strings.ToLower(v.Qualifier.String())
-	col := strings.ToLower(v.Name.String())
+func (b *PlanBuilder) resolveColumn(inScope *scope, tableName, colName string, checkParent bool) (scopeColumn, int) {
+	table := strings.ToLower(tableName)
+	col := strings.ToLower(colName)
 	checkScope := inScope
 	for checkScope != nil {
 		for i, c := range checkScope.cols {
@@ -1235,7 +1235,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
 			// add to extra cols
-			c, idx := b.resolveColumn(fromScope, e, false)
+			c, idx := b.resolveColumn(fromScope, e.Qualifier.String(), e.Name.String(), false)
 			if idx == -1 {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
@@ -1259,6 +1259,10 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				}
 				if intIdx < 1 {
 					b.handleErr(fmt.Errorf("expected positive integer order by literal"))
+				}
+				if projScope == nil || len(projScope.cols) == 0 {
+					err := fmt.Errorf("invalid order by ordinal context")
+					b.handleErr(err)
 				}
 				target := projScope.cols[intIdx-1]
 				var gf *expression.GetField

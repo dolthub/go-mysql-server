@@ -39,13 +39,7 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		return b.buildShow(inScope, n, query)
 	case *ast.DDL:
-		//return convertDDL(ctx, query, n)
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildDDL(inScope, query, n)
 	case *ast.MultiAlterDDL:
 		//return convertMultiAlterDDL(ctx, query, n)
 		outScope = inScope.push()
@@ -71,13 +65,7 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Insert:
-		//return convertInsert(ctx, n)
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildInsert(inScope, n)
 	case *ast.Delete:
 		//return convertDelete(ctx, n)
 		outScope = inScope.push()
