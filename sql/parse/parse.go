@@ -19,6 +19,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -128,7 +129,7 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 	if err != nil {
 		return nil, err
 	}
-	node, err := convertDDL(ctx, createStmt, parseResult.(*sqlparser.DDL))
+	node, err := convertDDL(ctx, createStmt, parseResult.(*sqlparser.DDL), false)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +169,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		}
 		return convertShow(ctx, n, query)
 	case *sqlparser.DDL:
-		return convertDDL(ctx, query, n)
+		return convertDDL(ctx, query, n, false)
 	case *sqlparser.MultiAlterDDL:
 		return convertMultiAlterDDL(ctx, query, n)
 	case *sqlparser.DBDDL:
@@ -1237,7 +1238,7 @@ func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTable
 	return plan.NewCommonTableExpression(subquery.(*plan.SubqueryAlias), columns), nil
 }
 
-func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL bool) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
 		if c.TriggerSpec != nil {
@@ -1272,7 +1273,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	case sqlparser.AlterStr:
 		return convertAlterTable(ctx, c)
 	case sqlparser.RenameStr:
-		return convertRenameTable(ctx, c)
+		return convertRenameTable(ctx, c, multiAlterDDL)
 	case sqlparser.TruncateStr:
 		return convertTruncateTable(ctx, c)
 	default:
@@ -1280,19 +1281,102 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
+// convertMultiAlterDDL converts MultiAlterDDL statements
+// If there are multiple alter statements, they are sorted in order of their precedence and placed inside a plan.Block
+// Currently, the precedence of DDL statements is:
+// 1.  RENAME COLUMN
+// 2.  DROP COLUMN
+// 3.  MODIFY COLUMN
+// 4.  ADD COLUMN
+// 5.  DROP CHECK/CONSTRAINT
+// 7.  CREATE CHECK/CONSTRAINT
+// 8.  RENAME INDEX
+// 9.  DROP INDEX
+// 10. ADD INDEX
 func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
 	statementsLen := len(c.Statements)
 	if statementsLen == 1 {
-		return convertDDL(ctx, query, c.Statements[0])
+		return convertDDL(ctx, query, c.Statements[0], true)
 	}
 	statements := make([]sql.Node, statementsLen)
 	var err error
 	for i := 0; i < statementsLen; i++ {
-		statements[i], err = convertDDL(ctx, query, c.Statements[i])
+		statements[i], err = convertDDL(ctx, query, c.Statements[i], true)
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	// TODO: add correct precedence for ADD/DROP PRIMARY KEY and (maybe) FOREIGN KEY
+	// certain alter statements need to happen before others
+	sort.Slice(statements, func(i, j int) bool {
+		switch ii := statements[i].(type) {
+		case *plan.RenameColumn:
+			switch statements[j].(type) {
+			case *plan.DropColumn,
+				*plan.ModifyColumn,
+				*plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropColumn:
+			switch statements[j].(type) {
+			case *plan.ModifyColumn,
+				*plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.ModifyColumn:
+			switch statements[j].(type) {
+			case *plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.AddColumn:
+			switch statements[j].(type) {
+			case *plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropConstraint:
+			switch statements[j].(type) {
+			case *plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropCheck:
+			switch statements[j].(type) {
+			case *plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.CreateCheck:
+			switch statements[j].(type) {
+			case *plan.AlterIndex:
+				return true
+			}
+		// AlterIndex precedence is Rename, Drop, then Create
+		// So statement[i] < statement[j] = statement[i].action > statement[j].action
+		case *plan.AlterIndex:
+			switch jj := statements[j].(type) {
+			case *plan.AlterIndex:
+				return ii.Action > jj.Action
+			}
+		}
+		return false
+	})
 	return plan.NewBlock(statements), nil
 }
 
@@ -1851,7 +1935,7 @@ func convertSignalConditionItemName(name sqlparser.SignalConditionItemName) (pla
 	}
 }
 
-func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sql.Node, error) {
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
 	}
@@ -1864,7 +1948,7 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) 
 		toTables = append(toTables, table.Name.String())
 	}
 
-	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables), nil
+	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
 
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {

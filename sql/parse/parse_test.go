@@ -1103,27 +1103,19 @@ CREATE TABLE t2
 		},
 		{
 			input: `RENAME TABLE foo TO bar`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"}, false),
 		},
 		{
 			input: `RENAME TABLE foo TO bar, baz TO qux`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo", "baz"}, []string{"bar", "qux"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo", "baz"}, []string{"bar", "qux"}, false),
 		},
 		{
 			input: `ALTER TABLE foo RENAME bar`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"}, true),
 		},
 		{
 			input: `ALTER TABLE foo RENAME TO bar`,
-			plan: plan.NewRenameTable(
-				sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
-			),
+			plan:  plan.NewRenameTable(sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"}, true),
 		},
 		{
 			input: `ALTER TABLE foo RENAME COLUMN bar TO baz`,
@@ -2872,6 +2864,20 @@ CREATE TABLE t2
 				plan.NewUnresolvedTable("bar", ""),
 				"foo",
 			),
+		},
+		{
+			input: `alter table t add index (i), drop index i, add check (i = 0), drop check chk, drop constraint c, add column i int, modify column i text, drop column i, rename column i to j`,
+			plan: plan.NewBlock([]sql.Node{
+				plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i", "j"),
+				plan.NewDropColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i"),
+				plan.NewModifyColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i", &sql.Column{Name: "i", Type: types.CreateText(sql.Collation_Unspecified), Nullable: true, Source: "t"}, nil),
+				plan.NewAddColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), &sql.Column{Name: "i", Type: types.Int32, Nullable: true, Source: "t"}, nil),
+				plan.NewDropConstraint(plan.NewUnresolvedTable("t", ""), "c"),
+				plan.NewAlterDropCheck(plan.NewUnresolvedTable("t", ""), "chk"),
+				plan.NewAlterAddCheck(plan.NewUnresolvedTable("t", ""), &sql.CheckConstraint{Name: "", Expr: expression.NewEquals(expression.NewUnresolvedColumn("i"), expression.NewLiteral(int8(0), types.Int8)), Enforced: true}),
+				plan.NewAlterDropIndex(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "i"),
+				plan.NewAlterCreateIndex(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t", ""), "", sql.IndexUsing_BTree, sql.IndexConstraint_None, []sql.IndexColumn{{Name: "i", Length: 0}}, ""),
+			}),
 		},
 		{
 			input: `DESCRIBE FORMAT=TREE SELECT * FROM foo`,

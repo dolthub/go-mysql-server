@@ -422,7 +422,7 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 // rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
 	oldColIdx := i.m.TargetSchema().IndexOfColName(i.m.Column())
-	if oldColIdx < 0 {
+	if oldColIdx == -1 {
 		// Should be impossible, checked in analyzer
 		return false, sql.ErrTableColumnNotFound.New(rwt.Name(), i.m.Column())
 	}
@@ -589,6 +589,9 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 				}
 
 				newSchemaIdx := newSch.IndexOfColName(colName)
+				if newSchemaIdx == -1 {
+					return nil, transform.SameTree, sql.ErrColumnNotFound.New(colName)
+				}
 				return expression.NewGetFieldWithTable(newSchemaIdx, gf.Type(), gf.Table(), colName, gf.IsNullable()), transform.NewTree, nil
 			})
 			if err != nil {
