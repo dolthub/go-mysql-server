@@ -6009,6 +6009,11 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (CUSTOMFUNC(1)))", sql.ErrFunctionNotFound)
 	})
 
+	t.Run("Stored procedures are not valid in column default value expressions", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE testProc()\nBEGIN\n\tSELECT 42 FROM dual;\nEND;", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (testProc()))", sql.ErrFunctionNotFound)
+	})
+
 	t.Run("Default expression references own column", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v1))", sql.ErrInvalidDefaultValueOrder)
 	})
