@@ -585,6 +585,8 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 			switch expr := e.(type) {
 			case sql.FunctionExpression:
 				funcName = expr.FunctionName()
+				// TODO: We don't currently support user created functions, but when we do, we need to prevent them
+				//       from being used in column default value expressions, since only built-in functions are allowed.
 			case *expression.UnresolvedFunction:
 				funcName = expr.Name()
 			}
