@@ -5527,16 +5527,16 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ othertable.s2:2!null\n" +
 			"     │       └─ second (longtext)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 ASC):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
-			"         └─ Window\n" +
-			"             ├─ row_number() over ( order by othertable.s2 ASC)\n" +
-			"             ├─ othertable.i2:1!null\n" +
-			"             ├─ othertable.s2:0!null\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"     └─ Sort(othertable.i2:1!null ASC nullsFirst)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [row_number() over ( order by othertable.s2 ASC):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
+			"             └─ Window\n" +
+			"                 ├─ row_number() over ( order by othertable.s2 ASC)\n" +
+			"                 ├─ othertable.i2:1!null\n" +
+			"                 ├─ othertable.s2:0!null\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -5568,16 +5568,16 @@ inner join pq on true
 			"     │   └─ GreaterThan\n" +
 			"     │       ├─ othertable.i2:1!null\n" +
 			"     │       └─ 2 (tinyint)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 ASC):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
-			"         └─ Window\n" +
-			"             ├─ row_number() over ( order by othertable.s2 ASC)\n" +
-			"             ├─ othertable.i2:1!null\n" +
-			"             ├─ othertable.s2:0!null\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"     └─ Sort(othertable.i2:1!null ASC nullsFirst)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [row_number() over ( order by othertable.s2 ASC):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
+			"             └─ Window\n" +
+			"                 ├─ row_number() over ( order by othertable.s2 ASC)\n" +
+			"                 ├─ othertable.i2:1!null\n" +
+			"                 ├─ othertable.s2:0!null\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{

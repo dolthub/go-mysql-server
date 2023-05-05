@@ -820,6 +820,9 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 			// TODO: possible that we should fix these
 			case *plan.JoinNode, *plan.Distinct:
 				return false
+			// Certain relations collect unordered results and must be sorted
+			case *plan.Window:
+				return false
 			default:
 				return true
 			}
@@ -868,6 +871,8 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 				return n, transform.SameTree, nil
 			}
 			for i, fieldExpr := range sfExprs {
+				// TODO: could generalize this to more monotonic expressions.
+				// For example, order by x+1 is ok, but order by mod(x) is not
 				if s.SortFields[0].Order != s.SortFields[i].Order {
 					return n, transform.SameTree, nil
 				}
