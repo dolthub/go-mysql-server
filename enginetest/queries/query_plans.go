@@ -10467,19 +10467,19 @@ WHERE
 			"         │   │   ├─ name: NB6PJ\n" +
 			"         │   │   ├─ outerVisibility: false\n" +
 			"         │   │   ├─ cacheable: true\n" +
-			"         │   │   └─ Project\n" +
-			"         │   │       ├─ columns: [row_number() over ( order by NOXN3.id ASC):0!null as Y3IOU, NOXN3.id:1!null, NOXN3.BRQP2:2!null, NOXN3.FFTBJ:3!null, NOXN3.NUMK2:4!null, NOXN3.LETOE:5!null]\n" +
-			"         │   │       └─ Window\n" +
-			"         │   │           ├─ row_number() over ( order by NOXN3.id ASC)\n" +
-			"         │   │           ├─ NOXN3.id:0!null\n" +
-			"         │   │           ├─ NOXN3.BRQP2:1!null\n" +
-			"         │   │           ├─ NOXN3.FFTBJ:2!null\n" +
-			"         │   │           ├─ NOXN3.NUMK2:3!null\n" +
-			"         │   │           ├─ NOXN3.LETOE:4!null\n" +
-			"         │   │           └─ IndexedTableAccess(NOXN3)\n" +
-			"         │   │               ├─ index: [NOXN3.id]\n" +
-			"         │   │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │               └─ columns: [id brqp2 fftbj numk2 letoe]\n" +
+			"         │   │   └─ Sort(NOXN3.id:1!null ASC nullsFirst)\n" +
+			"         │   │       └─ Project\n" +
+			"         │   │           ├─ columns: [row_number() over ( order by NOXN3.id ASC):0!null as Y3IOU, NOXN3.id:1!null, NOXN3.BRQP2:2!null, NOXN3.FFTBJ:3!null, NOXN3.NUMK2:4!null, NOXN3.LETOE:5!null]\n" +
+			"         │   │           └─ Window\n" +
+			"         │   │               ├─ row_number() over ( order by NOXN3.id ASC)\n" +
+			"         │   │               ├─ NOXN3.id:0!null\n" +
+			"         │   │               ├─ NOXN3.BRQP2:1!null\n" +
+			"         │   │               ├─ NOXN3.FFTBJ:2!null\n" +
+			"         │   │               ├─ NOXN3.NUMK2:3!null\n" +
+			"         │   │               ├─ NOXN3.LETOE:4!null\n" +
+			"         │   │               └─ Table\n" +
+			"         │   │                   ├─ name: NOXN3\n" +
+			"         │   │                   └─ columns: [id brqp2 fftbj numk2 letoe]\n" +
 			"         │   └─ TableAlias(TYMVL)\n" +
 			"         │       └─ IndexedTableAccess(E2I7U)\n" +
 			"         │           ├─ index: [E2I7U.id]\n" +
@@ -10522,19 +10522,19 @@ WHERE
 			"         │   ├─ name: NB6PJ\n" +
 			"         │   ├─ outerVisibility: false\n" +
 			"         │   ├─ cacheable: true\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [row_number() over ( order by NOXN3.id ASC):0!null as Y3IOU, NOXN3.id:1!null, NOXN3.BRQP2:2!null, NOXN3.FFTBJ:3!null, NOXN3.NUMK2:4!null, NOXN3.LETOE:5!null]\n" +
-			"         │       └─ Window\n" +
-			"         │           ├─ row_number() over ( order by NOXN3.id ASC)\n" +
-			"         │           ├─ NOXN3.id:0!null\n" +
-			"         │           ├─ NOXN3.BRQP2:1!null\n" +
-			"         │           ├─ NOXN3.FFTBJ:2!null\n" +
-			"         │           ├─ NOXN3.NUMK2:3!null\n" +
-			"         │           ├─ NOXN3.LETOE:4!null\n" +
-			"         │           └─ IndexedTableAccess(NOXN3)\n" +
-			"         │               ├─ index: [NOXN3.id]\n" +
-			"         │               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │               └─ columns: [id brqp2 fftbj numk2 letoe]\n" +
+			"         │   └─ Sort(NOXN3.id:1!null ASC nullsFirst)\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [row_number() over ( order by NOXN3.id ASC):0!null as Y3IOU, NOXN3.id:1!null, NOXN3.BRQP2:2!null, NOXN3.FFTBJ:3!null, NOXN3.NUMK2:4!null, NOXN3.LETOE:5!null]\n" +
+			"         │           └─ Window\n" +
+			"         │               ├─ row_number() over ( order by NOXN3.id ASC)\n" +
+			"         │               ├─ NOXN3.id:0!null\n" +
+			"         │               ├─ NOXN3.BRQP2:1!null\n" +
+			"         │               ├─ NOXN3.FFTBJ:2!null\n" +
+			"         │               ├─ NOXN3.NUMK2:3!null\n" +
+			"         │               ├─ NOXN3.LETOE:4!null\n" +
+			"         │               └─ Table\n" +
+			"         │                   ├─ name: NOXN3\n" +
+			"         │                   └─ columns: [id brqp2 fftbj numk2 letoe]\n" +
 			"         └─ TableAlias(nd)\n" +
 			"             └─ IndexedTableAccess(E2I7U)\n" +
 			"                 ├─ index: [E2I7U.id]\n" +
