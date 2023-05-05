@@ -236,7 +236,8 @@ type EventDatabase interface {
 	// DropEvent removes the EventDetails with the matching name from the database.
 	DropEvent(ctx *Context, name string) error
 	// UpdateEvent updates existing event stored in the database with the given EventDetails with the updates.
-	UpdateEvent(ctx *Context, ed EventDefinition) error
+	// The original name event is required for renaming of an event.
+	UpdateEvent(ctx *Context, originalName string, ed EventDefinition) error
 	// TODO: add ExecuteEvent() method that executes given event and updates the LastExecutedAt value
 }
 

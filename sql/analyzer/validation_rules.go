@@ -443,7 +443,7 @@ func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 
 		// Interval can be used without DATE_ADD/DATE_SUB functions in CREATE/ALTER EVENTS statements.
 		switch node.(type) {
-		case *plan.CreateEvent:
+		case *plan.CreateEvent, *plan.AlterEvent:
 			return false
 		}
 

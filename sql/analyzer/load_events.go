@@ -38,6 +38,14 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Rul
 			}
 			newShowEvents.Events = loadedEvents
 			return &newShowEvents, transform.NewTree, nil
+		case *plan.AlterEvent:
+			newAlterEvents := *node
+			loadedEvent, err := loadEventFromDb(ctx, newAlterEvents.Database(), newAlterEvents.EventName)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			newAlterEvents.Event = loadedEvent
+			return &newAlterEvents, transform.NewTree, nil
 		default:
 			return node, transform.SameTree, nil
 		}
@@ -52,21 +60,39 @@ func loadEventsFromDb(ctx *sql.Context, db sql.Database) ([]sql.EventDetails, er
 			return nil, err
 		}
 		for _, event := range events {
-			parsedCreateEvent, err := parse.Parse(ctx, event.CreateStatement)
+			ed, err := getEventDetailsFromEventDefinition(ctx, event)
 			if err != nil {
 				return nil, err
 			}
-			eventPlan, ok := parsedCreateEvent.(*plan.CreateEvent)
-			if !ok {
-				return nil, sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
-			}
-			ed, err := eventPlan.GetEventDetails(ctx, event.CreatedAt)
-			if err != nil {
-				return nil, err
-			}
-
 			loadedEvents = append(loadedEvents, ed)
 		}
 	}
 	return loadedEvents, nil
+}
+
+func loadEventFromDb(ctx *sql.Context, db sql.Database, name string) (sql.EventDetails, error) {
+	eventDb, ok := db.(sql.EventDatabase)
+	if !ok {
+		return sql.EventDetails{}, sql.ErrEventsNotSupported.New(db.Name())
+	}
+
+	event, exists, err := eventDb.GetEvent(ctx, name)
+	if err != nil {
+		return sql.EventDetails{}, err
+	} else if !exists {
+		return sql.EventDetails{}, sql.ErrUnknownEvent.New(name)
+	}
+	return getEventDetailsFromEventDefinition(ctx, event)
+}
+
+func getEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinition) (sql.EventDetails, error) {
+	parsedCreateEvent, err := parse.Parse(ctx, event.CreateStatement)
+	if err != nil {
+		return sql.EventDetails{}, err
+	}
+	eventPlan, ok := parsedCreateEvent.(*plan.CreateEvent)
+	if !ok {
+		return sql.EventDetails{}, sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
+	}
+	return eventPlan.GetEventDetails(ctx, event.CreatedAt)
 }

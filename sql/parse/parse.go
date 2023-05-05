@@ -1271,6 +1271,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL 
 		}
 		return convertDropTable(ctx, c)
 	case sqlparser.AlterStr:
+		if c.EventSpec != nil {
+			return convertAlterEvent(ctx, query, c)
+		}
 		return convertAlterTable(ctx, c)
 	case sqlparser.RenameStr:
 		return convertRenameTable(ctx, c, multiAlterDDL)
@@ -1484,8 +1487,16 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	}
 	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
 
+	// both 'undefined' and 'not preserve' are considered 'not preserve'
+	onCompletionPreserve := false
+	if eventSpec.OnCompletionPreserve == sqlparser.EventOnCompletion_Preserve {
+		onCompletionPreserve = true
+	}
+
 	var status plan.EventStatus
 	switch eventSpec.Status {
+	case sqlparser.EventStatus_Undefined:
+		status = plan.EventStatus_Enable
 	case sqlparser.EventStatus_Enable:
 		status = plan.EventStatus_Enable
 	case sqlparser.EventStatus_Disable:
@@ -1544,7 +1555,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	return plan.NewCreateEvent(
 		udb, eventSpec.EventName.Name.String(), definer,
 		at, starts, ends, everyInterval,
-		eventSpec.OnCompletionPreserve,
+		onCompletionPreserve,
 		status, comment, bodyStr, body, eventSpec.IfNotExists,
 	), nil
 }
@@ -1566,6 +1577,115 @@ func convertEventScheduleTimeSpec(ctx *sql.Context, spec *sqlparser.EventSchedul
 		intervals[i] = e
 	}
 	return ts, intervals, nil
+}
+
+func convertAlterEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+	eventSpec := c.EventSpec
+	udb, err := getUnresolvedDatabase(ctx, eventSpec.EventName.Qualifier.String())
+	if err != nil {
+		return nil, err
+	}
+	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
+
+	var (
+		alterSchedule    = eventSpec.OnSchedule != nil
+		at, starts, ends *plan.OnScheduleTimestamp
+		everyInterval    *expression.Interval
+
+		alterOnComp       = eventSpec.OnCompletionPreserve != sqlparser.EventOnCompletion_Undefined
+		newOnCompPreserve = eventSpec.OnCompletionPreserve == sqlparser.EventOnCompletion_Preserve
+
+		alterEventName = !eventSpec.RenameName.IsEmpty()
+		newName        string
+
+		alterStatus = eventSpec.Status != sqlparser.EventStatus_Undefined
+		newStatus   plan.EventStatus
+
+		alterComment = eventSpec.Comment != nil
+		newComment   string
+
+		alterDefinition  = eventSpec.Body != nil
+		newDefinitionStr string
+		newDefinition    sql.Node
+	)
+
+	if alterSchedule {
+		if eventSpec.OnSchedule.At != nil {
+			ts, intervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.At)
+			if err != nil {
+				return nil, err
+			}
+			at = plan.NewOnScheduleTimestamp(ts, intervals)
+		} else {
+			every, err := intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
+			if err != nil {
+				return nil, err
+			}
+
+			var ok bool
+			everyInterval, ok = every.(*expression.Interval)
+			if !ok {
+				return nil, fmt.Errorf("expected everyInterval but got: %s", every)
+			}
+
+			if eventSpec.OnSchedule.Starts != nil {
+				startsTs, startsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Starts)
+				if err != nil {
+					return nil, err
+				}
+				starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+			}
+			if eventSpec.OnSchedule.Ends != nil {
+				endsTs, endsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
+				if err != nil {
+					return nil, err
+				}
+				ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+			}
+		}
+	}
+	if alterEventName {
+		// events can be moved to different database using RENAME TO clause option
+		// TODO: we do not support moving events to different database yet
+		renameEventDb := eventSpec.RenameName.Qualifier.String()
+		if renameEventDb != "" && udb.Name() != renameEventDb {
+			return nil, fmt.Errorf("moving events to different database using ALTER EVENT is not supported yet")
+		}
+		newName = eventSpec.RenameName.Name.String()
+	}
+	if alterStatus {
+		switch eventSpec.Status {
+		case sqlparser.EventStatus_Undefined:
+			// this should not happen but sanity check
+			newStatus = plan.EventStatus_Enable
+		case sqlparser.EventStatus_Enable:
+			newStatus = plan.EventStatus_Enable
+		case sqlparser.EventStatus_Disable:
+			newStatus = plan.EventStatus_Disable
+		case sqlparser.EventStatus_DisableOnSlave:
+			newStatus = plan.EventStatus_DisableOnSlave
+		}
+	}
+	if alterComment {
+		newComment = string(eventSpec.Comment.Val)
+	}
+	if alterDefinition {
+		newDefinitionStr = strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+		newDefinition, err = convert(ctx, c.EventSpec.Body, newDefinitionStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewAlterEvent(
+		udb, eventSpec.EventName.Name.String(), definer,
+		alterSchedule, at, starts, ends, everyInterval,
+		alterOnComp, newOnCompPreserve,
+		alterEventName, newName,
+		alterStatus, newStatus,
+		alterComment, newComment,
+		alterDefinition, newDefinitionStr, newDefinition,
+	), nil
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {

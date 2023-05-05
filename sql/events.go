@@ -47,8 +47,7 @@ type EventDetails struct {
 	ExecuteAt    time.Time
 	HasExecuteAt bool
 	ExecuteEvery string
-	Starts       time.Time
-	HasStarts    bool
+	Starts       time.Time // STARTS is always defined when EVERY is defined.
 	Ends         time.Time
 	HasEnds      bool
 
