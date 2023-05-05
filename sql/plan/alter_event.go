@@ -305,7 +305,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	return &alterEventIter{
 		originalName:  a.EventName,
 		alterSchedule: a.AlterOnSchedule,
-		alterStatus: a.AlterStatus,
+		alterStatus:   a.AlterStatus,
 		eventDetails:  ed,
 		eventDb:       eventDb,
 	}, nil

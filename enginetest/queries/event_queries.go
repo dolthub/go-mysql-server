@@ -240,7 +240,7 @@ var EventTests = []ScriptTest{
 				Expected: []sql.Row{{"my_event1", "", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION NOT PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
-				Query: "SHOW EVENTS;",
+				Query:    "SHOW EVENTS;",
 				Expected: []sql.Row{{"mydb", "my_event1", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2006-02-10 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
@@ -248,7 +248,7 @@ var EventTests = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query: "SHOW EVENTS;",
+				Query:    "SHOW EVENTS;",
 				Expected: []sql.Row{},
 			},
 		},
