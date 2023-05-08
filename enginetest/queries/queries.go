@@ -8091,6 +8091,23 @@ FROM mytable;`,
 			{3, "third row"},
 		},
 	},
+	{
+		// Results should be sorted, but they are not
+		Query: `
+SELECT * FROM
+(SELECT * FROM mytable) t
+UNION ALL
+(SELECT * FROM mytable)
+ORDER BY 1;`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{1, "first row"},
+			{2, "second row"},
+			{2, "second row"},
+			{3, "third row"},
+			{3, "third row"},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
