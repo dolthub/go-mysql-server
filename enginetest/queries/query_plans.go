@@ -7920,6 +7920,20 @@ WHERE keyless.c0 IN (
 			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
+	{
+		Query: "select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;",
+		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, row_number() over ( partition by two_pk.pk1 order by two_pk.c1 DESC):2!null as row_number() over (partition by pk1 order by c1 desc)]\n" +
+			"     └─ Window\n" +
+			"         ├─ two_pk.pk1:0!null\n" +
+			"         ├─ two_pk.pk2:1!null\n" +
+			"         ├─ row_number() over ( partition by two_pk.pk1 order by two_pk.c1 DESC)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1]\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
