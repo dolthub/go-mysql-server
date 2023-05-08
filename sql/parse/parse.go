@@ -2062,10 +2062,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 				}
 				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
 				if constraint == sql.IndexConstraint_Primary {
-					alteredTable, err = plan.NewAlterCreatePk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, columns), nil
-					if err != nil {
-						return nil, err
-					}
+					// The new primary key index will be created when the new column is added. No work needs to be done here.
 				} else if constraint != sql.IndexConstraint_None {
 					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, ddl.IndexSpec.ToName.String(), sql.IndexUsing_BTree, constraint, columns, comment), nil
 					if err != nil {
