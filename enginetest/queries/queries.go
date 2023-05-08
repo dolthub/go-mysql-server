@@ -1130,6 +1130,20 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1 desc",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+		},
+	},
+	{
 		Query: "SELECT s,i FROM (select i,s FROM mytable) mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},

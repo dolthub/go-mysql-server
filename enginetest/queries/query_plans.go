@@ -7899,6 +7899,27 @@ WHERE keyless.c0 IN (
 			" └─ reverse: true\n" +
 			"",
 	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1;",
+		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
+			"     ├─ group: two_pk.pk2:1!null\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n",
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1 desc;",
+		ExpectedPlan: "Sort(two_pk.pk1:0!null DESC nullsFirst)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
+			"     ├─ group: two_pk.pk2:1!null\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
