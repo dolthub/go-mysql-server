@@ -58,7 +58,6 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 			}
 		}
 
-		//table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
 		db := s.Database
 		if db == "" {
 			db = s.Table.Qualifier.String()
@@ -106,7 +105,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 		var dbName string
 		var filter sql.Expression
 
-		if s.ShowTablesOpt != nil {
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 			dbName = s.ShowTablesOpt.DbName
 			if s.ShowTablesOpt.Filter != nil {
 				if s.ShowTablesOpt.Filter.Filter != nil {
@@ -130,7 +129,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 	case "events":
 		var dbName string
 		var filter sql.Expression
-		if s.ShowTablesOpt != nil {
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 			dbName = s.ShowTablesOpt.DbName
 			if s.ShowTablesOpt.Filter != nil {
 				if s.ShowTablesOpt.Filter.Filter != nil {
@@ -272,7 +271,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 		var asOf sql.Expression
 		var full bool
 
-		if s.ShowTablesOpt != nil {
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 			dbName = s.ShowTablesOpt.DbName
 			if dbName == "" {
 				dbName = b.ctx.GetCurrentDatabase()
@@ -326,7 +325,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 		{
 			var asOfLit interface{}
 			var asOfExpr sql.Expression
-			if s.ShowTablesOpt != nil {
+			if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 				var err error
 				asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
 				asOfLit, err = asOfExpr.Eval(b.ctx, nil)
@@ -335,7 +334,6 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 				}
 			}
 
-			//table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
 			db := s.Database
 			if db == "" {
 				db = s.Table.Qualifier.String()

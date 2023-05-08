@@ -27,6 +27,7 @@ type scope struct {
 
 	cols      []scopeColumn
 	extraCols []scopeColumn
+	tables    map[string]tableId
 	ctes      map[string]*scope
 	groupBy   *groupBy
 	exprs     map[string]columnId
@@ -65,8 +66,12 @@ func (s *scope) outerScopeLen() int {
 
 func (s *scope) setTableAlias(t string) {
 	t = strings.ToLower(t)
+	var oldTable string
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
+		if oldTable == "" {
+			oldTable = s.cols[i].table
+		}
 		s.cols[i].table = t
 		id, ok := s.getExpr(beforeColStr)
 		if !ok {
@@ -76,23 +81,36 @@ func (s *scope) setTableAlias(t string) {
 		delete(s.exprs, beforeColStr)
 		s.exprs[s.cols[i].String()] = id
 	}
+	id, ok := s.tables[oldTable]
+	if !ok {
+		return
+	}
+	delete(s.tables, oldTable)
+	if s.tables == nil {
+		s.tables = make(map[string]tableId)
+	}
+	s.tables[t] = id
 }
 
 func (s *scope) setColAlias(cols []string) {
 	if len(cols) != len(s.cols) {
 		s.b.handleErr(fmt.Errorf("invalid column number for column alias"))
 	}
+	ids := make([]columnId, len(cols))
 	for i := range s.cols {
-		name := strings.ToLower(cols[i])
 		beforeColStr := s.cols[i].String()
-		s.cols[i].col = name
 		id, ok := s.getExpr(beforeColStr)
 		if !ok {
 			err := sql.ErrColumnNotFound.New(beforeColStr)
 			s.b.handleErr(err)
 		}
+		ids[i] = id
 		delete(s.exprs, beforeColStr)
-		s.exprs[s.cols[i].String()] = id
+	}
+	for i := range s.cols {
+		name := strings.ToLower(cols[i])
+		s.cols[i].col = name
+		s.exprs[s.cols[i].String()] = ids[i]
 	}
 }
 
@@ -113,18 +131,65 @@ func (s *scope) replace() *scope {
 	}
 }
 
+func (s *scope) copy() *scope {
+	if s == nil {
+		return nil
+	}
+
+	ret := *s
+	if ret.node != nil {
+		ret.node, _ = DeepCopyNode(s.node)
+	}
+	if s.tables != nil {
+		ret.tables = make(map[string]tableId, len(s.tables))
+		for k, v := range s.tables {
+			ret.tables[k] = v
+		}
+	}
+	if s.ctes != nil {
+		ret.ctes = make(map[string]*scope, len(s.ctes))
+		for k, v := range s.ctes {
+			ret.ctes[k] = v
+		}
+	}
+	if s.exprs != nil {
+		ret.exprs = make(map[string]columnId, len(s.exprs))
+		for k, v := range s.exprs {
+			ret.exprs[k] = v
+		}
+	}
+	if s.groupBy != nil {
+		gbCopy := *s.groupBy
+		ret.groupBy = &gbCopy
+	}
+	if s.cols != nil {
+		ret.cols = make([]scopeColumn, len(s.cols))
+		copy(ret.cols, s.cols)
+	}
+
+	return &ret
+}
+
 func (s *scope) addCte(name string, cteScope *scope) {
 	if s.ctes == nil {
 		s.ctes = make(map[string]*scope)
 	}
 	s.ctes[name] = cteScope
+	s.addTable(name)
 }
 
 func (s *scope) getCte(name string) *scope {
-	if s == nil || s.ctes == nil {
-		return nil
+	checkScope := s
+	for checkScope != nil {
+		if checkScope.ctes != nil {
+			cte, ok := checkScope.ctes[strings.ToLower(name)]
+			if ok {
+				return cte
+			}
+		}
+		checkScope = checkScope.parent
 	}
-	return s.ctes[strings.ToLower(name)]
+	return nil
 }
 
 func (s *scope) addColumn(col scopeColumn) {
@@ -152,7 +217,21 @@ func (s *scope) newColumn(col scopeColumn) columnId {
 	} else {
 		s.exprs[col.col] = col.id
 	}
+	s.addTable(col.table)
 	return col.id
+}
+
+func (s *scope) addTable(name string) {
+	if name == "" {
+		return
+	}
+	if s.tables == nil {
+		s.tables = make(map[string]tableId)
+	}
+	if _, ok := s.tables[name]; !ok {
+		s.b.tabId++
+		s.tables[name] = s.b.tabId
+	}
 }
 
 func (s *scope) addExtraColumn(col scopeColumn) {
@@ -171,12 +250,19 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 	for k, v := range src.exprs {
 		s.exprs[k] = v
 	}
+	if s.tables == nil {
+		s.tables = make(map[string]tableId)
+	}
+	for k, v := range src.tables {
+		s.tables[k] = v
+	}
 	// these become pass-through columns in the new scope.
 	for i := len(src.cols); i < len(s.cols); i++ {
 		s.cols[i].scalar = nil
 	}
 }
 
+type tableId uint16
 type columnId uint16
 
 type scopeColumn struct {
@@ -203,6 +289,7 @@ type PlanBuilder struct {
 	cat             sql.Catalog
 	currentDatabase sql.Database
 	colId           columnId
+	tabId           tableId
 }
 
 func (b *PlanBuilder) newScope() *scope {
@@ -279,7 +366,6 @@ func (b *PlanBuilder) buildParenSelect(inScope *scope, s *ast.ParenSelect) (outS
 
 func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	fromScope := b.buildFrom(inScope, s.From)
-	// TODO windows
 	b.buildWhere(fromScope, s.Where)
 	projScope := fromScope.replace()
 
@@ -291,19 +377,15 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 
 	// find aggregations in order by
 	orderByScope := b.analyzeOrderBy(fromScope, projScope, s.OrderBy)
-	// TODO having, noop for now
+
 	// find aggregations in having
 	b.analyzeHaving(fromScope, s.Having)
 
-	// collect:
-	// - group by expressions
-	// - agg in, out, proj
-	// then build
 	needsAgg := b.needsAggregation(fromScope, s)
 	if needsAgg {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
 		having := b.buildHaving(fromScope, projScope, s.Having)
-		// make Project -> group by
+		// make PROJECT -> HAVING -> GROUP_BY
 		outScope = b.buildAggregation(fromScope, projScope, having, groupingCols)
 	} else {
 		outScope = fromScope
@@ -360,6 +442,8 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 					b.handleErr(err)
 				}
 				col = scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+			} else if sq, ok := e.Child.(*plan.Subquery); ok {
+				col = scopeColumn{col: sq.QueryString, scalar: sq, typ: sq.Type(), nullable: sq.IsNullable()}
 			} else {
 				col = scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: pe.IsNullable()}
 			}
@@ -412,10 +496,16 @@ func (b *PlanBuilder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *sc
 		return b.buildJoin(inScope, cj)
 	}
 	return b.buildDataSource(inScope, te[0])
-	return
 }
 
 func (b *PlanBuilder) validateJoinTableNames(leftScope, rightScope *scope) {
+	// TODO validateUniqueTableNames is redundant
+	for t, _ := range leftScope.tables {
+		if _, ok := rightScope.tables[t]; ok {
+			err := sql.ErrDuplicateAliasOrTable.New(t)
+			b.handleErr(err)
+		}
+	}
 }
 
 func (b *PlanBuilder) isLateral(te ast.TableExpr) bool {
@@ -484,7 +574,8 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 		case ast.TableName:
 			// TODO this can be a CTE
 			if cteScope := inScope.getCte(e.Name.String()); cteScope != nil {
-				outScope = cteScope
+				outScope = cteScope.copy()
+				outScope.parent = inScope
 				return
 			}
 			outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)

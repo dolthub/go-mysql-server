@@ -118,13 +118,6 @@ func (b *PlanBuilder) buildDelete(inScope *scope, d *sqlparser.Delete) (outScope
 
 	del := plan.NewDeleteFrom(outScope.node, targets)
 	outScope.node = del
-
-	//if d.With != nil {
-	//	node, err = ctesToWith(ctx, d.With, node)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
 	return
 }
 

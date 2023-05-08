@@ -10,7 +10,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -18,7 +17,26 @@ import (
 )
 
 func TestPlanBuilder(t *testing.T) {
-	var tests = []queries.QueryPlanTest{
+	var tests = []struct {
+		Query        string
+		ExpectedPlan string
+	}{
+		{
+			Query: "with cte(y,x) as (select x,y from xy) select * from cte",
+			ExpectedPlan: `
+Project
+ ├─ columns: [cte.y:1!null, cte.x:2!null]
+ └─ SubqueryAlias
+     ├─ name: cte
+     ├─ outerVisibility: false
+     ├─ cacheable: false
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.y:2!null]
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
 		{
 			Query: "select * from xy where x = 2",
 			ExpectedPlan: `
@@ -936,7 +954,7 @@ func (t *testCatalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	panic("implement me")
 }
 
-func (t *testCatalog) HasDB(ctx *sql.Context, name string) bool {
+func (t *testCatalog) HasDatabase(ctx *sql.Context, name string) bool {
 	_, ok := t.databases[name]
 	return ok
 }

@@ -3,6 +3,7 @@ package optbuilder
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"regexp"
 	"strconv"
 	"strings"
@@ -361,4 +362,12 @@ func (b *PlanBuilder) convertDefaultExpression(inScope *scope, defaultExpr sqlpa
 		ReturnNil:     true,
 		Parenthesized: isParenthesized,
 	}
+}
+
+func DeepCopyNode(node sql.Node) (sql.Node, error) {
+	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		e, err := transform.Clone(e)
+		return e, transform.NewTree, err
+	})
+	return n, err
 }

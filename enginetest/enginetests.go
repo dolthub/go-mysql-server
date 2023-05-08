@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/optbuilder"
 	"io"
 	"net"
 	"strings"
@@ -431,7 +432,13 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expectedPlan string, verbose bool) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
-		parsed, err := parse.Parse(ctx, query)
+		var parsed sql.Node
+		var err error
+		if e.Version == analyzer.Version1 {
+			parsed, err = optbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+		} else {
+			parsed, err = parse.Parse(ctx, query)
+		}
 		require.NoError(t, err)
 
 		node, err := e.Analyzer.Analyze(ctx, parsed, nil)

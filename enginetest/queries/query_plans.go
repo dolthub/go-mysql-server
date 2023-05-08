@@ -577,7 +577,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
+		Query: `with cte2 as (select u,v from uv join ab on u = b where u in (2,3)), cte1 as (select u, v from cte2 join ab on cte2.u = b) select * from xy where (x) not in (select u from cte1) order by 1`,
 		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
 			" └─ AntiJoin\n" +
 			"     ├─ Eq\n" +
