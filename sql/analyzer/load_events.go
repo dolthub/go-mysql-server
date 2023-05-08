@@ -39,13 +39,13 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Rul
 			newShowEvents.Events = loadedEvents
 			return &newShowEvents, transform.NewTree, nil
 		case *plan.AlterEvent:
-			newAlterEvents := *node
-			loadedEvent, err := loadEventFromDb(ctx, newAlterEvents.Database(), newAlterEvents.EventName)
+			newAlterEvent := *node
+			loadedEvent, err := loadEventFromDb(ctx, newAlterEvent.Database(), newAlterEvent.EventName)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			newAlterEvents.Event = loadedEvent
-			return &newAlterEvents, transform.NewTree, nil
+			newAlterEvent.Event = loadedEvent
+			return &newAlterEvent, transform.NewTree, nil
 		default:
 			return node, transform.SameTree, nil
 		}

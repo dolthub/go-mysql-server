@@ -445,7 +445,6 @@ func (c *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		LastAltered:     c.eventDetails.LastAltered,
 	}
 
-	// TODO: any EVENT STATUS change should also update the branch-specific event scheduling
 	err := c.eventDb.UpdateEvent(ctx, c.originalName, eventDefinition)
 	if err != nil {
 		return nil, err
