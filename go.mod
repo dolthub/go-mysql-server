@@ -5,7 +5,7 @@ require (
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
 	github.com/dolthub/jsonpath v0.0.1
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20230505004730-f1248efa4e87
+	github.com/dolthub/vitess v0.0.0-20230508171026-c9c0cc14de01
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2

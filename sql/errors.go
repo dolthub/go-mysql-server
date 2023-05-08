@@ -133,9 +133,6 @@ var (
 	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
 	ErrInvalidTextBlobColumnDefault = errors.NewKind("TEXT, BLOB, GEOMETRY, and JSON types may only have expression default values")
 
-	// ErrInvalidColumnDefaultFunction is returned when an invalid function is used in a default value.
-	ErrInvalidColumnDefaultFunction = errors.NewKind("function `%s` on column `%s` is not valid for usage in a default value")
-
 	// ErrColumnDefaultDatetimeOnlyFunc is returned when a non datetime/timestamp column attempts to declare now/current_timestamp as a default value literal.
 	ErrColumnDefaultDatetimeOnlyFunc = errors.NewKind("only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
 
