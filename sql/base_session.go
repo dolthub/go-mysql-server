@@ -178,9 +178,13 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.systemVars[sysVar.Name] = SystemVarValue{
+	svv := SystemVarValue{
 		Var: sysVar,
 		Val: convertedVal,
+	}
+	s.systemVars[sysVar.Name] = svv
+	if sysVar.NotifyChanged != nil {
+		sysVar.NotifyChanged(SystemVariableScope_Session, svv)
 	}
 	return nil
 }

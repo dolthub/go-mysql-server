@@ -358,6 +358,18 @@ type SystemVariable struct {
 	Type Type
 	// Default defines the default value of the system variable.
 	Default interface{}
+	// NotifyChanged is called by the engine if the value of this variable
+	// changes during runtime.  It is typically |nil|, but can be used for
+	// system variables which control the behavior of the running server.
+	// For example, replication threads might need to be started or stopped
+	// when replication is enabled or disabled. This provides a scalable
+	// alternative to polling.
+	//
+	// Calls to NotifyChanged are serialized for a given system variable in
+	// the global context and in a particular session. They should never
+	// block.  NotifyChanged is not called when a new system variable is
+	// registered.
+	NotifyChanged func(SystemVariableScope, SystemVarValue)
 }
 
 // SystemVariableScope represents the scope of a system variable.
