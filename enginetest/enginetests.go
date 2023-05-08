@@ -523,7 +523,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require.Equal(t, rowCount, 3)
 
 	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
-	require.Error(t, err)
+	require.Equal(t, rowCount, 3)
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {

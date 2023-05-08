@@ -818,7 +818,7 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		skipSel := func(tc transform.Context) bool {
 			switch tc.Node.(type) {
 			// TODO: possible that we should fix these
-			case *plan.JoinNode, *plan.Distinct:
+			case *plan.JoinNode, *plan.Distinct, *plan.GroupBy:
 				return false
 			// Certain relations collect unordered results and must be sorted
 			case *plan.Window:
