@@ -818,13 +818,18 @@ func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 		skipSel := func(tc transform.Context) bool {
 			switch tc.Node.(type) {
 			// TODO: possible that we should fix these
-			case *plan.JoinNode, *plan.Distinct, *plan.GroupBy:
+			case *plan.JoinNode, *plan.Distinct, *plan.RecursiveCte:
 				return false
 			// Certain relations collect unordered results and must be sorted
-			case *plan.Window:
+			case *plan.Window, *plan.GroupBy:
 				return false
-			default:
+			}
+
+			switch tc.Node.(type) {
+			case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter:
 				return true
+			default:
+				return false
 			}
 		}
 		sfAliases := aliasedExpressionsInNode(s)
