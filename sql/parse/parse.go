@@ -1951,9 +1951,55 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sq
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
 
+func getIndexConstraint(tableSpec *sqlparser.TableSpec, columnName string) (sql.IndexConstraint, error) {
+	for _, column := range tableSpec.Columns {
+		if column.Name.String() == columnName {
+			switch column.Type.KeyOpt {
+			case colKey:
+			case colKeyNone:
+				return sql.IndexConstraint_None, nil
+			case colKeyPrimary:
+				return sql.IndexConstraint_Primary, nil
+			case colKeySpatialKey:
+				return sql.IndexConstraint_Spatial, nil
+			case colKeyUnique:
+			case colKeyUniqueKey:
+				return sql.IndexConstraint_Unique, nil
+			case colKeyFulltextKey:
+				return sql.IndexConstraint_Fulltext, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("unknown column name %s", columnName)
+
+}
+
+func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	switch strings.ToLower(ddl.ColumnAction) {
+	case sqlparser.AddStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	case sqlparser.DropStr:
+		return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
+	case sqlparser.RenameStr:
+		return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
+	case sqlparser.ModifyStr, sqlparser.ChangeStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	}
+	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
+}
+
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
-		return convertAlterIndex(ctx, ddl)
+		table := tableNameToUnresolvedTable(ddl.Table)
+		return convertAlterIndex(ctx, ddl, table)
 	}
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
 		table := tableNameToUnresolvedTable(ddl.Table)
@@ -1994,26 +2040,43 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 	}
+
 	if ddl.ColumnAction != "" {
-		switch strings.ToLower(ddl.ColumnAction) {
-		case sqlparser.AddStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
-		case sqlparser.DropStr:
-			return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
-		case sqlparser.RenameStr:
-			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
-		case sqlparser.ModifyStr, sqlparser.ChangeStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+		var alteredTable sql.Node
+		alteredTable, err := newColumnAction(ctx, ddl)
+		if err != nil {
+			return nil, err
 		}
+		if ddl.TableSpec != nil {
+			if len(ddl.TableSpec.Columns) != 1 {
+				return nil, fmt.Errorf("Adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
+			}
+			for _, column := range ddl.TableSpec.Columns {
+				constraint, err := getIndexConstraint(ddl.TableSpec, column.Name.String())
+				if err != nil {
+					return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
+				}
+				var comment string
+				if commentVal := column.Type.Comment; commentVal != nil {
+					comment = commentVal.String()
+				}
+				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
+				if constraint == sql.IndexConstraint_Primary {
+					alteredTable, err = plan.NewAlterCreatePk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, columns), nil
+					if err != nil {
+						return nil, err
+					}
+				} else if constraint != sql.IndexConstraint_None {
+					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, ddl.IndexSpec.ToName.String(), sql.IndexUsing_BTree, constraint, columns, comment), nil
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		return alteredTable, nil
 	}
+
 	if ddl.AutoIncSpec != nil {
 		return convertAlterAutoIncrement(ddl)
 	}
@@ -2034,8 +2097,7 @@ func tableNameToUnresolvedTableAsOf(tableName sqlparser.TableName, asOf sql.Expr
 	return plan.NewUnresolvedTableAsOf(tableName.Name.String(), tableName.Qualifier.String(), asOf)
 }
 
-func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
-	table := tableNameToUnresolvedTable(ddl.Table)
+func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL, table sql.Node) (sql.Node, error) {
 	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case sqlparser.CreateStr:
 		var using sql.IndexUsing
