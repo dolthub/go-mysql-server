@@ -2,13 +2,15 @@ package optbuilder
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"strconv"
-	"strings"
 )
 
 func (b *PlanBuilder) resolveDb(name string) sql.Database {
