@@ -73,6 +73,35 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 	return nil
 }
 
+func (b *PlanBuilder) buildCaseExpr(inScope *scope, e *sqlparser.CaseExpr) sql.Expression {
+	var expr sql.Expression
+
+	if e.Expr != nil {
+		expr = b.buildScalar(inScope, e.Expr)
+	}
+
+	var branches []expression.CaseBranch
+	for _, w := range e.Whens {
+		var cond sql.Expression
+		cond = b.buildScalar(inScope, w.Cond)
+
+		var val sql.Expression
+		val = b.buildScalar(inScope, w.Val)
+
+		branches = append(branches, expression.CaseBranch{
+			Cond:  cond,
+			Value: val,
+		})
+	}
+
+	var elseExpr sql.Expression
+	if e.Else != nil {
+		elseExpr = b.buildScalar(inScope, e.Else)
+	}
+
+	return expression.NewCase(expr, branches, elseExpr)
+}
+
 func (b *PlanBuilder) buildIsExprToExpression(inScope *scope, c *sqlparser.IsExpr) sql.Expression {
 	e := b.buildScalar(inScope, c.Expr)
 	switch strings.ToLower(c.Operator) {

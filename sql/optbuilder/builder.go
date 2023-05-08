@@ -325,7 +325,6 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 
 	// use inScope to construct projections for projScope
 	var exprs []sql.Expression
-	//outerLen := inScope.outerScopeLen()
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)
 		switch e := pe.(type) {
@@ -796,7 +795,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.TrimExpr:
 		pat := b.buildScalar(inScope, v.Pattern)
 		str := b.buildScalar(inScope, v.Str)
-		function.NewTrim(str, pat, v.Dir)
+		return function.NewTrim(str, pat, v.Dir)
 	case *ast.ComparisonExpr:
 		return b.buildComparison(inScope, v)
 	case *ast.IsExpr:
@@ -929,9 +928,10 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		selectString := ast.String(v.Select)
 		return plan.NewSubquery(selScope.node, selectString)
 	case *ast.CaseExpr:
-		return b.buildScalar(inScope, v)
+		return b.buildCaseExpr(inScope, v)
 	case *ast.IntervalExpr:
-		return b.buildScalar(inScope, v)
+		e := b.buildScalar(inScope, v.Expr)
+		return expression.NewInterval(e, v.Unit)
 	case *ast.CollateExpr:
 		// handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
 		innerExpr := b.buildScalar(inScope, v.Expr)

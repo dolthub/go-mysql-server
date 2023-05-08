@@ -41,6 +41,7 @@ func (b *PlanBuilder) buildResolvedTable(inScope *scope, tab, db string, asOf in
 }
 
 func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outScope *scope) {
+	outScope = inScope.push()
 	showType := strings.ToLower(s.Type)
 	switch showType {
 	case "processlist":
@@ -48,7 +49,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 	case ast.CreateTableStr, "create view":
 		var asOfLit interface{}
 		var asOfExpr sql.Expression
-		if s.ShowTablesOpt != nil {
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 			var err error
 			asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
 			asOfLit, err = asOfExpr.Eval(b.ctx, nil)

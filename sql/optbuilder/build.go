@@ -78,6 +78,7 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.Use:
 		return b.buildUse(inScope, n)
 	case *ast.Begin:
+		outScope = inScope.push()
 		transChar := sql.ReadWrite
 		if n.TransactionCharacteristic == ast.TxReadOnly {
 			transChar = sql.ReadOnly
@@ -85,14 +86,19 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 
 		outScope.node = plan.NewStartTransaction(transChar)
 	case *ast.Commit:
+		outScope = inScope.push()
 		outScope.node = plan.NewCommit()
 	case *ast.Rollback:
+		outScope = inScope.push()
 		outScope.node = plan.NewRollback()
 	case *ast.Savepoint:
+		outScope = inScope.push()
 		outScope.node = plan.NewCreateSavepoint(n.Identifier)
 	case *ast.RollbackSavepoint:
+		outScope = inScope.push()
 		outScope.node = plan.NewRollbackSavepoint(n.Identifier)
 	case *ast.ReleaseSavepoint:
+		outScope = inScope.push()
 		outScope.node = plan.NewReleaseSavepoint(n.Identifier)
 	case *ast.ChangeReplicationSource:
 		//return convertChangeReplicationSource(n)
@@ -111,10 +117,14 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.StartReplica:
+		outScope = inScope.push()
 		outScope.node = plan.NewStartReplica()
+		outScope = inScope.push()
 	case *ast.StopReplica:
+		outScope = inScope.push()
 		outScope.node = plan.NewStopReplica()
 	case *ast.ResetReplica:
+		outScope = inScope.push()
 		outScope.node = plan.NewResetReplica(n.All)
 	case *ast.BeginEndBlock:
 		//return convertBeginEndBlock(ctx, n, query)
