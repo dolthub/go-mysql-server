@@ -64,6 +64,7 @@ func (s *scope) outerScopeLen() int {
 }
 
 func (s *scope) setTableAlias(t string) {
+	t = strings.ToLower(t)
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
 		s.cols[i].table = t
@@ -82,8 +83,9 @@ func (s *scope) setColAlias(cols []string) {
 		s.b.handleErr(fmt.Errorf("invalid column number for column alias"))
 	}
 	for i := range s.cols {
+		name := strings.ToLower(cols[i])
 		beforeColStr := s.cols[i].String()
-		s.cols[i].col = cols[i]
+		s.cols[i].col = name
 		id, ok := s.getExpr(beforeColStr)
 		if !ok {
 			err := sql.ErrColumnNotFound.New(beforeColStr)
@@ -215,18 +217,60 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 			return b.buildSelect(cteScope, s)
 		}
 		return b.buildSelect(inScope, s)
-	case *ast.ParenSelect:
-		return b.buildParenSelect(inScope, s)
 	case *ast.Union:
 		return b.buildUnion(inScope, s)
+	case *ast.ParenSelect:
+		return b.buildSelectStmt(inScope, s.Select)
 	default:
 		b.handleErr(fmt.Errorf("unknown select statement %T", s))
 	}
 	return
 }
 
-func (b *PlanBuilder) buildUnion(inScope *scope, s *ast.Union) (outScope *scope) {
-	panic("todo")
+func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
+	leftScope := b.buildSelectStmt(inScope, u.Left)
+	outScope = b.buildSelectStmt(inScope, u.Right)
+
+	distinct := u.Type != ast.UnionAllStr
+	limit := b.buildLimit(inScope, u.Limit)
+
+	orderByScope := b.analyzeOrderBy(outScope, inScope, u.OrderBy)
+	//b.buildOrderBy(leftScope, orderByScope)
+
+	var sortFields sql.SortFields
+	for _, c := range orderByScope.cols {
+		so := sql.Ascending
+		if c.descending {
+			so = sql.Descending
+		}
+		sf := sql.SortField{
+			Column: c.scalar,
+			Order:  so,
+		}
+		sortFields = append(sortFields, sf)
+	}
+
+	n, ok := leftScope.node.(*plan.Union)
+	if ok {
+		if len(n.SortFields) > 0 {
+			if len(sortFields) > 0 {
+				err := sql.ErrConflictingExternalQuery.New()
+				b.handleErr(err)
+			}
+			sortFields = n.SortFields
+		}
+		if n.Limit != nil {
+			if limit != nil {
+				err := fmt.Errorf("conflicing external ORDER BY")
+				b.handleErr(err)
+			}
+			limit = n.Limit
+		}
+	}
+
+	ret := plan.NewUnion(leftScope.node, outScope.node, distinct, limit, sortFields)
+	outScope.node = ret
+	return
 }
 
 func (b *PlanBuilder) buildParenSelect(inScope *scope, s *ast.ParenSelect) (outScope *scope) {
@@ -446,8 +490,9 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			}
 			outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
 			if t.As.String() != "" {
-				outScope.setTableAlias(t.As.String())
-				outScope.node = plan.NewTableAlias(t.As.String(), outScope.node)
+				tAlias := strings.ToLower(t.As.String())
+				outScope.setTableAlias(tAlias)
+				outScope.node = plan.NewTableAlias(tAlias, outScope.node)
 			}
 		case *ast.Subquery:
 			if t.As.IsEmpty() {
@@ -747,7 +792,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return &function.Substring{Str: name, Start: start, Len: len}
 	case *ast.CurTimeFuncExpr:
 		fsp := b.buildScalar(inScope, v.Fsp)
-		return &function.CurrTimestamp{[]sql.Expression{fsp}}
+		return &function.CurrTimestamp{Args: []sql.Expression{fsp}}
 	case *ast.TrimExpr:
 		pat := b.buildScalar(inScope, v.Pattern)
 		str := b.buildScalar(inScope, v.Str)
@@ -755,7 +800,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.ComparisonExpr:
 		return b.buildComparison(inScope, v)
 	case *ast.IsExpr:
-		return b.buildScalar(inScope, v)
+		return b.buildIsExprToExpression(inScope, v)
 	case *ast.NotExpr:
 		c := b.buildScalar(inScope, v.Expr)
 		return expression.NewNot(c)
@@ -778,7 +823,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			// also need to avoid nested aggregates
 			return b.buildAggregateFunc(inScope, name, v)
 		} else if isWindowFunc(name) {
-			panic("todo window funcs")
+			b.handleErr(fmt.Errorf("todo window funcs"))
 		}
 
 		f, err := b.cat.Function(b.ctx, name)
@@ -871,7 +916,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.BinaryExpr:
 		return b.buildBinaryScalar(inScope, v)
 	case *ast.UnaryExpr:
-		return b.buildScalar(inScope, v)
+		return b.buildUnaryScalar(inScope, v)
 	case *ast.Subquery:
 		//node, err := convert(ctx, v.Select, "")
 		//if err != nil {

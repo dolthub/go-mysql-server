@@ -116,7 +116,7 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	}
 }
 
-func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
+func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 	db = strings.ToLower(db)
 	if db == "information_schema" {
 		return true

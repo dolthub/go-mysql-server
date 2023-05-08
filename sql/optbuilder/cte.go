@@ -75,10 +75,11 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	// TODO schema for non -recursive portion => recursive table
 	var rTable *plan.RecursiveTable
 	var rInit sql.Node
+	var recSch sql.Schema
 	cteScope := leftScope.replace()
 	{
 		rInit = leftScope.node
-		recSch := make(sql.Schema, len(rInit.Schema()))
+		recSch = make(sql.Schema, len(rInit.Schema()))
 		for i, c := range rInit.Schema() {
 			newC := c.Copy()
 			if len(columns) > 0 {
@@ -115,7 +116,8 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	orderByScope := b.analyzeOrderBy(rightInScope, inScope, union.OrderBy)
 	b.buildOrderBy(rightInScope, orderByScope)
 
-	rightScope.node = plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, nil)
+	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, nil)
+	rightScope.node = rcte.WithSchema(recSch).WithWorking(rTable)
 	b.renameSource(rightScope, name, columns)
 	inScope.addCte(name, rightScope)
 }

@@ -432,7 +432,7 @@ func (b *BaseBuilder) buildDeclareCondition(ctx *sql.Context, n *plan.DeclareCon
 }
 
 func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.Row) (sql.RowIter, error) {
-	exists := n.Catalog.HasDB(ctx, n.DbName)
+	exists := n.Catalog.HasDatabase(ctx, n.DbName)
 	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 
 	if exists {
@@ -700,7 +700,7 @@ func (b *BaseBuilder) buildDropProcedure(ctx *sql.Context, n *plan.DropProcedure
 }
 
 func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row) (sql.RowIter, error) {
-	exists := n.Catalog.HasDB(ctx, n.DbName)
+	exists := n.Catalog.HasDatabase(ctx, n.DbName)
 	if !exists {
 		if n.IfExists {
 			ctx.Session.Warn(&sql.Warning{
@@ -830,7 +830,7 @@ func (b *BaseBuilder) buildAddColumn(ctx *sql.Context, n *plan.AddColumn, row sq
 func (b *BaseBuilder) buildAlterDB(ctx *sql.Context, n *plan.AlterDB, row sql.Row) (sql.RowIter, error) {
 	dbName := n.Database(ctx)
 
-	if !n.Catalog.HasDB(ctx, dbName) {
+	if !n.Catalog.HasDatabase(ctx, dbName) {
 		return nil, sql.ErrDatabaseNotFound.New(dbName)
 	}
 	db, err := n.Catalog.Database(ctx, dbName)

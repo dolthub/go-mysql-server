@@ -73,24 +73,26 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 	return nil
 }
 
-func (b *PlanBuilder) isExprToExpression(inScope *scope, c *sqlparser.IsExpr) (sql.Expression, error) {
+func (b *PlanBuilder) buildIsExprToExpression(inScope *scope, c *sqlparser.IsExpr) sql.Expression {
 	e := b.buildScalar(inScope, c.Expr)
 	switch strings.ToLower(c.Operator) {
 	case sqlparser.IsNullStr:
-		return expression.NewIsNull(e), nil
+		return expression.NewIsNull(e)
 	case sqlparser.IsNotNullStr:
-		return expression.NewNot(expression.NewIsNull(e)), nil
+		return expression.NewNot(expression.NewIsNull(e))
 	case sqlparser.IsTrueStr:
-		return expression.NewIsTrue(e), nil
+		return expression.NewIsTrue(e)
 	case sqlparser.IsFalseStr:
-		return expression.NewIsFalse(e), nil
+		return expression.NewIsFalse(e)
 	case sqlparser.IsNotTrueStr:
-		return expression.NewNot(expression.NewIsTrue(e)), nil
+		return expression.NewNot(expression.NewIsTrue(e))
 	case sqlparser.IsNotFalseStr:
-		return expression.NewNot(expression.NewIsFalse(e)), nil
+		return expression.NewNot(expression.NewIsFalse(e))
 	default:
-		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(c))
+		err := sql.ErrUnsupportedSyntax.New(sqlparser.String(c))
+		b.handleErr(err)
 	}
+	return nil
 }
 
 func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *sqlparser.BinaryExpr) (sql.Expression, error) {

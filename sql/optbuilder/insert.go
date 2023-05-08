@@ -92,7 +92,7 @@ func (b *PlanBuilder) assignmentExprsToExpressions(inScope *scope, e sqlparser.A
 	return res
 }
 
-func (b *PlanBuilder) Delete(inScope *scope, d *sqlparser.Delete) (outScope *scope) {
+func (b *PlanBuilder) buildDelete(inScope *scope, d *sqlparser.Delete) (outScope *scope) {
 	outScope = b.buildFrom(inScope, d.TableExprs)
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, nil, d.OrderBy)

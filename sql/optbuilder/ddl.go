@@ -23,6 +23,21 @@ func (b *PlanBuilder) resolveDb(name string) sql.Database {
 	return database
 }
 
+func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.MultiAlterDDL) (outScope *scope) {
+	statementsLen := len(c.Statements)
+	if statementsLen == 1 {
+		return b.buildDDL(inScope, query, c.Statements[0])
+	}
+	statements := make([]sql.Node, statementsLen)
+	for i := 0; i < statementsLen; i++ {
+		alterScope := b.buildDDL(inScope, query, c.Statements[i])
+		statements[i] = alterScope.node
+	}
+	outScope = inScope.push()
+	outScope.node = plan.NewBlock(statements)
+	return
+}
+
 func (b *PlanBuilder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
@@ -212,7 +227,9 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 			case *sql.ForeignKeyConstraint:
 				c.Database = table.Database.Name()
 				c.Table = table.Name()
-				outScope.node = plan.NewAlterAddForeignKey(c)
+				alterFk := plan.NewAlterAddForeignKey(c)
+				alterFk.DbProvider = b.cat
+				outScope.node = alterFk
 			case *sql.CheckConstraint:
 				outScope.node = plan.NewAlterAddCheck(table, c)
 			default:
