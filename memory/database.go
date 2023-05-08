@@ -376,11 +376,15 @@ func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
-	loweredName := strings.ToLower(ed.Name)
+func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+	loweredOriginalName := strings.ToLower(originalName)
+	loweredNewName := strings.ToLower(ed.Name)
 	found := false
 	for i, existingEd := range d.events {
-		if strings.ToLower(existingEd.Name) == loweredName {
+		if loweredOriginalName != loweredNewName && strings.ToLower(existingEd.Name) == loweredNewName {
+			// renaming event to existing name
+			return sql.ErrEventAlreadyExists.New(loweredNewName)
+		} else if strings.ToLower(existingEd.Name) == loweredOriginalName {
 			d.events[i] = ed
 			found = true
 		}

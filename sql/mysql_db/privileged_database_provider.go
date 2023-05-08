@@ -378,9 +378,9 @@ func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
-		return db.UpdateEvent(ctx, ed)
+		return db.UpdateEvent(ctx, originalName, ed)
 	}
 	return sql.ErrEventsNotSupported.New(pdb.db.Name())
 }

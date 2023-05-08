@@ -275,7 +275,6 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime time.T
 		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
-			eventDetails.HasStarts = true
 			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
 			if err != nil {
 				return sql.EventDetails{}, err
@@ -349,7 +348,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.eventDetails.Status = EventStatus_Disable.String()
 				eventDefinition.CreateStatement = c.eventDetails.CreateEventStatement()
-				err = c.eventDb.UpdateEvent(ctx, eventDefinition)
+				err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, eventDefinition)
 				if err != nil {
 					return nil, err
 				}
