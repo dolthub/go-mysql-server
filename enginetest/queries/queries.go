@@ -8757,7 +8757,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          "create table vb_tbl (vb varbinary(123456789));",
-		ExpectedErrStr: "",
+		ExpectedErrStr: "length is 123456789 but max allowed is 65535",
 	},
 }
 
