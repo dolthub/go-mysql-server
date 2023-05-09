@@ -8049,7 +8049,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1;",
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1;",
 		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst)\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
@@ -8059,7 +8059,7 @@ WHERE keyless.c0 IN (
 			"         └─ columns: [pk1 pk2]\n",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1 desc;",
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc;",
 		ExpectedPlan: "Sort(two_pk.pk1:0!null DESC nullsFirst)\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
