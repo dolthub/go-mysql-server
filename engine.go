@@ -33,7 +33,7 @@ import (
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
-const experimentalFlag = "GMS_EXPERIMENTAL_ANALYZER"
+const experimentalFlag = "GMS_EXPERIMENTAL"
 
 var ExperimentalGMS bool
 

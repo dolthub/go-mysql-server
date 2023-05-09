@@ -112,14 +112,14 @@ func TestQueriesSimple(t *testing.T) {
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
-func TestQueriesSimple_New(t *testing.T) {
+func TestQueriesSimple_Experimental(t *testing.T) {
 	t.Skip()
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
-func TestQueryPlans_New(t *testing.T) {
-	//t.Skip()
+func TestQueryPlans_Experimental(t *testing.T) {
+	t.Skip()
 	enginetest.TestQueryPlans(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental), queries.PlanTests)
 }
 

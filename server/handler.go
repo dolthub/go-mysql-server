@@ -342,6 +342,7 @@ func (h *Handler) doQuery(
 		case sql.VersionExperimental:
 			parsed, err = planbuilder.Parse(ctx, h.e.Analyzer.Catalog, query)
 			if err != nil {
+				ctx.GetLogger().Tracef("experimental planbuilder failed: %s", err)
 				parsed, err = parse.Parse(ctx, query)
 				ctx.Version = sql.VersionOriginal
 			}
