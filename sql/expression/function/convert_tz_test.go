@@ -27,6 +27,7 @@ import (
 )
 
 func TestConvertTz(t *testing.T) {
+	// TODO: CONVERT_TZ can't deal with mixed use of timezone name (e.g. "UTC") and offset (e.g. "+0:00")
 	tests := []struct {
 		name           string
 		datetime       interface{}
