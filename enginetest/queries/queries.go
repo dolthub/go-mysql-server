@@ -1140,7 +1140,7 @@ Select * from (
 		},
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1",
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2",
 		Expected: []sql.Row{
 			{0, 0},
 			{0, 1},
@@ -1149,12 +1149,12 @@ Select * from (
 		},
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc",
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc",
 		Expected: []sql.Row{
-			{0, 0},
-			{0, 1},
-			{1, 0},
 			{1, 1},
+			{1, 0},
+			{0, 1},
+			{0, 0},
 		},
 	},
 	{
