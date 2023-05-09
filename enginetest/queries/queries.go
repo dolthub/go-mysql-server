@@ -8755,6 +8755,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "select SUM(*) from dual;",
 		ExpectedErr: analyzererrors.ErrStarUnsupported,
 	},
+	{
+		Query:       "create table vb_tbl (vb varbinary(123456789));",
+		ExpectedErrStr: "",
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
