@@ -68,7 +68,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 					t.Skip()
 				}
 			}
-			ctx := NewContext(harness)
+			ctx := NewContext(harness).WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 
