@@ -1986,8 +1986,7 @@ func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
-		table := tableNameToUnresolvedTable(ddl.Table)
-		return convertAlterIndex(ctx, ddl, table)
+		return convertAlterIndex(ctx, ddl)
 	}
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
 		table := tableNameToUnresolvedTable(ddl.Table)
@@ -2080,7 +2079,8 @@ func tableNameToUnresolvedTableAsOf(tableName sqlparser.TableName, asOf sql.Expr
 	return plan.NewUnresolvedTableAsOf(tableName.Name.String(), tableName.Qualifier.String(), asOf)
 }
 
-func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL, table sql.Node) (sql.Node, error) {
+func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := tableNameToUnresolvedTable(ddl.Table)
 	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case sqlparser.CreateStr:
 		var using sql.IndexUsing
