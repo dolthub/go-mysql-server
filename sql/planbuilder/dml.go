@@ -1,17 +1,17 @@
-package optbuilder
+package planbuilder
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) buildInsert(inScope *scope, i *sqlparser.Insert) (outScope *scope) {
+func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dbName := i.Table.Qualifier.String()
 	tabName := i.Table.Name.String()
 	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
@@ -21,9 +21,9 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *sqlparser.Insert) (outScope
 		b.handleErr(err)
 	}
 
-	onDupExprs := b.assignmentExprsToExpressions(outScope, sqlparser.AssignmentExprs(i.OnDup))
+	onDupExprs := b.assignmentExprsToExpressions(outScope, ast.AssignmentExprs(i.OnDup))
 
-	isReplace := i.Action == sqlparser.ReplaceStr
+	isReplace := i.Action == ast.ReplaceStr
 
 	src := b.insertRowsToNode(inScope, i.Rows)
 
@@ -55,20 +55,20 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *sqlparser.Insert) (outScope
 	return
 }
 
-func (b *PlanBuilder) insertRowsToNode(inScope *scope, ir sqlparser.InsertRows) (outScope *scope) {
+func (b *PlanBuilder) insertRowsToNode(inScope *scope, ir ast.InsertRows) (outScope *scope) {
 	switch v := ir.(type) {
-	case sqlparser.SelectStatement:
+	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, v)
-	case sqlparser.Values:
+	case ast.Values:
 		return b.buildValues(inScope, v)
 	default:
-		err := sql.ErrUnsupportedSyntax.New(sqlparser.String(ir))
+		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
 	}
 	return
 }
 
-func (b *PlanBuilder) buildValues(inScope *scope, v sqlparser.Values) (outScope *scope) {
+func (b *PlanBuilder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
 	// TODO add literals to outScope?
 	exprTuples := make([][]sql.Expression, len(v))
 	for i, vt := range v {
@@ -84,7 +84,7 @@ func (b *PlanBuilder) buildValues(inScope *scope, v sqlparser.Values) (outScope 
 	return
 }
 
-func (b *PlanBuilder) assignmentExprsToExpressions(inScope *scope, e sqlparser.AssignmentExprs) []sql.Expression {
+func (b *PlanBuilder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
@@ -94,7 +94,7 @@ func (b *PlanBuilder) assignmentExprsToExpressions(inScope *scope, e sqlparser.A
 	return res
 }
 
-func (b *PlanBuilder) buildDelete(inScope *scope, d *sqlparser.Delete) (outScope *scope) {
+func (b *PlanBuilder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	outScope = b.buildFrom(inScope, d.TableExprs)
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, nil, d.OrderBy)
@@ -123,7 +123,7 @@ func (b *PlanBuilder) buildDelete(inScope *scope, d *sqlparser.Delete) (outScope
 	return
 }
 
-func (b *PlanBuilder) buildUpdate(inScope *scope, u *sqlparser.Update) (outScope *scope) {
+func (b *PlanBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	outScope = b.buildFrom(inScope, u.TableExprs)
 	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
 
@@ -148,4 +148,20 @@ func (b *PlanBuilder) buildUpdate(inScope *scope, u *sqlparser.Update) (outScope
 	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
 	outScope.node = update
 	return
+}
+
+func (b *PlanBuilder) buildInto(inScope *scope, into *ast.Into, node sql.Node) (sql.Node, error) {
+	if into.Outfile != "" || into.Dumpfile != "" {
+		return nil, sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
+	}
+
+	vars := make([]sql.Expression, len(into.Variables))
+	for i, val := range into.Variables {
+		if strings.HasPrefix(val.String(), "@") {
+			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
+		} else {
+			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
+		}
+	}
+	return plan.NewInto(node, vars), nil
 }

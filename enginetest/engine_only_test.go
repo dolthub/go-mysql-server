@@ -113,7 +113,7 @@ func TestLocks(t *testing.T) {
 	db.AddTable("t3", t3)
 	pro := sql.NewDatabaseProvider(db)
 
-	analyzer := analyzer.NewDefault(pro)
+	analyzer := analyzer.NewDefault(pro, sql.VersionOriginal)
 	engine := sqle.New(analyzer, new(sqle.Config))
 
 	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness())
@@ -270,7 +270,7 @@ b (2/6 partitions)
 func TestTrackProcess(t *testing.T) {
 	require := require.New(t)
 	provider := sql.NewDatabaseProvider()
-	a := analyzer.NewDefault(provider)
+	a := analyzer.NewDefault(provider, sql.VersionOriginal)
 
 	node := plan.NewInnerJoin(
 		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
@@ -689,7 +689,7 @@ func TestTableFunctions(t *testing.T) {
 	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
 	engine.Analyzer.ExecBuilder = rowexec.DefaultBuilder
 
-	err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
+	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)
 
 	for _, test := range tableFunctionScriptTests {
@@ -1054,7 +1054,7 @@ func newDatabase() (*sql2.DB, func()) {
 	provider := sql.NewDatabaseProvider(
 		memory.NewDatabase("mydb"),
 	)
-	engine := sqle.New(analyzer.NewDefault(provider), &sqle.Config{
+	engine := sqle.New(analyzer.NewDefault(provider, sql.VersionOriginal), &sqle.Config{
 		IncludeRootAccount: true,
 	})
 	cfg := server.Config{

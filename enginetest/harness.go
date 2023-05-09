@@ -20,7 +20,6 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries
@@ -50,7 +49,7 @@ type Harness interface {
 
 type VersionedHarness interface {
 	Harness
-	Version() analyzer.Version
+	Version() sql.AnalyzerVersion
 }
 
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.

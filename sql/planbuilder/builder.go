@@ -1,4 +1,4 @@
-package optbuilder
+package planbuilder
 
 import (
 	"encoding/hex"
@@ -192,6 +192,9 @@ func (s *scope) getCte(name string) *scope {
 	return nil
 }
 
+// addColumn interns and saves the given column to this scope.
+// todo: new IR should absorb interning and use bitmaps for
+// column identity
 func (s *scope) addColumn(col scopeColumn) {
 	s.cols = append(s.cols, col)
 	if s.exprs == nil {
@@ -205,22 +208,17 @@ func (s *scope) addColumn(col scopeColumn) {
 	return
 }
 
+// newColumn adds the column to the current scope and assigns a
+// new columnId for referencing.
 func (s *scope) newColumn(col scopeColumn) columnId {
 	s.b.colId++
 	col.id = s.b.colId
-	s.cols = append(s.cols, col)
-	if s.exprs == nil {
-		s.exprs = make(map[string]columnId)
-	}
-	if col.table != "" {
-		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = col.id
-	} else {
-		s.exprs[col.col] = col.id
-	}
+	s.addColumn(col)
 	s.addTable(col.table)
 	return col.id
 }
 
+// addTable records adds a table name defined in this scope
 func (s *scope) addTable(name string) {
 	if name == "" {
 		return
@@ -234,6 +232,8 @@ func (s *scope) addTable(name string) {
 	}
 }
 
+// addExtraColumn marks an auxiliary column used in an
+// aggregation, sorting, or having clause.
 func (s *scope) addExtraColumn(col scopeColumn) {
 	s.extraCols = append(s.extraCols, col)
 }
@@ -262,6 +262,9 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 	}
 }
 
+// tableId and columnId are temporary ways to track expression
+// and name uniqueness.
+// todo: the plan format should track these
 type tableId uint16
 type columnId uint16
 
@@ -312,56 +315,6 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 		b.handleErr(fmt.Errorf("unknown select statement %T", s))
 	}
 	return
-}
-
-func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
-	leftScope := b.buildSelectStmt(inScope, u.Left)
-	outScope = b.buildSelectStmt(inScope, u.Right)
-
-	distinct := u.Type != ast.UnionAllStr
-	limit := b.buildLimit(inScope, u.Limit)
-
-	orderByScope := b.analyzeOrderBy(outScope, inScope, u.OrderBy)
-	//b.buildOrderBy(leftScope, orderByScope)
-
-	var sortFields sql.SortFields
-	for _, c := range orderByScope.cols {
-		so := sql.Ascending
-		if c.descending {
-			so = sql.Descending
-		}
-		sf := sql.SortField{
-			Column: c.scalar,
-			Order:  so,
-		}
-		sortFields = append(sortFields, sf)
-	}
-
-	n, ok := leftScope.node.(*plan.Union)
-	if ok {
-		if len(n.SortFields) > 0 {
-			if len(sortFields) > 0 {
-				err := sql.ErrConflictingExternalQuery.New()
-				b.handleErr(err)
-			}
-			sortFields = n.SortFields
-		}
-		if n.Limit != nil {
-			if limit != nil {
-				err := fmt.Errorf("conflicing external ORDER BY")
-				b.handleErr(err)
-			}
-			limit = n.Limit
-		}
-	}
-
-	ret := plan.NewUnion(leftScope.node, outScope.node, distinct, limit, sortFields)
-	outScope.node = ret
-	return
-}
-
-func (b *PlanBuilder) buildParenSelect(inScope *scope, s *ast.ParenSelect) (outScope *scope) {
-	panic("todo")
 }
 
 func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
@@ -569,10 +522,8 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 	// build individual table, collect column definitions
 	switch t := (te).(type) {
 	case *ast.AliasedTableExpr:
-		// TODO: Add support for qualifier.
 		switch e := t.Expr.(type) {
 		case ast.TableName:
-			// TODO this can be a CTE
 			if cteScope := inScope.getCte(e.Name.String()); cteScope != nil {
 				outScope = cteScope.copy()
 				outScope.parent = inScope
@@ -655,6 +606,77 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 	return
 }
 
+func (b *PlanBuilder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
+	var err error
+	asOfExpr := b.buildScalar(inScope, asOf)
+	asOfLit, err := asOfExpr.Eval(b.ctx, nil)
+	if err != nil {
+		b.handleErr(err)
+	}
+	return asOfLit
+}
+
+func (b *PlanBuilder) buildResolvedTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
+	table, _, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
+	if err != nil {
+		b.handleErr(err)
+	}
+	database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
+	return plan.NewResolvedTable(table, database, asOf)
+}
+
+func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
+	leftScope := b.buildSelectStmt(inScope, u.Left)
+	outScope = b.buildSelectStmt(inScope, u.Right)
+
+	distinct := u.Type != ast.UnionAllStr
+	limit := b.buildLimit(inScope, u.Limit)
+
+	orderByScope := b.analyzeOrderBy(outScope, inScope, u.OrderBy)
+
+	var sortFields sql.SortFields
+	for _, c := range orderByScope.cols {
+		so := sql.Ascending
+		if c.descending {
+			so = sql.Descending
+		}
+		sf := sql.SortField{
+			Column: c.scalar,
+			Order:  so,
+		}
+		sortFields = append(sortFields, sf)
+	}
+
+	n, ok := leftScope.node.(*plan.Union)
+	if ok {
+		if len(n.SortFields) > 0 {
+			if len(sortFields) > 0 {
+				err := sql.ErrConflictingExternalQuery.New()
+				b.handleErr(err)
+			}
+			sortFields = n.SortFields
+		}
+		if n.Limit != nil {
+			if limit != nil {
+				err := fmt.Errorf("conflicing external ORDER BY")
+				b.handleErr(err)
+			}
+			limit = n.Limit
+		}
+	}
+
+	ret := plan.NewUnion(leftScope.node, outScope.node, distinct, limit, sortFields)
+	outScope.node = ret
+	return
+}
+
 func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
 	//TODO what are valid mysql table arguments
 	args := make([]sql.Expression, 0, len(t.Exprs))
@@ -730,6 +752,7 @@ func (b *PlanBuilder) currentDb() sql.Database {
 	}
 	return b.currentDatabase
 }
+
 func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
 	switch e := se.(type) {
 	case *ast.StarExpr:
@@ -955,36 +978,27 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
 		//return b.buildAggregateFunc(inScope, "group_concat", v)
-		panic("todo should have been processed into an aggInfo")
+		b.handleErr(fmt.Errorf("todo group concat"))
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
 	case *ast.AndExpr:
 		lhs := b.buildScalar(inScope, v.Left)
-
 		rhs := b.buildScalar(inScope, v.Right)
-
 		return expression.NewAnd(lhs, rhs)
 	case *ast.OrExpr:
 		lhs := b.buildScalar(inScope, v.Left)
-
 		rhs := b.buildScalar(inScope, v.Right)
-
 		return expression.NewOr(lhs, rhs)
 	case *ast.XorExpr:
 		lhs := b.buildScalar(inScope, v.Left)
-
 		rhs := b.buildScalar(inScope, v.Right)
-
 		return expression.NewXor(lhs, rhs)
 	case *ast.ConvertExpr:
 		expr := b.buildScalar(inScope, v.Expr)
-
 		return expression.NewConvert(expr, v.Type.Type)
 	case *ast.RangeCond:
 		val := b.buildScalar(inScope, v.Left)
-
 		lower := b.buildScalar(inScope, v.From)
-
 		upper := b.buildScalar(inScope, v.To)
 
 		switch strings.ToLower(v.Operator) {
@@ -1008,13 +1022,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.UnaryExpr:
 		return b.buildUnaryScalar(inScope, v)
 	case *ast.Subquery:
-		//node, err := convert(ctx, v.Select, "")
-		//if err != nil {
-		//	return nil
-		//}
 		selScope := b.buildSelectStmt(inScope, v.Select)
-
-		//b.renameSource(selScope, "", v.Columns)
 		// TODO: get the original select statement, not the reconstruction
 		selectString := ast.String(v.Select)
 		return plan.NewSubquery(selScope.node, selectString)
@@ -1051,8 +1059,6 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return values
 	case *ast.ExistsExpr:
 		selScope := b.buildSelectStmt(inScope, v.Subquery.Select)
-		// rebuild subquery
-		// renameColumns
 		selectString := ast.String(v.Subquery.Select)
 		sq := plan.NewSubquery(selScope.node, selectString)
 		return plan.NewExistsSubquery(sq)
@@ -1325,14 +1331,6 @@ func (b *PlanBuilder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression
 	return nil
 }
 
-func (b *PlanBuilder) buildFilter() {
-
-}
-
-func (b *PlanBuilder) analyzeAggregation() {
-
-}
-
 func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
 	if where == nil {
 		return
@@ -1343,18 +1341,14 @@ func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
 }
 
 func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
-	// - regular col
-	// - ordinal into proj
-	// - getfield output of proj
+	// Order by resolves to
+	// 1) alias in projScope
+	// 2) column name in fromScope
+	// 3) index into projection scope
 
-	// if regular col, make sure in aggOut or add
-	// (sort before projecting final group by result)
+	// if regular col, make sure in aggOut or add to extra cols
 
-	// if ordinal into proj
-	// get the reference to the i'th output
 	outScope = fromScope.replace()
-	//outerLen := fromScope.outerScopeLen()
-
 	for _, o := range order {
 		var descending bool
 		switch strings.ToLower(o.Direction) {
@@ -1370,6 +1364,8 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 		var expr sql.Expression
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
+			// TODO check for projection alias first
+
 			// add to extra cols
 			c, idx := b.resolveColumn(fromScope, e.Qualifier.String(), e.Name.String(), false)
 			if idx == -1 {

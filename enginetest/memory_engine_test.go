@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
@@ -115,13 +114,13 @@ func TestQueriesSimple(t *testing.T) {
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple_New(t *testing.T) {
 	t.Skip()
-	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(analyzer.Version1))
+	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
 }
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueryPlans_New(t *testing.T) {
-	t.Skip()
-	enginetest.TestQueryPlans(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(analyzer.Version1), queries.PlanTests)
+	//t.Skip()
+	enginetest.TestQueryPlans(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental), queries.PlanTests)
 }
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.

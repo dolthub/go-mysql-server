@@ -1,4 +1,4 @@
-package optbuilder
+package planbuilder
 
 import (
 	"fmt"
@@ -13,32 +13,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func (b *PlanBuilder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
-	var err error
-	asOfExpr := b.buildScalar(inScope, asOf)
-	asOfLit, err := asOfExpr.Eval(b.ctx, nil)
-	if err != nil {
-		b.handleErr(err)
-	}
-	return asOfLit
-}
-
-func (b *PlanBuilder) buildResolvedTable(inScope *scope, tab, db string, asOf interface{}) *plan.ResolvedTable {
-	table, _, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
-	if err != nil {
-		b.handleErr(err)
-	}
-	database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
-	if err != nil {
-		b.handleErr(err)
-	}
-
-	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
-		database = privilegedDatabase.Unwrap()
-	}
-	return plan.NewResolvedTable(table, database, asOf)
-}
 
 func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outScope *scope) {
 	outScope = inScope.push()
@@ -66,7 +40,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 			db = b.currentDb().Name()
 		}
 
-		rt := b.buildResolvedTable(inScope, s.Table.Name.String(), db, asOfLit)
+		rt := b.buildResolvedTable(s.Table.Name.String(), db, asOfLit)
 
 		database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 		if err != nil {
@@ -342,7 +316,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 				db = b.currentDb().Name()
 			}
 
-			table = b.buildResolvedTable(inScope, s.Table.Name.String(), db, asOfLit)
+			table = b.buildResolvedTable(s.Table.Name.String(), db, asOfLit)
 		}
 		var node sql.Node = plan.NewShowColumns(full, table)
 

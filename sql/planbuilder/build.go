@@ -1,4 +1,4 @@
-package optbuilder
+package planbuilder
 
 import (
 	"strings"
@@ -6,7 +6,6 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	oldparse "github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -24,9 +23,9 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(n)))
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, n)
+		// todo: SELECT INTO
 		//if into := n.GetInto(); into != nil {
 		outScope = inScope.push()
-		//	node, err := oldparse.Parse(b.ctx, query
 
 	case *ast.Analyze:
 		return b.buildAnalyze(inScope, n, query)
@@ -43,7 +42,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.MultiAlterDDL:
 		return b.buildMultiAlterDDL(inScope, query, n)
 	case *ast.DBDDL:
-		//return convertDBDDL(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -51,7 +49,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Explain:
-		//return convertExplain(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -66,7 +63,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		return b.buildUpdate(inScope, n)
 
 	case *ast.Load:
-		//return convertLoad(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -101,7 +97,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope = inScope.push()
 		outScope.node = plan.NewReleaseSavepoint(n.Identifier)
 	case *ast.ChangeReplicationSource:
-		//return convertChangeReplicationSource(n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -109,7 +104,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.ChangeReplicationFilter:
-		//return convertChangeReplicationFilter(n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -127,7 +121,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope = inScope.push()
 		outScope.node = plan.NewResetReplica(n.All)
 	case *ast.BeginEndBlock:
-		//return convertBeginEndBlock(ctx, n, query)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -135,7 +128,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.IfStatement:
-		//return convertIfBlock(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -143,7 +135,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.CaseStatement:
-		//return convertCaseStatement(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -151,7 +142,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Call:
-		//return convertCall(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -159,7 +149,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Declare:
-		//return convertDeclare(ctx, n, query)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -167,7 +156,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.FetchCursor:
-		//return convertFetch(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -175,7 +163,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.OpenCursor:
-		//return convertOpen(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -183,7 +170,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.CloseCursor:
-		//return convertClose(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -191,7 +177,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Loop:
-		//return convertLoop(ctx, n, query)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -199,7 +184,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Repeat:
-		//return convertRepeat(ctx, n, query)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -207,7 +191,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.While:
-		//return convertWhile(ctx, n, query)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -215,7 +198,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Leave:
-		//return convertLeave(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -223,7 +205,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Iterate:
-		//return convertIterate(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -231,7 +212,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Kill:
-		//return convertKill(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -239,7 +219,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Signal:
-		//return convertSignal(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -247,7 +226,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.LockTables:
-		//return convertLockTables(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -255,7 +233,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.UnlockTables:
-		//return convertUnlockTables(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -263,7 +240,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.CreateUser:
-		//return convertCreateUser(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -271,7 +247,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.RenameUser:
-		//return convertRenameUser(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -285,7 +260,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.DropRole:
 		outScope.node = plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...))
 	case *ast.GrantPrivilege:
-		//return convertGrantPrivilege(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -327,7 +301,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.RevokeProxy:
 		outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
 	case *ast.ShowGrants:
-		//return convertShowGrants(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -337,7 +310,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.ShowPrivileges:
 		outScope.node = plan.NewShowPrivileges()
 	case *ast.Flush:
-		//return convertFlush(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -345,7 +317,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Prepare:
-		//return convertPrepare(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -353,7 +324,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Execute:
-		//return convertExecute(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -361,7 +331,6 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		}
 		outScope.node = node
 	case *ast.Deallocate:
-		//return convertDeallocate(ctx, n)
 		outScope = inScope.push()
 		node, err := oldparse.Parse(b.ctx, query)
 		if err != nil {
@@ -370,20 +339,4 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope.node = node
 	}
 	return
-}
-
-func intoToInto(ctx *sql.Context, into *ast.Into, node sql.Node) (sql.Node, error) {
-	if into.Outfile != "" || into.Dumpfile != "" {
-		return nil, sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
-	}
-
-	vars := make([]sql.Expression, len(into.Variables))
-	for i, val := range into.Variables {
-		if strings.HasPrefix(val.String(), "@") {
-			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
-		} else {
-			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
-		}
-	}
-	return plan.NewInto(node, vars), nil
 }

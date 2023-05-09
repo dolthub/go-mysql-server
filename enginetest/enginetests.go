@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"net"
 	"strings"
@@ -43,7 +44,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
-	"github.com/dolthub/go-mysql-server/sql/optbuilder"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -434,8 +434,8 @@ func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expecte
 		ctx := NewContext(harness)
 		var parsed sql.Node
 		var err error
-		if e.Version == analyzer.Version1 {
-			parsed, err = optbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+		if ctx.Version == sql.VersionExperimental {
+			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 		} else {
 			parsed, err = parse.Parse(ctx, query)
 		}

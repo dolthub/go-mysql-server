@@ -14,11 +14,9 @@
 
 package analyzer
 
-import "github.com/dolthub/go-mysql-server/sql"
-
-// OnceBeforeDefault_New contains the rules to be applied just once before the
+// OnceBeforeDefault_Exp contains the rules to be applied just once before the
 // DefaultRules.
-var OnceBeforeDefault_New = []Rule{
+var OnceBeforeDefault_Exp = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
@@ -55,8 +53,8 @@ var OnceBeforeDefault_New = []Rule{
 	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
 }
 
-// DefaultRules_New to apply when analyzing nodes.
-var DefaultRules_New = []Rule{
+// DefaultRules_Exp to apply when analyzing nodes.
+var DefaultRules_Exp = []Rule{
 	{resolveNaturalJoinsId, resolveNaturalJoins},
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
 	{flattenTableAliasesId, flattenTableAliases},         //TODO
@@ -70,17 +68,4 @@ var DefaultRules_New = []Rule{
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
 	{evalFilterId, simplifyFilters}, //TODO inline?
-}
-
-// NewBuilder_New creates a new Builder from a specific catalog.
-// This builder allow us add custom Rules and modify some internal properties.
-func NewBuilder_New(pro sql.DatabaseProvider) *Builder {
-	return &Builder{
-		provider:        pro,
-		onceBeforeRules: OnceBeforeDefault_New,
-		defaultRules:    DefaultRules_New,
-		onceAfterRules:  OnceAfterDefault,
-		validationRules: DefaultValidationRules,
-		afterAllRules:   OnceAfterAll,
-	}
 }

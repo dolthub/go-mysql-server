@@ -1,4 +1,4 @@
-package optbuilder
+package planbuilder
 
 import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"

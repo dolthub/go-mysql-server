@@ -1,18 +1,17 @@
-package optbuilder
+package planbuilder
 
 // The optbuilder package is responsible for:
 // - converting an ast.SQLNode tree into a sql.Node tree
 // - resolving column and table uses.
 //
-// In the future this package will absorb:
-// - type checking and coercion
-// - normalizing expressions into their simplest canonical forms
+// In the future this package will absorb type checking and coercion
+//
+// This package currently does minor expression uniqueness tracking, which
+// should be absorbed by the plan IR.
 //
 // The intermediate phase involves several complications. The first is that
 // there are too many node types for a one-PR pass. Edge cases will fallback to
 // standard name resolving:
-// - DML (INSERT, UPDATE, DELETE, DELETE JOIN, ...)
-// - DDL (ALTER TABLE [ADD/DROP/MODIFY] [INDEX/CHECK], ...)
 // - TRIGGERS
 // - STORED PROCEDURES
 // - PREPARED STATEMENTS
@@ -52,7 +51,7 @@ package optbuilder
 // It is useful to assign unique ids to referencable expressions. It is more
 // difficult to track symbols after substituting execution time indexes.
 //
-// Two main forms of complexity are immediate. The first is that aggregations
+// There are two main complexities. The first is that aggregations
 // are subject to a dizzying set of resolution rules. Resolving valid
 // aggregation variable references is difficult, and tagging invalid
 // aggregations is also difficult.
@@ -121,7 +120,7 @@ package optbuilder
 //
 // We do not have a good way of referencing expressions that are not
 // aggregation functions or table columns. In other databases, expressions are
-// interned when they are added to the memo. So an expression will be evaluated
+// interned when they are added to the plan IR. So an expression will be evaluated
 // and available for reference at the lowest level of the tree it was built. If
 // an aggregation builds an expression, a projection built later will find
 // the reference and avoid re-computing the value. If a relation earlier in the
@@ -137,8 +136,6 @@ package optbuilder
 // TODO:
 // - A lot of validation logic is missing. Ambiguous table names, column names.
 //   Validating strict grouping columns.
-// - Subqueries still a bit broken, it would be nice for expression ids to by
-//   globally incremented.
 // - CTEs and recursive CTEs a bit broken.
 // - Windows (skip on first pass?)
 // - Need to see whether indexing pass is necessary before launching plans into

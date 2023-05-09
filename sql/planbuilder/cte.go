@@ -1,4 +1,4 @@
-package optbuilder
+package planbuilder
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope
 	// resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 	// tree with the subqueries defined in the CTEs.
 
-	// current CTE resolution:
+	// CTE resolution:
 	// - pre-process, get the list of CTEs
 	// - find uses of those CTEs in the regular query body
 	// - replace references to the name with the subquery body
@@ -69,10 +69,10 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		return
 	}
 
-	// TODO resolve non-recusive portion
+	// resolve non-recusive portion
 	leftScope := b.buildSelectStmt(inScope, l)
 
-	// TODO schema for non -recursive portion => recursive table
+	// schema for non-recursive portion => recursive table
 	var rTable *plan.RecursiveTable
 	var rInit sql.Node
 	var recSch sql.Schema
@@ -102,10 +102,6 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		cteScope.node = rTable
 	}
 
-	//leftScope.node = rTable
-	//b.renameSource(leftScope, name, columns)
-
-	// add rTable as a cte reference?
 	rightInScope := inScope.replace()
 	rightInScope.addCte(name, cteScope)
 	rightScope := b.buildSelectStmt(rightInScope, r)

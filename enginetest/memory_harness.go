@@ -20,8 +20,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
-
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -45,7 +43,7 @@ type MemoryHarness struct {
 	session                   sql.Session
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
-	version                   analyzer.Version
+	version                   sql.AnalyzerVersion
 }
 
 var _ Harness = (*MemoryHarness)(nil)
@@ -73,7 +71,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
-		version:                   analyzer.VersionOriginal,
+		version:                   sql.VersionOriginal,
 	}
 }
 
@@ -87,11 +85,11 @@ func NewReadOnlyMemoryHarness() *MemoryHarness {
 	return h
 }
 
-func (m *MemoryHarness) Version() analyzer.Version {
+func (m *MemoryHarness) Version() sql.AnalyzerVersion {
 	return m.version
 }
 
-func (m *MemoryHarness) WithVersion(version analyzer.Version) *MemoryHarness {
+func (m *MemoryHarness) WithVersion(version sql.AnalyzerVersion) *MemoryHarness {
 	ret := *m
 	ret.version = version
 	return &ret
@@ -204,10 +202,12 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 		}
 	}
 
-	return sql.NewContext(
+	ctx := sql.NewContext(
 		context.Background(),
 		sql.WithSession(m.session),
 	)
+	ctx.Version = m.Version()
+	return ctx
 }
 
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {

@@ -1,4 +1,4 @@
-package optbuilder
+package planbuilder
 
 import (
 	"fmt"
@@ -133,7 +133,7 @@ func convertPrivilegeLevel(privLevel sqlparser.PrivilegeLevel) plan.PrivilegeLev
 	}
 }
 
-func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateUser, error) {
+func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (*plan.CreateUser, error) {
 	authUsers := make([]plan.AuthenticatedUser, len(n.Users))
 	for i, user := range n.Users {
 		authUser := plan.AuthenticatedUser{
@@ -271,7 +271,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 	}, nil
 }
 
-func convertRenameUser(ctx *sql.Context, n *sqlparser.RenameUser) (*plan.RenameUser, error) {
+func (b *PlanBuilder) buildRenameUser(inScope *scope, n *sqlparser.RenameUser) (*plan.RenameUser, error) {
 	oldNames := make([]plan.UserName, len(n.Accounts))
 	newNames := make([]plan.UserName, len(n.Accounts))
 	for i, account := range n.Accounts {
@@ -281,7 +281,7 @@ func convertRenameUser(ctx *sql.Context, n *sqlparser.RenameUser) (*plan.RenameU
 	return plan.NewRenameUser(oldNames, newNames), nil
 }
 
-func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan.Grant, error) {
+func (b *PlanBuilder) buildGrantPrivilege(inScope *scope, n *sqlparser.GrantPrivilege) (*plan.Grant, error) {
 	var gau *plan.GrantUserAssumption
 	if n.As != nil {
 		gauType := plan.GrantUserAssumptionType_Default
@@ -309,11 +309,11 @@ func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan
 		convertAccountName(n.To...),
 		n.WithGrantOption,
 		gau,
-		ctx.Session.Client().User,
+		b.ctx.Session.Client().User,
 	)
 }
 
-func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGrants, error) {
+func (b *PlanBuilder) buildShowGrants(inScope *scope, n *sqlparser.ShowGrants) (*plan.ShowGrants, error) {
 	var currentUser bool
 	var user *plan.UserName
 	if n.For != nil {
@@ -321,7 +321,7 @@ func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGra
 		user = &convertAccountName(*n.For)[0]
 	} else {
 		currentUser = true
-		client := ctx.Session.Client()
+		client := b.ctx.Session.Client()
 		user = &plan.UserName{
 			Name:    client.User,
 			Host:    client.Address,
@@ -331,7 +331,7 @@ func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGra
 	return plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...)), nil
 }
 
-func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
+func (b *PlanBuilder) buildFlush(inScope *scope, f *sqlparser.Flush) (sql.Node, error) {
 	var writesToBinlog = true
 	switch strings.ToLower(f.Type) {
 	case "no_write_to_binlog", "local":

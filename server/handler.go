@@ -16,6 +16,7 @@ package server
 
 import (
 	"encoding/base64"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"net"
 	"regexp"
@@ -295,9 +296,19 @@ func (h *Handler) doQuery(
 
 	var remainder string
 	var parsed sql.Node
+	ctx.Version = h.e.Version
 	if mode == MultiStmtModeOn {
 		var prequery string
-		parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
+		switch ctx.Version {
+		case sql.VersionExperimental:
+			parsed, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
+			if err != nil {
+				parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
+				ctx.Version = sql.VersionOriginal
+			}
+		default:
+			parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
+		}
 		if prequery != "" {
 			query = prequery
 		}
@@ -327,7 +338,16 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	if parsed == nil {
-		parsed, err = parse.Parse(ctx, query)
+		switch ctx.Version {
+		case sql.VersionExperimental:
+			parsed, err = planbuilder.Parse(ctx, h.e.Analyzer.Catalog, query)
+			if err != nil {
+				parsed, err = parse.Parse(ctx, query)
+				ctx.Version = sql.VersionOriginal
+			}
+		default:
+			parsed, err = parse.Parse(ctx, query)
+		}
 	}
 	if err != nil {
 		return "", err
