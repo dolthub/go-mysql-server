@@ -1327,6 +1327,26 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE MODIFY column making UNIQUE",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int)",
+			"ALTER TABLE `test` MODIFY column uk int unique",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table test",
+				Expected: []sql.Row{
+					{"test", "CREATE TABLE `test` (\n" +
+						"  `pk` int NOT NULL,\n" +
+						"  `uk` int,\n" +
+						"  PRIMARY KEY (`pk`),\n" +
+						"  UNIQUE KEY `col1` (`col1`),\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE MODIFY column with KEY",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key, mk int, index (mk))",
