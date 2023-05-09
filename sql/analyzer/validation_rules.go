@@ -256,59 +256,64 @@ func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
 	return strings.Contains(val, option), nil
 }
 
-func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// validateGroupBy will check that any GroupBy expressions are valid, depending on if the sql_mode has ONLY_FULL_GROUP_BY
+func validateGroupBy(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_group_by")
 	defer span.End()
 
 	// only enforce strict group by when this variable is set
 	if isStrict, err := checkSqlMode(ctx, "ONLY_FULL_GROUP_BY"); err != nil {
-		return n, transform.SameTree, err
+		return nil, transform.SameTree, err
 	} else if !isStrict {
-		return n, transform.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
+	// TODO: for every group by, all select exprs must appear in the group by
 	var err error
-	var parent sql.Node
-	transform.Inspect(n, func(n sql.Node) bool {
-		defer func() {
-			parent = n
-		}()
-
+	transform.Inspect(node, func(n sql.Node) bool {
 		gb, ok := n.(*plan.GroupBy)
 		if !ok {
 			return true
 		}
 
-		switch parent.(type) {
-		case *plan.Having, *plan.Project, *plan.Sort:
-			// TODO: these shouldn't be skipped; you can group by primary key without problem b/c only one value
-			// https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html#:~:text=The%20query%20is%20valid%20if%20name%20is%20a%20primary%20key
-			return true
-		}
-
-		// Allow the parser use the GroupBy node to eval the aggregation functions
+		// Allow the parser to use the GroupBy node to eval the aggregation functions
 		// for sql statements that don't make use of the GROUP BY expression.
+		// TODO: how is this not an auto fail?
 		if len(gb.GroupByExprs) == 0 {
 			return true
 		}
 
-		var groupBys []string
+		// TODO: traverse the actual expressions here to find getfield expression?
+		groupBys := make(map[string]struct{}, len(gb.GroupByExprs))
 		for _, expr := range gb.GroupByExprs {
-			groupBys = append(groupBys, expr.String())
+			groupBys[expr.String()] = struct{}{} // lowercase?
 		}
 
+		// Ensure that every selected field is referenced in GroupBy expressions
 		for _, expr := range gb.SelectedExprs {
-			if _, ok := expr.(sql.Aggregation); !ok {
-				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					err = analyzererrors.ErrValidationGroupBy.New(expr.String())
+			if _, ok := expr.(sql.Aggregation); ok {
+				continue
+			}
+			isReferenced := false
+			sql.Inspect(expr, func (e sql.Expression) bool {
+				if _, ok := groupBys[e.String()]; ok {
+					isReferenced = true
 					return false
 				}
+				return true
+			})
+			if !isReferenced {
+				err = analyzererrors.ErrValidationGroupBy.New(expr.String())
+				return false
 			}
 		}
 		return true
 	})
 
-	return n, transform.SameTree, err
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	return node, transform.SameTree, nil
 }
 
 func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {

@@ -207,11 +207,13 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "trigger with signal and user var",
-			SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
+			Name:        "DELETE ME",
+			SetUpScript: []string{
+				"create table t (i int, j int)",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
+					Query:    "select i, j from t group by i",
 					Expected: []sql.Row{},
 				},
 			},
@@ -224,11 +226,35 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+
+	//t.Skip()
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name:        "trigger with signal and user var",
+	//		SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
+	//				Expected: []sql.Row{},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	engine.Analyzer.Debug = true
+	//	engine.Analyzer.Verbose = true
+	//
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
