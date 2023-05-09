@@ -82,6 +82,8 @@ type Session interface {
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
+	// UseDatabase notifies sessions that a particular database is now the default DB namespace 
+	UseDatabase(ctx *Context, db Database) error
 	// ID returns the unique ID of the connection.
 	ID() uint32
 	// Warn stores the warning in the session.

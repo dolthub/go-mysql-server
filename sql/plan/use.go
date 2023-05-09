@@ -66,8 +66,12 @@ func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	ctx.SetCurrentDatabase(db.Name())
+	err = ctx.Session.UseDatabase(ctx, db)
+	if err != nil {
+		return nil, err
+	}
 
+	ctx.SetCurrentDatabase(db.Name())
 	return sql.RowsToRowIter(), nil
 }
 
