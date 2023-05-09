@@ -73,9 +73,13 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if err != nil {
 			return err
 		}
-		sv.sysVarVals[varName] = sql.SystemVarValue{
+		svv := sql.SystemVarValue{
 			Var: sysVar,
 			Val: convertedVal,
+		}
+		sv.sysVarVals[varName] = svv
+		if sysVar.NotifyChanged != nil {
+			sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
 		}
 	}
 	return nil
@@ -142,7 +146,11 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	if err != nil {
 		return err
 	}
-	sv.sysVarVals[name] = sql.SystemVarValue{Var: sysVar, Val: convertedVal}
+	svv := sql.SystemVarValue{Var: sysVar, Val: convertedVal}
+	sv.sysVarVals[name] = svv
+	if sysVar.NotifyChanged != nil {
+		sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
+	}
 	return nil
 }
 

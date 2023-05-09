@@ -2071,6 +2071,39 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sq
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
 
+func isUniqueColumn(tableSpec *sqlparser.TableSpec, columnName string) (bool, error) {
+	for _, column := range tableSpec.Columns {
+		if column.Name.String() == columnName {
+			return column.Type.KeyOpt == colKeyUnique ||
+				column.Type.KeyOpt == colKeyUniqueKey, nil
+		}
+	}
+	return false, fmt.Errorf("unknown column name %s", columnName)
+
+}
+
+func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	switch strings.ToLower(ddl.ColumnAction) {
+	case sqlparser.AddStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	case sqlparser.DropStr:
+		return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
+	case sqlparser.RenameStr:
+		return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
+	case sqlparser.ModifyStr, sqlparser.ChangeStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	}
+	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
+}
+
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
 		return convertAlterIndex(ctx, ddl)
@@ -2114,26 +2147,38 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 	}
+
 	if ddl.ColumnAction != "" {
-		switch strings.ToLower(ddl.ColumnAction) {
-		case sqlparser.AddStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
-		case sqlparser.DropStr:
-			return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
-		case sqlparser.RenameStr:
-			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
-		case sqlparser.ModifyStr, sqlparser.ChangeStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+		var alteredTable sql.Node
+		alteredTable, err := newColumnAction(ctx, ddl)
+		if err != nil {
+			return nil, err
 		}
+		if ddl.TableSpec != nil {
+			if len(ddl.TableSpec.Columns) != 1 {
+				return nil, fmt.Errorf("adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
+			}
+			for _, column := range ddl.TableSpec.Columns {
+				isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
+				if err != nil {
+					return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
+				}
+				var comment string
+				if commentVal := column.Type.Comment; commentVal != nil {
+					comment = commentVal.String()
+				}
+				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
+				if isUnique {
+					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment), nil
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		return alteredTable, nil
 	}
+
 	if ddl.AutoIncSpec != nil {
 		return convertAlterAutoIncrement(ddl)
 	}
