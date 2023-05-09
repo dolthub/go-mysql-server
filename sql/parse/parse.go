@@ -2037,7 +2037,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		}
 		if ddl.TableSpec != nil {
 			if len(ddl.TableSpec.Columns) != 1 {
-				return nil, fmt.Errorf("Adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
+				return nil, fmt.Errorf("adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
 			}
 			for _, column := range ddl.TableSpec.Columns {
 				isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
