@@ -807,12 +807,6 @@ func replacePkSortHelper(ctx *sql.Context, scope *Scope, node sql.Node, sortNode
 	switch n := node.(type) {
 	case *plan.Sort:
 		sortNode = n // TODO: this only preserves the most recent Sort node
-	// TODO: possible that we should fix these instead of bailing early
-	case *plan.JoinNode, *plan.Distinct, *plan.RecursiveCte:
-		return n, transform.SameTree, nil
-	// Certain relations collect unordered results and must be sorted afterwards, bail early
-	case *plan.Window, *plan.GroupBy:
-		return n, transform.SameTree, nil
 	// TODO: make this work with IndexedTableAccess, if we are statically sorting by the same col
 	case *plan.ResolvedTable:
 		// No sort node above this, so do nothing
