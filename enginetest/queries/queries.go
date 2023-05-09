@@ -1094,7 +1094,64 @@ Select * from (
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "SELECT s,i FROM mytable order by i DESC;",
+		Expected: []sql.Row{
+			{"third row", int64(3)},
+			{"second row", int64(2)},
+			{"first row", int64(1)},
+		},
+	},
+	{
+		Query: "SELECT s,i FROM mytable as a order by i;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
 			{"third row", int64(3)}},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+			{1, 0},
+			{1, 1},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
+		Expected: []sql.Row{
+			{0, 1},
+			{0, 0},
+			{1, 1},
+			{1, 0},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
+		Expected: []sql.Row{
+			{1, 1},
+			{1, 0},
+			{0, 1},
+			{0, 0},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk2 order by pk1 desc",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+		},
 	},
 	{
 		Query: "SELECT s,i FROM (select i,s FROM mytable) mt;",
@@ -8041,6 +8098,23 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{1, "first row"},
 			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		// Results should be sorted, but they are not
+		Query: `
+SELECT * FROM
+(SELECT * FROM mytable) t
+UNION ALL
+(SELECT * FROM mytable)
+ORDER BY 1;`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{1, "first row"},
+			{2, "second row"},
+			{2, "second row"},
+			{3, "third row"},
 			{3, "third row"},
 		},
 	},

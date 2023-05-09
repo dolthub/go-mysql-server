@@ -522,6 +522,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	}
 	require.Equal(t, rowCount, 3)
 
+	// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
 	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
 	require.NoError(t, err)
 	rowCount = 0

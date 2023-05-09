@@ -279,7 +279,7 @@ func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 		if err != nil {
 			panic(err)
 		}
-		return &IndexedTable{Table: newTable, Idx: i.Index.(*Index)}
+		return &IndexedTable{Table: newTable, Lookup: i}
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
 		newTable, err := newTable(nonPkTea.table, nonPkTea.table.schema)
@@ -302,7 +302,7 @@ func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 		if err != nil {
 			panic(err)
 		}
-		return &IndexedTable{Table: newTable, Idx: i.Index.(*Index)}
+		return &IndexedTable{Table: newTable, Lookup: i}
 	}
 }
 
