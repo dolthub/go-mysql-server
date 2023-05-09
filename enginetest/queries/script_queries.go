@@ -1340,7 +1340,7 @@ var ScriptTests = []ScriptTest{
 						"  `pk` int NOT NULL,\n" +
 						"  `uk` int,\n" +
 						"  PRIMARY KEY (`pk`),\n" +
-						"  UNIQUE KEY `col1` (`col1`),\n" +
+						"  UNIQUE KEY `uk` (`uk`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
