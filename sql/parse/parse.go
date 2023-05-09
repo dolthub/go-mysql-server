@@ -1951,26 +1951,14 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sq
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
 
-func getIndexConstraint(tableSpec *sqlparser.TableSpec, columnName string) (sql.IndexConstraint, error) {
+func isUniqueColumn(tableSpec *sqlparser.TableSpec, columnName string) (bool, error) {
 	for _, column := range tableSpec.Columns {
 		if column.Name.String() == columnName {
-			switch column.Type.KeyOpt {
-			case colKey:
-			case colKeyNone:
-				return sql.IndexConstraint_None, nil
-			case colKeyPrimary:
-				return sql.IndexConstraint_Primary, nil
-			case colKeySpatialKey:
-				return sql.IndexConstraint_Spatial, nil
-			case colKeyUnique:
-			case colKeyUniqueKey:
-				return sql.IndexConstraint_Unique, nil
-			case colKeyFulltextKey:
-				return sql.IndexConstraint_Fulltext, nil
-			}
+			return column.Type.KeyOpt == colKeyUnique ||
+				column.Type.KeyOpt == colKeyUniqueKey, nil
 		}
 	}
-	return 0, fmt.Errorf("unknown column name %s", columnName)
+	return false, fmt.Errorf("unknown column name %s", columnName)
 
 }
 
@@ -2052,7 +2040,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 				return nil, fmt.Errorf("Adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
 			}
 			for _, column := range ddl.TableSpec.Columns {
-				constraint, err := getIndexConstraint(ddl.TableSpec, column.Name.String())
+				isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
 				if err != nil {
 					return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
 				}
@@ -2061,10 +2049,8 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 					comment = commentVal.String()
 				}
 				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
-				if constraint == sql.IndexConstraint_Primary {
-					// The new primary key index will be created when the new column is added. No work needs to be done here.
-				} else if constraint != sql.IndexConstraint_None {
-					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, ddl.IndexSpec.ToName.String(), sql.IndexUsing_BTree, constraint, columns, comment), nil
+				if isUnique {
+					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment), nil
 					if err != nil {
 						return nil, err
 					}
