@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -40,6 +41,9 @@ func (g *groupBy) aggregations() []sql.Expression {
 	for _, agg := range g.aggs {
 		aggregations = append(aggregations, agg)
 	}
+	sort.Slice(aggregations, func(i, j int) bool {
+		return aggregations[i].String() < aggregations[j].String()
+	})
 	return aggregations
 }
 

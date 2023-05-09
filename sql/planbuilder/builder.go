@@ -293,6 +293,7 @@ type PlanBuilder struct {
 	currentDatabase sql.Database
 	colId           columnId
 	tabId           tableId
+	multiDDL        bool
 }
 
 func (b *PlanBuilder) newScope() *scope {

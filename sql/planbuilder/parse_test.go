@@ -250,7 +250,7 @@ Project
  ├─ columns: [xy.x:1!null, SUM(xy.y):4!null as sum(y)]
  └─ Sort((xy.x:1!null - COUNT(xy.y):5!null) ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.y:2!null, xy.x:1!null, SUM(xy.y:2!null), COUNT(xy.y:2!null)
+         ├─ select: xy.y:2!null, xy.x:1!null, COUNT(xy.y:2!null), SUM(xy.y:2!null)
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
@@ -515,7 +515,7 @@ Project
          │   ├─ AVG(xy.x):5
          │   └─ 1 (tinyint)
          └─ GroupBy
-             ├─ select: xy.x:1!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+             ├─ select: xy.x:1!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -543,7 +543,7 @@ Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
  └─ Sort(COUNT(1):5!null ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), COUNT(1 (bigint))
+         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(1 (bigint)), SUM(xy.x:1!null)
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -557,7 +557,7 @@ Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
  └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, AVG(xy.x):7 ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+         ├─ select: xy.x:1!null, xy.y:2!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -571,7 +571,7 @@ Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
  └─ Sort(AVG(xy.x):5 ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+         ├─ select: xy.x:1!null, xy.y:2!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -589,7 +589,7 @@ Project
          │   ├─ AVG(xy.y):5
          │   └─ 1 (tinyint)
          └─ GroupBy
-             ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.y:2!null)
+             ├─ select: xy.x:1!null, xy.y:2!null, AVG(xy.y:2!null), SUM(xy.x:1!null)
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -607,7 +607,7 @@ Project
          │   ├─ AVG(xy.x):5
          │   └─ 1 (tinyint)
          └─ GroupBy
-             ├─ select: xy.x:1!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
+             ├─ select: xy.x:1!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -864,8 +864,9 @@ Project
 		},
 	}
 
-	verbose := true
-	rewrite := true
+	var verbose, rewrite bool
+	//verbose = true
+	//rewrite = true
 
 	var w *bufio.Writer
 	var outputPath string

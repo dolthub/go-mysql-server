@@ -26,6 +26,10 @@ func (b *PlanBuilder) resolveDb(name string) sql.Database {
 }
 
 func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.MultiAlterDDL) (outScope *scope) {
+	b.multiDDL = true
+	defer func() {
+		b.multiDDL = false
+	}()
 	statementsLen := len(c.Statements)
 	if statementsLen == 1 {
 		return b.buildDDL(inScope, query, c.Statements[0])
@@ -205,8 +209,21 @@ func (b *PlanBuilder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *
 		toTables = append(toTables, table.Name.String())
 	}
 
-	outScope.node = plan.NewRenameTable(b.currentDb(), fromTables, toTables)
+	outScope.node = plan.NewRenameTable(b.currentDb(), fromTables, toTables, b.multiDDL)
 	return
+}
+
+func (b *PlanBuilder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bool {
+	for _, column := range tableSpec.Columns {
+		if column.Name.String() == columnName {
+			return column.Type.KeyOpt == colKeyUnique ||
+				column.Type.KeyOpt == colKeyUniqueKey
+		}
+	}
+	err := fmt.Errorf("unknown column name %s", columnName)
+	b.handleErr(err)
+	return false
+
 }
 
 func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
@@ -277,9 +294,28 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 		case ast.ModifyStr, ast.ChangeStr:
 			sch, _ := b.tableSpecToSchema(inScope, ddl.TableSpec, true)
 			outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+		default:
+			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
+			b.handleErr(err)
 		}
-		// TODO default case?
-		return
+		if ddl.TableSpec != nil {
+			if len(ddl.TableSpec.Columns) != 1 {
+				err := fmt.Errorf("adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
+				b.handleErr(err)
+			}
+			for _, column := range ddl.TableSpec.Columns {
+				isUnique := b.isUniqueColumn(ddl.TableSpec, column.Name.String())
+				var comment string
+				if commentVal := column.Type.Comment; commentVal != nil {
+					comment = commentVal.String()
+				}
+				columns := []sql.IndexColumn{{Name: column.Name.String()}}
+				if isUnique {
+					outScope.node = plan.NewAlterCreateIndex(table.Database, outScope.node, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment)
+				}
+			}
+		}
+		return outScope
 	}
 	if ddl.AutoIncSpec != nil {
 		return b.buildAlterAutoIncrement(inScope, ddl)
