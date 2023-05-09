@@ -1334,15 +1334,8 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "show create table test",
-				Expected: []sql.Row{
-					{"test", "CREATE TABLE `test` (\n" +
-						"  `pk` int NOT NULL,\n" +
-						"  `uk` int,\n" +
-						"  PRIMARY KEY (`pk`),\n" +
-						"  UNIQUE KEY `uk` (`uk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-				},
+				Query:       "INSERT INTO test VALUES (1, 1), (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},
