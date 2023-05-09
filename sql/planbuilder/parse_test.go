@@ -16,11 +16,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+type planTest struct {
+	Query        string
+	ExpectedPlan string
+}
+
 func TestPlanBuilder(t *testing.T) {
-	var tests = []struct {
-		Query        string
-		ExpectedPlan string
-	}{
+	var tests = []planTest{
 		{
 			Query: "with cte(y,x) as (select x,y from xy) select * from cte",
 			ExpectedPlan: `
@@ -171,7 +173,7 @@ Project
          ├─ outerVisibility: false
          ├─ cacheable: false
          └─ Project
-             ├─ columns: [uv.u:1!null, uv.v:2!null, uv.w:3!null]
+             ├─ columns: [uv.u:4!null, uv.v:5!null, uv.w:6!null]
              └─ Table
                  ├─ name: uv
                  └─ columns: [u v w]
@@ -188,7 +190,7 @@ Project
      │   └─ right: Subquery
      │       ├─ cacheable: false
      │       └─ Project
-     │           ├─ columns: [uv.u:1!null]
+     │           ├─ columns: [uv.u:4!null]
      │           └─ Filter
      │               ├─ Eq
      │               │   ├─ xy.x:1!null
@@ -219,19 +221,22 @@ Project
 		},
 		{
 			Query: "with recursive cte(s) as (select x from xy union select s from cte join xy on y = s) select * from cte",
-			// todo rcte left messed up
 			ExpectedPlan: `
 Project
- ├─ columns: [cte.s:5!null]
+ ├─ columns: [cte.s:4!null]
  └─ RecursiveCTE
      └─ Union distinct
-         ├─ RecursiveTable(cte)
+         ├─ Project
+         │   ├─ columns: [xy.x:1!null]
+         │   └─ Table
+         │       ├─ name: xy
+         │       └─ columns: [x y z]
          └─ Project
-             ├─ columns: [cte.s:1!null]
+             ├─ columns: [cte.s:4!null]
              └─ InnerJoin
                  ├─ Eq
-                 │   ├─ xy.y:3!null
-                 │   └─ cte.s:1!null
+                 │   ├─ xy.y:6!null
+                 │   └─ cte.s:4!null
                  ├─ RecursiveTable(cte)
                  └─ Table
                      ├─ name: xy
@@ -419,7 +424,7 @@ Project
 			Query: "select s from (select count(*) as s from xy) dt;",
 			ExpectedPlan: `
 Project
- ├─ columns: [dt.s:4!null]
+ ├─ columns: [dt.s:5!null]
  └─ SubqueryAlias
      ├─ name: dt
      ├─ outerVisibility: false
@@ -504,13 +509,13 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:4!null ASC nullsFirst)
+ └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
          │   ├─ AVG(xy.x):5
          │   └─ 1 (tinyint)
          └─ GroupBy
-             ├─ select: xy.x:1!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
+             ├─ select: xy.x:1!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -550,7 +555,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
- └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, AVG(xy.x):5 ASC nullsFirst)
+ └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, AVG(xy.x):7 ASC nullsFirst)
      └─ GroupBy
          ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null), AVG(xy.x:1!null)
          ├─ group: xy.y:2!null
@@ -578,7 +583,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:4!null ASC nullsFirst)
+ └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
          │   ├─ AVG(xy.y):5
@@ -596,7 +601,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(SUM(xy.x) as sum(x):5!null ASC nullsFirst)
+ └─ Sort(SUM(xy.x) as sum(x):4!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
          │   ├─ AVG(xy.x):5
@@ -616,7 +621,7 @@ Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
  │   └─ Project
- │       ├─ columns: [uv.u:1!null]
+ │       ├─ columns: [uv.u:4!null]
  │       └─ Filter
  │           ├─ Eq
  │           │   ├─ xy.x:1!null
@@ -624,16 +629,16 @@ Project
  │           └─ Table
  │               ├─ name: uv
  │               └─ columns: [u v w]
- │   as (select u from uv where x = u)]
+ │  ]
  └─ GroupBy
      ├─ select: Subquery
      │   ├─ cacheable: false
      │   └─ Project
-     │       ├─ columns: [uv.u:1!null]
+     │       ├─ columns: [uv.u:7!null]
      │       └─ Filter
      │           ├─ Eq
      │           │   ├─ xy.x:1!null
-     │           │   └─ uv.u:4!null
+     │           │   └─ uv.u:7!null
      │           └─ Table
      │               ├─ name: uv
      │               └─ columns: [u v w]
@@ -641,11 +646,11 @@ Project
      ├─ group: Subquery
      │   ├─ cacheable: false
      │   └─ Project
-     │       ├─ columns: [uv.u:1!null]
+     │       ├─ columns: [uv.u:7!null]
      │       └─ Filter
      │           ├─ Eq
      │           │   ├─ xy.x:1!null
-     │           │   └─ uv.u:4!null
+     │           │   └─ uv.u:7!null
      │           └─ Table
      │               ├─ name: uv
      │               └─ columns: [u v w]
@@ -660,7 +665,7 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(xy.x:4!null ASC nullsFirst)
+ └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
          ├─ (xy.x:1!null + xy.y:2!null)
          └─ GroupBy
@@ -682,7 +687,7 @@ Project
      │   └─ Subquery
      │       ├─ cacheable: false
      │       └─ Project
-     │           ├─ columns: [dt.u:4!null]
+     │           ├─ columns: [dt.u:7!null]
      │           └─ SubqueryAlias
      │               ├─ name: dt
      │               ├─ outerVisibility: false
@@ -712,7 +717,7 @@ Project
      │   └─ Subquery
      │       ├─ cacheable: false
      │       └─ Project
-     │           ├─ columns: [dt.u:4!null]
+     │           ├─ columns: [dt.u:7!null]
      │           └─ SubqueryAlias
      │               ├─ name: dt
      │               ├─ outerVisibility: false
@@ -741,7 +746,7 @@ Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
  │   └─ Project
- │       ├─ columns: [dt.z:4!null]
+ │       ├─ columns: [dt.z:7!null]
  │       └─ SubqueryAlias
  │           ├─ name: dt
  │           ├─ outerVisibility: false
@@ -755,7 +760,7 @@ Project
  │                   └─ Table
  │                       ├─ name: uv
  │                       └─ columns: [u v w]
- │   as (SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ │  ]
  └─ Table
      ├─ name: xy
      └─ columns: [x y z]
@@ -768,9 +773,9 @@ Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
  │   └─ Project
- │       ├─ columns: [MAX(dt.z):5!null as max(dt.z)]
+ │       ├─ columns: [MAX(dt.z):8!null as max(dt.z)]
  │       └─ GroupBy
- │           ├─ select: dt.z:4!null, MAX(dt.z:4!null)
+ │           ├─ select: dt.z:7!null, MAX(dt.z:7!null)
  │           ├─ group: 
  │           └─ SubqueryAlias
  │               ├─ name: dt
@@ -785,7 +790,7 @@ Project
  │                       └─ Table
  │                           ├─ name: uv
  │                           └─ columns: [u v w]
- │   as (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ │  ]
  └─ Table
      ├─ name: xy
      └─ columns: [x y z]
@@ -793,16 +798,14 @@ Project
 		},
 		{
 			Query: "SELECT xy.*, (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
-			// todo subquery indexing messed up
-			// move counter to builder?
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, Subquery
  │   ├─ cacheable: false
  │   └─ Project
- │       ├─ columns: [MAX(dt.u):5!null as max(dt.u)]
+ │       ├─ columns: [MAX(dt.u):8!null as max(dt.u)]
  │       └─ GroupBy
- │           ├─ select: dt.u:4!null, MAX(dt.u:4!null)
+ │           ├─ select: dt.u:7!null, MAX(dt.u:7!null)
  │           ├─ group: 
  │           └─ SubqueryAlias
  │               ├─ name: dt
@@ -817,7 +820,7 @@ Project
  │                       └─ Table
  │                           ├─ name: uv
  │                           └─ columns: [u v w]
- │   as (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
+ │  ]
  └─ Table
      ├─ name: xy
      └─ columns: [x y z]
@@ -825,12 +828,39 @@ Project
 		},
 		{
 			Query: "select x, x as y from xy order by y",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, xy.x:1!null as y]
+ └─ Sort(xy.x:1!null as y ASC nullsFirst)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
 			Query: "select x, y as x from xy order by y",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, xy.y:2!null as x]
+ └─ Sort(xy.y:2!null ASC nullsFirst)
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
 		},
 		{
 			Query: "select sum(x) as `count(x)` from xy order by `count(x)`;",
+			ExpectedPlan: `
+Project
+ ├─ columns: [SUM(xy.x):4!null as count(x)]
+ └─ Sort(SUM(xy.x):4!null as count(x) ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: xy.x:1!null, SUM(xy.x:1!null)
+         ├─ group: 
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
 		},
 	}
 
@@ -850,7 +880,7 @@ Project
 		require.NoError(t, err)
 
 		w = bufio.NewWriter(f)
-		_, _ = fmt.Fprintf(w, "var %s = []queries.QueryPlanTest{\n", "tests")
+		_, _ = fmt.Fprintf(w, "var %s = []planTest{\n", "tests")
 
 		defer func() {
 			w.WriteString("}\n")

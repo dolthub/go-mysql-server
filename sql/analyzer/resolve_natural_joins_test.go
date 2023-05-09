@@ -48,7 +48,7 @@ func TestResolveNaturalJoins(t *testing.T) {
 	)
 	rule := getRule(resolveNaturalJoinsId)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -105,7 +105,7 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 		),
 	)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -168,7 +168,7 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 		),
 	)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -244,7 +244,7 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		),
 	)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -331,7 +331,7 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 	)
 	rule := getRule(resolveNaturalJoinsId)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -383,7 +383,7 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 	)
 	rule := getRule(resolveNaturalJoinsId)
 
-	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewCrossJoin(

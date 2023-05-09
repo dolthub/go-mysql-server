@@ -265,5 +265,5 @@ func TestConvertCrossJoin(t *testing.T) {
 	}
 	tests = append(tests, nested...)
 
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(replaceCrossJoinsId))
+	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider(), sql.VersionStable), getRule(replaceCrossJoinsId))
 }

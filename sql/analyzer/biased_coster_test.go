@@ -55,7 +55,7 @@ func TestBiasedCoster(t *testing.T) {
 	db.AddTable("xy", xy)
 	db.AddTable("ab", ab)
 
-	a := NewDefault(sql.NewDatabaseProvider(db))
+	a := NewDefault(sql.NewDatabaseProvider(db), sql.VersionStable)
 
 	n := plan.NewInnerJoin(
 		plan.NewResolvedTable(xy, db, nil),

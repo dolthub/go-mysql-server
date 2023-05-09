@@ -304,7 +304,7 @@ func (h *Handler) doQuery(
 			parsed, prequery, remainder, err = planbuilder.ParseOne(ctx, h.e.Analyzer.Catalog, query)
 			if err != nil {
 				parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
-				ctx.Version = sql.VersionOriginal
+				ctx.Version = sql.VersionStable
 			}
 		default:
 			parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
@@ -344,7 +344,7 @@ func (h *Handler) doQuery(
 			if err != nil {
 				ctx.GetLogger().Tracef("experimental planbuilder failed: %s", err)
 				parsed, err = parse.Parse(ctx, query)
-				ctx.Version = sql.VersionOriginal
+				ctx.Version = sql.VersionStable
 			}
 		default:
 			parsed, err = parse.Parse(ctx, query)

@@ -71,7 +71,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
-		version:                   sql.VersionOriginal,
+		version:                   sql.VersionStable,
 	}
 }
 

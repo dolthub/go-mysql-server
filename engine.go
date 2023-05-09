@@ -163,7 +163,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
-	version := sql.VersionOriginal
+	version := sql.VersionStable
 	if ExperimentalGMS {
 		version = sql.VersionExperimental
 	}
@@ -183,7 +183,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
-	version := sql.VersionOriginal
+	version := sql.VersionStable
 	if ExperimentalGMS {
 		version = sql.VersionExperimental
 	}
@@ -241,12 +241,16 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		err      error
 	)
 
+	if ctx.Version == sql.VersionUnknown {
+		ctx.Version = e.Version
+	}
+
 	if parsed == nil {
 		switch ctx.Version {
 		case sql.VersionExperimental:
 			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
 			if err != nil {
-				ctx.Version = sql.VersionOriginal
+				ctx.Version = sql.VersionStable
 				parsed, err = parse.Parse(ctx, query)
 			}
 		default:
@@ -526,7 +530,7 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 	}
 	switch node.(type) {
 	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+			*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
 			return sql.ErrReadOnly.New()
 		} else if e.IsServerLocked {

@@ -547,7 +547,7 @@ func TestApplyHashIn(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(applyHashInId))
+	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider(), sql.VersionStable), getRule(applyHashInId))
 }
 
 func mustNewHashInTuple(ctx *sql.Context, left, right sql.Expression) *expression.HashInTuple {

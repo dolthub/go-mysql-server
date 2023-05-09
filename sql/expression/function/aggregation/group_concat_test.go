@@ -29,12 +29,10 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	assert := require.New(t)
 
 	m := NewGroupConcat("field", nil, ",", nil, 1024)
-	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field separator ',')", m.String())
 
 	m = NewGroupConcat("field", nil, "-", nil, 1024)
-	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field separator '-')", m.String())
 
@@ -44,7 +42,6 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	}
 
 	m = NewGroupConcat("field", sf, "-", nil, 1024)
-	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
 }
@@ -63,7 +60,6 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 	maxLen := maxLenInt.(uint64)
 
 	gc := NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, types.Int64, "int", true)}, int(maxLen))
-	require.NoError(t, err)
 
 	buf, _ := gc.NewBuffer()
 	for _, row := range rows {
@@ -95,11 +91,10 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 
 	for _, tt := range testCases {
 		gc := NewGroupConcat("", nil, ",", tt.expression, tt.maxLen)
-		require.NoError(t, err)
 
 		buf, _ := gc.NewBuffer()
 
-		err = buf.Update(ctx, tt.row)
+		err := buf.Update(ctx, tt.row)
 		require.NoError(t, err)
 
 		_, err = buf.Eval(ctx)

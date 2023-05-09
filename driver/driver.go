@@ -161,7 +161,7 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	d.mu.Lock()
 	db, ok := d.dbs[serverName]
 	if !ok {
-		version := sql.VersionOriginal
+		version := sql.VersionStable
 		if sqle.ExperimentalGMS {
 			version = sql.VersionExperimental
 		}

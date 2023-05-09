@@ -1364,10 +1364,16 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 		var expr sql.Expression
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
-			// TODO check for projection alias first
+			// check for projection alias first
+			c, idx := b.resolveColumn(projScope, e.Qualifier.String(), e.Name.String(), false)
+			if idx >= 0 {
+				c.descending = descending
+				outScope.addColumn(c)
+				continue
+			}
 
-			// add to extra cols
-			c, idx := b.resolveColumn(fromScope, e.Qualifier.String(), e.Name.String(), false)
+			// fromScope col
+			c, idx = b.resolveColumn(fromScope, e.Qualifier.String(), e.Name.String(), false)
 			if idx == -1 {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)

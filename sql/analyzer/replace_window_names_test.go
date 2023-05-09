@@ -323,5 +323,5 @@ func TestReplaceWindowNames(t *testing.T) {
 			err: sql.ErrCircularWindowInheritance,
 		},
 	}
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule(resolveNamedWindowsId))
+	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider(), sql.VersionStable), getRule(resolveNamedWindowsId))
 }

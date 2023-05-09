@@ -611,6 +611,6 @@ type AnalyzerVersion uint8
 
 const (
 	VersionUnknown AnalyzerVersion = iota
-	VersionOriginal
+	VersionStable
 	VersionExperimental
 )

@@ -50,7 +50,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 		),
 	)
 
-	result, _, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+	result, _, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -621,7 +621,7 @@ func TestResolveColumns(t *testing.T) {
 func TestPushdownGroupByAliases(t *testing.T) {
 	require := require.New(t)
 
-	a := NewDefault(nil)
+	a := NewDefault(nil, sql.VersionStable)
 	node := plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,

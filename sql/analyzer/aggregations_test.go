@@ -211,7 +211,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), test.node, nil, DefaultRuleSelector)
+			result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), test.node, nil, DefaultRuleSelector)
 			require.NoError(err)
 			require.Equal(test.expected, result)
 		})
