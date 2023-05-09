@@ -8756,7 +8756,7 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: analyzererrors.ErrStarUnsupported,
 	},
 	{
-		Query:       "create table vb_tbl (vb varbinary(123456789));",
+		Query:          "create table vb_tbl (vb varbinary(123456789));",
 		ExpectedErrStr: "",
 	},
 }
