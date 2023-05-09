@@ -93,25 +93,19 @@ func (d *Div) IsNullable() bool {
 	return d.BinaryExpression.IsNullable()
 }
 
-// Type returns the greatest type for given operation.
+// Type returns the result type for this division expression. For nested division expressions, we prefer sending
+// the result back as a float when possible, since division with floats is more efficient than division with Decimals.
+// However, if this is the outermost division expression in an expression tree, we must return the result as a
+// Decimal type in order to match MySQL's results exactly.
 func (d *Div) Type() sql.Type {
-	//TODO: what if both BindVars? should be constant folded
-	rTyp := d.Right.Type()
-	if types.IsDeferredType(rTyp) {
-		return rTyp
-	}
-	lTyp := d.Left.Type()
-	if types.IsDeferredType(lTyp) {
-		return lTyp
-	}
+	return d.determineResultType(isOutermostDiv(d, 0, d.divScale))
+}
 
-	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return types.Float64
-	}
-
-	// for division operation, it's either float or decimal.Decimal type
-	// except invalid value will result it either 0 or nil
-	return floatOrDecimalType(d)
+// internalType returns the internal result type for this division expression. For performance reasons, we prefer
+// to use floats internally in division operations wherever possible, since division operations on floats can be
+// orders of magnitude faster than division operations on Decimal types.
+func (d *Div) internalType() sql.Type {
+	return d.determineResultType(false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -155,6 +149,12 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// we do not round the value until it's the last division operation.
 	if isOutermostDiv(d, 0, d.divScale) {
+		// We prefer using floats internally for division operations, but if this expressions output type
+		// is a Decimal, make sure we convert the result and return it as a decimal.
+		if types.IsDecimal(d.Type()) {
+			result = convertValueToType(ctx, types.InternalDecimalType, result, false)
+		}
+
 		if res, ok := result.(decimal.Decimal); ok {
 			finalScale := d.divScale*int32(divPrecisionIncrement) + d.leftmostScale
 			if finalScale > types.DecimalTypeMaxScale {
@@ -168,7 +168,6 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return result, nil
-
 }
 
 func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -204,14 +203,15 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	return lval, rval, nil
 }
 
-// convertLeftRight return most appropriate value for left and right from evaluated value,
-// which can might or might not be converted from its original value.
-// It checks for float type column reference, then the both values converted to the same float types.
-// If there is no float type column reference, both values should be handled as decimal type
+// convertLeftRight returns the most appropriate type for left and right evaluated values,
+// which may or may not be converted from its original type.
+// It checks for float type column reference, then the both values converted to the same float type.
+// Integer column references are treated as floats internally for performance reason, but the final result
+// from the expression tree is converted to a Decimal in order to match MySQL's behavior.
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
 func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
-	typ := d.Type()
+	typ := d.internalType()
 	lIsTimeType := types.IsTime(d.Left.Type())
 	rIsTimeType := types.IsTime(d.Right.Type())
 
@@ -290,20 +290,54 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 	return nil, errUnableToCast.New(lval, rval)
 }
 
-// floatOrDecimalType returns either Float64 or decimaltype depending on column reference,
-// left and right expressions types and left and right evaluated types.
+// determineResultType looks at the expressions in the expression tree with this division operation and determines
+// the result type of this division expression. This involves looking at the types of the expressions in the tree,
+// and looking for float types or Decimal types. If |outermostResult| is false, then we prefer to treat ints as floats
+// (instead of Decimals) for performance reasons, but when |outermostResult| is true, we must treat ints as Decimals
+// in order to match MySQL's behavior.
+func (d *Div) determineResultType(outermostResult bool) sql.Type {
+	//TODO: what if both BindVars? should be constant folded
+	rTyp := d.Right.Type()
+	if types.IsDeferredType(rTyp) {
+		return rTyp
+	}
+	lTyp := d.Left.Type()
+	if types.IsDeferredType(lTyp) {
+		return lTyp
+	}
+
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		return types.Float64
+	}
+
+	// For division operations, the result type is always either a float or decimal.Decimal. When working with
+	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
+	// floats than to divide Decimals, but if this is the outermost division operation, we need to
+	// return a decimal in order to match MySQL's results exactly.
+	return floatOrDecimalType(d, !outermostResult)
+}
+
+// floatOrDecimalType returns either Float64 or Decimal type depending on column reference,
+// left and right expression types and left and right evaluated types.
 // If there is float type column reference, the result type is always float
 // regardless of the column reference on the left or right side of division operation.
+// If |treatIntsAsFloats| is true, then integers are treated as floats instead of Decimals. This
+// is a performance optimization for division operations, since float division can be several orders
+// of magnitude faster than division with Decimals.
 // Otherwise, the return type is always decimal. The expression and evaluated types
-// are used to determine appropriate decimaltype to return that will not result in
+// are used to determine appropriate Decimal type to return that will not result in
 // precision loss.
-func floatOrDecimalType(e sql.Expression) sql.Type {
+func floatOrDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
 	var resType sql.Type
 	var decType sql.Type
 	var maxWhole, maxFrac uint8
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
+			if treatIntsAsFloats && types.IsInteger(c.Type()) {
+				resType = types.Float64
+				return false
+			}
 			if types.IsFloat(c.Type()) {
 				resType = types.Float64
 				return false
@@ -450,7 +484,7 @@ func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d,
 	return 0
 }
 
-// isOutermostDiv return whether the expression we're currently on is
+// isOutermostDiv returns whether the expression we're currently evaluating is
 // the last division operation of all continuous divisions.
 // E.g. the top 'div' (divided by 1) is the outermost/last division that is calculated:
 //

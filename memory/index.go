@@ -191,3 +191,7 @@ func getType(val interface{}) (interface{}, sql.Type) {
 func (idx *Index) Order() sql.IndexOrder {
 	return sql.IndexOrderAsc
 }
+
+func (idx *Index) Reversible() bool {
+	return true
+}

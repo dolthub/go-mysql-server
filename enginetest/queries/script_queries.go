@@ -95,6 +95,58 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter keyless table",
+		SetUpScript: []string{
+			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
+			"insert into t values (1, 'one', NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `alter table t modify column c1 int unsigned`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c1", "int unsigned", "YES", "", "NULL", ""},
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    `alter table t drop column c1;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    "alter table t add column new3 int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    `insert into t values ('two', 'two', -2);`,
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+					{"new3", "int", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
+			},
+		},
+	},
+	{
 		Name: "topN stable output",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int)",
@@ -1271,6 +1323,19 @@ var ScriptTests = []ScriptTest{
 					{"pk", "int", "NO", "PRI", "NULL", ""},
 					{"uk", "int", "YES", "UNI", "NULL", "auto_increment"},
 				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column making UNIQUE",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int)",
+			"ALTER TABLE `test` MODIFY column uk int unique",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO test VALUES (1, 1), (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},
@@ -2986,6 +3051,129 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "multi-alter ddl column statements",
+		SetUpScript: []string{
+			"create table tbl_i (i int primary key)",
+			"create table tbl_ij (i int primary key, j int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table tbl_i add column j int, drop column j",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add column j int, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_i add column j int, modify column j varchar(10)",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_ij add index (j), drop column j;",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query:       "alter table tbl_ij drop column j, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "alter table tbl_ij drop column k, rename column j to k;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "alter table tbl_i add index(j), add column j int;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tbl_i",
+				Expected: []sql.Row{
+					{"tbl_i", "CREATE TABLE `tbl_i` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "alter table tbl_ij add index (j), drop column j, add column j int;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tbl_ij",
+				Expected: []sql.Row{
+					{"tbl_ij", "CREATE TABLE `tbl_ij` (\n  `i` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Keyless Table with Unique Index",
+		SetUpScript: []string{
+			"create table a (x int, val int unique)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO a VALUES (1, 1)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO a VALUES (1, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
+		Name: "renaming views with RENAME TABLE ... TO .. statement",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+			{
+				Query:    "rename table v1 to view1",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"view1"}},
+			},
+			{
+				Query:    "rename table view1 to newViewName, t1 to newTableName",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"newTableName"}, {"newViewName"}},
+			},
+		},
+	},
+	{
+		Name: "renaming views with ALTER TABLE ... RENAME .. statement should fail",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+			{
+				Query:       "alter table v1 rename to view1",
+				ExpectedErr: sql.ErrNotBaseTable,
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -4058,9 +4246,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
-					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"uk1", "int", "NO", "MUL", "NULL", "auto_increment"},
+					{"uk1", "int", "YES", "", "NULL", ""},
 				},
 			},
 		},
@@ -4068,23 +4256,25 @@ var BrokenScriptTests = []ScriptTest{
 	{
 		Name: "ALTER TABLE MODIFY column with multiple KEYS",
 		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(uk1, uk2))",
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
 			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "", ""},
-					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
-					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"mk1", "int", "NO", "MUL", "NULL", "auto_increment"},
+					{"mk1", "int", "YES", "", "NULL", ""},
 				},
 			},
 		},
 	},
 	{
-		Name:        "ALTER TABLE RENAME on a column when another column has a default dependency on it",
-		SetUpScript: []string{"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));"},
+		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",
+		SetUpScript: []string{
+			"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));",
+		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "alter table test rename column v2 to mycol",
@@ -4122,9 +4312,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
 			{
@@ -4134,23 +4324,25 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v1", "int", "YES", "", "", ""},
-					{"v2", "int", "NO", "PRI", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v1", "int", "YES", "", "NULL", ""},
+					{"v2", "int", "NO", "PRI", "NULL", ""},
 				},
 			},
-			{ // This last modification ends up with a UNIQUE constraint on pk
+			{
+				// This last modification ends up with a UNIQUE constraint on pk
+				// This is caused by Table.dropColumnFromSchema, not dropping the pkOrdinal, but this causes other problems specific to GMS
 				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v2`, ADD COLUMN v7 int NOT NULL",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "", ""},
-					{"v4", "int", "NO", "", "", ""},
-					{"v5", "int", "NO", "", "", ""},
-					{"v6", "int", "NO", "", "", ""},
-					{"v7", "int", "NO", "", "", ""},
+					{"pk", "int", "NO", "", "NULL", ""},
+					{"v4", "int", "NO", "", "NULL", ""},
+					{"v5", "int", "NO", "", "NULL", ""},
+					{"v6", "int", "NO", "", "NULL", ""},
+					{"v7", "int", "NO", "", "NULL", ""},
 				},
 			},
 		},
@@ -4184,6 +4376,55 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT DISTINCT YM.YW AS YW,\n  (SELECT YW FROM YF WHERE YF.XB = YM.XB) AS YF_YW,\n  (\n    SELECT YW\n    FROM yp\n    WHERE\n      yp.XJ = YM.XJ AND\n      (yp.XL = YM.XL OR (yp.XL IS NULL AND YM.XL IS NULL)) AND\n      yp.XT = nd.XT\n    ) AS YJ,\n  XE AS XE,\n  XI AS YO,\n  XK AS XK,\n  XM AS XM,\n  CASE\n    WHEN YM.XO <> 'Z'\n  THEN YM.XO\n  ELSE NULL\n  END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n    FROM XA\n  ) YM\n  INNER JOIN XS nd\n    ON nd.XV = XF\n  WHERE\n    XB IN (SELECT XB FROM YF) AND\n    (XF IS NOT NULL AND XF <> 'Z')\n  UNION\n  SELECT DISTINCT YL.YW AS YW,\n    (\n      SELECT YW\n      FROM YF\n      WHERE YF.XB = YL.XB\n    ) AS YF_YW,\n    (\n      SELECT YW FROM yp\n      WHERE\n        yp.XJ = YL.XJ AND\n        (yp.XL = YL.XL OR (yp.XL IS NULL AND YL.XL IS NULL)) AND\n        yp.XT = YN.XT\n    ) AS YJ,\n    XE AS XE,\n    XI AS YO,\n    XK AS XK,\n    XM AS XM,\n    CASE WHEN YL.XO <> 'Z' THEN YL.XO ELSE NULL END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n      FROM XA\n  ) YL\n  INNER JOIN XS YN\n    ON YN.XC = YL.XC\n  WHERE\n    XB IN (SELECT XB FROM YF) AND \n    (XF IS NULL OR XF = 'Z');",
 				Expected: []sql.Row{{"", "", "", "", "", "", "", ""}},
+			},
+		},
+	},
+	{
+		Name: "non-existent procedure in trigger body",
+		SetUpScript: []string{
+			"create table tbl_I (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table tbl_i add column j int, add check (j < 10);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
+	{
+		Name: "renaming table name that is referenced in existing view",
+		SetUpScript: []string{
+			"create table t1 (id int primary key, v1 int);",
+			"insert into t1 values (1,1);",
+			"create view v1 as select * from t1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from v1;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "rename table t1 to t2;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "show tables;",
+				Expected: []sql.Row{{"myview"}, {"t2"}, {"v1"}},
+			},
+			{
+				Query:          "select * from v1;",
+				ExpectedErrStr: "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them",
+			},
+			{
+				Query:                 "show create view v1;",
+				Expected:              []sql.Row{{"v1", "CREATE VIEW `v1` AS select * from t1", "utf8mb4", "utf8mb4_0900_bin"}},
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "show warnings;",
+				Expected: []sql.Row{{"Warning", 1356, "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"}},
 			},
 		},
 	},

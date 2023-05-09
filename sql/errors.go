@@ -133,9 +133,6 @@ var (
 	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
 	ErrInvalidTextBlobColumnDefault = errors.NewKind("TEXT, BLOB, GEOMETRY, and JSON types may only have expression default values")
 
-	// ErrInvalidColumnDefaultFunction is returned when an invalid function is used in a default value.
-	ErrInvalidColumnDefaultFunction = errors.NewKind("function `%s` on column `%s` is not valid for usage in a default value")
-
 	// ErrColumnDefaultDatetimeOnlyFunc is returned when a non datetime/timestamp column attempts to declare now/current_timestamp as a default value literal.
 	ErrColumnDefaultDatetimeOnlyFunc = errors.NewKind("only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
 
@@ -554,6 +551,12 @@ var (
 	// ErrLockDeadlock is the go-mysql-server equivalent of ER_LOCK_DEADLOCK. Transactions throwing this error
 	// are automatically rolled back. Clients receiving this error must retry the transaction.
 	ErrLockDeadlock = errors.NewKind("serialization failure: %s, try restarting transaction.")
+
+	// ErrViewsNotSupported is returned when attempting to access a view on a database that doesn't support them.
+	ErrViewsNotSupported = errors.NewKind("database '%s' doesn't support views")
+
+	// ErrNotBaseTable is returned when attempting to rename a view using ALTER TABLE statement.
+	ErrNotBaseTable = errors.NewKind("'%s' is not BASE TABLE")
 
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")

@@ -116,6 +116,7 @@ var _ sql.TableCopierDatabase = PrivilegedDatabase{}
 var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
 var _ sql.CollatedDatabase = PrivilegedDatabase{}
+var _ sql.ViewDatabase = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
 func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database) sql.Database {
@@ -377,11 +378,43 @@ func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
-		return db.UpdateEvent(ctx, ed)
+		return db.UpdateEvent(ctx, originalName, ed)
 	}
 	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+// CreateView implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.CreateView(ctx, name, selectStatement, createViewStmt)
+	}
+	return sql.ErrViewsNotSupported.New(pdb.db.Name())
+}
+
+// DropView implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) DropView(ctx *sql.Context, name string) error {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.DropView(ctx, name)
+	}
+	return sql.ErrViewsNotSupported.New(pdb.db.Name())
+}
+
+// GetViewDefinition implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.GetViewDefinition(ctx, viewName)
+	}
+	return sql.ViewDefinition{}, false, sql.ErrViewsNotSupported.New(pdb.db.Name())
+}
+
+// AllViews implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
+	if db, ok := pdb.db.(sql.ViewDatabase); ok {
+		return db.AllViews(ctx)
+	}
+	return nil, sql.ErrViewsNotSupported.New(pdb.db.Name())
 }
 
 // CopyTableData implements the interface sql.TableCopierDatabase.

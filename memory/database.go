@@ -194,7 +194,11 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 	}
 
 	for _, idxCol := range idxDef.Columns {
-		col := sch.Schema[sch.Schema.IndexOfColName(idxCol.Name)]
+		idx := sch.Schema.IndexOfColName(idxCol.Name)
+		if idx == -1 {
+			return sql.ErrColumnNotFound.New(idxCol.Name)
+		}
+		col := sch.Schema[idx]
 		if col.PrimaryKey && types.IsText(col.Type) && idxCol.Length > 0 {
 			return sql.ErrUnsupportedIndexPrefix.New(col.Name)
 		}
@@ -372,11 +376,15 @@ func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
-	loweredName := strings.ToLower(ed.Name)
+func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+	loweredOriginalName := strings.ToLower(originalName)
+	loweredNewName := strings.ToLower(ed.Name)
 	found := false
 	for i, existingEd := range d.events {
-		if strings.ToLower(existingEd.Name) == loweredName {
+		if loweredOriginalName != loweredNewName && strings.ToLower(existingEd.Name) == loweredNewName {
+			// renaming event to existing name
+			return sql.ErrEventAlreadyExists.New(loweredNewName)
+		} else if strings.ToLower(existingEd.Name) == loweredOriginalName {
 			d.events[i] = ed
 			found = true
 		}

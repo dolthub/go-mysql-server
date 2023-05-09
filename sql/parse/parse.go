@@ -19,6 +19,7 @@ import (
 	goerrors "errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -128,7 +129,7 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 	if err != nil {
 		return nil, err
 	}
-	node, err := convertDDL(ctx, createStmt, parseResult.(*sqlparser.DDL))
+	node, err := convertDDL(ctx, createStmt, parseResult.(*sqlparser.DDL), false)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +169,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		}
 		return convertShow(ctx, n, query)
 	case *sqlparser.DDL:
-		return convertDDL(ctx, query, n)
+		return convertDDL(ctx, query, n, false)
 	case *sqlparser.MultiAlterDDL:
 		return convertMultiAlterDDL(ctx, query, n)
 	case *sqlparser.DBDDL:
@@ -1237,7 +1238,7 @@ func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTable
 	return plan.NewCommonTableExpression(subquery.(*plan.SubqueryAlias), columns), nil
 }
 
-func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL bool) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
 		if c.TriggerSpec != nil {
@@ -1270,9 +1271,12 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		}
 		return convertDropTable(ctx, c)
 	case sqlparser.AlterStr:
+		if c.EventSpec != nil {
+			return convertAlterEvent(ctx, query, c)
+		}
 		return convertAlterTable(ctx, c)
 	case sqlparser.RenameStr:
-		return convertRenameTable(ctx, c)
+		return convertRenameTable(ctx, c, multiAlterDDL)
 	case sqlparser.TruncateStr:
 		return convertTruncateTable(ctx, c)
 	default:
@@ -1280,19 +1284,102 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
+// convertMultiAlterDDL converts MultiAlterDDL statements
+// If there are multiple alter statements, they are sorted in order of their precedence and placed inside a plan.Block
+// Currently, the precedence of DDL statements is:
+// 1.  RENAME COLUMN
+// 2.  DROP COLUMN
+// 3.  MODIFY COLUMN
+// 4.  ADD COLUMN
+// 5.  DROP CHECK/CONSTRAINT
+// 7.  CREATE CHECK/CONSTRAINT
+// 8.  RENAME INDEX
+// 9.  DROP INDEX
+// 10. ADD INDEX
 func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
 	statementsLen := len(c.Statements)
 	if statementsLen == 1 {
-		return convertDDL(ctx, query, c.Statements[0])
+		return convertDDL(ctx, query, c.Statements[0], true)
 	}
 	statements := make([]sql.Node, statementsLen)
 	var err error
 	for i := 0; i < statementsLen; i++ {
-		statements[i], err = convertDDL(ctx, query, c.Statements[i])
+		statements[i], err = convertDDL(ctx, query, c.Statements[i], true)
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	// TODO: add correct precedence for ADD/DROP PRIMARY KEY and (maybe) FOREIGN KEY
+	// certain alter statements need to happen before others
+	sort.Slice(statements, func(i, j int) bool {
+		switch ii := statements[i].(type) {
+		case *plan.RenameColumn:
+			switch statements[j].(type) {
+			case *plan.DropColumn,
+				*plan.ModifyColumn,
+				*plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropColumn:
+			switch statements[j].(type) {
+			case *plan.ModifyColumn,
+				*plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.ModifyColumn:
+			switch statements[j].(type) {
+			case *plan.AddColumn,
+				*plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.AddColumn:
+			switch statements[j].(type) {
+			case *plan.DropConstraint,
+				*plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropConstraint:
+			switch statements[j].(type) {
+			case *plan.DropCheck,
+				*plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropCheck:
+			switch statements[j].(type) {
+			case *plan.CreateCheck,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.CreateCheck:
+			switch statements[j].(type) {
+			case *plan.AlterIndex:
+				return true
+			}
+		// AlterIndex precedence is Rename, Drop, then Create
+		// So statement[i] < statement[j] = statement[i].action > statement[j].action
+		case *plan.AlterIndex:
+			switch jj := statements[j].(type) {
+			case *plan.AlterIndex:
+				return ii.Action > jj.Action
+			}
+		}
+		return false
+	})
 	return plan.NewBlock(statements), nil
 }
 
@@ -1400,8 +1487,16 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	}
 	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
 
+	// both 'undefined' and 'not preserve' are considered 'not preserve'
+	onCompletionPreserve := false
+	if eventSpec.OnCompletionPreserve == sqlparser.EventOnCompletion_Preserve {
+		onCompletionPreserve = true
+	}
+
 	var status plan.EventStatus
 	switch eventSpec.Status {
+	case sqlparser.EventStatus_Undefined:
+		status = plan.EventStatus_Enable
 	case sqlparser.EventStatus_Enable:
 		status = plan.EventStatus_Enable
 	case sqlparser.EventStatus_Disable:
@@ -1460,7 +1555,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	return plan.NewCreateEvent(
 		udb, eventSpec.EventName.Name.String(), definer,
 		at, starts, ends, everyInterval,
-		eventSpec.OnCompletionPreserve,
+		onCompletionPreserve,
 		status, comment, bodyStr, body, eventSpec.IfNotExists,
 	), nil
 }
@@ -1482,6 +1577,115 @@ func convertEventScheduleTimeSpec(ctx *sql.Context, spec *sqlparser.EventSchedul
 		intervals[i] = e
 	}
 	return ts, intervals, nil
+}
+
+func convertAlterEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+	eventSpec := c.EventSpec
+	udb, err := getUnresolvedDatabase(ctx, eventSpec.EventName.Qualifier.String())
+	if err != nil {
+		return nil, err
+	}
+	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
+
+	var (
+		alterSchedule    = eventSpec.OnSchedule != nil
+		at, starts, ends *plan.OnScheduleTimestamp
+		everyInterval    *expression.Interval
+
+		alterOnComp       = eventSpec.OnCompletionPreserve != sqlparser.EventOnCompletion_Undefined
+		newOnCompPreserve = eventSpec.OnCompletionPreserve == sqlparser.EventOnCompletion_Preserve
+
+		alterEventName = !eventSpec.RenameName.IsEmpty()
+		newName        string
+
+		alterStatus = eventSpec.Status != sqlparser.EventStatus_Undefined
+		newStatus   plan.EventStatus
+
+		alterComment = eventSpec.Comment != nil
+		newComment   string
+
+		alterDefinition  = eventSpec.Body != nil
+		newDefinitionStr string
+		newDefinition    sql.Node
+	)
+
+	if alterSchedule {
+		if eventSpec.OnSchedule.At != nil {
+			ts, intervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.At)
+			if err != nil {
+				return nil, err
+			}
+			at = plan.NewOnScheduleTimestamp(ts, intervals)
+		} else {
+			every, err := intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
+			if err != nil {
+				return nil, err
+			}
+
+			var ok bool
+			everyInterval, ok = every.(*expression.Interval)
+			if !ok {
+				return nil, fmt.Errorf("expected everyInterval but got: %s", every)
+			}
+
+			if eventSpec.OnSchedule.Starts != nil {
+				startsTs, startsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Starts)
+				if err != nil {
+					return nil, err
+				}
+				starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+			}
+			if eventSpec.OnSchedule.Ends != nil {
+				endsTs, endsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
+				if err != nil {
+					return nil, err
+				}
+				ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+			}
+		}
+	}
+	if alterEventName {
+		// events can be moved to different database using RENAME TO clause option
+		// TODO: we do not support moving events to different database yet
+		renameEventDb := eventSpec.RenameName.Qualifier.String()
+		if renameEventDb != "" && udb.Name() != renameEventDb {
+			return nil, fmt.Errorf("moving events to different database using ALTER EVENT is not supported yet")
+		}
+		newName = eventSpec.RenameName.Name.String()
+	}
+	if alterStatus {
+		switch eventSpec.Status {
+		case sqlparser.EventStatus_Undefined:
+			// this should not happen but sanity check
+			newStatus = plan.EventStatus_Enable
+		case sqlparser.EventStatus_Enable:
+			newStatus = plan.EventStatus_Enable
+		case sqlparser.EventStatus_Disable:
+			newStatus = plan.EventStatus_Disable
+		case sqlparser.EventStatus_DisableOnSlave:
+			newStatus = plan.EventStatus_DisableOnSlave
+		}
+	}
+	if alterComment {
+		newComment = string(eventSpec.Comment.Val)
+	}
+	if alterDefinition {
+		newDefinitionStr = strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+		newDefinition, err = convert(ctx, c.EventSpec.Body, newDefinitionStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewAlterEvent(
+		udb, eventSpec.EventName.Name.String(), definer,
+		alterSchedule, at, starts, ends, everyInterval,
+		alterOnComp, newOnCompPreserve,
+		alterEventName, newName,
+		alterStatus, newStatus,
+		alterComment, newComment,
+		alterDefinition, newDefinitionStr, newDefinition,
+	), nil
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
@@ -1851,7 +2055,7 @@ func convertSignalConditionItemName(name sqlparser.SignalConditionItemName) (pla
 	}
 }
 
-func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sql.Node, error) {
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
 	}
@@ -1864,7 +2068,40 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) 
 		toTables = append(toTables, table.Name.String())
 	}
 
-	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables), nil
+	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
+}
+
+func isUniqueColumn(tableSpec *sqlparser.TableSpec, columnName string) (bool, error) {
+	for _, column := range tableSpec.Columns {
+		if column.Name.String() == columnName {
+			return column.Type.KeyOpt == colKeyUnique ||
+				column.Type.KeyOpt == colKeyUniqueKey, nil
+		}
+	}
+	return false, fmt.Errorf("unknown column name %s", columnName)
+
+}
+
+func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	switch strings.ToLower(ddl.ColumnAction) {
+	case sqlparser.AddStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	case sqlparser.DropStr:
+		return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
+	case sqlparser.RenameStr:
+		return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
+	case sqlparser.ModifyStr, sqlparser.ChangeStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	}
+	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
 
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -1910,26 +2147,38 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 	}
+
 	if ddl.ColumnAction != "" {
-		switch strings.ToLower(ddl.ColumnAction) {
-		case sqlparser.AddStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
-		case sqlparser.DropStr:
-			return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
-		case sqlparser.RenameStr:
-			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
-		case sqlparser.ModifyStr, sqlparser.ChangeStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+		var alteredTable sql.Node
+		alteredTable, err := newColumnAction(ctx, ddl)
+		if err != nil {
+			return nil, err
 		}
+		if ddl.TableSpec != nil {
+			if len(ddl.TableSpec.Columns) != 1 {
+				return nil, fmt.Errorf("adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
+			}
+			for _, column := range ddl.TableSpec.Columns {
+				isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
+				if err != nil {
+					return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
+				}
+				var comment string
+				if commentVal := column.Type.Comment; commentVal != nil {
+					comment = commentVal.String()
+				}
+				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
+				if isUnique {
+					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment), nil
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		return alteredTable, nil
 	}
+
 	if ddl.AutoIncSpec != nil {
 		return convertAlterAutoIncrement(ddl)
 	}
