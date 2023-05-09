@@ -1327,6 +1327,19 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE MODIFY column making UNIQUE",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int)",
+			"ALTER TABLE `test` MODIFY column uk int unique",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO test VALUES (1, 1), (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE MODIFY column with KEY",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key, mk int, index (mk))",
