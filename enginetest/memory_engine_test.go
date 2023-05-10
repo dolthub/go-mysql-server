@@ -206,7 +206,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "DELETE ME",
+			Name: "DELETE ME",
 			SetUpScript: []string{
 				"create table one_pk (pk int primary key, c int)",
 			},
