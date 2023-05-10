@@ -204,12 +204,11 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name:        "DELETE ME",
 			SetUpScript: []string{
-				"create table t (i int, j int)",
+				"create table t (i int primary key, j int)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{

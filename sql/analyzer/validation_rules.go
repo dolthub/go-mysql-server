@@ -268,7 +268,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		return node, transform.SameTree, nil
 	}
 
-	// TODO: for every group by, all select exprs must appear in the group by
 	var err error
 	transform.Inspect(node, func(n sql.Node) bool {
 		gb, ok := n.(*plan.GroupBy)
@@ -278,18 +277,37 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 
 		// Allow the parser to use the GroupBy node to eval the aggregation functions
 		// for sql statements that don't make use of the GROUP BY expression.
-		// TODO: how is this not an auto fail?
 		if len(gb.GroupByExprs) == 0 {
 			return true
 		}
 
-		// TODO: traverse the actual expressions here to find getfield expression?
 		groupBys := make(map[string]struct{}, len(gb.GroupByExprs))
+		groupByCols := make(map[string]struct{}, len(gb.GroupByExprs))
 		for _, expr := range gb.GroupByExprs {
-			groupBys[expr.String()] = struct{}{} // lowercase?
+			groupBys[expr.String()] = struct{}{}
+			if gf, ok := expr.(*expression.GetField); ok {
+				groupByCols[gf.Name()] = struct{}{}
+			}
 		}
 
-		// Ensure that every selected field is referenced in GroupBy expressions
+		// If all PK cols are in GROUP BY exprs, we can select anything without violating ONLY_FULL_GROUP_BY
+		resTbl := getResolvedTable(gb)
+		if resTbl != nil {
+			if idxTbl, ok := resTbl.Table.(sql.IndexAddressableTable); ok {
+				refsAllPKs := true
+				for _, col := range idxTbl.Schema() {
+					if _, ok := groupByCols[col.Name]; !ok && col.PrimaryKey {
+						refsAllPKs = false
+						break
+					}
+				}
+				if refsAllPKs {
+					return true
+				}
+			}
+		}
+
+		// Every expr in SELECT ... must be in GROUP BY ...
 		for _, expr := range gb.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); ok {
 				continue
