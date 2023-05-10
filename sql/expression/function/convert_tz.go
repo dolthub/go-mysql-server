@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
