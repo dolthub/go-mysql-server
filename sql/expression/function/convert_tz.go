@@ -97,14 +97,12 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	globalTimeZone, _, _ := sql.SystemVariables.GetGlobal("time_zone")
-
 	fromStr, ok := from.(string)
 	if !ok {
 		return nil, nil
 	}
 
-	if fromStr == globalTimeZone.Default {
+	if fromStr == "SYSTEM" {
 		fromStr = gmstime.SystemTimezoneOffset()
 	}
 
@@ -113,7 +111,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if toStr == globalTimeZone.Default {
+	if toStr == "SYSTEM" {
 		toStr = gmstime.SystemTimezoneOffset()
 	}
 
