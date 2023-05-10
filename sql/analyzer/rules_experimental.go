@@ -66,6 +66,6 @@ var DefaultRules_Exp = []Rule{
 	{resolveSubqueriesId, resolveSubqueries},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
 	{replaceCrossJoinsId, replaceCrossJoins},
-	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
-	{evalFilterId, simplifyFilters}, //TODO inline?
+	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
+	{evalFilterId, simplifyFilters},                       //TODO inline?
 }

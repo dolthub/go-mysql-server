@@ -84,6 +84,8 @@ func (c *coster) costRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float6
 		return c.costFullOuterJoin(ctx, n, s)
 	case *concatJoin:
 		return c.costConcatJoin(ctx, n, s)
+	case *recursiveCte:
+		return c.costRecursiveCte(ctx, n, s)
 	case *project:
 		return c.costProject(ctx, n, s)
 	case *distinct:
@@ -183,6 +185,10 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *concatJoin, _ sql.StatsReader
 	return l*mult*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.right.relProps.card*seqIOCostFactor, nil
 }
 
+func (c *coster) costRecursiveCte(_ *sql.Context, n *recursiveCte, _ sql.StatsReader) (float64, error) {
+	return 1000 * seqIOCostFactor, nil
+}
+
 func (c *coster) costProject(_ *sql.Context, n *project, _ sql.StatsReader) (float64, error) {
 	return n.child.relProps.card * cpuCostFactor, nil
 }
@@ -275,6 +281,8 @@ func (c *carder) cardRel(ctx *sql.Context, n relExpr, s sql.StatsReader) (float6
 		return c.statsRecursiveTable(ctx, n, s)
 	case *subqueryAlias:
 		return c.statsSubqueryAlias(ctx, n, s)
+	case *recursiveCte:
+		return c.statsRecursiveCte(ctx, n, s)
 	case *max1Row:
 		return c.statsMax1RowSubquery(ctx, n, s)
 	case *tableFunc:
@@ -342,6 +350,11 @@ func (c *carder) statsRecursiveTable(_ *sql.Context, t *recursiveTable, _ sql.St
 }
 
 func (c *carder) statsSubqueryAlias(_ *sql.Context, _ *subqueryAlias, _ sql.StatsReader) (float64, error) {
+	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
+	return 1000, nil
+}
+
+func (c *carder) statsRecursiveCte(_ *sql.Context, _ *recursiveCte, _ sql.StatsReader) (float64, error) {
 	// TODO: if the whole plan was memo, we would have accurate costs for subqueries
 	return 1000, nil
 }

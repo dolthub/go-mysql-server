@@ -68,11 +68,10 @@ func expressionCoversJoin(c sql.Expression, j *plan.JoinNode) (found bool) {
 
 // replaceCrossJoins recursively replaces filter nested cross joins with equivalent inner joins.
 // There are 3 phases after we identify a Filter -> ... -> CrossJoin pattern.
-// 1) Build a list of disjunct predicate expressions by top-down splitting conjunctions (AND).
-// 2) For every CrossJoin, check whether a subset of predicates covers as join conditions,
-//    and create a new InnerJoin with the matching predicates.
-// 3) Remove predicates from the parent Filter that have been pushed into InnerJoins.
-
+//  1. Build a list of disjunct predicate expressions by top-down splitting conjunctions (AND).
+//  2. For every CrossJoin, check whether a subset of predicates covers as join conditions,
+//     and create a new InnerJoin with the matching predicates.
+//  3. Remove predicates from the parent Filter that have been pushed into InnerJoins.
 func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil

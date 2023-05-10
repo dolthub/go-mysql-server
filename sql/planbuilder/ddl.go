@@ -729,8 +729,8 @@ func (b *PlanBuilder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (ou
 
 	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
 	for i, col := range ddl.IndexSpec.Columns {
-		c, idx := b.resolveColumn(inScope, tabName, col.Column.String(), true)
-		if idx == -1 {
+		c, ok := b.resolveColumn(inScope, tabName, col.Column.String(), true)
+		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(col.Column.String()))
 		}
 		cols[i] = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)

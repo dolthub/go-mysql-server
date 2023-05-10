@@ -8320,6 +8320,10 @@ type QueryErrorTest struct {
 }
 
 var ErrorQueries = []QueryErrorTest{
+	//{
+	//	Query: "with a(j) as (select 1) select j from a union select x from xy order by x;",
+	//  ExpectedErrStr: "Unknown column 'x' in 'order clause'"
+	//},
 	{
 		Query:       "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a order by 1 asc;",
 		ExpectedErr: sql.ErrConflictingExternalQuery,
