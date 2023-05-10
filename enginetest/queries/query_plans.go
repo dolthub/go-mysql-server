@@ -7041,6 +7041,7 @@ inner join pq on true
 			"",
 	},
 	{
+		// TODO this is an invalid query
 		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +

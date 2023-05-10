@@ -214,9 +214,7 @@ Project
      ├─ cacheable: false
      └─ Project
          ├─ columns: [1 (tinyint)]
-         └─ Table
-             ├─ name: 
-             └─ columns: []
+         └─ EmptyTable
 `,
 		},
 		{
@@ -224,23 +222,27 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [cte.s:4!null]
- └─ RecursiveCTE
-     └─ Union distinct
-         ├─ Project
-         │   ├─ columns: [xy.x:1!null]
-         │   └─ Table
-         │       ├─ name: xy
-         │       └─ columns: [x y z]
-         └─ Project
-             ├─ columns: [cte.s:4!null]
-             └─ InnerJoin
-                 ├─ Eq
-                 │   ├─ xy.y:6!null
-                 │   └─ cte.s:4!null
-                 ├─ RecursiveTable(cte)
-                 └─ Table
-                     ├─ name: xy
-                     └─ columns: [x y z]
+ └─ SubqueryAlias
+     ├─ name: cte
+     ├─ outerVisibility: false
+     ├─ cacheable: false
+     └─ RecursiveCTE
+         └─ Union distinct
+             ├─ Project
+             │   ├─ columns: [xy.x:1!null]
+             │   └─ Table
+             │       ├─ name: xy
+             │       └─ columns: [x y z]
+             └─ Project
+                 ├─ columns: [cte.s:4!null]
+                 └─ InnerJoin
+                     ├─ Eq
+                     │   ├─ xy.y:6!null
+                     │   └─ cte.s:4!null
+                     ├─ RecursiveTable(cte)
+                     └─ Table
+                         ├─ name: xy
+                         └─ columns: [x y z]
 `,
 		},
 		{
@@ -250,7 +252,7 @@ Project
  ├─ columns: [xy.x:1!null, SUM(xy.y):4!null as sum(y)]
  └─ Sort((xy.x:1!null - COUNT(xy.y):5!null) ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.y:2!null, xy.x:1!null, COUNT(xy.y:2!null), SUM(xy.y:2!null)
+         ├─ select: COUNT(xy.y:2!null), SUM(xy.y:2!null), xy.x:1!null
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
@@ -264,7 +266,7 @@ Project
  ├─ columns: [SUM(xy.x):4!null as sum(x)]
  └─ Sort(xy.y:2!null ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, SUM(xy.x:1!null), xy.y:2!null
+         ├─ select: SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
@@ -278,7 +280,7 @@ Project
  ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
  └─ Sort(COUNT(xy.x):4!null DESC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(xy.x:1!null)
+         ├─ select: COUNT(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -291,7 +293,7 @@ Project
 Project
  ├─ columns: [COUNT(xy.x):4!null as count(x)]
  └─ GroupBy
-     ├─ select: xy.x:1!null, COUNT(xy.x:1!null)
+     ├─ select: COUNT(xy.x:1!null)
      ├─ group: 
      └─ Table
          ├─ name: xy
@@ -305,7 +307,7 @@ Project
  ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
  └─ Sort(xy.y:2!null DESC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(xy.x:1!null)
+         ├─ select: COUNT(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -319,7 +321,7 @@ Project
  ├─ columns: [xy.y:2!null, COUNT(xy.x):4!null as count(x)]
  └─ Sort(xy.y:2!null ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(xy.x:1!null)
+         ├─ select: COUNT(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -332,7 +334,7 @@ Project
 Project
  ├─ columns: [COUNT(xy.x):4!null as count_1, (xy.y:2!null + xy.z:3!null) as lx]
  └─ GroupBy
-     ├─ select: xy.x:1!null, (xy.x:1!null + xy.z:3!null), COUNT(xy.x:1!null), xy.y:2!null, xy.z:3!null
+     ├─ select: COUNT(xy.x:1!null), xy.y:2!null, xy.z:3!null
      ├─ group: (xy.x:1!null + xy.z:3!null)
      └─ Table
          ├─ name: xy
@@ -345,7 +347,7 @@ Project
 Project
  ├─ columns: [COUNT(xy.x):4!null as count_1, (xy.x:1!null + xy.z:3!null) as lx]
  └─ GroupBy
-     ├─ select: xy.x:1!null, (xy.x:1!null + xy.z:3!null), COUNT(xy.x:1!null), xy.z:3!null
+     ├─ select: COUNT(xy.x:1!null), xy.x:1!null, xy.z:3!null
      ├─ group: (xy.x:1!null + xy.z:3!null)
      └─ Table
          ├─ name: xy
@@ -445,7 +447,7 @@ Project
 Project
  ├─ columns: [COUNT(1):4!null as count(*), (xy.x:1!null + xy.y:2!null) as r]
  └─ GroupBy
-     ├─ select: xy.x:1!null, xy.y:2!null, COUNT(1 (bigint))
+     ├─ select: COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
      ├─ group: xy.x:1!null, xy.y:2!null
      └─ Table
          ├─ name: xy
@@ -458,7 +460,7 @@ Project
 Project
  ├─ columns: [COUNT(1):4!null as count(*), (xy.x:1!null + xy.y:2!null) as r]
  └─ GroupBy
-     ├─ select: (xy.x:1!null + xy.y:2!null), COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
+     ├─ select: COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
      ├─ group: (xy.x:1!null + xy.y:2!null)
      └─ Table
          ├─ name: xy
@@ -471,7 +473,7 @@ Project
 Project
  ├─ columns: [COUNT(1):4!null as count(*)]
  └─ GroupBy
-     ├─ select: (1 (tinyint) + 2 (tinyint)), COUNT(1 (bigint))
+     ├─ select: COUNT(1 (bigint))
      ├─ group: (1 (tinyint) + 2 (tinyint))
      └─ Table
          ├─ name: xy
@@ -484,7 +486,7 @@ Project
 Project
  ├─ columns: [COUNT(1):4!null as count(*), upper(xy.x) as upper(x)]
  └─ GroupBy
-     ├─ select: upper(xy.x), COUNT(1 (bigint)), xy.x:1!null
+     ├─ select: COUNT(1 (bigint)), xy.x:1!null
      ├─ group: upper(xy.x)
      └─ Table
          ├─ name: xy
@@ -497,7 +499,7 @@ Project
 Project
  ├─ columns: [xy.y:2!null, COUNT(1):4!null as count(*), xy.z:3!null]
  └─ GroupBy
-     ├─ select: xy.y:2!null, xy.z:3!null, COUNT(1 (bigint))
+     ├─ select: COUNT(1 (bigint)), xy.y:2!null, xy.z:3!null
      ├─ group: xy.y:2!null, xy.z:3!null
      └─ Table
          ├─ name: xy
@@ -515,7 +517,7 @@ Project
          │   ├─ AVG(xy.x):5
          │   └─ 1 (tinyint)
          └─ GroupBy
-             ├─ select: xy.x:1!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
+             ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -529,7 +531,7 @@ Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
  └─ Sort((SUM(xy.x):4!null + 1 (tinyint)) ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, SUM(xy.x:1!null)
+         ├─ select: SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -543,7 +545,7 @@ Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
  └─ Sort(COUNT(1):5!null ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, COUNT(1 (bigint)), SUM(xy.x:1!null)
+         ├─ select: COUNT(1 (bigint)), SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -557,7 +559,7 @@ Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
  └─ Sort((SUM(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, SUM(xy.x):4!null ASC nullsFirst, AVG(xy.x):7 ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
+         ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -571,7 +573,7 @@ Project
  ├─ columns: [xy.y:2!null, SUM(xy.x):4!null as SUM(x)]
  └─ Sort(AVG(xy.x):5 ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, xy.y:2!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
+         ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.y:2!null
          ├─ group: xy.y:2!null
          └─ Table
              ├─ name: xy
@@ -589,7 +591,7 @@ Project
          │   ├─ AVG(xy.y):5
          │   └─ 1 (tinyint)
          └─ GroupBy
-             ├─ select: xy.x:1!null, xy.y:2!null, AVG(xy.y:2!null), SUM(xy.x:1!null)
+             ├─ select: AVG(xy.y:2!null), SUM(xy.x:1!null), xy.x:1!null, xy.y:2!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -601,13 +603,13 @@ Project
 			ExpectedPlan: `
 Project
  ├─ columns: [xy.x:1!null, SUM(xy.x):4!null as sum(x)]
- └─ Sort(SUM(xy.x) as sum(x):4!null ASC nullsFirst)
+ └─ Sort(SUM(xy.x):4!null as sum(x) ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
          │   ├─ AVG(xy.x):5
          │   └─ 1 (tinyint)
          └─ GroupBy
-             ├─ select: xy.x:1!null, AVG(xy.x:1!null), SUM(xy.x:1!null)
+             ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -631,18 +633,7 @@ Project
  │               └─ columns: [u v w]
  │  ]
  └─ GroupBy
-     ├─ select: Subquery
-     │   ├─ cacheable: false
-     │   └─ Project
-     │       ├─ columns: [uv.u:7!null]
-     │       └─ Filter
-     │           ├─ Eq
-     │           │   ├─ xy.x:1!null
-     │           │   └─ uv.u:7!null
-     │           └─ Table
-     │               ├─ name: uv
-     │               └─ columns: [u v w]
-     │  , xy.x:1!null
+     ├─ select: 
      ├─ group: Subquery
      │   ├─ cacheable: false
      │   └─ Project
@@ -669,7 +660,7 @@ Project
      └─ Having
          ├─ (xy.x:1!null + xy.y:2!null)
          └─ GroupBy
-             ├─ select: xy.x:1!null, SUM(xy.x:1!null), xy.y:2!null
+             ├─ select: SUM(xy.x:1!null), xy.x:1!null, xy.y:2!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy
@@ -775,7 +766,7 @@ Project
  │   └─ Project
  │       ├─ columns: [MAX(dt.z):8!null as max(dt.z)]
  │       └─ GroupBy
- │           ├─ select: dt.z:7!null, MAX(dt.z:7!null)
+ │           ├─ select: MAX(dt.z:7!null)
  │           ├─ group: 
  │           └─ SubqueryAlias
  │               ├─ name: dt
@@ -805,7 +796,7 @@ Project
  │   └─ Project
  │       ├─ columns: [MAX(dt.u):8!null as max(dt.u)]
  │       └─ GroupBy
- │           ├─ select: dt.u:7!null, MAX(dt.u:7!null)
+ │           ├─ select: MAX(dt.u:7!null)
  │           ├─ group: 
  │           └─ SubqueryAlias
  │               ├─ name: dt
@@ -855,7 +846,7 @@ Project
  ├─ columns: [SUM(xy.x):4!null as count(x)]
  └─ Sort(SUM(xy.x):4!null as count(x) ASC nullsFirst)
      └─ GroupBy
-         ├─ select: xy.x:1!null, SUM(xy.x:1!null)
+         ├─ select: SUM(xy.x:1!null)
          ├─ group: 
          └─ Table
              ├─ name: xy
