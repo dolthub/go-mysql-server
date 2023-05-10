@@ -313,7 +313,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				continue
 			}
 			isReferenced := false
-			sql.Inspect(expr, func (e sql.Expression) bool {
+			sql.Inspect(expr, func(e sql.Expression) bool {
 				if _, ok := groupBys[e.String()]; ok {
 					isReferenced = true
 					return false
