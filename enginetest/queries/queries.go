@@ -8784,12 +8784,12 @@ var BrokenErrorQueries = []QueryErrorTest{
 		// No error
 	},
 	{
-		Query: "select * from two_pk group by pk1",
+		Query:       "select * from two_pk group by pk1",
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
 	{
 		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
+		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
 	{
