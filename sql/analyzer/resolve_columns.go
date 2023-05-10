@@ -832,7 +832,6 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[ta
 			}
 		case *plan.Values:
 			// values nodes don't have a schema to index like other nodes that provide columns
-		case *plan.EmptyTable:
 		default:
 			indexSchema(n.Schema())
 		}
