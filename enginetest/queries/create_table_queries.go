@@ -228,6 +228,26 @@ var CreateTableQueries = []WriteQueryTest{
 	},
 }
 
+var CreateTableScriptTests = []ScriptTest{
+	{
+		Name: "Validate that CREATE LIKE preserves checks",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, test_score int, height int CHECK (height < 10) , CONSTRAINT mycheck CHECK (test_score >= 50))",
+			"CREATE TABLE t2 LIKE t1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t2 VALUE (1, 40, 5)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "INSERT INTO t2 VALUE (1, 60, 15)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
+}
+
 var BrokenCreateTableQueries = []WriteQueryTest{
 	{
 		WriteQuery:          `create table t1 (b blob, primary key(b(1)))`,

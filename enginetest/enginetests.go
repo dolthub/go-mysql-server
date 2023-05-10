@@ -1987,6 +1987,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		RunWriteQueryTest(t, harness, tt)
 	}
 
+	for _, script := range queries.CreateTableScriptTests {
+		TestScriptPrepared(t, harness, script)
+	}
+
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
