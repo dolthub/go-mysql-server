@@ -308,6 +308,10 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		if err != nil {
 			return nil, err
 		}
+		// we need to have a separate check for varbinary, as CreateString checks varbinary against json limit
+		if length > varcharVarbinaryMax {
+			return nil, ErrLengthTooLarge.New(length, varcharVarbinaryMax)
+		}
 		return CreateString(sqltypes.VarBinary, length, sql.Collation_binary)
 	case "year":
 		return Year, nil
