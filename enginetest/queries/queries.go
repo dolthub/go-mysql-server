@@ -8774,6 +8774,34 @@ var BrokenErrorQueries = []QueryErrorTest{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
+
+	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL
+	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
+	// Special case: If you are grouping by every field of the PK, then you can select anything
+	// Otherwise, whatever you are selecting must be in the Group By (with the exception of aggregations)
+	{
+		Query: "select * from two_pk group by pk1, pk2",
+		// No error
+	},
+	{
+		Query: "select * from two_pk group by pk1",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query: "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
+		// No error
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
+		// No error
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
