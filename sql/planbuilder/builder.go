@@ -595,9 +595,9 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			if cteScope := inScope.getCte(e.Name.String()); cteScope != nil {
 				outScope = cteScope.copy()
 				outScope.parent = inScope
-				return
+			} else {
+				outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
 			}
-			outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
 			if t.As.String() != "" {
 				tAlias := strings.ToLower(t.As.String())
 				outScope.setTableAlias(tAlias)
@@ -702,13 +702,13 @@ func (b *PlanBuilder) buildResolvedTable(tab, db string, asOf interface{}) *plan
 
 func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
-	outScope = b.buildSelectStmt(inScope, u.Right)
+	rightScope := b.buildSelectStmt(inScope, u.Right)
 
 	distinct := u.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, u.Limit)
 
 	// mysql errors for order by right projection
-	orderByScope := b.analyzeOrderBy(outScope, leftScope, u.OrderBy)
+	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
 
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
@@ -723,7 +723,8 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 		sortFields = append(sortFields, sf)
 	}
 
-	n, ok := leftScope.node.(*plan.Union)
+	// todo right or left scope here? which is left deep?
+	n, ok := rightScope.node.(*plan.Union)
 	if ok {
 		if len(n.SortFields) > 0 {
 			if len(sortFields) > 0 {
@@ -741,7 +742,8 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 		}
 	}
 
-	ret := plan.NewUnion(leftScope.node, outScope.node, distinct, limit, sortFields)
+	ret := plan.NewUnion(leftScope.node, rightScope.node, distinct, limit, sortFields)
+	outScope = leftScope
 	outScope.node = ret
 	return
 }

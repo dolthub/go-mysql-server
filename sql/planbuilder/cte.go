@@ -69,6 +69,10 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		// not recursive
 		cteScope := b.buildSelectStmt(inScope, union)
 		b.renameSource(cteScope, name, columns)
+		switch n := cteScope.node.(type) {
+		case *plan.Union:
+			cteScope.node = plan.NewSubqueryAlias(name, "", n).WithColumns(columns)
+		}
 		inScope.addCte(name, cteScope)
 		return
 	}
@@ -113,10 +117,22 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	distinct := union.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, union.Limit)
 
-	orderByScope := b.analyzeOrderBy(rightInScope, inScope, union.OrderBy)
-	b.buildOrderBy(rightInScope, orderByScope)
+	orderByScope := b.analyzeOrderBy(cteScope, inScope, union.OrderBy)
+	//b.buildOrderBy(rightInScope, orderByScope)
+	var sortFields sql.SortFields
+	for _, c := range orderByScope.cols {
+		so := sql.Ascending
+		if c.descending {
+			so = sql.Descending
+		}
+		sf := sql.SortField{
+			Column: c.scalar,
+			Order:  so,
+		}
+		sortFields = append(sortFields, sf)
+	}
 
-	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, nil)
+	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
 	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
 	rightScope.node = plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
 	b.renameSource(rightScope, name, columns)
