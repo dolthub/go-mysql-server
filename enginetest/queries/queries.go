@@ -6215,7 +6215,7 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY x ORDER BY x`,
+		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY x ORDER BY x`,
 		Expected: []sql.Row{
 			{0, nil},
 			{1, 0},
@@ -6342,7 +6342,7 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY x ORDER BY x`,
 		Expected: []sql.Row{
@@ -6351,7 +6351,7 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
 		Expected: []sql.Row{

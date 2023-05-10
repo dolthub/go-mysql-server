@@ -208,12 +208,17 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name:        "DELETE ME",
 			SetUpScript: []string{
-				"create table t (i int primary key, j int)",
+				"create table one_pk (pk int primary key, c int)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select i, j from t group by i",
-					Expected: []sql.Row{},
+					Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
+						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
+					Expected: []sql.Row{
+						{2, 1},
+						{3, 2},
+					},
 				},
 			},
 		},
