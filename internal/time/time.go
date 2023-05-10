@@ -26,24 +26,26 @@ import (
 // offsetRegex is a regex for matching MySQL offsets (e.g. +01:00).
 var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)
 
-// ConvertTimeZone converts |datetime| from one timezone to another. |fromLocation| and |toLocation|
-// can be either the name of a timezone (e.g. "UTC") or a timezone offset (e.g. "+01:00"), but
-// currently, both must be in the same format. If the time was converted successfully, then
-// the second return value will be true, otherwise the time was not able to be converted.
+// ConvertTimeZone converts |datetime| from one timezone to another. |fromLocation| and |toLocation| can be either
+// the name of a timezone (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted
+// successfully, then the second return value will be true, otherwise the time was not able to be converted.
 func ConvertTimeZone(datetime time.Time, fromLocation string, toLocation string) (time.Time, bool) {
-	// TODO: we can't currently deal with mixed use of timezone name (e.g. "UTC") and offset (e.g. "+0:00")
-	converted, success := convertTimeZoneByLocationString(datetime, fromLocation, toLocation)
-	if success {
-		return converted, success
+	convertedFromTime, err := convertTimeToLocation(datetime, fromLocation)
+	if err != nil {
+		return time.Time{}, false
+	}
+	convertedToTime, err := convertTimeToLocation(datetime, toLocation)
+	if err != nil {
+		return time.Time{}, false
 	}
 
-	// If we weren't successful converting by timezone try converting via offsets.
-	return convertTimeZoneByTimeOffset(datetime, fromLocation, toLocation)
+	delta := convertedFromTime.Sub(convertedToTime)
+	return datetime.Add(delta), true
 }
 
-// DeltaToDuration takes in a MySQL timezone offset (e.g. "+01:00") and returns it as a time.Duration.
+// MySQLOffsetToDuration takes in a MySQL timezone offset (e.g. "+01:00") and returns it as a time.Duration.
 // If any problems are encountered, an error is returned.
-func DeltaToDuration(d string) (time.Duration, error) {
+func MySQLOffsetToDuration(d string) (time.Duration, error) {
 	matches := offsetRegex.FindStringSubmatch(d)
 	if len(matches) == 4 {
 		symbol := matches[1]
@@ -55,11 +57,17 @@ func DeltaToDuration(d string) (time.Duration, error) {
 	}
 }
 
-// SystemDelta returns the current system timezone offset as a MySQL timezone offset (e.g. "+01:00").
-func SystemDelta() string {
+// SystemTimezoneOffset returns the current system timezone offset as a MySQL timezone offset (e.g. "+01:00").
+func SystemTimezoneOffset() string {
 	t := time.Now()
 	_, offset := t.Zone()
 
+	return SecondsToMySQLOffset(offset)
+}
+
+// SecondsToMySQLOffset takes in a timezone offset in seconds (as returned by time.Time.Zone()) and returns it as a
+// MySQL timezone offset (e.g. "+01:00").
+func SecondsToMySQLOffset(offset int) string {
 	seconds := offset % (60 * 60 * 24)
 	hours := math.Floor(float64(seconds) / 60 / 60)
 	seconds = offset % (60 * 60)
@@ -75,39 +83,26 @@ func SystemDelta() string {
 	return result
 }
 
-// convertTimeZoneByLocationString returns the conversion of t from timezone fromLocation to toLocation.
-func convertTimeZoneByLocationString(datetime time.Time, fromLocation string, toLocation string) (time.Time, bool) {
-	fLoc, err := time.LoadLocation(fromLocation)
-	if err != nil {
-		return time.Time{}, false
+// convertTimeToLocation converts |datetime| to the given |location|. |location| can be either the name of a timezone
+// (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted successfully, then
+// the converted time is returned, otherwise an error is returned.
+func convertTimeToLocation(datetime time.Time, location string) (time.Time, error) {
+	// Try to load the timezone location string first
+	loc, err := time.LoadLocation(location)
+	if err == nil {
+		return getCopy(datetime, loc), nil
 	}
 
-	tLoc, err := time.LoadLocation(toLocation)
-	if err != nil {
-		return time.Time{}, false
+	// If we can't parse a timezone location string, then try to parse a MySQL location offset
+	duration, err := MySQLOffsetToDuration(location)
+	if err == nil {
+		return datetime.Add(-1 * duration), nil
 	}
 
-	delta := getCopy(datetime, fLoc).Sub(getCopy(datetime, tLoc))
-
-	return datetime.Add(delta), true
+	return time.Time{}, errors.New(fmt.Sprintf("error: unable to parse timezone '%s'", location))
 }
 
 // getCopy recreates the time t in the wanted timezone.
 func getCopy(t time.Time, loc *time.Location) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), loc).UTC()
-}
-
-// convertTimeZoneByTimeOffset returns the conversion of t to t + (endDuration - startDuration) and a boolean indicating success.
-func convertTimeZoneByTimeOffset(t time.Time, startDuration string, endDuration string) (time.Time, bool) {
-	fromDuration, err := DeltaToDuration(startDuration)
-	if err != nil {
-		return time.Time{}, false
-	}
-
-	toDuration, err := DeltaToDuration(endDuration)
-	if err != nil {
-		return time.Time{}, false
-	}
-
-	return t.Add(toDuration - fromDuration), true
 }

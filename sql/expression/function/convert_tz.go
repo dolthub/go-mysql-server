@@ -105,7 +105,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if fromStr == globalTimeZone.Default {
-		fromStr = gmstime.SystemDelta()
+		fromStr = gmstime.SystemTimezoneOffset()
 	}
 
 	toStr, ok := to.(string)
@@ -114,7 +114,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if toStr == globalTimeZone.Default {
-		toStr = gmstime.SystemDelta()
+		toStr = gmstime.SystemTimezoneOffset()
 	}
 
 	converted, success := gmstime.ConvertTimeZone(datetime, fromStr, toStr)

@@ -85,6 +85,20 @@ func TestConvertTz(t *testing.T) {
 			expectedResult: time.Date(2010, 6, 3, 21, 12, 12, 0, time.UTC),
 		},
 		{
+			name:           "From location string to offset string",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "UTC",
+			toTimeZone:     "-10:00",
+			expectedResult: time.Date(2004, 1, 1, 2, 0, 0, 0, time.UTC),
+		},
+		{
+			name:           "From offset string to location string",
+			datetime:       "2004-01-01 17:00:00",
+			fromTimeZone:   "+10:00",
+			toTimeZone:     "US/Central",
+			expectedResult: time.Date(2004, 1, 1, 1, 0, 0, 0, time.UTC),
+		},
+		{
 			name:           "Bad timezone conversion",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "GMT",
