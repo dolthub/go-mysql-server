@@ -25,6 +25,7 @@ type Union struct {
 	BinaryNode
 	Distinct   bool
 	Limit      sql.Expression
+	Offset     sql.Expression
 	SortFields sql.SortFields
 }
 
@@ -33,11 +34,12 @@ var _ sql.Expressioner = (*Union)(nil)
 var _ sql.CollationCoercible = (*Union)(nil)
 
 // NewUnion creates a new Union node with the given children.
-func NewUnion(left, right sql.Node, distinct bool, limit sql.Expression, sortFields sql.SortFields) *Union {
+func NewUnion(left, right sql.Node, distinct bool, limit, offset sql.Expression, sortFields sql.SortFields) *Union {
 	return &Union{
 		BinaryNode: BinaryNode{left: left, right: right},
 		Distinct:   distinct,
 		Limit:      limit,
+		Offset:     offset,
 		SortFields: sortFields,
 	}
 }
@@ -67,6 +69,9 @@ func (u *Union) Resolved() bool {
 	if u.Limit != nil {
 		res = res && u.Limit.Resolved()
 	}
+	if u.Offset != nil {
+		res = res && u.Offset.Resolved()
+	}
 	for _, sf := range u.SortFields {
 		res = res && sf.Column.Resolved()
 	}
@@ -85,10 +90,19 @@ func (u *Union) WithLimit(e sql.Expression) *Union {
 	return &ret
 }
 
+func (u *Union) WithOffset(e sql.Expression) *Union {
+	ret := *u
+	ret.Offset = e
+	return &ret
+}
+
 func (u *Union) Expressions() []sql.Expression {
 	var exprs []sql.Expression
 	if u.Limit != nil {
 		exprs = append(exprs, u.Limit)
+	}
+	if u.Offset != nil {
+		exprs = append(exprs, u.Offset)
 	}
 	if len(u.SortFields) > 0 {
 		exprs = append(exprs, u.SortFields.ToExpressions()...)
@@ -97,13 +111,16 @@ func (u *Union) Expressions() []sql.Expression {
 }
 
 func (u *Union) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	var expLim, expSort int
+	var expLim, expOff, expSort int
 	if u.Limit != nil {
 		expLim = 1
 	}
+	if u.Offset != nil {
+		expOff = 1
+	}
 	expSort = len(u.SortFields)
 
-	if len(exprs) != expLim+expSort {
+	if len(exprs) != expLim+expOff+expSort {
 		return nil, fmt.Errorf("expected %d limit and %d sort fields", expLim, expSort)
 	} else if len(exprs) == 0 {
 		return u, nil
@@ -112,6 +129,10 @@ func (u *Union) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	ret := *u
 	if expLim == 1 {
 		ret.Limit = exprs[0]
+		exprs = exprs[1:]
+	}
+	if expOff == 1 {
+		ret.Offset = exprs[0]
 		exprs = exprs[1:]
 	}
 	ret.SortFields = u.SortFields.FromExpressions(exprs...)
@@ -123,7 +144,7 @@ func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 2)
 	}
-	return NewUnion(children[0], children[1], u.Distinct, u.Limit, u.SortFields), nil
+	return NewUnion(children[0], children[1], u.Distinct, u.Limit, u.Offset, u.SortFields), nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -153,6 +174,9 @@ func (u Union) String() string {
 	if u.Limit != nil {
 		children = append(children, fmt.Sprintf("limit: %s", u.Limit))
 	}
+	if u.Offset != nil {
+		children = append(children, fmt.Sprintf("offset: %s", u.Offset))
+	}
 	children = append(children, u.left.String(), u.right.String())
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -173,6 +197,9 @@ func (u Union) DebugString() string {
 	}
 	if u.Limit != nil {
 		children = append(children, fmt.Sprintf("limit: %s", u.Limit))
+	}
+	if u.Offset != nil {
+		children = append(children, fmt.Sprintf("offset: %s", u.Offset))
 	}
 	children = append(children, sql.DebugString(u.left), sql.DebugString(u.right))
 	_ = pr.WriteChildren(children...)
