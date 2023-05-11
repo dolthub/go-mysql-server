@@ -1046,6 +1046,10 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	off, err := offsetToOffsetExpr(ctx, u.Limit)
+	if err != nil {
+		return nil, err
+	}
 
 	var sortFields sql.SortFields
 	if len(u.OrderBy) > 0 {
@@ -1054,7 +1058,7 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 			return nil, err
 		}
 	}
-	union, err := buildUnion(left, right, distinct, l, sortFields)
+	union, err := buildUnion(left, right, distinct, l, off, sortFields)
 	if err != nil {
 		return nil, err
 	}
@@ -1064,7 +1068,7 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 	return union, nil
 }
 
-func buildUnion(left, right sql.Node, distinct bool, limit sql.Expression, sf sql.SortFields) (*plan.Union, error) {
+func buildUnion(left, right sql.Node, distinct bool, limit, offset sql.Expression, sf sql.SortFields) (*plan.Union, error) {
 	// propagate sortFields, limit from child
 	n, ok := left.(*plan.Union)
 	if ok {
@@ -1076,14 +1080,20 @@ func buildUnion(left, right sql.Node, distinct bool, limit sql.Expression, sf sq
 		}
 		if n.Limit != nil {
 			if limit != nil {
-				return nil, fmt.Errorf("conflicing external ORDER BY")
+				return nil, fmt.Errorf("conflicing external LIMIT")
 			}
 			limit = n.Limit
 		}
-		left = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil)
+		if n.Offset != nil {
+			if offset != nil {
+				return nil, fmt.Errorf("conflicing external OFFSET")
+			}
+			offset = n.Offset
+		}
+		left = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil, nil)
 		// TODO recurse and put more union-specific rules after
 	}
-	return plan.NewUnion(left, right, distinct, limit, sf), nil
+	return plan.NewUnion(left, right, distinct, limit, offset, sf), nil
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -1145,10 +1155,16 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 
 func limitToLimitExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
 	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil {
+		return ExprToExpression(ctx, limit.Rowcount)
+	}
+	return nil, nil
+}
+
+func offsetToOffsetExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
+	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
 	if limit != nil && limit.Offset != nil {
 		return ExprToExpression(ctx, limit.Offset)
-	} else if limit != nil {
-		return ExprToExpression(ctx, limit.Rowcount)
 	}
 	return nil, nil
 }

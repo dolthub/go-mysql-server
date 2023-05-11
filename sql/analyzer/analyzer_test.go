@@ -288,7 +288,7 @@ func TestDeepCopyNode(t *testing.T) {
 						expression.NewBindVar("v2"),
 					},
 					plan.NewUnresolvedTable("mytable", ""),
-				), false, nil, nil),
+				), false, nil, nil, nil),
 			),
 		},
 		{
