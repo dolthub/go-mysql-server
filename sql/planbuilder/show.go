@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -53,8 +54,13 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 		outScope.node = plan.NewShowCreateTableWithAsOf(rt, showType == "create view", asOfExpr)
 
 	case "create database", "create schema":
+		dbName := s.Database
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		db := b.resolveDb(dbName)
 		outScope.node = plan.NewShowCreateDatabase(
-			sql.UnresolvedDatabase(s.Database),
+			db,
 			s.IfNotExists,
 		)
 	case ast.CreateTriggerStr:
@@ -86,7 +92,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 					filter = b.buildScalar(inScope, s.ShowTablesOpt.Filter.Filter)
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
-						expression.NewUnresolvedColumn("Table"),
+						expression.NewGetField(2, types.LongText, "Table", false),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
 						nil,
 					)
@@ -94,7 +100,11 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 			}
 		}
 
-		var node sql.Node = plan.NewShowTriggers(sql.UnresolvedDatabase(dbName))
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		db := b.resolveDb(dbName)
+		var node sql.Node = plan.NewShowTriggers(db)
 		if filter != nil {
 			node = plan.NewFilter(filter, node)
 		}
@@ -110,7 +120,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 					filter = b.buildScalar(inScope, s.ShowTablesOpt.Filter.Filter)
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
-						expression.NewUnresolvedColumn("Name"),
+						expression.NewGetField(1, types.LongText, "Name", false),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
 						nil,
 					)
@@ -118,7 +128,11 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 			}
 		}
 
-		var node sql.Node = plan.NewShowEvents(sql.UnresolvedDatabase(dbName))
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		db := b.resolveDb(dbName)
+		var node sql.Node = plan.NewShowEvents(db)
 		if filter != nil {
 			node = plan.NewFilter(filter, node)
 		}
@@ -140,7 +154,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 				filter = b.buildScalar(inScope, s.Filter.Filter)
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewUnresolvedColumn("Name"),
+					expression.NewGetField(1, types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default), "Name", false),
 					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
@@ -159,7 +173,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 				filter = b.buildScalar(inScope, s.Filter.Filter)
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewUnresolvedColumn("Name"),
+					expression.NewGetField(1, types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default), "Name", false),
 					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
@@ -185,19 +199,24 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 				filter = b.buildScalar(inScope, s.Filter.Filter)
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewUnresolvedColumn("Name"),
+					expression.NewGetField(0, types.LongText, "Name", false),
 					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
 			}
 		}
 
-		db := b.ctx.GetCurrentDatabase()
+		dbName := b.ctx.GetCurrentDatabase()
 		if s.Database != "" {
-			db = s.Database
+			dbName = s.Database
 		}
 
-		var node sql.Node = plan.NewShowTableStatus(sql.UnresolvedDatabase(db))
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		db := b.resolveDb(dbName)
+
+		var node sql.Node = plan.NewShowTableStatus(db)
 		if filter != nil {
 			node = plan.NewFilter(filter, node)
 		}
@@ -205,7 +224,10 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 		outScope.node = node
 		return
 	case "index":
-		outScope.node = plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String()))
+		dbName := s.Table.Qualifier.String()
+		tableName := s.Table.Name.String()
+		table := b.buildResolvedTable(tableName, dbName, nil)
+		outScope.node = plan.NewShowIndexes(table)
 	case ast.KeywordString(ast.VARIABLES):
 		var filter sql.Expression
 		var like sql.Expression
@@ -213,6 +235,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 			if s.Filter.Filter != nil {
 				filter = b.buildScalar(inScope, s.Filter.Filter)
 				filter, _, _ = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					// TODO this isn't gonna work, will need to inject column
 					switch e.(type) {
 					case *expression.UnresolvedColumn:
 						if strings.ToLower(e.String()) != "variable_name" {
@@ -257,7 +280,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 					filter = b.buildScalar(inScope, s.ShowTablesOpt.Filter.Filter)
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
-						expression.NewUnresolvedColumn(fmt.Sprintf("Tables_in_%s", dbName)),
+						expression.NewGetField(0, types.LongText, fmt.Sprintf("Tables_in_%s", dbName), false),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
 						nil,
 					)
@@ -269,7 +292,11 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 			}
 		}
 
-		var node sql.Node = plan.NewShowTables(sql.UnresolvedDatabase(dbName), full, asOf)
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		db := b.resolveDb(dbName)
+		var node sql.Node = plan.NewShowTables(db, full, asOf)
 		if filter != nil {
 			node = plan.NewFilter(filter, node)
 		}
@@ -283,7 +310,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 				filter = b.buildScalar(inScope, s.Filter.Filter)
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewUnresolvedColumn("Database"),
+					expression.NewGetField(0, types.LongText, "Database", false),
 					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
@@ -326,7 +353,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 
 				node = plan.NewFilter(
 					expression.NewLike(
-						expression.NewUnresolvedColumn("Field"),
+						expression.NewGetField(0, plan.VarChar25000, "Field", false),
 						pattern,
 						nil,
 					),
@@ -392,7 +419,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 				filter = b.buildScalar(inScope, s.Filter.Filter)
 			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewUnresolvedColumn("Charset"),
+					expression.NewGetField(0, types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), "Charset", false),
 					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)
@@ -423,7 +450,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 		if s.Filter != nil {
 			if s.Filter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewUnresolvedColumn("Variable_name"),
+					expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
 					expression.NewLiteral(s.Filter.Like, types.LongText),
 					nil,
 				)

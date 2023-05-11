@@ -371,6 +371,14 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 		outScope = fromScope
 	}
 
+	offset := b.buildOffset(outScope, s.Limit)
+	if offset != nil {
+		outScope.node = plan.NewOffset(offset, outScope.node)
+	}
+	limit := b.buildLimit(outScope, s.Limit)
+	if limit != nil {
+		outScope.node = plan.NewLimit(limit, outScope.node)
+	}
 	b.buildOrderBy(outScope, orderByScope)
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
@@ -722,8 +730,7 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 		sortFields = append(sortFields, sf)
 	}
 
-	// todo right or left scope here? which is left deep?
-	n, ok := rightScope.node.(*plan.Union)
+	n, ok := leftScope.node.(*plan.Union)
 	if ok {
 		if len(n.SortFields) > 0 {
 			if len(sortFields) > 0 {
@@ -831,7 +838,7 @@ func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) 
 			return expression.NewStar()
 		}
 		// TODO lookup table's columns
-		return expression.NewQualifiedStar(e.TableName.Name.String())
+		return expression.NewQualifiedStar(strings.ToLower(e.TableName.Name.String()))
 	case *ast.AliasedExpr:
 		expr := b.buildScalar(inScope, e.Expr)
 
@@ -1511,10 +1518,15 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 
 func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil {
+		return b.buildScalar(inScope, limit.Rowcount)
+	}
+	return nil
+}
+
+func (b *PlanBuilder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
 		return b.buildScalar(inScope, limit.Offset)
-	} else if limit != nil {
-		return b.buildScalar(inScope, limit.Rowcount)
 	}
 	return nil
 }
