@@ -625,6 +625,8 @@ func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (
 	if u.Distinct {
 		iter = newDistinctIter(ctx, iter)
 	}
+	// Limit must wrap offset, and not vice-versa, so that
+	// skipped rows don't count toward the returned row count.
 	if u.Offset != nil {
 		offset, err := getInt64Value(ctx, u.Offset)
 		if err != nil {

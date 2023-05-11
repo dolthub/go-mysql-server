@@ -1154,7 +1154,6 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 }
 
 func limitToLimitExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
-	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
 	if limit != nil {
 		return ExprToExpression(ctx, limit.Rowcount)
 	}
@@ -1162,7 +1161,6 @@ func limitToLimitExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression,
 }
 
 func offsetToOffsetExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
-	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
 	if limit != nil && limit.Offset != nil {
 		return ExprToExpression(ctx, limit.Offset)
 	}
