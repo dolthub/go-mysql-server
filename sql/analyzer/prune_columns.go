@@ -361,6 +361,8 @@ func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, sco
 				return nil, transform.SameTree, err
 			}
 			return node, transform.NewTree, nil
+		case *plan.IndexedTableAccess:
+			return node, transform.SameTree, nil
 		default:
 			if _, ok := n.(sql.Expressioner); !ok {
 				return n, transform.SameTree, nil

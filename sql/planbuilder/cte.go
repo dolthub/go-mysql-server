@@ -101,7 +101,8 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 		}
 
-		for _, c := range leftScope.cols {
+		for i, c := range leftScope.cols {
+			c.typ = recSch[i].Type
 			cteScope.newColumn(c)
 		}
 		b.renameSource(cteScope, name, columns)
@@ -118,7 +119,6 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, inScope, union.OrderBy)
-	//b.buildOrderBy(rightInScope, orderByScope)
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
 		so := sql.Ascending
@@ -134,9 +134,9 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
 	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
-	rightScope.node = plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
-	b.renameSource(rightScope, name, columns)
-	inScope.addCte(name, rightScope)
+	cteScope.node = plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
+	b.renameSource(cteScope, name, columns)
+	inScope.addCte(name, cteScope)
 }
 
 // splitRecursiveCteUnion distinguishes between recursive and non-recursive

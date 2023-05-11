@@ -57,3 +57,14 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 		return tc.Node, transform.SameTree, nil
 	})
 }
+
+func fixupSortNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n.(type) {
+		case *plan.Sort:
+			return FixFieldIndexesForExpressions(a, n, scope)
+		default:
+			return n, transform.SameTree, nil
+		}
+	})
+}
