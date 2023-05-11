@@ -219,7 +219,12 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			agg := aggregation.NewCount(expression.NewLiteral(1, types.Int64))
+			var agg sql.Aggregation
+			if e.Distinct {
+				agg = aggregation.NewCountDistinct(expression.NewLiteral(1, types.Int64))
+			} else {
+				agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
+			}
 			aggName := strings.ToLower(agg.String())
 			gf := gb.getAgg(aggName)
 			if gf != nil {
@@ -236,7 +241,6 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	}
 
 	var args []sql.Expression
-	//outerLen := inScope.outerScopeLen()
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)
 		switch e := e.(type) {
@@ -245,9 +249,6 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 			args = append(args, e)
 			col := scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
-			//if e.Table() != "" {
-			//	gb.addInCol(col)
-			//}
 		case *expression.Star:
 			panic("todo custom handle count(*)")
 		default:
@@ -257,14 +258,20 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 		}
 	}
 
-	f, err := b.cat.Function(b.ctx, name)
-	if err != nil {
-		b.handleErr(err)
-	}
+	var agg sql.Expression
+	//// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
+	if e.Distinct && name == "count" {
+		agg = aggregation.NewCountDistinct(args...)
+	} else {
+		f, err := b.cat.Function(b.ctx, name)
+		if err != nil {
+			b.handleErr(err)
+		}
 
-	agg, err := f.NewInstance(args)
-	if err != nil {
-		b.handleErr(err)
+		agg, err = f.NewInstance(args)
+		if err != nil {
+			b.handleErr(err)
+		}
 	}
 
 	aggName := strings.ToLower(agg.String())
@@ -272,7 +279,6 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 		// TODO check agg scope output, see if we've already computed
 		// if so use reference here
 		gf := expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
-
 		return gf
 	}
 

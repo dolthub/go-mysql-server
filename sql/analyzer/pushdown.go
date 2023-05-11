@@ -425,6 +425,11 @@ func convertFiltersToIndexedAccess(
 			if _, ok := c.Node.(*plan.Limit); ok {
 				return false
 			}
+			if p, ok := c.Node.(*plan.Project); ok {
+				if _, ok := p.Child.(*plan.Limit); ok {
+					return false
+				}
+			}
 		}
 		return true
 	}

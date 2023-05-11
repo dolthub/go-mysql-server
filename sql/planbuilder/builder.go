@@ -12,7 +12,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -371,6 +370,8 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 		outScope = fromScope
 	}
 
+	b.buildOrderBy(outScope, orderByScope)
+
 	offset := b.buildOffset(outScope, s.Limit)
 	if offset != nil {
 		outScope.node = plan.NewOffset(offset, outScope.node)
@@ -379,9 +380,9 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	if limit != nil {
 		outScope.node = plan.NewLimit(limit, outScope.node)
 	}
-	b.buildOrderBy(outScope, orderByScope)
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
+	b.buildDistinct(outScope, s.Distinct)
 	return
 }
 
@@ -741,11 +742,19 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 		}
 		if n.Limit != nil {
 			if limit != nil {
-				err := fmt.Errorf("conflicing external ORDER BY")
+				err := fmt.Errorf("conflicing external LIMIT")
 				b.handleErr(err)
 			}
 			limit = n.Limit
 		}
+		//if n.Offset != nil {
+		//	if offset != nil {
+		//		err := fmt.Errorf("conflicing external OFFSET")
+		//		b.handleErr(err)
+		//	}
+		//	offset = n.Offset
+		//}
+		leftScope.node = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil)
 	}
 
 	ret := plan.NewUnion(leftScope.node, rightScope.node, distinct, limit, sortFields)
@@ -834,10 +843,8 @@ func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) 
 	switch e := se.(type) {
 	case *ast.StarExpr:
 		if e.TableName.IsEmpty() {
-			// TODO all columns from inscope
 			return expression.NewStar()
 		}
-		// TODO lookup table's columns
 		return expression.NewQualifiedStar(strings.ToLower(e.TableName.Name.String()))
 	case *ast.AliasedExpr:
 		expr := b.buildScalar(inScope, e.Expr)
@@ -1031,12 +1038,6 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			b.handleErr(err)
 		}
 
-		// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
-		if v.Distinct && v.Name.Lowered() == "count" {
-			panic("preprocess aggregates into aggInfo")
-			return aggregation.NewCountDistinct(args...)
-		}
-
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
 		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
 		if v.Distinct {
@@ -1211,8 +1212,7 @@ func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Exp
 		return expression.NewUnaryMinus(expr)
 	case ast.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expressio return b.buildScalar(inScope, e.Expr)
-		expr := b.buildScalar(inScope, e.Expr)
-		return expression.NewBinary(expr)
+		return b.buildScalar(inScope, e.Expr)
 	case ast.BangStr:
 		c := b.buildScalar(inScope, e.Expr)
 		return expression.NewNot(c)
@@ -1517,7 +1517,6 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 }
 
 func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
-	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
 	if limit != nil {
 		return b.buildScalar(inScope, limit.Rowcount)
 	}
@@ -1529,6 +1528,12 @@ func (b *PlanBuilder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expressi
 		return b.buildScalar(inScope, limit.Offset)
 	}
 	return nil
+}
+
+func (b *PlanBuilder) buildDistinct(inScope *scope, distinct string) {
+	if distinct != "" {
+		inScope.node = plan.NewDistinct(inScope.node)
+	}
 }
 
 func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
