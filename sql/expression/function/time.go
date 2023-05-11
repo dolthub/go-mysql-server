@@ -21,6 +21,7 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -932,21 +933,51 @@ func (n *Now) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	// TODO: Now should return a string formatted depending on context.  This code handles string formatting
 	// and should be enabled at the time we fix the return type
 	/*s, err := formatDate("%Y-%m-%d %H:%i:%s", t)
-
 	if err != nil {
 		return nil, err
 	}
-
 	if n.precision != nil {
 		s += subSecondPrecision(t, *n.precision)
 	}*/
 
-	return t, nil
+	sessionTimeZone, err := sessionTimeZone(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	newTime, b := gmstime.ConvertTimeZone(t, gmstime.SystemTimezoneOffset(), sessionTimeZone)
+	if !b {
+		return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
+	}
+
+	// Return a new Time with the location set to UTC so that any comparisons in SQL
+	// will only be done on the datetime portion and not the timezone.
+	return time.Date(newTime.Year(), newTime.Month(), newTime.Day(),
+		newTime.Hour(), newTime.Minute(), newTime.Second(), newTime.Nanosecond(), time.UTC), nil
 }
 
 // WithChildren implements the Expression interface.
 func (n *Now) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewNow(children...)
+}
+
+// sessionTimeZone returns a MySQL timezone offset string for the value of @@session_time_zone. If the session
+// timezone is set to SYSTEM, then the system timezone offset is calculated and returned.
+func sessionTimeZone(ctx *sql.Context) (string, error) {
+	sessionTimeZoneVar, err := ctx.GetSessionVariable(ctx, "time_zone")
+	if err != nil {
+		return "", err
+	}
+
+	sessionTimeZone, ok := sessionTimeZoneVar.(string)
+	if !ok {
+		return "", fmt.Errorf("invalid type for @@session.time_zone: %T", sessionTimeZoneVar)
+	}
+
+	if sessionTimeZone == "SYSTEM" {
+		sessionTimeZone = gmstime.SystemTimezoneOffset()
+	}
+	return sessionTimeZone, nil
 }
 
 // UTCTimestamp is a function that returns the current time.
@@ -1366,8 +1397,21 @@ func NewCurrentTime() sql.Expression {
 }
 
 func currTimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	t := ctx.QueryTime()
-	return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
+	newNow, err := NewNow()
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := newNow.Eval(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if t, ok := result.(time.Time); ok {
+		return fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second()), nil
+	} else {
+		return nil, fmt.Errorf("unexpected type %T for NOW() result", result)
+	}
 }
 
 // Eval implements sql.Expression
