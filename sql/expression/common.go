@@ -102,7 +102,7 @@ func (n *NaryExpression) IsNullable() bool {
 	return false
 }
 
-// ExpressionsResolve returns whether all the expressions in the slice given are resolved
+// ExpressionsResolved returns whether all the expressions in the slice given are resolved
 func ExpressionsResolved(exprs ...sql.Expression) bool {
 	for _, e := range exprs {
 		if !e.Resolved() {

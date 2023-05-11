@@ -426,7 +426,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 		rightGrp := m.memoize(newRight)
 		rightGrp.relProps.distinct = hashDistinctOp
 
-		// join and its commute are a new group
+		// join is a new group
 		newJoin := &leftJoin{
 			joinBase: &joinBase{
 				relBase: &relBase{},
@@ -438,16 +438,13 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 		}
 		joinGrp := m.memoize(newJoin)
 
-		newJoinCommuted := &leftJoin{
-			joinBase: &joinBase{
-				relBase: &relBase{g: joinGrp},
-				left:    rightGrp,
-				right:   anti.left,
-				op:      plan.JoinTypeLeftOuterHash,
-				filter:  anti.filter,
-			},
+		// TODO: create a new filter to drop null primary keys on right table
+		nullFilters := make([]sql.Expression, len(projectExpressions))
+		for i, e := range projectExpressions {
+			nullFilters[i] = expression.NewIsNull(e)
 		}
-		joinGrp.prepend(newJoinCommuted)
+		nullFilter := expression.JoinAnd(nullFilters...)
+		joinGrp.relProps.filter = nullFilter
 
 		// project belongs to the original group
 		rel := &project{
