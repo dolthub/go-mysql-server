@@ -454,8 +454,7 @@ func (b *PlanBuilder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *sc
 	if len(te) == 0 {
 		outScope = inScope.push()
 		outScope.ast = te
-		//outScope.node = plan.NewResolvedDualTable()
-		outScope.node = plan.NewEmptyTableWithSchema(nil)
+		outScope.node = plan.NewResolvedDualTable()
 		return
 	}
 
