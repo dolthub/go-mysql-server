@@ -170,6 +170,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	if err != nil {
 		return nil, err
 	}
+	err = convertAntiToLeftJoin(a, m)
+	if err != nil {
+		return nil, err
+	}
 	err = addRightSemiJoins(m)
 	if err != nil {
 		return nil, err
@@ -371,6 +375,87 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 			},
 			child:       joinGrp,
 			projections: expression.SchemaToGetFields(semi.left.relProps.outputColsForRel(semi.left.first)),
+		}
+		e.group().prepend(rel)
+
+		return nil
+	})
+}
+
+// convertAntiToLeftJoin adds left join alternatives for anti join
+func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
+	seen := make(map[GroupId]struct{})
+	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+		anti, ok := e.(*antiJoin)
+		if !ok {
+			return nil
+		}
+
+		rightOutTables := m.tableProps.getTableNames(anti.right.relProps.OutputTables())
+		projectExpressions := []sql.Expression{}
+		onlyEquality := true
+		for _, f := range anti.filter { // TODO: invert filter?
+			transform.InspectExpr(f, func(e sql.Expression) bool {
+				switch e := e.(type) {
+				case *expression.GetField:
+					// getField expressions tell us which columns are used, so we can create the correct project
+					tableName := strings.ToLower(e.Table())
+					isRightOutTable := stringContains(rightOutTables, tableName)
+					if isRightOutTable {
+						projectExpressions = append(projectExpressions, e)
+					}
+				case *expression.Literal, *expression.BindVar,
+					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+					// these expressions are equality expressions
+				default:
+					onlyEquality = false
+				}
+				return !onlyEquality
+			})
+			if !onlyEquality {
+				return nil
+			}
+		}
+
+		// project is a new group
+		newRight := &project{
+			relBase:     &relBase{},
+			child:       anti.right,
+			projections: projectExpressions,
+		}
+		rightGrp := m.memoize(newRight)
+		rightGrp.relProps.distinct = hashDistinctOp
+
+		// join and its commute are a new group
+		newJoin := &leftJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{},
+				left:    anti.left,
+				right:   rightGrp,
+				op:      plan.JoinTypeInner,
+				filter:  anti.filter,
+			},
+		}
+		joinGrp := m.memoize(newJoin)
+
+		newJoinCommuted := &leftJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{g: joinGrp},
+				left:    rightGrp,
+				right:   anti.left,
+				op:      plan.JoinTypeInner,
+				filter:  anti.filter,
+			},
+		}
+		joinGrp.prepend(newJoinCommuted)
+
+		// project belongs to the original group
+		rel := &project{
+			relBase: &relBase{
+				g: e.group(),
+			},
+			child:       joinGrp,
+			projections: expression.SchemaToGetFields(anti.left.relProps.outputColsForRel(anti.left.first)),
 		}
 		e.group().prepend(rel)
 
