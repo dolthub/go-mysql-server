@@ -149,12 +149,14 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 
 // Start starts accepting connections on the server.
 func (s *Server) Start() error {
+	logrus.Infof("Server ready. Accepting connections.")
 	s.Listener.Accept()
 	return nil
 }
 
 // Close closes the server connection.
 func (s *Server) Close() error {
+	logrus.Infof("Server closing listener. No longer accepting connections.")
 	s.Listener.Close()
 	return nil
 }

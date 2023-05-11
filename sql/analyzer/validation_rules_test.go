@@ -251,7 +251,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					expression.NewGetField(3, types.Int64, "zab", false),
 				},
 				table,
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			true,
 		},
 		{
@@ -269,7 +269,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					expression.NewGetField(3, types.Int64, "zab", false),
 				},
 				table,
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			false,
 		},
 		{
@@ -287,7 +287,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					expression.NewGetField(4, types.Boolean, "quuz", false),
 				},
 				table,
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			false,
 		},
 		{
@@ -304,7 +304,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 					expression.NewGetField(3, types.Boolean, "zab", false),
 				},
 				table,
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			false,
 		},
 		{
@@ -323,7 +323,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 						expression.NewGetField(3, types.Boolean, "zab", false),
 					},
 					table,
-				), false, nil, nil),
+				), false, nil, nil, nil),
 			),
 			false,
 		},
