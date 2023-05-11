@@ -432,7 +432,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 				relBase: &relBase{},
 				left:    anti.left,
 				right:   rightGrp,
-				op:      plan.JoinTypeInner,
+				op:      plan.JoinTypeLeftOuterHash,
 				filter:  anti.filter,
 			},
 		}
@@ -443,7 +443,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 				relBase: &relBase{g: joinGrp},
 				left:    rightGrp,
 				right:   anti.left,
-				op:      plan.JoinTypeInner,
+				op:      plan.JoinTypeLeftOuterHash,
 				filter:  anti.filter,
 			},
 		}
