@@ -1046,6 +1046,10 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	off, err := offsetToOffsetExpr(ctx, u.Limit)
+	if err != nil {
+		return nil, err
+	}
 
 	var sortFields sql.SortFields
 	if len(u.OrderBy) > 0 {
@@ -1054,7 +1058,7 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 			return nil, err
 		}
 	}
-	union, err := buildUnion(left, right, distinct, l, sortFields)
+	union, err := buildUnion(left, right, distinct, l, off, sortFields)
 	if err != nil {
 		return nil, err
 	}
@@ -1064,7 +1068,7 @@ func convertUnion(ctx *sql.Context, u *sqlparser.Union) (sql.Node, error) {
 	return union, nil
 }
 
-func buildUnion(left, right sql.Node, distinct bool, limit sql.Expression, sf sql.SortFields) (*plan.Union, error) {
+func buildUnion(left, right sql.Node, distinct bool, limit, offset sql.Expression, sf sql.SortFields) (*plan.Union, error) {
 	// propagate sortFields, limit from child
 	n, ok := left.(*plan.Union)
 	if ok {
@@ -1076,14 +1080,20 @@ func buildUnion(left, right sql.Node, distinct bool, limit sql.Expression, sf sq
 		}
 		if n.Limit != nil {
 			if limit != nil {
-				return nil, fmt.Errorf("conflicing external ORDER BY")
+				return nil, fmt.Errorf("conflicing external LIMIT")
 			}
 			limit = n.Limit
 		}
-		left = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil)
+		if n.Offset != nil {
+			if offset != nil {
+				return nil, fmt.Errorf("conflicing external OFFSET")
+			}
+			offset = n.Offset
+		}
+		left = plan.NewUnion(n.Left(), n.Right(), n.Distinct, nil, nil, nil)
 		// TODO recurse and put more union-specific rules after
 	}
-	return plan.NewUnion(left, right, distinct, limit, sf), nil
+	return plan.NewUnion(left, right, distinct, limit, offset, sf), nil
 }
 
 func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
@@ -1144,11 +1154,15 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 }
 
 func limitToLimitExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
-	// Limit must wrap offset, and not vice-versa, so that skipped rows don't count toward the returned row count.
+	if limit != nil {
+		return ExprToExpression(ctx, limit.Rowcount)
+	}
+	return nil, nil
+}
+
+func offsetToOffsetExpr(ctx *sql.Context, limit *sqlparser.Limit) (sql.Expression, error) {
 	if limit != nil && limit.Offset != nil {
 		return ExprToExpression(ctx, limit.Offset)
-	} else if limit != nil {
-		return ExprToExpression(ctx, limit.Rowcount)
 	}
 	return nil, nil
 }
@@ -1271,6 +1285,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL, multiAlterDDL 
 		}
 		return convertDropTable(ctx, c)
 	case sqlparser.AlterStr:
+		if c.EventSpec != nil {
+			return convertAlterEvent(ctx, query, c)
+		}
 		return convertAlterTable(ctx, c)
 	case sqlparser.RenameStr:
 		return convertRenameTable(ctx, c, multiAlterDDL)
@@ -1484,8 +1501,16 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	}
 	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
 
+	// both 'undefined' and 'not preserve' are considered 'not preserve'
+	onCompletionPreserve := false
+	if eventSpec.OnCompletionPreserve == sqlparser.EventOnCompletion_Preserve {
+		onCompletionPreserve = true
+	}
+
 	var status plan.EventStatus
 	switch eventSpec.Status {
+	case sqlparser.EventStatus_Undefined:
+		status = plan.EventStatus_Enable
 	case sqlparser.EventStatus_Enable:
 		status = plan.EventStatus_Enable
 	case sqlparser.EventStatus_Disable:
@@ -1544,7 +1569,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 	return plan.NewCreateEvent(
 		udb, eventSpec.EventName.Name.String(), definer,
 		at, starts, ends, everyInterval,
-		eventSpec.OnCompletionPreserve,
+		onCompletionPreserve,
 		status, comment, bodyStr, body, eventSpec.IfNotExists,
 	), nil
 }
@@ -1566,6 +1591,115 @@ func convertEventScheduleTimeSpec(ctx *sql.Context, spec *sqlparser.EventSchedul
 		intervals[i] = e
 	}
 	return ts, intervals, nil
+}
+
+func convertAlterEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
+	eventSpec := c.EventSpec
+	udb, err := getUnresolvedDatabase(ctx, eventSpec.EventName.Qualifier.String())
+	if err != nil {
+		return nil, err
+	}
+	definer := getCurrentUserForDefiner(ctx, c.EventSpec.Definer)
+
+	var (
+		alterSchedule    = eventSpec.OnSchedule != nil
+		at, starts, ends *plan.OnScheduleTimestamp
+		everyInterval    *expression.Interval
+
+		alterOnComp       = eventSpec.OnCompletionPreserve != sqlparser.EventOnCompletion_Undefined
+		newOnCompPreserve = eventSpec.OnCompletionPreserve == sqlparser.EventOnCompletion_Preserve
+
+		alterEventName = !eventSpec.RenameName.IsEmpty()
+		newName        string
+
+		alterStatus = eventSpec.Status != sqlparser.EventStatus_Undefined
+		newStatus   plan.EventStatus
+
+		alterComment = eventSpec.Comment != nil
+		newComment   string
+
+		alterDefinition  = eventSpec.Body != nil
+		newDefinitionStr string
+		newDefinition    sql.Node
+	)
+
+	if alterSchedule {
+		if eventSpec.OnSchedule.At != nil {
+			ts, intervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.At)
+			if err != nil {
+				return nil, err
+			}
+			at = plan.NewOnScheduleTimestamp(ts, intervals)
+		} else {
+			every, err := intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
+			if err != nil {
+				return nil, err
+			}
+
+			var ok bool
+			everyInterval, ok = every.(*expression.Interval)
+			if !ok {
+				return nil, fmt.Errorf("expected everyInterval but got: %s", every)
+			}
+
+			if eventSpec.OnSchedule.Starts != nil {
+				startsTs, startsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Starts)
+				if err != nil {
+					return nil, err
+				}
+				starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+			}
+			if eventSpec.OnSchedule.Ends != nil {
+				endsTs, endsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
+				if err != nil {
+					return nil, err
+				}
+				ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+			}
+		}
+	}
+	if alterEventName {
+		// events can be moved to different database using RENAME TO clause option
+		// TODO: we do not support moving events to different database yet
+		renameEventDb := eventSpec.RenameName.Qualifier.String()
+		if renameEventDb != "" && udb.Name() != renameEventDb {
+			return nil, fmt.Errorf("moving events to different database using ALTER EVENT is not supported yet")
+		}
+		newName = eventSpec.RenameName.Name.String()
+	}
+	if alterStatus {
+		switch eventSpec.Status {
+		case sqlparser.EventStatus_Undefined:
+			// this should not happen but sanity check
+			newStatus = plan.EventStatus_Enable
+		case sqlparser.EventStatus_Enable:
+			newStatus = plan.EventStatus_Enable
+		case sqlparser.EventStatus_Disable:
+			newStatus = plan.EventStatus_Disable
+		case sqlparser.EventStatus_DisableOnSlave:
+			newStatus = plan.EventStatus_DisableOnSlave
+		}
+	}
+	if alterComment {
+		newComment = string(eventSpec.Comment.Val)
+	}
+	if alterDefinition {
+		newDefinitionStr = strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+		newDefinition, err = convert(ctx, c.EventSpec.Body, newDefinitionStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewAlterEvent(
+		udb, eventSpec.EventName.Name.String(), definer,
+		alterSchedule, at, starts, ends, everyInterval,
+		alterOnComp, newOnCompPreserve,
+		alterEventName, newName,
+		alterStatus, newStatus,
+		alterComment, newComment,
+		alterDefinition, newDefinitionStr, newDefinition,
+	), nil
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
@@ -1951,6 +2085,39 @@ func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL, alterTbl bool) (sq
 	return plan.NewRenameTable(sql.UnresolvedDatabase(""), fromTables, toTables, alterTbl), nil
 }
 
+func isUniqueColumn(tableSpec *sqlparser.TableSpec, columnName string) (bool, error) {
+	for _, column := range tableSpec.Columns {
+		if column.Name.String() == columnName {
+			return column.Type.KeyOpt == colKeyUnique ||
+				column.Type.KeyOpt == colKeyUniqueKey, nil
+		}
+	}
+	return false, fmt.Errorf("unknown column name %s", columnName)
+
+}
+
+func newColumnAction(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	switch strings.ToLower(ddl.ColumnAction) {
+	case sqlparser.AddStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	case sqlparser.DropStr:
+		return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
+	case sqlparser.RenameStr:
+		return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
+	case sqlparser.ModifyStr, sqlparser.ChangeStr:
+		sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+	}
+	return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
+}
+
 func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
 		return convertAlterIndex(ctx, ddl)
@@ -1994,26 +2161,38 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 	}
+
 	if ddl.ColumnAction != "" {
-		switch strings.ToLower(ddl.ColumnAction) {
-		case sqlparser.AddStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
-		case sqlparser.DropStr:
-			return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
-		case sqlparser.RenameStr:
-			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
-		case sqlparser.ModifyStr, sqlparser.ChangeStr:
-			sch, _, err := TableSpecToSchema(ctx, ddl.TableSpec, true)
-			if err != nil {
-				return nil, err
-			}
-			return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+		var alteredTable sql.Node
+		alteredTable, err := newColumnAction(ctx, ddl)
+		if err != nil {
+			return nil, err
 		}
+		if ddl.TableSpec != nil {
+			if len(ddl.TableSpec.Columns) != 1 {
+				return nil, fmt.Errorf("adding multiple columns in ALTER TABLE <table> MODIFY is not currently supported")
+			}
+			for _, column := range ddl.TableSpec.Columns {
+				isUnique, err := isUniqueColumn(ddl.TableSpec, column.Name.String())
+				if err != nil {
+					return nil, fmt.Errorf("on table %s, %w", ddl.Table.String(), err)
+				}
+				var comment string
+				if commentVal := column.Type.Comment; commentVal != nil {
+					comment = commentVal.String()
+				}
+				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
+				if isUnique {
+					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment), nil
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		return alteredTable, nil
 	}
+
 	if ddl.AutoIncSpec != nil {
 		return convertAlterAutoIncrement(ddl)
 	}

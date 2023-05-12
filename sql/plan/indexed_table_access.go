@@ -235,6 +235,10 @@ func (i *IndexedTableAccess) String() string {
 		}
 	}
 
+	if i.lookup.IsReverse {
+		children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
+	}
+
 	pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -279,6 +283,10 @@ func (i *IndexedTableAccess) DebugString() string {
 		if len(filters) > 0 {
 			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
 		}
+	}
+
+	if i.lookup.IsReverse {
+		children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
 	}
 
 	pr.WriteChildren(children...)

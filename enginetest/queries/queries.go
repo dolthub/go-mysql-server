@@ -742,6 +742,27 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: `
+Select x
+from (select * from xy) sq1
+union all
+select u
+from (select * from uv) sq2
+limit 1
+offset 1;`,
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: `
+Select * from (
+  With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
+  Select * from cte
+  Union
+  Select x from xy where x in (select * from cte)
+ ) dt;`,
+		Expected: []sql.Row{{1}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/5642
 		Query:    "SELECT count(*) FROM mytable WHERE i = 3720481604718463778705849469618542795;",
 		Expected: []sql.Row{{0}},
@@ -1084,7 +1105,68 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "SELECT s,i FROM mytable order by i DESC;",
+		Expected: []sql.Row{
+			{"third row", int64(3)},
+			{"second row", int64(2)},
+			{"first row", int64(1)},
+		},
+	},
+	{
+		Query: "SELECT s,i FROM mytable as a order by i;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
 			{"third row", int64(3)}},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+			{1, 0},
+			{1, 1},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
+		Expected: []sql.Row{
+			{0, 1},
+			{0, 0},
+			{1, 1},
+			{1, 0},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
+		Expected: []sql.Row{
+			{1, 1},
+			{1, 0},
+			{0, 1},
+			{0, 0},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+			{1, 0},
+			{1, 1},
+		},
+	},
+	{
+		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc",
+		Expected: []sql.Row{
+			{1, 1},
+			{1, 0},
+			{0, 1},
+			{0, 0},
+		},
 	},
 	{
 		Query: "SELECT s,i FROM (select i,s FROM mytable) mt;",
@@ -8034,6 +8116,23 @@ FROM mytable;`,
 			{3, "third row"},
 		},
 	},
+	{
+		// Results should be sorted, but they are not
+		Query: `
+SELECT * FROM
+(SELECT * FROM mytable) t
+UNION ALL
+(SELECT * FROM mytable)
+ORDER BY 1;`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{1, "first row"},
+			{2, "second row"},
+			{2, "second row"},
+			{3, "third row"},
+			{3, "third row"},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -8671,6 +8770,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "select SUM(*) from dual;",
 		ExpectedErr: analyzererrors.ErrStarUnsupported,
 	},
+	{
+		Query:          "create table vb_tbl (vb varbinary(123456789));",
+		ExpectedErrStr: "length is 123456789 but max allowed is 65535",
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
@@ -8681,6 +8784,45 @@ var BrokenErrorQueries = []QueryErrorTest{
 	{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
 		ExpectedErr: sql.ErrTableNotFound,
+	},
+
+	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL
+	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
+	// Special case: If you are grouping by every field of the PK, then you can select anything
+	// Otherwise, whatever you are selecting must be in the Group By (with the exception of aggregations)
+	{
+		Query: "select * from two_pk group by pk1, pk2",
+		// No error
+	},
+	{
+		Query:       "select * from two_pk group by pk1",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
+		// No error
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
+		// No error
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
+		// No error
+	},
+	{
+		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
+						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
+						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
+		// No error, but we get opk.pk does not exist
 	},
 }
 

@@ -35,8 +35,8 @@ func TestMergeUnionSchemas(t *testing.T) {
 	}{
 		{
 			"Unresolved is unchanged",
-			plan.NewUnion(plan.NewUnresolvedTable("mytable", ""), plan.NewUnresolvedTable("mytable", ""), false, nil, nil),
-			plan.NewUnion(plan.NewUnresolvedTable("mytable", ""), plan.NewUnresolvedTable("mytable", ""), false, nil, nil),
+			plan.NewUnion(plan.NewUnresolvedTable("mytable", ""), plan.NewUnresolvedTable("mytable", ""), false, nil, nil, nil),
+			plan.NewUnion(plan.NewUnresolvedTable("mytable", ""), plan.NewUnresolvedTable("mytable", ""), false, nil, nil, nil),
 			nil,
 		},
 		{
@@ -47,14 +47,14 @@ func TestMergeUnionSchemas(t *testing.T) {
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(3), types.Int64)},
 				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(1), types.Int64)},
 				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int64(3), types.Int64)},
 				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			nil,
 		},
 		{
@@ -68,7 +68,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 					expression.NewLiteral(int64(6), types.Int64),
 				},
 				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			nil,
 			errors.New("this is an error"),
 		},
@@ -80,7 +80,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int32(3), types.Int32)},
 				plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			plan.NewUnion(plan.NewProject(
 				[]sql.Expression{
 					expression.NewAlias("1", expression.NewConvert(
@@ -99,7 +99,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 					[]sql.Expression{expression.NewLiteral(int32(3), types.Int32)},
 					plan.NewResolvedTable(plan.NewResolvedDualTable(), nil, nil),
 				),
-			), false, nil, nil),
+			), false, nil, nil, nil),
 			nil,
 		},
 	}

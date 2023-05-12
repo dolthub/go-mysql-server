@@ -522,6 +522,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	}
 	require.Equal(t, rowCount, 3)
 
+	// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
 	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
 	require.NoError(t, err)
 	rowCount = 0
@@ -1984,6 +1985,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.FooData)
 	for _, tt := range queries.CreateTableQueries {
 		RunWriteQueryTest(t, harness, tt)
+	}
+
+	for _, script := range queries.CreateTableScriptTests {
+		TestScriptPrepared(t, harness, script)
 	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
@@ -5366,33 +5371,6 @@ func TestJsonScripts(t *testing.T, harness Harness) {
 	}
 }
 
-type customFunc struct {
-	expression.UnaryExpression
-}
-
-var _ sql.Expression = (*customFunc)(nil)
-var _ sql.CollationCoercible = (*customFunc)(nil)
-
-func (c *customFunc) String() string {
-	return "customFunc(" + c.Child.String() + ")"
-}
-
-func (c *customFunc) Type() sql.Type {
-	return types.Uint32
-}
-
-func (c *customFunc) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.GetCoercibility(ctx, c.Child)
-}
-
-func (c *customFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return int64(5), nil
-}
-
-func (c *customFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return &customFunc{expression.UnaryExpression{children[0]}}, nil
-}
-
 func TestAlterTable(t *testing.T, harness Harness) {
 	errorTests := []queries.QueryErrorTest{
 		{
@@ -5692,13 +5670,6 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	defer e.Close()
 	ctx := NewContext(harness)
 
-	e.Analyzer.Catalog.RegisterFunction(NewContext(harness), sql.Function1{
-		Name: "customfunc",
-		Fn: func(e1 sql.Expression) sql.Expression {
-			return &customFunc{expression.UnaryExpression{e1}}
-		},
-	})
-
 	t.Run("Standard default literal", func(t *testing.T) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t1 (pk) VALUES (1), (2)")
@@ -5754,11 +5725,14 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
+		e.Query(ctx, "set @@session.time_zone='SYSTEM';")
+		// TODO: NOW() and CURRENT_TIMESTAMP() are supposed to be the same function in MySQL, but we have two different
+		//       implementations with slightly different behavior.
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
 			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
 		// truncating time to microseconds for compatibility with integrators who may store more precision (go gives nanos)
-		now := time.Now().Truncate(time.Microsecond)
+		now := time.Now().Truncate(time.Microsecond).UTC()
 		sql.RunWithNowFunc(func() time.Time {
 			return now
 		}, func() error {
@@ -5766,7 +5740,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			return nil
 		})
 		TestQueryWithContext(t, ctx, e, harness, "select * from t10 order by 1", []sql.Row{
-			{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)},
+			{1, now, now.Truncate(time.Second), now, now.Truncate(time.Second)},
 		}, nil, nil)
 	})
 
@@ -6039,9 +6013,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT CURRENT_TIMESTAMP())", sql.ErrColumnDefaultDatetimeOnlyFunc)
 	})
 
-	t.Run("Custom functions are invalid", func(t *testing.T) {
-		t.Skip("Broken: should produce an error, but does not")
-		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (CUSTOMFUNC(1)))", sql.ErrInvalidColumnDefaultFunction)
+	t.Run("Unknown functions return an error", func(t *testing.T) {
+		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (CUSTOMFUNC(1)))", sql.ErrFunctionNotFound)
+	})
+
+	t.Run("Stored procedures are not valid in column default value expressions", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE testProc()\nBEGIN\n\tSELECT 42 FROM dual;\nEND;", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
+		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (call testProc()))", sql.ErrSyntaxError)
 	})
 
 	t.Run("Default expression references own column", func(t *testing.T) {

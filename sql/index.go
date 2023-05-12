@@ -98,6 +98,7 @@ type IndexLookup struct {
 	IsPointLookup   bool
 	IsEmptyRange    bool
 	IsSpatialLookup bool
+	IsReverse       bool
 }
 
 var emptyLookup = IndexLookup{}
@@ -143,6 +144,8 @@ type OrderedIndex interface {
 	Index
 	// Order returns the order of results for reads from this index
 	Order() IndexOrder
+	// Reversible returns whether or not this index can be iterated on backwards
+	Reversible() bool
 }
 
 // ColumnExpressionType returns a column expression along with its Type.

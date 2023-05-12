@@ -249,8 +249,8 @@ func (d Database) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d Database) UpdateEvent(ctx *sql.Context, ed sql.EventDefinition) error {
-	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", ed.Name))
+func (d Database) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", originalName))
 	if err != nil {
 		return err
 	}

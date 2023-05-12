@@ -95,6 +95,58 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter keyless table",
+		SetUpScript: []string{
+			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
+			"insert into t values (1, 'one', NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `alter table t modify column c1 int unsigned`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c1", "int unsigned", "YES", "", "NULL", ""},
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    `alter table t drop column c1;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    "alter table t add column new3 int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    `insert into t values ('two', 'two', -2);`,
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", "NULL", ""},
+					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+					{"new3", "int", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{"one", nil, nil}, {"two", uint64(2), -2}},
+			},
+		},
+	},
+	{
 		Name: "topN stable output",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int)",
@@ -1275,6 +1327,19 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE MODIFY column making UNIQUE",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int)",
+			"ALTER TABLE `test` MODIFY column uk int unique",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO test VALUES (1, 1), (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE MODIFY column with KEY",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key, mk int, index (mk))",
@@ -1499,7 +1564,6 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
-			"set time_zone = '+0:00';",
 			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
 			`INSERT INTO test VALUES 
 			("2021-07-04 10:00:00", 1.0),
@@ -3106,6 +3170,135 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "show tables;",
 				Expected: []sql.Row{{"myview"}, {"t1"}, {"v1"}},
+			},
+		},
+	},
+	{
+		Name: "timezone default settings",
+		Assertions: []ScriptTestAssertion{
+			{
+				// To match MySQL's behavior, this should come from the operating system's timezone setting, but
+				// currently we default to UTC.
+				// TODO: When the value of @@system_time_zone is read, it should invoke time.Now() and return the
+				//       Zone() information. This should be done dynamically when @@system_time_zone is read, since
+				//       the system time_zone offset can change while the process is running (e.g. daylight savings).
+				Query:    `select @@system_time_zone;`,
+				Expected: []sql.Row{{"UTC"}},
+			},
+			{
+				// The default time_zone setting for MySQL is SYSTEM, which means timezone comes from @@system_time_zone
+				Query:    `select @@time_zone;`,
+				Expected: []sql.Row{{"SYSTEM"}},
+			},
+		},
+	},
+	{
+		Name: "current time functions",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Smoke test that NOW() and UTC_TIMESTAMP() return non-null values with the SYSTEM time zone
+				Query:    `select @@time_zone, NOW() IS NOT NULL, UTC_TIMESTAMP() IS NOT NULL;`,
+				Expected: []sql.Row{{"SYSTEM", true, true}},
+			},
+			{
+				// CURTIME() returns the same time as NOW() with the SYSTEM timezone
+				// TODO: TIME(NOW()) would be simpler test logic, but doesn't work correctly here.
+				Query:    `select @@time_zone, NOW() LIKE CONCAT('%', CURTIME(), '%');`,
+				Expected: []sql.Row{{"SYSTEM", true}},
+			},
+			{
+				// Set the timezone set to UTC as an offset
+				Query:    `set @@time_zone='+00:00';`,
+				Expected: []sql.Row{{}},
+			},
+			{
+				// When the session's time zone is set to UTC, NOW() and UTC_TIMESTAMP() should return the same value
+				Query:    `select @@time_zone, NOW() = UTC_TIMESTAMP();`,
+				Expected: []sql.Row{{"+00:00", true}},
+			},
+			{
+				// CURTIME() returns the same time as NOW() with UTC's timezone offset
+				Query:    `select @@time_zone, NOW() LIKE CONCAT('%', CURTIME(), '%');`,
+				Expected: []sql.Row{{"+00:00", true}},
+			},
+			{
+				Query:    `set @@time_zone='+02:00';`,
+				Expected: []sql.Row{{}},
+			},
+			{
+				// When the session's time zone is set to +2:00, NOW() should report two hours ahead of UTC_TIMESTAMP()
+				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(), UTC_TIMESTAMP());`,
+				Expected: []sql.Row{{"+02:00", -120}},
+			},
+			{
+				// CURTIME() returns the same time as NOW() with a +2:00 timezone offset
+				Query:    `select @@time_zone, NOW() LIKE CONCAT('%', CURTIME(), '%');`,
+				Expected: []sql.Row{{"+02:00", true}},
+			},
+		},
+	},
+	{
+		Name: "timestamp timezone conversion",
+		SetUpScript: []string{
+			"set time_zone='+00:00';",
+			"create table timezonetest(pk int primary key, dt datetime, ts timestamp);",
+			"insert into timezonetest values(1, '2020-02-14 12:00:00', '2020-02-14 12:00:00');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// When reading back the datetime and timestamp values in the same time zone we entered them,
+				// we should get the exact same results back.
+				Query: `select * from timezonetest;`,
+				Expected: []sql.Row{{1,
+					time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
+					time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    `set @@time_zone='-08:00';`,
+				Expected: []sql.Row{{}},
+			},
+			{
+				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
+				Skip: true,
+				// After changing the session's time zone, we should get back a different result for the timestamp
+				// column, but the same result for the datetime column.
+				Query: `select * from timezonetest;`,
+				Expected: []sql.Row{{1,
+					time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
+					time.Date(2020, time.February, 14, 4, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    `set @@time_zone='+5:00';`,
+				Expected: []sql.Row{{}},
+			},
+			{
+				// Test with explicit timezone in datetime literal
+				Query:    `insert into timezonetest values(3, '2020-02-16 12:00:00 +0800 CST', '2020-02-16 12:00:00 +0800 CST');`,
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
+				Skip:  true,
+				Query: `select * from timezonetest;`,
+				Expected: []sql.Row{
+					{1, time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
+						time.Date(2020, time.February, 14, 17, 0, 0, 0, time.UTC)},
+					{3, time.Date(2020, time.February, 16, 9, 0, 0, 0, time.UTC),
+						time.Date(2020, time.February, 16, 9, 0, 0, 0, time.UTC)}},
+			},
+			{
+				Query:    `set @@time_zone='+0:00';`,
+				Expected: []sql.Row{{}},
+			},
+			{
+				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
+				Skip:  true,
+				Query: `select * from timezonetest;`,
+				Expected: []sql.Row{
+					{1, time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
+						time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC)},
+					{3, time.Date(2020, time.February, 16, 9, 0, 0, 0, time.UTC),
+						time.Date(2020, time.February, 16, 4, 0, 0, 0, time.UTC)}},
 			},
 		},
 	},
