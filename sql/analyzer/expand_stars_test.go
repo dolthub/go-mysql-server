@@ -222,5 +222,5 @@ func TestExpandStars(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, nil, testCases, NewDefault(nil, sql.VersionStable), f)
+	runTestCases(t, nil, testCases, NewDefault(nil), f)
 }

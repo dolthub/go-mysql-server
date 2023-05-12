@@ -29,7 +29,7 @@ import (
 
 func TestPushdownSortProject(t *testing.T) {
 	rule := getRule(pushdownSortId)
-	a := NewDefault(nil, sql.VersionStable)
+	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
@@ -108,7 +108,7 @@ func TestPushdownSortProject(t *testing.T) {
 
 func TestPushdownSortGroupby(t *testing.T) {
 	rule := getRule(pushdownSortId)
-	a := NewDefault(nil, sql.VersionStable)
+	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
@@ -210,7 +210,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 
 func TestPushdownSortWindow(t *testing.T) {
 	rule := getRule(pushdownSortId)
-	a := NewDefault(nil, sql.VersionStable)
+	a := NewDefault(nil)
 
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "foo"},
@@ -349,7 +349,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	result, _, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
+	result, _, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.NoError(err)
 
 	require.Equal(
@@ -377,7 +377,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	_, _, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil, sql.VersionStable), node, nil, DefaultRuleSelector)
+	_, _, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
 	require.Error(err)
 	require.True(ErrOrderByColumnIndex.Is(err))
 }

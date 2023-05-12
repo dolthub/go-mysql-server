@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"strconv"
 	"strings"
 
@@ -239,7 +240,7 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 			err := fmt.Errorf("expected resolved table: %s", tabName)
 			b.handleErr(err)
 		}
-		parsedConstraint := b.buildConstraintDefinition(outScope, ddl.TableSpec.Constraints[0])
+		parsedConstraint := b.convertConstraintDefinition(outScope, ddl.TableSpec.Constraints[0])
 		switch strings.ToLower(ddl.ConstraintAction) {
 		case ast.AddStr:
 			switch c := parsedConstraint.(type) {
@@ -286,14 +287,14 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 		switch strings.ToLower(ddl.ColumnAction) {
 		case ast.AddStr:
 			sch, _ := b.tableSpecToSchema(inScope, ddl.TableSpec, true)
-			outScope.node = plan.NewAddColumnResolved(table, sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+			outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 		case ast.DropStr:
 			outScope.node = plan.NewDropColumnResolved(table, ddl.Column.String())
 		case ast.RenameStr:
 			outScope.node = plan.NewRenameColumnResolved(table, ddl.Column.String(), ddl.ToColumn.String())
 		case ast.ModifyStr, ast.ChangeStr:
 			sch, _ := b.tableSpecToSchema(inScope, ddl.TableSpec, true)
-			outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+			outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 		default:
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
 			b.handleErr(err)
@@ -331,7 +332,7 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 
 func (b *PlanBuilder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec *ast.TableSpec) (fks []*sql.ForeignKeyConstraint, checks []*sql.CheckConstraint) {
 	for _, unknownConstraint := range spec.Constraints {
-		parsedConstraint := b.buildConstraintDefinition(inScope, unknownConstraint)
+		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
 			constraint.Database = tname.Qualifier.String()
@@ -418,7 +419,7 @@ type namedConstraint struct {
 	name string
 }
 
-func (b *PlanBuilder) buildConstraintDefinition(inScope *scope, cd *ast.ConstraintDefinition) interface{} {
+func (b *PlanBuilder) convertConstraintDefinition(inScope *scope, cd *ast.ConstraintDefinition) interface{} {
 	if fkConstraint, ok := cd.Details.(*ast.ForeignKeyDefinition); ok {
 		columns := make([]string, len(fkConstraint.Source))
 		for i, col := range fkConstraint.Source {
@@ -744,4 +745,196 @@ func (b *PlanBuilder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (ou
 		config,
 	)
 	return
+}
+
+// TableSpecToSchema creates a sql.Schema from a parsed TableSpec
+func (b *PlanBuilder) tableSpecToSchema(inScope *scope, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
+	tableCollation := sql.Collation_Unspecified
+	if !forceInvalidCollation {
+		if len(tableSpec.Options) > 0 {
+			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
+			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)
+			if len(charsetSubmatches) == 5 && len(collationSubmatches) == 5 {
+				var err error
+				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
+				}
+			} else if len(charsetSubmatches) == 5 {
+				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
+				}
+				tableCollation = charset.DefaultCollation()
+			} else if len(collationSubmatches) == 5 {
+				var err error
+				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
+				if err != nil {
+					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified
+				}
+			}
+		}
+	}
+
+	var schema sql.Schema
+	for _, cd := range tableSpec.Columns {
+		// Use the table's collation if no character or collation was specified for the table
+		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
+			if tableCollation != sql.Collation_Unspecified {
+				cd.Type.Collate = tableCollation.Name()
+			}
+		}
+		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
+
+		if column.PrimaryKey && bool(cd.Type.Null) {
+			b.handleErr(ErrPrimaryKeyOnNullField.New())
+		}
+
+		schema = append(schema, column)
+	}
+
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation
+}
+
+// These constants aren't exported from vitess for some reason. This could be removed if we changed this.
+const (
+	colKeyNone ast.ColumnKeyOption = iota
+	colKeyPrimary
+	colKeySpatialKey
+	colKeyUnique
+	colKeyUniqueKey
+	colKey
+	colKeyFulltextKey
+)
+
+func getPkOrdinals(ts *ast.TableSpec) []int {
+	for _, idxDef := range ts.Indexes {
+		if idxDef.Info.Primary {
+
+			pkOrdinals := make([]int, 0)
+			colIdx := make(map[string]int)
+			for i := 0; i < len(ts.Columns); i++ {
+				colIdx[ts.Columns[i].Name.Lowered()] = i
+			}
+
+			for _, i := range idxDef.Columns {
+				pkOrdinals = append(pkOrdinals, colIdx[i.Column.Lowered()])
+			}
+
+			return pkOrdinals
+		}
+	}
+
+	// no primary key expression, check for inline PK column
+	for i, col := range ts.Columns {
+		if col.Type.KeyOpt == colKeyPrimary {
+			return []int{i}
+		}
+	}
+
+	return []int{}
+}
+
+// columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
+func (b *PlanBuilder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinition, indexes []*ast.IndexDefinition) *sql.Column {
+	internalTyp, err := types.ColumnTypeToType(&cd.Type)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	// Primary key info can either be specified in the column's type info (for in-line declarations), or in a slice of
+	// indexes attached to the table def. We have to check both places to find if a column is part of the primary key
+	isPkey := cd.Type.KeyOpt == colKeyPrimary
+
+	if !isPkey {
+	OuterLoop:
+		for _, index := range indexes {
+			if index.Info.Primary {
+				for _, indexCol := range index.Columns {
+					if indexCol.Column.Equal(cd.Name) {
+						isPkey = true
+						break OuterLoop
+					}
+				}
+			}
+		}
+	}
+
+	var comment string
+	if cd.Type.Comment != nil && cd.Type.Comment.Type == ast.StrVal {
+		comment = string(cd.Type.Comment.Val)
+	}
+
+	defaultVal := b.convertDefaultExpression(inScope, cd.Type.Default)
+
+	extra := ""
+
+	if cd.Type.Autoincrement {
+		extra = "auto_increment"
+	}
+
+	if cd.Type.SRID != nil {
+		sridVal, err := strconv.ParseInt(string(cd.Type.SRID.Val), 10, 32)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		if uint32(sridVal) != types.CartesianSRID && uint32(sridVal) != types.GeoSpatialSRID {
+			b.handleErr(sql.ErrUnsupportedFeature.New("unsupported SRID value"))
+		}
+		if s, ok := internalTyp.(sql.SpatialColumnType); ok {
+			internalTyp = s.SetSRID(uint32(sridVal))
+		} else {
+			b.handleErr(sql.ErrInvalidType.New(fmt.Sprintf("cannot define SRID for %s", internalTyp)))
+		}
+	}
+
+	return &sql.Column{
+		Nullable:      !isPkey && !bool(cd.Type.NotNull),
+		Type:          internalTyp,
+		Name:          cd.Name.String(),
+		PrimaryKey:    isPkey,
+		Default:       defaultVal,
+		AutoIncrement: bool(cd.Type.Autoincrement),
+		Comment:       comment,
+		Extra:         extra,
+	}
+}
+
+func (b *PlanBuilder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr) *sql.ColumnDefaultValue {
+	if defaultExpr == nil {
+		return nil
+	}
+	parsedExpr := b.buildScalar(inScope, defaultExpr)
+
+	// Function expressions must be enclosed in parentheses (except for current_timestamp() and now())
+	_, isParenthesized := defaultExpr.(*ast.ParenExpr)
+	isLiteral := !isParenthesized
+
+	// A literal will never have children, thus we can also check for that.
+	if unaryExpr, is := defaultExpr.(*ast.UnaryExpr); is {
+		if _, lit := unaryExpr.Expr.(*ast.SQLVal); lit {
+			isLiteral = true
+		}
+	} else if !isParenthesized {
+		if f, ok := parsedExpr.(*expression.UnresolvedFunction); ok {
+			// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
+			// but they still need to be treated as function expressions
+			if f.Name() == "now" || f.Name() == "current_timestamp" {
+				isLiteral = false
+			} else {
+				// All other functions must *always* be enclosed in parens
+				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
+				b.handleErr(err)
+			}
+		}
+	}
+
+	return &sql.ColumnDefaultValue{
+		Expression:    parsedExpr,
+		OutType:       nil,
+		Literal:       isLiteral,
+		ReturnNil:     true,
+		Parenthesized: isParenthesized,
+	}
 }
