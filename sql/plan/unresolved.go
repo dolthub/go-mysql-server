@@ -28,7 +28,7 @@ var ErrUnresolvedTable = errors.NewKind("unresolved table")
 // UnresolvedTable is a table that has not been resolved yet but whose name is known.
 type UnresolvedTable struct {
 	name     string
-	database string
+	database sql.Database
 	asOf     sql.Expression
 	comment  string
 }
@@ -42,11 +42,21 @@ var _ sql.CommentedNode = (*UnresolvedTable)(nil)
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name, db string) *UnresolvedTable {
+	return &UnresolvedTable{name, sql.UnresolvedDatabase(db), nil, ""}
+}
+
+// NewUnresolvedTableWithDatabase creates a new Unresolved table with a database provided.
+func NewUnresolvedTableWithDatabase(name string, db sql.Database) *UnresolvedTable {
 	return &UnresolvedTable{name, db, nil, ""}
 }
 
 // NewUnresolvedTableAsOf creates a new Unresolved table with an AS OF expression.
 func NewUnresolvedTableAsOf(name, db string, asOf sql.Expression) *UnresolvedTable {
+	return &UnresolvedTable{name, sql.UnresolvedDatabase(db), asOf, ""}
+}
+
+// NewUnresolvedTableAsOfWithDatabase creates a new Unresolved table with an AS OF expression and the database provided.
+func NewUnresolvedTableAsOfWithDatabase(name string, db sql.Database, asOf sql.Expression) *UnresolvedTable {
 	return &UnresolvedTable{name, db, asOf, ""}
 }
 
@@ -67,7 +77,7 @@ func (t *UnresolvedTable) Name() string {
 
 // Database implements sql.UnresolvedTable
 func (t *UnresolvedTable) Database() string {
-	return t.database
+	return t.database.Name()
 }
 
 // Resolved implements the Resolvable interface.
@@ -122,7 +132,7 @@ func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
 // WithChildren.
 func (t *UnresolvedTable) WithDatabase(database string) (*UnresolvedTable, error) {
 	t2 := *t
-	t2.database = database
+	t2.database = sql.UnresolvedDatabase(database)
 	return &t2, nil
 }
 

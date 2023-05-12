@@ -240,15 +240,13 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		var (
 			from *plan.ResolvedTable
 			to   sql.Node
-			db   string
+			db   sql.Database
 			err  error
 		)
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			from = n
-			if n.Database != nil {
-				db = n.Database.Name()
-			}
+			db = n.Database
 			var asof sql.Expression
 			if n.AsOf != nil {
 				asof = expression.NewLiteral(n.AsOf, nil)
@@ -256,7 +254,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			if plan.IsDualTable(n) {
 				to = n
 			} else {
-				to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOf(n.Name(), db, asof), a)
+				to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOfWithDatabase(n.Name(), db, asof), a)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -265,10 +263,8 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			from = n.ResolvedTable
-			if n.Database() != nil {
-				db = n.Database().Name()
-			}
-			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.ResolvedTable.Name(), db), a)
+			db = n.Database()
+			to, err = resolveTable(ctx, plan.NewUnresolvedTableWithDatabase(n.ResolvedTable.Name(), db), a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

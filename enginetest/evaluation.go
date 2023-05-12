@@ -169,11 +169,11 @@ func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness,
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
 						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 				} else if assertion.SkipResultsCheck {
-					ctx := NewContext(harness)
+					ctx := NewContext(harness).WithQuery(assertion.Query)
 					_, _, err := runQueryPreparedWithCtx(t, ctx, e, assertion.Query)
 					require.NoError(t, err)
 				} else {
-					ctx := NewContext(harness)
+					ctx := NewContext(harness).WithQuery(assertion.Query)
 					TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil)
 				}
 			})
