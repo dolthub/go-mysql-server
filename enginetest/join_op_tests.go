@@ -30,10 +30,10 @@ type JoinOpTests struct {
 }
 
 var biasedCosters = map[string]analyzer.Coster{
-	"inner":  analyzer.NewInnerBiasedCoster(),
-	"lookup": analyzer.NewLookupBiasedCoster(),
-	"hash":   analyzer.NewHashBiasedCoster(),
-	"merge":  analyzer.NewMergeBiasedCoster(),
+	"inner":   analyzer.NewInnerBiasedCoster(),
+	"lookup":  analyzer.NewLookupBiasedCoster(),
+	"hash":    analyzer.NewHashBiasedCoster(),
+	"merge":   analyzer.NewMergeBiasedCoster(),
 	"partial": analyzer.NewPartialBiasedCoster(),
 }
 
