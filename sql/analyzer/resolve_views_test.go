@@ -40,7 +40,7 @@ var viewDefinitionWithUnion = plan.NewSubqueryAlias(
 	"myview2", "select i from mytable1 union select i from mytable2",
 	plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
-		plan.NewUnion(plan.NewUnresolvedTable("mytable1", ""), plan.NewUnresolvedTable("mytable2", ""), false, nil, nil),
+		plan.NewUnion(plan.NewUnresolvedTable("mytable1", ""), plan.NewUnresolvedTable("mytable2", ""), false, nil, nil, nil),
 	),
 )
 
@@ -94,7 +94,7 @@ func TestResolveViews(t *testing.T) {
 		"myview2", "select i from mytable1 union select i from mytable2",
 		plan.NewProject(
 			[]sql.Expression{expression.NewUnresolvedColumn("i")},
-			plan.NewUnion(plan.NewUnresolvedTableAsOf("mytable1", "", expression.NewLiteral("2019-01-01", types.LongText)), plan.NewUnresolvedTableAsOf("mytable2", "", expression.NewLiteral("2019-01-01", types.LongText)), false, nil, nil),
+			plan.NewUnion(plan.NewUnresolvedTableAsOf("mytable1", "", expression.NewLiteral("2019-01-01", types.LongText)), plan.NewUnresolvedTableAsOf("mytable2", "", expression.NewLiteral("2019-01-01", types.LongText)), false, nil, nil, nil),
 		),
 	)
 	notAnalyzedAsOf = plan.NewUnresolvedTableAsOf("myview2", "", expression.NewLiteral("2019-01-01", types.LongText))

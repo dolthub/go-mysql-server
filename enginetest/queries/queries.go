@@ -743,6 +743,17 @@ var SpatialQueryTests = []QueryTest{
 var QueryTests = []QueryTest{
 	{
 		Query: `
+Select x
+from (select * from xy) sq1
+union all
+select u
+from (select * from uv) sq2
+limit 1
+offset 1;`,
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: `
 Select * from (
   With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
   Select * from cte

@@ -4495,7 +4495,7 @@ CREATE TABLE t2
 									),
 									plan.NewUnresolvedTable("cte1", ""),
 								),
-							), true, nil, nil),
+							), true, nil, nil, nil),
 						),
 						[]string{},
 					),
@@ -4706,7 +4706,7 @@ CREATE TABLE t2
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
-			), true, nil, nil),
+			), true, nil, nil, nil),
 		},
 		{
 			input: `(SELECT 2) UNION (SELECT 3)`,
@@ -4716,7 +4716,7 @@ CREATE TABLE t2
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
-			), true, nil, nil),
+			), true, nil, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION ALL SELECT 3 UNION DISTINCT SELECT 4`,
@@ -4726,11 +4726,11 @@ CREATE TABLE t2
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
-			), false, nil, nil),
+			), false, nil, nil, nil),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, nil),
+				), true, nil, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION SELECT 3 UNION ALL SELECT 4`,
@@ -4741,11 +4741,11 @@ CREATE TABLE t2
 				), plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, nil),
+				), true, nil, nil, nil),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), false, nil, nil),
+				), false, nil, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4`,
@@ -4756,11 +4756,11 @@ CREATE TABLE t2
 				), plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, nil),
+				), true, nil, nil, nil),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, nil),
+				), true, nil, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION (SELECT 3 UNION SELECT 4)`,
@@ -4775,8 +4775,8 @@ CREATE TABLE t2
 				), plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, nil),
-				true, nil, nil,
+				), true, nil, nil, nil),
+				true, nil, nil, nil,
 			),
 		},
 		{
@@ -4787,7 +4787,7 @@ CREATE TABLE t2
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
-			), false, nil, nil),
+			), false, nil, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION DISTINCT SELECT 3`,
@@ -4797,7 +4797,7 @@ CREATE TABLE t2
 			), plan.NewProject(
 				[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 				plan.NewResolvedDualTable(),
-			), true, nil, nil),
+			), true, nil, nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4 LIMIT 10`,
@@ -4808,11 +4808,11 @@ CREATE TABLE t2
 				), plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, nil),
+				), true, nil, nil, nil),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, expression.NewLiteral(int8(10), types.Int8), nil),
+				), true, expression.NewLiteral(int8(10), types.Int8), nil, nil),
 		},
 		{
 			input: `SELECT 2 UNION SELECT 3 UNION SELECT 4 ORDER BY 2`,
@@ -4823,11 +4823,11 @@ CREATE TABLE t2
 				), plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(3), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, nil),
+				), true, nil, nil, nil),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int8(4), types.Int8)},
 					plan.NewResolvedDualTable(),
-				), true, nil, []sql.SortField{
+				), true, nil, nil, []sql.SortField{
 					{
 						Column:       expression.NewLiteral(int8(2), types.Int8),
 						Column2:      expression.NewLiteral(int8(2), types.Int8),

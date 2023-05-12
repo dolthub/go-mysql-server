@@ -625,6 +625,15 @@ func (b *BaseBuilder) buildUnion(ctx *sql.Context, u *plan.Union, row sql.Row) (
 	if u.Distinct {
 		iter = newDistinctIter(ctx, iter)
 	}
+	// Limit must wrap offset, and not vice-versa, so that
+	// skipped rows don't count toward the returned row count.
+	if u.Offset != nil {
+		offset, err := getInt64Value(ctx, u.Offset)
+		if err != nil {
+			return nil, err
+		}
+		iter = &offsetIter{skip: offset, childIter: iter}
+	}
 	if u.Limit != nil && len(u.SortFields) > 0 {
 		limit, err := getInt64Value(ctx, u.Limit)
 		if err != nil {
