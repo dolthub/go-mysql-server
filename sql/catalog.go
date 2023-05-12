@@ -38,8 +38,14 @@ type Catalog interface {
 	// Table returns the table with the name given in the db with the name given
 	Table(ctx *Context, dbName, tableName string) (Table, Database, error)
 
+	// DatabaseTable returns the table with the name given in the db given
+	DatabaseTable(ctx *Context, db Database, tableName string) (Table, Database, error)
+
 	// TableAsOf returns the table with the name given in the db with the name given, as of the given marker
 	TableAsOf(ctx *Context, dbName, tableName string, asOf interface{}) (Table, Database, error)
+
+	// DatabaseTableAsOf returns the table with the name given in the db given, as of the given marker
+	DatabaseTableAsOf(ctx *Context, db Database, tableName string, asOf interface{}) (Table, Database, error)
 
 	// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
 	Function(ctx *Context, name string) (Function, error)
