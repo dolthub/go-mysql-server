@@ -392,9 +392,9 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 		}
 
 		rightOutTables := m.tableProps.getTableNames(anti.right.relProps.OutputTables())
-		projectExpressions := []sql.Expression{}
+		var projectExpressions []sql.Expression
 		onlyEquality := true
-		for _, f := range anti.filter { // TODO: invert filter?
+		for _, f := range anti.filter {
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				switch e := e.(type) {
 				case *expression.GetField:
@@ -424,7 +424,6 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 			projections: projectExpressions,
 		}
 		rightGrp := m.memoize(newRight)
-		rightGrp.relProps.distinct = hashDistinctOp
 
 		// join is a new group
 		newJoin := &leftJoin{
@@ -438,7 +437,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 		}
 		joinGrp := m.memoize(newJoin)
 
-		// TODO: create a new filter to drop null primary keys on right table
+		// drop null primary keys on right table
 		nullFilters := make([]sql.Expression, len(projectExpressions))
 		for i, e := range projectExpressions {
 			nullFilters[i] = expression.NewIsNull(e)
