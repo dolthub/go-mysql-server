@@ -34,6 +34,7 @@ var biasedCosters = map[string]analyzer.Coster{
 	"lookup": analyzer.NewLookupBiasedCoster(),
 	"hash":   analyzer.NewHashBiasedCoster(),
 	"merge":  analyzer.NewMergeBiasedCoster(),
+	"partial": analyzer.NewPartialBiasedCoster(),
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
