@@ -8331,10 +8331,6 @@ type QueryErrorTest struct {
 }
 
 var ErrorQueries = []QueryErrorTest{
-	//{
-	//	Query: "with a(j) as (select 1) select j from a union select x from xy order by x;",
-	//  ExpectedErrStr: "Unknown column 'x' in 'order clause'"
-	//},
 	{
 		Query:       "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a order by 1 asc;",
 		ExpectedErr: sql.ErrConflictingExternalQuery,
@@ -8781,6 +8777,14 @@ var ErrorQueries = []QueryErrorTest{
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
+	{
+		Query:          `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
+		ExpectedErrStr: "Not supported: 'ORDER BY over UNION in recursive Common Table Expression'",
+	},
+	{
+		Query:          "with a(j) as (select 1) select j from a union select x from xy order by x;",
+		ExpectedErrStr: "Unknown column 'x' in 'order clause'",
+	},
 	{
 		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
 		ExpectedErrStr: "table not found: c",
