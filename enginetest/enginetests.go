@@ -1994,6 +1994,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		RunWriteQueryTest(t, harness, tt)
 	}
 
+	for _, script := range queries.CreateTableScriptTests {
+		TestScriptPrepared(t, harness, script)
+	}
+
 	harness.Setup(setup.MydbData, setup.MytableData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
@@ -5728,11 +5732,14 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
+		e.Query(ctx, "set @@session.time_zone='SYSTEM';")
+		// TODO: NOW() and CURRENT_TIMESTAMP() are supposed to be the same function in MySQL, but we have two different
+		//       implementations with slightly different behavior.
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
 			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
 		// truncating time to microseconds for compatibility with integrators who may store more precision (go gives nanos)
-		now := time.Now().Truncate(time.Microsecond)
+		now := time.Now().Truncate(time.Microsecond).UTC()
 		sql.RunWithNowFunc(func() time.Time {
 			return now
 		}, func() error {
@@ -5740,7 +5747,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			return nil
 		})
 		TestQueryWithContext(t, ctx, e, harness, "select * from t10 order by 1", []sql.Row{
-			{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)},
+			{1, now, now.Truncate(time.Second), now, now.Truncate(time.Second)},
 		}, nil, nil)
 	})
 

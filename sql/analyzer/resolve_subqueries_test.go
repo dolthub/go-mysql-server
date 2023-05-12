@@ -47,7 +47,7 @@ func TestResolveSubqueries(t *testing.T) {
 	db.AddTable("baz", baz)
 
 	// Unlike most analyzer functions, resolving subqueries needs a fully functioning analyzer
-	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db), sql.VersionStable))
+	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db)))
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -178,7 +178,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 	db.AddTable("mytable2", table2)
 
 	// Unlike most analyzer functions, resolving subqueries needs a fully functioning analyzer
-	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db), sql.VersionStable))
+	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db)))
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -449,7 +449,7 @@ func TestFinalizeSubqueryExpressions(t *testing.T) {
 	db.AddTable("mytable2", table2)
 
 	// Unlike most analyzer functions, resolving subqueries needs a fully functioning analyzer
-	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db), sql.VersionStable))
+	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db)))
 
 	testCases := []analyzerFnTestCase{
 		{

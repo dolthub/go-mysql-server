@@ -299,7 +299,14 @@ type Analyzer struct {
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.
-func NewDefault(provider sql.DatabaseProvider, version sql.AnalyzerVersion) *Analyzer {
+func NewDefault(provider sql.DatabaseProvider) *Analyzer {
+	return NewBuilder(provider).Build()
+
+}
+
+// NewDefaultWithVersion creates a default Analyzer instance either
+// experimental or
+func NewDefaultWithVersion(provider sql.DatabaseProvider, version sql.AnalyzerVersion) *Analyzer {
 	a := NewBuilder(provider).Build()
 	switch version {
 	case sql.VersionExperimental:

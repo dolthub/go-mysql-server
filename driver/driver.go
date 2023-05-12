@@ -165,7 +165,7 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 		if sqle.ExperimentalGMS {
 			version = sql.VersionExperimental
 		}
-		anlz := analyzer.NewDefault(pro, version)
+		anlz := analyzer.NewDefaultWithVersion(pro, version)
 		engine := sqle.New(anlz, nil)
 		db = &dbConn{engine: engine}
 		d.dbs[serverName] = db

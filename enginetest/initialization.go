@@ -106,9 +106,9 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
 	} else if h, ok := harness.(VersionedHarness); ok {
-		a = analyzer.NewDefault(provider, h.Version())
+		a = analyzer.NewDefaultWithVersion(provider, h.Version())
 	} else {
-		a = analyzer.NewDefault(provider, sql.VersionStable)
+		a = analyzer.NewDefault(provider)
 	}
 
 	// All tests will run with all privileges on the built-in root account

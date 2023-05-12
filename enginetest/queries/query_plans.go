@@ -26,6 +26,38 @@ type QueryPlanTest struct {
 var PlanTests = []QueryPlanTest{
 	{
 		Query: `
+Select x
+from (select * from xy) sq1
+union all
+select u
+from (select * from uv) sq2
+limit 1
+offset 2;`,
+		ExpectedPlan: "Union all\n" +
+			" ├─ limit: 1\n" +
+			" ├─ offset: 2\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: sq1\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [xy.x:0!null]\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: xy\n" +
+			" │           └─ columns: [x y]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: sq2\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [uv.u:0!null]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: uv\n" +
+			"             └─ columns: [u v]\n" +
+			"",
+	},
+	{
+		Query: `
 Select * from (
   With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
   Select * from cte
@@ -7041,43 +7073,6 @@ inner join pq on true
 			"",
 	},
 	{
-		// TODO this is an invalid query
-		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(n.i:0!null)\n" +
-			"     ├─ group: \n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: n\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ RecursiveCTE\n" +
-			"             └─ Union all\n" +
-			"                 ├─ sortFields: [1]\n" +
-			"                 ├─ limit: 5\n" +
-			"                 ├─ Project\n" +
-			"                 │   ├─ columns: [1 (tinyint)]\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: \n" +
-			"                 │       └─ columns: []\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i + 1):0!null]\n" +
-			"                     └─ Having\n" +
-			"                         ├─ LessThanOrEqual\n" +
-			"                         │   ├─ (n.i:1!null + 1 (tinyint))\n" +
-			"                         │   └─ 10 (tinyint)\n" +
-			"                         └─ GroupBy\n" +
-			"                             ├─ select: (n.i:0!null + 1 (tinyint)), n.i:0!null\n" +
-			"                             ├─ group: n.i:0!null\n" +
-			"                             └─ Filter\n" +
-			"                                 ├─ LessThanOrEqual\n" +
-			"                                 │   ├─ (n.i:0!null + 1 (tinyint))\n" +
-			"                                 │   └─ 10 (tinyint)\n" +
-			"                                 └─ RecursiveTable(n)\n" +
-			"",
-	},
-	{
 		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 1) SELECT count(i) FROM n;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +
@@ -8025,7 +8020,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
+		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -8033,7 +8028,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
+		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
 			" └─ Table\n" +
 			"     ├─ name: two_pk\n" +
@@ -8041,7 +8036,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
+		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -8050,7 +8045,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2;",
+		Query: `SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
@@ -8061,7 +8056,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc;",
+		Query: `SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null DESC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
@@ -8072,7 +8067,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;",
+		Query: `select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, row_number() over ( partition by two_pk.pk1 order by two_pk.c1 DESC):2!null as row_number() over (partition by pk1 order by c1 desc)]\n" +

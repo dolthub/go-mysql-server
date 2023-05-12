@@ -1,6 +1,6 @@
 package planbuilder
 
-// The optbuilder package is responsible for:
+// The planbuilder package is responsible for:
 // - converting an ast.SQLNode tree into a sql.Node tree
 // - resolving column and table uses.
 //

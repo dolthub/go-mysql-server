@@ -187,7 +187,7 @@ func NewDefault(pro sql.DatabaseProvider) *Engine {
 	if ExperimentalGMS {
 		version = sql.VersionExperimental
 	}
-	a := analyzer.NewDefault(pro, version)
+	a := analyzer.NewDefaultWithVersion(pro, version)
 	return New(a, nil)
 }
 

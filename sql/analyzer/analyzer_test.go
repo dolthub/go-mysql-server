@@ -79,7 +79,7 @@ func TestMaxIterations(t *testing.T) {
 func TestAddRule(t *testing.T) {
 	require := require.New(t)
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	a := NewBuilder(nil).AddPostAnalyzeRule(-1, pushdownFilters).Build()
 
@@ -89,7 +89,7 @@ func TestAddRule(t *testing.T) {
 func TestAddPreValidationRule(t *testing.T) {
 	require := require.New(t)
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	a := NewBuilder(nil).AddPreValidationRule(-1, pushdownFilters).Build()
 
@@ -99,7 +99,7 @@ func TestAddPreValidationRule(t *testing.T) {
 func TestAddPostValidationRule(t *testing.T) {
 	require := require.New(t)
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	a := NewBuilder(nil).AddPostValidationRule(-1, pushdownFilters).Build()
 
@@ -111,7 +111,7 @@ func TestRemoveOnceBeforeRule(t *testing.T) {
 
 	a := NewBuilder(nil).RemoveOnceBeforeRule(resolveViewsId).Build()
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	require.Equal(countRules(a.Batches), defRulesCount-1)
 }
@@ -121,7 +121,7 @@ func TestRemoveDefaultRule(t *testing.T) {
 
 	a := NewBuilder(nil).RemoveDefaultRule(resolveNaturalJoinsId).Build()
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	require.Equal(countRules(a.Batches), defRulesCount-1)
 }
@@ -131,7 +131,7 @@ func TestRemoveOnceAfterRule(t *testing.T) {
 
 	a := NewBuilder(nil).RemoveOnceAfterRule(loadTriggersId).Build()
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	require.Equal(countRules(a.Batches), defRulesCount-1)
 }
@@ -141,7 +141,7 @@ func TestRemoveValidationRule(t *testing.T) {
 
 	a := NewBuilder(nil).RemoveValidationRule(validateResolvedId).Build()
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	require.Equal(countRules(a.Batches), defRulesCount-1)
 }
@@ -151,7 +151,7 @@ func TestRemoveAfterAllRule(t *testing.T) {
 
 	a := NewBuilder(nil).RemoveAfterAllRule(TrackProcessId).Build()
 
-	defRulesCount := countRules(NewDefault(nil, sql.VersionStable).Batches)
+	defRulesCount := countRules(NewDefault(nil).Batches)
 
 	require.Equal(countRules(a.Batches), defRulesCount-1)
 }
@@ -235,7 +235,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	db.AddTable("commits", commits)
 
 	provider := sql.NewDatabaseProvider(db, information_schema.NewInformationSchemaDatabase())
-	a := withoutProcessTracking(NewDefault(provider, sql.VersionStable))
+	a := withoutProcessTracking(NewDefault(provider))
 
 	ctx := sql.NewContext(context.Background())
 	result, err := a.Analyze(ctx, node, nil)
@@ -288,7 +288,7 @@ func TestDeepCopyNode(t *testing.T) {
 						expression.NewBindVar("v2"),
 					},
 					plan.NewUnresolvedTable("mytable", ""),
-				), false, nil, nil),
+				), false, nil, nil, nil),
 			),
 		},
 		{
