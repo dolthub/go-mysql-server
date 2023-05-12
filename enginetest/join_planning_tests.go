@@ -671,7 +671,7 @@ where u in (select * from rec);`,
 				},
 			},
 			{
-				q: "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv where u = 2) order by x",
+				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv where u = 2) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
 				exp: []sql.Row{
 					{0, 2},
@@ -680,7 +680,6 @@ where u in (select * from rec);`,
 				},
 			},
 		},
-
 	},
 	{
 		name: "join concat tests",
