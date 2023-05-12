@@ -1,8 +1,9 @@
 package planbuilder
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"regexp"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (
