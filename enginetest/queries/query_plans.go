@@ -728,61 +728,69 @@ Select * from (
 	{
 		Query: `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
 		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
-			" └─ AntiJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ xy.x:0!null\n" +
-			"     │   └─ scalarSubq0.u:2!null\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: xy\n" +
-			"     │   └─ columns: [x y]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: scalarSubq0\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [cte1.u:0!null]\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: cte1\n" +
-			"                 ├─ outerVisibility: true\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [cte2.u:1!null, cte2.v:2]\n" +
-			"                     └─ HashJoin\n" +
-			"                         ├─ Eq\n" +
-			"                         │   ├─ cte2.u:1!null\n" +
-			"                         │   └─ ab.b:0\n" +
-			"                         ├─ Table\n" +
-			"                         │   ├─ name: ab\n" +
-			"                         │   └─ columns: [b]\n" +
-			"                         └─ HashLookup\n" +
-			"                             ├─ source: TUPLE(ab.b:0)\n" +
-			"                             ├─ target: TUPLE(cte2.u:0!null)\n" +
-			"                             └─ CachedResults\n" +
-			"                                 └─ SubqueryAlias\n" +
-			"                                     ├─ name: cte2\n" +
-			"                                     ├─ outerVisibility: false\n" +
-			"                                     ├─ cacheable: true\n" +
-			"                                     └─ Project\n" +
-			"                                         ├─ columns: [uv.u:1!null, uv.v:2]\n" +
-			"                                         └─ HashJoin\n" +
-			"                                             ├─ Eq\n" +
-			"                                             │   ├─ uv.u:1!null\n" +
-			"                                             │   └─ ab.b:0\n" +
-			"                                             ├─ Table\n" +
-			"                                             │   ├─ name: ab\n" +
-			"                                             │   └─ columns: [b]\n" +
-			"                                             └─ HashLookup\n" +
-			"                                                 ├─ source: TUPLE(ab.b:0)\n" +
-			"                                                 ├─ target: TUPLE(uv.u:0!null)\n" +
-			"                                                 └─ CachedResults\n" +
-			"                                                     └─ Filter\n" +
-			"                                                         ├─ HashIn\n" +
-			"                                                         │   ├─ uv.u:0!null\n" +
-			"                                                         │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
-			"                                                         └─ IndexedTableAccess(uv)\n" +
-			"                                                             ├─ index: [uv.u]\n" +
-			"                                                             ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                                             └─ columns: [u v]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:0!null, xy.y:1]\n" +
+			"     └─ Filter\n" +
+			"         ├─ scalarSubq0.u:2!null IS NULL\n" +
+			"         └─ LeftOuterHashJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ xy.x:0!null\n" +
+			"             │   └─ scalarSubq0.u:2!null\n" +
+			"             ├─ Table\n" +
+			"             │   ├─ name: xy\n" +
+			"             │   └─ columns: [x y]\n" +
+			"             └─ HashLookup\n" +
+			"                 ├─ source: TUPLE(xy.x:0!null)\n" +
+			"                 ├─ target: TUPLE(scalarSubq0.u:0!null)\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ SubqueryAlias\n" +
+			"                         ├─ name: scalarSubq0\n" +
+			"                         ├─ outerVisibility: false\n" +
+			"                         ├─ cacheable: true\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [cte1.u:0!null]\n" +
+			"                             └─ SubqueryAlias\n" +
+			"                                 ├─ name: cte1\n" +
+			"                                 ├─ outerVisibility: true\n" +
+			"                                 ├─ cacheable: true\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [cte2.u:1!null, cte2.v:2]\n" +
+			"                                     └─ HashJoin\n" +
+			"                                         ├─ Eq\n" +
+			"                                         │   ├─ cte2.u:1!null\n" +
+			"                                         │   └─ ab.b:0\n" +
+			"                                         ├─ Table\n" +
+			"                                         │   ├─ name: ab\n" +
+			"                                         │   └─ columns: [b]\n" +
+			"                                         └─ HashLookup\n" +
+			"                                             ├─ source: TUPLE(ab.b:0)\n" +
+			"                                             ├─ target: TUPLE(cte2.u:0!null)\n" +
+			"                                             └─ CachedResults\n" +
+			"                                                 └─ SubqueryAlias\n" +
+			"                                                     ├─ name: cte2\n" +
+			"                                                     ├─ outerVisibility: false\n" +
+			"                                                     ├─ cacheable: true\n" +
+			"                                                     └─ Project\n" +
+			"                                                         ├─ columns: [uv.u:1!null, uv.v:2]\n" +
+			"                                                         └─ HashJoin\n" +
+			"                                                             ├─ Eq\n" +
+			"                                                             │   ├─ uv.u:1!null\n" +
+			"                                                             │   └─ ab.b:0\n" +
+			"                                                             ├─ Table\n" +
+			"                                                             │   ├─ name: ab\n" +
+			"                                                             │   └─ columns: [b]\n" +
+			"                                                             └─ HashLookup\n" +
+			"                                                                 ├─ source: TUPLE(ab.b:0)\n" +
+			"                                                                 ├─ target: TUPLE(uv.u:0!null)\n" +
+			"                                                                 └─ CachedResults\n" +
+			"                                                                     └─ Filter\n" +
+			"                                                                         ├─ HashIn\n" +
+			"                                                                         │   ├─ uv.u:0!null\n" +
+			"                                                                         │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
+			"                                                                         └─ IndexedTableAccess(uv)\n" +
+			"                                                                             ├─ index: [uv.u]\n" +
+			"                                                                             ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
+			"                                                                             └─ columns: [u v]\n" +
 			"",
 	},
 	{
@@ -1405,16 +1413,26 @@ where exists (select * from pq where a = p)
 			"     │   ├─ name: alias1\n" +
 			"     │   ├─ outerVisibility: false\n" +
 			"     │   ├─ cacheable: true\n" +
-			"     │   └─ AntiLookupJoin\n" +
-			"     │       ├─ Eq\n" +
-			"     │       │   ├─ ab.a:0!null\n" +
-			"     │       │   └─ uv.u:2!null\n" +
-			"     │       ├─ Table\n" +
-			"     │       │   ├─ name: ab\n" +
-			"     │       │   └─ columns: [a b]\n" +
-			"     │       └─ IndexedTableAccess(uv)\n" +
-			"     │           ├─ index: [uv.u]\n" +
-			"     │           └─ columns: [u v]\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ uv.u:2!null IS NULL\n" +
+			"     │           └─ LeftOuterHashJoin\n" +
+			"     │               ├─ Eq\n" +
+			"     │               │   ├─ ab.a:0!null\n" +
+			"     │               │   └─ uv.u:2!null\n" +
+			"     │               ├─ Table\n" +
+			"     │               │   ├─ name: ab\n" +
+			"     │               │   └─ columns: [a b]\n" +
+			"     │               └─ HashLookup\n" +
+			"     │                   ├─ source: TUPLE(ab.a:0!null)\n" +
+			"     │                   ├─ target: TUPLE(uv.u:0!null)\n" +
+			"     │                   └─ CachedResults\n" +
+			"     │                       └─ Project\n" +
+			"     │                           ├─ columns: [uv.u:0!null]\n" +
+			"     │                           └─ Table\n" +
+			"     │                               ├─ name: uv\n" +
+			"     │                               └─ columns: [u v]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ source: TUPLE(alias1.a:0!null)\n" +
 			"         ├─ target: TUPLE(pq.p:0!null)\n" +
@@ -8024,7 +8042,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
+		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -8032,7 +8050,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
+		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
 			" └─ Table\n" +
 			"     ├─ name: two_pk\n" +
@@ -8040,7 +8058,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
+		Query: `SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;`,
 		ExpectedPlan: "IndexedTableAccess(two_pk)\n" +
 			" ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			" ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
@@ -8049,7 +8067,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2;",
+		Query: `SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
@@ -8060,7 +8078,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc;",
+		Query: `SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null DESC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
@@ -8071,7 +8089,7 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
-		Query: "select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;",
+		Query: `select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;`,
 		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, row_number() over ( partition by two_pk.pk1 order by two_pk.c1 DESC):2!null as row_number() over (partition by pk1 order by c1 desc)]\n" +
