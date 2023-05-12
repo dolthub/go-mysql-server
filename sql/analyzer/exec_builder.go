@@ -294,7 +294,7 @@ func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql
 	//	return nil, err
 	//}
 	// last len(children[0].Schema()) is correct
-	childInput := input[len(input) - len(children[0].Schema()):]
+	childInput := input[len(input)-len(children[0].Schema()):]
 	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, childInput, r.projections...)
 	if err != nil {
 		return nil, err
