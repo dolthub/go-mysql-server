@@ -2,9 +2,9 @@ package planbuilder
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"

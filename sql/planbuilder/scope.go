@@ -2,11 +2,13 @@ package planbuilder
 
 import (
 	"fmt"
+	"strings"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"strings"
 )
 
 // scope tracks relational dependencies necessary to type check expressions,
