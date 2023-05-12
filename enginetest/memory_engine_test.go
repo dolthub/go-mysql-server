@@ -27,7 +27,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
@@ -110,6 +109,18 @@ func TestPreparedStaticIndexQuerySimple(t *testing.T) {
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+func TestQueriesSimple_Experimental(t *testing.T) {
+	t.Skip()
+	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
+// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+func TestQueryPlans_Experimental(t *testing.T) {
+	t.Skip()
+	enginetest.TestQueryPlans(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental), queries.PlanTests)
 }
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
@@ -207,11 +218,13 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "trigger with signal and user var",
-			SetUpScript: mergeSetupScripts(setup.XyData[0], setup.MytableData[0], setup.OthertableData[0]),
+			Name: "trigger with signal and user var",
+			SetUpScript: []string{
+				"create table auctions (ai int auto_increment, id varchar(32), data json, primary key (ai));",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select a1.u from (select * from uv where false) a1 where a1.u = 1;`,
+					Query:    `select data from auctions order by ai desc limit 1;`,
 					Expected: []sql.Row{},
 				},
 			},

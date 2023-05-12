@@ -282,6 +282,8 @@ type Analyzer struct {
 	Parallelism  int
 	// Batches of Rules to apply.
 	Batches []*Batch
+	// Batches_Exp are the rules invoked for the new experimental path.
+	Batches_Exp []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *Catalog
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
@@ -299,6 +301,38 @@ type Analyzer struct {
 // To add custom rules, the easiest way is use the Builder.
 func NewDefault(provider sql.DatabaseProvider) *Analyzer {
 	return NewBuilder(provider).Build()
+
+}
+
+// NewDefaultWithVersion creates a default Analyzer instance either
+// experimental or
+func NewDefaultWithVersion(provider sql.DatabaseProvider, version sql.AnalyzerVersion) *Analyzer {
+	a := NewBuilder(provider).Build()
+	switch version {
+	case sql.VersionExperimental:
+		experimentalBatches := make([]*Batch, len(a.Batches))
+		for i, b := range a.Batches {
+			switch b.Desc {
+			case "once-before":
+				experimentalBatches[i] = &Batch{
+					Desc:       b.Desc,
+					Iterations: b.Iterations,
+					Rules:      OnceBeforeDefault_Exp,
+				}
+			case "default-rules":
+				experimentalBatches[i] = &Batch{
+					Desc:       b.Desc,
+					Iterations: b.Iterations,
+					Rules:      DefaultRules_Exp,
+				}
+			default:
+				experimentalBatches[i] = b
+			}
+		}
+		a.Batches_Exp = experimentalBatches
+	default:
+	}
+	return a
 }
 
 // Log prints an INFO message to stdout with the given message and args
@@ -494,6 +528,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 
 // PrepareQuery applies a partial set of transformations to a prepared plan.
 func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	ctx.Version = sql.VersionStable
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, prePrepareRuleSelector)
 	return n, err
 }
@@ -578,6 +613,7 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 
 // AnalyzePrepared runs a partial rule set against a previously analyzed plan.
 func (a *Analyzer) AnalyzePrepared(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	ctx.Version = sql.VersionStable
 	return a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, postPrepareRuleSelector)
 }
 
@@ -607,13 +643,18 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 		return n, transform.SameTree, ErrMaxAnalysisIters.New(maxBatchRecursion)
 	}
 
+	batches := a.Batches
+	if ctx.Version == sql.VersionExperimental {
+		batches = a.Batches_Exp
+	}
+
 	var (
 		same    = transform.SameTree
 		allSame = transform.SameTree
 		err     error
 	)
 	a.Log("starting analysis of node of type: %T", n)
-	for _, batch := range a.Batches {
+	for _, batch := range batches {
 		if batchSelector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)
 			n, same, err = batch.Eval(ctx, a, n, scope, ruleSelector)

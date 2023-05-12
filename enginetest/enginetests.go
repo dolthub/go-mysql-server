@@ -45,6 +45,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db/serial"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/sql/variables"
@@ -431,7 +432,13 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 func TestQueryPlan(t *testing.T, harness Harness, e *sqle.Engine, query, expectedPlan string, verbose bool) {
 	t.Run(query, func(t *testing.T) {
 		ctx := NewContext(harness)
-		parsed, err := parse.Parse(ctx, query)
+		var parsed sql.Node
+		var err error
+		if ctx.Version == sql.VersionExperimental {
+			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+		} else {
+			parsed, err = parse.Parse(ctx, query)
+		}
 		require.NoError(t, err)
 
 		node, err := e.Analyzer.Analyze(ctx, parsed, nil)

@@ -70,7 +70,7 @@ func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 
 	nodesEq := nodesEqual(prev, cur)
 	same := transform.TreeIdentity(nodesEq)
-	if b.Iterations == 1 {
+	if b.Iterations == 1 || ctx.Version == sql.VersionExperimental {
 		return cur, transform.TreeIdentity(nodesEq), nil
 	}
 

@@ -105,6 +105,8 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
+	} else if h, ok := harness.(VersionedHarness); ok {
+		a = analyzer.NewDefaultWithVersion(provider, h.Version())
 	} else {
 		a = analyzer.NewDefault(provider)
 	}

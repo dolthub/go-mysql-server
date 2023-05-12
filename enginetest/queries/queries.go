@@ -7467,7 +7467,7 @@ exists (select * from xy where
 	},
 	{
 		// relation is a group by
-		Query: "select a1.a from (select * from ab group by a, b) a1 where exists (select a from xy where 1 = 0);",
+		Query: "select a1.a from (select * from ab group by a, b) a1 where exists (select x from xy where 1 = 0);",
 	},
 	{
 		// relation is a window
