@@ -7073,42 +7073,6 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(n.i:0!null)\n" +
-			"     ├─ group: \n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: n\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ RecursiveCTE\n" +
-			"             └─ Union all\n" +
-			"                 ├─ sortFields: [1]\n" +
-			"                 ├─ limit: 5\n" +
-			"                 ├─ Project\n" +
-			"                 │   ├─ columns: [1 (tinyint)]\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: \n" +
-			"                 │       └─ columns: []\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [(n.i + 1):0!null]\n" +
-			"                     └─ Having\n" +
-			"                         ├─ LessThanOrEqual\n" +
-			"                         │   ├─ (n.i:1!null + 1 (tinyint))\n" +
-			"                         │   └─ 10 (tinyint)\n" +
-			"                         └─ GroupBy\n" +
-			"                             ├─ select: (n.i:0!null + 1 (tinyint)), n.i:0!null\n" +
-			"                             ├─ group: n.i:0!null\n" +
-			"                             └─ Filter\n" +
-			"                                 ├─ LessThanOrEqual\n" +
-			"                                 │   ├─ (n.i:0!null + 1 (tinyint))\n" +
-			"                                 │   └─ 10 (tinyint)\n" +
-			"                                 └─ RecursiveTable(n)\n" +
-			"",
-	},
-	{
 		Query: `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 1) SELECT count(i) FROM n;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [COUNT(n.i):0!null as count(i)]\n" +

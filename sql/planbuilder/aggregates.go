@@ -174,13 +174,6 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	//  - extra columns needed by having, order by, select
 	var selectExprs []sql.Expression
 	selectStr := make(map[string]bool)
-	for _, e := range group.inCols {
-		// arguments for aggregation selection
-		if !selectStr[e.col] {
-			selectExprs = append(selectExprs, e.scalar)
-			selectStr[e.col] = true
-		}
-	}
 	for _, e := range group.aggregations() {
 		// aggregation functions
 		if !selectStr[strings.ToLower(e.String())] {
@@ -337,8 +330,8 @@ func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
 			}
 		case *ast.ColName:
 			// add to extra cols
-			c, idx := b.resolveColumn(fromScope, n.Qualifier.String(), n.Name.String(), true)
-			if idx == -1 {
+			c, ok := b.resolveColumn(fromScope, n.Qualifier.String(), n.Name.String(), true)
+			if !ok {
 				err := sql.ErrColumnNotFound.New(n.Name)
 				b.handleErr(err)
 			}

@@ -294,7 +294,7 @@ func addLookupJoins(m *Memo) error {
 
 // convertSemiToInnerJoin adds inner join alternatives for semi joins.
 // The inner join plans can be explored (optimized) further.
-// Example: semiJoin(xy ab) => project(ab) -> innerJoin(xy, distinct(ab))
+// Example: semiJoin(xy ab) => project(xy) -> innerJoin(xy, distinct(ab))
 // Ref sction 2.1.1 of:
 // https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner

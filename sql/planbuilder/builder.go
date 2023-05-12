@@ -25,12 +25,13 @@ type scope struct {
 	ast    ast.SQLNode
 	node   sql.Node
 
-	cols      []scopeColumn
-	extraCols []scopeColumn
-	tables    map[string]tableId
-	ctes      map[string]*scope
-	groupBy   *groupBy
-	exprs     map[string]columnId
+	cols        []scopeColumn
+	extraCols   []scopeColumn
+	redirectCol map[string]scopeColumn
+	tables      map[string]tableId
+	ctes        map[string]*scope
+	groupBy     *groupBy
+	exprs       map[string]columnId
 }
 
 func (s *scope) getExpr(name string) (columnId, bool) {
@@ -200,6 +201,13 @@ func (s *scope) getCte(name string) *scope {
 	return nil
 }
 
+func (s *scope) redirect(from, to scopeColumn) {
+	if s.redirectCol == nil {
+		s.redirectCol = make(map[string]scopeColumn)
+	}
+	s.redirectCol[from.String()] = to
+}
+
 // addColumn interns and saves the given column to this scope.
 // todo: new IR should absorb interning and use bitmaps for
 // column identity
@@ -258,6 +266,12 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 	for k, v := range src.exprs {
 		s.exprs[k] = v
 	}
+	if s.redirectCol == nil {
+		s.redirectCol = make(map[string]scopeColumn)
+	}
+	for k, v := range src.redirectCol {
+		s.redirectCol[k] = v
+	}
 	if s.tables == nil {
 		s.tables = make(map[string]tableId)
 	}
@@ -285,6 +299,14 @@ type scopeColumn struct {
 	scalar     sql.Expression
 	nullable   bool
 	descending bool
+}
+
+func (c scopeColumn) empty() bool {
+	return c.id == 0
+}
+
+func (c scopeColumn) scalarGf() sql.Expression {
+	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }
 
 func (c scopeColumn) String() string {
@@ -317,6 +339,10 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 		}
 		return b.buildSelect(inScope, s)
 	case *ast.Union:
+		if s.With != nil {
+			cteScope := b.buildWith(inScope, s.With)
+			return b.buildUnion(cteScope, s)
+		}
 		return b.buildUnion(inScope, s)
 	case *ast.ParenSelect:
 		return b.buildSelectStmt(inScope, s.Select)
@@ -407,7 +433,7 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
 				col = scopeColumn{col: sq.QueryString, scalar: sq, typ: sq.Type(), nullable: sq.IsNullable()}
 			} else {
-				col = scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type(), nullable: pe.IsNullable()}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			}
 			if e.Unreferencable() {
 				outScope.addColumn(col)
@@ -489,18 +515,17 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 
 	b.validateJoinTableNames(leftScope, rightScope)
 
+	if strings.EqualFold(te.Join, ast.NaturalJoinStr) {
+		// TODO inline resolve natural join
+		return b.buildNaturalJoin(inScope, leftScope, rightScope)
+	}
+
 	outScope = inScope.push()
 	outScope.appendColumnsFromScope(leftScope)
 	outScope.appendColumnsFromScope(rightScope)
 
-	if strings.EqualFold(te.Join, ast.NaturalJoinStr) {
-		// TODO inline resolve natural join
-		outScope.node = plan.NewNaturalJoin(leftScope.node, rightScope.node)
-		return
-	}
-
 	// cross join
-	if te.Condition.On == nil {
+	if te.Condition.On == nil || te.Condition.On == ast.BoolVal(true) {
 		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		return
 	}
@@ -524,6 +549,47 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	return outScope
 }
 
+func (b *PlanBuilder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (outScope *scope) {
+	outScope = inScope.push()
+	var proj []sql.Expression
+	for _, lCol := range leftScope.cols {
+		outScope.addColumn(lCol)
+		proj = append(proj, lCol.scalarGf())
+	}
+
+	var filter sql.Expression
+	for _, rCol := range rightScope.cols {
+		var matched scopeColumn
+		for _, lCol := range leftScope.cols {
+			if lCol.col == rCol.col {
+				matched = lCol
+				break
+			}
+		}
+		if !matched.empty() {
+			outScope.redirect(rCol, matched)
+		} else {
+			proj = append(proj, rCol.scalarGf())
+			outScope.addColumn(rCol)
+		}
+
+		f := expression.NewEquals(matched.scalarGf(), rCol.scalarGf())
+		if filter == nil {
+			filter = f
+		} else {
+			filter = expression.NewAnd(filter, f)
+		}
+	}
+	if filter == nil {
+		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		return
+	}
+
+	jn := plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeInner, filter)
+	outScope.node = jn
+	return
+}
+
 func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.ast = te
@@ -536,9 +602,9 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			if cteScope := inScope.getCte(e.Name.String()); cteScope != nil {
 				outScope = cteScope.copy()
 				outScope.parent = inScope
-				return
+			} else {
+				outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
 			}
-			outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
 			if t.As.String() != "" {
 				tAlias := strings.ToLower(t.As.String())
 				outScope.setTableAlias(tAlias)
@@ -655,12 +721,13 @@ func (b *PlanBuilder) resolveTable(tab, db string, asOf interface{}) *plan.Resol
 
 func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
-	outScope = b.buildSelectStmt(inScope, u.Right)
+	rightScope := b.buildSelectStmt(inScope, u.Right)
 
 	distinct := u.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, u.Limit)
 
-	orderByScope := b.analyzeOrderBy(outScope, inScope, u.OrderBy)
+	// mysql errors for order by right projection
+	orderByScope := b.analyzeOrderBy(leftScope, leftScope, u.OrderBy)
 
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
@@ -675,7 +742,8 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 		sortFields = append(sortFields, sf)
 	}
 
-	n, ok := leftScope.node.(*plan.Union)
+	// todo right or left scope here? which is left deep?
+	n, ok := rightScope.node.(*plan.Union)
 	if ok {
 		if len(n.SortFields) > 0 {
 			if len(sortFields) > 0 {
@@ -945,11 +1013,11 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		c, idx := b.resolveColumn(inScope, v.Qualifier.String(), v.Name.String(), true)
-		if idx == -1 {
+		c, ok := b.resolveColumn(inScope, v.Qualifier.String(), v.Name.String(), true)
+		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}
-		return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
 		if isAggregateFunc(name) {
@@ -1127,22 +1195,25 @@ func (b *PlanBuilder) buildGetField(inScope *scope, v *ast.ColName) *expression.
 	return nil
 }
 
-func (b *PlanBuilder) resolveColumn(inScope *scope, tableName, colName string, checkParent bool) (scopeColumn, int) {
+func (b *PlanBuilder) resolveColumn(inScope *scope, tableName, colName string, checkParent bool) (scopeColumn, bool) {
 	table := strings.ToLower(tableName)
 	col := strings.ToLower(colName)
 	checkScope := inScope
 	for checkScope != nil {
-		for i, c := range checkScope.cols {
+		for _, c := range checkScope.cols {
 			if c.col == col && (c.table == table || table == "") {
-				return c, i
+				return c, true
 			}
+		}
+		if c, ok := checkScope.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
+			return c, ok
 		}
 		checkScope = checkScope.parent
 		if !checkParent {
 			checkScope = nil
 		}
 	}
-	return scopeColumn{}, -1
+	return scopeColumn{}, false
 }
 
 func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
@@ -1382,20 +1453,19 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 			descending = true
 		}
 
-		var expr sql.Expression
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
-			c, idx := b.resolveColumn(projScope, e.Qualifier.String(), e.Name.String(), false)
-			if idx >= 0 {
+			c, ok := b.resolveColumn(projScope, e.Qualifier.String(), e.Name.String(), false)
+			if ok {
 				c.descending = descending
 				outScope.addColumn(c)
 				continue
 			}
 
 			// fromScope col
-			c, idx = b.resolveColumn(fromScope, e.Qualifier.String(), e.Name.String(), false)
-			if idx == -1 {
+			c, ok = b.resolveColumn(fromScope, e.Qualifier.String(), e.Name.String(), false)
+			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
 			}
@@ -1424,26 +1494,23 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 					b.handleErr(err)
 				}
 				target := projScope.cols[intIdx-1]
-				var gf *expression.GetField
-				if target.scalar != nil {
-					gf = expression.NewGetFieldWithTable(int(target.id), target.typ, "", target.scalar.String(), target.nullable)
-				} else {
-					gf = expression.NewGetFieldWithTable(int(target.id), target.typ, target.table, target.col, target.nullable)
+				scalar := target.scalar
+				if scalar == nil {
+					scalar = expression.NewGetFieldWithTable(int(target.id), target.typ, target.table, target.col, target.nullable)
 				}
 				outScope.addColumn(scopeColumn{
-					table:      gf.Table(),
-					col:        gf.Name(),
-					scalar:     gf,
-					typ:        gf.Type(),
-					nullable:   gf.IsNullable(),
+					table:      target.table,
+					col:        target.col,
+					scalar:     scalar,
+					typ:        target.typ,
+					nullable:   target.nullable,
 					descending: descending,
 					id:         target.id,
 				})
-				expr = gf
 			}
 		default:
 			// we could add to aggregates here, ref GF in aggOut
-			expr = b.buildScalar(fromScope, e)
+			expr := b.buildScalar(fromScope, e)
 			col := scopeColumn{
 				table:      "",
 				col:        expr.String(),

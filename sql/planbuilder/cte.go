@@ -25,7 +25,7 @@ func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope
 	// create *plan.RecursiveCte node
 	// replace recursive references of cte name with *plan.RecursiveTable
 
-	outScope = inScope.replace()
+	outScope = inScope.push()
 
 	for _, cte := range with.Ctes {
 		cte, ok := cte.(*ast.CommonTableExpr)
@@ -56,6 +56,10 @@ func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope
 func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) {
 	cteScope := b.buildDataSource(inScope, e)
 	b.renameSource(cteScope, name, columns)
+	switch n := cteScope.node.(type) {
+	case *plan.SubqueryAlias:
+		cteScope.node = n.WithColumns(columns)
+	}
 	inScope.addCte(name, cteScope)
 }
 
@@ -65,6 +69,10 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		// not recursive
 		cteScope := b.buildSelectStmt(inScope, union)
 		b.renameSource(cteScope, name, columns)
+		switch n := cteScope.node.(type) {
+		case *plan.Union:
+			cteScope.node = plan.NewSubqueryAlias(name, "", n).WithColumns(columns)
+		}
 		inScope.addCte(name, cteScope)
 		return
 	}
@@ -109,11 +117,24 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	distinct := union.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, union.Limit)
 
-	orderByScope := b.analyzeOrderBy(rightInScope, inScope, union.OrderBy)
-	b.buildOrderBy(rightInScope, orderByScope)
+	orderByScope := b.analyzeOrderBy(cteScope, inScope, union.OrderBy)
+	//b.buildOrderBy(rightInScope, orderByScope)
+	var sortFields sql.SortFields
+	for _, c := range orderByScope.cols {
+		so := sql.Ascending
+		if c.descending {
+			so = sql.Descending
+		}
+		sf := sql.SortField{
+			Column: c.scalar,
+			Order:  so,
+		}
+		sortFields = append(sortFields, sf)
+	}
 
-	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, nil)
-	rightScope.node = rcte.WithSchema(recSch).WithWorking(rTable)
+	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
+	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
+	rightScope.node = plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
 	b.renameSource(rightScope, name, columns)
 	inScope.addCte(name, rightScope)
 }
