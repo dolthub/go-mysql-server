@@ -214,7 +214,9 @@ Project
      ├─ cacheable: false
      └─ Project
          ├─ columns: [1 (tinyint)]
-         └─ EmptyTable
+         └─ Table
+             ├─ name: 
+             └─ columns: []
 `,
 		},
 		{

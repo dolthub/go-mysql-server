@@ -32,7 +32,7 @@ func TestAssignCatalog(t *testing.T) {
 	db := memory.NewDatabase("foo")
 	provider := sql.NewDatabaseProvider(db)
 
-	a := NewDefault(provider, sql.VersionStable)
+	a := NewDefault(provider)
 	ctx := sql.NewContext(context.Background())
 	ctx.SetCurrentDatabase("foo")
 

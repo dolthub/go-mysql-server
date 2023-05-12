@@ -171,6 +171,14 @@ func (s *scope) copy() *scope {
 	return &ret
 }
 
+func DeepCopyNode(node sql.Node) (sql.Node, error) {
+	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		e, err := transform.Clone(e)
+		return e, transform.NewTree, err
+	})
+	return n, err
+}
+
 func (s *scope) addCte(name string, cteScope *scope) {
 	if s.ctes == nil {
 		s.ctes = make(map[string]*scope)
@@ -673,6 +681,18 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 	return
 }
 
+func columnsToStrings(cols ast.Columns) []string {
+	if len(cols) == 0 {
+		return nil
+	}
+	res := make([]string, len(cols))
+	for i, c := range cols {
+		res[i] = c.String()
+	}
+
+	return res
+}
+
 func (b *PlanBuilder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
 	var err error
 	asOfExpr := b.buildScalar(inScope, asOf)
@@ -683,7 +703,7 @@ func (b *PlanBuilder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
 	return asOfLit
 }
 
-func (b *PlanBuilder) buildResolvedTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
+func (b *PlanBuilder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
 	table, _, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
 	if err != nil {
 		b.handleErr(err)
@@ -734,15 +754,14 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 		}
 		if n.Limit != nil {
 			if limit != nil {
-				err := fmt.Errorf("conflicing external ORDER BY")
+				err := fmt.Errorf("conflicing external LIMIT")
 				b.handleErr(err)
 			}
 			limit = n.Limit
 		}
 	}
 
-	ret := plan.NewUnion(leftScope.node, rightScope.node, distinct, limit, sortFields)
-	outScope = leftScope
+	ret := plan.NewUnion(leftScope.node, outScope.node, distinct, limit, nil, sortFields)
 	outScope.node = ret
 	return
 }

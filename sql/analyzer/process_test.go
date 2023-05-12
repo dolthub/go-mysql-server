@@ -46,7 +46,7 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 	db.AddTable("commits", commits)
 
 	provider := sql.NewDatabaseProvider(db)
-	a := NewDefault(provider, sql.VersionStable)
+	a := NewDefault(provider)
 
 	prepared, err := a.PrepareQuery(ctx, node, nil)
 	require.NoError(t, err)
@@ -66,7 +66,7 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 func TestTrackProcessSubquery(t *testing.T) {
 	require := require.New(t)
 	rule := getRuleFrom(OnceAfterAll, TrackProcessId)
-	a := NewDefault(sql.NewDatabaseProvider(), sql.VersionStable)
+	a := NewDefault(sql.NewDatabaseProvider())
 
 	node := plan.NewProject(
 		nil,

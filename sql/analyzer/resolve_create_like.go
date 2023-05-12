@@ -87,9 +87,30 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		pkOrdinals = pkTable.PrimaryKeySchema().PkOrdinals
 	}
 
+	var checkDefs []*sql.CheckConstraint
+	if checksTable, ok := likeTable.(sql.CheckTable); ok {
+		checks, err := checksTable.GetChecks(ctx)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
+		for _, check := range checks {
+			checkConstraint, err := ConvertCheckDefToConstraint(ctx, &check)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			// Prevent a name collision between old and new checks.
+			// New check will be assigned a name during building.
+			checkConstraint.Name = ""
+			checkDefs = append(checkDefs, checkConstraint)
+		}
+	}
+
 	tableSpec := &plan.TableSpec{
 		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
 		IdxDefs:   idxDefs,
+		ChDefs:    checkDefs,
 		Collation: likeTable.Collation(),
 	}
 

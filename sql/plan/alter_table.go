@@ -235,12 +235,12 @@ func (a *AddColumn) DebugString() string {
 	return pr.String()
 }
 
-func NewAddColumnResolved(table *ResolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+func NewAddColumnResolved(table *ResolvedTable, column sql.Column, order *sql.ColumnOrder) *AddColumn {
 	column.Source = table.Name()
 	return &AddColumn{
 		ddlNode: ddlNode{Db: table.Database},
 		Table:   table,
-		column:  column,
+		column:  &column,
 		order:   order,
 	}
 }
@@ -735,13 +735,13 @@ var _ sql.Databaser = (*ModifyColumn)(nil)
 var _ sql.SchemaTarget = (*ModifyColumn)(nil)
 var _ sql.CollationCoercible = (*ModifyColumn)(nil)
 
-func NewModifyColumnResolved(table *ResolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+func NewModifyColumnResolved(table *ResolvedTable, columnName string, column sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	column.Source = table.Name()
 	return &ModifyColumn{
 		ddlNode:    ddlNode{Db: table.Database},
 		Table:      table,
 		columnName: columnName,
-		column:     column,
+		column:     &column,
 		order:      order,
 	}
 }

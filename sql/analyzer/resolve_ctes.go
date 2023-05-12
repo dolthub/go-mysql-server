@@ -249,10 +249,10 @@ func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				if rSame {
 					return n, transform.SameTree, nil
 				} else {
-					return plan.NewUnion(left, n.Right(), n.Distinct, n.Limit, n.SortFields), transform.NewTree, nil
+					return plan.NewUnion(left, n.Right(), n.Distinct, n.Limit, n.Offset, n.SortFields), transform.NewTree, nil
 				}
 			}
-			return plan.NewWith(plan.NewUnion(cte.Child, n.Right(), n.Distinct, n.Limit, n.SortFields), cte.CTEs, cte.Recursive), transform.NewTree, nil
+			return plan.NewWith(plan.NewUnion(cte.Child, n.Right(), n.Distinct, n.Limit, n.Offset, n.SortFields), cte.CTEs, cte.Recursive), transform.NewTree, nil
 		default:
 		}
 
@@ -321,7 +321,7 @@ func splitRecursiveCteUnion(name string, n sql.Node) (sql.Node, sql.Node) {
 		panic("not supported")
 	case *plan.SubqueryAlias:
 		// can't be recursive
-		return plan.NewUnion(union.Left(), union.Right(), union.Distinct, union.Limit, union.SortFields), nil
+		return plan.NewUnion(union.Left(), union.Right(), union.Distinct, union.Limit, union.Offset, union.SortFields), nil
 	default:
 	}
 
@@ -330,10 +330,10 @@ func splitRecursiveCteUnion(name string, n sql.Node) (sql.Node, sql.Node) {
 		if r == nil {
 			return union.Left(), union.Right()
 		}
-		return l, plan.NewUnion(r, union.Right(), union.Distinct, union.Limit, union.SortFields)
+		return l, plan.NewUnion(r, union.Right(), union.Distinct, union.Limit, union.Offset, union.SortFields)
 	}
 
-	return plan.NewUnion(union.Left(), union.Right(), union.Distinct, union.Limit, union.SortFields), nil
+	return plan.NewUnion(union.Left(), union.Right(), union.Distinct, union.Limit, union.Offset, union.SortFields), nil
 }
 
 // resolveRecursiveCte resolves the static left node of the CTE to perform
