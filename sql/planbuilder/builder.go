@@ -686,14 +686,14 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 		}
 		if n.Limit != nil {
 			if limit != nil {
-				err := fmt.Errorf("conflicing external ORDER BY")
+				err := fmt.Errorf("conflicing external LIMIT")
 				b.handleErr(err)
 			}
 			limit = n.Limit
 		}
 	}
 
-	ret := plan.NewUnion(leftScope.node, outScope.node, distinct, limit, sortFields)
+	ret := plan.NewUnion(leftScope.node, outScope.node, distinct, limit, nil, sortFields)
 	outScope.node = ret
 	return
 }
