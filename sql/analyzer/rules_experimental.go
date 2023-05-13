@@ -60,7 +60,7 @@ var DefaultRules_Exp = []Rule{
 	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
-	{fixupSortNodesId, fixupSortNodes},
+	{fixupSortNodesId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
 	{transposeRightJoinsId, transposeRightJoins}, //TODO
 	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO

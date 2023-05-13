@@ -99,7 +99,7 @@ const (
 	pushdownFiltersId            // pushdownFilters
 	subqueryIndexesId            // subqueryIndexes
 	pruneTablesId                // pruneTables
-	fixupSortNodesId             // fixupSortNodes
+	fixupSortNodesId             // fixupAuxiliaryExprs
 	setJoinScopeLenId            // setJoinScopeLen
 	eraseProjectionId            // eraseProjection
 	replaceSortPkId              // replaceSortPk

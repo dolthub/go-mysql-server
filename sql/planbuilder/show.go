@@ -255,6 +255,7 @@ func (b *PlanBuilder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (out
 }
 
 func (b *PlanBuilder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+	outScope = inScope.push()
 	var filter sql.Expression
 	var node sql.Node
 	if s.Filter != nil {

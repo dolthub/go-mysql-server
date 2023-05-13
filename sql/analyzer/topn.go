@@ -58,10 +58,13 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 	})
 }
 
-func fixupSortNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// fixupAuxiliaryExprs calls FixUpExpressions on Sort and Project nodes
+// to compensate for the new name resolution expression overloading GetField
+// indexes.
+func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n.(type) {
-		case *plan.Sort:
+		case *plan.Sort, *plan.Project:
 			return FixFieldIndexesForExpressions(a, n, scope)
 		default:
 			return n, transform.SameTree, nil

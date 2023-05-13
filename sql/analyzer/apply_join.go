@@ -103,7 +103,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					max1 = true
 				default:
 				}
-				if sq != nil && nodeIsCacheable(sq.Query, len(subScope.Schema())) {
+				if sq != nil && nodeIsCacheable(sq.Query, len(subScope.Schema())+1) {
 					matches = append(matches, applyJoin{l: l, r: sq, op: op, filter: joinF, max1: max1})
 				} else {
 					newFilters = append(newFilters, e)
