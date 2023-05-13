@@ -383,6 +383,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 }
 
 // convertAntiToLeftJoin adds left join alternatives for anti join
+// ANTI_JOIN(left, right) => PROJECT(left sch) -> FILTER(right attr IS NULL) -> LEFT_JOIN(left, right)
 func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 	seen := make(map[GroupId]struct{})
 	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
