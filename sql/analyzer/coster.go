@@ -437,7 +437,7 @@ func NewPartialBiasedCoster() Coster {
 
 func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
-	case *antiJoin:
+	case *antiJoin, *semiJoin:
 		return -biasFactor, nil
 	default:
 		return c.costRel(ctx, r, s)

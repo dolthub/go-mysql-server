@@ -289,11 +289,6 @@ func (b *ExecBuilder) buildEmptyTable(r *emptyTable, _ sql.Schema, _ ...sql.Node
 }
 
 func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	//p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, input, r.projections...)
-	//if err != nil {
-	//	return nil, err
-	//}
-	// last len(children[0].Schema()) is correct
 	childInput := input[len(input)-len(children[0].Schema()):]
 	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, childInput, r.projections...)
 	if err != nil {
