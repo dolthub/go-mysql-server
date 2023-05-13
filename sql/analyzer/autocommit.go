@@ -87,7 +87,7 @@ func getDbHelper(tables ...sql.Node) string {
 	}
 	switch t := tables[0].(type) {
 	case *plan.UnresolvedTable:
-		return t.Database()
+		return t.Database().Name()
 	case *plan.ResolvedTable:
 		return t.Database.Name()
 	case *plan.IndexedTableAccess:

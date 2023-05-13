@@ -818,7 +818,7 @@ func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -989,7 +989,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1103,7 +1103,7 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1370,7 +1370,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1475,7 +1475,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1551,7 +1551,7 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}

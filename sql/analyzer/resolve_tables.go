@@ -110,8 +110,8 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Node, error) {
 	name := t.Name()
 	db := t.Database()
-	if db == "" {
-		db = ctx.GetCurrentDatabase()
+	if db.Name() == "" {
+		db = sql.UnresolvedDatabase(ctx.GetCurrentDatabase())
 	}
 
 	var asofBindVar bool
@@ -143,10 +143,10 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 				return nil, err
 			}
 
-			rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
+			rt, database, err := a.Catalog.DatabaseTableAsOf(ctx, db, name, asOf)
 			if err != nil {
 				if sql.ErrDatabaseNotFound.Is(err) {
-					if db == "" {
+					if ctx.GetCurrentDatabase() == "" {
 						err = sql.ErrNoDatabaseSelected.New()
 					}
 				}
@@ -162,10 +162,10 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 		}
 	}
 
-	rt, database, err := a.Catalog.Table(ctx, db, name)
+	rt, database, err := a.Catalog.DatabaseTable(ctx, db, name)
 	if err != nil {
 		if sql.ErrDatabaseNotFound.Is(err) {
-			if db == "" {
+			if ctx.GetCurrentDatabase() == "" {
 				err = sql.ErrNoDatabaseSelected.New()
 			}
 		}

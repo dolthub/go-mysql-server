@@ -99,7 +99,7 @@ func deleteDatabaseHelper(node sql.Node) string {
 	case *ResolvedTable:
 		return node.Database.Name()
 	case *UnresolvedTable:
-		return node.Database()
+		return node.Database().Name()
 	}
 
 	for _, child := range node.Children() {

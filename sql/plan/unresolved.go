@@ -76,8 +76,8 @@ func (t *UnresolvedTable) Name() string {
 }
 
 // Database implements sql.UnresolvedTable
-func (t *UnresolvedTable) Database() string {
-	return t.database.Name()
+func (t *UnresolvedTable) Database() sql.Database {
+	return t.database
 }
 
 // Resolved implements the Resolvable interface.
@@ -113,7 +113,7 @@ func (t *UnresolvedTable) AsOf() sql.Expression {
 // CheckPrivileges implements the interface sql.Node.
 func (t *UnresolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(t.Database(), t.name, "", sql.PrivilegeType_Select))
+		sql.NewPrivilegedOperation(t.Database().Name(), t.name, "", sql.PrivilegeType_Select))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -208,8 +208,8 @@ func (t *DeferredAsOfTable) Name() string {
 }
 
 // Database implements sql.UnresolvedTable
-func (t *DeferredAsOfTable) Database() string {
-	return t.ResolvedTable.Database.Name()
+func (t *DeferredAsOfTable) Database() sql.Database {
+	return t.ResolvedTable.Database
 }
 
 // WithAsOf implements sql.UnresolvedTable

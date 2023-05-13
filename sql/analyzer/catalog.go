@@ -207,6 +207,11 @@ func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, 
 }
 
 func (c *Catalog) DatabaseTable(ctx *sql.Context, db sql.Database, tableName string) (sql.Table, sql.Database, error) {
+	_, ok := db.(sql.UnresolvedDatabase)
+	if ok {
+		return c.Table(ctx, db.Name(), tableName)
+	}
+	
 	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
 	if err != nil {
 		return nil, nil, err
@@ -232,6 +237,11 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 }
 
 func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
+	_, ok := db.(sql.UnresolvedDatabase)
+	if ok {
+		return c.Table(ctx, db.Name(), tableName)
+	}
+
 	versionedDb, ok := db.(sql.VersionedDatabase)
 	if !ok {
 		return nil, nil, sql.ErrAsOfNotSupported.New(tableName)
