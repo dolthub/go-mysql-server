@@ -239,7 +239,7 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
 	_, ok := db.(sql.UnresolvedDatabase)
 	if ok {
-		return c.Table(ctx, db.Name(), tableName)
+		return c.TableAsOf(ctx, db.Name(), tableName, asOf)
 	}
 
 	versionedDb, ok := db.(sql.VersionedDatabase)
