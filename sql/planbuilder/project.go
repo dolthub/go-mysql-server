@@ -1,11 +1,13 @@
 package planbuilder
 
 import (
+	"strings"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"strings"
 )
 
 func (b *PlanBuilder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {

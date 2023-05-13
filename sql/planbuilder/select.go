@@ -2,10 +2,12 @@ package planbuilder
 
 import (
 	"fmt"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
