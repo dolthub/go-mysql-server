@@ -103,6 +103,7 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 		b.handleErr(fmt.Errorf("unknown join type: %s", te.Join))
 	}
 	outScope.node = plan.NewJoin(leftScope.node, rightScope.node, op, filter)
+
 	return outScope
 }
 
@@ -173,8 +174,10 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 				b.handleErr(sql.ErrUnsupportedFeature.New("subquery without alias"))
 			}
 
-			outScope = b.buildSelectStmt(inScope, e.Select)
+			sqScope := inScope.push()
+			outScope = b.buildSelectStmt(sqScope, e.Select)
 			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
+
 			var renameCols []string
 			if len(e.Columns) > 0 {
 				renameCols = columnsToStrings(e.Columns)

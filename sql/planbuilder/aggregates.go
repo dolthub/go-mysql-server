@@ -336,7 +336,7 @@ func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
 			}
 		case *ast.ColName:
 			// add to extra cols
-			c, ok := b.resolveColumn(fromScope, n.Qualifier.String(), n.Name.String(), true)
+			c, ok := fromScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(n.Name)
 				b.handleErr(err)

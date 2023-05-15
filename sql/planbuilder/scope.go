@@ -28,6 +28,28 @@ type scope struct {
 	exprs       map[string]columnId
 }
 
+func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
+	for _, c := range s.cols {
+		if c.col == col && (c.table == table || table == "") {
+			return c, true
+		}
+	}
+	if c, ok := s.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
+		return c, ok
+	}
+
+	if !checkParent || s.parent == nil {
+		return scopeColumn{}, false
+	}
+
+	c, ok := s.parent.resolveColumn(table, col, true)
+	if !ok {
+		return scopeColumn{}, false
+	}
+
+	return c, true
+}
+
 // getExpr returns a columnId if the given expression has
 // been built.
 func (s *scope) getExpr(name string) (columnId, bool) {

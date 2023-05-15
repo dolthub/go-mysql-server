@@ -34,6 +34,10 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 
 func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	fromScope := b.buildFrom(inScope, s.From)
+	if cn, ok := fromScope.node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
+		fromScope.node = cn.WithComment(string(s.Comments[0]))
+	}
+
 	b.buildWhere(fromScope, s.Where)
 	projScope := fromScope.replace()
 

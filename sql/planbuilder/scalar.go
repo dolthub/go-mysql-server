@@ -64,7 +64,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		c, ok := b.resolveColumn(inScope, v.Qualifier.String(), v.Name.String(), true)
+		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.String()), strings.ToLower(v.Name.String()), true)
 		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}
@@ -156,10 +156,12 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.UnaryExpr:
 		return b.buildUnaryScalar(inScope, v)
 	case *ast.Subquery:
-		selScope := b.buildSelectStmt(inScope, v.Select)
+		sqScope := inScope.push()
+		selScope := b.buildSelectStmt(sqScope, v.Select)
 		// TODO: get the original select statement, not the reconstruction
 		selectString := ast.String(v.Select)
-		return plan.NewSubquery(selScope.node, selectString)
+		sq := plan.NewSubquery(selScope.node, selectString)
+		return sq
 	case *ast.CaseExpr:
 		return b.buildCaseExpr(inScope, v)
 	case *ast.IntervalExpr:
@@ -192,7 +194,8 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		}
 		return values
 	case *ast.ExistsExpr:
-		selScope := b.buildSelectStmt(inScope, v.Subquery.Select)
+		sqScope := inScope.push()
+		selScope := b.buildSelectStmt(sqScope, v.Subquery.Select)
 		selectString := ast.String(v.Subquery.Select)
 		sq := plan.NewSubquery(selScope.node, selectString)
 		return plan.NewExistsSubquery(sq)
@@ -221,27 +224,6 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	}
 	return nil
-}
-
-func (b *PlanBuilder) resolveColumn(inScope *scope, tableName, colName string, checkParent bool) (scopeColumn, bool) {
-	table := strings.ToLower(tableName)
-	col := strings.ToLower(colName)
-	checkScope := inScope
-	for checkScope != nil {
-		for _, c := range checkScope.cols {
-			if c.col == col && (c.table == table || table == "") {
-				return c, true
-			}
-		}
-		if c, ok := checkScope.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
-			return c, ok
-		}
-		checkScope = checkScope.parent
-		if !checkParent {
-			checkScope = nil
-		}
-	}
-	return scopeColumn{}, false
 }
 
 func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
@@ -452,7 +434,6 @@ func (b *PlanBuilder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression
 
 func (b *PlanBuilder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
-
 	right := b.buildScalar(inScope, c.Right)
 
 	var escape sql.Expression = nil

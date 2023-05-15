@@ -325,6 +325,18 @@ func NewDefaultWithVersion(provider sql.DatabaseProvider, version sql.AnalyzerVe
 					Iterations: b.Iterations,
 					Rules:      DefaultRules_Exp,
 				}
+			case "once-after":
+				experimentalBatches[i] = &Batch{
+					Desc:       b.Desc,
+					Iterations: b.Iterations,
+					Rules:      OnceAfterDefault_Experimental,
+				}
+			case "after-all":
+				experimentalBatches[i] = &Batch{
+					Desc:       b.Desc,
+					Iterations: b.Iterations,
+					Rules:      OnceAfterAll_Experimental,
+				}
 			default:
 				experimentalBatches[i] = b
 			}

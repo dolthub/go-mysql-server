@@ -30,6 +30,7 @@ type SubqueryAlias struct {
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
 	CanCacheResults      bool
+	CTESource            bool
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)

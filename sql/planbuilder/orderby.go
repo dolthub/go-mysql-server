@@ -36,7 +36,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
-			c, ok := b.resolveColumn(projScope, e.Qualifier.String(), e.Name.String(), false)
+			c, ok := projScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), false)
 			if ok {
 				c.descending = descending
 				outScope.addColumn(c)
@@ -44,7 +44,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 			}
 
 			// fromScope col
-			c, ok = b.resolveColumn(fromScope, e.Qualifier.String(), e.Name.String(), false)
+			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), false)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)

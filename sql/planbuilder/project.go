@@ -104,7 +104,15 @@ func (b *PlanBuilder) buildProjection(inScope, outScope *scope) {
 	for i, sc := range outScope.cols {
 		projections[i] = sc.scalar
 	}
-	outScope.node = plan.NewProject(projections, inScope.node)
+	proj := plan.NewProject(projections, inScope.node)
+	if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
+		// pruneColumns can get overly aggressive
+		outScope.node = inScope.node
+	} else {
+		outScope.node = proj
+	}
+	//outScope.node = proj
+
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
