@@ -310,17 +310,22 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.s:1!null]\n" +
 			" └─ Sort(mytable.i:0!null ASC nullsFirst)\n" +
-			"     └─ SemiLookupJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ mytable.i:0!null\n" +
-			"         │   └─ scalarSubq0.i2:2!null\n" +
-			"         ├─ Table\n" +
-			"         │   ├─ name: mytable\n" +
-			"         │   └─ columns: [i s]\n" +
-			"         └─ TableAlias(scalarSubq0)\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 └─ columns: [i2]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [mytable.i:1!null, mytable.s:2!null]\n" +
+			"         └─ MergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
+			"             │   ├─ scalarSubq0.i2:0!null\n" +
+			"             │   └─ mytable.i:1!null\n" +
+			"             ├─ OrderedDistinct\n" +
+			"             │   └─ TableAlias(scalarSubq0)\n" +
+			"             │       └─ IndexedTableAccess(othertable)\n" +
+			"             │           ├─ index: [othertable.i2]\n" +
+			"             │           ├─ static: [{[NULL, ∞)}]\n" +
+			"             │           └─ columns: [i2]\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -1417,22 +1422,20 @@ where exists (select * from pq where a = p)
 			"     │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
 			"     │       └─ Filter\n" +
 			"     │           ├─ uv.u:2!null IS NULL\n" +
-			"     │           └─ LeftOuterHashJoin\n" +
-			"     │               ├─ Eq\n" +
+			"     │           └─ LeftOuterMergeJoin\n" +
+			"     │               ├─ cmp: Eq\n" +
 			"     │               │   ├─ ab.a:0!null\n" +
 			"     │               │   └─ uv.u:2!null\n" +
-			"     │               ├─ Table\n" +
-			"     │               │   ├─ name: ab\n" +
+			"     │               ├─ IndexedTableAccess(ab)\n" +
+			"     │               │   ├─ index: [ab.a]\n" +
+			"     │               │   ├─ static: [{[NULL, ∞)}]\n" +
 			"     │               │   └─ columns: [a b]\n" +
-			"     │               └─ HashLookup\n" +
-			"     │                   ├─ source: TUPLE(ab.a:0!null)\n" +
-			"     │                   ├─ target: TUPLE(uv.u:0!null)\n" +
-			"     │                   └─ CachedResults\n" +
-			"     │                       └─ Project\n" +
-			"     │                           ├─ columns: [uv.u:0!null]\n" +
-			"     │                           └─ Table\n" +
-			"     │                               ├─ name: uv\n" +
-			"     │                               └─ columns: [u v]\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [uv.u:0!null]\n" +
+			"     │                   └─ IndexedTableAccess(uv)\n" +
+			"     │                       ├─ index: [uv.u]\n" +
+			"     │                       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │                       └─ columns: [u v]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ source: TUPLE(alias1.a:0!null)\n" +
 			"         ├─ target: TUPLE(pq.p:0!null)\n" +
@@ -1562,36 +1565,47 @@ inner join pq on true
 		Query: `select i from mytable a where exists (select 1 from mytable b where a.i = b.i)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
-			" └─ SemiLookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ a.i:0!null\n" +
-			"     │   └─ b.i:2!null\n" +
-			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ b.i:0!null\n" +
+			"         │   └─ a.i:1!null\n" +
+			"         ├─ OrderedDistinct\n" +
+			"         │   └─ TableAlias(b)\n" +
+			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │           └─ columns: [i]\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `select i from mytable a where not exists (select 1 from mytable b where a.i = b.i)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
-			" └─ AntiLookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ a.i:0!null\n" +
-			"     │   └─ b.i:2!null\n" +
-			"     ├─ TableAlias(a)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             └─ columns: [i]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			"     └─ Filter\n" +
+			"         ├─ b.i:2!null IS NULL\n" +
+			"         └─ LeftOuterMergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
+			"             │   ├─ a.i:0!null\n" +
+			"             │   └─ b.i:2!null\n" +
+			"             ├─ TableAlias(a)\n" +
+			"             │   └─ IndexedTableAccess(mytable)\n" +
+			"             │       ├─ index: [mytable.i]\n" +
+			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       └─ columns: [i s]\n" +
+			"             └─ TableAlias(b)\n" +
+			"                 └─ IndexedTableAccess(mytable)\n" +
+			"                     ├─ index: [mytable.i]\n" +
+			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -3670,17 +3684,22 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable)`,
-		ExpectedPlan: "SemiLookupJoin\n" +
-			" ├─ Eq\n" +
-			" │   ├─ mytable.i:0!null\n" +
-			" │   └─ scalarSubq0.i2:2!null\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: mytable\n" +
-			" │   └─ columns: [i s]\n" +
-			" └─ TableAlias(scalarSubq0)\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         └─ columns: [i2]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:1!null, mytable.s:2!null]\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ scalarSubq0.i2:0!null\n" +
+			"     │   └─ mytable.i:1!null\n" +
+			"     ├─ OrderedDistinct\n" +
+			"     │   └─ TableAlias(scalarSubq0)\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           └─ columns: [i2]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{

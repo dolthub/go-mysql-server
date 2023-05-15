@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -218,16 +217,17 @@ func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ..
 		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		switch n := n.Child.(type) {
-		case *plan.ResolvedTable:
-			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
-		case *plan.TableAlias:
-			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
-			ret = plan.NewTableAlias(n.Name(), ret)
-		default:
-			return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
-		}
+		ret, err = b.buildIndexScan(i, input, n.Child)
 		ret = plan.NewDistinct(ret)
+	case *plan.OrderedDistinct:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewOrderedDistinct(ret)
+	case *plan.Project:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewProject(n.Projections, ret)
+	case *plan.Filter:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewFilter(n.Expression, ret)
 	default:
 		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
 	}
@@ -289,8 +289,13 @@ func (b *ExecBuilder) buildEmptyTable(r *emptyTable, _ sql.Schema, _ ...sql.Node
 }
 
 func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	childInput := input[len(input)-len(children[0].Schema()):]
-	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, childInput, r.projections...)
+	var projInput sql.Schema
+	if len(input)-len(children[0].Schema()) < 0 {
+		projInput = input
+	} else {
+		projInput = input[len(input)-len(children[0].Schema()):]
+	}
+	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, projInput, r.projections...)
 	if err != nil {
 		return nil, err
 	}

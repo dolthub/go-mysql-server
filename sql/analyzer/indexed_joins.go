@@ -555,8 +555,16 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 			default:
 			}
 		}
-	//case *project:
-	//	return lookupCandidates(ctx, n.child.first, aliases)
+	case *project:
+		if s, ok := n.child.first.(sourceRel); ok {
+			switch n := s.(type) {
+			case *tableAlias:
+				return tableAliasLookupCand(ctx, n.table, aliases)
+			case *tableScan:
+				return tableScanLookupCand(ctx, n.table)
+			default:
+			}
+		}
 	default:
 	}
 	return "", nil, nil

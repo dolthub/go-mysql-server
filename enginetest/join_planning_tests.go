@@ -234,8 +234,8 @@ var JoinPlanningTests = []struct {
 				exp:   []sql.Row{{2, 1}, {1, 0}},
 			},
 			{
-				q:     "select * from xy where x in (select a from ab);",
-				types: []plan.JoinType{plan.JoinTypeSemiLookup},
+				q:     "select /*+ RIGHT_SEMI_LOOKUP_JOIN(xy,scalarSubq0)  */* from xy where x in (select a from ab);",
+				types: []plan.JoinType{plan.JoinTypeRightSemiLookup},
 				exp:   []sql.Row{{2, 1}, {1, 0}, {0, 2}, {3, 3}},
 			},
 			{
@@ -250,7 +250,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash, plan.JoinTypeLeftOuterHash, plan.JoinTypeAntiLookup},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHash, plan.JoinTypeLeftOuterHash, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -426,14 +426,14 @@ order by 1;`,
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -467,7 +467,7 @@ WHERE EXISTS (
 select x from xy where
   not exists (select a from ab where a = x and a = 1) and
   not exists (select a from ab where a = x and a = 2)`,
-				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeAntiLookup},
+				types: []plan.JoinType{plan.JoinTypeAntiLookup, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0}, {3}},
 			},
 			{
