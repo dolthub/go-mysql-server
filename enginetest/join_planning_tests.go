@@ -660,7 +660,6 @@ where u in (select * from rec);`,
 			"create table empty_tbl (a int, b int);",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
-
 		},
 		// write a bunch of left joins and make sure they are converted to anti joins
 		tests: []JoinPlanTest{
