@@ -98,23 +98,14 @@ func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.N
 		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		switch n := n.Child.(type) {
-		case *plan.ResolvedTable:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-		case *plan.TableAlias:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-			ret = plan.NewTableAlias(n.Name(), ret)
-		}
+		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewDistinct(ret)
 	case *plan.Filter:
-		switch n := n.Child.(type) {
-		case *plan.ResolvedTable:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-		case *plan.TableAlias:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-			ret = plan.NewTableAlias(n.Name(), ret)
-		}
+		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
+	case *plan.Project:
+		ret, err = b.buildLookup(l, input, n.Child)
+		ret = plan.NewProject(n.Projections, ret)
 	default:
 		panic(fmt.Sprintf("unexpected lookup child %T", n))
 	}

@@ -718,6 +718,15 @@ where u in (select * from rec);`,
 					{3, 3},
 				},
 			},
+			{
+				q:     "select /*+ LEFT_OUTER_LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x not in (select u from uv WHERE u = 2) order by x",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+				exp: []sql.Row{
+					{0, 2},
+					{1, 0},
+					{3, 3},
+				},
+			},
 		},
 	},
 	{
