@@ -26,17 +26,15 @@ func TestPlanBuilder(t *testing.T) {
 		{
 			Query: "with cte(y,x) as (select x,y from xy) select * from cte",
 			ExpectedPlan: `
-Project
- ├─ columns: [cte.y:1!null, cte.x:2!null]
- └─ SubqueryAlias
-     ├─ name: cte
-     ├─ outerVisibility: false
-     ├─ cacheable: false
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null]
-         └─ Table
-             ├─ name: xy
-             └─ columns: [x y z]
+SubqueryAlias
+ ├─ name: cte
+ ├─ outerVisibility: false
+ ├─ cacheable: false
+ └─ Project
+     ├─ columns: [xy.x:1!null, xy.y:2!null]
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
 `,
 		},
 		{
@@ -206,45 +204,41 @@ Project
 		{
 			Query: "with cte as (select 1) select * from cte",
 			ExpectedPlan: `
-Project
- ├─ columns: [cte.1:1!null]
- └─ SubqueryAlias
-     ├─ name: cte
-     ├─ outerVisibility: false
-     ├─ cacheable: false
-     └─ Project
-         ├─ columns: [1 (tinyint)]
-         └─ Table
-             ├─ name: 
-             └─ columns: []
+SubqueryAlias
+ ├─ name: cte
+ ├─ outerVisibility: false
+ ├─ cacheable: false
+ └─ Project
+     ├─ columns: [1 (tinyint)]
+     └─ Table
+         ├─ name: 
+         └─ columns: []
 `,
 		},
 		{
 			Query: "with recursive cte(s) as (select x from xy union select s from cte join xy on y = s) select * from cte",
 			ExpectedPlan: `
-Project
- ├─ columns: [cte.s:4!null]
- └─ SubqueryAlias
-     ├─ name: cte
-     ├─ outerVisibility: false
-     ├─ cacheable: false
-     └─ RecursiveCTE
-         └─ Union distinct
-             ├─ Project
-             │   ├─ columns: [xy.x:1!null]
-             │   └─ Table
-             │       ├─ name: xy
-             │       └─ columns: [x y z]
-             └─ Project
-                 ├─ columns: [cte.s:4!null]
-                 └─ InnerJoin
-                     ├─ Eq
-                     │   ├─ xy.y:6!null
-                     │   └─ cte.s:4!null
-                     ├─ RecursiveTable(cte)
-                     └─ Table
-                         ├─ name: xy
-                         └─ columns: [x y z]
+SubqueryAlias
+ ├─ name: cte
+ ├─ outerVisibility: false
+ ├─ cacheable: false
+ └─ RecursiveCTE
+     └─ Union distinct
+         ├─ Project
+         │   ├─ columns: [xy.x:1!null]
+         │   └─ Table
+         │       ├─ name: xy
+         │       └─ columns: [x y z]
+         └─ Project
+             ├─ columns: [cte.s:4!null]
+             └─ InnerJoin
+                 ├─ Eq
+                 │   ├─ xy.y:6!null
+                 │   └─ cte.s:4!null
+                 ├─ RecursiveTable(cte)
+                 └─ Table
+                     ├─ name: xy
+                     └─ columns: [x y z]
 `,
 		},
 		{
@@ -427,20 +421,18 @@ Project
 		{
 			Query: "select s from (select count(*) as s from xy) dt;",
 			ExpectedPlan: `
-Project
- ├─ columns: [dt.s:5!null]
- └─ SubqueryAlias
-     ├─ name: dt
-     ├─ outerVisibility: false
-     ├─ cacheable: false
-     └─ Project
-         ├─ columns: [COUNT(1):4!null as s]
-         └─ GroupBy
-             ├─ select: COUNT(1 (bigint))
-             ├─ group: 
-             └─ Table
-                 ├─ name: xy
-                 └─ columns: [x y z]
+SubqueryAlias
+ ├─ name: dt
+ ├─ outerVisibility: false
+ ├─ cacheable: false
+ └─ Project
+     ├─ columns: [COUNT(1):4!null as s]
+     └─ GroupBy
+         ├─ select: COUNT(1 (bigint))
+         ├─ group: 
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
 `,
 		},
 		{
@@ -679,21 +671,19 @@ Project
      │   ├─ xy.y:2!null
      │   └─ Subquery
      │       ├─ cacheable: false
-     │       └─ Project
-     │           ├─ columns: [dt.u:7!null]
-     │           └─ SubqueryAlias
-     │               ├─ name: dt
-     │               ├─ outerVisibility: false
-     │               ├─ cacheable: false
-     │               └─ Project
-     │                   ├─ columns: [uv.u:4!null as u]
-     │                   └─ Filter
-     │                       ├─ Eq
-     │                       │   ├─ uv.v:5!null
-     │                       │   └─ xy.x:1!null
-     │                       └─ Table
-     │                           ├─ name: uv
-     │                           └─ columns: [u v w]
+     │       └─ SubqueryAlias
+     │           ├─ name: dt
+     │           ├─ outerVisibility: false
+     │           ├─ cacheable: false
+     │           └─ Project
+     │               ├─ columns: [uv.u:4!null as u]
+     │               └─ Filter
+     │                   ├─ Eq
+     │                   │   ├─ uv.v:5!null
+     │                   │   └─ xy.x:1!null
+     │                   └─ Table
+     │                       ├─ name: uv
+     │                       └─ columns: [u v w]
      └─ Table
          ├─ name: xy
          └─ columns: [x y z]
@@ -709,21 +699,19 @@ Project
      │   ├─ xy.z:3!null
      │   └─ Subquery
      │       ├─ cacheable: false
-     │       └─ Project
-     │           ├─ columns: [dt.u:7!null]
-     │           └─ SubqueryAlias
-     │               ├─ name: dt
-     │               ├─ outerVisibility: false
-     │               ├─ cacheable: false
-     │               └─ Project
-     │                   ├─ columns: [uv.u:4!null as u]
-     │                   └─ Filter
-     │                       ├─ Eq
-     │                       │   ├─ uv.v:5!null
-     │                       │   └─ xy.y:2!null
-     │                       └─ Table
-     │                           ├─ name: uv
-     │                           └─ columns: [u v w]
+     │       └─ SubqueryAlias
+     │           ├─ name: dt
+     │           ├─ outerVisibility: false
+     │           ├─ cacheable: false
+     │           └─ Project
+     │               ├─ columns: [uv.u:4!null as u]
+     │               └─ Filter
+     │                   ├─ Eq
+     │                   │   ├─ uv.v:5!null
+     │                   │   └─ xy.y:2!null
+     │                   └─ Table
+     │                       ├─ name: uv
+     │                       └─ columns: [u v w]
      └─ GroupBy
          ├─ select: xy.x:1!null, xy.y:2!null, xy.z:3!null
          ├─ group: 
@@ -738,21 +726,19 @@ Project
 Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
- │   └─ Project
- │       ├─ columns: [dt.z:7!null]
- │       └─ SubqueryAlias
- │           ├─ name: dt
- │           ├─ outerVisibility: false
- │           ├─ cacheable: false
- │           └─ Project
- │               ├─ columns: [uv.u:4!null as z]
- │               └─ Filter
- │                   ├─ Eq
- │                   │   ├─ uv.v:5!null
- │                   │   └─ xy.y:2!null
- │                   └─ Table
- │                       ├─ name: uv
- │                       └─ columns: [u v w]
+ │   └─ SubqueryAlias
+ │       ├─ name: dt
+ │       ├─ outerVisibility: false
+ │       ├─ cacheable: false
+ │       └─ Project
+ │           ├─ columns: [uv.u:4!null as z]
+ │           └─ Filter
+ │               ├─ Eq
+ │               │   ├─ uv.v:5!null
+ │               │   └─ xy.y:2!null
+ │               └─ Table
+ │                   ├─ name: uv
+ │                   └─ columns: [u v w]
  │  ]
  └─ Table
      ├─ name: xy
