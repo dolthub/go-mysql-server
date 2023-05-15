@@ -657,11 +657,23 @@ where u in (select * from rec);`,
 		setup: []string{
 			"CREATE table xy (x int, y int, primary key(x,y));",
 			"CREATE table uv (u int primary key, v int);",
+			"create table empty_tbl (a int, b int);",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+
 		},
 		// write a bunch of left joins and make sure they are converted to anti joins
 		tests: []JoinPlanTest{
+			{
+				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select a from empty_tbl) order by x",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				exp: []sql.Row{
+					{0, 2},
+					{1, 0},
+					{2, 1},
+					{3, 3},
+				},
+			},
 			{
 				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
@@ -672,6 +684,15 @@ where u in (select * from rec);`,
 			},
 			{
 				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv where u = 2) order by x",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				exp: []sql.Row{
+					{0, 2},
+					{1, 0},
+					{3, 3},
+				},
+			},
+			{
+				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x != (select v from uv where u = 2) order by x",
 				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
 				exp: []sql.Row{
 					{0, 2},

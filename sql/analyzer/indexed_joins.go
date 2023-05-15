@@ -432,13 +432,13 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 				relBase: &relBase{},
 				left:    anti.left,
 				right:   rightGrp,
-				op:      plan.JoinTypeLeftOuterHash,
+				op:      plan.JoinTypeLeftOuter,
 				filter:  anti.filter,
 			},
 		}
 		joinGrp := m.memoize(newJoin)
 
-		// drop null primary keys on right table
+		// drop null projected columns on right table
 		nullFilters := make([]sql.Expression, len(projectExpressions))
 		for i, e := range projectExpressions {
 			nullFilters[i] = expression.NewIsNull(e)
@@ -555,6 +555,8 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 			default:
 			}
 		}
+	//case *project:
+	//	return lookupCandidates(ctx, n.child.first, aliases)
 	default:
 	}
 	return "", nil, nil
