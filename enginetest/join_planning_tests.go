@@ -699,6 +699,25 @@ where u in (select * from rec);`,
 					{3, 3},
 				},
 			},
+			{
+				q:     "select * from xy where not exists (select * from empty_tbl) order by x",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				exp: []sql.Row{
+					{0, 2},
+					{1, 0},
+					{2, 1},
+					{3, 3},
+				},
+			},
+			{
+				q:     "select /*+ MERGE_JOIN(xy,scalarSubq0) */ * from xy where x not in (select u from uv WHERE u = 2) order by x",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterMerge},
+				exp: []sql.Row{
+					{0, 2},
+					{1, 0},
+					{3, 3},
+				},
+			},
 		},
 	},
 	{
