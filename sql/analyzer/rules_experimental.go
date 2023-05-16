@@ -59,7 +59,6 @@ var DefaultRules_Exp = []Rule{
 	{validateCheckConstraintId, validateCheckConstraints},
 	{transposeRightJoinsId, transposeRightJoins}, //TODO
 	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
-	//{eraseProjectionId, eraseProjection},
 	{transformJoinApplyId, transformJoinApply_experimantal},
 	{resolveSubqueriesId, resolveSubqueries},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
@@ -86,7 +85,6 @@ var OnceAfterDefault_Experimental = []Rule{
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
-	{resolveInsertRowsId, resolveInsertRows},
 	{resolvePreparedInsertId, resolvePreparedInsert},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
