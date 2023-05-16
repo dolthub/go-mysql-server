@@ -45,6 +45,7 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validateDeleteFromId, validateDeleteFrom},
 	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{evalFilterId, simplifyFilters},            //TODO inline?
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 
@@ -64,7 +65,6 @@ var DefaultRules_Exp = []Rule{
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
-	{evalFilterId, simplifyFilters},                       //TODO inline?
 }
 
 var OnceAfterDefault_Experimental = []Rule{

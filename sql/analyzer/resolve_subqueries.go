@@ -290,6 +290,7 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 			}
 		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
 			if sqa.CTESource {
+				cacheable = true
 				return false
 			}
 			// TODO: Need more logic and testing with CTEs. For example, CTEs that are non-deterministic MUST be

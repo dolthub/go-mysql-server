@@ -282,7 +282,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 		return node, transform.SameTree, nil
 	}
 
-	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return node, transform.SameTree, nil
@@ -290,6 +290,12 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 
 		e, same, err := transform.Expr(filter.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
+			case *plan.Subquery:
+				newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel)
+				if same || err != nil {
+					return e, transform.SameTree, err
+				}
+				return e.WithQuery(newQ), transform.NewTree, nil
 			case *expression.Or:
 				if isTrue(e.Left) {
 					return e.Left, transform.NewTree, nil
