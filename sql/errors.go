@@ -591,6 +591,12 @@ var (
 	// ErrBadSpatialIdxCol is thrown when attempting to define a SPATIAL index over a non-geometry column
 	ErrBadSpatialIdxCol = errors.NewKind("a SPATIAL index may only contain a geometrical type column")
 
+	// ErrNoSRID is thrown when attempting to create a Geometry with a non-existent SRID
+	ErrNoSRID = errors.NewKind("There's no spatial reference with SRID %d")
+
+	// ErrInvalidSRID is thrown when attempting to create a Geometry with an invalid SRID
+	ErrInvalidSRID = errors.NewKind("SRID value is out of range in %s")
+
 	// ErrUnsupportedSpatialIdx is thrown when attempting to create a SPATIAL index
 	// TODO: remove this error when spatial index are created
 	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL")

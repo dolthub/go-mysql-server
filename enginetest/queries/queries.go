@@ -8694,6 +8694,22 @@ var ErrorQueries = []QueryErrorTest{
 		Query:          "create table vb_tbl (vb varbinary(123456789));",
 		ExpectedErrStr: "length is 123456789 but max allowed is 65535",
 	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 1234)`,
+		ExpectedErr: sql.ErrNoSRID,
+	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4294967295)`,
+		ExpectedErr: sql.ErrNoSRID,
+	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), -1)`,
+		ExpectedErr: sql.ErrInvalidSRID,
+	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4294967296)`,
+		ExpectedErr: sql.ErrInvalidSRID,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
