@@ -98,23 +98,14 @@ func (b *ExecBuilder) buildLookup(l *lookup, input sql.Schema, children ...sql.N
 		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		switch n := n.Child.(type) {
-		case *plan.ResolvedTable:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-		case *plan.TableAlias:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-			ret = plan.NewTableAlias(n.Name(), ret)
-		}
+		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewDistinct(ret)
 	case *plan.Filter:
-		switch n := n.Child.(type) {
-		case *plan.ResolvedTable:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-		case *plan.TableAlias:
-			ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.index, keyExprs, l.nullmask))
-			ret = plan.NewTableAlias(n.Name(), ret)
-		}
+		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
+	case *plan.Project:
+		ret, err = b.buildLookup(l, input, n.Child)
+		ret = plan.NewProject(n.Projections, ret)
 	default:
 		panic(fmt.Sprintf("unexpected lookup child %T", n))
 	}
@@ -218,16 +209,17 @@ func (b *ExecBuilder) buildIndexScan(i *indexScan, input sql.Schema, children ..
 		ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		switch n := n.Child.(type) {
-		case *plan.ResolvedTable:
-			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n, l)
-		case *plan.TableAlias:
-			ret, err = plan.NewStaticIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), l)
-			ret = plan.NewTableAlias(n.Name(), ret)
-		default:
-			return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
-		}
+		ret, err = b.buildIndexScan(i, input, n.Child)
 		ret = plan.NewDistinct(ret)
+	case *plan.OrderedDistinct:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewOrderedDistinct(ret)
+	case *plan.Project:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewProject(n.Projections, ret)
+	case *plan.Filter:
+		ret, err = b.buildIndexScan(i, input, n.Child)
+		ret = plan.NewFilter(n.Expression, ret)
 	default:
 		return nil, fmt.Errorf("unexpected *indexScan child: %T", n)
 	}
@@ -289,7 +281,8 @@ func (b *ExecBuilder) buildEmptyTable(r *emptyTable, _ sql.Schema, _ ...sql.Node
 }
 
 func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, input, r.projections...)
+	projInput := input[len(input)-len(children[0].Schema()):]
+	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, projInput, r.projections...)
 	if err != nil {
 		return nil, err
 	}

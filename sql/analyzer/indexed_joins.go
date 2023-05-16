@@ -170,6 +170,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *Scope) (
 	if err != nil {
 		return nil, err
 	}
+	err = convertAntiToLeftJoin(a, m)
+	if err != nil {
+		return nil, err
+	}
 	err = addRightSemiJoins(m)
 	if err != nil {
 		return nil, err
@@ -378,6 +382,84 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 	})
 }
 
+// convertAntiToLeftJoin adds left join alternatives for anti join
+// ANTI_JOIN(left, right) => PROJECT(left sch) -> FILTER(right attr IS NULL) -> LEFT_JOIN(left, right)
+func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
+	seen := make(map[GroupId]struct{})
+	return dfsExprGroup(m.root, m, seen, func(e relExpr) error {
+		anti, ok := e.(*antiJoin)
+		if !ok {
+			return nil
+		}
+
+		rightOutTables := m.tableProps.getTableNames(anti.right.relProps.OutputTables())
+		var projectExpressions []sql.Expression
+		onlyEquality := true
+		for _, f := range anti.filter {
+			transform.InspectExpr(f, func(e sql.Expression) bool {
+				switch e := e.(type) {
+				case *expression.GetField:
+					// getField expressions tell us which columns are used, so we can create the correct project
+					tableName := strings.ToLower(e.Table())
+					isRightOutTable := stringContains(rightOutTables, tableName)
+					if isRightOutTable {
+						projectExpressions = append(projectExpressions, e)
+					}
+				case *expression.Literal, *expression.BindVar,
+					*expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic:
+					// these expressions are equality expressions
+				default:
+					onlyEquality = false
+				}
+				return !onlyEquality
+			})
+			if !onlyEquality {
+				return nil
+			}
+		}
+
+		// project is a new group
+		newRight := &project{
+			relBase:     &relBase{},
+			child:       anti.right,
+			projections: projectExpressions,
+		}
+		rightGrp := m.memoize(newRight)
+
+		// join is a new group
+		newJoin := &leftJoin{
+			joinBase: &joinBase{
+				relBase: &relBase{},
+				left:    anti.left,
+				right:   rightGrp,
+				op:      plan.JoinTypeLeftOuter,
+				filter:  anti.filter,
+			},
+		}
+		joinGrp := m.memoize(newJoin)
+
+		// drop null projected columns on right table
+		nullFilters := make([]sql.Expression, len(projectExpressions))
+		for i, e := range projectExpressions {
+			nullFilters[i] = expression.NewIsNull(e)
+		}
+		nullFilter := expression.JoinAnd(nullFilters...)
+		joinGrp.relProps.filter = nullFilter
+
+		// project belongs to the original group
+		rel := &project{
+			relBase: &relBase{
+				g: e.group(),
+			},
+			child:       joinGrp,
+			projections: expression.SchemaToGetFields(anti.left.relProps.outputColsForRel(anti.left.first)),
+		}
+		e.group().prepend(rel)
+
+		return nil
+	})
+}
+
 // addRightSemiJoins allows for a reversed semiJoin operator when
 // the join attributes of the left side are provably unique.
 func addRightSemiJoins(m *Memo) error {
@@ -464,6 +546,16 @@ func lookupCandidates(ctx *sql.Context, rel relExpr, aliases TableAliases) (stri
 	case *tableScan:
 		return tableScanLookupCand(ctx, n.table)
 	case *distinct:
+		if s, ok := n.child.first.(sourceRel); ok {
+			switch n := s.(type) {
+			case *tableAlias:
+				return tableAliasLookupCand(ctx, n.table, aliases)
+			case *tableScan:
+				return tableScanLookupCand(ctx, n.table)
+			default:
+			}
+		}
+	case *project:
 		if s, ok := n.child.first.(sourceRel); ok {
 			switch n := s.(type) {
 			case *tableAlias:
