@@ -289,7 +289,7 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 				}
 			}
 		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
-			if sqa.CTESource {
+			if sqa.CacheableCTESource {
 				cacheable = true
 				return false
 			}

@@ -7,7 +7,6 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -50,7 +49,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				b.handleErr(err)
 			}
 			c.descending = descending
-			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
+			c.scalar = c.scalarGf()
 			outScope.addColumn(c)
 			fromScope.addExtraColumn(c)
 		case *ast.SQLVal:
@@ -76,7 +75,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				target := projScope.cols[intIdx-1]
 				scalar := target.scalar
 				if scalar == nil {
-					scalar = expression.NewGetFieldWithTable(int(target.id), target.typ, target.table, target.col, target.nullable)
+					scalar = target.scalarGf()
 				}
 				outScope.addColumn(scopeColumn{
 					table:      target.table,

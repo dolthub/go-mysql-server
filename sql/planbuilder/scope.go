@@ -19,13 +19,25 @@ type scope struct {
 	ast    ast.SQLNode
 	node   sql.Node
 
-	cols        []scopeColumn
-	extraCols   []scopeColumn
+	subquery bool
+
+	// cols are definitions provided by this scope
+	cols []scopeColumn
+	// extraCols are auxillary output columns required
+	// for sorting or grouping
+	extraCols []scopeColumn
+	// redirectCol is used for natural join right-table
+	// attributes that redirect to the left table intersection
 	redirectCol map[string]scopeColumn
-	tables      map[string]tableId
-	ctes        map[string]*scope
-	groupBy     *groupBy
-	exprs       map[string]columnId
+	// tables are the list of table definitions in this scope
+	tables map[string]tableId
+	// ctes are common table expressions defined in this scope
+	// TODO these should be case-sensitive
+	ctes map[string]*scope
+	// groupBy collects aggregation functions and inputs
+	groupBy *groupBy
+	// exprs collects unique expression ids for reference
+	exprs map[string]columnId
 }
 
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
@@ -291,19 +303,19 @@ func (s *scope) addColumns(cols []scopeColumn) {
 // multi-relational expressions.
 func (s *scope) appendColumnsFromScope(src *scope) {
 	s.cols = append(s.cols, src.cols...)
-	if s.exprs == nil {
+	if len(src.exprs) > 0 && s.exprs == nil {
 		s.exprs = make(map[string]columnId)
 	}
 	for k, v := range src.exprs {
 		s.exprs[k] = v
 	}
-	if s.redirectCol == nil {
+	if len(src.redirectCol) > 0 && s.redirectCol == nil {
 		s.redirectCol = make(map[string]scopeColumn)
 	}
 	for k, v := range src.redirectCol {
 		s.redirectCol[k] = v
 	}
-	if s.tables == nil {
+	if len(src.tables) > 0 && s.tables == nil {
 		s.tables = make(map[string]tableId)
 	}
 	for k, v := range src.tables {

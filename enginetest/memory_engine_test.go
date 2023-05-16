@@ -125,7 +125,6 @@ func TestQueryPlans_Experimental(t *testing.T) {
 
 // TestJoinPlanning runs join-specific tests for merge
 func TestJoinPlanning_Experimental(t *testing.T) {
-	t.Skip()
 	enginetest.TestJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
 }
 

@@ -61,7 +61,6 @@ func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, col
 	b.renameSource(cteScope, name, columns)
 	switch n := cteScope.node.(type) {
 	case *plan.SubqueryAlias:
-		n.CTESource = true
 		cteScope.node = n.WithColumns(columns)
 	}
 	return cteScope
@@ -77,7 +76,9 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		case *plan.Union:
 			sq := plan.NewSubqueryAlias(name, "", n)
 			sq = sq.WithColumns(columns)
-			sq.CTESource = true
+			if !inScope.subquery {
+				sq.CacheableCTESource = true
+			}
 			cteScope.node = sq
 		}
 		return cteScope
@@ -141,7 +142,9 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
 	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
 	sq := plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
-	sq.CTESource = true
+	if !inScope.subquery {
+		sq.CacheableCTESource = true
+	}
 	cteScope.node = sq
 	b.renameSource(cteScope, name, columns)
 	return cteScope

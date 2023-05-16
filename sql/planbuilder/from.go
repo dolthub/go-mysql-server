@@ -107,6 +107,14 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	return outScope
 }
 
+// buildNaturalJoin logically converts a NATURAL_JOIN to an INNER_JOIN.
+// All column names shared by the two tables are used as equality filters
+// in the join. The intersection of all unique columns is projected.
+// Common table attributes are rewritten to reference the left definitions
+// //.
+// NATURAL_JOIN(t1, t2)
+// =>
+// PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
 func (b *PlanBuilder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (outScope *scope) {
 	outScope = inScope.push()
 	var proj []sql.Expression

@@ -55,11 +55,11 @@ var DefaultRules_Exp = []Rule{
 	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
-	{fixupSortNodesId, fixupAuxiliaryExprs},
+	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
 	{transposeRightJoinsId, transposeRightJoins}, //TODO
 	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
-	{transformJoinApplyId, transformJoinApply_experimantal},
+	{transformJoinApplyId, transformJoinApply_experimental},
 	{resolveSubqueriesId, resolveSubqueries},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
 	{replaceCrossJoinsId, replaceCrossJoins},
