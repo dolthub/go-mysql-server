@@ -61,7 +61,7 @@ func (r *RegexpReplace) CollationCoercibility(ctx *sql.Context) (collation sql.C
 		return sql.Collation_binary, 6
 	}
 	collation, coercibility = sql.GetCoercibility(ctx, r.args[0])
-	for i := 1; i < len(r.args); i++ {
+	for i := 1; i < len(r.args) && i < 3; i++ {
 		nextCollation, nextCoercibility := sql.GetCoercibility(ctx, r.args[i])
 		collation, coercibility = sql.ResolveCoercibility(collation, coercibility, nextCollation, nextCoercibility)
 	}
@@ -103,8 +103,7 @@ func (r *RegexpReplace) String() string {
 }
 
 // Eval implements the sql.Expression interface.
-func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	//TODO: handle collations
+func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, err error) {
 	// Evaluate string value
 	str, err := r.args[0].Eval(ctx, row)
 	if err != nil {
@@ -128,12 +127,20 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// Create regex, should handle null pattern and null flags
-	re, compileErr := compileRegex(ctx, r.args[1], flags, r.FunctionName(), row)
+	re, compileErr := compileRegex(ctx, r.args[1], r.args[0], flags, r.FunctionName(), row)
 	if compileErr != nil {
 		return nil, compileErr
 	}
 	if re == nil {
 		return nil, nil
+	}
+	defer func() {
+		if nErr := re.Close(); err == nil {
+			err = nErr
+		}
+	}()
+	if err = re.SetMatchString(ctx, _str); err != nil {
+		return nil, err
 	}
 
 	// Evaluate ReplaceStr
@@ -213,50 +220,5 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		_occ = int(occ.(int32))
 	}
 
-	// MySQL interprets negative occurrences as first for some reason
-	if _occ < 0 {
-		_occ = 1
-	} else if _occ == 0 {
-		// Replace everything
-		return _str[:_pos-1] + re.ReplaceAllString(_str[_pos-1:], _replaceStr), nil
-	}
-
-	// Split string into prefix and suffix
-	prefix := _str[:_pos-1]
-	suffix := _str[_pos-1:]
-
-	// Extract all matches
-	matches := re.FindAllString(suffix, -1)
-	indexes := re.FindAllStringIndex(suffix, -1)
-
-	// No matches, return original string
-	if len(matches) == 0 {
-		return _str, nil
-	}
-
-	// If there aren't enough occurrences
-	if _occ > len(matches) {
-		return _str, nil
-	}
-
-	// Replace only the nth occurrence
-	matches[_occ-1] = _replaceStr
-
-	// Initialize result string
-	res := prefix                 // attach prefix
-	res += suffix[:indexes[0][0]] // attach text before first match
-	res += matches[0]             // attach first match
-
-	// Recombine rest of matches
-	for i := 1; i < len(matches); i++ {
-		// Attach text before match
-		res += suffix[indexes[i-1][1]:indexes[i][0]] // end of prev to start of curr match
-		// Attach match
-		res += matches[i]
-	}
-
-	// Append text after last match
-	res += suffix[indexes[len(indexes)-1][1]:]
-
-	return res, nil
+	return re.Replace(ctx, _replaceStr, _pos, _occ)
 }
