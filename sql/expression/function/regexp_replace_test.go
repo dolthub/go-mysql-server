@@ -332,25 +332,25 @@ func TestRegexpReplaceWithFlags(t *testing.T) {
 		{
 			"multiline flags",
 			sql.NewRow("abc\r\ndef\r\nghi", `^[a-z].*$`, "X", 1, 0, "m"),
-			"X\nX\nX",
+			"X\r\nX\r\nX",
 			false,
 		},
 		{
 			"insensitive and multiline flags",
 			sql.NewRow("abc\r\nDEF\r\nghi", `^[a-z].*$`, "X", 1, 0, "im"),
-			"X\nX\nX",
+			"X\r\nX\r\nX",
 			false,
 		},
 		{
 			"sensitive and multiline flags",
 			sql.NewRow("abc\r\nDEF\r\nghi", `^[a-z].*$`, "X", 1, 0, "cm"),
-			"X\nDEF\r\nX",
+			"X\r\nDEF\r\nX",
 			false,
 		},
 		{
 			"all flags",
 			sql.NewRow("abc\r\nDEF\r\nghi", `^[a-z].*$`, "X", 1, 0, "icm"),
-			"X\nDEF\r\nX",
+			"X\r\nDEF\r\nX",
 			false,
 		},
 		{

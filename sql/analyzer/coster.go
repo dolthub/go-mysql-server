@@ -439,3 +439,20 @@ func (c *mergeBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.Stat
 		return c.costRel(ctx, r, s)
 	}
 }
+
+type partialBiasedCoster struct {
+	*coster
+}
+
+func NewPartialBiasedCoster() Coster {
+	return &partialBiasedCoster{coster: &coster{}}
+}
+
+func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r relExpr, s sql.StatsReader) (float64, error) {
+	switch r.(type) {
+	case *antiJoin, *semiJoin:
+		return -biasFactor, nil
+	default:
+		return c.costRel(ctx, r, s)
+	}
+}

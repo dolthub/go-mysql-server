@@ -3,6 +3,7 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
+	github.com/dolthub/go-icu-regex v0.0.0-20230516121657-5424676dd4ac
 	github.com/dolthub/jsonpath v0.0.1
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
 	github.com/dolthub/vitess v0.0.0-20230508201056-fc3ee4c11ca5
@@ -33,6 +34,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/tetratelabs/wazero v1.0.3 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	golang.org/x/mod v0.7.0 // indirect

@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
@@ -320,6 +321,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 
 		return nil, nil, err
 	}
+	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
 	return analyzed.Schema(), iter, nil
 }

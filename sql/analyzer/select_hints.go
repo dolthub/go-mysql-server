@@ -38,6 +38,7 @@ const (
 	HintTypeSemiJoin                                 // SEMI_JOIN
 	HintTypeAntiJoin                                 // ANTI_JOIN
 	HintTypeInnerJoin                                // INNER_JOIN
+	HintTypeLeftOuterLookupJoin                      // LEFT_OUTER_LOOKUP_JOIN
 	HintTypeRightSemiLookupJoin                      // RIGHT_SEMI_LOOKUP_JOIN
 	HintTypeNoIndexConditionPushDown                 // NO_ICP
 )
@@ -74,6 +75,8 @@ func newHint(joinTyp string, args []string) Hint {
 		typ = HintTypeSemiJoin
 	case "anti_join":
 		typ = HintTypeAntiJoin
+	case "left_outer_lookup_join":
+		typ = HintTypeLeftOuterLookupJoin
 	case "right_semi_lookup_join":
 		typ = HintTypeRightSemiLookupJoin
 	case "no_icp":
@@ -101,6 +104,8 @@ func (h Hint) valid() bool {
 	case HintTypeSemiJoin:
 		return len(h.Args) == 2
 	case HintTypeAntiJoin:
+		return len(h.Args) == 2
+	case HintTypeLeftOuterLookupJoin:
 		return len(h.Args) == 2
 	case HintTypeRightSemiLookupJoin:
 		return len(h.Args) == 2
@@ -333,6 +338,8 @@ func (o joinOpHint) typeMatches(n relExpr) bool {
 			return base.op.IsSemi() && !base.op.IsPhysical()
 		case HintTypeAntiJoin:
 			return base.op.IsAnti() && !base.op.IsPhysical()
+		case HintTypeLeftOuterLookupJoin:
+			return base.op == plan.JoinTypeLeftOuterLookup
 		case HintTypeRightSemiLookupJoin:
 			return base.op == plan.JoinTypeRightSemiLookup
 		default:

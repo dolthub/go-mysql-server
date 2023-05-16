@@ -16,11 +16,11 @@ package function
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
 
+	regex "github.com/dolthub/go-icu-regex"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -36,13 +36,14 @@ type RegexpLike struct {
 	Flags   sql.Expression
 
 	cachedVal   atomic.Value
-	re          *regexp.Regexp
+	re          regex.Regex
 	compileOnce sync.Once
 	compileErr  error
 }
 
 var _ sql.FunctionExpression = (*RegexpLike)(nil)
 var _ sql.CollationCoercible = (*RegexpLike)(nil)
+var _ sql.Closer = (*RegexpLike)(nil)
 
 // NewRegexpLike creates a new RegexpLike expression.
 func NewRegexpLike(args ...sql.Expression) (sql.Expression, error) {
@@ -124,13 +125,12 @@ func (r *RegexpLike) String() string {
 
 func (r *RegexpLike) compile(ctx *sql.Context) {
 	r.compileOnce.Do(func() {
-		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Flags, r.FunctionName(), nil)
+		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), nil)
 	})
 }
 
 // Eval implements the sql.Expression interface.
 func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	//TODO: handle collations
 	span, ctx := ctx.Span("function.RegexpLike")
 	defer span.End()
 
@@ -159,8 +159,16 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	err = r.re.SetMatchString(ctx, text.(string))
+	if err != nil {
+		return nil, err
+	}
+	ok, err := r.re.Matches(ctx, 0, 0)
+	if err != nil {
+		return nil, err
+	}
 	var outVal int8
-	if r.re.MatchString(text.(string)) {
+	if ok {
 		outVal = int8(1)
 	} else {
 		outVal = int8(0)
@@ -172,7 +180,15 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return outVal, nil
 }
 
-func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName string, row sql.Row) (*regexp.Regexp, error) {
+// Close implements the sql.Closer interface.
+func (r *RegexpLike) Close(ctx *sql.Context) error {
+	if r.re != nil {
+		return r.re.Close()
+	}
+	return nil
+}
+
+func compileRegex(ctx *sql.Context, pattern, text, flags sql.Expression, funcName string, row sql.Row) (regex.Regex, error) {
 	patternVal, err := pattern.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -190,7 +206,17 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 		return nil, errors.NewKind("Illegal argument to regular expression.").New()
 	}
 
-	flagsStr := "(?i)"
+	// It appears that MySQL ONLY uses the collation to determine case-sensitivity and character set. We don't need to
+	// worry about the character set since we convert all strings to UTF-8 for internal consistency. At the time of
+	// writing this comment, all case-insensitive collations end with "_ci", so we can just check for that.
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, text)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, pattern)
+	resolvedCollation, _ := sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+	flagsStr := ""
+	if strings.HasSuffix(resolvedCollation.String(), "_ci") {
+		flagsStr = "i"
+	}
+
 	if flags != nil {
 		f, err := flags.Eval(ctx, row)
 		if err != nil {
@@ -209,29 +235,47 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 		if err != nil {
 			return nil, err
 		}
-		flagsStr = fmt.Sprintf("(?%s)", flagsStr)
-		flagsStr = strings.Replace(flagsStr, "c", `\c`, -1)
 	}
-	return regexp.Compile(flagsStr + patternVal.(string))
+	regexFlags := regex.RegexFlags_None
+	for _, flag := range flagsStr {
+		// The 'c' flag is the default behavior, so we don't need to set anything in that case.
+		// Any illegal flags will have been caught by consolidateRegexpFlags.
+		switch flag {
+		case 'i':
+			regexFlags |= regex.RegexFlags_Case_Insensitive
+		case 'm':
+			regexFlags |= regex.RegexFlags_Multiline
+		case 'n':
+			regexFlags |= regex.RegexFlags_Dot_All
+		case 'u':
+			regexFlags |= regex.RegexFlags_Unix_Lines
+		}
+	}
+
+	re := regex.CreateRegex()
+	if err = re.SetRegexString(ctx, patternVal.(string), regexFlags); err != nil {
+		_ = re.Close()
+		return nil, err
+	}
+	return re, nil
 }
 
 // consolidateRegexpFlags consolidates regexp flags by removing duplicates, resolving order of conflicting flags, and
 // verifying that all flags are valid.
 func consolidateRegexpFlags(flags, funcName string) (string, error) {
 	flagSet := make(map[string]struct{})
-	// The flag 'u' is unsupported for now, as there isn't an equivalent flag in golang's regexp library
 	for _, flag := range flags {
 		switch flag {
 		case 'c':
-			if _, ok := flagSet["i"]; ok {
-				delete(flagSet, "i")
-			}
+			delete(flagSet, "i")
 		case 'i':
 			flagSet["i"] = struct{}{}
 		case 'm':
 			flagSet["m"] = struct{}{}
 		case 'n':
-			flagSet["s"] = struct{}{}
+			flagSet["n"] = struct{}{}
+		case 'u':
+			flagSet["u"] = struct{}{}
 		default:
 			return "", sql.ErrInvalidArgument.New(funcName)
 		}
