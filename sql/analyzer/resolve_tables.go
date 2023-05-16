@@ -236,7 +236,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 // TODO this is racy, alter statements can change a table's schema in-between
 // prepare and execute
 func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var (
 			from *plan.ResolvedTable
 			to   sql.Node
