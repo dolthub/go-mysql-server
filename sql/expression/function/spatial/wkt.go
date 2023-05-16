@@ -579,14 +579,14 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 		if s == nil {
 			return nil, nil
 		}
-		s, _, err = types.Uint32.Convert(s)
+		s, _, err = types.Int64.Convert(s)
 		if err != nil {
 			return nil, err
 		}
-		srid = s.(uint32)
-	}
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
+		if err = ValidateSRID(int(s.(int64)), "st_geomfromtext"); err != nil {
+			return nil, err
+		}
+		srid = uint32(s.(int64))
 	}
 
 	order := srid == types.GeoSpatialSRID
