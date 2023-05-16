@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -106,9 +107,11 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	if !ok {
 		return sql.SystemVariable{}, nil, false
 	}
-	if name == "uptime" {
-		sv.sysVarVals[name] = sql.SystemVarValue{Var: v, Val: int(time.Now().Sub(serverStartUpTime).Seconds())}
+
+	if v.ValueFunction != nil {
+		return v, v.ValueFunction(), true
 	}
+
 	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
 	if sysType, ok := v.Type.(sql.SetType); ok {
@@ -139,7 +142,7 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	if sysVar.Scope == sql.SystemVariableScope_Session {
 		return sql.ErrSystemVariableSessionOnly.New(name)
 	}
-	if !sysVar.Dynamic {
+	if !sysVar.Dynamic || sysVar.ValueFunction != nil {
 		return sql.ErrSystemVariableReadOnly.New(name)
 	}
 	convertedVal, _, err := sysVar.Type.Convert(val)
@@ -2475,7 +2478,9 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("system_time_zone"),
-		Default:           "UTC",
+		ValueFunction: func() interface{} {
+			return gmstime.SystemTimezoneOffset()
+		},
 	},
 	"table_definition_cache": {
 		Name:              "table_definition_cache",
@@ -2743,6 +2748,9 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
 		Default:           int8(1),
+		ValueFunction: func() interface{} {
+			return int(time.Now().Sub(serverStartUpTime).Seconds())
+		},
 	},
 	"use_secondary_engine": {
 		Name:              "use_secondary_engine",
