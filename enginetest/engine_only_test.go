@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -868,6 +869,37 @@ func TestCollationCoercion(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestRegex(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.SimpleSetup...)
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+	defer engine.Close()
+
+	ctx := enginetest.NewContext(harness)
+	for _, tt := range queries.RegexTests {
+		t.Run(tt.Query, func(t *testing.T) {
+			if harness.SkipQueryTest(tt.Query) {
+				t.Skipf("Skipping query plan for %s", tt.Query)
+			}
+			if tt.ExpectedErr == nil {
+				enginetest.TestQueryWithContext(t, ctx, engine, harness, tt.Query, tt.Expected, nil, nil)
+			} else {
+				newCtx := ctx.WithQuery(tt.Query)
+				sch, iter, err := engine.Query(newCtx, tt.Query)
+				if err == nil {
+					_, err = sql.RowIterToRows(newCtx, sch, iter)
+					require.Error(t, err)
+				}
+			}
+		})
+	}
+	// We force garbage collection twice as we have two levels of finalizers on our regex objects, and we want to make
+	// sure that neither of them panic.
+	runtime.GC()
+	runtime.GC()
 }
 
 var _ sql.TableFunction = (*SimpleTableFunction)(nil)
