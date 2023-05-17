@@ -19,6 +19,7 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -3177,13 +3178,10 @@ var ScriptTests = []ScriptTest{
 		Name: "timezone default settings",
 		Assertions: []ScriptTestAssertion{
 			{
-				// To match MySQL's behavior, this should come from the operating system's timezone setting, but
-				// currently we default to UTC.
-				// TODO: When the value of @@system_time_zone is read, it should invoke time.Now() and return the
-				//       Zone() information. This should be done dynamically when @@system_time_zone is read, since
-				//       the system time_zone offset can change while the process is running (e.g. daylight savings).
-				Query:    `select @@system_time_zone;`,
-				Expected: []sql.Row{{"UTC"}},
+				// To match MySQL's behavior, this comes from the operating system's timezone setting
+				// TODO: the "global" shouldn't be necessary here, but GMS goes to session without it
+				Query:    `select @@global.system_time_zone;`,
+				Expected: []sql.Row{{gmstime.SystemTimezoneOffset()}},
 			},
 			{
 				// The default time_zone setting for MySQL is SYSTEM, which means timezone comes from @@system_time_zone
