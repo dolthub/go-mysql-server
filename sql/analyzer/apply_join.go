@@ -95,6 +95,15 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				case *plan.InSubquery:
 					sq, _ = e.Right.(*plan.Subquery)
 					l = e.Left
+
+					if l.IsNullable() {
+						newFilters = append(newFilters, e)
+						continue
+					}
+					if sq.Query.Schema()[0].Nullable {
+						newFilters = append(newFilters, e)
+						continue
+					}
 					joinF = expression.NewEquals(nil, nil)
 				case expression.Comparer:
 					sq, _ = e.Right().(*plan.Subquery)
