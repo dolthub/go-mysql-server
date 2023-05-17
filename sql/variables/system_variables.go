@@ -20,6 +20,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -106,9 +109,16 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	if !ok {
 		return sql.SystemVariable{}, nil, false
 	}
-	if name == "uptime" {
-		sv.sysVarVals[name] = sql.SystemVarValue{Var: v, Val: int(time.Now().Sub(serverStartUpTime).Seconds())}
+
+	if v.ValueFunction != nil {
+		result, err := v.ValueFunction()
+		if err != nil {
+			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", name, err.Error())
+			return v, nil, true
+		}
+		return v, result, true
 	}
+
 	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
 	if sysType, ok := v.Type.(sql.SetType); ok {
@@ -139,7 +149,7 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	if sysVar.Scope == sql.SystemVariableScope_Session {
 		return sql.ErrSystemVariableSessionOnly.New(name)
 	}
-	if !sysVar.Dynamic {
+	if !sysVar.Dynamic || sysVar.ValueFunction != nil {
 		return sql.ErrSystemVariableReadOnly.New(name)
 	}
 	convertedVal, _, err := sysVar.Type.Convert(val)
@@ -2475,7 +2485,9 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("system_time_zone"),
-		Default:           "UTC",
+		ValueFunction: func() (interface{}, error) {
+			return gmstime.SystemTimezoneOffset(), nil
+		},
 	},
 	"table_definition_cache": {
 		Name:              "table_definition_cache",
@@ -2743,6 +2755,9 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
 		Default:           int8(1),
+		ValueFunction: func() (interface{}, error) {
+			return int(time.Now().Sub(serverStartUpTime).Seconds()), nil
+		},
 	},
 	"use_secondary_engine": {
 		Name:              "use_secondary_engine",

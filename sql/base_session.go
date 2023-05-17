@@ -147,7 +147,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 		}
 	}
 
-	if !sysVar.Var.Dynamic {
+	if !sysVar.Var.Dynamic || sysVar.Var.ValueFunction != nil {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
 	return s.setSessVar(ctx, sysVar.Var, value)
