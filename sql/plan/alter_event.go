@@ -48,7 +48,7 @@ type AlterEvent struct {
 	RenameToName string
 
 	AlterStatus bool
-	Status      EventStatus
+	Status      sql.EventStatus
 
 	AlterComment bool
 	Comment      string
@@ -73,7 +73,7 @@ func NewAlterEvent(
 	alterName bool,
 	newName string,
 	alterStatus bool,
-	status EventStatus,
+	status sql.EventStatus,
 	alterComment bool,
 	comment string,
 	alterDefinition bool,
@@ -261,7 +261,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			if err != nil {
 				return nil, err
 			}
-			interval := NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+			interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 			iVal, iField := interval.GetIntervalValAndField()
 			ed.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
@@ -412,7 +412,7 @@ func (c *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if c.alterSchedule {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
-				c.eventDetails.Status = EventStatus_Disable.String()
+				c.eventDetails.Status = sql.EventStatus_Disable.String()
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    1544,
@@ -426,7 +426,7 @@ func (c *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if c.alterStatus {
 			if c.eventDetails.OnCompletionPreserve {
 				// If the event execution/end time is in the past and is ON COMPLETION PRESERVE, status must stay as DISABLE.
-				c.eventDetails.Status = EventStatus_Disable.String()
+				c.eventDetails.Status = sql.EventStatus_Disable.String()
 			} else {
 				// If event status was set to ENABLE and ON COMPLETION NOT PRESERVE, it gets dropped.
 				err := c.eventDb.DropEvent(ctx, c.originalName)
@@ -443,6 +443,7 @@ func (c *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		CreateStatement: c.eventDetails.CreateEventStatement(),
 		CreatedAt:       c.eventDetails.Created,
 		LastAltered:     c.eventDetails.LastAltered,
+		LastExecuted:    c.eventDetails.LastExecuted,
 	}
 
 	err := c.eventDb.UpdateEvent(ctx, c.originalName, eventDefinition)

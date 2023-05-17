@@ -1507,16 +1507,16 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 		onCompletionPreserve = true
 	}
 
-	var status plan.EventStatus
+	var status sql.EventStatus
 	switch eventSpec.Status {
 	case sqlparser.EventStatus_Undefined:
-		status = plan.EventStatus_Enable
+		status = sql.EventStatus_Enable
 	case sqlparser.EventStatus_Enable:
-		status = plan.EventStatus_Enable
+		status = sql.EventStatus_Enable
 	case sqlparser.EventStatus_Disable:
-		status = plan.EventStatus_Disable
+		status = sql.EventStatus_Disable
 	case sqlparser.EventStatus_DisableOnSlave:
-		status = plan.EventStatus_DisableOnSlave
+		status = sql.EventStatus_DisableOnSlave
 	}
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
@@ -1613,7 +1613,7 @@ func convertAlterEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 		newName        string
 
 		alterStatus = eventSpec.Status != sqlparser.EventStatus_Undefined
-		newStatus   plan.EventStatus
+		newStatus   sql.EventStatus
 
 		alterComment = eventSpec.Comment != nil
 		newComment   string
@@ -1671,13 +1671,13 @@ func convertAlterEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 		switch eventSpec.Status {
 		case sqlparser.EventStatus_Undefined:
 			// this should not happen but sanity check
-			newStatus = plan.EventStatus_Enable
+			newStatus = sql.EventStatus_Enable
 		case sqlparser.EventStatus_Enable:
-			newStatus = plan.EventStatus_Enable
+			newStatus = sql.EventStatus_Enable
 		case sqlparser.EventStatus_Disable:
-			newStatus = plan.EventStatus_Disable
+			newStatus = sql.EventStatus_Disable
 		case sqlparser.EventStatus_DisableOnSlave:
-			newStatus = plan.EventStatus_DisableOnSlave
+			newStatus = sql.EventStatus_DisableOnSlave
 		}
 	}
 	if alterComment {

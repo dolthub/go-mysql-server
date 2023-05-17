@@ -60,7 +60,7 @@ func loadEventsFromDb(ctx *sql.Context, db sql.Database) ([]sql.EventDetails, er
 			return nil, err
 		}
 		for _, event := range events {
-			ed, err := getEventDetailsFromEventDefinition(ctx, event)
+			ed, err := GetEventDetailsFromEventDefinition(ctx, event)
 			if err != nil {
 				return nil, err
 			}
@@ -82,10 +82,10 @@ func loadEventFromDb(ctx *sql.Context, db sql.Database, name string) (sql.EventD
 	} else if !exists {
 		return sql.EventDetails{}, sql.ErrUnknownEvent.New(name)
 	}
-	return getEventDetailsFromEventDefinition(ctx, event)
+	return GetEventDetailsFromEventDefinition(ctx, event)
 }
 
-func getEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinition) (sql.EventDetails, error) {
+func GetEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinition) (sql.EventDetails, error) {
 	parsedCreateEvent, err := parse.Parse(ctx, event.CreateStatement)
 	if err != nil {
 		return sql.EventDetails{}, err
@@ -94,5 +94,5 @@ func getEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinit
 	if !ok {
 		return sql.EventDetails{}, sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
 	}
-	return eventPlan.GetEventDetails(ctx, event.CreatedAt)
+	return eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted)
 }

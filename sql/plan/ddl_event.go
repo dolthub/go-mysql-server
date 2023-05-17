@@ -39,7 +39,7 @@ type CreateEvent struct {
 	Starts           *OnScheduleTimestamp
 	Ends             *OnScheduleTimestamp
 	OnCompPreserve   bool
-	Status           EventStatus
+	Status           sql.EventStatus
 	Comment          string
 	DefinitionString string
 	DefinitionNode   sql.Node
@@ -53,7 +53,7 @@ func NewCreateEvent(
 	at, starts, ends *OnScheduleTimestamp,
 	every *expression.Interval,
 	onCompletionPreserve bool,
-	status EventStatus,
+	status sql.EventStatus,
 	comment, definitionString string,
 	definition sql.Node,
 	ifNotExists bool,
@@ -225,12 +225,10 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	eventCreationTime := time.Now()
-	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime)
+	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime, eventCreationTime, time.Time{})
 	if err != nil {
 		return nil, err
 	}
-
-	eventDetails.LastAltered = eventCreationTime
 
 	eventDb, ok := c.Db.(sql.EventDatabase)
 	if !ok {
@@ -248,7 +246,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 // It expects all timestamp and interval values to be resolved.
 // This function gets called either from RowIter of CreateEvent plan,
 // or from anywhere that getting EventDetails from EventDefinition retrieved from a database.
-func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime time.Time) (sql.EventDetails, error) {
+func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time) (sql.EventDetails, error) {
 	eventDetails := sql.EventDetails{
 		Name:                 c.EventName,
 		Definer:              c.Definer,
@@ -270,7 +268,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime time.T
 		if err != nil {
 			return sql.EventDetails{}, err
 		}
-		interval := NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
+		interval := sql.NewEveryInterval(delta.Years, delta.Months, delta.Days, delta.Hours, delta.Minutes, delta.Seconds)
 		iVal, iField := interval.GetIntervalValAndField()
 		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
@@ -293,6 +291,8 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime time.T
 	}
 
 	eventDetails.Created = eventCreationTime
+	eventDetails.LastAltered = lastAltered
+	eventDetails.LastExecuted = lastExecuted
 	return eventDetails, nil
 }
 
@@ -346,7 +346,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if c.eventDetails.ExecuteAt.Sub(c.eventDetails.Created).Seconds() < 0 {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
-				c.eventDetails.Status = EventStatus_Disable.String()
+				c.eventDetails.Status = sql.EventStatus_Disable.String()
 				eventDefinition.CreateStatement = c.eventDetails.CreateEventStatement()
 				err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, eventDefinition)
 				if err != nil {
