@@ -928,7 +928,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 
 func evalJoinCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skipOld bool) {
 	t.Run(name, func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); ok && vh.Version() == sql.VersionStable && skipOld {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -980,7 +980,7 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 
 func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); ok && vh.Version() == sql.VersionStable && skipOld {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -1037,7 +1037,7 @@ func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
 
 func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest, skipOld bool) {
 	t.Run(tt.q+" join types", func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); ok && vh.Version() == sql.VersionStable && skipOld {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -1077,7 +1077,7 @@ func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt 
 
 func evalJoinCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skipOld bool) {
 	t.Run(q, func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); ok && vh.Version() == sql.VersionStable && skipOld {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -1104,7 +1104,7 @@ func evalJoinCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, 
 
 func evalJoinOrderPrepared(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
-		if vh, ok := harness.(VersionedHarness); ok && vh.Version() == sql.VersionStable && skipOld {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
