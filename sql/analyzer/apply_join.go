@@ -169,8 +169,8 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				if m.op.IsAnti() && rightF.IsNullable() {
 					// Due to a quirk of MySQL, `a NOT IN (NULL, ...)` is always false.
 					// We emulate this by adding an extra filter to any AntiJoins.
-					// This filter excludes any rows from the join where the right column is NULL.
-					filter = expression.JoinOr(filter, expression.NewIsNull(rightF))
+					// This filter excludes any rows from the join where either column is NULL.
+					filter = expression.JoinOr(filter, expression.NewIsNull(m.l), expression.NewIsNull(rightF))
 				}
 				filter, _, err = FixFieldIndexes(scope, a, condSch, filter)
 				if err != nil {
