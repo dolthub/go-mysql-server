@@ -54,6 +54,7 @@ const (
 	setInsertColumnsId                           // setInsertColumns
 	validateJoinComplexityId                     // validateJoinComplexity
 	applyBinlogReplicaControllerId               // applyBinlogReplicaController
+	applyEventSchedulerNotifierId                // applyEventSchedulerNotifier
 
 	// default
 	resolveNaturalJoinsId          // resolveNaturalJoins

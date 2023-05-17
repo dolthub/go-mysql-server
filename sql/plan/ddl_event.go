@@ -44,6 +44,9 @@ type CreateEvent struct {
 	DefinitionString string
 	DefinitionNode   sql.Node
 	IfNotExists      bool
+
+	// used to notify EventScheduler of the event creation
+	EventSchedulerNotifier sql.EventSchedulerNotifier
 }
 
 // NewCreateEvent returns a *CreateEvent node.
@@ -239,13 +242,21 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		eventDetails: eventDetails,
 		eventDb:      eventDb,
 		ifNotExists:  c.IfNotExists,
+		notifier:     c.EventSchedulerNotifier,
 	}, nil
 }
 
-// GetEventDetails returns EventDetails based on CreateEvent object.
+// WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for CREATE EVENT.
+func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
+	nc := *c
+	nc.EventSchedulerNotifier = notifier
+	return &nc
+}
+
+// GetEventDetails returns eventDetails based on CreateEvent object.
 // It expects all timestamp and interval values to be resolved.
 // This function gets called either from RowIter of CreateEvent plan,
-// or from anywhere that getting EventDetails from EventDefinition retrieved from a database.
+// or from anywhere that getting eventDetails from EventDefinition retrieved from a database.
 func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time) (sql.EventDetails, error) {
 	eventDetails := sql.EventDetails{
 		Name:                 c.EventName,
@@ -302,6 +313,7 @@ type createEventIter struct {
 	eventDetails sql.EventDetails
 	eventDb      sql.EventDatabase
 	ifNotExists  bool
+	notifier     sql.EventSchedulerNotifier
 }
 
 // Next implements the sql.RowIter interface.
@@ -373,10 +385,8 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	// If Starts is set to current_timestamp or not set, then execute the event once and update last executed At.
-	if c.eventDetails.Created.Sub(c.eventDetails.Starts).Abs().Seconds() <= 1 {
-		// TODO: execute the event once and update 'LastExecuted' and 'ExecutionCount'
-	}
+	// make sure to notify the EventScheduler after adding the event in the database
+	c.notifier.AddEvent(ctx, c.eventDb, c.eventDetails)
 
 	return sql.Row{types.NewOkResult(0)}, nil
 }
@@ -524,6 +534,9 @@ type DropEvent struct {
 	ddlNode
 	EventName string
 	IfExists  bool
+
+	// used to notify EventScheduler of the event creation
+	EventScheduleNotifier sql.EventSchedulerNotifier
 }
 
 // NewDropEvent creates a new *DropEvent node.
@@ -559,6 +572,7 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 			return nil, sql.ErrEventsNotSupported.New(d.EventName)
 		}
 	}
+
 	err := eventDb.DropEvent(ctx, d.EventName)
 	if d.IfExists && sql.ErrEventDoesNotExist.Is(err) {
 		ctx.Session.Warn(&sql.Warning{
@@ -566,10 +580,13 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 			Code:    1305,
 			Message: fmt.Sprintf("Event %s does not exist", d.EventName),
 		})
-		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 	} else if err != nil {
 		return nil, err
 	}
+
+	// make sure to notify the EventScheduler after dropping the event in the database
+	d.EventScheduleNotifier.RemoveEvent(ctx, eventDb.Name(), d.EventName)
+
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
@@ -589,4 +606,11 @@ func (d *DropEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 	nde := *d
 	nde.Db = database
 	return &nde, nil
+}
+
+// WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for DROP EVENT.
+func (d *DropEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
+	nd := *d
+	nd.EventScheduleNotifier = notifier
+	return &nd
 }

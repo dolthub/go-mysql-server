@@ -295,6 +295,9 @@ type Analyzer struct {
 	Coster Coster
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
 	ExecBuilder sql.NodeExecBuilder
+	// EventSchedulerNotifier holds an optional notifier that notifies EventScheduler
+	// with any EVENT statements.
+	EventSchedulerNotifier sql.EventSchedulerNotifier
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

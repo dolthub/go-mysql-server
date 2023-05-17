@@ -238,7 +238,8 @@ type EventDatabase interface {
 	// UpdateEvent updates existing event stored in the database with the given EventDetails with the updates.
 	// The original name event is required for renaming of an event.
 	UpdateEvent(ctx *Context, originalName string, ed EventDefinition) error
-	// TODO: add ExecuteEvent() method that executes given event and updates the LastExecutedAt value
+	// UpdateLastExecuted updated the lastExecuted metadata for the given event.
+	UpdateLastExecuted(ctx *Context, eventName string, lastExecuted time.Time) error
 }
 
 // ViewDatabase is implemented by databases that persist view definitions

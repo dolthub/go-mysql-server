@@ -23,6 +23,22 @@ import (
 
 const EventTimeStampFormat = "2006-01-02 15:04:05"
 
+// EventSchedulerNotifier is an interface used for notifying the EventScheduler
+// for querying any events related statements. This allows plan Nodes to communicate
+// to the EventScheduler.
+type EventSchedulerNotifier interface {
+	// AddEvent is called when there is an event created at runtime.
+	AddEvent(ctx *Context, edb EventDatabase, details EventDetails)
+	// UpdateEvent is called when there is an event altered at runtime.
+	UpdateEvent(ctx *Context, edb EventDatabase, orgEventName string, details EventDetails)
+	// RemoveEvent is called when there is an event dropped at runtime. This function
+	// removes the given event if it exists in the enabled events list of the EventScheduler.
+	RemoveEvent(ctx *Context, dbName, eventName string)
+	// RemoveSchemaEvents is called when there is a database dropped at runtime. This function
+	// removes all events of given database that exist in the enabled events list of the EventScheduler.
+	RemoveSchemaEvents(dbName string)
+}
+
 // EventDefinition defines an event. Integrators are not expected to parse or
 // understand the event definitions, but must store and return them when asked.
 type EventDefinition struct {
@@ -66,11 +82,11 @@ type EventDetails struct {
 // GetEventStorageDefinition returns event's EventDefinition to be stored in the database created from EventDetails
 func (e *EventDetails) GetEventStorageDefinition() EventDefinition {
 	return EventDefinition{
-		Name: e.Name,
+		Name:            e.Name,
 		CreateStatement: e.CreateEventStatement(),
-		CreatedAt: e.Created,
-		LastAltered: e.LastAltered,
-		LastExecuted: e.LastExecuted,
+		CreatedAt:       e.Created,
+		LastAltered:     e.LastAltered,
+		LastExecuted:    e.LastExecuted,
 	}
 }
 
@@ -151,8 +167,8 @@ func getTimeDurationFromEveryInterval(every string) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	hours := everyInterval.Years * 8766 + everyInterval.Months * 730 + everyInterval.Days * 24 + everyInterval.Hours
-	timeDur := time.Duration(hours) * time.Hour + time.Duration(everyInterval.Minutes) * time.Minute + time.Duration(everyInterval.Seconds) * time.Second
+	hours := everyInterval.Years*8766 + everyInterval.Months*730 + everyInterval.Days*24 + everyInterval.Hours
+	timeDur := time.Duration(hours)*time.Hour + time.Duration(everyInterval.Minutes)*time.Minute + time.Duration(everyInterval.Seconds)*time.Second
 
 	return timeDur, nil
 }

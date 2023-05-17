@@ -257,6 +257,10 @@ func (d Database) UpdateEvent(ctx *sql.Context, originalName string, ed sql.Even
 	return d.shim.Exec(d.name, ed.CreateStatement)
 }
 
+func (d Database) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	return nil
+}
+
 // CreateView implements the interface sql.ViewDatabase.
 func (d Database) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
 	return d.shim.Exec(d.name, createViewStmt)

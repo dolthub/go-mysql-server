@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -87,6 +86,8 @@ type DropDB struct {
 	Catalog  sql.Catalog
 	DbName   string
 	IfExists bool
+
+	EventScheduleNotifier sql.EventSchedulerNotifier
 }
 
 var _ sql.Node = (*DropDB)(nil)
@@ -114,6 +115,13 @@ func (d *DropDB) Children() []sql.Node {
 
 func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
+}
+
+// WithEventSchedulerNotifier is used to drop all events from EventScheduler for DROP DATABASE.
+func (d *DropDB) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
+	na := *d
+	na.EventScheduleNotifier = notifier
+	return &na
 }
 
 // CheckPrivileges implements the interface sql.Node.

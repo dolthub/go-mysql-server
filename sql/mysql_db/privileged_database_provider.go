@@ -16,6 +16,7 @@ package mysql_db
 
 import (
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -381,6 +382,13 @@ func (pdb PrivilegedDatabase) DropEvent(ctx *sql.Context, name string) error {
 func (pdb PrivilegedDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.UpdateEvent(ctx, originalName, ed)
+	}
+	return sql.ErrEventsNotSupported.New(pdb.db.Name())
+}
+
+func (pdb PrivilegedDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	if db, ok := pdb.db.(sql.EventDatabase); ok {
+		return db.UpdateLastExecuted(ctx, eventName, lastExecuted)
 	}
 	return sql.ErrEventsNotSupported.New(pdb.db.Name())
 }

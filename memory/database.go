@@ -16,6 +16,7 @@ package memory
 
 import (
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -391,6 +392,22 @@ func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql
 	}
 	if !found {
 		return sql.ErrEventDoesNotExist.New(ed.Name)
+	}
+	return nil
+}
+
+func (d *BaseDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	loweredName := strings.ToLower(eventName)
+	found := false
+	for _, existingEd := range d.events {
+		if strings.ToLower(existingEd.Name) == loweredName {
+			found = true
+			existingEd.LastExecuted = lastExecuted
+		}
+	}
+	// this should not happen, but sanity check
+	if !found {
+		return sql.ErrEventDoesNotExist.New(eventName)
 	}
 	return nil
 }

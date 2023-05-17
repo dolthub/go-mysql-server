@@ -652,6 +652,8 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 		}
 	}
 
+	n.EventScheduleNotifier.RemoveSchemaEvents(n.DbName)
+
 	err := n.Catalog.RemoveDatabase(ctx, n.DbName)
 	if err != nil {
 		return nil, err

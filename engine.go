@@ -21,6 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/dolthub/go-mysql-server/event_scheduler"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -136,6 +137,7 @@ type Engine struct {
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
 	Version           sql.AnalyzerVersion
+	EventScheduler    *event_scheduler.EventScheduler
 }
 
 type ColumnWithRawDefault struct {
@@ -179,6 +181,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		Version:           version,
+		EventScheduler:    nil,
 	}
 }
 
@@ -623,4 +626,17 @@ func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]s
 		return true
 	})
 	return cols, nil
+}
+
+// InitializeEventScheduler initializes the EventScheduler for the engine.
+func InitializeEventScheduler(e *Engine, ctx *sql.Context, status string) error {
+	// sanity check
+	if e == nil || ctx == nil {
+		return fmt.Errorf("event scheduler cannot have nil engine or sql.Context")
+	}
+
+	// TODO: some way to get engine to run query returned from event_scheduler_notifier
+	var err error
+	e.EventScheduler, err = event_scheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctx, status)
+	return err
 }
