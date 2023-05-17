@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -209,7 +210,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 
 			_, err = cache.Get(hash)
-			if sql.ErrKeyNotFound.Is(err) {
+			if errors.Is(err, sql.ErrKeyNotFound) {
 				cache.Put(hash, struct{}{})
 				continue
 			} else if err != nil {
