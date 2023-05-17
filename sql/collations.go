@@ -465,7 +465,7 @@ var collationArray = [324]Collation{
 	/*073*/ {Collation_keybcs2_bin, "keybcs2_bin", CharacterSet_keybcs2, false, true, 1, "PAD SPACE", nil},
 	/*074*/ {Collation_koi8r_bin, "koi8r_bin", CharacterSet_koi8r, false, true, 1, "PAD SPACE", nil},
 	/*075*/ {Collation_koi8u_bin, "koi8u_bin", CharacterSet_koi8u, false, true, 1, "PAD SPACE", nil},
-	/*076*/ {Collation_utf8mb3_tolower_ci, "utf8mb3_tolower_ci", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", nil},
+	/*076*/ {Collation_utf8mb3_tolower_ci, "utf8mb3_tolower_ci", CharacterSet_utf8mb3, false, true, 1, "PAD SPACE", encodings.Utf8mb3_tolower_ci_RuneWeight},
 	/*077*/ {Collation_latin2_bin, "latin2_bin", CharacterSet_latin2, false, true, 1, "PAD SPACE", nil},
 	/*078*/ {Collation_latin5_bin, "latin5_bin", CharacterSet_latin5, false, true, 1, "PAD SPACE", nil},
 	/*079*/ {Collation_latin7_bin, "latin7_bin", CharacterSet_latin7, false, true, 1, "PAD SPACE", nil},

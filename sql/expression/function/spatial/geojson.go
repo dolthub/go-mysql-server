@@ -229,7 +229,7 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 	return nil
 }
 
-// getIntArg is a helper method that evaluates the given sql.Expression to an int type, errors on float32 and float 64,
+// getIntArg is a helper method that evaluates the given sql.Expression to an int type, errors on float32 and float64,
 // and returns nil
 func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{}, error) {
 	x, err := expr.Eval(ctx, row)
@@ -748,10 +748,10 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil {
 		return nil, errors.New("incorrect srid value")
 	}
-	srid := uint32(s.(int))
-	if err = ValidateSRID(srid); err != nil {
+	if err = ValidateSRID(s.(int), g.FunctionName()); err != nil {
 		return nil, err
 	}
+	srid := uint32(s.(int))
 	res = res.(types.GeometryValue).SetSRID(srid)
 	return res, nil
 }

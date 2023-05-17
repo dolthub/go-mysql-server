@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -27,9 +28,19 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
+
+const experimentalFlag = "GMS_EXPERIMENTAL"
+
+var ExperimentalGMS bool
+
+func init() {
+	ExperimentalGMS = os.Getenv(experimentalFlag) != ""
+}
 
 // Config for the Engine.
 type Config struct {
@@ -124,6 +135,7 @@ type Engine struct {
 	IsServerLocked    bool
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
+	Version           sql.AnalyzerVersion
 }
 
 type ColumnWithRawDefault struct {
@@ -152,6 +164,10 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
+	version := sql.VersionStable
+	if ExperimentalGMS {
+		version = sql.VersionExperimental
+	}
 	return &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
@@ -162,12 +178,17 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		IsServerLocked:    cfg.IsServerLocked,
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
+		Version:           version,
 	}
 }
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
-	a := analyzer.NewDefault(pro)
+	version := sql.VersionStable
+	if ExperimentalGMS {
+		version = sql.VersionExperimental
+	}
+	a := analyzer.NewDefaultWithVersion(pro, version)
 	return New(a, nil)
 }
 
@@ -214,20 +235,28 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, bindings map[
 
 // QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
 // instead of parsing the query from text.
-func (e *Engine) QueryNodeWithBindings(
-	ctx *sql.Context,
-	query string,
-	parsed sql.Node,
-	bindings map[string]sql.Expression,
-) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sql.Node, bindings map[string]sql.Expression) (sql.Schema, sql.RowIter, error) {
 	var (
 		analyzed sql.Node
 		iter     sql.RowIter
 		err      error
 	)
 
+	if ctx.Version == sql.VersionUnknown {
+		ctx.Version = e.Version
+	}
+
 	if parsed == nil {
-		parsed, err = parse.Parse(ctx, query)
+		switch ctx.Version {
+		case sql.VersionExperimental:
+			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+			if err != nil {
+				ctx.Version = sql.VersionStable
+				parsed, err = parse.Parse(ctx, query)
+			}
+		default:
+			parsed, err = parse.Parse(ctx, query)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
@@ -276,6 +305,7 @@ func (e *Engine) QueryNodeWithBindings(
 
 		return nil, nil, err
 	}
+	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
 	return analyzed.Schema(), iter, nil
 }
@@ -340,18 +370,6 @@ func (e *Engine) analyzeQuery(ctx *sql.Context, query string, parsed sql.Node, b
 		analyzed sql.Node
 		err      error
 	)
-
-	if parsed == nil {
-		parsed, err = parse.Parse(ctx, query)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	err = e.readOnlyCheck(parsed)
-	if err != nil {
-		return nil, err
-	}
 
 	// TODO: eventually, we should have this logic be in the RowIter() of the respective plans
 	// along with a new rule that handles analysis

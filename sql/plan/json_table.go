@@ -52,12 +52,12 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 }
 
 type JSONTable struct {
-	DataExpr sql.Expression
-	name     string
-	Path     string
-	schema   sql.PrimaryKeySchema
-	ColPaths []string
-	b        sql.NodeExecBuilder
+	DataExpr  sql.Expression
+	TableName string
+	Path      string
+	Sch       sql.PrimaryKeySchema
+	ColPaths  []string
+	b         sql.NodeExecBuilder
 }
 
 var _ sql.Table = (*JSONTable)(nil)
@@ -67,17 +67,17 @@ var _ sql.CollationCoercible = (*JSONTable)(nil)
 
 // Name implements the sql.Table interface
 func (t *JSONTable) Name() string {
-	return t.name
+	return t.TableName
 }
 
 // String implements the sql.Table interface
 func (t *JSONTable) String() string {
-	return t.name
+	return t.TableName
 }
 
 // Schema implements the sql.Table interface
 func (t *JSONTable) Schema() sql.Schema {
-	return t.schema.Schema
+	return t.Sch.Schema
 }
 
 // Collation implements the sql.Table interface
@@ -139,16 +139,16 @@ func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, err
 }
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
-func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
+func NewJSONTable(dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
 	if _, ok := dataExpr.(*Subquery); ok {
 		return nil, sql.ErrInvalidArgument.New("JSON_TABLE")
 	}
 
 	return &JSONTable{
-		name:     alias,
-		DataExpr: dataExpr,
-		Path:     path,
-		schema:   schema,
-		ColPaths: colPaths,
+		TableName: alias,
+		DataExpr:  dataExpr,
+		Path:      path,
+		Sch:       schema,
+		ColPaths:  colPaths,
 	}, nil
 }

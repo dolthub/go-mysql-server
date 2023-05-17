@@ -140,17 +140,17 @@ func TestGroupedAggFuncs(t *testing.T) {
 		// list aggregations
 		{
 			Name:     "group concat null",
-			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, types.LongText, "x", true)}, 1042)),
+			Agg:      NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, types.LongText, "x", true)}, 1042)),
 			Expected: sql.Row{"1,3,4", "1,3,4", "1,2,5,6"},
 		},
 		{
 			Name:     "group concat int",
-			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(1, types.LongText, "x", true)}, 1042)),
+			Agg:      NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(1, types.LongText, "x", true)}, 1042)),
 			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
 		},
 		{
 			Name:     "group concat float",
-			Agg:      NewGroupConcatAgg(mustNewGroupByConcat("", nil, ",", []sql.Expression{expression.NewGetField(3, types.LongText, "x", true)}, 1042)),
+			Agg:      NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(3, types.LongText, "x", true)}, 1042)),
 			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
 		},
 		{
@@ -390,12 +390,4 @@ func TestWindowedAggFuncs(t *testing.T) {
 		})
 	}
 
-}
-
-func mustNewGroupByConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) *GroupConcat {
-	gc, err := NewGroupConcat(distinct, orderBy, separator, selectExprs, maxLen)
-	if err != nil {
-		panic(err)
-	}
-	return gc
 }

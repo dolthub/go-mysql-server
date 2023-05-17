@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -32,8 +30,6 @@ type SRID struct {
 
 var _ sql.FunctionExpression = (*SRID)(nil)
 var _ sql.CollationCoercible = (*SRID)(nil)
-
-var ErrInvalidSRID = errors.NewKind("There's no spatial reference with SRID %d")
 
 // NewSRID creates a new STX expression.
 func NewSRID(args ...sql.Expression) (sql.Expression, error) {
@@ -110,15 +106,15 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.Uint32.Convert(v)
+	val, _, err := types.Int64.Convert(v)
 	if err != nil {
 		return nil, err
 	}
-	srid := val.(uint32)
 
-	if err = ValidateSRID(srid); err != nil {
+	if err = ValidateSRID(int(val.(int64)), s.FunctionName()); err != nil {
 		return nil, err
 	}
+	srid := uint32(val.(int64))
 
 	// Create new geometry object with matching SRID
 	switch g := g.(type) {

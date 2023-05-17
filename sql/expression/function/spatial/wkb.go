@@ -16,6 +16,7 @@ package spatial
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -158,9 +159,12 @@ func ParseAxisOrder(s string) (bool, error) {
 	}
 }
 
-func ValidateSRID(srid uint32) error {
-	if srid != types.CartesianSRID && srid != types.GeoSpatialSRID {
-		return ErrInvalidSRID.New(srid)
+func ValidateSRID(srid int, funcName string) error {
+	if srid < 0 || srid > math.MaxUint32 {
+		return sql.ErrInvalidSRID.New(funcName)
+	}
+	if uint32(srid) != types.CartesianSRID && uint32(srid) != types.GeoSpatialSRID {
+		return sql.ErrNoSRID.New(srid)
 	}
 	return nil
 }
@@ -200,14 +204,14 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		if s == nil {
 			return nil, nil
 		}
-		s, _, err = types.Uint32.Convert(s)
+		s, _, err = types.Int64.Convert(s)
 		if err != nil {
 			return nil, err
 		}
-		srid = s.(uint32)
-	}
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
+		if err = ValidateSRID(int(s.(int64)), "st_geomfromwkb"); err != nil {
+			return nil, err
+		}
+		srid = uint32(s.(int64))
 	}
 
 	var geom types.GeometryValue

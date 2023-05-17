@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -59,7 +61,7 @@ func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expre
 		case *expression.GetField:
 			for i, col := range schema {
 				newIndex := scopeLen + i
-				if e.Name() == col.Name && e.Table() == col.Source {
+				if strings.EqualFold(e.Name(), col.Name) && strings.EqualFold(e.Table(), col.Source) {
 					if newIndex != e.Index() {
 						a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
 						return expression.NewGetFieldWithTable(
@@ -81,7 +83,7 @@ func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expre
 				schema := schemas(n.Children())
 				offset += len(schema)
 				for i, col := range schema {
-					if e.Name() == col.Name && e.Table() == col.Source {
+					if strings.EqualFold(e.Name(), col.Name) && strings.EqualFold(e.Table(), col.Source) {
 						newIndex := scopeLen - offset + i
 						if e.Index() != newIndex {
 							a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)

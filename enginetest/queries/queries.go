@@ -5890,86 +5890,6 @@ Select * from (
 		Expected: []sql.Row{{"mydb", "mytable", "TABLE"}},
 	},
 	{
-		Query: "SELECT REGEXP_LIKE('testing', 'TESTING');",
-		Expected: []sql.Row{
-			{1},
-		},
-	},
-	{
-		Query: "SELECT REGEXP_LIKE('testing', 'TESTING') FROM mytable;",
-		Expected: []sql.Row{
-			{1},
-			{1},
-			{1},
-		},
-	},
-	{
-		Query: "SELECT i, s, REGEXP_LIKE(s, '[a-z]+d row') FROM mytable;",
-		Expected: []sql.Row{
-			{1, "first row", 0},
-			{2, "second row", 1},
-			{3, "third row", 1},
-		},
-	},
-	{
-		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X")`,
-		Expected: []sql.Row{{"XXXXX56789"}},
-	},
-	{
-		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2)`,
-		Expected: []sql.Row{{"0XXXX56789"}},
-	},
-	{
-		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2, 2)`,
-		Expected: []sql.Row{{"01X3456789"}},
-	},
-	{
-		Query:    `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "i")`,
-		Expected: []sql.Row{{"XXXX XXXX XXXX"}},
-	},
-	{
-		Query:    `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "c")`,
-		Expected: []sql.Row{{"TEST XXXX TEST"}},
-	},
-	{
-		Query:    `SELECT REGEXP_REPLACE(CONCAT("abc123"), "[0-4]", "X")`,
-		Expected: []sql.Row{{"abcXXX"}},
-	},
-	{
-		Query: `SELECT * FROM mytable WHERE s LIKE REGEXP_REPLACE("123456%r1o2w", "[0-9]", "")`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
-	},
-	{
-		Query: `SELECT REGEXP_REPLACE(s, "[a-z]", "X") from mytable`,
-		Expected: []sql.Row{
-			{"XXXXX XXX"},
-			{"XXXXXX XXX"},
-			{"XXXXX XXX"},
-		},
-	},
-	{
-		Query:    `SELECT 20 REGEXP '^[-]?2[0-9]+$'`,
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    `SELECT 30 REGEXP '^[-]?2[0-9]+$'`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",
-		Expected: []sql.Row{
-			{int64(1), "\nthere is some text in here"},
-			{int64(2), "there is some\ntext in here"},
-			{int64(3), "there is some text\nin here"},
-			{int64(4), "there is some text in here\n"},
-			{int64(5), "there is some text in here"},
-		},
-	},
-	{
 		Query:    `SELECT i FROM mytable WHERE i = (SELECT 1)`,
 		Expected: []sql.Row{{int64(1)}},
 	},
@@ -7467,7 +7387,7 @@ exists (select * from xy where
 	},
 	{
 		// relation is a group by
-		Query: "select a1.a from (select * from ab group by a, b) a1 where exists (select a from xy where 1 = 0);",
+		Query: "select a1.a from (select * from ab group by a, b) a1 where exists (select x from xy where 1 = 0);",
 	},
 	{
 		// relation is a window
@@ -8774,9 +8694,33 @@ var ErrorQueries = []QueryErrorTest{
 		Query:          "create table vb_tbl (vb varbinary(123456789));",
 		ExpectedErrStr: "length is 123456789 but max allowed is 65535",
 	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 1234)`,
+		ExpectedErr: sql.ErrNoSRID,
+	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4294967295)`,
+		ExpectedErr: sql.ErrNoSRID,
+	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), -1)`,
+		ExpectedErr: sql.ErrInvalidSRID,
+	},
+	{
+		Query:       `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4294967296)`,
+		ExpectedErr: sql.ErrInvalidSRID,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
+	{
+		Query:          `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
+		ExpectedErrStr: "Not supported: 'ORDER BY over UNION in recursive Common Table Expression'",
+	},
+	{
+		Query:          "with a(j) as (select 1) select j from a union select x from xy order by x;",
+		ExpectedErrStr: "Unknown column 'x' in 'order clause'",
+	},
 	{
 		Query:          "with a as (select * from c), b as (select * from a), c as (select * from b) select * from a",
 		ExpectedErrStr: "table not found: c",

@@ -54,8 +54,8 @@ func (g *GroupConcat) Description() string {
 	return "returns a string result with the concatenated non-NULL values from a group."
 }
 
-func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
-	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}, nil
+func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) *GroupConcat {
+	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}
 }
 
 // WithWindow implements sql.Aggregation
@@ -179,7 +179,7 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	sortFieldMarker := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen)
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen), nil
 }
 
 type groupConcatBuffer struct {

@@ -225,6 +225,7 @@ type Context struct {
 	queryTime   time.Time
 	tracer      trace.Tracer
 	rootSpan    trace.Span
+	Version     AnalyzerVersion
 }
 
 // ContextOption is a function to configure the context.
@@ -607,3 +608,11 @@ func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 	}
 	return true, nil
 }
+
+type AnalyzerVersion uint8
+
+const (
+	VersionUnknown AnalyzerVersion = iota
+	VersionStable
+	VersionExperimental
+)

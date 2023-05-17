@@ -20,14 +20,10 @@ import (
 )
 
 type Catalog interface {
-	// AllDatabases returns all databases known to this catalog
-	AllDatabases(ctx *Context) []Database
-
-	// HasDB returns whether a db with the name given exists, case-insensitive
-	HasDB(ctx *Context, db string) bool
-
-	// Database returns the database with the name given, case-insensitive, or an error if it doesn't exist
-	Database(ctx *Context, db string) (Database, error)
+	DatabaseProvider
+	FunctionProvider
+	TableFunctionProvider
+	ExternalStoredProcedureProvider
 
 	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
 	CreateDatabase(ctx *Context, dbName string, collation CollationID) error
