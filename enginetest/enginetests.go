@@ -1827,9 +1827,18 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 }
 
 func TestEvents(t *testing.T, h Harness) {
+	h.Setup(setup.MydbData)
+	e := mustNewEngine(t, h)
+	defer e.Close()
+	ctx := NewContext(h)
+	err := e.InitializeEventScheduler(ctx, "on")
+	assert.NoError(t, err)
+
+	ctx.SetCurrentDatabase("mydb")
 	for _, script := range queries.EventTests {
-		TestScript(t, h, script)
+		TestScriptWithEngine(t, e, h, script)
 	}
+
 }
 
 func TestTriggerErrors(t *testing.T, harness Harness) {

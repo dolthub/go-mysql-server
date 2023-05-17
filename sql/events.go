@@ -33,7 +33,7 @@ type EventSchedulerNotifier interface {
 	UpdateEvent(ctx *Context, edb EventDatabase, orgEventName string, details EventDetails)
 	// RemoveEvent is called when there is an event dropped at runtime. This function
 	// removes the given event if it exists in the enabled events list of the EventScheduler.
-	RemoveEvent(ctx *Context, dbName, eventName string)
+	RemoveEvent(dbName, eventName string)
 	// RemoveSchemaEvents is called when there is a database dropped at runtime. This function
 	// removes all events of given database that exist in the enabled events list of the EventScheduler.
 	RemoveSchemaEvents(dbName string)

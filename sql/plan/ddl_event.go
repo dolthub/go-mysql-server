@@ -585,7 +585,7 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	// make sure to notify the EventScheduler after dropping the event in the database
-	d.EventScheduleNotifier.RemoveEvent(ctx, eventDb.Name(), d.EventName)
+	d.EventScheduleNotifier.RemoveEvent(eventDb.Name(), d.EventName)
 
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }

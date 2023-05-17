@@ -529,6 +529,9 @@ func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) 
 }
 
 func (e *Engine) Close() error {
+	if e.EventScheduler != nil {
+		e.EventScheduler.Close()
+	}
 	for _, p := range e.ProcessList.Processes() {
 		e.ProcessList.Kill(p.Connection)
 	}
@@ -550,8 +553,7 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 		}
 	}
 	switch node.(type) {
-	case
-		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+	case *plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		if e.IsReadOnly {
 			return sql.ErrReadOnly.New()
 		} else if e.IsServerLocked {
@@ -628,15 +630,26 @@ func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]s
 	return cols, nil
 }
 
-// InitializeEventScheduler initializes the EventScheduler for the engine.
-func InitializeEventScheduler(e *Engine, ctx *sql.Context, status string) error {
+// InitializeEventScheduler initializes the EventScheduler for the engine with given sql.Context
+// and the --event-scheduler status defined in the configuration. This function also initializes
+// the EventSchedulerNotifier of the analyzer of this engine.
+func (e *Engine) InitializeEventScheduler(ctx *sql.Context, status string) error {
 	// sanity check
-	if e == nil || ctx == nil {
+	if ctx == nil {
 		return fmt.Errorf("event scheduler cannot have nil engine or sql.Context")
 	}
 
-	// TODO: some way to get engine to run query returned from event_scheduler_notifier
+	queryFunc := func(query string) error {
+		_, _, err := e.Query(ctx, query)
+		return err
+	}
+
 	var err error
-	e.EventScheduler, err = event_scheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctx, status)
-	return err
+	e.EventScheduler, err = event_scheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctx, status, queryFunc)
+	if err != nil {
+		return nil
+	}
+
+	e.Analyzer.EventSchedulerNotifier = e.EventScheduler
+	return nil
 }

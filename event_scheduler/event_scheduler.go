@@ -17,14 +17,15 @@ package event_scheduler
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"strings"
 )
 
 // ErrEventSchedulerDisabled is returned when user tries to set `event_scheduler_notifier` global system variable to ON or OFF
-// when the server started with either `--event-scheduler=DISABLED` or `--skip-grant-tables`. Should have ERROR 1290 code.
-var ErrEventSchedulerDisabled = errors.New("The server is running with the --event-scheduler=DISABLED or --skip-grant-tables option so it cannot execute this statement")
+// when the server started with either `--event-scheduler=DISABLED` or `--skip-grant-tables` configuration. Should have ERROR 1290 code.
+var ErrEventSchedulerDisabled = errors.New("The server is running with the --event-scheduler=DISABLED or --skip-grant-tables option so it cannot executeEvent this statement")
 
 type EventSchedulerStatus string
 
@@ -36,24 +37,22 @@ const (
 
 var _ sql.EventSchedulerNotifier = (*EventScheduler)(nil)
 
-// EventScheduler is equivalent to MySQL server event scheduler.
-// If --event-scheduler configuration variable is set to DISABLED at the start of the server,
-// it cannot be updated during runtime.
-// If not defined, it defaults to ON, and it can be updated to OFF during runtime.
+// EventScheduler is responsible for SQL events execution.
+// If --event-scheduler configuration variable is set to DISABLED
+// at the start of the server, it cannot be updated during runtime.
+// If not defined, it defaults to ON, and it can be updated to OFF
+// during runtime.
 type EventScheduler struct {
-	analyzer          *analyzer.Analyzer
-	bgt               *sql.BackgroundThreads
-	ctx               *sql.Context
-	status            EventSchedulerStatus // ON (true) or OFF (false), redundant if DISABLED is true
-	eventExecutioner *EventExecutioner
+	status      EventSchedulerStatus
+	executioner *eventExecutioner
 }
 
-// InitEventScheduler will be called after engine is built with required fields including
-// analyzer, background thread, sql.Context/session builder and the status of the event scheduler.
-// The event scheduler status will be ON by default if user did not define `--event-scheduler` or
-// `--skip-grant-tables` config variables at the start of the sql server.
-// TODO: need callback instead? like: sessBuilder func(ctx context.Context) (*sql.Context, error)
-func InitEventScheduler(analyzer *analyzer.Analyzer, bgt *sql.BackgroundThreads, ctx *sql.Context, status string) (*EventScheduler, error) {
+// InitEventScheduler is called at the start of the server. This function returns EventScheduler object
+// creating eventExecutioner with empty events list. The enabled events will be loaded into the eventExecutioner
+// if the EventScheduler status is 'ON' or undefined. The runQueryFunc is used to run the event definition during
+// event execution. The event scheduler status will be ON by default if it is set `--event-scheduler` to 'ON' or undefined.
+// TODO: If `--skip-grant-tables` config variable is defined, the EventScheduler is DISABLED by default.
+func InitEventScheduler(a *analyzer.Analyzer, bgt *sql.BackgroundThreads, ctx *sql.Context, status string, runQueryFunc func(query string) error) (*EventScheduler, error) {
 	var s EventSchedulerStatus
 	switch strings.ToLower(status) {
 	case "on", "1":
@@ -68,36 +67,34 @@ func InitEventScheduler(analyzer *analyzer.Analyzer, bgt *sql.BackgroundThreads,
 	}
 
 	var es = &EventScheduler{
-		analyzer:         analyzer,
-		bgt:              bgt,
-		ctx:              ctx,
-		status:           s,
-		eventExecutioner: &EventExecutioner{
-			analyzer:            analyzer,
-			bThreads:            bgt,
-			ctx:                 ctx,
-			enabledEventsList:   make([]*EnabledEvent, 0),
-			eventsRunningStatus: make(map[string]runningStatus),
-			stop: false,
-		},
+		status:      s,
+		executioner: newEventExecutioner(bgt, ctx, runQueryFunc),
 	}
 
-	// If the EventScheduler is set to ON, then load enabled events and
-	// start the background thread to run and execute events
+	// If the EventScheduler is set to ON, then load enabled
+	// events and start executing events on schedule.
 	if es.status == EventSchedulerOn {
-		err := es.evaluateAllEventsAndLoadEnabledEvents()
+		err := es.loadEventsAndStartEventExecutioner(a, ctx)
 		if err != nil {
 			return nil, err
 		}
-		go es.eventExecutioner.start()
 	}
 
-	analyzer.EventSchedulerNotifier = es
 	return es, nil
 }
 
-// TurnOnEventScheduler is called when user sets --event-scheduler system variable to ON or 1
-func (es *EventScheduler) TurnOnEventScheduler() error {
+// Close closes the EventScheduler.
+func (es *EventScheduler) Close() {
+	es.status = EventSchedulerOff
+	if es.executioner != nil {
+		es.executioner.shutdown()
+	}
+}
+
+// TurnOnEventScheduler is called when user sets --event-scheduler system variable to ON or 1.
+// This function requires valid analyzer and sql context to evaluate all events in all databases
+// to load enabled events to the EventScheduler.
+func (es *EventScheduler) TurnOnEventScheduler(a *analyzer.Analyzer, ctx *sql.Context) error {
 	if es.status == EventSchedulerDisabled {
 		return ErrEventSchedulerDisabled
 	} else if es.status == EventSchedulerOn {
@@ -105,15 +102,10 @@ func (es *EventScheduler) TurnOnEventScheduler() error {
 	}
 
 	es.status = EventSchedulerOn
-	err := es.evaluateAllEventsAndLoadEnabledEvents()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return es.loadEventsAndStartEventExecutioner(a, ctx)
 }
 
-// TurnOffEventScheduler is called when user sets --event-scheduler system variable to OFF or 0
+// TurnOffEventScheduler is called when user sets --event-scheduler system variable to OFF or 0.
 func (es *EventScheduler) TurnOffEventScheduler() error {
 	if es.status == EventSchedulerDisabled {
 		return ErrEventSchedulerDisabled
@@ -122,50 +114,56 @@ func (es *EventScheduler) TurnOffEventScheduler() error {
 	}
 
 	es.status = EventSchedulerOff
-	es.eventExecutioner.shutdown()
+
+	if es.executioner != nil {
+		es.executioner.shutdown()
+	}
 
 	return nil
 }
 
-// evaluateAllEventsAndLoadEnabledEvents is called only when sql server starts or
-// EventScheduler is turned ON at runtime. This function validates all events by updating
-// or dropping events that are expired and updates the appropriate events metadata
-// in the databases. This function STARTS the EventExecutioner after initializing
-// its enabledEventsList.
-func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents() error {
-	dbs := es.eventExecutioner.analyzer.Catalog.AllDatabases(es.ctx)
-	events := make([]*EnabledEvent, 0)
+// loadEventsAndStartEventExecutioner evaluates all events of all databases and retrieves the enabled events
+// with valid schedule to load into the eventExecutioner. Then, it starts the eventExecutioner.
+func (es *EventScheduler) loadEventsAndStartEventExecutioner(a *analyzer.Analyzer, ctx *sql.Context) error {
+	enabledEvents, err := es.evaluateAllEventsAndLoadEnabledEvents(a, ctx)
+	if err != nil {
+		return err
+	}
+	es.executioner.loadEvents(enabledEvents)
+	go es.executioner.start()
+	return nil
+}
+
+// evaluateAllEventsAndLoadEnabledEvents is called only when sql server starts with --event-scheduler
+// configuration variable set to 'ON' or undefined, or it is set to 'ON' at runtime only when it was not
+// set to DISABLED when server started. This function retrieves all events evaluating them by dropping
+// events that are expired or updating the appropriate events metadata in the databases.
+// This function returns list of events that are enabled and have valid schedule.
+func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(a *analyzer.Analyzer, ctx *sql.Context) ([]*enabledEvent, error) {
+	dbs := a.Catalog.AllDatabases(ctx)
+	events := make([]*enabledEvent, 0)
 	for _, db := range dbs {
 		if edb, ok := db.(sql.EventDatabase); ok {
-			eDefs, err := edb.GetEvents(es.ctx)
+			eDefs, err := edb.GetEvents(ctx)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			for _, eDef := range eDefs {
-				ed, err := analyzer.GetEventDetailsFromEventDefinition(es.ctx, eDef)
+				ed, err := analyzer.GetEventDetailsFromEventDefinition(ctx, eDef)
 				if err != nil {
-					return err
+					return nil, err
 				}
-				newEnabledEvent, created, err := NewEnabledEventFromEventDetails(es.ctx, edb, ed)
+				newEnabledEvent, created, err := NewEnabledEventFromEventDetails(ctx, edb, ed)
 				if err != nil {
-					return err
+					return nil, err
 				} else if created {
 					events = append(events, newEnabledEvent)
 				}
 			}
 		}
 	}
-
-	es.eventExecutioner.enabledEventsList = events
-	go es.eventExecutioner.start()
-
-	return nil
+	return events, nil
 }
-
-// All these functions are only called by events related query statements.
-// The events stored in the database are handled in the appropriate plan Nodes.
-// Other cases such as dropping the event that has been completed after executing
-// will be updated by eventExecutioner.
 
 // AddEvent implements sql.EventSchedulerNotifier interface.
 // This function is called when there is an event created at runtime.
@@ -173,7 +171,7 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 	if es.status == EventSchedulerDisabled || es.status == EventSchedulerOff {
 		return
 	}
-	es.eventExecutioner.add(ctx, edb, details)
+	es.executioner.add(ctx, edb, details)
 }
 
 // UpdateEvent implements sql.EventSchedulerNotifier interface.
@@ -182,17 +180,17 @@ func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, o
 	if es.status == EventSchedulerDisabled || es.status == EventSchedulerOff {
 		return
 	}
-	es.eventExecutioner.update(ctx, edb, orgEventName, details)
+	es.executioner.update(ctx, edb, orgEventName, details)
 }
 
 // RemoveEvent implements sql.EventSchedulerNotifier interface.
 // This function is called when there is an event dropped at runtime. This function
 // removes the given event if it exists in the enabled events list of the EventScheduler.
-func (es *EventScheduler) RemoveEvent(ctx *sql.Context, dbName, eventName string) {
+func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
 	if es.status == EventSchedulerDisabled || es.status == EventSchedulerOff {
 		return
 	}
-	es.eventExecutioner.remove(fmt.Sprintf("%s.%s", dbName, eventName))
+	es.executioner.remove(fmt.Sprintf("%s.%s", dbName, eventName))
 }
 
 // RemoveSchemaEvents implements sql.EventSchedulerNotifier interface.
@@ -202,5 +200,5 @@ func (es *EventScheduler) RemoveSchemaEvents(dbName string) {
 	if es.status == EventSchedulerDisabled || es.status == EventSchedulerOff {
 		return
 	}
-	es.eventExecutioner.removeSchemaEvents(dbName)
+	es.executioner.removeSchemaEvents(dbName)
 }
