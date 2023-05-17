@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -109,7 +111,12 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	}
 
 	if v.ValueFunction != nil {
-		return v, v.ValueFunction(), true
+		result, err := v.ValueFunction()
+		if err != nil {
+			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", name, err.Error())
+			return v, nil, true
+		}
+		return v, result, true
 	}
 
 	// convert any set types to strings
@@ -2478,8 +2485,8 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("system_time_zone"),
-		ValueFunction: func() interface{} {
-			return gmstime.SystemTimezoneOffset()
+		ValueFunction: func() (interface{}, error) {
+			return gmstime.SystemTimezoneOffset(), nil
 		},
 	},
 	"table_definition_cache": {
@@ -2748,8 +2755,8 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
 		Default:           int8(1),
-		ValueFunction: func() interface{} {
-			return int(time.Now().Sub(serverStartUpTime).Seconds())
+		ValueFunction: func() (interface{}, error) {
+			return int(time.Now().Sub(serverStartUpTime).Seconds()), nil
 		},
 	},
 	"use_secondary_engine": {

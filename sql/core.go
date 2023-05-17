@@ -374,7 +374,7 @@ type SystemVariable struct {
 	// the value of this system variable whenever it is requested. System variables
 	// that provide a ValueFunction should also set Dynamic to false, since they
 	// cannot be assigned a value and will return a read-only error if tried.
-	ValueFunction func() interface{}
+	ValueFunction func() (interface{}, error)
 }
 
 // SystemVariableScope represents the scope of a system variable.
