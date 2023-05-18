@@ -341,7 +341,6 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	// Statement creation parts for each column
 	for i, col := range schema {
-
 		var colDefault string
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {

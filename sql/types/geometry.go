@@ -543,3 +543,14 @@ func (t GeometryType) MatchSRID(v interface{}) error {
 	}
 	return sql.ErrNotMatchingSRID.New(srid, t.SRID)
 }
+
+func ValidateSRID(srid int, funcName string) error {
+	if srid < 0 || srid > math.MaxUint32 {
+		return sql.ErrInvalidSRID.New(funcName)
+	}
+	if _, ok := SupportedSRIDs[uint32(srid)]; !ok {
+		return sql.ErrNoSRID.New(srid)
+	}
+
+	return nil
+}

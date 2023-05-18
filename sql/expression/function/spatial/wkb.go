@@ -16,7 +16,6 @@ package spatial
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -159,16 +158,6 @@ func ParseAxisOrder(s string) (bool, error) {
 	}
 }
 
-func ValidateSRID(srid int, funcName string) error {
-	if srid < 0 || srid > math.MaxUint32 {
-		return sql.ErrInvalidSRID.New(funcName)
-	}
-	if uint32(srid) != types.CartesianSRID && uint32(srid) != types.GeoSpatialSRID {
-		return sql.ErrNoSRID.New(srid)
-	}
-	return nil
-}
-
 // EvalGeomFromWKB takes in arguments for the ST_FROMWKB functions, and parses them to their corresponding geometry type
 func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGeomType int) (interface{}, error) {
 	val, err := exprs[0].Eval(ctx, row)
@@ -208,7 +197,7 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		if err != nil {
 			return nil, err
 		}
-		if err = ValidateSRID(int(s.(int64)), "st_geomfromwkb"); err != nil {
+		if err = types.ValidateSRID(int(s.(int64)), "st_geomfromwkb"); err != nil {
 			return nil, err
 		}
 		srid = uint32(s.(int64))

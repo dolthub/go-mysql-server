@@ -104,6 +104,9 @@ func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if !ok {
 		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
 	}
+	if p.SRID != types.CartesianSRID {
+		return nil, sql.ErrUnsupportedSRID.New(p.SRID)
+	}
 
 	var totalArea float64
 	for i, l := range p.Lines {
