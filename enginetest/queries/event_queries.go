@@ -23,6 +23,20 @@ import (
 // SHOW EVENTS and SHOW CREATE EVENTS statements, some tests have those timestamps defined in 2037.
 var EventTests = []ScriptTest{
 	{
+		Name: "Simple event definition with INSERT ",
+		SetUpScript: []string{
+			"USE mydb;",
+			"CREATE TABLE totals (num int);",
+			"CREATE EVENT event1 ON SCHEDULE EVERY 1 HOUR DO INSERT INTO totals VALUES (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT COUNT(*) FROM totals;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "EVENTs with ON SCHEDULE EVERY",
 		SetUpScript: []string{
 			"USE mydb;",

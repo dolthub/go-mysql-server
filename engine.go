@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/dolthub/go-mysql-server/event_scheduler"
+	"github.com/dolthub/go-mysql-server/eventscheduler"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -137,7 +137,7 @@ type Engine struct {
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
 	Version           sql.AnalyzerVersion
-	EventScheduler    *event_scheduler.EventScheduler
+	EventScheduler    *eventscheduler.EventScheduler
 }
 
 type ColumnWithRawDefault struct {
@@ -631,21 +631,28 @@ func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]s
 }
 
 // InitializeEventScheduler initializes the EventScheduler for the engine with given sql.Context
-// and the --event-scheduler status defined in the configuration. This function also initializes
-// the EventSchedulerNotifier of the analyzer of this engine.
-func (e *Engine) InitializeEventScheduler(ctx *sql.Context, status string) error {
+// and the --event-scheduler status or --skip-grant-tables defined in the configuration.
+// This function also initializes the EventSchedulerNotifier of the analyzer of this engine.
+func (e *Engine) InitializeEventScheduler(ctx *sql.Context, status eventscheduler.SchedulerStatus) error {
 	// sanity check
 	if ctx == nil {
 		return fmt.Errorf("event scheduler cannot have nil engine or sql.Context")
 	}
 
-	queryFunc := func(query string) error {
-		_, _, err := e.Query(ctx, query)
+	queryFunc := func(dbName, query string) error {
+		// the context can be set to any database and event execution needs specific database
+		ctx.SetTransactionDatabase(dbName)
+		sch, iter, err := e.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		_, err = sql.RowIterToRows(ctx, sch, iter)
 		return err
 	}
 
+	// TODO: could use subcontext for the event scheduler?
 	var err error
-	e.EventScheduler, err = event_scheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctx, status, queryFunc)
+	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctx, status, queryFunc)
 	if err != nil {
 		return nil
 	}

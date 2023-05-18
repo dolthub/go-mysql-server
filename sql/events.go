@@ -28,9 +28,9 @@ const EventTimeStampFormat = "2006-01-02 15:04:05"
 // to the EventScheduler.
 type EventSchedulerNotifier interface {
 	// AddEvent is called when there is an event created at runtime.
-	AddEvent(ctx *Context, edb EventDatabase, details EventDetails)
+	AddEvent(edb EventDatabase, details EventDetails)
 	// UpdateEvent is called when there is an event altered at runtime.
-	UpdateEvent(ctx *Context, edb EventDatabase, orgEventName string, details EventDetails)
+	UpdateEvent(edb EventDatabase, orgEventName string, details EventDetails)
 	// RemoveEvent is called when there is an event dropped at runtime. This function
 	// removes the given event if it exists in the enabled events list of the EventScheduler.
 	RemoveEvent(dbName, eventName string)

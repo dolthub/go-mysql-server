@@ -243,7 +243,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 	var err error
 	ed := a.Event
-	eventAlteredTime := time.Now()
+	eventAlteredTime := ctx.QueryTime()
 	ed.LastAltered = eventAlteredTime
 	ed.Definer = a.Definer
 
@@ -464,7 +464,9 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	// make sure to notify the EventScheduler after updating the event in the database
-	a.notifier.UpdateEvent(ctx, a.eventDb, a.originalName, a.eventDetails)
+	if a.notifier != nil {
+		a.notifier.UpdateEvent(a.eventDb, a.originalName, a.eventDetails)
+	}
 
 	return sql.Row{types.NewOkResult(0)}, nil
 }

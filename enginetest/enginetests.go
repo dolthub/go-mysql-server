@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/eventscheduler"
 	"io"
 	"net"
 	"strings"
@@ -1828,17 +1829,52 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 
 func TestEvents(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData)
-	e := mustNewEngine(t, h)
-	defer e.Close()
-	ctx := NewContext(h)
-	err := e.InitializeEventScheduler(ctx, "on")
-	assert.NoError(t, err)
-
-	ctx.SetCurrentDatabase("mydb")
 	for _, script := range queries.EventTests {
-		TestScriptWithEngine(t, e, h, script)
-	}
+		func() {
+			e := mustNewEngine(t, h)
+			defer e.Close()
+			ctx := NewContext(h)
+			err := e.InitializeEventScheduler(ctx, eventscheduler.SchedulerOn)
+			assert.NoError(t, err)
 
+			for _, statement := range script.SetUpScript {
+				RunQueryWithContext(t, e, h, ctx, statement)
+			}
+
+			assertions := script.Assertions
+			if len(assertions) == 0 {
+				assertions = []queries.ScriptTestAssertion{
+					{
+						Query:       script.Query,
+						Expected:    script.Expected,
+						ExpectedErr: script.ExpectedErr,
+					},
+				}
+			}
+
+			for _, assertion := range assertions {
+				t.Run(assertion.Query, func(t *testing.T) {
+					if assertion.Skip {
+						t.Skip()
+					}
+
+					if assertion.ExpectedErr != nil {
+						AssertErr(t, e, h, assertion.Query, assertion.ExpectedErr)
+					} else if assertion.ExpectedErrStr != "" {
+						AssertErr(t, e, h, assertion.Query, nil, assertion.ExpectedErrStr)
+					} else if assertion.ExpectedWarning != 0 {
+						AssertWarningAndTestQuery(t, e, nil, h, assertion.Query,
+							assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+							assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
+					} else if assertion.SkipResultsCheck {
+						RunQuery(t, e, h, assertion.Query)
+					} else {
+						TestQueryWithContext(t, ctx, e, h, assertion.Query, assertion.Expected, assertion.ExpectedColumns, assertion.Bindings)
+					}
+				})
+			}
+		}()
+	}
 }
 
 func TestTriggerErrors(t *testing.T, harness Harness) {

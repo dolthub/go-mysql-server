@@ -46,7 +46,7 @@ type CreateEvent struct {
 	IfNotExists      bool
 
 	// used to notify EventScheduler of the event creation
-	EventSchedulerNotifier sql.EventSchedulerNotifier
+	notifier sql.EventSchedulerNotifier
 }
 
 // NewCreateEvent returns a *CreateEvent node.
@@ -227,7 +227,7 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 
 // RowIter implements the sql.Node interface.
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	eventCreationTime := time.Now()
+	eventCreationTime := ctx.QueryTime()
 	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime, eventCreationTime, time.Time{})
 	if err != nil {
 		return nil, err
@@ -242,14 +242,14 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		eventDetails: eventDetails,
 		eventDb:      eventDb,
 		ifNotExists:  c.IfNotExists,
-		notifier:     c.EventSchedulerNotifier,
+		notifier:     c.notifier,
 	}, nil
 }
 
 // WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for CREATE EVENT.
 func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
 	nc := *c
-	nc.EventSchedulerNotifier = notifier
+	nc.notifier = notifier
 	return &nc
 }
 
@@ -386,7 +386,9 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	// make sure to notify the EventScheduler after adding the event in the database
-	c.notifier.AddEvent(ctx, c.eventDb, c.eventDetails)
+	if c.notifier != nil {
+		c.notifier.AddEvent(c.eventDb, c.eventDetails)
+	}
 
 	return sql.Row{types.NewOkResult(0)}, nil
 }
@@ -536,7 +538,7 @@ type DropEvent struct {
 	IfExists  bool
 
 	// used to notify EventScheduler of the event creation
-	EventScheduleNotifier sql.EventSchedulerNotifier
+	notifier sql.EventSchedulerNotifier
 }
 
 // NewDropEvent creates a new *DropEvent node.
@@ -585,7 +587,9 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	// make sure to notify the EventScheduler after dropping the event in the database
-	d.EventScheduleNotifier.RemoveEvent(eventDb.Name(), d.EventName)
+	if d.notifier != nil {
+		d.notifier.RemoveEvent(eventDb.Name(), d.EventName)
+	}
 
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
@@ -611,6 +615,6 @@ func (d *DropEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 // WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for DROP EVENT.
 func (d *DropEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
 	nd := *d
-	nd.EventScheduleNotifier = notifier
+	nd.notifier = notifier
 	return &nd
 }

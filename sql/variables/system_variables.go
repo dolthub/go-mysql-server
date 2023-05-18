@@ -763,6 +763,19 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("event_scheduler", "ON", "OFF", "DISABLED"),
 		Default:           "ON",
+		NotifyChanged: func(scope sql.SystemVariableScope, value sql.SystemVarValue) {
+			convertedVal, _, err := value.Var.Type.Convert(value.Val)
+			if err == nil {
+				switch strings.ToLower(convertedVal.(string)) {
+				case "on":
+					// need access to valid analyzer and ctx to call eventscheduler.TurnOnEventScheduler()
+				case "off":
+					// need to call eventscheduler.TurnOffEventScheduler()
+				case "disabled":
+					// cannot set it to DISABLED at runtime
+				}
+			}
+		},
 	},
 	"explicit_defaults_for_timestamp": {
 		Name:              "explicit_defaults_for_timestamp",

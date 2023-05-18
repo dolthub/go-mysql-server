@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package event_scheduler
+package eventscheduler
 
 import (
 	"fmt"
@@ -31,11 +31,11 @@ type enabledEvent struct {
 	nextExecutionAt time.Time
 }
 
-// NewEnabledEventFromEventDetails returns new enabledEvent and whether it is created successfully.
+// newEnabledEventFromEventDetails returns new enabledEvent and whether it is created successfully.
 // An event with ENABLE status might NOT be created if the event SCHEDULE is ended/expired. If the
 // event is expired, then this function either updates its status in the database or drops it from
 // the database.
-func NewEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails) (*enabledEvent, bool, error) {
+func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails) (*enabledEvent, bool, error) {
 	if ed.Status == sql.EventStatus_Enable.String() {
 		// evaluating each event schedules by updating/dropping events if applicable
 		nextExecution, eventEnded, err := ed.GetNextExecutionTime(time.Now())
@@ -103,7 +103,7 @@ func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.Event
 	return ended, nil
 }
 
-// enabledEventsList is a list of enabled events of all databases that the eventExecutioner
+// enabledEventsList is a list of enabled events of all databases that the eventExecutor
 // uses to executeEvent them at the scheduled time.
 type enabledEventsList struct {
 	mu         *sync.Mutex
@@ -164,7 +164,6 @@ func (l *enabledEventsList) add(event *enabledEvent) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.eventsList = append(l.eventsList, event)
-	l.sort()
 }
 
 func (l *enabledEventsList) remove(key string) {
@@ -173,7 +172,6 @@ func (l *enabledEventsList) remove(key string) {
 	for i, e := range l.eventsList {
 		if e.name() == key {
 			l.eventsList = append(l.eventsList[:i], l.eventsList[i+1:]...)
-			l.sort()
 			return
 		}
 	}
@@ -187,7 +185,6 @@ func (l *enabledEventsList) removeSchemaEvents(dbName string) {
 			l.eventsList = append(l.eventsList[:i], l.eventsList[i+1:]...)
 		}
 	}
-	l.sort()
 }
 
 // runningEventsStatus stores whether the event is currently running and
@@ -252,7 +249,8 @@ func (r *runningEventsStatus) removeSchemaEvents(dbName string) {
 	// if there are any running events of given database, then set reAdd to false
 	for evId := range r.status {
 		if strings.HasPrefix(evId, fmt.Sprintf("%s.", dbName)) {
-			r.update(evId, r.status[evId], false)
+			r.status[evId] = r.status[evId]
+			r.reAdd[evId] = false
 		}
 	}
 }
