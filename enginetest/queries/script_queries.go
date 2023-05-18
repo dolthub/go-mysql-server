@@ -3611,7 +3611,7 @@ var SpatialScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CREATE TABLE table3 (i int primary key, p point srid 1);",
+				Query:       "CREATE TABLE table3 (i int primary key, p point srid 1);",
 				ExpectedErr: sql.ErrNoSRID,
 			},
 			{
