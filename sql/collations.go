@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/cespare/xxhash"
@@ -851,6 +852,12 @@ func (c CollationID) Collation() Collation {
 	return collationArray[c]
 }
 
+var weightBuffers = sync.Pool{
+	New: func() interface{} {
+		return new([]byte)
+	},
+}
+
 // WriteWeightString writes the weights of each codepoint in the string into the given io.Writer.
 // Two strings with technically different contents may generate the same WeightString to the same value, as the collation
 // considers them the same string.
@@ -863,6 +870,11 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 		}
 	} else {
 		getRuneWeight := collationArray[c].Sorter
+		i := 0
+		buf := *weightBuffers.Get().(*[]byte)
+		if cap(buf) < len(str)*4 {
+			buf = make([]byte, len(str)*4)
+		}
 		for len(str) > 0 {
 			// All strings (should) have been decoded at this point, so we can rely on Go's internal string encoding
 			runeFromString, strRead := utf8.DecodeRuneInString(str)
@@ -870,17 +882,18 @@ func (c CollationID) WriteWeightString(hash io.Writer, str string) error {
 				return ErrCollationMalformedString.New("hashing")
 			}
 			runeWeight := getRuneWeight(runeFromString)
-			_, err := hash.Write([]byte{
-				byte(runeWeight),
-				byte(runeWeight >> 8),
-				byte(runeWeight >> 16),
-				byte(runeWeight >> 24),
-			})
+			buf[i*4] = byte(runeWeight)
+			buf[i*4+1] = byte(runeWeight >> 8)
+			buf[i*4+2] = byte(runeWeight >> 16)
+			buf[i*4+3] = byte(runeWeight >> 24)
+			_, err := hash.Write(buf[i*4 : i*4+4])
 			if err != nil {
 				return err
 			}
 			str = str[strRead:]
+			i++
 		}
+		weightBuffers.Put(&buf)
 	}
 	return nil
 }
