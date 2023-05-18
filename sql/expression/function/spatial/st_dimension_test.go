@@ -33,6 +33,22 @@ func TestDimension(t *testing.T) {
 		require.Equal(0, v)
 	})
 
+	t.Run("point with srid 4326 is dimension 0", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(0, v)
+	})
+
+	t.Run("point with srid 3857 is dimension 0", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(types.Point{SRID: 3857, X: 1, Y: 2}, types.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(0, v)
+	})
+
 	t.Run("linestring is dimension 1", func(t *testing.T) {
 		require := require.New(t)
 		f := NewDimension(expression.NewLiteral(types.LineString{Points: []types.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, types.LineStringType{}))

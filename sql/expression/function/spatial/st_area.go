@@ -16,7 +16,6 @@ package spatial
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -103,6 +102,9 @@ func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	p, ok := v.(types.Polygon)
 	if !ok {
 		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
+	}
+	if p.SRID != types.CartesianSRID {
+		return nil, sql.ErrUnsupportedSRID.New(p.SRID)
 	}
 
 	var totalArea float64
