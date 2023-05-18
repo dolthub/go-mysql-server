@@ -252,6 +252,7 @@ const (
 	esIncRight
 	esRightIterEOF
 	esCompare
+	esRejectNull
 	esRet
 )
 
@@ -316,10 +317,17 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		case esCompare:
 			row = i.buildRow(left, right)
-			matches, err = conditionIsTrue(ctx, row, i.cond)
+			res, err := i.cond.Eval(ctx, row)
+			matches = res == true
 			if err != nil {
 				return nil, err
 			}
+
+			if res == nil {
+				nextState = esRejectNull
+				continue
+			}
+
 			if !matches {
 				nextState = esIncRight
 			} else {
@@ -333,6 +341,12 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				} else {
 					nextState = esRet
 				}
+			}
+		case esRejectNull:
+			if i.typ.IsAnti() {
+				nextState = esIncLeft
+			} else {
+				nextState = esIncRight
 			}
 		case esRet:
 			if i.typ.IsRightPartial() {
