@@ -3611,8 +3611,7 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CREATE TABLE table2 (i int primary key, p point srid 1);",
-				// error should be ErrInvalidSRID once we support all mysql valid srid values
-				ExpectedErr: sql.ErrUnsupportedFeature,
+				ExpectedErr: sql.ErrNoSRID,
 			},
 			{
 				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",

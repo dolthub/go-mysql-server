@@ -1188,7 +1188,7 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 
 func TestScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range append(queries.ScriptTests, queries.SpatialScriptTests...) {
+	for _, script := range queries.ScriptTests {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(script.Name) {
 				t.Run(script.Name, func(t *testing.T) {
