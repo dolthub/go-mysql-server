@@ -841,10 +841,16 @@ Project
              └─ columns: [x y z]
 `,
 		},
+		{
+			Query: "select (1+x) s from xy group by 1 having s = 1",
+		},
+		{
+			Query: "select (1+x) s from xy join uv on (1+x) = (1+u) group by 1 having s = 1",
+		},
 	}
 
 	var verbose, rewrite bool
-	//verbose = true
+	verbose = true
 	//rewrite = true
 
 	var w *bufio.Writer

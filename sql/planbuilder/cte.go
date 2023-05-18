@@ -110,6 +110,7 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 		for i, c := range leftScope.cols {
 			c.typ = recSch[i].Type
+			c.scalar = nil
 			cteScope.newColumn(c)
 		}
 		b.renameSource(cteScope, name, columns)

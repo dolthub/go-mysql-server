@@ -351,6 +351,9 @@ func (c scopeColumn) empty() bool {
 
 // scalarGf returns a getField reference to this column's expression.
 func (c scopeColumn) scalarGf() sql.Expression {
+	if a, ok := c.scalar.(*expression.Alias); ok {
+		return a.Child
+	}
 	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }
 

@@ -20,7 +20,7 @@ var _ ast.Expr = (*aggregateInfo)(nil)
 type groupBy struct {
 	inCols   []scopeColumn
 	outScope *scope
-	aggs     map[string]sql.Expression
+	aggs     map[string]scopeColumn
 	grouping map[string]bool
 }
 
@@ -39,7 +39,7 @@ func (g *groupBy) hasAggs() bool {
 func (g *groupBy) aggregations() []sql.Expression {
 	aggregations := make([]sql.Expression, 0, len(g.aggs))
 	for _, agg := range g.aggs {
-		aggregations = append(aggregations, agg)
+		aggregations = append(aggregations, agg.scalar)
 	}
 	sort.Slice(aggregations, func(i, j int) bool {
 		return aggregations[i].String() < aggregations[j].String()
@@ -47,19 +47,19 @@ func (g *groupBy) aggregations() []sql.Expression {
 	return aggregations
 }
 
-func (g *groupBy) addAggStr(e sql.Expression) {
+func (g *groupBy) addAggStr(c scopeColumn) {
 	if g.aggs == nil {
-		g.aggs = make(map[string]sql.Expression)
+		g.aggs = make(map[string]scopeColumn)
 	}
-	g.aggs[strings.ToLower(e.String())] = e
+	g.aggs[strings.ToLower(c.scalar.String())] = c
 }
 
-func (g *groupBy) getAgg(name string) sql.Expression {
+func (g *groupBy) getAggRef(name string) sql.Expression {
 	if g.aggs == nil {
 		return nil
 	}
 	ret, _ := g.aggs[name]
-	return ret
+	return ret.scalarGf()
 }
 
 type aggregateInfo struct {
@@ -211,6 +211,8 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	return outScope
 }
 
+// buildAggregateFunc tags aggregate functions in the correct scope
+// and makes the aggregate available for reference by other clauses.
 func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
 	if inScope.groupBy == nil {
 		inScope.initGroupBy()
@@ -226,7 +228,7 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 				agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 			}
 			aggName := strings.ToLower(agg.String())
-			gf := gb.getAgg(aggName)
+			gf := gb.getAggRef(aggName)
 			if gf != nil {
 				// TODO check agg scope output, see if we've already computed
 				// if so use reference here
@@ -234,9 +236,9 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 			}
 
 			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-			id := gb.outScope.newColumn(col)
-			gb.addAggStr(agg)
-			return expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
+			gb.outScope.newColumn(col)
+			gb.addAggStr(col)
+			return col.scalarGf()
 		}
 	}
 
@@ -282,13 +284,10 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 		return gf
 	}
 
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-	id := gb.outScope.newColumn(col)
-	gb.addAggStr(agg)
-
-	//TODO we need to return a reference here, so that top-level
-	// projection references the group by output.
-	return expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	gb.outScope.newColumn(col)
+	gb.addAggStr(col)
+	return col.scalarGf()
 }
 
 func isAggregateFunc(name string) bool {
@@ -314,7 +313,7 @@ func isWindowFunc(name string) bool {
 	}
 }
 
-func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
+func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) {
 	// build having filter expr
 	// aggregates added to fromScope.groupBy
 	// can see projScope outputs
@@ -336,10 +335,17 @@ func (b *PlanBuilder) analyzeHaving(fromScope *scope, having *ast.Where) {
 			}
 		case *ast.ColName:
 			// add to extra cols
-			c, ok := fromScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), true)
+			c, ok := projScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), true)
+			if ok {
+				// references projection alias
+				break
+			}
+			c, ok = fromScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), true)
 			if !ok {
-				err := sql.ErrColumnNotFound.New(n.Name)
-				b.handleErr(err)
+				if !ok {
+					err := sql.ErrColumnNotFound.New(n.Name)
+					b.handleErr(err)
+				}
 			}
 			c.scalar = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 			fromScope.addExtraColumn(c)

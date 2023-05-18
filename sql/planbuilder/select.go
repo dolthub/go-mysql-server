@@ -51,7 +51,7 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	orderByScope := b.analyzeOrderBy(fromScope, projScope, s.OrderBy)
 
 	// find aggregations in having
-	b.analyzeHaving(fromScope, s.Having)
+	b.analyzeHaving(fromScope, projScope, s.Having)
 
 	needsAgg := b.needsAggregation(fromScope, s)
 	if needsAgg {
@@ -120,5 +120,9 @@ func (b *PlanBuilder) renameSource(scope *scope, table string, cols []string) {
 	}
 	if len(cols) > 0 {
 		scope.setColAlias(cols)
+	}
+	for i, c := range scope.cols {
+		c.scalar = nil
+		scope.cols[i] = c
 	}
 }
