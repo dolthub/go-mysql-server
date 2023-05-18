@@ -183,7 +183,7 @@ func pruneSubqueryColumns(
 	// because the main query will take care of fixing the indexes of all the
 	// nodes in the tree.
 	if same {
-		return node, transform.SameTree, err
+		return n, transform.SameTree, err
 	}
 	newn, err := n.WithChildren(node)
 	return newn, transform.NewTree, err
@@ -361,6 +361,8 @@ func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, sco
 				return nil, transform.SameTree, err
 			}
 			return node, transform.NewTree, nil
+		case *plan.IndexedTableAccess:
+			return node, transform.SameTree, nil
 		default:
 			if _, ok := n.(sql.Expressioner); !ok {
 				return n, transform.SameTree, nil

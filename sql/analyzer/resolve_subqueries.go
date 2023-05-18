@@ -289,6 +289,10 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 				}
 			}
 		} else if sqa, ok := node.(*plan.SubqueryAlias); ok {
+			if sqa.CacheableCTESource {
+				cacheable = true
+				return false
+			}
 			// TODO: Need more logic and testing with CTEs. For example, CTEs that are non-deterministic MUST be
 			//       cached and have their result sets reused, otherwise query result will be incorrect.
 			// If a subquery has visibility to outer scopes, then we need to check if it has

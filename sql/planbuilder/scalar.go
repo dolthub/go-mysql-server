@@ -6,17 +6,435 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExpr) sql.Expression {
-	left := b.buildScalar(inScope, c.Left)
+func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
+	if where == nil {
+		return
+	}
+	filter := b.buildScalar(inScope, where.Expr)
+	filterNode := plan.NewFilter(filter, inScope.node)
+	inScope.node = filterNode
+}
 
+func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
+	switch v := e.(type) {
+	case *ast.Default:
+		return expression.NewDefaultColumn(v.ColName)
+	case *ast.SubstrExpr:
+		var name sql.Expression
+		if v.Name != nil {
+			name = b.buildScalar(inScope, v.Name)
+		} else {
+			name = b.buildScalar(inScope, v.StrVal)
+		}
+		start := b.buildScalar(inScope, v.From)
+
+		if v.To == nil {
+			return &function.Substring{Str: name, Start: start}
+		}
+		len := b.buildScalar(inScope, v.To)
+		return &function.Substring{Str: name, Start: start, Len: len}
+	case *ast.CurTimeFuncExpr:
+		fsp := b.buildScalar(inScope, v.Fsp)
+		return &function.CurrTimestamp{Args: []sql.Expression{fsp}}
+	case *ast.TrimExpr:
+		pat := b.buildScalar(inScope, v.Pattern)
+		str := b.buildScalar(inScope, v.Str)
+		return function.NewTrim(str, pat, v.Dir)
+	case *ast.ComparisonExpr:
+		return b.buildComparison(inScope, v)
+	case *ast.IsExpr:
+		return b.buildIsExprToExpression(inScope, v)
+	case *ast.NotExpr:
+		c := b.buildScalar(inScope, v.Expr)
+		return expression.NewNot(c)
+	case *ast.SQLVal:
+		return b.convertVal(b.ctx, v)
+	case ast.BoolVal:
+		return expression.NewLiteral(bool(v), types.Boolean)
+	case *ast.NullVal:
+		return expression.NewLiteral(nil, types.Null)
+	case *ast.ColName:
+		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.String()), strings.ToLower(v.Name.String()), true)
+		if !ok {
+			b.handleErr(sql.ErrColumnNotFound.New(v))
+		}
+		return c.scalarGf()
+	case *ast.FuncExpr:
+		name := v.Name.Lowered()
+		if isAggregateFunc(name) {
+			// TODO this assumes aggregate is in the same scope
+			// also need to avoid nested aggregates
+			return b.buildAggregateFunc(inScope, name, v)
+		} else if isWindowFunc(name) {
+			b.handleErr(fmt.Errorf("todo window funcs"))
+		}
+
+		f, err := b.cat.Function(b.ctx, name)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		args := make([]sql.Expression, len(v.Exprs))
+		for i, e := range v.Exprs {
+			args[i] = b.selectExprToExpression(inScope, e)
+		}
+
+		rf, err := f.NewInstance(args)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
+		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
+		if v.Distinct {
+			if len(args) != 1 {
+				return nil
+			}
+
+			args[0] = expression.NewDistinctExpression(args[0])
+		}
+		if v.Over != nil {
+			panic("todo preprocess window functions int windowInfo")
+		}
+
+		return rf
+
+	case *ast.GroupConcatExpr:
+		// TODO this is an aggregation
+		//return b.buildAggregateFunc(inScope, "group_concat", v)
+		b.handleErr(fmt.Errorf("todo group concat"))
+	case *ast.ParenExpr:
+		return b.buildScalar(inScope, v.Expr)
+	case *ast.AndExpr:
+		lhs := b.buildScalar(inScope, v.Left)
+		rhs := b.buildScalar(inScope, v.Right)
+		return expression.NewAnd(lhs, rhs)
+	case *ast.OrExpr:
+		lhs := b.buildScalar(inScope, v.Left)
+		rhs := b.buildScalar(inScope, v.Right)
+		return expression.NewOr(lhs, rhs)
+	case *ast.XorExpr:
+		lhs := b.buildScalar(inScope, v.Left)
+		rhs := b.buildScalar(inScope, v.Right)
+		return expression.NewXor(lhs, rhs)
+	case *ast.ConvertExpr:
+		expr := b.buildScalar(inScope, v.Expr)
+		return expression.NewConvert(expr, v.Type.Type)
+	case *ast.RangeCond:
+		val := b.buildScalar(inScope, v.Left)
+		lower := b.buildScalar(inScope, v.From)
+		upper := b.buildScalar(inScope, v.To)
+
+		switch strings.ToLower(v.Operator) {
+		case ast.BetweenStr:
+			return expression.NewBetween(val, lower, upper)
+		case ast.NotBetweenStr:
+			return expression.NewNot(expression.NewBetween(val, lower, upper))
+		default:
+			return nil
+		}
+	case ast.ValTuple:
+		var exprs = make([]sql.Expression, len(v))
+		for i, e := range v {
+			expr := b.buildScalar(inScope, e)
+			exprs[i] = expr
+		}
+		return expression.NewTuple(exprs...)
+
+	case *ast.BinaryExpr:
+		return b.buildBinaryScalar(inScope, v)
+	case *ast.UnaryExpr:
+		return b.buildUnaryScalar(inScope, v)
+	case *ast.Subquery:
+		sqScope := inScope.push()
+		sqScope.subquery = true
+		selScope := b.buildSelectStmt(sqScope, v.Select)
+		// TODO: get the original select statement, not the reconstruction
+		selectString := ast.String(v.Select)
+		sq := plan.NewSubquery(selScope.node, selectString)
+		return sq
+	case *ast.CaseExpr:
+		return b.buildCaseExpr(inScope, v)
+	case *ast.IntervalExpr:
+		e := b.buildScalar(inScope, v.Expr)
+		return expression.NewInterval(e, v.Unit)
+	case *ast.CollateExpr:
+		// handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
+		innerExpr := b.buildScalar(inScope, v.Expr)
+		//TODO: rename this from Charset to Collation
+		collation, err := sql.ParseCollation(nil, &v.Charset, false)
+		if err != nil {
+			b.handleErr(err)
+		}
+		// If we're collating a string literal, we check that the charset and collation match now. Other string sources
+		// (such as from tables) will have their own charset, which we won't know until after the parsing stage.
+		charSet := b.ctx.GetCharacterSet()
+		if _, isLiteral := innerExpr.(*expression.Literal); isLiteral && collation.CharacterSet() != charSet {
+			b.handleErr(sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name()))
+		}
+		expression.NewCollatedExpression(innerExpr, collation)
+	case *ast.ValuesFuncExpr:
+		col := b.buildScalar(inScope, v.Name)
+		fn, err := b.cat.Function(b.ctx, "values")
+		if err != nil {
+			b.handleErr(err)
+		}
+		values, err := fn.NewInstance([]sql.Expression{col})
+		if err != nil {
+			b.handleErr(err)
+		}
+		return values
+	case *ast.ExistsExpr:
+		sqScope := inScope.push()
+		selScope := b.buildSelectStmt(sqScope, v.Subquery.Select)
+		selectString := ast.String(v.Subquery.Select)
+		sq := plan.NewSubquery(selScope.node, selectString)
+		return plan.NewExistsSubquery(sq)
+	case *ast.TimestampFuncExpr:
+		var (
+			unit  sql.Expression
+			expr1 sql.Expression
+			expr2 sql.Expression
+		)
+
+		unit = expression.NewLiteral(v.Unit, types.LongText)
+		expr1 = b.buildScalar(inScope, v.Expr1)
+		expr2 = b.buildScalar(inScope, v.Expr2)
+
+		if v.Name == "timestampdiff" {
+			return function.NewTimestampDiff(unit, expr1, expr2)
+		} else if v.Name == "timestampadd" {
+			return nil
+		}
+		return nil
+	case *ast.ExtractFuncExpr:
+		var unit sql.Expression = expression.NewLiteral(strings.ToUpper(v.Unit), types.LongText)
+		expr := b.buildScalar(inScope, v.Expr)
+		return function.NewExtract(unit, expr)
+	default:
+		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
+	}
+	return nil
+}
+
+func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
+	switch strings.ToLower(e.Operator) {
+	case ast.MinusStr:
+		expr := b.buildScalar(inScope, e.Expr)
+		return expression.NewUnaryMinus(expr)
+	case ast.PlusStr:
+		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expressio return b.buildScalar(inScope, e.Expr)
+		return b.buildScalar(inScope, e.Expr)
+	case ast.BangStr:
+		c := b.buildScalar(inScope, e.Expr)
+		return expression.NewNot(c)
+	default:
+		lowerOperator := strings.TrimSpace(strings.ToLower(e.Operator))
+		if strings.HasPrefix(lowerOperator, "_") {
+			// This is a character set introducer, so we need to decode the string to our internal encoding (`utf8mb4`)
+			charSet, err := sql.ParseCharacterSet(lowerOperator[1:])
+			if err != nil {
+				b.handleErr(err)
+			}
+			if charSet.Encoder() == nil {
+				err := sql.ErrUnsupportedFeature.New("unsupported character set: " + charSet.Name())
+				b.handleErr(err)
+			}
+
+			// Due to how vitess orders expressions, COLLATE is a child rather than a parent, so we need to handle it in a special way
+			collation := charSet.DefaultCollation()
+			if collateExpr, ok := e.Expr.(*ast.CollateExpr); ok {
+				// We extract the expression out of CollateExpr as we're only concerned about the collation string
+				e.Expr = collateExpr.Expr
+				// TODO: rename this from Charset to Collation
+				collation, err = sql.ParseCollation(nil, &collateExpr.Charset, false)
+				if err != nil {
+					b.handleErr(err)
+				}
+				if collation.CharacterSet() != charSet {
+					err := sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name())
+					b.handleErr(err)
+				}
+			}
+
+			// Character set introducers only work on string literals
+			expr := b.buildScalar(inScope, e.Expr)
+			if _, ok := expr.(*expression.Literal); !ok || !types.IsText(expr.Type()) {
+				err := sql.ErrCharSetIntroducer.New()
+				b.handleErr(err)
+			}
+			literal, _ := expr.Eval(b.ctx, nil)
+
+			// Internally all strings are `utf8mb4`, so we need to decode the string (which applies the introducer)
+			if strLiteral, ok := literal.(string); ok {
+				decodedLiteral, ok := charSet.Encoder().Decode(encodings.StringToBytes(strLiteral))
+				if !ok {
+					err := sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
+					b.handleErr(err)
+				}
+				return expression.NewLiteral(encodings.BytesToString(decodedLiteral), types.CreateLongText(collation))
+			} else if byteLiteral, ok := literal.([]byte); ok {
+				decodedLiteral, ok := charSet.Encoder().Decode(byteLiteral)
+				if !ok {
+					err := sql.ErrCharSetInvalidString.New(charSet.Name(), strLiteral)
+					b.handleErr(err)
+				}
+				return expression.NewLiteral(decodedLiteral, types.CreateLongText(collation))
+			} else {
+				// Should not be possible
+				err := fmt.Errorf("expression literal returned type `%s` but literal value had type `%T`",
+					expr.Type().String(), literal)
+				b.handleErr(err)
+			}
+		}
+		err := sql.ErrUnsupportedFeature.New("unary operator: " + e.Operator)
+		b.handleErr(err)
+	}
+	return nil
+}
+
+func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
+	switch strings.ToLower(be.Operator) {
+	case
+		ast.PlusStr,
+		ast.MinusStr,
+		ast.MultStr,
+		ast.DivStr,
+		ast.ShiftLeftStr,
+		ast.ShiftRightStr,
+		ast.BitAndStr,
+		ast.BitOrStr,
+		ast.BitXorStr,
+		ast.IntDivStr,
+		ast.ModStr:
+
+		l := b.buildScalar(inScope, be.Left)
+
+		r := b.buildScalar(inScope, be.Right)
+
+		_, lok := l.(*expression.Interval)
+		_, rok := r.(*expression.Interval)
+		if lok && be.Operator == "-" {
+			err := sql.ErrUnsupportedSyntax.New("subtracting from an interval")
+			b.handleErr(err)
+		} else if (lok || rok) && be.Operator != "+" && be.Operator != "-" {
+			err := sql.ErrUnsupportedSyntax.New("only + and - can be used to add or subtract intervals from dates")
+			b.handleErr(err)
+		} else if lok && rok {
+			err := sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
+			b.handleErr(err)
+		}
+
+		switch strings.ToLower(be.Operator) {
+		case ast.DivStr:
+			return expression.NewDiv(l, r)
+		case ast.ModStr:
+			return expression.NewMod(l, r)
+		case ast.BitAndStr, ast.BitOrStr, ast.BitXorStr, ast.ShiftRightStr, ast.ShiftLeftStr:
+			return expression.NewBitOp(l, r, be.Operator)
+		case ast.IntDivStr:
+			return expression.NewIntDiv(l, r)
+		default:
+			return expression.NewArithmetic(l, r, be.Operator)
+		}
+	case
+		ast.JSONExtractOp,
+		ast.JSONUnquoteExtractOp:
+		err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
+		b.handleErr(err)
+
+	default:
+		err := sql.ErrUnsupportedFeature.New(be.Operator)
+		b.handleErr(err)
+	}
+	return nil
+}
+
+func (b *PlanBuilder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression {
+	switch v.Type {
+	case ast.StrVal:
+		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
+	case ast.IntVal:
+		return b.convertInt(string(v.Val), 10)
+	case ast.FloatVal:
+		val, err := strconv.ParseFloat(string(v.Val), 64)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
+		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
+			ogVal := string(v.Val)
+			floatVal := fmt.Sprintf("%v", val)
+			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
+				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
+				dt, err := types.CreateDecimalType(p, s)
+				if err != nil {
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
+				}
+				dVal, _, err := dt.Convert(ogVal)
+				if err != nil {
+					return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
+				}
+				return expression.NewLiteral(dVal, dt)
+			}
+		}
+
+		return expression.NewLiteral(val, types.Float64)
+	case ast.HexNum:
+		//TODO: binary collation?
+		v := strings.ToLower(string(v.Val))
+		if strings.HasPrefix(v, "0x") {
+			v = v[2:]
+		} else if strings.HasPrefix(v, "x") {
+			v = strings.Trim(v[1:], "'")
+		}
+
+		valBytes := []byte(v)
+		dst := make([]byte, hex.DecodedLen(len(valBytes)))
+		_, err := hex.Decode(dst, valBytes)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewLiteral(dst, types.LongBlob)
+	case ast.HexVal:
+		//TODO: binary collation?
+		val, err := v.HexDecode()
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewLiteral(val, types.LongBlob)
+	case ast.ValArg:
+		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":"))
+	case ast.BitVal:
+		if len(v.Val) == 0 {
+			return expression.NewLiteral(0, types.Uint64)
+		}
+
+		res, err := strconv.ParseUint(string(v.Val), 2, 64)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		return expression.NewLiteral(res, types.Uint64)
+	}
+
+	b.handleErr(sql.ErrInvalidSQLValType.New(v.Type))
+	return nil
+}
+
+func (b *PlanBuilder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
+	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
 
 	var escape sql.Expression = nil
@@ -25,27 +443,27 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 	}
 
 	switch strings.ToLower(c.Operator) {
-	case sqlparser.RegexpStr:
+	case ast.RegexpStr:
 		return expression.NewRegexp(left, right)
-	case sqlparser.NotRegexpStr:
+	case ast.NotRegexpStr:
 		return expression.NewNot(expression.NewRegexp(left, right))
-	case sqlparser.EqualStr:
+	case ast.EqualStr:
 		return expression.NewEquals(left, right)
-	case sqlparser.LessThanStr:
+	case ast.LessThanStr:
 		return expression.NewLessThan(left, right)
-	case sqlparser.LessEqualStr:
+	case ast.LessEqualStr:
 		return expression.NewLessThanOrEqual(left, right)
-	case sqlparser.GreaterThanStr:
+	case ast.GreaterThanStr:
 		return expression.NewGreaterThan(left, right)
-	case sqlparser.GreaterEqualStr:
+	case ast.GreaterEqualStr:
 		return expression.NewGreaterThanOrEqual(left, right)
-	case sqlparser.NullSafeEqualStr:
+	case ast.NullSafeEqualStr:
 		return expression.NewNullSafeEquals(left, right)
-	case sqlparser.NotEqualStr:
+	case ast.NotEqualStr:
 		return expression.NewNot(
 			expression.NewEquals(left, right),
 		)
-	case sqlparser.InStr:
+	case ast.InStr:
 		switch right.(type) {
 		case expression.Tuple:
 			return expression.NewInTuple(left, right)
@@ -55,7 +473,7 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
 			b.handleErr(err)
 		}
-	case sqlparser.NotInStr:
+	case ast.NotInStr:
 		switch right.(type) {
 		case expression.Tuple:
 			return expression.NewNotInTuple(left, right)
@@ -65,9 +483,9 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("NOT IN %T", right))
 			b.handleErr(err)
 		}
-	case sqlparser.LikeStr:
+	case ast.LikeStr:
 		return expression.NewLike(left, right, escape)
-	case sqlparser.NotLikeStr:
+	case ast.NotLikeStr:
 		return expression.NewNot(expression.NewLike(left, right, escape))
 	default:
 		err := sql.ErrUnsupportedFeature.New(c.Operator)
@@ -76,7 +494,7 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *sqlparser.ComparisonExp
 	return nil
 }
 
-func (b *PlanBuilder) buildCaseExpr(inScope *scope, e *sqlparser.CaseExpr) sql.Expression {
+func (b *PlanBuilder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression {
 	var expr sql.Expression
 
 	if e.Expr != nil {
@@ -105,42 +523,42 @@ func (b *PlanBuilder) buildCaseExpr(inScope *scope, e *sqlparser.CaseExpr) sql.E
 	return expression.NewCase(expr, branches, elseExpr)
 }
 
-func (b *PlanBuilder) buildIsExprToExpression(inScope *scope, c *sqlparser.IsExpr) sql.Expression {
+func (b *PlanBuilder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Expression {
 	e := b.buildScalar(inScope, c.Expr)
 	switch strings.ToLower(c.Operator) {
-	case sqlparser.IsNullStr:
+	case ast.IsNullStr:
 		return expression.NewIsNull(e)
-	case sqlparser.IsNotNullStr:
+	case ast.IsNotNullStr:
 		return expression.NewNot(expression.NewIsNull(e))
-	case sqlparser.IsTrueStr:
+	case ast.IsTrueStr:
 		return expression.NewIsTrue(e)
-	case sqlparser.IsFalseStr:
+	case ast.IsFalseStr:
 		return expression.NewIsFalse(e)
-	case sqlparser.IsNotTrueStr:
+	case ast.IsNotTrueStr:
 		return expression.NewNot(expression.NewIsTrue(e))
-	case sqlparser.IsNotFalseStr:
+	case ast.IsNotFalseStr:
 		return expression.NewNot(expression.NewIsFalse(e))
 	default:
-		err := sql.ErrUnsupportedSyntax.New(sqlparser.String(c))
+		err := sql.ErrUnsupportedSyntax.New(ast.String(c))
 		b.handleErr(err)
 	}
 	return nil
 }
 
-func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *sqlparser.BinaryExpr) (sql.Expression, error) {
+func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sql.Expression, error) {
 	switch strings.ToLower(be.Operator) {
 	case
-		sqlparser.PlusStr,
-		sqlparser.MinusStr,
-		sqlparser.MultStr,
-		sqlparser.DivStr,
-		sqlparser.ShiftLeftStr,
-		sqlparser.ShiftRightStr,
-		sqlparser.BitAndStr,
-		sqlparser.BitOrStr,
-		sqlparser.BitXorStr,
-		sqlparser.IntDivStr,
-		sqlparser.ModStr:
+		ast.PlusStr,
+		ast.MinusStr,
+		ast.MultStr,
+		ast.DivStr,
+		ast.ShiftLeftStr,
+		ast.ShiftRightStr,
+		ast.BitAndStr,
+		ast.BitOrStr,
+		ast.BitXorStr,
+		ast.IntDivStr,
+		ast.ModStr:
 
 		l := b.buildScalar(inScope, be.Left)
 		r := b.buildScalar(inScope, be.Right)
@@ -156,20 +574,20 @@ func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *sqlparser.Binar
 		}
 
 		switch strings.ToLower(be.Operator) {
-		case sqlparser.DivStr:
+		case ast.DivStr:
 			return expression.NewDiv(l, r), nil
-		case sqlparser.ModStr:
+		case ast.ModStr:
 			return expression.NewMod(l, r), nil
-		case sqlparser.BitAndStr, sqlparser.BitOrStr, sqlparser.BitXorStr, sqlparser.ShiftRightStr, sqlparser.ShiftLeftStr:
+		case ast.BitAndStr, ast.BitOrStr, ast.BitXorStr, ast.ShiftRightStr, ast.ShiftLeftStr:
 			return expression.NewBitOp(l, r, be.Operator), nil
-		case sqlparser.IntDivStr:
+		case ast.IntDivStr:
 			return expression.NewIntDiv(l, r), nil
 		default:
 			return expression.NewArithmetic(l, r, be.Operator), nil
 		}
 	case
-		sqlparser.JSONExtractOp,
-		sqlparser.JSONUnquoteExtractOp:
+		ast.JSONExtractOp,
+		ast.JSONUnquoteExtractOp:
 		return nil, sql.ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
 
 	default:
@@ -177,7 +595,7 @@ func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *sqlparser.Binar
 	}
 }
 
-func (b *PlanBuilder) caseExprToExpression(inScope *scope, e *sqlparser.CaseExpr) (sql.Expression, error) {
+func (b *PlanBuilder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Expression, error) {
 	var expr sql.Expression
 
 	if e.Expr != nil {
@@ -206,7 +624,7 @@ func (b *PlanBuilder) caseExprToExpression(inScope *scope, e *sqlparser.CaseExpr
 	return expression.NewCase(expr, branches, elseExpr), nil
 }
 
-func (b *PlanBuilder) intervalExprToExpression(inScope *scope, e *sqlparser.IntervalExpr) (sql.Expression, error) {
+func (b *PlanBuilder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) (sql.Expression, error) {
 	expr := b.buildScalar(inScope, e.Expr)
 
 	return expression.NewInterval(expr, e.Unit), nil
@@ -248,13 +666,13 @@ func (b *PlanBuilder) convertInt(value string, base int) *expression.Literal {
 	return nil
 }
 
-func (b *PlanBuilder) convertVal(ctx *sql.Context, v *sqlparser.SQLVal) sql.Expression {
+func (b *PlanBuilder) convertVal(ctx *sql.Context, v *ast.SQLVal) sql.Expression {
 	switch v.Type {
-	case sqlparser.StrVal:
+	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation()))
-	case sqlparser.IntVal:
+	case ast.IntVal:
 		return b.convertInt(string(v.Val), 10)
-	case sqlparser.FloatVal:
+	case ast.FloatVal:
 		val, err := strconv.ParseFloat(string(v.Val), 64)
 		if err != nil {
 			b.handleErr(err)
@@ -279,7 +697,7 @@ func (b *PlanBuilder) convertVal(ctx *sql.Context, v *sqlparser.SQLVal) sql.Expr
 		}
 
 		return expression.NewLiteral(val, types.Float64)
-	case sqlparser.HexNum:
+	case ast.HexNum:
 		//TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
 		if strings.HasPrefix(v, "0x") {
@@ -295,16 +713,16 @@ func (b *PlanBuilder) convertVal(ctx *sql.Context, v *sqlparser.SQLVal) sql.Expr
 			b.handleErr(err)
 		}
 		return expression.NewLiteral(dst, types.LongBlob)
-	case sqlparser.HexVal:
+	case ast.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()
 		if err != nil {
 			b.handleErr(err)
 		}
 		return expression.NewLiteral(val, types.LongBlob)
-	case sqlparser.ValArg:
+	case ast.ValArg:
 		return expression.NewBindVar(strings.TrimPrefix(string(v.Val), ":"))
-	case sqlparser.BitVal:
+	case ast.BitVal:
 		if len(v.Val) == 0 {
 			return expression.NewLiteral(0, types.Uint64)
 		}

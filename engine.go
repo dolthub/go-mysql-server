@@ -197,10 +197,26 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	parsed, err := parse.Parse(ctx, query)
+	if ctx.Version == sql.VersionUnknown {
+		ctx.Version = e.Version
+	}
+
+	var parsed sql.Node
+	var err error
+	switch ctx.Version {
+	case sql.VersionExperimental:
+		parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+		if err != nil {
+			ctx.Version = sql.VersionStable
+			parsed, err = parse.Parse(ctx, query)
+		}
+	default:
+		parsed, err = parse.Parse(ctx, query)
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	return e.Analyzer.Analyze(ctx, parsed, nil)
 }
 

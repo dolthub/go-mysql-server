@@ -308,7 +308,6 @@ func disambiguateTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		case *expression.UnresolvedTableFunction:
 			i++
 			return plan.NewTableAlias(fmt.Sprintf("%s_%d", n.Name(), i), n), transform.NewTree, nil
-			//return n.WithName(fmt.Sprintf("%s_%d", n.Name(), i)), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

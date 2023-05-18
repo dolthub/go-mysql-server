@@ -24,6 +24,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+const ShowStatusVariableCol = "Variable_name"
+const ShowStatusValueCol = "Value"
+
 // ShowStatus implements the SHOW STATUS MySQL command.
 // TODO: This is just a stub implementation that returns an empty set. The actual functionality needs to be implemented
 // in the future.
@@ -59,8 +62,8 @@ func (s *ShowStatus) String() string {
 // Schema implements sql.Node interface.
 func (s *ShowStatus) Schema() sql.Schema {
 	return sql.Schema{
-		{Name: "Variable_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Value", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: ShowStatusVariableCol, Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: ShowStatusValueCol, Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
 	}
 }
 

@@ -370,6 +370,11 @@ type SystemVariable struct {
 	// block.  NotifyChanged is not called when a new system variable is
 	// registered.
 	NotifyChanged func(SystemVariableScope, SystemVarValue)
+	// ValueFunction defines an optional function that is executed to provide
+	// the value of this system variable whenever it is requested. System variables
+	// that provide a ValueFunction should also set Dynamic to false, since they
+	// cannot be assigned a value and will return a read-only error if tried.
+	ValueFunction func() (interface{}, error)
 }
 
 // SystemVariableScope represents the scope of a system variable.
