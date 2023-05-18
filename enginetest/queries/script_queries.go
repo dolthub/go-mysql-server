@@ -3607,11 +3607,22 @@ var SpatialScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE table1 (i int primary key, p point srid 4326);",
 			"INSERT INTO table1 VALUES (1, ST_SRID(POINT(1, 5), 4326))",
+			"CREATE TABLE table2 (i int primary key, g geometry /*!80003 SRID 3857*/);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CREATE TABLE table2 (i int primary key, p point srid 1);",
+				Query: "CREATE TABLE table3 (i int primary key, p point srid 1);",
 				ExpectedErr: sql.ErrNoSRID,
+			},
+			{
+				Query: "CREATE TABLE table3 (i int primary key, p point srid 3857);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table table2",
+				Expected: []sql.Row{
+					{"table2", "CREATE TABLE `table2` (\n  `i` int NOT NULL,\n  `g` geometry SRID 3857,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
 			},
 			{
 				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
