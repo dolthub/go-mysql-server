@@ -29,6 +29,7 @@ import (
 var _ sql.Node = (*CreateEvent)(nil)
 var _ sql.Expressioner = (*CreateEvent)(nil)
 var _ sql.Databaser = (*CreateEvent)(nil)
+var _ sql.EventSchedulerNotifierStatement = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
@@ -44,8 +45,7 @@ type CreateEvent struct {
 	DefinitionString string
 	DefinitionNode   sql.Node
 	IfNotExists      bool
-
-	// used to notify EventScheduler of the event creation
+	// notifier is used to notify EventScheduler of the event creation
 	notifier sql.EventSchedulerNotifier
 }
 
@@ -531,13 +531,13 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 
 var _ sql.Node = (*DropEvent)(nil)
 var _ sql.Databaser = (*DropEvent)(nil)
+var _ sql.EventSchedulerNotifierStatement = (*DropEvent)(nil)
 
 type DropEvent struct {
 	ddlNode
 	EventName string
 	IfExists  bool
-
-	// used to notify EventScheduler of the event creation
+	// notifier is used to notify EventScheduler of the event deletion
 	notifier sql.EventSchedulerNotifier
 }
 

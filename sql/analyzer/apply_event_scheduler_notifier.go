@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -25,13 +24,7 @@ import (
 func applyEventSchedulerNotifier(_ *sql.Context, a *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
-		case *plan.CreateEvent:
-			return nn.WithEventSchedulerNotifier(a.EventSchedulerNotifier), transform.NewTree, nil
-		case *plan.AlterEvent:
-			return nn.WithEventSchedulerNotifier(a.EventSchedulerNotifier), transform.NewTree, nil
-		case *plan.DropEvent:
-			return nn.WithEventSchedulerNotifier(a.EventSchedulerNotifier), transform.NewTree, nil
-		case *plan.DropDB:
+		case sql.EventSchedulerNotifierStatement:
 			return nn.WithEventSchedulerNotifier(a.EventSchedulerNotifier), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil

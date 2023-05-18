@@ -28,6 +28,7 @@ import (
 var _ sql.Node = (*AlterEvent)(nil)
 var _ sql.Expressioner = (*AlterEvent)(nil)
 var _ sql.Databaser = (*AlterEvent)(nil)
+var _ sql.EventSchedulerNotifierStatement = (*AlterEvent)(nil)
 
 type AlterEvent struct {
 	ddlNode
@@ -57,11 +58,10 @@ type AlterEvent struct {
 	DefinitionString string
 	DefinitionNode   sql.Node
 
-	// This will be defined during analyzer
+	// Event will be defined during analyzing
 	Event sql.EventDetails
-
-	// used to notify EventScheduler of the event creation
-	EventScheduleNotifier sql.EventSchedulerNotifier
+	// notifier is used to notify EventScheduler of the event update
+	notifier sql.EventSchedulerNotifier
 }
 
 // NewAlterEvent returns a *AlterEvent node.
@@ -311,7 +311,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		alterStatus:   a.AlterStatus,
 		eventDetails:  ed,
 		eventDb:       eventDb,
-		notifier:      a.EventScheduleNotifier,
+		notifier:      a.notifier,
 	}, nil
 }
 
@@ -387,7 +387,7 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 // WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for ALTER EVENT.
 func (a *AlterEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
 	na := *a
-	na.EventScheduleNotifier = notifier
+	na.notifier = notifier
 	return &na
 }
 

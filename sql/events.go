@@ -23,6 +23,15 @@ import (
 
 const EventTimeStampFormat = "2006-01-02 15:04:05"
 
+// EventSchedulerNotifierStatement represents a SQL statement that requires a EventSchedulerNotifier
+// (e.g. CREATE / ALTER / DROP EVENT and DROP DATABASE).
+type EventSchedulerNotifierStatement interface {
+	Node
+	// WithEventSchedulerNotifier returns a new instance of this EventSchedulerNotifierStatement,
+	// with the event scheduler notifier configured.
+	WithEventSchedulerNotifier(controller EventSchedulerNotifier) Node
+}
+
 // EventSchedulerNotifier is an interface used for notifying the EventScheduler
 // for querying any events related statements. This allows plan Nodes to communicate
 // to the EventScheduler.
