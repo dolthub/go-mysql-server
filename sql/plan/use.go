@@ -67,7 +67,7 @@ func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
 		db = pdb.Unwrap()
 	}
-	
+
 	err := ctx.Session.UseDatabase(ctx, db)
 	if err != nil {
 		return nil, err

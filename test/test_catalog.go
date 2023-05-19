@@ -90,7 +90,7 @@ func (c *Catalog) DatabaseTable(ctx *sql.Context, db sql.Database, tableName str
 	if _, ok := db.(sql.UnresolvedDatabase); ok {
 		return c.Table(ctx, db.Name(), tableName)
 	}
-	
+
 	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
 	if err != nil {
 		return nil, nil, err
