@@ -1,10 +1,11 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"strings"
 )
 
 // replacePkSort applies an IndexAccess when there is an `OrderBy` over a prefix of any `PrimaryKey`s
