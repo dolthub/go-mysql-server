@@ -75,6 +75,7 @@ var OnceAfterDefault_Experimental = []Rule{
 	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
 	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
 	{foldEmptyJoinsId, foldEmptyJoins},
+	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
 	{generateIndexScansId, generateIndexScans},
 	{pruneColumnsId, pruneColumns},
