@@ -16,8 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -25,82 +23,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// filterHasBindVar looks for any BindVars found in filter nodes
-func filterHasBindVar(filter sql.Node) bool {
-	var hasBindVar bool
-	transform.Inspect(filter, func(node sql.Node) bool {
-		if fn, ok := node.(*plan.Filter); ok {
-			for _, expr := range fn.Expressions() {
-				if exprHasBindVar(expr) {
-					hasBindVar = true
-					return false
-				}
-			}
-		}
-		return !hasBindVar // stop recursing if bindvar already found
-	})
-	return hasBindVar
-}
-
-// exprHasBindVar looks for any BindVars found in expressions
-func exprHasBindVar(expr sql.Expression) bool {
-	var hasBindVar bool
-	transform.InspectExpr(expr, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.BindVar); ok {
-			hasBindVar = true
-			return true
-		}
-		return false
-	})
-	return hasBindVar
-}
-
-// generateIndexScans attempts to push conditions in filters down to individual tables. Tables that implement
-// sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
-// sql.IndexAddressableTable will get an appropriate index lookup applied.
-// TODO(max): filter pushdown should happen as part of join reordering.
-// A memo should be built before reorder with filter exprGroups, with
-// bitmaps tracking table dependencies. The same processes here should
-// be applied there: 1) filter pushdown to table, 2) filter pushdown to
-// join node, 3) range scan indexes applied to non-lookup tables.
-func generateIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("generate_index_scans")
-	defer span.End()
-
-	if !canDoPushdown(n) {
-		return n, transform.SameTree, nil
-	}
-
-	indexes, err := getIndexesByTable(ctx, a, n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	tableAliases, err := getTableAliases(n, scope)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	node, same, err := convertFiltersToIndexedAccess(ctx, a, n, scope, indexes, tableAliases)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	if !filterHasBindVar(n) {
-		return node, same, err
-	}
-
-	// Wrap with DeferredFilteredTable if there are bindvars
-	return transform.NodeWithOpaque(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if rt, ok := n.(*plan.ResolvedTable); ok {
-			if _, ok := rt.Table.(sql.FilteredTable); ok {
-				return plan.NewDeferredFilteredTable(rt), transform.NewTree, nil
-			}
-		}
-		return n, transform.SameTree, nil
-	})
-}
-
+// pushFilters moves filter nodes down to their appropriate relations.
+// Filters that reference a single relation will wrap their target tables.
+// Filters that reference multiple tables will move as low in the join tree
+// as is appropriate. We never move a filter without deleting from the source.
+// Related rules: hoistOutOfScopeFilters, moveJoinConditionsToFilter.
 func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("push_filters")
 	defer span.End()
@@ -298,214 +225,6 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	})
 }
 
-// convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
-// TODO: this function doesn't actually remove filters that have been converted to index lookups,
-// that optimization is handled in transformPushdownFilters.
-func convertFiltersToIndexedAccess(
-	ctx *sql.Context,
-	a *Analyzer,
-	n sql.Node,
-	scope *Scope,
-	indexes indexLookupsByTable,
-	tableAliases TableAliases,
-) (sql.Node, transform.TreeIdentity, error) {
-	childSelector := func(c transform.Context) bool {
-		switch n := c.Node.(type) {
-		// We can't push any indexes down to a table has already had an index pushed down it
-		case *plan.IndexedTableAccess:
-			return false
-		case *plan.RecursiveCte:
-			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
-			// this probably fails for *plan.Union also, we just don't have tests for it
-			return false
-		case *plan.JoinNode:
-			// avoid changing anti and semi join condition indexes
-			return !n.Op.IsPartial() && !n.Op.IsFullOuter()
-		}
-
-		switch n := c.Parent.(type) {
-		// For IndexedJoins, if we are already using indexed access during query execution for the secondary table,
-		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but
-		// *will* inappropriately remove the filter from the predicate.
-		// TODO: the analyzer should combine these indexed lookups better
-		case *plan.JoinNode:
-			if n.Op.IsMerge() {
-				return false
-			} else if n.Op.IsLookup() || n.Op.IsLeftOuter() {
-				return c.ChildNum == 0
-			}
-		case *plan.TableAlias:
-			// For a TableAlias, we apply this pushdown to the
-			// TableAlias, but not to the resolved table directly
-			// beneath it.
-			return false
-		case *plan.Window:
-			// Windows operate across the rows they see and cannot
-			// have filters pushed below them. If there is an index
-			// pushdown, it will get picked up in the isolated pass
-			// run by the filters pushdown transform.
-			return false
-		case *plan.Filter:
-			// Can't push Filter Nodes below Limit Nodes
-			if _, ok := c.Node.(*plan.Limit); ok {
-				return false
-			}
-			if p, ok := c.Node.(*plan.Project); ok {
-				if _, ok := p.Child.(*plan.Limit); ok {
-					return false
-				}
-			}
-		}
-		return true
-	}
-
-	var handled []sql.Expression
-	return transform.NodeWithCtx(n, childSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		var ret sql.Node
-		var same transform.TreeIdentity
-		var err error
-		var lookup *indexLookup
-		var nameable sql.NameableNode
-		switch n := c.Node.(type) {
-		case *plan.Filter:
-			filtersByTable := getFiltersByTable(n)
-			filters := newFilterSet(n.Expression, filtersByTable, tableAliases)
-			filters.markFiltersHandled(handled...)
-			newF := removePushedDownPredicates(ctx, a, n, filters)
-			if newF == nil {
-				return n, transform.SameTree, nil
-			}
-			return newF, transform.NewTree, nil
-		case *plan.TableAlias, *plan.ResolvedTable:
-			nameable = n.(sql.NameableNode)
-			ret, same, err, lookup = pushdownIndexesToTable(scope, a, nameable, indexes)
-		default:
-			return pushdownFixIndices(a, n, scope)
-		}
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if same {
-			return c.Node, transform.SameTree, nil
-		}
-		// TODO  mark lookup fields as used
-		handledF, err := getPredicateExprsHandledByLookup(ctx, a, nameable.Name(), lookup, tableAliases)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		handled = append(handled, handledF...)
-		return ret, transform.NewTree, nil
-	})
-}
-
-// pushdownFiltersToTable attempts to push down filters to indexes that can accept them.
-func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, name string, lookup *indexLookup, tableAliases TableAliases) ([]sql.Expression, error) {
-	filteredIdx, ok := lookup.lookup.Index.(sql.FilteredIndex)
-	if !ok {
-		return nil, nil
-	}
-	// Spatial Indexes are lossy, so do not remove filter node above the lookup
-	if filteredIdx.IsSpatial() {
-		return nil, nil
-	}
-
-	idxFilters := splitConjunction(lookup.expr)
-	if len(idxFilters) == 0 {
-		return nil, nil
-	}
-	idxFilters = normalizeExpressions(tableAliases, idxFilters...)
-
-	handled := filteredIdx.HandledFilters(idxFilters)
-	if len(handled) == 0 {
-		return nil, nil
-	}
-
-	a.Log(
-		"table %q transformed with pushdown of filters to index %s, %d filters handled of %d",
-		name,
-		lookup.lookup.Index.ID(),
-		len(handled),
-		len(idxFilters),
-	)
-	return handled, nil
-}
-
-// pushdownFiltersToTable attempts to push filters to tables that can accept them
-func pushdownFiltersToTable(
-	ctx *sql.Context,
-	a *Analyzer,
-	tableNode sql.NameableNode,
-	scope *Scope,
-	filters *filterSet,
-	tableAliases TableAliases,
-) (sql.Node, transform.TreeIdentity, error) {
-	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		// only subset of nodes can be sql.FilteredTables
-	default:
-		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
-	}
-
-	table := getTable(tableNode)
-	if table == nil {
-		return tableNode, transform.SameTree, nil
-	}
-
-	ft, ok := table.(sql.FilteredTable)
-	if !ok {
-		return tableNode, transform.SameTree, nil
-	}
-
-	// push filters for this table onto the table itself
-	tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
-	if len(tableFilters) == 0 {
-		return tableNode, transform.SameTree, nil
-	}
-	handledFilters := getHandledFilters(ctx, tableNode.Name(), ft, tableAliases, filters)
-	filters.markFiltersHandled(handledFilters...)
-
-	handledFilters, _, err := FixFieldIndexesOnExpressions(scope, a, tableNode.Schema(), handledFilters...)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	table = ft.WithFilters(ctx, handledFilters)
-	a.Log(
-		"table %q transformed with pushdown of filters, %d filters handled of %d",
-		tableNode.Name(),
-		len(handledFilters),
-		len(tableFilters),
-	)
-	return withTable(tableNode, table)
-}
-
-// getHandledFilters returns the filter expressions that the specified table can handle. This
-// function takes care of normalizing the available filter expressions, which is required for
-// FilteredTable.HandledFilters to correctly identify what filter expressions it can handle.
-// The returned filter expressions are the denormalized expressions as expected in other parts
-// of the analyzer code (e.g. FixFieldIndexes).
-func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.FilteredTable, tableAliases TableAliases, filters *filterSet) []sql.Expression {
-	tableFilters := filters.availableFiltersForTable(ctx, tableNameOrAlias)
-
-	normalizedFilters := normalizeExpressions(tableAliases, tableFilters...)
-	normalizedToDenormalizedFilterMap := make(map[sql.Expression]sql.Expression)
-	for i, normalizedFilter := range normalizedFilters {
-		normalizedToDenormalizedFilterMap[normalizedFilter] = tableFilters[i]
-	}
-
-	handledNormalizedFilters := ft.HandledFilters(normalizedFilters)
-	handledDenormalizedFilters := make([]sql.Expression, len(handledNormalizedFilters))
-	for i, handledFilter := range handledNormalizedFilters {
-		if val, ok := normalizedToDenormalizedFilterMap[handledFilter]; ok {
-			handledDenormalizedFilters[i] = val
-		} else {
-			handledDenormalizedFilters[i] = handledFilter
-		}
-	}
-
-	return handledDenormalizedFilters
-}
-
 // pushdownFiltersToAboveTable introduces a filter node with the given predicate
 func pushdownFiltersToAboveTable(
 	ctx *sql.Context,
@@ -598,51 +317,31 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	return n, transform.NewTree, nil
 }
 
-// pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
-// sql.IndexAddressableTable
-func pushdownIndexesToTable(scope *Scope, a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error, *indexLookup) {
-	var lookup *indexLookup
-	ret, same, err := transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.ResolvedTable:
-			table := getTable(tableNode)
-			if table == nil {
-				return n, transform.SameTree, nil
-			}
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
-			}
-			if _, ok := table.(sql.IndexAddressableTable); ok {
-				indexLookup, ok := indexes[tableNode.Name()]
-				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
-					a.Log("table %q transformed with pushdown of index", tableNode.Name())
-					ita, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)
-					if plan.ErrInvalidLookupForIndexedTable.Is(err) {
-						return n, transform.SameTree, nil
-					}
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
+// getHandledFilters returns the filter expressions that the specified table can handle. This
+// function takes care of normalizing the available filter expressions, which is required for
+// FilteredTable.HandledFilters to correctly identify what filter expressions it can handle.
+// The returned filter expressions are the denormalized expressions as expected in other parts
+// of the analyzer code (e.g. FixFieldIndexes).
+func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.FilteredTable, tableAliases TableAliases, filters *filterSet) []sql.Expression {
+	tableFilters := filters.availableFiltersForTable(ctx, tableNameOrAlias)
 
-					// save reference
-					lookup = indexLookup
+	normalizedFilters := normalizeExpressions(tableAliases, tableFilters...)
+	normalizedToDenormalizedFilterMap := make(map[sql.Expression]sql.Expression)
+	for i, normalizedFilter := range normalizedFilters {
+		normalizedToDenormalizedFilterMap[normalizedFilter] = tableFilters[i]
+	}
 
-					newExprs, _, err := FixFieldIndexesOnExpressions(scope, a, table.Schema(), ita.Expressions()...)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-					ret, err := ita.WithExpressions(newExprs...)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-
-					return ret, transform.NewTree, nil
-				}
-			}
+	handledNormalizedFilters := ft.HandledFilters(normalizedFilters)
+	handledDenormalizedFilters := make([]sql.Expression, len(handledNormalizedFilters))
+	for i, handledFilter := range handledNormalizedFilters {
+		if val, ok := normalizedToDenormalizedFilterMap[handledFilter]; ok {
+			handledDenormalizedFilters[i] = val
+		} else {
+			handledDenormalizedFilters[i] = handledFilter
 		}
-		return n, transform.SameTree, nil
-	})
-	return ret, same, err, lookup
+	}
+
+	return handledDenormalizedFilters
 }
 
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
@@ -735,125 +434,6 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	return indexes, nil
 }
 
-func replacePkSortHelper(ctx *sql.Context, scope *Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
-	switch n := node.(type) {
-	case *plan.Sort:
-		sortNode = n // TODO: this only preserves the most recent Sort node
-	// TODO: make this work with IndexedTableAccess, if we are statically sorting by the same col
-	case *plan.ResolvedTable:
-		// No sort node above this, so do nothing
-		if sortNode == nil {
-			return n, transform.SameTree, nil
-		}
-		tableAliases, err := getTableAliases(sortNode, scope)
-		if err != nil {
-			return n, transform.SameTree, nil
-		}
-		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
-		table := n.Table
-		if w, ok := table.(sql.TableWrapper); ok {
-			table = w.Underlying()
-		}
-		idxTbl, ok := table.(sql.IndexAddressableTable)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-		idxs, err := idxTbl.GetIndexes(ctx)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		var pkIndex sql.Index // TODO: support secondary indexes
-		for _, idx := range idxs {
-			if idx.ID() == "PRIMARY" {
-				pkIndex = idx
-				break
-			}
-		}
-		if pkIndex == nil {
-			return n, transform.SameTree, nil
-		}
-
-		pkColNames := pkIndex.Expressions()
-		if len(sfExprs) > len(pkColNames) {
-			return n, transform.SameTree, nil
-		}
-		for i, fieldExpr := range sfExprs {
-			// TODO: could generalize this to more monotonic expressions.
-			// For example, order by x+1 is ok, but order by mod(x) is not
-			if sortNode.SortFields[0].Order != sortNode.SortFields[i].Order {
-				return n, transform.SameTree, nil
-			}
-			fieldName := fieldExpr.String()
-			if alias, ok := sfAliases[strings.ToLower(pkColNames[i])]; ok && alias == fieldName {
-				continue
-			}
-			if pkColNames[i] != fieldExpr.String() {
-				return n, transform.SameTree, nil
-			}
-		}
-
-		// Create lookup based off of PrimaryKey
-		indexBuilder := sql.NewIndexBuilder(pkIndex)
-		lookup, err := indexBuilder.Build(ctx)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		lookup.IsReverse = sortNode.SortFields[0].Order == sql.Descending
-		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, ok := pkIndex.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
-			return n, transform.SameTree, nil
-		}
-		if !pkIndex.CanSupport(lookup.Ranges...) {
-			return n, transform.SameTree, nil
-		}
-		nn, err := plan.NewStaticIndexedAccessForResolvedTable(n, lookup)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		return nn, transform.NewTree, err
-	}
-
-	allSame := transform.SameTree
-	newChildren := make([]sql.Node, len(node.Children()))
-	for i, child := range node.Children() {
-		var err error
-		same := transform.SameTree
-		switch c := child.(type) {
-		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.Sort:
-			newChildren[i], same, err = replacePkSortHelper(ctx, scope, child, sortNode)
-		default:
-			newChildren[i] = c
-		}
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		allSame = allSame && same
-	}
-
-	if allSame {
-		return node, transform.SameTree, nil
-	}
-
-	// if sort node was replaced with indexed access, drop sort node
-	if node == sortNode {
-		return newChildren[0], transform.NewTree, nil
-	}
-
-	newNode, err := node.WithChildren(newChildren...)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return newNode, transform.NewTree, nil
-}
-
-// replacePkSort applies an IndexAccess when there is an `OrderBy` over a prefix of any `PrimaryKey`s
-func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return replacePkSortHelper(ctx, scope, n, nil)
-}
-
 // convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
 // equivalent as far as the index interfaces are concerned.
 func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
@@ -875,4 +455,54 @@ func pushdownFixIndices(a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transf
 		return n, transform.SameTree, nil
 	}
 	return FixFieldIndexesForExpressions(a, n, scope)
+}
+
+// pushdownFiltersToTable attempts to push filters to tables that can accept them
+// TODO not called anywhere, maybe deprecated
+func pushdownFiltersToTable(
+	ctx *sql.Context,
+	a *Analyzer,
+	tableNode sql.NameableNode,
+	scope *Scope,
+	filters *filterSet,
+	tableAliases TableAliases,
+) (sql.Node, transform.TreeIdentity, error) {
+	switch tableNode.(type) {
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+		// only subset of nodes can be sql.FilteredTables
+	default:
+		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
+	}
+
+	table := getTable(tableNode)
+	if table == nil {
+		return tableNode, transform.SameTree, nil
+	}
+
+	ft, ok := table.(sql.FilteredTable)
+	if !ok {
+		return tableNode, transform.SameTree, nil
+	}
+
+	// push filters for this table onto the table itself
+	tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
+	if len(tableFilters) == 0 {
+		return tableNode, transform.SameTree, nil
+	}
+	handledFilters := getHandledFilters(ctx, tableNode.Name(), ft, tableAliases, filters)
+	filters.markFiltersHandled(handledFilters...)
+
+	handledFilters, _, err := FixFieldIndexesOnExpressions(scope, a, tableNode.Schema(), handledFilters...)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	table = ft.WithFilters(ctx, handledFilters)
+	a.Log(
+		"table %q transformed with pushdown of filters, %d filters handled of %d",
+		tableNode.Name(),
+		len(handledFilters),
+		len(tableFilters),
+	)
+	return withTable(tableNode, table)
 }
