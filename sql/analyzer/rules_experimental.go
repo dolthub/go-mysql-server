@@ -23,19 +23,13 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
 	{validateCreateProcedureId, validateCreateProcedure},
-	{setTargetSchemasId, setTargetSchemas},     //TODO
-	{loadCheckConstraintsId, loadChecks},       //TODO
-	{resolveAlterColumnId, resolveAlterColumn}, //TODO
+	{setTargetSchemasId, setTargetSchemas}, //TODO
+	{loadCheckConstraintsId, loadChecks},   //TODO
 	{validateDropTablesId, validateDropTables},
 	{pruneDropTablesId, pruneDropTables}, //TODO
-	{resolveCreateLikeId, resolveCreateLike},
-	{resolveAnalyzeTablesId, resolveAnalyzeTables},
-	{assignCatalogId, assignCatalog}, //TODO
+	{assignCatalogId, assignCatalog},     //TODO
 	{parseColumnDefaultsId, parseColumnDefaults},
-	{resolveDropConstraintId, resolveDropConstraint}, //TODO
 	{validateDropConstraintId, validateDropConstraint},
-	{resolveCreateSelectId, resolveCreateSelect}, //TODO
-	//{resolveSubqueriesId, resolveSubqueries}, // i think redundant now
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},             //TODO
@@ -51,21 +45,61 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validateDeleteFromId, validateDeleteFrom},
 	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
+	{evalFilterId, simplifyFilters},            //TODO inline?
+	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 
 // DefaultRules_Exp to apply when analyzing nodes.
 var DefaultRules_Exp = []Rule{
-	{resolveNaturalJoinsId, resolveNaturalJoins},
 	{validateStarExpressionsId, validateStarExpressions}, //TODO
 	{flattenTableAliasesId, flattenTableAliases},         //TODO
 	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
 	{pruneTablesId, pruneTables},
+	{fixupAuxiliaryExprsId, fixupAuxiliaryExprs},
 	{validateCheckConstraintId, validateCheckConstraints},
 	{transposeRightJoinsId, transposeRightJoins}, //TODO
 	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
+	{transformJoinApplyId, transformJoinApply_experimental},
 	{resolveSubqueriesId, resolveSubqueries},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
 	{replaceCrossJoinsId, replaceCrossJoins},
 	{moveJoinCondsToFilterId, moveJoinConditionsToFilter}, // depends on indexes being correct
-	{evalFilterId, simplifyFilters},                       //TODO inline?
+}
+
+var OnceAfterDefault_Experimental = []Rule{
+	{hoistSelectExistsId, hoistSelectExists},
+	{finalizeUnionsId, finalizeUnions},
+	{loadTriggersId, loadTriggers},
+	{loadEventsId, loadEvents},
+	{processTruncateId, processTruncate},
+	{removeUnnecessaryConvertsId, removeUnnecessaryConverts},
+	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
+	{foldEmptyJoinsId, foldEmptyJoins},
+	{optimizeJoinsId, constructJoinPlan},
+	{pushdownFiltersId, pushdownFilters},
+	{pruneColumnsId, pruneColumns},
+	{finalizeSubqueriesId, finalizeSubqueries},
+	{subqueryIndexesId, applyIndexesFromOuterScope},
+	{replaceSortPkId, replacePkSort},
+	{setJoinScopeLenId, setJoinScopeLen},
+	{eraseProjectionId, eraseProjection},
+	{insertTopNId, insertTopNNodes},
+	{applyHashInId, applyHashIn},
+	{resolvePreparedInsertId, resolvePreparedInsert},
+	{applyTriggersId, applyTriggers},
+	{applyProceduresId, applyProcedures},
+	{assignRoutinesId, assignRoutines},
+	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
+	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
+	{wrapWithRollbackId, wrapWritesWithRollback},
+	{applyFKsId, applyForeignKeys},
+}
+
+var OnceAfterAll_Experimental = []Rule{
+	{cacheSubqueryResultsId, cacheSubqueryResults},
+	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
+	{AutocommitId, addAutocommitNode},
+	{TrackProcessId, trackProcess},
+	{parallelizeId, parallelize},
+	{clearWarningsId, clearWarnings},
 }

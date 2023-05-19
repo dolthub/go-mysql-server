@@ -1188,7 +1188,7 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 
 func TestScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range append(queries.ScriptTests, queries.SpatialScriptTests...) {
+	for _, script := range queries.ScriptTests {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(script.Name) {
 				t.Run(script.Name, func(t *testing.T) {
@@ -5767,6 +5767,9 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 
 		now := time.Now()
+		expectedDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		expectedDatetimeString := now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)
+
 		sql.RunWithNowFunc(func() time.Time {
 			return now
 		}, func() error {
@@ -5775,7 +5778,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		})
 
 		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
-		TestQueryWithContext(t, ctx, e, harness, "select * from t11 order by 1", []sql.Row{{1, now.UTC().Truncate(time.Hour * 24), now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select * from t11 order by 1",
+			[]sql.Row{{1, expectedDate, expectedDatetimeString}}, nil, nil)
 	})
 
 	t.Run("REPLACE INTO with default expression", func(t *testing.T) {

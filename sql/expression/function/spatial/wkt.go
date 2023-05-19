@@ -583,7 +583,7 @@ func WKTToGeom(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expectedGe
 		if err != nil {
 			return nil, err
 		}
-		if err = ValidateSRID(int(s.(int64)), "st_geomfromtext"); err != nil {
+		if err = types.ValidateSRID(int(s.(int64)), "st_geomfromtext"); err != nil {
 			return nil, err
 		}
 		srid = uint32(s.(int64))

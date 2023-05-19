@@ -123,6 +123,11 @@ func TestQueryPlans_Experimental(t *testing.T) {
 	enginetest.TestQueryPlans(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental), queries.PlanTests)
 }
 
+// TestJoinPlanning runs join-specific tests for merge
+func TestJoinPlanning_Experimental(t *testing.T) {
+	enginetest.TestJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))

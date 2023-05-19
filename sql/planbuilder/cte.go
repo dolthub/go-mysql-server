@@ -39,31 +39,34 @@ func (b *PlanBuilder) buildWith(inScope *scope, with *ast.With) (outScope *scope
 			b.handleErr(sql.ErrUnsupportedFeature.New(fmt.Sprintf("Unsupported type of common table expression %T", ate.Expr)))
 		}
 
+		cteName := strings.ToLower(ate.As.String())
+		var cteScope *scope
 		if with.Recursive {
 			switch n := sq.Select.(type) {
 			case *ast.Union:
-				b.buildRecursiveCte(outScope, n, ate.As.String(), columnsToStrings(cte.Columns))
+				cteScope = b.buildRecursiveCte(outScope, n, cteName, columnsToStrings(cte.Columns))
 			default:
-				b.buildCte(outScope, ate, ate.As.String(), columnsToStrings(cte.Columns))
+				cteScope = b.buildCte(outScope, ate, cteName, columnsToStrings(cte.Columns))
 			}
 		} else {
-			b.buildCte(outScope, ate, ate.As.String(), columnsToStrings(cte.Columns))
+			cteScope = b.buildCte(outScope, ate, cteName, columnsToStrings(cte.Columns))
 		}
+		inScope.addCte(cteName, cteScope)
 	}
 	return
 }
 
-func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) {
+func (b *PlanBuilder) buildCte(inScope *scope, e ast.TableExpr, name string, columns []string) *scope {
 	cteScope := b.buildDataSource(inScope, e)
 	b.renameSource(cteScope, name, columns)
 	switch n := cteScope.node.(type) {
 	case *plan.SubqueryAlias:
 		cteScope.node = n.WithColumns(columns)
 	}
-	inScope.addCte(name, cteScope)
+	return cteScope
 }
 
-func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) {
+func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
 	if r == nil {
 		// not recursive
@@ -71,10 +74,14 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 		b.renameSource(cteScope, name, columns)
 		switch n := cteScope.node.(type) {
 		case *plan.Union:
-			cteScope.node = plan.NewSubqueryAlias(name, "", n).WithColumns(columns)
+			sq := plan.NewSubqueryAlias(name, "", n)
+			sq = sq.WithColumns(columns)
+			if !inScope.subquery {
+				sq.CacheableCTESource = true
+			}
+			cteScope.node = sq
 		}
-		inScope.addCte(name, cteScope)
-		return
+		return cteScope
 	}
 
 	// resolve non-recusive portion
@@ -101,7 +108,8 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 		}
 
-		for _, c := range leftScope.cols {
+		for i, c := range leftScope.cols {
+			c.typ = recSch[i].Type
 			cteScope.newColumn(c)
 		}
 		b.renameSource(cteScope, name, columns)
@@ -118,7 +126,6 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 	limit := b.buildLimit(inScope, union.Limit)
 
 	orderByScope := b.analyzeOrderBy(cteScope, inScope, union.OrderBy)
-	//b.buildOrderBy(rightInScope, orderByScope)
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
 		so := sql.Ascending
@@ -134,9 +141,13 @@ func (b *PlanBuilder) buildRecursiveCte(inScope *scope, union *ast.Union, name s
 
 	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
 	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
-	rightScope.node = plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
-	b.renameSource(rightScope, name, columns)
-	inScope.addCte(name, rightScope)
+	sq := plan.NewSubqueryAlias(name, "", rcte).WithColumns(columns)
+	if !inScope.subquery {
+		sq.CacheableCTESource = true
+	}
+	cteScope.node = sq
+	b.renameSource(cteScope, name, columns)
+	return cteScope
 }
 
 // splitRecursiveCteUnion distinguishes between recursive and non-recursive
@@ -156,7 +167,7 @@ func splitRecursiveCteUnion(name string, n ast.SelectStatement) (ast.SelectState
 		return n, nil
 	}
 
-	if !hasTable(name, union.Right) {
+	if !hasRecursiveTable(name, union.Right) {
 		return n, nil
 	}
 
@@ -176,7 +187,9 @@ func splitRecursiveCteUnion(name string, n ast.SelectStatement) (ast.SelectState
 	}
 }
 
-func hasTable(name string, s ast.SelectStatement) bool {
+// hasRecursiveTable returns true if the given scope references the
+// table name.
+func hasRecursiveTable(name string, s ast.SelectStatement) bool {
 	var found bool
 	ast.Walk(func(node ast.SQLNode) (bool, error) {
 		switch t := (node).(type) {

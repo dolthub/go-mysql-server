@@ -29,11 +29,11 @@ import (
 )
 
 type JoinPlanTest struct {
-	q     string
-	types []plan.JoinType
-	exp   []sql.Row
-	order []string
-	skip  bool
+	q       string
+	types   []plan.JoinType
+	exp     []sql.Row
+	order   []string
+	skipOld bool
 }
 
 var JoinPlanningTests = []struct {
@@ -566,8 +566,9 @@ with recursive rec(x) as (
 )
 select * from uv
 where u in (select * from rec);`,
-				types: []plan.JoinType{plan.JoinTypeHash},
-				exp:   []sql.Row{{1, 1}},
+				types:   []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				exp:     []sql.Row{{1, 1}},
+				skipOld: true,
 			},
 			{
 				q:     "select x+1 as newX, y from xy having y in (select x from xy where newX=1)",
@@ -856,12 +857,6 @@ join uv d on d.u = c.x`,
 				types: []plan.JoinType{plan.JoinTypeAntiLookup},
 			},
 			{
-				// TODO implement anti merge join
-				q:     "select /*+ MERGE_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
-				types: []plan.JoinType{plan.JoinTypeAntiMerge},
-				skip:  true,
-			},
-			{
 				q:     "select /*+ ANTI_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeAnti},
 			},
@@ -870,24 +865,12 @@ join uv d on d.u = c.x`,
 				types: []plan.JoinType{plan.JoinTypeLookup},
 			},
 			{
-				// TODO implement semi merge join
-				q:     "select /*+ MERGE_JOIN(xy,scalarSubq0) */ 1 from xy where x in (select u from uv)",
-				types: []plan.JoinType{plan.JoinTypeSemiMerge},
-				skip:  true,
-			},
-			{
 				q:     "select /*+ SEMI_JOIN(xy,scalarSubq0) */ 1 from xy where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 			},
 			{
 				q:     "select /*+ LOOKUP_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
 				types: []plan.JoinType{plan.JoinTypeLookup},
-			},
-			{
-				// TODO implement semi merge join
-				q:     "select /*+ MERGE_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
-				types: []plan.JoinType{plan.JoinTypeSemiMerge},
-				skip:  true,
 			},
 			{
 				q:     "select /*+ SEMI_JOIN(s,scalarSubq0) */ 1 from xy s where x in (select u from uv)",
@@ -908,10 +891,10 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 					evalJoinTypeTest(t, harness, e, tt)
 				}
 				if tt.exp != nil {
-					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
+					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
 				}
 				if tt.order != nil {
-					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
+					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skipOld)
 				}
 			}
 		})
@@ -920,7 +903,7 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 
 func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest) {
 	t.Run(tt.q+" join types", func(t *testing.T) {
-		if tt.skip {
+		if tt.skipOld {
 			t.Skip()
 		}
 
@@ -943,9 +926,9 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 	})
 }
 
-func evalJoinCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skip bool) {
+func evalJoinCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skipOld bool) {
 	t.Run(name, func(t *testing.T) {
-		if skip {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -995,9 +978,9 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 	return types
 }
 
-func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skip bool) {
+func evalJoinOrder(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
-		if skip {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -1039,22 +1022,22 @@ func TestJoinPlanningPrepared(t *testing.T, harness Harness) {
 			defer e.Close()
 			for _, tt := range tt.tests {
 				if tt.types != nil {
-					evalJoinTypeTestPrepared(t, harness, e, tt)
+					evalJoinTypeTestPrepared(t, harness, e, tt, tt.skipOld)
 				}
 				if tt.exp != nil {
-					evalJoinCorrectnessPrepared(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
+					evalJoinCorrectnessPrepared(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
 				}
 				if tt.order != nil {
-					evalJoinOrderPrepared(t, harness, e, tt.q, tt.order, tt.skip)
+					evalJoinOrderPrepared(t, harness, e, tt.q, tt.order, tt.skipOld)
 				}
 			}
 		})
 	}
 }
 
-func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest) {
+func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlanTest, skipOld bool) {
 	t.Run(tt.q+" join types", func(t *testing.T) {
-		if tt.skip {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -1092,9 +1075,9 @@ func evalJoinTypeTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, tt 
 	})
 }
 
-func evalJoinCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skip bool) {
+func evalJoinCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skipOld bool) {
 	t.Run(q, func(t *testing.T) {
-		if skip {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
@@ -1119,9 +1102,9 @@ func evalJoinCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, 
 	})
 }
 
-func evalJoinOrderPrepared(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skip bool) {
+func evalJoinOrderPrepared(t *testing.T, harness Harness, e *sqle.Engine, q string, exp []string, skipOld bool) {
 	t.Run(q+" join order", func(t *testing.T) {
-		if skip {
+		if vh, ok := harness.(VersionedHarness); (ok && vh.Version() == sql.VersionStable && skipOld) || (!ok && skipOld) {
 			t.Skip()
 		}
 
