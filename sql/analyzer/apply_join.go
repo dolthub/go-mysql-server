@@ -172,7 +172,9 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				if c, ok := ret.(sql.CommentedNode); ok {
 					comment = c.Comment()
 				}
-				ret = plan.NewJoin(ret, newSubq, m.op, filter).WithComment(comment)
+				newJoin := plan.NewJoin(ret, newSubq, m.op, filter)
+				newJoin.RejectRowsWithNullCondition = true
+				ret = newJoin.WithComment(comment)
 			}
 
 			if len(newFilters) == 0 {

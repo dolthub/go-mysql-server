@@ -52,14 +52,15 @@ func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row 
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &joinIter{
-		parentRow:         row,
-		primary:           l,
-		secondaryProvider: j.Right(),
-		cond:              j.Filter,
-		joinType:          j.Op,
-		rowSize:           len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
-		scopeLen:          j.ScopeLen,
-		b:                 b,
+		parentRow:                   row,
+		primary:                     l,
+		secondaryProvider:           j.Right(),
+		cond:                        j.Filter,
+		joinType:                    j.Op,
+		rowSize:                     len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		scopeLen:                    j.ScopeLen,
+		b:                           b,
+		rejectRowsWithNullCondition: j.RejectRowsWithNullCondition,
 	}), nil
 }
 
@@ -78,6 +79,10 @@ type joinIter struct {
 	rowSize    int
 	scopeLen   int
 	b          sql.NodeExecBuilder
+
+	// If RejectRowsWithNullCondition is true, then the results will filter any row from the left child that
+	// was compared against a row on the right table and returned NULL. This only makes sense for outer joins.
+	rejectRowsWithNullCondition bool
 }
 
 func (i *joinIter) loadPrimary(ctx *sql.Context) error {
@@ -153,9 +158,15 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		matches, err := conditionIsTrue(ctx, row, i.cond)
+		res, err := i.cond.Eval(ctx, row)
+		matches := res == true
 		if err != nil {
 			return nil, err
+		}
+
+		if res == nil && i.rejectRowsWithNullCondition {
+			i.primaryRow = nil
+			continue
 		}
 
 		if !matches {
@@ -218,15 +229,16 @@ func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, ro
 		return nil, err
 	}
 	return &existsIter{
-		parentRow:         row,
-		typ:               j.Op,
-		primary:           leftIter,
-		secondaryProvider: j.Right(),
-		cond:              j.Filter,
-		scopeLen:          j.ScopeLen,
-		rowSize:           len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
-		nullRej:           !(j.Filter != nil && plan.IsNullRejecting(j.Filter)),
-		b:                 b,
+		parentRow:                   row,
+		typ:                         j.Op,
+		primary:                     leftIter,
+		secondaryProvider:           j.Right(),
+		cond:                        j.Filter,
+		scopeLen:                    j.ScopeLen,
+		rowSize:                     len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		nullRej:                     !(j.Filter != nil && plan.IsNullRejecting(j.Filter)),
+		b:                           b,
+		rejectRowsWithNullCondition: j.RejectRowsWithNullCondition,
 	}, nil
 }
 
@@ -243,6 +255,10 @@ type existsIter struct {
 	rowSize   int
 	nullRej   bool
 	b         sql.NodeExecBuilder
+
+	// If RejectRowsWithNullCondition is true, then the results will filter any row from the left child that
+	// was compared against a row on the right table and returned NULL.
+	rejectRowsWithNullCondition bool
 }
 
 type existsState uint8
@@ -323,7 +339,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			if res == nil {
+			if res == nil && i.rejectRowsWithNullCondition {
 				nextState = esRejectNull
 				continue
 			}
