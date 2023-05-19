@@ -86,11 +86,6 @@ func generateIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 		return nil, transform.SameTree, err
 	}
 
-	//node, same, err := pushdownFiltersAtNode(ctx, a, n, scope, sel)
-	//if err != nil {
-	//	return nil, transform.SameTree, err
-	//}
-
 	if !filterHasBindVar(n) {
 		return node, same, err
 	}
@@ -269,66 +264,6 @@ func filterPushdownAboveTablesChildSelector(c transform.Context) bool {
 	return true
 }
 
-//
-//func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases, indexes indexLookupsByTable, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-//	applyFilteredTables := func(n *plan.Filter, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
-//		return transform.NodeWithCtx(n, filterPushdownChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-//			switch node := c.Node.(type) {
-//			case *plan.Filter:
-//				n, samePred, err := removePushedDownPredicates(ctx, a, node, filters)
-//				if err != nil {
-//					return nil, transform.SameTree, err
-//				}
-//				n, sameFix, err := pushdownFixIndices(a, n, scope)
-//				if err != nil {
-//					return nil, transform.SameTree, err
-//				}
-//				return n, samePred && sameFix, nil
-//			case *plan.IndexedTableAccess:
-//				if jn, ok := c.Parent.(*plan.JoinNode); ok {
-//					if jn.Op.IsMerge() {
-//						return n, transform.SameTree, nil
-//					}
-//				}
-//				if plan.GetIndexLookup(node).IsEmpty() {
-//					// Index without lookup has no filters to mark/push.
-//					// Relevant for IndexJoin, which has more restrictive
-//					// rules for lookup expressions.
-//					return node, transform.SameTree, nil
-//				}
-//				lookup, ok := indexes[node.Name()]
-//				if !ok || lookup.expr == nil {
-//					return node, transform.SameTree, nil
-//				}
-//				handled, err := getPredicateExprsHandledByLookup(ctx, a, node.Name(), lookup, tableAliases)
-//				if err != nil {
-//					return nil, transform.SameTree, err
-//				}
-//				filters.markFiltersHandled(handled...)
-//				ret, err := plan.NewStaticIndexedAccessForResolvedTable(node.ResolvedTable, lookup.lookup)
-//				if err != nil {
-//					return node, transform.SameTree, err
-//				}
-//				return ret, len(handled) == 0, nil
-//			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
-//				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(sql.NameableNode), scope, filters, tableAliases)
-//				if plan.ErrInvalidLookupForIndexedTable.Is(err) {
-//					return node, transform.SameTree, nil
-//				} else if err != nil {
-//					return nil, transform.SameTree, err
-//				}
-//				n, sameFix, err := pushdownFixIndices(a, n, scope)
-//				if err != nil {
-//					return nil, transform.SameTree, err
-//				}
-//				return n, samePred && sameFix, nil
-//			default:
-//				return pushdownFixIndices(a, node, scope)
-//			}
-//		})
-//	}
-//}
-
 func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, transform.TreeIdentity, error) {
 	var filters *filterSet
 
@@ -444,28 +379,6 @@ func convertFiltersToIndexedAccess(
 		case *plan.TableAlias, *plan.ResolvedTable:
 			nameable = n.(sql.NameableNode)
 			ret, same, err, lookup = pushdownIndexesToTable(scope, a, nameable, indexes)
-		//case *plan.ResolvedTable:
-		//	table, sameTab, err, lookup := pushdownIndexesToTable(scope, a, node, indexes)
-		//	if err != nil {
-		//		return nil, transform.SameTree, err
-		//	}
-		//
-		//	handledF, err := getPredicateExprsHandledByLookup(ctx, a, node.Name(), lookup, tableAliases)
-		//	if err != nil {
-		//		return nil, transform.SameTree, err
-		//	}
-		//	handled = append(handled, handledF...)
-		//
-		//	// We can't use pushdownFixIndexes() here, because it uses the schema of children, and
-		//	// ResolvedTable doesn't have any.
-		//	if sameTab {
-		//		return c.Node, transform.SameTree, nil
-		//	}
-		//	n, _, err := FixFieldIndexesForTableNode(ctx, a, table, scope)
-		//	if err != nil {
-		//		return nil, transform.SameTree, err
-		//	}
-		//	return n, transform.NewTree, nil
 		default:
 			return pushdownFixIndices(a, n, scope)
 		}
@@ -481,11 +394,6 @@ func convertFiltersToIndexedAccess(
 			return nil, transform.SameTree, err
 		}
 		handled = append(handled, handledF...)
-		//filters.markFiltersHandled(handled...)
-		//ret, err := plan.NewStaticIndexedAccessForResolvedTable(node.ResolvedTable, lookup.lookup)
-		//if err != nil {
-		//	return node, transform.SameTree, err
-		//}
 		return ret, transform.NewTree, nil
 	})
 }
