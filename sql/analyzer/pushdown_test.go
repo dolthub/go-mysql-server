@@ -252,7 +252,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownFiltersId))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(generateIndexScansId))
 }
 
 func TestPushdownFiltersAboveTables(t *testing.T) {
@@ -527,7 +527,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownFiltersId))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(generateIndexScansId))
 }
 
 // TODO: this needs tests for pushing a merged index lookup down to a table
@@ -1249,7 +1249,7 @@ func TestPushdownIndex(t *testing.T) {
 		},
 	}
 
-	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(pushdownFiltersId))
+	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule(generateIndexScansId))
 }
 
 func mustIndexLookup(lookup sql.IndexLookup, err error) sql.IndexLookup {
