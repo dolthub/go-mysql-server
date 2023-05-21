@@ -1441,7 +1441,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk3 FOREIGN KEY (a, b) REFERENCES parent (a, b);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (b, a) REFERENCES parent (b, a);",
@@ -1450,30 +1450,16 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Reordered foreign key columns match an index's prefix, INSERT values",
+		Name: "Reordered foreign key columns do not match",
 		SetUpScript: []string{
 			"DROP TABLE child;",
 			"DROP TABLE parent;",
 			"CREATE TABLE parent(pk DOUBLE PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX(v1, v2, pk));",
-			"INSERT INTO parent VALUES (1, 1, 1), (2, 1, 2);",
-			"CREATE TABLE child(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child FOREIGN KEY (v2, v1) REFERENCES parent(v2, v1));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "INSERT INTO child VALUES (1, 1, 1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:       "INSERT INTO child VALUES (2, 2, 2);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query:       "INSERT INTO child VALUES (3, 2, 1);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query:    "INSERT INTO child VALUES (4, 1, 2);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Query:    "CREATE TABLE child(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child FOREIGN KEY (v2, v1) REFERENCES parent(v2, v1));",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 		},
 	},
@@ -1490,7 +1476,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE child ADD CONSTRAINT fk_child FOREIGN KEY (v2, v1) REFERENCES parent(v2, v1);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 		},
 	},
