@@ -1450,6 +1450,34 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Reordered foreign key columns do match",
+		SetUpScript: []string{
+			"DROP TABLE child;",
+			"DROP TABLE parent;",
+			"CREATE TABLE parent(fk1 int, fk2 int, primary key(fk1, fk2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE TABLE child(id int unique, fk1 int, fk2 int, primary key(fk2, fk1, id), constraint `fk` foreign key(fk1, fk2) references parent (fk1, fk2));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "Show create table child;",
+				Expected: []sql.Row{
+					{"child", "CREATE TABLE `child` (\n" +
+						"  `id` int NOT NULL,\n" +
+						"  `fk1` int NOT NULL,\n" +
+						"  `fk2` int NOT NULL,\n" +
+						"  PRIMARY KEY (`fk2`,`fk1`,`id`),\n" +
+						"  KEY `fk1fk2` (`fk1`,`fk2`),\n" +
+						"  UNIQUE KEY `id` (`id`),\n" +
+						"  CONSTRAINT `fk` FOREIGN KEY (`fk1`,`fk2`) REFERENCES `parent` (`fk1`,`fk2`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "Reordered foreign key columns do not match",
 		SetUpScript: []string{
 			"DROP TABLE child;",
