@@ -164,7 +164,12 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		if res == nil && i.rejectRowsWithNullCondition {
+		if res == nil && i.joinType.IsExcludeNulls() {
+			err = i.secondary.Close(ctx)
+			i.secondary = nil
+			if err != nil {
+				return nil, err
+			}
 			i.primaryRow = nil
 			continue
 		}
