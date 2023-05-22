@@ -167,7 +167,6 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					comment = c.Comment()
 				}
 				newJoin := plan.NewJoin(ret, newSubq, m.op, filter)
-				newJoin.RejectRowsWithNullCondition = true
 				ret = newJoin.WithComment(comment)
 			}
 
