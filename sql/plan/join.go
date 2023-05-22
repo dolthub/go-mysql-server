@@ -245,9 +245,6 @@ type JoinNode struct {
 	Op         JoinType
 	CommentStr string
 	ScopeLen   int
-	// If RejectRowsWithNullCondition is true, then the results will filter any row from the left child that
-	// was compared against a row on the right table and returned NULL. This only makes sense for outer joins.
-	RejectRowsWithNullCondition bool
 }
 
 var _ sql.Node = (*JoinNode)(nil)
