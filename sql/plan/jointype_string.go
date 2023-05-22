@@ -2,9 +2,7 @@
 
 package plan
 
-import (
-	"strconv"
-)
+import "strconv"
 
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
@@ -17,28 +15,30 @@ func _() {
 	_ = x[JoinTypeAnti-4]
 	_ = x[JoinTypeRightSemi-5]
 	_ = x[JoinTypeLeftOuter-6]
-	_ = x[JoinTypeFullOuter-7]
-	_ = x[JoinTypeGroupBy-8]
-	_ = x[JoinTypeRightOuter-9]
-	_ = x[JoinTypeLookup-10]
-	_ = x[JoinTypeLeftOuterLookup-11]
-	_ = x[JoinTypeHash-12]
-	_ = x[JoinTypeLeftOuterHash-13]
-	_ = x[JoinTypeMerge-14]
-	_ = x[JoinTypeLeftOuterMerge-15]
-	_ = x[JoinTypeSemiHash-16]
-	_ = x[JoinTypeAntiHash-17]
-	_ = x[JoinTypeSemiLookup-18]
-	_ = x[JoinTypeAntiLookup-19]
-	_ = x[JoinTypeRightSemiLookup-20]
-	_ = x[JoinTypeSemiMerge-21]
-	_ = x[JoinTypeAntiMerge-22]
-	_ = x[JoinTypeNatural-23]
+	_ = x[JoinTypeLeftOuterExcludeNulls-7]
+	_ = x[JoinTypeFullOuter-8]
+	_ = x[JoinTypeGroupBy-9]
+	_ = x[JoinTypeRightOuter-10]
+	_ = x[JoinTypeLookup-11]
+	_ = x[JoinTypeLeftOuterLookup-12]
+	_ = x[JoinTypeHash-13]
+	_ = x[JoinTypeLeftOuterHash-14]
+	_ = x[JoinTypeLeftOuterHashExcludeNulls-15]
+	_ = x[JoinTypeMerge-16]
+	_ = x[JoinTypeLeftOuterMerge-17]
+	_ = x[JoinTypeSemiHash-18]
+	_ = x[JoinTypeAntiHash-19]
+	_ = x[JoinTypeSemiLookup-20]
+	_ = x[JoinTypeAntiLookup-21]
+	_ = x[JoinTypeRightSemiLookup-22]
+	_ = x[JoinTypeSemiMerge-23]
+	_ = x[JoinTypeAntiMerge-24]
+	_ = x[JoinTypeNatural-25]
 }
 
-const _JoinType_name = "UnknownJoinCrossJoinInnerJoinSemiJoinAntiJoinRightSemiJoinLeftOuterJoinFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinMergeJoinLeftOuterMergeJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinRightSemiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoin"
+const _JoinType_name = "UnknownJoinCrossJoinInnerJoinSemiJoinAntiJoinRightSemiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinRightSemiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoin"
 
-var _JoinType_index = [...]uint16{0, 11, 20, 29, 37, 45, 58, 71, 84, 95, 104, 114, 133, 141, 158, 167, 185, 197, 209, 223, 237, 256, 269, 282, 293}
+var _JoinType_index = [...]uint16{0, 11, 20, 29, 37, 45, 58, 71, 98, 111, 122, 131, 141, 160, 168, 185, 214, 223, 241, 253, 265, 279, 293, 312, 325, 338, 349}
 
 func (i JoinType) String() string {
 	if i >= JoinType(len(_JoinType_index)-1) {
