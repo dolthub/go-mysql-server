@@ -334,7 +334,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			if res == nil && i.rejectRowsWithNullCondition {
+			if res == nil && i.typ.IsExcludeNulls() {
 				nextState = esRejectNull
 				continue
 			}

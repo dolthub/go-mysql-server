@@ -432,7 +432,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 				relBase: &relBase{},
 				left:    anti.left,
 				right:   rightGrp,
-				op:      plan.JoinTypeLeftOuter,
+				op:      plan.JoinTypeLeftOuterExcludeNulls,
 				filter:  anti.filter,
 			},
 		}
