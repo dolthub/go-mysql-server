@@ -45,7 +45,7 @@ type CreateEvent struct {
 	DefinitionString string
 	DefinitionNode   sql.Node
 	IfNotExists      bool
-	// notifier is used to notify EventScheduler of the event creation
+	// notifier is used to notify EventSchedulerStatus of the event creation
 	notifier sql.EventSchedulerNotifier
 }
 
@@ -228,7 +228,7 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	eventCreationTime := ctx.QueryTime()
-	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime, eventCreationTime, time.Time{})
+	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime, eventCreationTime, time.Time{}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}, nil
 }
 
-// WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for CREATE EVENT.
+// WithEventSchedulerNotifier is used to notify EventSchedulerStatus to update the events list for CREATE EVENT.
 func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
 	nc := *c
 	nc.notifier = notifier
@@ -257,7 +257,7 @@ func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNoti
 // It expects all timestamp and interval values to be resolved.
 // This function gets called either from RowIter of CreateEvent plan,
 // or from anywhere that getting eventDetails from EventDefinition retrieved from a database.
-func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time) (sql.EventDetails, error) {
+func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, truncate bool) (sql.EventDetails, error) {
 	eventDetails := sql.EventDetails{
 		Name:                 c.EventName,
 		Definer:              c.Definer,
@@ -270,7 +270,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastA
 	var err error
 	if c.At != nil {
 		eventDetails.HasExecuteAt = true
-		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx)
+		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx, truncate)
 		if err != nil {
 			return sql.EventDetails{}, err
 		}
@@ -284,7 +284,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastA
 		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
-			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
+			eventDetails.Starts, err = c.Starts.EvalTime(ctx, truncate)
 			if err != nil {
 				return sql.EventDetails{}, err
 			}
@@ -294,7 +294,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastA
 		}
 		if c.Ends != nil {
 			eventDetails.HasEnds = true
-			eventDetails.Ends, err = c.Ends.EvalTime(ctx)
+			eventDetails.Ends, err = c.Ends.EvalTime(ctx, truncate)
 			if err != nil {
 				return sql.EventDetails{}, err
 			}
@@ -333,13 +333,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	var eventDefinition = sql.EventDefinition{
-		Name:            c.eventDetails.Name,
-		CreateStatement: c.eventDetails.CreateEventStatement(),
-		CreatedAt:       c.eventDetails.Created,
-		LastAltered:     c.eventDetails.LastAltered,
-	}
-
+	var eventDefinition = c.eventDetails.GetEventStorageDefinition()
 	err := c.eventDb.SaveEvent(ctx, eventDefinition)
 	if err != nil {
 		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
@@ -359,7 +353,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.eventDetails.Status = sql.EventStatus_Disable.String()
-				eventDefinition.CreateStatement = c.eventDetails.CreateEventStatement()
+				eventDefinition = c.eventDetails.GetEventStorageDefinition()
 				err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, eventDefinition)
 				if err != nil {
 					return nil, err
@@ -385,7 +379,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	// make sure to notify the EventScheduler after adding the event in the database
+	// make sure to notify the EventSchedulerStatus after adding the event in the database
 	if c.notifier != nil {
 		c.notifier.AddEvent(c.eventDb, c.eventDetails)
 	}
@@ -488,9 +482,15 @@ func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}
 	panic("OnScheduleTimestamp.Eval is just a placeholder method and should not be called directly")
 }
 
-// EvalTime returns time.Time value converted to UTC evaluating given expressions as expected to be time value and optional
-// interval values. The value returned is time.Time value from timestamp value plus all intervals given.
-func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
+// EvalTime returns time.Time value converted to UTC evaluating given expressions
+// as expected to be time value and optional interval values. The value returned
+// is time.Time value from timestamp value plus all intervals given and converted
+// in UTC timezone.
+// This function is used for both evaluating time for CREATE/ALTER EVENT statements
+// run by user and retrieving event details from database by parsing the stored
+// CREATE EVENT statement. For that, the truncate value determines whether the
+// timestamp value should be timezone-truncated.
+func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, truncate bool) (time.Time, error) {
 	value, err := ost.timestamp.Eval(ctx, nil)
 	if err != nil {
 		return time.Time{}, err
@@ -508,7 +508,18 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 		if !ok {
 			return time.Time{}, fmt.Errorf("expected time.Time type but got: %s", d)
 		}
-		t = tt
+
+		// MySQL truncates timezone part of query input and gives warning.
+		if truncate {
+			t, err = validateTimeZoneIsSetToLocalTimeZone(tt)
+			if err != nil {
+				return time.Time{}, err
+			}
+			// TODO: give warning if the input had timezone defined.
+		} else {
+			t = tt
+		}
+
 	default:
 		return time.Time{}, fmt.Errorf("unexpected type: %s", v)
 	}
@@ -529,6 +540,22 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 	return t.UTC(), nil
 }
 
+// validateTimeZoneIsSetToLocalTimeZone truncates the location and
+// re-evaluates the date and time parts in session/local timezone.
+func validateTimeZoneIsSetToLocalTimeZone(t time.Time) (time.Time, error) {
+	var res time.Time
+	if t.IsZero() {
+		return t, nil
+	}
+
+	tStr := t.Format(sql.EventDateTimeOnlyFormat)
+	res, err := time.ParseInLocation(sql.EventDateTimeOnlyFormat, tStr, time.Local)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return res, nil
+}
+
 var _ sql.Node = (*DropEvent)(nil)
 var _ sql.Databaser = (*DropEvent)(nil)
 var _ sql.EventSchedulerNotifierStatement = (*DropEvent)(nil)
@@ -537,7 +564,7 @@ type DropEvent struct {
 	ddlNode
 	EventName string
 	IfExists  bool
-	// notifier is used to notify EventScheduler of the event deletion
+	// notifier is used to notify EventSchedulerStatus of the event deletion
 	notifier sql.EventSchedulerNotifier
 }
 
@@ -586,7 +613,7 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, err
 	}
 
-	// make sure to notify the EventScheduler after dropping the event in the database
+	// make sure to notify the EventSchedulerStatus after dropping the event in the database
 	if d.notifier != nil {
 		d.notifier.RemoveEvent(eventDb.Name(), d.EventName)
 	}
@@ -612,7 +639,7 @@ func (d *DropEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 	return &nde, nil
 }
 
-// WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for DROP EVENT.
+// WithEventSchedulerNotifier is used to notify EventSchedulerStatus to update the events list for DROP EVENT.
 func (d *DropEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
 	nd := *d
 	nd.notifier = notifier

@@ -53,13 +53,13 @@ type EventScheduler struct {
 // creating eventExecutor with empty events list. The enabled events will be loaded into the eventExecutor
 // if the EventScheduler status is 'ON' or undefined. The runQueryFunc is used to run the event definition during
 // event execution.
-func InitEventScheduler(a *analyzer.Analyzer, bgt *sql.BackgroundThreads, ctx *sql.Context, status SchedulerStatus, runQueryFunc func(dbName, query string) error) (*EventScheduler, error) {
+func InitEventScheduler(a *analyzer.Analyzer, bgt *sql.BackgroundThreads, ctx *sql.Context, status SchedulerStatus, runQueryFunc func(dbName, query, username, address string) error) (*EventScheduler, error) {
 	var es = &EventScheduler{
 		status:   status,
 		executor: newEventExecutor(bgt, ctx, runQueryFunc),
 	}
 
-	// If the EventScheduler is set to ON, then load enabled
+	// If the EventSchedulerStatus is set to ON, then load enabled
 	// events and start executing events on schedule.
 	if es.status == SchedulerOn {
 		err := es.loadEventsAndStartEventExecutor(a, ctx)
@@ -131,6 +131,8 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(a *analyzer.Anal
 			if err != nil {
 				return nil, err
 			}
+			// need to set the current database to get parsed plan
+			ctx.SetCurrentDatabase(edb.Name())
 			for _, eDef := range eDefs {
 				ed, err := analyzer.GetEventDetailsFromEventDefinition(ctx, eDef)
 				if err != nil {

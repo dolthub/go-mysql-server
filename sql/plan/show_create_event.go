@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -25,6 +26,7 @@ import (
 type ShowCreateEvent struct {
 	db        sql.Database
 	EventName string
+	Event     sql.EventDetails
 }
 
 var _ sql.Databaser = (*ShowCreateEvent)(nil)
@@ -72,42 +74,30 @@ func (s *ShowCreateEvent) Schema() sql.Schema {
 
 // RowIter implements the sql.Node interface.
 func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	eventDb, ok := s.db.(sql.EventDatabase)
-	if !ok {
-		return nil, sql.ErrEventsNotSupported.New(s.db.Name())
-	}
-	events, err := eventDb.GetEvents(ctx)
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
 	if err != nil {
 		return nil, err
 	}
-	for _, event := range events {
-		if strings.ToLower(event.Name) == s.EventName {
-			characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-			if err != nil {
-				return nil, err
-			}
-			collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-			if err != nil {
-				return nil, err
-			}
-			collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-			if err != nil {
-				return nil, err
-			}
-
-			// TODO: fill sql_mode and time_zone with appropriate values
-			return sql.RowsToRowIter(sql.Row{
-				event.Name,            // Event
-				"",                    // sql_mode
-				"SYSTEM",              // time_zone
-				event.CreateStatement, // Create Event
-				characterSetClient,    // character_set_client
-				collationConnection,   // collation_connection
-				collationServer,       // Database Collation
-			}), nil
-		}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
 	}
-	return nil, sql.ErrUnknownEvent.New(s.EventName)
+	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+	if err != nil {
+		return nil, err
+	}
+
+	createEventStmt := s.Event.CreateEventStatement(time.Local, sql.EventDateTimeOnlyFormat)
+	// TODO: fill sql_mode and time_zone with appropriate values
+	return sql.RowsToRowIter(sql.Row{
+		s.Event.Name,        // Event
+		"",                  // sql_mode
+		"SYSTEM",            // time_zone
+		createEventStmt,     // Create Event
+		characterSetClient,  // character_set_client
+		collationConnection, // collation_connection
+		collationServer,     // Database Collation
+	}), nil
 }
 
 // WithChildren implements the sql.Node interface.

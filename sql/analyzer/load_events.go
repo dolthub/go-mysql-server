@@ -38,6 +38,14 @@ func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Rul
 			}
 			newShowEvents.Events = loadedEvents
 			return &newShowEvents, transform.NewTree, nil
+		case *plan.ShowCreateEvent:
+			newShowCreateEvent := *node
+			loadedEvent, err := loadEventFromDb(ctx, newShowCreateEvent.Database(), newShowCreateEvent.EventName)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			newShowCreateEvent.Event = loadedEvent
+			return &newShowCreateEvent, transform.NewTree, nil
 		case *plan.AlterEvent:
 			newAlterEvent := *node
 			loadedEvent, err := loadEventFromDb(ctx, newAlterEvent.Database(), newAlterEvent.EventName)
@@ -94,5 +102,5 @@ func GetEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinit
 	if !ok {
 		return sql.EventDetails{}, sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
 	}
-	return eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted)
+	return eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted, false)
 }

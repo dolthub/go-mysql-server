@@ -688,7 +688,12 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 		}
 
-		var node sql.Node = plan.NewShowEvents(sql.UnresolvedDatabase(dbName))
+		udb, err := getUnresolvedDatabase(ctx, dbName)
+		if err != nil {
+			return nil, err
+		}
+
+		var node sql.Node = plan.NewShowEvents(udb)
 		if filter != nil {
 			node = plan.NewFilter(filter, node)
 		}

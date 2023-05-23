@@ -29,6 +29,8 @@ type enabledEvent struct {
 	edb             sql.EventDatabase
 	eventDetails    sql.EventDetails
 	nextExecutionAt time.Time
+	username        string
+	address         string
 }
 
 // newEnabledEventFromEventDetails returns new enabledEvent and whether it is created successfully.
@@ -38,14 +40,20 @@ type enabledEvent struct {
 func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails) (*enabledEvent, bool, error) {
 	if ed.Status == sql.EventStatus_Enable.String() {
 		// evaluating each event schedules by updating/dropping events if applicable
-		nextExecution, eventEnded, err := ed.GetNextExecutionTime(time.Now())
+		nextExecution, eventEnded, err := ed.GetNextExecutionTime(time.Now().UTC())
 		if err != nil {
 			return nil, false, err
 		} else if !eventEnded {
+			username, address, err := getUsernameAndAddressFromDefiner(ed.Definer)
+			if err != nil {
+				// log error
+			}
 			return &enabledEvent{
 				edb:             edb,
 				eventDetails:    ed,
 				nextExecutionAt: nextExecution,
+				username:        username,
+				address:         address,
 			}, true, nil
 		} else {
 			ed.Status = sql.EventStatus_Disable.String()
@@ -64,6 +72,23 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 		}
 	}
 	return nil, false, nil
+}
+
+// getUsernameAndAddressFromDefiner returns username and address parsed from given definer value of EventDetails.
+func getUsernameAndAddressFromDefiner(definer string) (string, string, error) {
+	// make sure definer has username and address information here
+	ua := strings.Split(definer, "@")
+	if len(ua) != 2 {
+		// log error
+	}
+
+	username := strings.TrimSuffix(strings.TrimPrefix(ua[0], "`"), "`")
+	username = strings.TrimSuffix(strings.TrimPrefix(username, "'"), "'")
+
+	address := strings.TrimSuffix(strings.TrimPrefix(ua[1], "`"), "`")
+	address = strings.TrimSuffix(strings.TrimPrefix(address, "'"), "'")
+
+	return username, address, nil
 }
 
 // Name returns 'database_name.event_name' used as a key for mapping unique events.

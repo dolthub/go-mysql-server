@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const EventTimeStampFormat = "2006-01-02 15:04:05"
+const EventDateTimeOnlyFormat = "2006-01-02 15:04:05"
 
 // EventSchedulerNotifierStatement represents a SQL statement that requires a EventSchedulerNotifier
 // (e.g. CREATE / ALTER / DROP EVENT and DROP DATABASE).
@@ -32,19 +32,19 @@ type EventSchedulerNotifierStatement interface {
 	WithEventSchedulerNotifier(controller EventSchedulerNotifier) Node
 }
 
-// EventSchedulerNotifier is an interface used for notifying the EventScheduler
+// EventSchedulerNotifier is an interface used for notifying the EventSchedulerStatus
 // for querying any events related statements. This allows plan Nodes to communicate
-// to the EventScheduler.
+// to the EventSchedulerStatus.
 type EventSchedulerNotifier interface {
 	// AddEvent is called when there is an event created at runtime.
 	AddEvent(edb EventDatabase, details EventDetails)
 	// UpdateEvent is called when there is an event altered at runtime.
 	UpdateEvent(edb EventDatabase, orgEventName string, details EventDetails)
 	// RemoveEvent is called when there is an event dropped at runtime. This function
-	// removes the given event if it exists in the enabled events list of the EventScheduler.
+	// removes the given event if it exists in the enabled events list of the EventSchedulerStatus.
 	RemoveEvent(dbName, eventName string)
 	// RemoveSchemaEvents is called when there is a database dropped at runtime. This function
-	// removes all events of given database that exist in the enabled events list of the EventScheduler.
+	// removes all events of given database that exist in the enabled events list of the EventSchedulerStatus.
 	RemoveSchemaEvents(dbName string)
 }
 
@@ -88,11 +88,15 @@ type EventDetails struct {
 	// TODO: add TimeZone
 }
 
-// GetEventStorageDefinition returns event's EventDefinition to be stored in the database created from EventDetails
+// GetEventStorageDefinition returns event's EventDefinition to be
+// stored in the database created from EventDetails. This function
+// is used to get EventDefinition that will be used to store the
+// event metadata in the database, so the timestamp values are
+// stored in UTC time zone and "2006-01-02T15:04:05Z07:00" format.
 func (e *EventDetails) GetEventStorageDefinition() EventDefinition {
 	return EventDefinition{
 		Name:            e.Name,
-		CreateStatement: e.CreateEventStatement(),
+		CreateStatement: e.CreateEventStatement(time.UTC, time.RFC3339),
 		CreatedAt:       e.Created,
 		LastAltered:     e.LastAltered,
 		LastExecuted:    e.LastExecuted,
@@ -100,7 +104,10 @@ func (e *EventDetails) GetEventStorageDefinition() EventDefinition {
 }
 
 // CreateEventStatement returns a CREATE EVENT statement for this event.
-func (e *EventDetails) CreateEventStatement() string {
+// This function requires time zone location and time format input values
+// to generate CREATE EVENT statement for either storage or specific
+// statements such as SHOW CREATE EVENT.
+func (e *EventDetails) CreateEventStatement(loc *time.Location, format string) string {
 	stmt := fmt.Sprintf("CREATE")
 	if e.Definer != "" {
 		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, e.Definer)
@@ -108,12 +115,12 @@ func (e *EventDetails) CreateEventStatement() string {
 	stmt = fmt.Sprintf("%s EVENT `%s`", stmt, e.Name)
 
 	if e.HasExecuteAt {
-		stmt = fmt.Sprintf("%s ON SCHEDULE AT '%s'", stmt, e.ExecuteAt.Format(EventTimeStampFormat))
+		stmt = fmt.Sprintf("%s ON SCHEDULE AT '%s'", stmt, e.ExecuteAt.In(loc).Format(format))
 	} else {
 		// STARTS should be NOT null regardless of user definition
-		stmt = fmt.Sprintf("%s ON SCHEDULE EVERY %s STARTS '%s'", stmt, e.ExecuteEvery, e.Starts.Format(EventTimeStampFormat))
+		stmt = fmt.Sprintf("%s ON SCHEDULE EVERY %s STARTS '%s'", stmt, e.ExecuteEvery, e.Starts.In(loc).Format(format))
 		if e.HasEnds {
-			stmt = fmt.Sprintf("%s ENDS '%s'", stmt, e.Ends.Format(EventTimeStampFormat))
+			stmt = fmt.Sprintf("%s ENDS '%s'", stmt, e.Ends.In(loc).Format(format))
 		}
 	}
 
@@ -135,7 +142,8 @@ func (e *EventDetails) CreateEventStatement() string {
 
 // GetNextExecutionTime returns the next execution timestamp for the event,
 // which depends on AT or EVERY field of EventDetails. It also returns whether
-// the event is ended/expired.
+// the event is ended/expired. The current time passed in this function needs
+// to be in UTC timezone.
 func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
 	if e.HasExecuteAt {
 		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() < 1, nil
@@ -159,7 +167,9 @@ func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool,
 			return time.Time{}, true, nil
 		}
 
-		nextTime := startTime.Add(timeDur)
+		diffToNext := (int64(curTime.Sub(startTime).Seconds() / timeDur.Seconds()) + 1) * int64(timeDur.Seconds())
+		nextTime := startTime.Add(time.Duration(diffToNext) * time.Second)
+		// this shouldn't happen, but sanity check. TODO: remove
 		for nextTime.Sub(curTime).Seconds() < 0 {
 			nextTime = nextTime.Add(timeDur)
 		}

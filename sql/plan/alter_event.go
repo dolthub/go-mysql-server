@@ -60,7 +60,7 @@ type AlterEvent struct {
 
 	// Event will be defined during analyzing
 	Event sql.EventDetails
-	// notifier is used to notify EventScheduler of the event update
+	// notifier is used to notify EventSchedulerStatus of the event update
 	notifier sql.EventSchedulerNotifier
 }
 
@@ -250,7 +250,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if a.AlterOnSchedule {
 		if a.At != nil {
 			ed.HasExecuteAt = true
-			ed.ExecuteAt, err = a.At.EvalTime(ctx)
+			ed.ExecuteAt, err = a.At.EvalTime(ctx, true)
 			if err != nil {
 				return nil, err
 			}
@@ -269,7 +269,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			ed.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 			if a.Starts != nil {
-				ed.Starts, err = a.Starts.EvalTime(ctx)
+				ed.Starts, err = a.Starts.EvalTime(ctx, true)
 				if err != nil {
 					return nil, err
 				}
@@ -279,7 +279,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 			if a.Ends != nil {
 				ed.HasEnds = true
-				ed.Ends, err = a.Ends.EvalTime(ctx)
+				ed.Ends, err = a.Ends.EvalTime(ctx, true)
 				if err != nil {
 					return nil, err
 				}
@@ -384,7 +384,7 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	return &na, nil
 }
 
-// WithEventSchedulerNotifier is used to notify EventScheduler to update the events list for ALTER EVENT.
+// WithEventSchedulerNotifier is used to notify EventSchedulerStatus to update the events list for ALTER EVENT.
 func (a *AlterEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
 	na := *a
 	na.notifier = notifier
@@ -450,20 +450,13 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	var eventDefinition = sql.EventDefinition{
-		Name:            a.eventDetails.Name,
-		CreateStatement: a.eventDetails.CreateEventStatement(),
-		CreatedAt:       a.eventDetails.Created,
-		LastAltered:     a.eventDetails.LastAltered,
-		LastExecuted:    a.eventDetails.LastExecuted,
-	}
-
+	eventDefinition := a.eventDetails.GetEventStorageDefinition()
 	err := a.eventDb.UpdateEvent(ctx, a.originalName, eventDefinition)
 	if err != nil {
 		return nil, err
 	}
 
-	// make sure to notify the EventScheduler after updating the event in the database
+	// make sure to notify the EventSchedulerStatus after updating the event in the database
 	if a.notifier != nil {
 		a.notifier.UpdateEvent(a.eventDb, a.originalName, a.eventDetails)
 	}

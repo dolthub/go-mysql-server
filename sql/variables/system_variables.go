@@ -194,6 +194,8 @@ func InitSystemVariables() {
 
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
+//  Also needs to have access to engine to allow some variable modification
+//  to notify engine to update some configuration such as Event Scheduler.
 func init() {
 	InitSystemVariables()
 }
@@ -766,13 +768,16 @@ var systemVars = map[string]sql.SystemVariable{
 		NotifyChanged: func(scope sql.SystemVariableScope, value sql.SystemVarValue) {
 			convertedVal, _, err := value.Var.Type.Convert(value.Val)
 			if err == nil {
+				// TODO: need to update EventScheduler state at runtime if applicable
 				switch strings.ToLower(convertedVal.(string)) {
-				case "on":
+				case "on", "1":
 					// need access to valid analyzer and ctx to call eventscheduler.TurnOnEventScheduler()
-				case "off":
+				case "off", "0":
 					// need to call eventscheduler.TurnOffEventScheduler()
 				case "disabled":
-					// cannot set it to DISABLED at runtime
+					// Err: Variable 'event_scheduler' can't be set to the value of 'disabled'
+				default:
+					// Err: Variable 'event_scheduler' can't be set to the value of 'no'
 				}
 			}
 		},

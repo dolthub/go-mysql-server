@@ -34,12 +34,12 @@ type eventExecutor struct {
 	list                *enabledEventsList
 	runningEventsStatus *runningEventsStatus
 	stop                atomic.Bool
-	runQueryFunc        func(dbName, query string) error
+	runQueryFunc        func(dbName, query, username, address string) error
 }
 
 // newEventExecutor returns eventExecutor object with empty enabled events list.
 // The enabled events list is loaded only when the EventScheduler status is ENABLED.
-func newEventExecutor(bgt *sql.BackgroundThreads, ctx *sql.Context, runQueryFunc func(dbName, query string) error) *eventExecutor {
+func newEventExecutor(bgt *sql.BackgroundThreads, ctx *sql.Context, runQueryFunc func(dbName, query, username, address string) error) *eventExecutor {
 	return &eventExecutor{
 		bThreads:            bgt,
 		ctx:                 ctx,
@@ -59,8 +59,6 @@ func (ee *eventExecutor) loadEvents(l []*enabledEvent) {
 // check for events to execute on given schedule.
 func (ee *eventExecutor) start() {
 	ee.stop.Store(false)
-	//ticker := time.NewTicker(time.Duration(1) * time.Second)
-	//defer ticker.Stop()
 
 	for {
 		timeNow := time.Now()
@@ -70,9 +68,12 @@ func (ee *eventExecutor) start() {
 		default:
 			if ee.stop.Load() {
 				return
-			} else if ee.list.len() > 1 && ee.list.getNextExecutionTime().Sub(timeNow).Abs().Seconds() < 1 {
-				curEvent := ee.list.pop()
-				ee.executeEventAndUpdateListIfApplicable(curEvent, timeNow)
+			} else if ee.list.len() > 1 {
+				diff := ee.list.getNextExecutionTime().Sub(timeNow).Abs().Seconds()
+				if diff < 1 {
+					curEvent := ee.list.pop()
+					ee.executeEventAndUpdateListIfApplicable(curEvent, timeNow)
+				}
 			}
 		}
 	}
@@ -101,9 +102,11 @@ func (ee *eventExecutor) executeEventAndUpdateListIfApplicable(event *enabledEve
 		return
 	}
 
+	// TODO: execution at create event - event doesn't exist error bcs of context difference and not updated?
 	ended, err := event.updateEventAfterExecution(ee.ctx, event.edb, executionTime)
 	if err != nil {
 		// TODO: log update error
+		return
 	} else if !ended {
 		ee.list.add(event)
 		ee.list.sort()
@@ -130,7 +133,10 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 			ee.stop.Store(true)
 			return
 		default:
-			queryErr = ee.runQueryFunc(event.edb.Name(), event.eventDetails.Definition)
+			queryErr = ee.runQueryFunc(event.edb.Name(), event.eventDetails.Definition, event.username, event.address)
+			if queryErr != nil {
+				return
+			}
 		}
 	})
 
