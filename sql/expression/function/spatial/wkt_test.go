@@ -343,6 +343,17 @@ func TestGeomFromText(t *testing.T) {
 		require.Equal(types.Point{SRID: types.GeoSpatialSRID, X: 2, Y: 1}, v)
 	})
 
+	t.Run("create valid point with another valid srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(expression.NewLiteral("POINT(1 2)", types.Blob),
+			expression.NewLiteral(3857, types.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(types.Point{SRID: 3857, X: 1, Y: 2}, v)
+	})
+
 	t.Run("create valid point with invalid srid", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromText(expression.NewLiteral("POINT(1 2)", types.Blob),
@@ -560,6 +571,41 @@ func TestGeomFromText(t *testing.T) {
 		mpoly := types.MultiPolygon{SRID: types.GeoSpatialSRID, Polygons: []types.Polygon{poly, poly}}
 		gColl := types.GeomColl{SRID: types.GeoSpatialSRID, Geoms: []types.GeometryValue{}}
 		g := types.GeomColl{SRID: types.GeoSpatialSRID, Geoms: []types.GeometryValue{
+			point,
+			line,
+			poly,
+			mpoint,
+			mline,
+			mpoly,
+			gColl,
+		}}
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(g, v)
+	})
+
+	t.Run("create valid geometry collection with another srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromText(
+			expression.NewLiteral("GEOMETRYCOLLECTION("+
+				"POINT(1 2),"+
+				"LINESTRING(1 2,3 4),"+
+				"POLYGON((0 0,1 1,1 0,0 0)),"+
+				"MULTIPOINT(1 2,1 2),"+
+				"MULTILINESTRING((1 2,3 4),(1 2,3 4)),"+
+				"MULTIPOLYGON(((0 0,1 1,1 0,0 0)),((0 0,1 1,1 0,0 0))),"+
+				"GEOMETRYCOLLECTION()"+
+				")", types.Blob),
+			expression.NewLiteral(3857, types.Uint32))
+
+		point := types.Point{SRID: 3857, X: 1, Y: 2}
+		line := types.LineString{SRID: 3857, Points: []types.Point{{SRID: 3857, X: 1, Y: 2}, {SRID: 3857, X: 3, Y: 4}}}
+		poly := types.Polygon{SRID: 3857, Lines: []types.LineString{{SRID: 3857, Points: []types.Point{{SRID: 3857, X: 0, Y: 0}, {SRID: 3857, X: 1, Y: 1}, {SRID: 3857, X: 1, Y: 0}, {SRID: 3857, X: 0, Y: 0}}}}}
+		mpoint := types.MultiPoint{SRID: 3857, Points: []types.Point{point, point}}
+		mline := types.MultiLineString{SRID: 3857, Lines: []types.LineString{line, line}}
+		mpoly := types.MultiPolygon{SRID: 3857, Polygons: []types.Polygon{poly, poly}}
+		gColl := types.GeomColl{SRID: 3857, Geoms: []types.GeometryValue{}}
+		g := types.GeomColl{SRID: 3857, Geoms: []types.GeometryValue{
 			point,
 			line,
 			poly,

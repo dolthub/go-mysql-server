@@ -48,7 +48,7 @@ func GenerateCreateTableColumnDefinition(colName string, colType Type, nullable 
 	}
 	if c, ok := colType.(SpatialColumnType); ok {
 		if s, d := c.GetSpatialTypeSRID(); d {
-			stmt = fmt.Sprintf("%s SRID %v", stmt, s)
+			stmt = fmt.Sprintf("%s /*!80003 SRID %v */", stmt, s)
 		}
 	}
 	if hasDefault {

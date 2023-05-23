@@ -22,7 +22,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -2504,9 +2503,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("system_time_zone"),
-		ValueFunction: func() (interface{}, error) {
-			return gmstime.SystemTimezoneOffset(), nil
-		},
+		Default:           "UTC",
 	},
 	"table_definition_cache": {
 		Name:              "table_definition_cache",

@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -162,7 +163,7 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 		}
 
 		b, err := i.get(key)
-		if sql.ErrKeyNotFound.Is(err) {
+		if errors.Is(err, sql.ErrKeyNotFound) {
 			b = make([]sql.AggregationBuffer, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
 				b[j], err = newAggregationBuffer(a)
