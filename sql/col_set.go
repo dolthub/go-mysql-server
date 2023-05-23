@@ -1,5 +1,10 @@
 package sql
 
+import (
+	"bytes"
+	"fmt"
+)
+
 type ColumnId uint16
 
 type ColSet struct {
@@ -97,3 +102,40 @@ func (s ColSet) Equals(rhs ColSet) bool { return s.set.Equals(rhs.set) }
 
 // SubsetOf returns true if rhs contains all the elements in s.
 func (s ColSet) SubsetOf(rhs ColSet) bool { return s.set.SubsetOf(rhs.set) }
+
+func (s ColSet) String() string {
+	var buf bytes.Buffer
+	buf.WriteByte('(')
+	appendRange := func(start, end ColumnId) {
+		if buf.Len() > 1 {
+			buf.WriteByte(',')
+		}
+		if start == end {
+			fmt.Fprintf(&buf, "%d", start)
+		} else if start+1 == end {
+			fmt.Fprintf(&buf, "%d,%d", start, end)
+		} else {
+			fmt.Fprintf(&buf, "%d-%d", start, end)
+		}
+	}
+	rangeStart, rangeEnd := -1, -1
+	s.set.ForEach(func(i int) {
+		if i < 0 {
+			appendRange(retVal(i), retVal(i))
+			return
+		}
+		if rangeStart != -1 && rangeEnd == i-1 {
+			rangeEnd = i
+		} else {
+			if rangeStart != -1 {
+				appendRange(retVal(rangeStart), retVal(rangeEnd))
+			}
+			rangeStart, rangeEnd = i, i
+		}
+	})
+	if rangeStart != -1 {
+		appendRange(retVal(rangeStart), retVal(rangeEnd))
+	}
+	buf.WriteByte(')')
+	return buf.String()
+}
