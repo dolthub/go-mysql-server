@@ -15,9 +15,10 @@
 package queries
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ServerEventTest is used to define a test on the user and privilege systems. These tests always have the root
@@ -30,12 +31,12 @@ type ServerEventTest struct {
 
 // ServerEvenTestAssertion is within a ServerEventTest to assert functionality.
 type ServerEvenTestAssertion struct {
-	Query           string
-	Expected        []sql.Row
-	ExpectedErr     *errors.Kind
-	ExpectedErrStr  string
-	ExpectedWarning int
-	ExpectedWarningsCount int
+	Query                           string
+	Expected                        []sql.Row
+	ExpectedErr                     *errors.Kind
+	ExpectedErrStr                  string
+	ExpectedWarning                 int
+	ExpectedWarningsCount           int
 	ExpectedWarningMessageSubstring string
 }
 
@@ -56,7 +57,7 @@ var EventTests = []ServerEventTest{
 				Expected: []sql.Row{{1}},
 			},
 			{
-				Query:    "SELECT SLEEP(7);",
+				Query: "SELECT SLEEP(7);",
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM totals/* 2 */;",
@@ -114,7 +115,6 @@ var EventTests = []ServerEventTest{
 				// TODO: should give warning: | Warning | 1292 | Truncated incorrect datetime value: '2038-01-16 23:59:00 +0000 UTC' |
 				Query:    "CREATE EVENT event2 ON SCHEDULE AT '2038-01-16 23:59:00 +0000 UTC' + INTERVAL 1 DAY ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (100);",
 				Expected: []sql.Row{{types.OkResult{}}},
-
 			},
 			{
 				Query:    "SHOW EVENTS;",
@@ -161,8 +161,8 @@ var EventTests = []ServerEventTest{
 				ExpectedErr: sql.ErrEventAlreadyExists,
 			},
 			{
-				Query:                 "CREATE EVENT IF NOT EXISTS my_event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
-				Expected:              []sql.Row{{types.OkResult{}}},
+				Query:                           "CREATE EVENT IF NOT EXISTS my_event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
+				Expected:                        []sql.Row{{types.OkResult{}}},
 				ExpectedWarning:                 1537,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Event 'my_event1' already exists",
@@ -180,29 +180,29 @@ var EventTests = []ServerEventTest{
 				ExpectedErr: sql.ErrEventDoesNotExist,
 			},
 			{
-				Query:                 "DROP EVENT IF EXISTS non_existent_event",
-				Expected:              []sql.Row{{types.OkResult{}}},
+				Query:                           "DROP EVENT IF EXISTS non_existent_event",
+				Expected:                        []sql.Row{{types.OkResult{}}},
 				ExpectedWarning:                 1305,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Event non_existent_event does not exist",
 			},
 			{
-				Query:                 "CREATE EVENT past_event1 ON SCHEDULE AT '2006-02-10 23:59:00' DISABLE DO INSERT INTO totals VALUES (100);",
-				Expected:              []sql.Row{{types.OkResult{}}},
+				Query:                           "CREATE EVENT past_event1 ON SCHEDULE AT '2006-02-10 23:59:00' DISABLE DO INSERT INTO totals VALUES (100);",
+				Expected:                        []sql.Row{{types.OkResult{}}},
 				ExpectedWarning:                 1588,
 				ExpectedWarningMessageSubstring: "Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation.",
-				ExpectedWarningsCount: 1,
+				ExpectedWarningsCount:           1,
 			},
 			{
 				Query:    "SHOW EVENTS LIKE 'past_event1';",
 				Expected: []sql.Row{},
 			},
 			{
-				Query:                 "CREATE EVENT past_event2 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DO INSERT INTO totals VALUES (100);",
-				Expected:              []sql.Row{{types.OkResult{}}},
+				Query:                           "CREATE EVENT past_event2 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DO INSERT INTO totals VALUES (100);",
+				Expected:                        []sql.Row{{types.OkResult{}}},
 				ExpectedWarning:                 1544,
 				ExpectedWarningMessageSubstring: "Event execution time is in the past. Event has been disabled",
-				ExpectedWarningsCount: 1,
+				ExpectedWarningsCount:           1,
 			},
 			{
 				Query:    "SHOW EVENTS LIKE 'past_event2';",
@@ -223,8 +223,8 @@ var EventTests = []ServerEventTest{
 				ExpectedErrStr: "Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was not changed. Specify a time in the future.",
 			},
 			{
-				Query:                 "ALTER EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Query:                           "ALTER EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE;",
+				Expected:                        []sql.Row{{types.OkResult{}}},
 				ExpectedWarning:                 1544,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Event execution time is in the past. Event has been disabled",

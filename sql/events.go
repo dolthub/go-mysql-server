@@ -167,7 +167,7 @@ func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool,
 			return time.Time{}, true, nil
 		}
 
-		diffToNext := (int64(curTime.Sub(startTime).Seconds() / timeDur.Seconds()) + 1) * int64(timeDur.Seconds())
+		diffToNext := (int64(curTime.Sub(startTime).Seconds()/timeDur.Seconds()) + 1) * int64(timeDur.Seconds())
 		nextTime := startTime.Add(time.Duration(diffToNext) * time.Second)
 		// this shouldn't happen, but sanity check. TODO: remove
 		for nextTime.Sub(curTime).Seconds() < 0 {
