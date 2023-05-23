@@ -116,6 +116,47 @@ func TestJSONExtract(t *testing.T) {
 	}
 }
 
+func TestJSONExtractAsterisk(t *testing.T) {
+	jsonStr := `
+{
+	"key1": "abc",
+	"key2": 123,
+	"key3": [1,2,3],
+	"key4": {
+		"a": 1,
+		"b": 2,
+		"c": 3
+	}
+}`
+	f, err := NewJSONExtract(
+		expression.NewLiteral(jsonStr, types.LongText),
+		expression.NewLiteral("$.*", types.LongText))
+	require.NoError(t, err)
+
+	t.Run("json extract with asterisk", func(t *testing.T) {
+		require := require.New(t)
+
+		result, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		// order of results is not guaranteed
+		for _, v := range result.(types.JSONDocument).Val.([]interface{}) {
+			if vStr, ok := v.(string); ok && vStr == "abc" {
+				continue
+			}
+			if vInt, ok := v.(float64); ok && vInt == 123 {
+				continue
+			}
+			if vArr, ok := v.([]interface{}); ok && len(vArr) == 3 && vArr[0].(float64) == 1 && vArr[1].(float64) == 2 && vArr[2].(float64) == 3 {
+				continue
+			}
+			if vMap, ok := v.(map[string]interface{}); ok && len(vMap) == 3 && vMap["a"].(float64) == 1 && vMap["b"].(float64) == 2 && vMap["c"].(float64) == 3 {
+				continue
+			}
+			t.Errorf("got unexpected value: %v", v)
+		}
+	})
+}
+
 /*func TestUnquoteColumns(t *testing.T) {
 	tests := []struct{
 		str string
