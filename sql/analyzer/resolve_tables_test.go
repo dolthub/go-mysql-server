@@ -86,7 +86,7 @@ func TestResolveTablesNoCurrentDB(t *testing.T) {
 	notAnalyzed = plan.NewUnresolvedTable("mytable", "doesNotExist")
 	_, _, err = f.Apply(ctx, a, notAnalyzed, nil, DefaultRuleSelector)
 	require.Error(err)
-	require.True(sql.ErrDatabaseNotFound.Is(err), "wrong error kind")
+	require.True(sql.ErrDatabaseNotFound.Is(err), "wrong error kind, got %s", err.Error())
 }
 
 func TestResolveTablesNested(t *testing.T) {

@@ -111,6 +111,9 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 	name := t.Name()
 	db := t.Database()
 	if db.Name() == "" {
+		if ctx.GetCurrentDatabase() == "" {
+			return nil, sql.ErrNoDatabaseSelected.New()
+		}
 		db = sql.UnresolvedDatabase(ctx.GetCurrentDatabase())
 	}
 
@@ -145,11 +148,6 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 
 			rt, database, err := a.Catalog.DatabaseTableAsOf(ctx, db, name, asOf)
 			if err != nil {
-				if sql.ErrDatabaseNotFound.Is(err) {
-					if ctx.GetCurrentDatabase() == "" {
-						err = sql.ErrNoDatabaseSelected.New()
-					}
-				}
 				return nil, err
 			}
 
@@ -164,11 +162,6 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 
 	rt, database, err := a.Catalog.DatabaseTable(ctx, db, name)
 	if err != nil {
-		if sql.ErrDatabaseNotFound.Is(err) {
-			if ctx.GetCurrentDatabase() == "" {
-				err = sql.ErrNoDatabaseSelected.New()
-			}
-		}
 		return nil, err
 	}
 
