@@ -110,11 +110,6 @@ func convertFiltersToIndexedAccess(
 
 	var handled []sql.Expression
 	return transform.NodeWithCtx(n, childSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		var ret sql.Node
-		var same transform.TreeIdentity
-		var err error
-		var lookup *indexLookup
-		var nameable sql.NameableNode
 		switch n := c.Node.(type) {
 		case *plan.Filter:
 			filtersByTable := getFiltersByTable(n)
@@ -130,24 +125,24 @@ func convertFiltersToIndexedAccess(
 			}
 			return ret, transform.NewTree, nil
 		case *plan.TableAlias, *plan.ResolvedTable:
-			nameable = n.(sql.NameableNode)
-			ret, same, err, lookup = pushdownIndexesToTable(scope, a, nameable, indexes)
+			nameable := n.(sql.NameableNode)
+			ret, same, err, lookup := pushdownIndexesToTable(scope, a, nameable, indexes)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return c.Node, transform.SameTree, nil
+			}
+			// TODO  mark lookup fields as used
+			handledF, err := getPredicateExprsHandledByLookup(ctx, a, nameable.Name(), lookup, tableAliases)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			handled = append(handled, handledF...)
+			return ret, transform.NewTree, nil
 		default:
 			return pushdownFixIndices(a, n, scope)
 		}
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if same {
-			return c.Node, transform.SameTree, nil
-		}
-		// TODO  mark lookup fields as used
-		handledF, err := getPredicateExprsHandledByLookup(ctx, a, nameable.Name(), lookup, tableAliases)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		handled = append(handled, handledF...)
-		return ret, transform.NewTree, nil
 	})
 }
 
