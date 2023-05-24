@@ -173,6 +173,12 @@ func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJSONTableScripts_Experiemental runs the canonical test queries against new name resolution engine
+func TestJSONTableScripts_Experimental(t *testing.T) {
+	t.Skip("getfield indexing is incorrect")
+	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableScriptsPrepared(t *testing.T) {
 	enginetest.TestJSONTableScriptsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
