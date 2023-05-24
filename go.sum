@@ -55,10 +55,8 @@ github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2 h1:u3PMzfF8RkKd3lB9pZ2bfn0qEG+1G
 github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2/go.mod h1:mIEZOHnFx4ZMQeawhw9rhsj+0zwQj7adVsnBX7t+eKY=
 github.com/dolthub/go-icu-regex v0.0.0-20230516121657-5424676dd4ac h1:/bsG4AyV5MesUPw7LSkxHKMsP9f+LSLrsMbBxLP6+Mk=
 github.com/dolthub/go-icu-regex v0.0.0-20230516121657-5424676dd4ac/go.mod h1:xLKpPutKiF9FxxcLG3gf/JA95YZQNAqBegkDRe1AZF4=
-github.com/dolthub/jsonpath v0.0.1 h1:Nd+T3U+XisK3kOuxtABS5IIbZqXVIlOR9VYquyjQ0u0=
-github.com/dolthub/jsonpath v0.0.1/go.mod h1:ZWUdY4iszqRQ8OcoXClkxiAVAoWoK3cq0Hvv4ddGRuM=
-github.com/dolthub/jsonpath v0.0.2-0.20230523231145-77b8157e4af5 h1:nigb0+6vdZ7UiwIf8CQfVBeTxsrSAsERj8kdT3KfNM8=
-github.com/dolthub/jsonpath v0.0.2-0.20230523231145-77b8157e4af5/go.mod h1:ZWUdY4iszqRQ8OcoXClkxiAVAoWoK3cq0Hvv4ddGRuM=
+github.com/dolthub/jsonpath v0.0.2-0.20230524000350-418dfc36367c h1:++ACHJkcxohwz/07aJoz21LIjvNTCFG1zD9g6qJanWc=
+github.com/dolthub/jsonpath v0.0.2-0.20230524000350-418dfc36367c/go.mod h1:ZWUdY4iszqRQ8OcoXClkxiAVAoWoK3cq0Hvv4ddGRuM=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81 h1:7/v8q9XGFa6q5Ap4Z/OhNkAMBaK5YeuEzwJt+NZdhiE=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
 github.com/dolthub/vitess v0.0.0-20230508201056-fc3ee4c11ca5 h1:Odi5ZtzgfS3B6MEwe5c5ADV70pjdnI3jbWr9XI5/vfg=
