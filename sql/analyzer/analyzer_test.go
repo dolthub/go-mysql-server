@@ -81,7 +81,7 @@ func TestAddRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPostAnalyzeRule(-1, pushdownFilters).Build()
+	a := NewBuilder(nil).AddPostAnalyzeRule(-1, generateIndexScans).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -91,7 +91,7 @@ func TestAddPreValidationRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPreValidationRule(-1, pushdownFilters).Build()
+	a := NewBuilder(nil).AddPreValidationRule(-1, generateIndexScans).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -101,7 +101,7 @@ func TestAddPostValidationRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPostValidationRule(-1, pushdownFilters).Build()
+	a := NewBuilder(nil).AddPostValidationRule(-1, generateIndexScans).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }

@@ -573,7 +573,7 @@ func (e *exprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) 
 	props := e.relProps
 	var result = node
 	if props.filter != nil {
-		sch := append(input, node.Schema()...)
+		sch := node.Schema()
 		filter, _, err := FixFieldIndexes(e.m.scope, nil, sch, props.filter)
 		if err != nil {
 			return nil, err
