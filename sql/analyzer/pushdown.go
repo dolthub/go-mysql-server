@@ -318,33 +318,6 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	return n, transform.NewTree, nil
 }
 
-// getHandledFilters returns the filter expressions that the specified table can handle. This
-// function takes care of normalizing the available filter expressions, which is required for
-// FilteredTable.HandledFilters to correctly identify what filter expressions it can handle.
-// The returned filter expressions are the denormalized expressions as expected in other parts
-// of the analyzer code (e.g. FixFieldIndexes).
-func getHandledFilters(ctx *sql.Context, tableNameOrAlias string, ft sql.FilteredTable, tableAliases TableAliases, filters *filterSet) []sql.Expression {
-	tableFilters := filters.availableFiltersForTable(ctx, tableNameOrAlias)
-
-	normalizedFilters := normalizeExpressions(tableAliases, tableFilters...)
-	normalizedToDenormalizedFilterMap := make(map[sql.Expression]sql.Expression)
-	for i, normalizedFilter := range normalizedFilters {
-		normalizedToDenormalizedFilterMap[normalizedFilter] = tableFilters[i]
-	}
-
-	handledNormalizedFilters := ft.HandledFilters(normalizedFilters)
-	handledDenormalizedFilters := make([]sql.Expression, len(handledNormalizedFilters))
-	for i, handledFilter := range handledNormalizedFilters {
-		if val, ok := normalizedToDenormalizedFilterMap[handledFilter]; ok {
-			handledDenormalizedFilters[i] = val
-		} else {
-			handledDenormalizedFilters[i] = handledFilter
-		}
-	}
-
-	return handledDenormalizedFilters
-}
-
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.
 func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters *filterSet) sql.Node {
@@ -456,54 +429,4 @@ func pushdownFixIndices(a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transf
 		return n, transform.SameTree, nil
 	}
 	return FixFieldIndexesForExpressions(a, n, scope)
-}
-
-// pushdownFiltersToTable attempts to push filters to tables that can accept them
-// TODO not called anywhere, maybe deprecated
-func pushdownFiltersToTable(
-	ctx *sql.Context,
-	a *Analyzer,
-	tableNode sql.NameableNode,
-	scope *Scope,
-	filters *filterSet,
-	tableAliases TableAliases,
-) (sql.Node, transform.TreeIdentity, error) {
-	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		// only subset of nodes can be sql.FilteredTables
-	default:
-		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
-	}
-
-	table := getTable(tableNode)
-	if table == nil {
-		return tableNode, transform.SameTree, nil
-	}
-
-	ft, ok := table.(sql.FilteredTable)
-	if !ok {
-		return tableNode, transform.SameTree, nil
-	}
-
-	// push filters for this table onto the table itself
-	tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
-	if len(tableFilters) == 0 {
-		return tableNode, transform.SameTree, nil
-	}
-	handledFilters := getHandledFilters(ctx, tableNode.Name(), ft, tableAliases, filters)
-	filters.markFiltersHandled(handledFilters...)
-
-	handledFilters, _, err := FixFieldIndexesOnExpressions(scope, a, tableNode.Schema(), handledFilters...)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	table = ft.WithFilters(ctx, handledFilters)
-	a.Log(
-		"table %q transformed with pushdown of filters, %d filters handled of %d",
-		tableNode.Name(),
-		len(handledFilters),
-		len(tableFilters),
-	)
-	return withTable(tableNode, table)
 }

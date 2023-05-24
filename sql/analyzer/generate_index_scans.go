@@ -7,14 +7,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// generateIndexScans attempts to push conditions in filters down to individual tables. Tables that implement
-// sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
-// sql.IndexAddressableTable will get an appropriate index lookup applied.
-// TODO(max): filter pushdown should happen as part of join reordering.
-// A memo should be built before reorder with filter exprGroups, with
-// bitmaps tracking table dependencies. The same processes here should
-// be applied there: 1) filter pushdown to table, 2) filter pushdown to
-// join node, 3) range scan indexes applied to non-lookup tables.
+// generateIndexScans generates indexscan alternatives for sql.IndexAddressableTable
+// relations with filters.
 func generateIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("generate_index_scans")
 	defer span.End()
