@@ -493,7 +493,7 @@ var BrokenJSONTableScriptTests = []ScriptTest{
 	},
 	{
 		// Unsupported functionality
-		Name: "json_table out of cte",
+		Name:        "json_table out of cte",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
