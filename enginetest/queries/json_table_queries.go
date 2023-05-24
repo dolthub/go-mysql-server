@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var JSONTableQueryTests = []QueryTest{
@@ -301,6 +302,18 @@ var JSONTableScriptTests = []ScriptTest{
 					{1, "test"},
 				},
 			},
+			{
+				Query: "select (select jt.a from t, json_table('[\"abc\"]', '$[*]' columns (a varchar(10) path '$')) as jt)",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select (select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt)",
+				Expected: []sql.Row{
+					{"test"},
+				},
+			},
 		},
 	},
 	{
@@ -461,46 +474,53 @@ var JSONTableScriptTests = []ScriptTest{
 
 var BrokenJSONTableScriptTests = []ScriptTest{
 	{
-		// subqueries start using the dummy schema for some reason, not isolated to JSON_Tables
-		Name: "json table in cross join in subquery",
-		SetUpScript: []string{
-			"create table t (j json)",
-		},
-		Query: "select (select jt.a from t, json_table('[\"abc\"]', '$[*]' columns (a varchar(10) path '$')) as jt)",
-		Expected: []sql.Row{
-			{"abc"},
-		},
-	},
-	{
-		// subqueries start using the dummy schema for some reason, not isolated to JSON_Tables
-		Name: "json table in cross join in subquery with reference to left",
-		SetUpScript: []string{
-			"create table t (i int, j json)",
-			`insert into t values (1, '["test"]')`,
-		},
-		Query: "select (select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt)",
-		Expected: []sql.Row{
-			{1},
-		},
-	},
-	{
 		// wrong error
 		Name: "json_table out of cte",
 		SetUpScript: []string{
 			"create table t (i int, j json)",
 			`insert into t values (1, '["test"]')`,
 		},
-		Query:       "with tt as (select * from t) select * from json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
-		ExpectedErr: sql.ErrTableNotFound,
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "with tt as (select * from t) select * from json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+				ExpectedErr: sql.ErrUnknownTable,
+			},
+			{
+				Query:       "with tt as (select * from t) select * from tt, json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+		},
 	},
 	{
-		// this should error with incorrect arguments
-		Name: "json_table out of cte with join",
-		SetUpScript: []string{
-			"create table t (i int, j json)",
-			`insert into t values (1, '["test"]')`,
+		// Unsupported functionality
+		Name: "json_table out of cte",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM JSON_TABLE('[ {\"c1\": null} ]', '$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt;",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('[{\"a\":\"3\"},{\"a\":2},{\"b\":1},{\"a\":0},{\"a\":[1,2]}]', \"$[*]\" COLUMNS(rowid FOR ORDINALITY, ac VARCHAR(100) PATH \"$.a\" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR, aj JSON PATH \"$.a\" DEFAULT '{\"x\": 333}' ON EMPTY, bx INT EXISTS PATH \"$.b\")) AS tt;",
+				Expected: []sql.Row{
+					{1, 3, "3", 0},
+					{2, 2, 2, 0},
+					{3, 111, types.MustJSON("{\"x\": 333}"), 1},
+					{4, 0, 0, 0},
+					{5, 999, types.MustJSON("[1, 2]"), 0},
+				},
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('[ {\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}, {\"a\":3}]', '$[*]' COLUMNS(a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b INT PATH '$'))) AS jt WHERE b IS NOT NULL;",
+				Expected: []sql.Row{
+					{1, 11},
+					{1, 111},
+					{2, 22},
+					{2, 222},
+				},
+			},
 		},
-		Query:       "with tt as (select * from t) select * from tt, json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
-		ExpectedErr: sql.ErrInvalidArgument,
 	},
 }

@@ -163,14 +163,24 @@ func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
+func TestJSONTableQueriesPrepared(t *testing.T) {
+	enginetest.TestJSONTableQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
+func TestJSONTableScriptsPrepared(t *testing.T) {
+	enginetest.TestJSONTableScriptsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestBrokenJSONTableScripts(t *testing.T) {
-	t.Skip("dummy schema, too permissive, wrong errors")
+	t.Skip("incorrect errors and unsupported json_table functionality")
 	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
