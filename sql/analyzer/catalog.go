@@ -135,7 +135,7 @@ func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.Provider).Database(ctx, db)
 	} else {
 		return c.Provider.Database(ctx, db)
-	} 
+	}
 }
 
 // LockTable adds a lock for the given table and session client. It is assumed

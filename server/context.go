@@ -52,9 +52,9 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
 	addr        string
-	tracer    trace.Tracer
-	getDbFunc func(ctx *sql.Context, db string) (sql.Database, error)
-	memory    *sql.MemoryManager
+	tracer      trace.Tracer
+	getDbFunc   func(ctx *sql.Context, db string) (sql.Database, error)
+	memory      *sql.MemoryManager
 	processlist sql.ProcessList
 	mu          *sync.Mutex
 	builder     SessionBuilder
@@ -146,7 +146,7 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, dbName string) error {
 			return err
 		}
 	}
-	
+
 	sess.SetCurrentDatabase(dbName)
 	if dbName != "" {
 		if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
@@ -157,7 +157,7 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, dbName string) error {
 			return err
 		}
 	}
-	
+
 	s.processlist.ConnectionReady(sess)
 	return nil
 }
