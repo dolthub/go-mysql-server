@@ -90,6 +90,7 @@ func (k *Key) Empty() bool {
 // - equivs: transitive closure of column equivalence
 // - keys: primary and secondary keys, simplified
 type FuncDepsSet struct {
+	all ColSet
 	// non-null columns for relation
 	notNull ColSet
 	// tracks in-scope constants
@@ -114,6 +115,20 @@ func (f *FuncDepsSet) LaxKey() (ColSet, bool) {
 	return f.keys[0].cols, true
 }
 
+func (f *FuncDepsSet) CopyKeys() []Key {
+	ret := make([]Key, len(f.keys))
+	copy(ret, f.keys)
+	return ret
+}
+
+func (f *FuncDepsSet) HasMax1Row() bool {
+	if len(f.keys) == 0 {
+		return false
+	}
+	key := f.keys[0]
+	return key.strict && key.Empty()
+}
+
 func (f *FuncDepsSet) String() string {
 	b := strings.Builder{}
 	if len(f.keys) > 0 {
@@ -135,9 +150,9 @@ func (f *FuncDepsSet) String() string {
 	}
 	for _, k := range f.keys[1:] {
 		if k.strict {
-			b.WriteString(fmt.Sprintf("; key%s", k.cols))
+			b.WriteString(fmt.Sprintf("; fd%s", k.cols))
 		} else {
-			b.WriteString(fmt.Sprintf("; lax-key%s", k.cols))
+			b.WriteString(fmt.Sprintf("; lax-fd%s", k.cols))
 		}
 	}
 	return b.String()
@@ -200,8 +215,10 @@ func (f *FuncDepsSet) AddEquiv(i, j ColumnId) {
 }
 
 func (f *FuncDepsSet) AddEquivSet(cols ColSet) {
+	if f.equivs == nil {
+		f.equivs = &EquivSets{}
+	}
 	f.equivs.Add(cols)
-
 	for _, set := range f.equivs.Sets() {
 		// if one col in equiv set is constant, rest are too
 		if set.Intersects(f.consts) {
@@ -297,6 +314,10 @@ func (f *FuncDepsSet) inClosureOf(cols1, cols2 ColSet) bool {
 	return false
 }
 
+func (f *FuncDepsSet) ColsAreStrictKey(cols ColSet) bool {
+	return f.inClosureOf(f.keys[0].cols, cols)
+}
+
 // NewCrossJoinFDs makes functional dependencies for a cross join
 // between two relations.
 func NewCrossJoinFDs(left, right *FuncDepsSet) *FuncDepsSet {
@@ -344,15 +365,17 @@ func NewInnerJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsS
 	for _, f := range filters {
 		ret.AddEquiv(f[0], f[1])
 	}
+	leftKeys := left.CopyKeys()
+	rightKeys := right.CopyKeys()
 	// concatenate lead key, append others
 	var lKey, rKey Key
-	if len(left.keys) > 0 {
-		lKey = left.keys[0]
-		left.keys = left.keys[1:]
+	if len(leftKeys) > 0 {
+		lKey = leftKeys[0]
+		leftKeys = leftKeys[1:]
 	}
-	if len(right.keys) > 0 {
-		rKey = right.keys[0]
-		right.keys = right.keys[1:]
+	if len(rightKeys) > 0 {
+		rKey = rightKeys[0]
+		rightKeys = rightKeys[1:]
 	}
 	var jKey Key
 	if lKey.Empty() && rKey.Empty() {
@@ -366,11 +389,13 @@ func NewInnerJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsS
 		jKey.strict = lKey.strict && rKey.strict
 	}
 	ret.AddKey(jKey)
-	for _, k := range left.keys {
-		ret.AddKey(k)
+	for _, k := range leftKeys {
+		k.cols = ret.simplifyCols(k.cols)
+		ret.keys = append(ret.keys, k)
 	}
-	for _, k := range right.keys {
-		ret.AddKey(k)
+	for _, k := range rightKeys {
+		k.cols = ret.simplifyCols(k.cols)
+		ret.keys = append(ret.keys, k)
 	}
 	return ret
 }
@@ -431,5 +456,86 @@ func NewProjectFDs(fds *FuncDepsSet, cols ColSet, distinct bool) *FuncDepsSet {
 		}
 	}
 
+	return ret
+}
+
+func NewLeftJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsSet {
+	// get strict key from left
+	// maybe need concat key from cross join
+	// make cross product + filters FDs-> see if left is a strict key for it
+	//  - inline inClosureOf, don't actually make?
+	// null extend right rows
+	// if max1Row, left cols in filter will be constant
+	leftKey, leftStrict := left.StrictKey()
+	leftColsAreInnerJoinKey := false
+	if leftStrict {
+		// leftcols are strict key
+		j := NewInnerJoinFDs(left, right, filters)
+		leftColsAreInnerJoinKey = j.inClosureOf(j.keys[0].cols, left.all)
+	}
+
+	leftKeys := left.CopyKeys()
+	rightKeys := right.CopyKeys()
+	var lKey, rKey Key
+	if len(leftKeys) > 0 {
+		lKey = leftKeys[0]
+		left.keys = leftKeys[1:]
+	}
+	if len(rightKeys) > 0 {
+		rKey = rightKeys[0]
+		rightKeys = rightKeys[1:]
+	}
+	var jKey Key
+	if lKey.Empty() && rKey.Empty() {
+		// ?
+	} else if lKey.Empty() {
+		jKey = rKey
+	} else if rKey.Empty() {
+		jKey = lKey
+	} else {
+		jKey.cols = lKey.cols.Union(rKey.cols)
+		jKey.strict = lKey.strict && rKey.strict
+	}
+
+	ret := &FuncDepsSet{}
+	// left constants and equiv are safe
+	ret.AddNotNullable(left.notNull)
+	ret.AddConstants(left.consts)
+	if left.HasMax1Row() {
+		var leftConst ColSet
+		// leftCols in filter are constant
+		for i := range filters {
+			col := filters[i][0]
+			leftConst.Add(col)
+		}
+		ret.AddConstants(leftConst)
+	}
+	// only left equiv holds
+	for _, equiv := range left.equivs.Sets() {
+		ret.AddEquivSet(equiv)
+	}
+
+	if leftStrict && leftColsAreInnerJoinKey {
+		ret.keys = append(ret.keys, Key{true, leftKey})
+		ret.keys = append(ret.keys, rKey)
+	} else {
+		ret.keys = append(ret.keys, jKey)
+		ret.keys = append(ret.keys, lKey)
+		ret.keys = append(ret.keys, rKey)
+	}
+
+	// no filter equivs are valid
+	// technically we could do (r)~~>(l), but is this useful?
+	// right-side keys become lax unless all non-nullable in original
+	for _, key := range rightKeys {
+		if !key.cols.SubsetOf(right.notNull) {
+			key.strict = false
+		}
+		ret.keys = append(ret.keys, key)
+	}
+	for _, key := range leftKeys {
+		ret.keys = append(ret.keys, key)
+	}
+	// key w cols from both sides discarded unless strict key for whole rel
 	return ret
 }

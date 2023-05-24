@@ -41,36 +41,6 @@ import (
 
 type testFdProp uint16
 
-const (
-	fdTablescan testFdProp = iota + 1
-	fdInnerJoin
-	fdEq
-)
-
-type testFdOp struct {
-	prop testFdProp
-	args []ColumnId
-}
-
-func TestFuncDeps_A(t *testing.T) {
-	// create table customer (id primary key, wid int not null, did int not null, first varchar(10), last varchar(10))
-	// create table warehouse (id primary key)
-	cust := &FuncDepsSet{}
-	cust.AddNotNullable(cols(1, 2, 3))
-	// w.id = 1, c.did = 2, c.id = 2327
-	cust.AddConstants(cols(1, 3))
-	cust.AddStrictKey(cols(1))
-	cust.AddLaxKey(cols(2, 3))
-
-	ware := &FuncDepsSet{}
-	ware.AddConstants(cols(6))
-	ware.AddNotNullable(cols(6))
-	ware.AddStrictKey(cols(6))
-
-	// c.wid = w.id
-	ware.AddEquiv(2, 6)
-}
-
 func TestFuncDeps_CrossJoin(t *testing.T) {
 	// create table abcde (a primary key, b int, c int not null, d int not null, e int not null)
 	// create table mnpq (m primary key, n int, p int not null, q int not null)
@@ -84,7 +54,7 @@ func TestFuncDeps_CrossJoin(t *testing.T) {
 	mnpq.AddStrictKey(cols(6, 7))
 
 	join := NewCrossJoinFDs(abcde, mnpq)
-	assert.Equal(t, "key(1,6,7); lax-key(2,3)", join.String())
+	assert.Equal(t, "key(1,6,7); lax-fd(2,3)", join.String())
 
 }
 
@@ -102,7 +72,7 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewInnerJoinFDs(abcde, mnpq, [][2]ColumnId{{1, 6}})
-		assert.Equal(t, "key(6); constant(7); equiv(1,6); lax-key(2,3)", join.String())
+		assert.Equal(t, "key(6); constant(7); equiv(1,6); lax-fd(2,3)", join.String())
 	})
 
 	t.Run("ware X cust", func(t *testing.T) {
@@ -126,7 +96,7 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		ware.AddStrictKey(cols(6))
 
 		join := NewInnerJoinFDs(cust, ware, [][2]ColumnId{{3, 6}})
-		assert.Equal(t, "key(); constant(1-3,6); equiv(3,6); lax-key(4,5)", join.String())
+		assert.Equal(t, "key(); constant(1-3,6); equiv(3,6); lax-fd(4,5)", join.String())
 	})
 }
 
@@ -161,7 +131,41 @@ func TestFuncDeps_Project(t *testing.T) {
 }
 
 func TestFuncDeps_LeftJoin(t *testing.T) {
+	t.Run("left join w filter", func(t *testing.T) {
+		//   SELECT * FROM abcde LEFT OUTER JOIN mnpq ON a = m and a = n
+		abcde := &FuncDepsSet{}
+		abcde.AddNotNullable(cols(1))
+		abcde.AddStrictKey(cols(1))
+		abcde.AddLaxKey(cols(2, 3))
 
+		mnpq := &FuncDepsSet{}
+		mnpq.AddNotNullable(cols(6, 7))
+		mnpq.AddConstants(cols(7))
+		mnpq.AddStrictKey(cols(6, 7))
+
+		//join := NewLeftJoinFDs(abcde, mnpq, [][2]ColumnId{{1,6},{1,7}})
+	})
+	t.Run("null-project side constants removed", func(t *testing.T) {
+	})
+	t.Run("equiv on both sides", func(t *testing.T) {
+		abcde := &FuncDepsSet{all: cols(1, 2, 3, 4, 5)}
+		abcde.AddNotNullable(cols(1))
+		abcde.AddEquivSet(cols(2, 3, 4))
+		abcde.AddStrictKey(cols(1))
+		abcde.AddLaxKey(cols(2, 3))
+
+		mnpq := &FuncDepsSet{all: cols(6, 7, 8, 9)}
+		mnpq.AddNotNullable(cols(6, 7))
+		mnpq.AddEquivSet(cols(6, 8, 9))
+		mnpq.AddStrictKey(cols(6, 7))
+
+		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{})
+		assert.Equal(t, "key(1,6,7); equiv(6,8,9); fd(6,7); fd(1); lax-fd(3); fd(6,7)", join.String())
+	})
+	t.Run("project const via equiv", func(t *testing.T) {
+		//   SELECT * FROM (SELECT * FROM abcde WHERE b=1) FULL JOIN mnpq ON True
+		//   SELECT * FROM abcde LEFT OUTER JOIN (SELECT *, p+q FROM mnpq) ON True
+	})
 }
 
 func cols(vals ...ColumnId) ColSet {
