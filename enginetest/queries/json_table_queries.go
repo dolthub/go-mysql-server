@@ -139,12 +139,25 @@ var JSONTableScriptTests = []ScriptTest{
 			"create table organizations (organization varchar(10), members json)",
 			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
 		},
-		Query: "select names from organizations, JSON_TABLE(organizations.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
-		Expected: []sql.Row{
-			{"bob"},
-			{"john"},
-			{"alice"},
-			{"mary"},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select names from organizations, JSON_TABLE(organizations.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"bob"},
+					{"john"},
+					{"alice"},
+					{"mary"},
+				},
+			},
+			{
+				Query: "select names from organizations, JSON_TABLE(members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"bob"},
+					{"john"},
+					{"alice"},
+					{"mary"},
+				},
+			},
 		},
 	},
 	{
