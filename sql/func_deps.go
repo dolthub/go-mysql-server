@@ -78,6 +78,13 @@ func (k *Key) Empty() bool {
 	return k.cols.Len() == 0
 }
 
+func (k *Key) implies(other Key) bool {
+	if k.cols.SubsetOf(other.cols) {
+		return k.strict || !other.strict
+	}
+	return false
+}
+
 // FuncDepsSet encodes functional dependencies for a relational
 // expression. Common uses for functional dependencies:
 // - Do a set of equality columns comprise a strict key? (lookup joins)
@@ -131,6 +138,7 @@ func (f *FuncDepsSet) HasMax1Row() bool {
 
 func (f *FuncDepsSet) String() string {
 	b := strings.Builder{}
+	sep := ""
 	if len(f.keys) > 0 {
 		key := f.keys[0]
 		lax := ""
@@ -138,22 +146,26 @@ func (f *FuncDepsSet) String() string {
 			lax = "lax-"
 		}
 		b.WriteString(fmt.Sprintf("%skey%s", lax, key.cols))
+		sep = "; "
 	}
 	if !f.consts.Empty() {
-		b.WriteString(fmt.Sprintf("; constant%s", f.consts))
+		b.WriteString(fmt.Sprintf("%sconstant%s", sep, f.consts))
+		sep = "; "
 	}
 	if f.equivs.Len() > 0 {
-		b.WriteString(fmt.Sprintf("; %s", f.equivs))
+		b.WriteString(fmt.Sprintf("%s%s", sep, f.equivs))
+		sep = "; "
 	}
 	if len(f.keys) < 2 {
 		return b.String()
 	}
 	for _, k := range f.keys[1:] {
 		if k.strict {
-			b.WriteString(fmt.Sprintf("; fd%s", k.cols))
+			b.WriteString(fmt.Sprintf("%sfd%s", sep, k.cols))
 		} else {
-			b.WriteString(fmt.Sprintf("; lax-fd%s", k.cols))
+			b.WriteString(fmt.Sprintf("%slax-fd%s", sep, k.cols))
 		}
+		sep = "; "
 	}
 	return b.String()
 }
@@ -242,7 +254,17 @@ func (f *FuncDepsSet) AddStrictKey(cols ColSet) {
 	// try to simplify the current best key
 	// update the best key (strict > lax, shorter better)
 	cols = f.simplifyCols(cols)
-	f.keys = append(f.keys, Key{cols: cols, strict: true})
+	newKey := Key{cols: cols, strict: true}
+	for i, key := range f.keys {
+		if key.implies(newKey) {
+			return
+		}
+		if newKey.implies(key) {
+			f.keys[i] = newKey
+			return
+		}
+	}
+	f.keys = append(f.keys, newKey)
 
 	if len(f.keys) > 1 {
 		lead := f.keys[0]
@@ -252,6 +274,7 @@ func (f *FuncDepsSet) AddStrictKey(cols ColSet) {
 			// short > long
 			f.keys[0], f.keys[len(f.keys)-1] = f.keys[len(f.keys)-1], lead
 		}
+
 	}
 }
 
@@ -261,13 +284,23 @@ func (f *FuncDepsSet) AddLaxKey(cols ColSet) {
 	// add key
 	// would need not nulls to convert to strict key
 	// update best key
-	nullableCols := f.notNull.Difference(cols)
+	nullableCols := cols.Difference(f.notNull)
 	if nullableCols.Empty() {
 		f.AddStrictKey(cols)
 	}
 
 	cols = f.simplifyCols(cols)
-	f.keys = append(f.keys, Key{cols: cols, strict: false})
+	newKey := Key{cols: cols, strict: false}
+	for i, key := range f.keys {
+		if key.implies(newKey) {
+			return
+		}
+		if newKey.implies(key) {
+			f.keys[i] = newKey
+			return
+		}
+	}
+	f.keys = append(f.keys, newKey)
 	if len(f.keys) > 1 && !f.keys[0].strict {
 		// only try to improve if lax key
 		lead := f.keys[0]
@@ -321,7 +354,7 @@ func (f *FuncDepsSet) ColsAreStrictKey(cols ColSet) bool {
 // NewCrossJoinFDs makes functional dependencies for a cross join
 // between two relations.
 func NewCrossJoinFDs(left, right *FuncDepsSet) *FuncDepsSet {
-	ret := &FuncDepsSet{}
+	ret := &FuncDepsSet{all: left.all.Union(right.all)}
 	ret.AddNotNullable(left.notNull)
 	ret.AddNotNullable(right.notNull)
 	ret.AddConstants(left.consts)
@@ -357,7 +390,7 @@ func NewCrossJoinFDs(left, right *FuncDepsSet) *FuncDepsSet {
 // NewInnerJoinFDs makes functional dependencies for an inner join
 // between two relations.
 func NewInnerJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsSet {
-	ret := &FuncDepsSet{}
+	ret := &FuncDepsSet{all: left.all.Union(right.all)}
 	ret.AddNotNullable(left.notNull)
 	ret.AddNotNullable(right.notNull)
 	ret.AddConstants(left.consts)
@@ -403,8 +436,8 @@ func NewInnerJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsS
 // NewProjectFDs returns a new functional dependency set projecting
 // a subset of cols.
 func NewProjectFDs(fds *FuncDepsSet, cols ColSet, distinct bool) *FuncDepsSet {
-	ret := &FuncDepsSet{}
-	ret.AddNotNullable(fds.notNull)
+	ret := &FuncDepsSet{all: cols}
+	ret.AddNotNullable(fds.notNull.Intersection(cols))
 
 	if keptConst := fds.consts.Intersection(cols); !keptConst.Empty() {
 		ret.AddConstants(keptConst)
@@ -433,11 +466,15 @@ func NewProjectFDs(fds *FuncDepsSet, cols ColSet, distinct bool) *FuncDepsSet {
 					equivMapping[i], _ = toKeep.Next(1)
 				}
 			}
+			if toKeep.Len() > 1 {
+				ret.AddEquivSet(toKeep)
+			}
 		}
 	}
 
 	for _, key := range fds.keys {
 		if key.cols.SubsetOf(cols) {
+			ret.AddKey(key)
 			continue
 		}
 		toRemove := key.cols.Difference(cols)
@@ -497,7 +534,7 @@ func NewLeftJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsSe
 		jKey.strict = lKey.strict && rKey.strict
 	}
 
-	ret := &FuncDepsSet{}
+	ret := &FuncDepsSet{all: left.all.Union(right.all)}
 	// left constants and equiv are safe
 	ret.AddNotNullable(left.notNull)
 	ret.AddConstants(left.consts)
