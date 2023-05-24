@@ -472,7 +472,7 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 			continue
 		}
 		indexExprs := lowercaseSlice(idx.Expressions())
-		if ok, prefixCount := exprsAreIndexSubset(exprCols, indexExprs); ok && prefixCount == colLen {
+		if ok := exprsAreIndexPrefix(exprCols, indexExprs); ok {
 			indexesWithLen = append(indexesWithLen, idxWithLen{idx, len(indexExprs)})
 		}
 	}
@@ -526,39 +526,19 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 	return true
 }
 
-// TODO: copy of analyzer.exprsAreIndexSubset, need to shift stuff around to eliminate import cycle
-func exprsAreIndexSubset(exprs, indexExprs []string) (ok bool, prefixCount int) {
+// exprsAreIndexPrefix returns whether the given expressions are a prefix of the given index expressions
+func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
 	if len(exprs) > len(indexExprs) {
-		return false, 0
+		return false
 	}
 
-	visitedIndexExprs := make([]bool, len(indexExprs))
-	for _, expr := range exprs {
-		found := false
-		for j, indexExpr := range indexExprs {
-			if visitedIndexExprs[j] {
-				continue
-			}
-			if expr == indexExpr {
-				visitedIndexExprs[j] = true
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false, 0
+	for i := 0; i < len(exprs); i++ {
+		if exprs[i] != indexExprs[i] {
+			return false
 		}
 	}
 
-	// This checks the length of the prefix by checking how many true booleans are encountered before the first false
-	for i, visitedExpr := range visitedIndexExprs {
-		if visitedExpr {
-			continue
-		}
-		return true, i
-	}
-
-	return true, len(exprs)
+	return true
 }
 
 func lowercaseSlice(strs []string) []string {
