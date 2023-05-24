@@ -4,7 +4,7 @@ require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
 	github.com/dolthub/go-icu-regex v0.0.0-20230524105445-af7e7991c97e
-	github.com/dolthub/jsonpath v0.0.1
+	github.com/dolthub/jsonpath v0.0.2-0.20230524184743-5e86621904bd
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
 	github.com/dolthub/vitess v0.0.0-20230518175744-593ce40efc46
 	github.com/go-kit/kit v0.10.0
