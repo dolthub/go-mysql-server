@@ -28,21 +28,21 @@ import (
 
 var systemBoolValueType = reflect.TypeOf(int8(0))
 
-// SystemBoolType_ is an internal boolean type ONLY for system variables.
-type SystemBoolType_ struct {
+// SystemBoolType is an internal boolean type ONLY for system variables.
+type SystemBoolType struct {
 	varName string
 }
 
-var _ sql.SystemVariableType = SystemBoolType_{}
-var _ sql.CollationCoercible = SystemBoolType_{}
+var _ sql.SystemVariableType = SystemBoolType{}
+var _ sql.CollationCoercible = SystemBoolType{}
 
 // NewSystemBoolType returns a new systemBoolType.
 func NewSystemBoolType(varName string) sql.SystemVariableType {
-	return SystemBoolType_{varName}
+	return SystemBoolType{varName}
 }
 
 // Compare implements Type interface.
-func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t SystemBoolType) Compare(a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err
@@ -64,7 +64,7 @@ func (t SystemBoolType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t SystemBoolType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t SystemBoolType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case bool:
@@ -123,7 +123,7 @@ func (t SystemBoolType_) Convert(v interface{}) (interface{}, sql.ConvertInRange
 }
 
 // MustConvert implements the Type interface.
-func (t SystemBoolType_) MustConvert(v interface{}) interface{} {
+func (t SystemBoolType) MustConvert(v interface{}) interface{} {
 	value, _, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -132,26 +132,26 @@ func (t SystemBoolType_) MustConvert(v interface{}) interface{} {
 }
 
 // Equals implements the Type interface.
-func (t SystemBoolType_) Equals(otherType sql.Type) bool {
-	if ot, ok := otherType.(SystemBoolType_); ok {
+func (t SystemBoolType) Equals(otherType sql.Type) bool {
+	if ot, ok := otherType.(SystemBoolType); ok {
 		return t.varName == ot.varName
 	}
 	return false
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t SystemBoolType_) MaxTextResponseByteLength(_ *sql.Context) uint32 {
+func (t SystemBoolType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
 	// system types are not sent directly across the wire
 	return 0
 }
 
 // Promote implements the Type interface.
-func (t SystemBoolType_) Promote() sql.Type {
+func (t SystemBoolType) Promote() sql.Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t SystemBoolType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t SystemBoolType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -169,32 +169,32 @@ func (t SystemBoolType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 }
 
 // String implements Type interface.
-func (t SystemBoolType_) String() string {
+func (t SystemBoolType) String() string {
 	return "system_bool"
 }
 
 // Type implements Type interface.
-func (t SystemBoolType_) Type() query.Type {
+func (t SystemBoolType) Type() query.Type {
 	return sqltypes.Int8
 }
 
 // CollationCoercibility implements sql.CollationCoercible interface.
-func (SystemBoolType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (SystemBoolType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
 // ValueType implements Type interface.
-func (t SystemBoolType_) ValueType() reflect.Type {
+func (t SystemBoolType) ValueType() reflect.Type {
 	return systemBoolValueType
 }
 
 // Zero implements Type interface.
-func (t SystemBoolType_) Zero() interface{} {
+func (t SystemBoolType) Zero() interface{} {
 	return int8(0)
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t SystemBoolType_) EncodeValue(val interface{}) (string, error) {
+func (t SystemBoolType) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(int8)
 	if !ok {
 		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
@@ -206,11 +206,15 @@ func (t SystemBoolType_) EncodeValue(val interface{}) (string, error) {
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t SystemBoolType_) DecodeValue(val string) (interface{}, error) {
+func (t SystemBoolType) DecodeValue(val string) (interface{}, error) {
 	if val == "0" {
 		return int8(0), nil
 	} else if val == "1" {
 		return int8(1), nil
 	}
 	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
+}
+
+func (t SystemBoolType) UnderlyingType() sql.Type {
+	return Boolean
 }

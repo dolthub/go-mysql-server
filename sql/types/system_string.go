@@ -154,3 +154,7 @@ func (t systemStringType) EncodeValue(val interface{}) (string, error) {
 func (t systemStringType) DecodeValue(val string) (interface{}, error) {
 	return val, nil
 }
+
+func (t systemStringType) UnderlyingType() sql.Type {
+	return LongText
+}

@@ -89,7 +89,7 @@ func IsNull(ex sql.Expression) bool {
 // IsNumber checks if t is a number type
 func IsNumber(t sql.Type) bool {
 	switch t.(type) {
-	case NumberTypeImpl_, DecimalType_, BitType_, YearType_, SystemBoolType_:
+	case NumberTypeImpl_, DecimalType_, BitType_, YearType_, SystemBoolType:
 		return true
 	default:
 		return false
@@ -99,7 +99,7 @@ func IsNumber(t sql.Type) bool {
 // IsSigned checks if t is a signed type.
 func IsSigned(t sql.Type) bool {
 	// systemBoolType is Int8
-	if _, ok := t.(SystemBoolType_); ok {
+	if _, ok := t.(SystemBoolType); ok {
 		return true
 	}
 	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
