@@ -101,18 +101,29 @@ func TestMemoGen(t *testing.T) {
 		`,
 	}
 
-	defs := []MemoDef{
-		{
-			Name:   "hashJoin",
-			IsJoin: true,
-			Attrs: [][2]string{
-				{"innerAttrs", "[]sql.Expression"},
-				{"outerAttrs", "[]sql.Expression"},
+	defs := MemoExprs{
+		Exprs: []ExprDef{
+			{
+				Name:   "hashJoin",
+				IsJoin: true,
+				Attrs: [][2]string{
+					{"innerAttrs", "[]sql.Expression"},
+					{"outerAttrs", "[]sql.Expression"},
+				},
 			},
-		},
-		{
-			Name:       "tableScan",
-			SourceType: "*plan.ResolvedTable",
+			{
+				Name:       "tableScan",
+				SourceType: "*plan.ResolvedTable",
+			},
+			{
+				Name: "equal",
+				Attrs: [][2]string{
+					{"left", "scalarExpr"},
+					{"right", "scalarExpr"},
+				},
+				Scalar: true,
+				Binary: true,
+			},
 		},
 	}
 	gen := MemoGen{}

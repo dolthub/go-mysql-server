@@ -166,8 +166,7 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *ex
 	// build operator
 	switch n := n.(type) {
 	case *plan.Filter:
-		_, _, group = j.populateSubgraph(n.Child)
-		group.relProps.filter = n.Expression
+		return j.buildFilter(n)
 	case *plan.Limit:
 		_, _, group = j.populateSubgraph(n.Child)
 		group.relProps.limit = n.Limit
@@ -220,6 +219,50 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *exprGroup {
 		j.buildInnerEdge(op, filters...)
 	}
 	return group
+}
+
+func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *exprGroup) {
+	// memoize child
+	childV, childE, childGrp := j.populateSubgraph(n.Child)
+	// memoize filter components for simple filters
+	filters := splitConjunction(n.Expression)
+	var equals []*expression.Equals
+	for _, f := range filters {
+		hideFilter := false
+		switch f := f.(type) {
+		case *expression.Equals:
+			switch f.Left().(type) {
+			case *expression.Literal, *expression.GetField:
+			default:
+				hideFilter = true
+			}
+			switch f.Right().(type) {
+			case *expression.Literal, *expression.GetField:
+			default:
+				hideFilter = true
+			}
+			equals = append(equals, f)
+		default:
+			hideFilter = true
+		}
+		if hideFilter {
+			// TODO could use a subset, hide others
+			childGrp.relProps.filter = n.Expression
+			return childV, childE, childGrp
+		}
+	}
+	var filterGroups []*exprGroup
+	for _, f := range equals {
+		filterGroups = append(filterGroups, j.m.memoizeScalarComparison(f, equalExpr))
+	}
+
+	// TODO if child is a filter, combine filters
+	filter := &filter{filters: filterGroups, child: childGrp}
+	filterGrp := j.m.memoize(filter)
+
+	// filter will absorb child relation for join reordering
+	j.plans[childV] = filterGrp
+	return childV, childE, filterGrp
 }
 
 func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {

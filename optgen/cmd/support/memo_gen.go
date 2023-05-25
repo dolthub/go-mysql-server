@@ -1,49 +1,74 @@
 package support
 
 import (
+	"bytes"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"io"
+	"os"
 	"strings"
 )
 
-type MemoDef struct {
-	Name string
+//go:generate go run ../optgen/main.go -out ../../../sql/analyzer/memo.og.go -pkg analyzer memo
 
-	SourceType string
-
-	IsJoin bool
-	Attrs  [][2]string
-
-	IsUnary  bool
-	SkipExec bool
+type MemoExprs struct {
+	Exprs []ExprDef `yaml:"exprs"`
 }
 
-var _ GenDefs = ([]MemoDef)(nil)
+type ExprDef struct {
+	Name       string      `yaml:"name"`
+	SourceType string      `yaml:"sourceType"`
+	IsJoin     bool        `yaml:"isJoin"`
+	Attrs      [][2]string `yaml:"attrs"`
+	IsUnary    bool        `yaml:"isUnary"`
+	SkipExec   bool        `yaml:"skipExec"`
+	Scalar     bool        `yaml:"scalar"`
+	Binary     bool        `yaml:"binary"`
+}
+
+func DecodeMemoExprs(path string) (MemoExprs, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return MemoExprs{}, err
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(contents))
+	dec.KnownFields(true)
+	var res MemoExprs
+	return res, dec.Decode(&res)
+}
+
+var _ GenDefs = (*MemoExprs)(nil)
 
 type MemoGen struct {
-	defines []MemoDef
+	defines []ExprDef
 	w       io.Writer
 }
 
 func (g *MemoGen) Generate(defines GenDefs, w io.Writer) {
-	g.defines = defines.([]MemoDef)
+	g.defines = defines.(MemoExprs).Exprs
 
 	g.w = w
 
 	g.genImport()
 	for _, define := range g.defines {
 		g.genType(define)
-		g.genInterfaces(define)
+		if define.Scalar {
+			g.genScalarInterfaces(define)
+		} else {
+			g.genRelInterfaces(define)
+		}
 		g.genStringer(define)
-		g.genRelExprInterface(define)
 		if define.SourceType != "" {
 			g.genSourceRelInterface(define)
 		}
 		if define.IsJoin {
 			g.genJoinRelInterface(define)
-		}
-		if define.IsUnary {
-			g.genUnaryRelInterface(define)
+		} else if define.Binary {
+			g.genBinaryGroupInterface(define)
+		} else if define.IsUnary {
+			g.genUnaryGroupInterface(define)
+		} else {
+			g.genChildlessGroupInterface(define)
 		}
 	}
 	g.genFormatters(g.defines)
@@ -59,7 +84,7 @@ func (g *MemoGen) genImport() {
 	fmt.Fprintf(g.w, ")\n\n")
 }
 
-func (g *MemoGen) genType(define MemoDef) {
+func (g *MemoGen) genType(define ExprDef) {
 	fmt.Fprintf(g.w, "type %s struct {\n", define.Name)
 	if define.SourceType != "" {
 		fmt.Fprintf(g.w, "  *relBase\n")
@@ -69,6 +94,10 @@ func (g *MemoGen) genType(define MemoDef) {
 	} else if define.IsUnary {
 		fmt.Fprintf(g.w, "  *relBase\n")
 		fmt.Fprintf(g.w, "  child *exprGroup\n")
+	} else if define.Binary {
+		fmt.Fprintf(g.w, "  *relBase\n")
+	} else if define.Scalar {
+		fmt.Fprintf(g.w, "  *scalarBase\n")
 	}
 	for _, attr := range define.Attrs {
 		fmt.Fprintf(g.w, "  %s %s\n", attr[0], attr[1])
@@ -77,30 +106,38 @@ func (g *MemoGen) genType(define MemoDef) {
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genInterfaces(define MemoDef) {
+func (g *MemoGen) genRelInterfaces(define ExprDef) {
 	fmt.Fprintf(g.w, "var _ relExpr = (*%s)(nil)\n", define.Name)
 	if define.SourceType != "" {
 		fmt.Fprintf(g.w, "var _ sourceRel = (*%s)(nil)\n", define.Name)
 	} else if define.IsJoin {
 		fmt.Fprintf(g.w, "var _ joinRel = (*%s)(nil)\n", define.Name)
-	} else if define.IsUnary {
-
+	} else if define.IsUnary || define.Binary {
 	} else {
 		panic("unreachable")
 	}
 	fmt.Fprintf(g.w, "\n")
 }
 
-func (g *MemoGen) genStringer(define MemoDef) {
-	fmt.Fprintf(g.w, "func (r *%s) String() string {\n", define.Name)
-	fmt.Fprintf(g.w, "  return formatRelExpr(r)\n")
+func (g *MemoGen) genScalarInterfaces(define ExprDef) {
+	fmt.Fprintf(g.w, "var _ scalarExpr = (*%s)(nil)\n", define.Name)
+	if define.IsUnary {
+		fmt.Fprintf(g.w, "var _ sourceRel = (*%s)(nil)\n", define.Name)
+	}
+	fmt.Fprintf(g.w, "\n")
+
+	fmt.Fprintf(g.w, "func (r *%s) exprId() scalarExprId {\n", define.Name)
+	fmt.Fprintf(g.w, "  return %sExpr\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genRelExprInterface(define MemoDef) {
+func (g *MemoGen) genStringer(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) String() string {\n", define.Name)
+	fmt.Fprintf(g.w, "  return formatExpr(r)\n")
+	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genSourceRelInterface(define MemoDef) {
+func (g *MemoGen) genSourceRelInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "func (r *%s) name() string {\n", define.Name)
 	fmt.Fprintf(g.w, "  return strings.ToLower(r.table.Name())\n")
 	fmt.Fprintf(g.w, "}\n\n")
@@ -109,22 +146,30 @@ func (g *MemoGen) genSourceRelInterface(define MemoDef) {
 	fmt.Fprintf(g.w, "  return tableIdForSource(r.g.id)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func (r *%s) children() []*exprGroup {\n", define.Name)
-	fmt.Fprintf(g.w, "  return nil\n")
-	fmt.Fprintf(g.w, "}\n\n")
-
 	fmt.Fprintf(g.w, "func (r *%s) outputCols() sql.Schema {\n", define.Name)
 	fmt.Fprintf(g.w, "  return r.table.Schema()\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genJoinRelInterface(define MemoDef) {
+func (g *MemoGen) genJoinRelInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "func (r *%s) joinPrivate() *joinBase {\n", define.Name)
 	fmt.Fprintf(g.w, "  return r.joinBase\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genUnaryRelInterface(define MemoDef) {
+func (g *MemoGen) genBinaryGroupInterface(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) children() []*exprGroup {\n", define.Name)
+	fmt.Fprintf(g.w, "  return []*exprGroup{r.left, r.right}\n")
+	fmt.Fprintf(g.w, "}\n\n")
+}
+
+func (g *MemoGen) genChildlessGroupInterface(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) children() []*exprGroup {\n", define.Name)
+	fmt.Fprintf(g.w, "  return nil\n")
+	fmt.Fprintf(g.w, "}\n\n")
+}
+
+func (g *MemoGen) genUnaryGroupInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "func (r *%s) children() []*exprGroup {\n", define.Name)
 	fmt.Fprintf(g.w, "  return []*exprGroup{r.child}\n")
 	fmt.Fprintf(g.w, "}\n\n")
@@ -145,17 +190,27 @@ func (g *MemoGen) genUnaryRelInterface(define MemoDef) {
 
 }
 
-func (g *MemoGen) genFormatters(defines []MemoDef) {
-	fmt.Fprintf(g.w, "func formatRelExpr(r relExpr) string {\n")
+func (g *MemoGen) genFormatters(defines []ExprDef) {
+	fmt.Fprintf(g.w, "func formatExpr(r exprType) string {\n")
 	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
 	for _, d := range defines {
 		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
 		if d.SourceType != "" {
 			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.name())\n", d.Name)
-		} else if d.IsJoin {
+		} else if d.IsJoin || d.Binary {
 			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s %%d %%d\", r.left.id, r.right.id)\n", d.Name)
 		} else if d.IsUnary {
 			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%d\", r.child.id)\n", d.Name)
+		} else if d.Scalar {
+			attrs := ""
+			sep := ": "
+			ret := fmt.Sprintf("    return fmt.Sprintf(\"%s", d.Name)
+			for _, attr := range d.Attrs {
+				attrs += fmt.Sprintf("%sr.%s", sep, attr[0])
+				sep = ", "
+			}
+			ret += "\")\n"
+			fmt.Fprintf(g.w, ret)
 		} else {
 			panic("unreachable")
 		}
@@ -165,7 +220,7 @@ func (g *MemoGen) genFormatters(defines []MemoDef) {
 	fmt.Fprintf(g.w, "  }\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {\n")
+	fmt.Fprintf(g.w, "func buildRelExpr(b *ExecBuilder, r exprType, input sql.Schema, children ...sql.Node) (sql.Node, error) {\n")
 	fmt.Fprintf(g.w, "  var result sql.Node\n")
 	fmt.Fprintf(g.w, "  var err error\n\n")
 	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")

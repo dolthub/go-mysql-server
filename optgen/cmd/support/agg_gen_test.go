@@ -9,14 +9,16 @@ import (
 
 func TestAggGen(t *testing.T) {
 	test := struct {
-		defines  []AggDef
+		defines  AggDefs
 		expected string
 	}{
-		defines: []AggDef{
-			{
-				Name:    "Test",
-				Desc:    "Test description",
-				RetType: "sql.Float64",
+		defines: AggDefs{
+			[]AggDef{
+				{
+					Name:    "Test",
+					Desc:    "Test description",
+					RetType: "sql.Float64",
+				},
 			},
 		},
 		expected: `

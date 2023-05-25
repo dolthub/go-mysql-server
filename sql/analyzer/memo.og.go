@@ -19,7 +19,7 @@ var _ relExpr = (*crossJoin)(nil)
 var _ joinRel = (*crossJoin)(nil)
 
 func (r *crossJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *crossJoin) joinPrivate() *joinBase {
@@ -34,7 +34,7 @@ var _ relExpr = (*innerJoin)(nil)
 var _ joinRel = (*innerJoin)(nil)
 
 func (r *innerJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *innerJoin) joinPrivate() *joinBase {
@@ -49,7 +49,7 @@ var _ relExpr = (*leftJoin)(nil)
 var _ joinRel = (*leftJoin)(nil)
 
 func (r *leftJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *leftJoin) joinPrivate() *joinBase {
@@ -64,7 +64,7 @@ var _ relExpr = (*semiJoin)(nil)
 var _ joinRel = (*semiJoin)(nil)
 
 func (r *semiJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *semiJoin) joinPrivate() *joinBase {
@@ -79,7 +79,7 @@ var _ relExpr = (*antiJoin)(nil)
 var _ joinRel = (*antiJoin)(nil)
 
 func (r *antiJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *antiJoin) joinPrivate() *joinBase {
@@ -95,7 +95,7 @@ var _ relExpr = (*lookupJoin)(nil)
 var _ joinRel = (*lookupJoin)(nil)
 
 func (r *lookupJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *lookupJoin) joinPrivate() *joinBase {
@@ -111,7 +111,7 @@ var _ relExpr = (*concatJoin)(nil)
 var _ joinRel = (*concatJoin)(nil)
 
 func (r *concatJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *concatJoin) joinPrivate() *joinBase {
@@ -128,7 +128,7 @@ var _ relExpr = (*hashJoin)(nil)
 var _ joinRel = (*hashJoin)(nil)
 
 func (r *hashJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *hashJoin) joinPrivate() *joinBase {
@@ -145,7 +145,7 @@ var _ relExpr = (*mergeJoin)(nil)
 var _ joinRel = (*mergeJoin)(nil)
 
 func (r *mergeJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *mergeJoin) joinPrivate() *joinBase {
@@ -160,7 +160,7 @@ var _ relExpr = (*fullOuterJoin)(nil)
 var _ joinRel = (*fullOuterJoin)(nil)
 
 func (r *fullOuterJoin) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *fullOuterJoin) joinPrivate() *joinBase {
@@ -176,7 +176,7 @@ var _ relExpr = (*tableScan)(nil)
 var _ sourceRel = (*tableScan)(nil)
 
 func (r *tableScan) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *tableScan) name() string {
@@ -187,12 +187,12 @@ func (r *tableScan) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *tableScan) children() []*exprGroup {
-	return nil
-}
-
 func (r *tableScan) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *tableScan) children() []*exprGroup {
+	return nil
 }
 
 type values struct {
@@ -204,7 +204,7 @@ var _ relExpr = (*values)(nil)
 var _ sourceRel = (*values)(nil)
 
 func (r *values) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *values) name() string {
@@ -215,12 +215,12 @@ func (r *values) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *values) children() []*exprGroup {
-	return nil
-}
-
 func (r *values) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *values) children() []*exprGroup {
+	return nil
 }
 
 type tableAlias struct {
@@ -232,7 +232,7 @@ var _ relExpr = (*tableAlias)(nil)
 var _ sourceRel = (*tableAlias)(nil)
 
 func (r *tableAlias) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *tableAlias) name() string {
@@ -243,12 +243,12 @@ func (r *tableAlias) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *tableAlias) children() []*exprGroup {
-	return nil
-}
-
 func (r *tableAlias) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *tableAlias) children() []*exprGroup {
+	return nil
 }
 
 type recursiveTable struct {
@@ -260,7 +260,7 @@ var _ relExpr = (*recursiveTable)(nil)
 var _ sourceRel = (*recursiveTable)(nil)
 
 func (r *recursiveTable) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *recursiveTable) name() string {
@@ -271,12 +271,12 @@ func (r *recursiveTable) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *recursiveTable) children() []*exprGroup {
-	return nil
-}
-
 func (r *recursiveTable) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *recursiveTable) children() []*exprGroup {
+	return nil
 }
 
 type recursiveCte struct {
@@ -288,7 +288,7 @@ var _ relExpr = (*recursiveCte)(nil)
 var _ sourceRel = (*recursiveCte)(nil)
 
 func (r *recursiveCte) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *recursiveCte) name() string {
@@ -299,12 +299,12 @@ func (r *recursiveCte) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *recursiveCte) children() []*exprGroup {
-	return nil
-}
-
 func (r *recursiveCte) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *recursiveCte) children() []*exprGroup {
+	return nil
 }
 
 type subqueryAlias struct {
@@ -316,7 +316,7 @@ var _ relExpr = (*subqueryAlias)(nil)
 var _ sourceRel = (*subqueryAlias)(nil)
 
 func (r *subqueryAlias) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *subqueryAlias) name() string {
@@ -327,12 +327,12 @@ func (r *subqueryAlias) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *subqueryAlias) children() []*exprGroup {
-	return nil
-}
-
 func (r *subqueryAlias) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *subqueryAlias) children() []*exprGroup {
+	return nil
 }
 
 type max1Row struct {
@@ -344,7 +344,7 @@ var _ relExpr = (*max1Row)(nil)
 var _ sourceRel = (*max1Row)(nil)
 
 func (r *max1Row) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *max1Row) name() string {
@@ -355,12 +355,12 @@ func (r *max1Row) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *max1Row) children() []*exprGroup {
-	return nil
-}
-
 func (r *max1Row) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *max1Row) children() []*exprGroup {
+	return nil
 }
 
 type tableFunc struct {
@@ -372,7 +372,7 @@ var _ relExpr = (*tableFunc)(nil)
 var _ sourceRel = (*tableFunc)(nil)
 
 func (r *tableFunc) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *tableFunc) name() string {
@@ -383,12 +383,12 @@ func (r *tableFunc) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *tableFunc) children() []*exprGroup {
-	return nil
-}
-
 func (r *tableFunc) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *tableFunc) children() []*exprGroup {
+	return nil
 }
 
 type emptyTable struct {
@@ -400,7 +400,7 @@ var _ relExpr = (*emptyTable)(nil)
 var _ sourceRel = (*emptyTable)(nil)
 
 func (r *emptyTable) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *emptyTable) name() string {
@@ -411,12 +411,12 @@ func (r *emptyTable) tableId() TableId {
 	return tableIdForSource(r.g.id)
 }
 
-func (r *emptyTable) children() []*exprGroup {
-	return nil
-}
-
 func (r *emptyTable) outputCols() sql.Schema {
 	return r.table.Schema()
+}
+
+func (r *emptyTable) children() []*exprGroup {
+	return nil
 }
 
 type project struct {
@@ -428,7 +428,7 @@ type project struct {
 var _ relExpr = (*project)(nil)
 
 func (r *project) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *project) children() []*exprGroup {
@@ -451,7 +451,7 @@ type distinct struct {
 var _ relExpr = (*distinct)(nil)
 
 func (r *distinct) String() string {
-	return formatRelExpr(r)
+	return formatExpr(r)
 }
 
 func (r *distinct) children() []*exprGroup {
@@ -462,7 +462,86 @@ func (r *distinct) outputCols() sql.Schema {
 	return r.child.relProps.OutputCols()
 }
 
-func formatRelExpr(r relExpr) string {
+type filter struct {
+	*relBase
+	child   *exprGroup
+	filters []*exprGroup
+}
+
+var _ relExpr = (*filter)(nil)
+
+func (r *filter) String() string {
+	return formatExpr(r)
+}
+
+func (r *filter) children() []*exprGroup {
+	return []*exprGroup{r.child}
+}
+
+func (r *filter) outputCols() sql.Schema {
+	return r.child.relProps.OutputCols()
+}
+
+type equal struct {
+	*relBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*equal)(nil)
+
+func (r *equal) exprId() scalarExprId {
+	return equalExpr
+}
+
+func (r *equal) String() string {
+	return formatExpr(r)
+}
+
+func (r *equal) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type literal struct {
+	*scalarBase
+	val interface{}
+	typ sql.Type
+}
+
+var _ scalarExpr = (*literal)(nil)
+
+func (r *literal) exprId() scalarExprId {
+	return literalExpr
+}
+
+func (r *literal) String() string {
+	return formatExpr(r)
+}
+
+func (r *literal) children() []*exprGroup {
+	return nil
+}
+
+type colRef struct {
+	*scalarBase
+	id sql.ColumnId
+}
+
+var _ scalarExpr = (*colRef)(nil)
+
+func (r *colRef) exprId() scalarExprId {
+	return colRefExpr
+}
+
+func (r *colRef) String() string {
+	return formatExpr(r)
+}
+
+func (r *colRef) children() []*exprGroup {
+	return nil
+}
+
+func formatExpr(r exprType) string {
 	switch r := r.(type) {
 	case *crossJoin:
 		return fmt.Sprintf("crossJoin %d %d", r.left.id, r.right.id)
@@ -506,12 +585,20 @@ func formatRelExpr(r relExpr) string {
 		return fmt.Sprintf("project: %d", r.child.id)
 	case *distinct:
 		return fmt.Sprintf("distinct: %d", r.child.id)
+	case *filter:
+		return fmt.Sprintf("filter: %d", r.child.id)
+	case *equal:
+		return fmt.Sprintf("equal %d %d", r.left.id, r.right.id)
+	case *literal:
+		return fmt.Sprintf("literal")
+	case *colRef:
+		return fmt.Sprintf("colRef")
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
 }
 
-func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func buildRelExpr(b *ExecBuilder, r exprType, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var result sql.Node
 	var err error
 
@@ -556,6 +643,14 @@ func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildEmptyTable(r, input, children...)
 	case *project:
 		result, err = b.buildProject(r, input, children...)
+	case *filter:
+		result, err = b.buildFilter(r, input, children...)
+	case *equal:
+		result, err = b.buildEqual(r, input, children...)
+	case *literal:
+		result, err = b.buildLiteral(r, input, children...)
+	case *colRef:
+		result, err = b.buildColRef(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}

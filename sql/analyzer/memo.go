@@ -16,15 +16,12 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
-
-	"github.com/dolthub/go-mysql-server/optgen/cmd/support"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
-
-//go:generate go run ../../optgen/cmd/optgen/main.go -out memo.og.go -pkg analyzer memo memo.go
 
 type GroupId uint16
 type TableId uint16
@@ -34,9 +31,9 @@ type TableId uint16
 // an exprGroup, produce the same rows (possibly unordered) and schema.
 // Physical plans are stored in a linked list within an expression group.
 type Memo struct {
-	cnt  uint16
-	root *exprGroup
-
+	cnt   uint16
+	root  *exprGroup
+	exprs map[uint64]*exprGroup
 	hints *joinHints
 
 	c        Coster
@@ -67,7 +64,7 @@ func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope, cost Coster,
 // TODO: this is supposed to deduplicate logically equivalent table scans
 // and scalar expressions, replacing references with a pointer. Currently
 // a hacky format to quickly support memoizing join trees.
-func (m *Memo) memoize(rel relExpr) *exprGroup {
+func (m *Memo) memoize(rel exprType) *exprGroup {
 	m.cnt++
 	id := GroupId(m.cnt)
 	grp := newExprGroup(m, id, rel)
@@ -76,6 +73,62 @@ func (m *Memo) memoize(rel relExpr) *exprGroup {
 		m.tableProps.addTable(s.name(), id)
 	}
 	return grp
+}
+
+func (m *Memo) getColumnId(table, name string) sql.ColumnId {
+	// todo find column given table and column name
+	return 0
+}
+
+func (m *Memo) preexistingGroup(e scalarExpr) *exprGroup {
+	hash := internExpr(e)
+	group, _ := m.exprs[hash]
+	return group
+}
+
+func (m *Memo) memoizeScalarComparison(f expression.Comparer, id scalarExprId) *exprGroup {
+	var lScalar scalarExpr
+	switch e := f.Left().(type) {
+	case *expression.Literal:
+		// TODO prevent duplicate literal, interning
+		lScalar = &literal{val: e.Value(), typ: e.Type()}
+	case *expression.GetField:
+		// TODO prevent duplicate colRef, interning
+		id := m.getColumnId(e.Table(), e.Name())
+		lScalar = &colRef{id: id}
+	}
+	lGroup := m.preexistingGroup(lScalar)
+	if lGroup == nil {
+		lGroup = m.memoize(lScalar)
+	}
+
+	var rScalar scalarExpr
+	switch e := f.Right().(type) {
+	case *expression.Literal:
+		// TODO prevent duplicate literal, interning
+		rScalar = &literal{val: e.Value(), typ: e.Type()}
+	case *expression.GetField:
+		// TODO prevent duplicate colRef, interning
+		id := m.getColumnId(e.Table(), e.Name())
+		rScalar = &colRef{id: id}
+	}
+	rGroup := m.preexistingGroup(rScalar)
+	if rGroup == nil {
+		rGroup = m.memoize(rScalar)
+	}
+
+	var e scalarExpr
+	switch id {
+	case equalExpr:
+		e = &equal{left: lGroup, right: rGroup}
+	case notEqualExpr:
+		e = &equal{left: lGroup, right: rGroup}
+	}
+	eGroup := m.preexistingGroup(e)
+	if eGroup == nil {
+		eGroup = m.memoize(e)
+	}
+	return eGroup
 }
 
 // optimizeRoot finds the implementation for the root expression
@@ -260,6 +313,9 @@ func (m *Memo) String() string {
 	return b.String()
 }
 
+type scalarProps struct {
+}
+
 // relProps are relational attributes shared by all plans in an expression
 // group (see: exprGroup).
 type relProps struct {
@@ -274,6 +330,10 @@ type relProps struct {
 	distinct distinctOp
 	limit    sql.Expression
 	filter   sql.Expression
+}
+
+func newScalarProps(rel scalarExpr) *scalarProps {
+	return nil
 }
 
 func newRelProps(rel relExpr) *relProps {
@@ -513,11 +573,13 @@ func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
 // exprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type exprGroup struct {
-	m         *Memo
-	_children []*exprGroup
-	relProps  *relProps
-	first     relExpr
-	best      relExpr
+	m           *Memo
+	_children   []*exprGroup
+	relProps    *relProps
+	scalarProps *scalarProps
+	scalar      scalarExpr
+	first       relExpr
+	best        relExpr
 
 	id GroupId
 
@@ -526,16 +588,22 @@ type exprGroup struct {
 	hintOk bool
 }
 
-func newExprGroup(m *Memo, id GroupId, rel relExpr) *exprGroup {
+func newExprGroup(m *Memo, id GroupId, expr exprType) *exprGroup {
 	// bit of circularity: |grp| references |ref|, |rel| references |grp|,
 	// and |relProps| references |rel| and |grp| info.
 	grp := &exprGroup{
-		m:     m,
-		id:    id,
-		first: rel,
+		m:  m,
+		id: id,
 	}
-	rel.setGroup(grp)
-	grp.relProps = newRelProps(rel)
+	expr.setGroup(grp)
+	switch e := expr.(type) {
+	case relExpr:
+		grp.first = e
+		grp.relProps = newRelProps(e)
+	case scalarExpr:
+		grp.scalar = e
+		grp.scalarProps = newScalarProps(e)
+	}
 	return grp
 }
 
@@ -550,7 +618,11 @@ func (e *exprGroup) prepend(rel relExpr) {
 // children returns a unioned list of child exprGroup for
 // every logical plan in this group.
 func (e *exprGroup) children() []*exprGroup {
-	n := e.first
+	relExpr, ok := e.first.(relExpr)
+	if !ok {
+		return e.children()
+	}
+	n := relExpr
 	children := make([]*exprGroup, 0)
 	for n != nil {
 		children = append(children, n.children()...)
@@ -592,7 +664,7 @@ func (e *exprGroup) String() string {
 	sep := ""
 	for n != nil {
 		b.WriteString(sep)
-		b.WriteString(fmt.Sprintf("(%s", formatRelExpr(n)))
+		b.WriteString(fmt.Sprintf("(%s", formatExpr(n)))
 		if e.best != nil {
 			b.WriteString(fmt.Sprintf(" %.1f", n.cost()))
 
@@ -631,15 +703,17 @@ type Carder interface {
 	EstimateCard(*sql.Context, relExpr, sql.StatsReader) (float64, error)
 }
 
+type unaryScalarExpr interface {
+	child() scalarExpr
+}
+
 // relExpr wraps a sql.Node for use as a exprGroup linked list node.
 // TODO: we need relExprs for every sql.Node and sql.Expression
 type relExpr interface {
 	fmt.Stringer
-	group() *exprGroup
+	exprType
 	next() relExpr
 	setNext(relExpr)
-	children() []*exprGroup
-	setGroup(g *exprGroup)
 	setCost(c float64)
 	cost() float64
 	distinct() distinctOp
@@ -659,7 +733,7 @@ type relBase struct {
 	d distinctOp
 }
 
-// relKEy is a quick identifier for avoiding duplicate work on the same
+// relKey is a quick identifier for avoiding duplicate work on the same
 // relExpr.
 // TODO: the key should be a formalized hash of 1) the operator type, and 2)
 // hashes of the relExpr and scalarExpr children.
@@ -720,6 +794,31 @@ func (r *relBase) cost() float64 {
 
 func tableIdForSource(id GroupId) TableId {
 	return TableId(id - 1)
+}
+
+type exprType interface {
+	group() *exprGroup
+	children() []*exprGroup
+	setGroup(g *exprGroup)
+}
+
+type scalarExpr interface {
+	fmt.Stringer
+	exprType
+	exprId() scalarExprId
+}
+
+type scalarBase struct {
+	// g is this relation's expression group
+	g *exprGroup
+}
+
+func (r *scalarBase) group() *exprGroup {
+	return r.g
+}
+
+func (r *scalarBase) setGroup(g *exprGroup) {
+	r.g = g
 }
 
 // sourceRel represents a data source, like a tableScan, subqueryAlias,
@@ -800,109 +899,4 @@ type indexScan struct {
 	idx    sql.Index
 
 	parent *joinBase
-}
-
-var ExprDefs support.GenDefs = []support.MemoDef{ // alphabetically sorted
-	{
-		Name:   "crossJoin",
-		IsJoin: true,
-	},
-	{
-		Name:   "innerJoin",
-		IsJoin: true,
-	},
-	{
-		Name:   "leftJoin",
-		IsJoin: true,
-	},
-	{
-		Name:   "semiJoin",
-		IsJoin: true,
-	},
-	{
-		Name:   "antiJoin",
-		IsJoin: true,
-	},
-	{
-		Name:   "lookupJoin",
-		IsJoin: true,
-		Attrs: [][2]string{
-			{"lookup", "*lookup"},
-		},
-	},
-	{
-		Name:   "concatJoin",
-		IsJoin: true,
-		Attrs: [][2]string{
-			{"concat", "[]*lookup"},
-		},
-	},
-	{
-		Name:   "hashJoin",
-		IsJoin: true,
-		Attrs: [][2]string{
-			{"innerAttrs", "[]sql.Expression"},
-			{"outerAttrs", "[]sql.Expression"},
-		},
-	},
-	{
-		Name:   "mergeJoin",
-		IsJoin: true,
-		Attrs: [][2]string{
-			{"innerScan", "*indexScan"},
-			{"outerScan", "*indexScan"},
-		},
-	},
-	{
-		Name:   "fullOuterJoin",
-		IsJoin: true,
-	},
-	{
-		Name:       "tableScan",
-		SourceType: "*plan.ResolvedTable",
-	},
-	{
-		Name:       "values",
-		SourceType: "*plan.ValueDerivedTable",
-	},
-	{
-		Name:       "tableAlias",
-		SourceType: "*plan.TableAlias",
-	},
-	{
-		Name:       "recursiveTable",
-		SourceType: "*plan.RecursiveTable",
-	},
-	{
-		Name:       "recursiveCte",
-		SourceType: "*plan.RecursiveCte",
-	},
-	{
-		Name:       "subqueryAlias",
-		SourceType: "*plan.SubqueryAlias",
-	},
-	{
-		Name:       "max1Row",
-		SourceType: "sql.NameableNode",
-	},
-	{
-		Name:       "tableFunc",
-		SourceType: "sql.TableFunction",
-	},
-	{
-		Name:       "emptyTable",
-		SourceType: "*plan.EmptyTable",
-	},
-	{
-		Name:    "project",
-		IsUnary: true,
-		Attrs: [][2]string{
-			{"projections", "[]sql.Expression"},
-		},
-	},
-	{
-		Name:     "distinct",
-		IsUnary:  true,
-		SkipExec: true,
-	},
 }

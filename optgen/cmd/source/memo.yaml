@@ -1,0 +1,75 @@
+exprs:
+- name:   "crossJoin"
+  isJoin: true
+- name:   "innerJoin"
+  isJoin: true
+- name:   "leftJoin"
+  isJoin: true
+- name:   "semiJoin"
+  isJoin: true
+- name:   "antiJoin"
+  isJoin: true
+- name:   "lookupJoin"
+  isJoin: true
+  attrs:
+  - [lookup, "*lookup"]
+- name: "concatJoin"
+  isJoin: true
+  attrs:
+  - [concat, "[]*lookup"]
+- name: "hashJoin"
+  isJoin: true
+  attrs:
+  - [innerAttrs, "[]sql.Expression"]
+  - [outerAttrs, "[]sql.Expression"]
+- name: "mergeJoin"
+  isJoin: true
+  attrs:
+  - [innerScan, "*indexScan"]
+  - [outerScan, "*indexScan"]
+- name: "fullOuterJoin"
+  isJoin: true
+- name: "tableScan"
+  sourceType: "*plan.ResolvedTable"
+- name: "values"
+  sourceType: "*plan.ValueDerivedTable"
+- name: "tableAlias"
+  sourceType: "*plan.TableAlias"
+- name: "recursiveTable"
+  sourceType: "*plan.RecursiveTable"
+- name: "recursiveCte"
+  sourceType: "*plan.RecursiveCte"
+- name: "subqueryAlias"
+  sourceType: "*plan.SubqueryAlias"
+- name: "max1Row"
+  sourceType: "sql.NameableNode"
+- name: "tableFunc"
+  sourceType: "sql.TableFunction"
+- name: "emptyTable"
+  sourceType: "*plan.EmptyTable"
+- name: "project"
+  isUnary: true
+  attrs:
+  - [projections, "[]sql.Expression"]
+- name: "distinct"
+  isUnary:  true
+  skipExec: true
+- name: filter
+  isUnary: true
+  attrs:
+  - [filters, "[]*exprGroup"]
+- name: "equal"
+  scalar: true
+  binary: true
+  attrs:
+  - [left, "*exprGroup"]
+  - [right, "*exprGroup"]
+- name: "literal"
+  scalar: true
+  attrs:
+  - [val, "interface{}"]
+  - [typ, "sql.Type"]
+- name: "colRef"
+  scalar: true
+  attrs:
+  - [id, "sql.ColumnId"]

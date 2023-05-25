@@ -289,6 +289,10 @@ func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql
 	return plan.NewProject(p, children[0]), nil
 }
 
+func (b *ExecBuilder) buildFilter(r *filter, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return nil, nil
+}
+
 func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) {
 	switch d {
 	case hashDistinctOp:
@@ -300,4 +304,16 @@ func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) 
 	default:
 		return nil, fmt.Errorf("unexpected distinct operator: %d", d)
 	}
+}
+
+func (b *ExecBuilder) buildEqual(r *equal, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return nil, nil
+}
+
+func (b *ExecBuilder) buildLiteral(r *literal, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return nil, nil
+}
+
+func (b *ExecBuilder) buildColRef(r *colRef, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return nil, nil
 }
