@@ -158,7 +158,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 		if svt, ok := argType.(sql.SystemVariableType); ok {
 			argType = svt.UnderlyingType()
 		}
-		
+
 		if types.IsTuple(argType) {
 			return nil, sql.ErrInvalidType.New("tuple")
 		} else if types.IsNumber(argType) {
