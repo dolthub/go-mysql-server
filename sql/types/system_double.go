@@ -198,3 +198,7 @@ func (t systemDoubleType) DecodeValue(val string) (interface{}, error) {
 	}
 	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 }
+
+func (t systemDoubleType) UnderlyingType() sql.Type {
+	return Float64
+}

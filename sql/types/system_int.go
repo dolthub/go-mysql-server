@@ -206,3 +206,7 @@ func (t systemIntType) DecodeValue(val string) (interface{}, error) {
 	}
 	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 }
+
+func (t systemIntType) UnderlyingType() sql.Type {
+	return Int64
+}

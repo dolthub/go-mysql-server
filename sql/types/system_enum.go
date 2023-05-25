@@ -213,3 +213,7 @@ func (t systemEnumType) DecodeValue(val string) (interface{}, error) {
 	}
 	return outVal, nil
 }
+
+func (t systemEnumType) UnderlyingType() sql.Type {
+	return EnumType{}
+}
