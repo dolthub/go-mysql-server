@@ -16,6 +16,7 @@ package queries
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var JSONTableQueryTests = []QueryTest{
@@ -134,154 +135,158 @@ var JSONTableQueryTests = []QueryTest{
 
 var JSONTableScriptTests = []ScriptTest{
 	{
-		Name: "create table from json column not qualified simple",
+		Name: "create table from json column",
 		SetUpScript: []string{
 			"create table organizations (organization varchar(10), members json)",
-			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-		},
-		Query: "select names from organizations, JSON_TABLE(organizations.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
-		Expected: []sql.Row{
-			{"bob"},
-			{"john"},
-			{"alice"},
-			{"mary"},
-		},
-	},
-	{
-		Name: "create table from json column not qualified complex",
-		SetUpScript: []string{
-			"create table organizations(organization varchar(10), members json);",
 			`insert into organizations values("orgA", '["bob", "john"]'), ("orgB", '["alice", "mary"]'), ('orgC', '["kevin", "john"]'), ('orgD', '["alice", "alice"]')`,
+			"create table t1(json_col json);",
+			"insert into t1 values ('{ \"people\": [{\"name\":\"John Smith\", \"address\":\"780 Mission St, San Francisco, CA 94103\"}, { \"name\":\"Sally Brown\", \"address\":\"75 37th Ave S, St Cloud, MN 94103\"}, { \"name\":\"John Johnson\", \"address\":\"1262 Roosevelt Trail, Raymond, ME 04071\"}]}')",
 		},
-		Query: "SELECT names, COUNT(names) AS count FROM organizations, JSON_TABLE(organizations.members, '$[*]' COLUMNS (names varchar(100) path '$')) AS jt GROUP BY names ORDER BY names asc;",
-		Expected: []sql.Row{
-			{"alice", 3},
-			{"bob", 1},
-			{"john", 2},
-			{"kevin", 1},
-			{"mary", 1},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select names from organizations, JSON_TABLE(members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"bob"},
+					{"john"},
+					{"alice"},
+					{"mary"},
+					{"kevin"},
+					{"john"},
+					{"alice"},
+					{"alice"},
+				},
+			},
+			{
+				Query: "SELECT names, COUNT(names) AS count FROM organizations, JSON_TABLE(members, '$[*]' COLUMNS (names varchar(100) path '$')) AS jt GROUP BY names ORDER BY names asc;",
+				Expected: []sql.Row{
+					{"alice", 3},
+					{"bob", 1},
+					{"john", 2},
+					{"kevin", 1},
+					{"mary", 1},
+				},
+			},
+			{
+				// qualified json column name
+				Query: "select names from organizations, JSON_TABLE(organizations.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"bob"},
+					{"john"},
+					{"alice"},
+					{"mary"},
+					{"kevin"},
+					{"john"},
+					{"alice"},
+					{"alice"},
+				},
+			},
+			{
+				// aliased without as keyword
+				Query: "select names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"bob"},
+					{"john"},
+					{"alice"},
+					{"mary"},
+					{"kevin"},
+					{"john"},
+					{"alice"},
+					{"alice"},
+				},
+			},
+			{
+				// aliased table name
+				Query: "SELECT jt.names, COUNT(jt.names) AS count FROM organizations AS o, JSON_TABLE(o.members, '$[*]' COLUMNS (names varchar(100) path '$')) AS jt GROUP BY jt.names ORDER BY jt.names asc;",
+				Expected: []sql.Row{
+					{"alice", 3},
+					{"bob", 1},
+					{"john", 2},
+					{"kevin", 1},
+					{"mary", 1},
+				},
+			},
+			{
+				// aliased and qualified select
+				Query: "select o.organization, jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"orgA", "bob"},
+					{"orgA", "john"},
+					{"orgB", "alice"},
+					{"orgB", "mary"},
+					{"orgC", "kevin"},
+					{"orgC", "john"},
+					{"orgD", "alice"},
+					{"orgD", "alice"},
+				},
+			},
+			{
+				Query: "SELECT people.* FROM t1, JSON_TABLE(t1.json_col, '$.people[*]' COLUMNS (name VARCHAR(40) PATH '$.name', address VARCHAR(100) PATH '$.address')) people;",
+				Expected: []sql.Row{
+					{"John Smith", "780 Mission St, San Francisco, CA 94103"},
+					{"Sally Brown", "75 37th Ave S, St Cloud, MN 94103"},
+					{"John Johnson", "1262 Roosevelt Trail, Raymond, ME 04071"},
+				},
+			},
 		},
 	},
 	{
-		Name: "create table from json column qualified complex",
-		SetUpScript: []string{
-			"create table organizations(organization varchar(10), members json);",
-			`insert into organizations values("orgA", '["bob", "john"]'), ("orgB", '["alice", "mary"]'), ('orgC', '["kevin", "john"]'), ('orgD', '["alice", "alice"]')`,
-		},
-		Query: "SELECT jt.names, COUNT(jt.names) AS count FROM organizations AS o, JSON_TABLE(o.members, '$[*]' COLUMNS (names varchar(100) path '$')) AS jt GROUP BY jt.names ORDER BY jt.names asc;",
-		Expected: []sql.Row{
-			{"alice", 3},
-			{"bob", 1},
-			{"john", 2},
-			{"kevin", 1},
-			{"mary", 1},
-		},
-	},
-	{
-		Name: "create table from json column aliased",
+		Name: "test other join types",
 		SetUpScript: []string{
 			"create table organizations (organization varchar(10), members json)",
 			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-		},
-		Query: "select names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
-		Expected: []sql.Row{
-			{"bob"},
-			{"john"},
-			{"alice"},
-			{"mary"},
-		},
-	},
-	{
-		Name: "create table from json column aliased column",
-		SetUpScript: []string{
-			"create table organizations (organization varchar(10), members json)",
-			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-		},
-		Query: "select o.organization, jt.names from organizations o, JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
-		Expected: []sql.Row{
-			{"orgA", "bob"},
-			{"orgA", "john"},
-			{"orgB", "alice"},
-			{"orgB", "mary"},
-		},
-	},
-	{
-		Name: "cross join json table",
-		SetUpScript: []string{
-			"create table organizations (organization varchar(10), members json)",
-			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-		},
-		Query: "select o.organization, jt.names from organizations o CROSS JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
-		Expected: []sql.Row{
-			{"orgA", "bob"},
-			{"orgA", "john"},
-			{"orgB", "alice"},
-			{"orgB", "mary"},
-		},
-	},
-	{
-		Name: "natural join json table",
-		SetUpScript: []string{
-			"create table organizations (organization varchar(10), members json)",
-			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-		},
-		Query: "select o.organization, jt.names from organizations o NATURAL JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
-		Expected: []sql.Row{
-			{"orgA", "bob"},
-			{"orgA", "john"},
-			{"orgB", "alice"},
-			{"orgB", "mary"},
-		},
-	},
-	{
-		Name: "inner join json table with condition",
-		SetUpScript: []string{
-			"create table organizations (organization varchar(10), members json)",
-			`insert into organizations values ("orgA", '["bob","john"]'), ("orgB", '["alice","mary"]')`,
-		},
-		Query: "select o.organization, jt.names from organizations o INNER JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt on o.organization = 'orgA';",
-		Expected: []sql.Row{
-			{"orgA", "bob"},
-			{"orgA", "john"},
-		},
-	},
-	{
-		Name: "inner join json table with condition in subquery",
-		SetUpScript: []string{
 			`create table p (i int primary key)`,
 			`insert into p values (1),(2),(3)`,
 		},
-		Query: `select (select jt.i from p inner join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt where p.i >= jt.i LIMIT 1);`,
-		Expected: []sql.Row{
-			{1},
-		},
-	},
-	{
-		Name: "left join json table with condition",
-		SetUpScript: []string{
-			`create table p (i int primary key)`,
-			`insert into p values (1),(2),(3)`,
-		},
-		Query: `select * from p left join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt on p.i > jt.i;`,
-		Expected: []sql.Row{
-			{1, nil},
-			{2, 1},
-			{3, 1},
-			{3, 2},
-		},
-	},
-	{
-		Name: "right join json table with condition",
-		SetUpScript: []string{
-			`create table p (i int primary key)`,
-			`insert into p values (1),(2),(3)`,
-		},
-		Query: `select * from p right join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt on p.i > jt.i;`,
-		Expected: []sql.Row{
-			{2, 1},
-			{3, 1},
-			{3, 2},
-			{nil, 3},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select o.organization, jt.names from organizations o CROSS JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"orgA", "bob"},
+					{"orgA", "john"},
+					{"orgB", "alice"},
+					{"orgB", "mary"},
+				},
+			},
+			{
+				Query: "select o.organization, jt.names from organizations o NATURAL JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"orgA", "bob"},
+					{"orgA", "john"},
+					{"orgB", "alice"},
+					{"orgB", "mary"},
+				},
+			},
+			{
+				Query: "select o.organization, jt.names from organizations o INNER JOIN JSON_TABLE(o.members, '$[*]' columns (names varchar(100) path '$')) as jt on o.organization = 'orgA';",
+				Expected: []sql.Row{
+					{"orgA", "bob"},
+					{"orgA", "john"},
+				},
+			},
+			{
+				Query: `select (select jt.i from p inner join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt where p.i >= jt.i LIMIT 1);`,
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: `select * from p left join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt on p.i > jt.i;`,
+				Expected: []sql.Row{
+					{1, nil},
+					{2, 1},
+					{3, 1},
+					{3, 2},
+				},
+			},
+			{
+				Query: `select * from p right join JSON_TABLE('[1,2,3]', '$[*]' columns (i int path '$')) as jt on p.i > jt.i;`,
+				Expected: []sql.Row{
+					{2, 1},
+					{3, 1},
+					{3, 2},
+					{nil, 3},
+				},
+			},
 		},
 	},
 	{
@@ -290,20 +295,25 @@ var JSONTableScriptTests = []ScriptTest{
 			"create table t (i int, j json)",
 			`insert into t values (1, '["test"]')`,
 		},
-		Query: "select i, (select names from JSON_Table(t.j, '$[*]' columns (names varchar(100) path '$')) jt) from t;",
-		Expected: []sql.Row{
-			{1, "test"},
-		},
-	},
-	{
-		Name: "json table in subquery qualified with parent",
-		SetUpScript: []string{
-			"create table t (i int, j json)",
-			`insert into t values (1, '["test"]')`,
-		},
-		Query: "select (select names from JSON_Table(t.j, '$[*]' columns (names varchar(100) path '$')) jt) from t;",
-		Expected: []sql.Row{
-			{"test"},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, (select names from JSON_Table(t.j, '$[*]' columns (names varchar(100) path '$')) jt) from t;",
+				Expected: []sql.Row{
+					{1, "test"},
+				},
+			},
+			{
+				Query: "select (select jt.a from t, json_table('[\"abc\"]', '$[*]' columns (a varchar(10) path '$')) as jt)",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select (select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt)",
+				Expected: []sql.Row{
+					{"test"},
+				},
+			},
 		},
 	},
 	{
@@ -311,24 +321,41 @@ var JSONTableScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			`create table tbl (i int primary key, j json)`,
 			`insert into tbl values (0, '[{"a":1,"b":2,"c":3},{"a":4,"b":5,"c":6},{"a":7,"b":8,"c":9}]')`,
-		},
-		Query: "with c as (select jt.a from tbl, json_table(tbl.j, '$[*]' columns (a int path '$.a')) as jt) select * from c",
-		Expected: []sql.Row{
-			{1},
-			{4},
-			{7},
-		},
-	},
-	{
-		Name: "json table join with cte",
-		SetUpScript: []string{
 			`create table t (i int primary key)`,
 			`insert into t values (1), (2)`,
 		},
-		Query: "with tt as (select * from t) select * from tt, json_table('[{\"a\":3}]', '$[*]' columns (a int path '$.a')) as jt",
-		Expected: []sql.Row{
-			{1, 3},
-			{2, 3},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "with c as (select jt.a from tbl, json_table(tbl.j, '$[*]' columns (a int path '$.a')) as jt) select * from c",
+				Expected: []sql.Row{
+					{1},
+					{4},
+					{7},
+				},
+			},
+			{
+				Query: "with tt as (select * from t) select * from tt, json_table('[{\"a\":3}]', '$[*]' columns (a int path '$.a')) as jt",
+				Expected: []sql.Row{
+					{1, 3},
+					{2, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "table union cross join with json table",
+		SetUpScript: []string{
+			"create table t (i int, j json)",
+			`insert into t values (1, '["test"]')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select t.j from t union select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+				Expected: []sql.Row{
+					{"[\"test\"]"},
+					{"test"},
+				},
+			},
 		},
 	},
 	{
@@ -408,18 +435,6 @@ var JSONTableScriptTests = []ScriptTest{
 			{1, 4, 6},
 		},
 	},
-	{
-		Name: "table union cross join with json table",
-		SetUpScript: []string{
-			"create table t (i int, j json)",
-			`insert into t values (1, '["test"]')`,
-		},
-		Query: "select t.j from t union select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
-		Expected: []sql.Row{
-			{"[\"test\"]"},
-			{"test"},
-		},
-	},
 
 	// Error tests
 	{
@@ -459,46 +474,53 @@ var JSONTableScriptTests = []ScriptTest{
 
 var BrokenJSONTableScriptTests = []ScriptTest{
 	{
-		// subqueries start using the dummy schema for some reason, not isolated to JSON_Tables
-		Name: "json table in cross join in subquery",
-		SetUpScript: []string{
-			"create table t (j json)",
-		},
-		Query: "select (select jt.a from t, json_table('[\"abc\"]', '$[*]' columns (a varchar(10) path '$')) as jt)",
-		Expected: []sql.Row{
-			{"abc"},
-		},
-	},
-	{
-		// subqueries start using the dummy schema for some reason, not isolated to JSON_Tables
-		Name: "json table in cross join in subquery with reference to left",
-		SetUpScript: []string{
-			"create table t (i int, j json)",
-			`insert into t values (1, '["test"]')`,
-		},
-		Query: "select (select a from t, json_table(t.j, '$[*]' columns (a varchar(10) path '$')) as jt)",
-		Expected: []sql.Row{
-			{1},
-		},
-	},
-	{
 		// wrong error
 		Name: "json_table out of cte",
 		SetUpScript: []string{
 			"create table t (i int, j json)",
 			`insert into t values (1, '["test"]')`,
 		},
-		Query:       "with tt as (select * from t) select * from json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
-		ExpectedErr: sql.ErrTableNotFound,
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "with tt as (select * from t) select * from json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+				ExpectedErr: sql.ErrUnknownTable,
+			},
+			{
+				Query:       "with tt as (select * from t) select * from tt, json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
+				ExpectedErr: sql.ErrInvalidArgument,
+			},
+		},
 	},
 	{
-		// this should error with incorrect arguments
-		Name: "json_table out of cte with join",
-		SetUpScript: []string{
-			"create table t (i int, j json)",
-			`insert into t values (1, '["test"]')`,
+		// Unsupported functionality
+		Name:        "json_table out of cte",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM JSON_TABLE('[ {\"c1\": null} ]', '$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt;",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('[{\"a\":\"3\"},{\"a\":2},{\"b\":1},{\"a\":0},{\"a\":[1,2]}]', \"$[*]\" COLUMNS(rowid FOR ORDINALITY, ac VARCHAR(100) PATH \"$.a\" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR, aj JSON PATH \"$.a\" DEFAULT '{\"x\": 333}' ON EMPTY, bx INT EXISTS PATH \"$.b\")) AS tt;",
+				Expected: []sql.Row{
+					{1, 3, "3", 0},
+					{2, 2, 2, 0},
+					{3, 111, types.MustJSON("{\"x\": 333}"), 1},
+					{4, 0, 0, 0},
+					{5, 999, types.MustJSON("[1, 2]"), 0},
+				},
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('[ {\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}, {\"a\":3}]', '$[*]' COLUMNS(a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b INT PATH '$'))) AS jt WHERE b IS NOT NULL;",
+				Expected: []sql.Row{
+					{1, 11},
+					{1, 111},
+					{2, 22},
+					{2, 222},
+				},
+			},
 		},
-		Query:       "with tt as (select * from t) select * from tt, json_table(tt.j, '$[*]' columns (a varchar(10) path '$')) as jt;",
-		ExpectedErr: sql.ErrInvalidArgument,
 	},
 }

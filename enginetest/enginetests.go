@@ -150,9 +150,25 @@ func TestJSONTableQueries(t *testing.T, harness Harness) {
 	}
 }
 
+func TestJSONTableQueriesPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Pk_tablesData)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
+	for _, tt := range queries.JSONTableQueryTests {
+		TestPreparedQueryWithEngine(t, harness, e, tt)
+	}
+}
+
 func TestJSONTableScripts(t *testing.T, harness Harness) {
 	for _, tt := range queries.JSONTableScriptTests {
 		TestScript(t, harness, tt)
+	}
+}
+
+func TestJSONTableScriptsPrepared(t *testing.T, harness Harness) {
+	for _, tt := range queries.JSONTableScriptTests {
+		TestScriptPrepared(t, harness, tt)
 	}
 }
 
