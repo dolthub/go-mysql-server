@@ -26,9 +26,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// constructJoinPlan finds an optimal table ordering and access plan
+// optimizeJoins finds an optimal table ordering and access plan
 // for the tables in the query.
-func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("construct_join_plan")
 	defer span.End()
 
