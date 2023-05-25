@@ -476,6 +476,16 @@ var JsonScripts = []ScriptTest{
 				},
 			},
 			{
+				Query: "select pk, json_extract(col1, '$.items.*') from t order by pk;",
+				Expected: []sql.Row{
+					{1, types.MustJSON("[1, 2]")},
+					{2, nil},
+					{3, nil},
+					{4, types.MustJSON("null")},
+					{5, nil},
+				},
+			},
+			{
 				Query:    "select pk from t where json_extract(col1, '$.items') is null;",
 				Expected: []sql.Row{{2}, {3}, {5}},
 			},
