@@ -267,13 +267,24 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		if err != nil {
 			return nil, err
 		}
+		// TODO: make a helper method
+		var parentPk sql.Index
+		if idxs, err := parentTbl.GetIndexes(ctx); err != nil {
+			return nil, err
+		} else {
+			for _, idx := range idxs {
+				if idx.ID() == "PRIMARY" {
+					parentPk = idx
+					break
+				}
+			}
+		}
 		if !ok {
 			// If this error is returned, it is due to an index deletion not properly checking for foreign key usage
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
-		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.Columns,
-			fk.ParentColumns, parentIndex)
+		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.Columns, fk.ParentColumns, parentIndex, parentPk)
 		if err != nil {
 			return nil, err
 		}
@@ -373,8 +384,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
-		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.ParentColumns,
-			fk.Columns, childIndex)
+		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.ParentColumns, fk.Columns, childIndex, nil)
 		if err != nil {
 			return nil, err
 		}

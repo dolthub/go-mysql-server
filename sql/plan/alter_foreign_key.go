@@ -190,8 +190,19 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		if !ok {
 			return sql.ErrForeignKeyMissingReferenceIndex.New(fkDef.Name, fkDef.ParentTable)
 		}
+		var refTblPk sql.Index
+		if idxs, err := refTbl.GetIndexes(ctx); err != nil {
+			return err
+		} else {
+			for _, idx := range idxs {
+				if idx.ID() == "PRIMARY" {
+					refTblPk = idx
+					break
+				}
+			}
+		}
 
-		indexPositions, appendTypes, err := FindForeignKeyColMapping(ctx, fkDef.Name, tbl, fkDef.Columns, fkDef.ParentColumns, refTblIndex)
+		indexPositions, appendTypes, err := FindForeignKeyColMapping(ctx, fkDef.Name, tbl, fkDef.Columns, fkDef.ParentColumns, refTblIndex, refTblPk)
 		if err != nil {
 			return err
 		}
@@ -374,7 +385,7 @@ func FindForeignKeyColMapping(
 	localTbl sql.ForeignKeyTable,
 	localFKCols []string,
 	destFKCols []string,
-	index sql.Index,
+	index, pkIndex sql.Index,
 ) ([]int, []sql.Type, error) {
 	localFKCols = lowercaseSlice(localFKCols)
 	destFKCols = lowercaseSlice(destFKCols)
@@ -390,7 +401,8 @@ func FindForeignKeyColMapping(
 	var appendTypes []sql.Type
 	indexTypeMap := make(map[string]sql.Type)
 	indexColMap := make(map[string]int)
-	for i, indexCol := range index.ColumnExpressionTypes() {
+	indexColExprTypes := index.ColumnExpressionTypes()
+	for i, indexCol := range indexColExprTypes {
 		indexColName := strings.ToLower(indexCol.Expression)
 		indexTypeMap[indexColName] = indexCol.Type
 		indexColMap[indexColName] = i
@@ -398,6 +410,23 @@ func FindForeignKeyColMapping(
 			appendTypes = append(appendTypes, indexCol.Type)
 		}
 	}
+	// TODO: concat primary key?
+	if pkIndex != nil {
+		i := len(indexColExprTypes)
+		for _, indexCol := range pkIndex.ColumnExpressionTypes() {
+			indexColName := strings.ToLower(indexCol.Expression)
+			if _, ok := indexColMap[indexColName]; ok {
+				continue
+			}
+			indexTypeMap[indexColName] = indexCol.Type
+			indexColMap[indexColName] = i
+			if i >= len(destFKCols) {
+				appendTypes = append(appendTypes, indexCol.Type)
+			}
+			i++
+		}
+	}
+
 	indexPositions := make([]int, len(destFKCols))
 
 	for fkIdx, colName := range localFKCols {
@@ -465,6 +494,16 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 	for i, prefixCol := range prefixCols {
 		exprCols[i] = tblName + "." + strings.ToLower(prefixCol)
 	}
+
+	var primaryIdxExprs []string
+	for _, idx := range indexes {
+		if idx.ID() == "PRIMARY" {
+			primaryIdxExprs = lowercaseSlice(idx.Expressions())
+			break
+		}
+	}
+
+
 	colLen := len(exprCols)
 	var indexesWithLen []idxWithLen
 	for _, idx := range indexes {
@@ -472,7 +511,7 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 			continue
 		}
 		indexExprs := lowercaseSlice(idx.Expressions())
-		if ok := exprsAreIndexPrefix(exprCols, indexExprs); ok {
+		if ok := exprsAreIndexPrefix(exprCols, indexExprs, primaryIdxExprs); ok {
 			indexesWithLen = append(indexesWithLen, idxWithLen{idx, len(indexExprs)})
 		}
 	}
@@ -527,7 +566,18 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 }
 
 // exprsAreIndexPrefix returns whether the given expressions are a prefix of the given index expressions
-func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
+func exprsAreIndexPrefix(exprs, indexExprs, primaryIndexExprs []string) bool {
+	indexExprsMap := make(map[string]struct{})
+	for _, e := range indexExprs {
+		indexExprsMap[e] = struct{}{}
+	}
+
+	for _, e := range primaryIndexExprs {
+		if _, ok := indexExprsMap[e]; !ok {
+			indexExprs = append(indexExprs, e)
+		}
+	}
+
 	if len(exprs) > len(indexExprs) {
 		return false
 	}
