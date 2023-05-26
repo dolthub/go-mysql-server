@@ -112,13 +112,12 @@ var EventTests = []ServerEventTest{
 		},
 		Assertions: []ServerEvenTestAssertion{
 			{
-				// TODO: should give warning: | Warning | 1292 | Truncated incorrect datetime value: '2038-01-16 23:59:00 +0000 UTC' |
-				Query:    "CREATE EVENT event2 ON SCHEDULE AT '2038-01-16 23:59:00 +0000 UTC' + INTERVAL 1 DAY ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (100);",
+				Query:    "CREATE EVENT event2 ON SCHEDULE AT '38-01-16 12:2:3.' + INTERVAL 1 DAY ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (100);",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW EVENTS;",
-				Expected: []sql.Row{{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 12:02:03", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 		},
 	},

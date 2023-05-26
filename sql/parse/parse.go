@@ -1537,7 +1537,7 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 		if err != nil {
 			return nil, err
 		}
-		at = plan.NewOnScheduleTimestamp(ts, intervals)
+		at = plan.NewOnScheduleTimestamp("AT", ts, intervals)
 	} else {
 		every, err := intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
 		if err != nil {
@@ -1555,14 +1555,14 @@ func convertCreateEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.N
 			if err != nil {
 				return nil, err
 			}
-			starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+			starts = plan.NewOnScheduleTimestamp("STARTS", startsTs, startsIntervals)
 		}
 		if eventSpec.OnSchedule.Ends != nil {
 			endsTs, endsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
 			if err != nil {
 				return nil, err
 			}
-			ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+			ends = plan.NewOnScheduleTimestamp("ENDS", endsTs, endsIntervals)
 		}
 	}
 
@@ -1634,7 +1634,7 @@ func convertAlterEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 			if err != nil {
 				return nil, err
 			}
-			at = plan.NewOnScheduleTimestamp(ts, intervals)
+			at = plan.NewOnScheduleTimestamp("AT", ts, intervals)
 		} else {
 			every, err := intervalExprToExpression(ctx, &eventSpec.OnSchedule.EveryInterval)
 			if err != nil {
@@ -1652,14 +1652,14 @@ func convertAlterEvent(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 				if err != nil {
 					return nil, err
 				}
-				starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+				starts = plan.NewOnScheduleTimestamp("STARTS", startsTs, startsIntervals)
 			}
 			if eventSpec.OnSchedule.Ends != nil {
 				endsTs, endsIntervals, err := convertEventScheduleTimeSpec(ctx, eventSpec.OnSchedule.Ends)
 				if err != nil {
 					return nil, err
 				}
-				ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+				ends = plan.NewOnScheduleTimestamp("ENDS", endsTs, endsIntervals)
 			}
 		}
 	}

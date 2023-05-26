@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"io"
 	"sync"
 	"time"
@@ -250,7 +251,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	if a.AlterOnSchedule {
 		if a.At != nil {
 			ed.HasExecuteAt = true
-			ed.ExecuteAt, err = a.At.EvalTime(ctx, true)
+			ed.ExecuteAt, err = a.At.EvalTime(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -269,7 +270,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			ed.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 			if a.Starts != nil {
-				ed.Starts, err = a.Starts.EvalTime(ctx, true)
+				ed.Starts, err = a.Starts.EvalTime(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -279,7 +280,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 			if a.Ends != nil {
 				ed.HasEnds = true
-				ed.Ends, err = a.Ends.EvalTime(ctx, true)
+				ed.Ends, err = a.Ends.EvalTime(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -412,14 +413,20 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	var eventEnded = false
+	var eventEndingTime time.Time
 	if a.eventDetails.HasExecuteAt {
-		eventEnded = a.eventDetails.ExecuteAt.Sub(a.eventDetails.LastAltered).Seconds() < 0
+		eventEndingTime = a.eventDetails.ExecuteAt
 	} else if a.eventDetails.HasEnds {
-		eventEnded = a.eventDetails.Ends.Sub(a.eventDetails.LastAltered).Seconds() < 0
+		eventEndingTime = a.eventDetails.Ends
 	}
 
-	if eventEnded {
+	eventEndingTimeInSystemTz, ok := gmstime.ConvertTimeZone(eventEndingTime, a.eventDetails.TimezoneOffset, gmstime.SystemTimezoneOffset())
+	if !ok {
+		eventEndingTimeInSystemTz = eventEndingTime
+	}
+
+	// Here Altered time is set with current local time, so it's safe to do check here.
+	if eventEndingTimeInSystemTz.Sub(a.eventDetails.LastAltered).Seconds() < 0 {
 		// If the event execution/end time is altered and in the past.
 		if a.alterSchedule {
 			if a.eventDetails.OnCompletionPreserve {

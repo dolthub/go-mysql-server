@@ -102,5 +102,5 @@ func GetEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinit
 	if !ok {
 		return sql.EventDetails{}, sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
 	}
-	return eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted, false)
+	return eventPlan.GetEventDetails(ctx, event.TimezoneOffset, event.CreatedAt, event.LastAltered, event.LastExecuted)
 }

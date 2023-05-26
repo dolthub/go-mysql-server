@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"time"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -99,7 +97,7 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		var executeAt, intervalVal, intervalField, starts, ends, status interface{}
 		if event.HasExecuteAt {
 			eventType = "ONE TIME"
-			executeAt = event.ExecuteAt.In(time.Local).Format(sql.EventDateTimeOnlyFormat)
+			executeAt = event.ExecuteAt.Format(sql.EventDateSpaceTimeFormat)
 		} else {
 			interval, err := sql.EventOnScheduleEveryIntervalFromString(event.ExecuteEvery)
 			if err != nil {
@@ -107,9 +105,9 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 			intervalVal, intervalField = interval.GetIntervalValAndField()
 			// STARTS will always have defined value
-			starts = event.Starts.In(time.Local).Format(sql.EventDateTimeOnlyFormat)
+			starts = event.Starts.Format(sql.EventDateSpaceTimeFormat)
 			if event.HasEnds {
-				ends = event.Ends.In(time.Local).Format(sql.EventDateTimeOnlyFormat)
+				ends = event.Ends.Format(sql.EventDateSpaceTimeFormat)
 			}
 		}
 

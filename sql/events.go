@@ -16,12 +16,16 @@ package sql
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 )
 
-const EventDateTimeOnlyFormat = "2006-01-02 15:04:05"
+const EventDateSpaceTimeFormat = "2006-01-02 15:04:05"
 
 // EventSchedulerNotifierStatement represents a SQL statement that requires a EventSchedulerNotifier
 // (e.g. CREATE / ALTER / DROP EVENT and DROP DATABASE).
@@ -53,13 +57,15 @@ type EventSchedulerNotifier interface {
 type EventDefinition struct {
 	// The name of this event. Event names in a database are unique.
 	Name string
-	// The text of the statement to create this event.
+	// The text definition of the statement to create this event.
 	CreateStatement string
-	// The time that the event was created.
+	// The timezone offset the event was created or last altered at.
+	TimezoneOffset string
+	// The time that the event was created at.
 	CreatedAt time.Time
-	// The time that the event was last altered.
+	// The time that the event was last altered at.
 	LastAltered time.Time
-	// The time that the event was last executed.
+	// The time that the event was last executed at.
 	LastExecuted time.Time
 }
 
@@ -80,12 +86,15 @@ type EventDetails struct {
 	Ends         time.Time
 	HasEnds      bool
 
+	// TimezoneOffset is session timezone offset that event was created or altered
+	// All time values in EventDetails should be in this timezone offset when storing.
+	TimezoneOffset string
+
 	// time values of event create/alter/execute metadata
 	Created        time.Time
 	LastAltered    time.Time
 	LastExecuted   time.Time
 	ExecutionCount uint64
-	// TODO: add TimeZone
 }
 
 // GetEventStorageDefinition returns event's EventDefinition to be
@@ -96,7 +105,8 @@ type EventDetails struct {
 func (e *EventDetails) GetEventStorageDefinition() EventDefinition {
 	return EventDefinition{
 		Name:            e.Name,
-		CreateStatement: e.CreateEventStatement(time.UTC, time.RFC3339),
+		CreateStatement: e.CreateEventStatement(),
+		TimezoneOffset:  e.TimezoneOffset,
 		CreatedAt:       e.Created,
 		LastAltered:     e.LastAltered,
 		LastExecuted:    e.LastExecuted,
@@ -104,10 +114,7 @@ func (e *EventDetails) GetEventStorageDefinition() EventDefinition {
 }
 
 // CreateEventStatement returns a CREATE EVENT statement for this event.
-// This function requires time zone location and time format input values
-// to generate CREATE EVENT statement for either storage or specific
-// statements such as SHOW CREATE EVENT.
-func (e *EventDetails) CreateEventStatement(loc *time.Location, format string) string {
+func (e *EventDetails) CreateEventStatement() string {
 	stmt := fmt.Sprintf("CREATE")
 	if e.Definer != "" {
 		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, e.Definer)
@@ -115,12 +122,12 @@ func (e *EventDetails) CreateEventStatement(loc *time.Location, format string) s
 	stmt = fmt.Sprintf("%s EVENT `%s`", stmt, e.Name)
 
 	if e.HasExecuteAt {
-		stmt = fmt.Sprintf("%s ON SCHEDULE AT '%s'", stmt, e.ExecuteAt.In(loc).Format(format))
+		stmt = fmt.Sprintf("%s ON SCHEDULE AT '%s'", stmt, e.ExecuteAt.Format(EventDateSpaceTimeFormat))
 	} else {
 		// STARTS should be NOT null regardless of user definition
-		stmt = fmt.Sprintf("%s ON SCHEDULE EVERY %s STARTS '%s'", stmt, e.ExecuteEvery, e.Starts.In(loc).Format(format))
+		stmt = fmt.Sprintf("%s ON SCHEDULE EVERY %s STARTS '%s'", stmt, e.ExecuteEvery, e.Starts.Format(EventDateSpaceTimeFormat))
 		if e.HasEnds {
-			stmt = fmt.Sprintf("%s ENDS '%s'", stmt, e.Ends.In(loc).Format(format))
+			stmt = fmt.Sprintf("%s ENDS '%s'", stmt, e.Ends.Format(EventDateSpaceTimeFormat))
 		}
 	}
 
@@ -142,9 +149,12 @@ func (e *EventDetails) CreateEventStatement(loc *time.Location, format string) s
 
 // GetNextExecutionTime returns the next execution timestamp for the event,
 // which depends on AT or EVERY field of EventDetails. It also returns whether
-// the event is ended/expired. The current time passed in this function needs
-// to be in UTC timezone.
-func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
+// the event is ended/expired.
+func (e *EventDetails) GetNextExecutionTime() (time.Time, bool, error) {
+	// curTime needs to be in system timezone, which is the local timezone.
+	curTime := time.Now()
+	// TODO: when retrieving any time values from event details,
+	//  it should be converted from event TZ to system TZ.
 	if e.HasExecuteAt {
 		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() < 1, nil
 	} else {
@@ -342,4 +352,136 @@ func EventOnScheduleEveryIntervalFromString(every string) (*EventOnScheduleEvery
 	}
 
 	return interval, nil
+}
+
+// Events time parsing
+
+var ErrIncorrectValue = errors.NewKind("Incorrect %s value: '%s'")
+var dateRegex = regexp.MustCompile(`(?m)^(\d{1,4})-(\d{1,2})-(\d{1,2})(.*)$`)
+var timeRegex = regexp.MustCompile(`(?m)^([ T])?(\d{1,2})?(:)?(\d{1,2})?(:)?(\d{1,2})?(\.)?(\d{1,6})?(.*)$`)
+var tzRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)
+
+// GetTimeValueFromStringInput returns time.Time in system timezone (SYSTEM = time.Now().Location()).
+// evaluating valid MySQL datetime and timestamp formats.
+func GetTimeValueFromStringInput(field, t string) (time.Time, error) {
+	// TODO: the time value should be in session timezone rather than system timezone.
+	sessTz := gmstime.SystemTimezoneOffset()
+
+    // For MySQL datetime format, it accepts any valid date format
+	// and tries parsing time part first and timezone part if time part is valid.
+	// Otherwise, any invalid time or timezone part is truncated and gives warning.
+	dt := strings.Split(t, "-")
+	if len(dt) > 1 {
+		var year, month, day, hour, minute, second int
+		var timePart, tzPart string
+		var ok bool
+		var inputTz = sessTz
+		// FIRST try to get date part
+		year, month, day, timePart, ok = getDatePart(t)
+		if !ok {
+			return time.Time{}, ErrIncorrectValue.New(field, t)
+		}
+		// Then time part
+		if timePart != "" {
+			hour, minute, second, tzPart, ok = getTimePart(timePart)
+			if !ok {
+				return time.Time{}, ErrIncorrectValue.New(field, t)
+			}
+		}
+		// Then timezone part
+		if tzPart != "" {
+			if tzPart[0] != '+' && tzPart[0] != '-' {
+				// TODO: warning: Truncated incorrect datetime value: '...'
+			} else {
+				inputTz, ok = getTimezonePart(tzPart)
+				if !ok {
+					return time.Time{}, ErrIncorrectValue.New(field, t)
+				}
+			}
+		}
+
+		datetimeVal := fmt.Sprintf("%4d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second)
+		tVal, err := time.Parse(EventDateSpaceTimeFormat, datetimeVal)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid time zone: %s", sessTz)
+		}
+
+		// convert the time value to the session timezone for display and storage
+		tVal, ok = gmstime.ConvertTimeZone(tVal, inputTz, sessTz)
+		if !ok {
+			return time.Time{}, fmt.Errorf("invalid time zone: %s", sessTz)
+		}
+		return tVal, nil
+	} else {
+		// TODO: support timestamp input parsing (e.g. 2023526...)
+		return time.Time{}, fmt.Errorf("timestamp input parsing not supported yet")
+	}
+}
+
+func getDatePart(s string) (int, int, int, string, bool) {
+	matches := dateRegex.FindStringSubmatch(s)
+	if matches == nil || len(matches) != 5 {
+		return 0, 0, 0, "", false
+	}
+
+	year, ok := validateYear(getInt(matches[1]))
+	return year, getInt(matches[2]), getInt(matches[3]), matches[4], ok
+}
+
+func getTimePart(t string) (int, int, int, string, bool) {
+	var hour, minute, second int
+	matches := timeRegex.FindStringSubmatch(t)
+	if matches == nil || len(matches) != 10 {
+		return 0, 0, 0, "", false
+	}
+	hour = getInt(matches[2])
+	if matches[3] == "" {
+		return hour, minute, second, "", true
+	} else if matches[3] != ":" {
+		return 0, 0, 0, "", false
+	}
+	minute = getInt(matches[4])
+	if matches[5] == "" {
+		return hour, minute, second, "", true
+	} else if matches[5] != ":" {
+		return 0, 0, 0, "", false
+	}
+	second = getInt(matches[6])
+	// microsecond with dot in front of it is not needed for now
+	//if matches[7] != "." {
+	//	return 0, 0, 0, "", false
+	//}
+	//microsecond := matches[8]
+	return hour, minute, second, matches[9], true
+}
+
+func getTimezonePart(tz string) (string, bool) {
+	matches := tzRegex.FindStringSubmatch(tz)
+	if len(matches) == 4 {
+		symbol := matches[1]
+		hours := matches[2]
+		mins := matches[3]
+		return fmt.Sprintf("%s%s:%s", symbol, hours, mins), true
+	} else {
+		return "", false
+	}
+}
+
+func getInt(s string) int {
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return i
+}
+
+func validateYear(i int) (int, bool) {
+	if i >= 0 && i <= 69 {
+		return i + 2000, true
+	} else if i >= 70 && i <= 99 {
+		return i + 1900, true
+	} else if i >= 1901 && i < 2155 {
+		return i, true
+	}
+	return 0, false
 }

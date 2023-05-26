@@ -16,11 +16,9 @@ package plan
 
 import (
 	"fmt"
-	"strings"
-	"time"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"strings"
 )
 
 type ShowCreateEvent struct {
@@ -87,7 +85,7 @@ func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		return nil, err
 	}
 
-	createEventStmt := s.Event.CreateEventStatement(time.Local, sql.EventDateTimeOnlyFormat)
+	createEventStmt := s.Event.CreateEventStatement()
 	// TODO: fill sql_mode and time_zone with appropriate values
 	return sql.RowsToRowIter(sql.Row{
 		s.Event.Name,        // Event

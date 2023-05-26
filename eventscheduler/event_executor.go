@@ -55,8 +55,8 @@ func (ee *eventExecutor) loadEvents(l []*enabledEvent) {
 	ee.list = newEnabledEventsList(l)
 }
 
-// TODO: this function needs to start a background process to
-// check for events to execute on given schedule.
+// start starts the eventExecutor checking and executing
+// enabled events and updates necessary events' metadata.
 func (ee *eventExecutor) start() {
 	ee.stop.Store(false)
 
@@ -69,8 +69,7 @@ func (ee *eventExecutor) start() {
 			if ee.stop.Load() {
 				return
 			} else if ee.list.len() > 1 {
-				diff := ee.list.getNextExecutionTime().Sub(timeNow).Abs().Seconds()
-				if diff < 1 {
+				if ee.list.getNextExecutionTime().Sub(timeNow).Abs().Seconds() < 1 {
 					curEvent := ee.list.pop()
 					ee.executeEventAndUpdateListIfApplicable(curEvent, timeNow)
 				}
@@ -102,14 +101,11 @@ func (ee *eventExecutor) executeEventAndUpdateListIfApplicable(event *enabledEve
 		return
 	}
 
-	// TODO: execution at create event - event doesn't exist error bcs of context difference and not updated?
 	ended, err := event.updateEventAfterExecution(ee.ctx, event.edb, executionTime)
 	if err != nil {
 		// TODO: log update error
-		return
 	} else if !ended {
 		ee.list.add(event)
-		ee.list.sort()
 	}
 }
 
@@ -158,13 +154,14 @@ func (ee *eventExecutor) add(edb sql.EventDatabase, details sql.EventDetails) {
 	} else if !created {
 		return
 	} else {
+		// TODO: created and starts value should be converted from event TZ to system TZ
+		//  for checking event should be executed.
 		// If Starts is set to current_timestamp or not set, then executeEvent the event once and update last executed At.
 		if newEvent.eventDetails.Created.Sub(newEvent.eventDetails.Starts).Abs().Seconds() <= 1 {
 			// after execution, the event is added to the list if applicable (if the event is not ended)
 			ee.executeEventAndUpdateListIfApplicable(newEvent, newEvent.eventDetails.Created)
 		} else {
 			ee.list.add(newEvent)
-			ee.list.sort()
 		}
 	}
 }
@@ -178,7 +175,6 @@ func (ee *eventExecutor) update(edb sql.EventDatabase, origEventName string, det
 	var origEventKeyName = fmt.Sprintf("%s.%s", edb.Name(), origEventName)
 	// remove the original event if exists.
 	ee.list.remove(origEventKeyName)
-	ee.list.sort()
 
 	// if the updated event status is not ENABLE, do not add it to the list.
 	if details.Status != sql.EventStatus_Enable.String() {
@@ -196,13 +192,14 @@ func (ee *eventExecutor) update(edb sql.EventDatabase, origEventName string, det
 			ee.runningEventsStatus.update(origEventKeyName, s, false)
 		}
 
+		// TODO: lastAltered and starts value should be converted from event TZ to system TZ
+		//  for checking event should be executed.
 		// if STARTS is set to current_timestamp or not set,
 		// then executeEvent the event once and update last executed At.
 		if details.LastAltered.Sub(details.Starts).Abs().Seconds() <= 1 {
 			go ee.executeEventAndUpdateListIfApplicable(newUpdatedEvent, newUpdatedEvent.eventDetails.LastAltered)
 		} else {
 			ee.list.add(newUpdatedEvent)
-			ee.list.sort()
 		}
 	}
 }
@@ -213,7 +210,6 @@ func (ee *eventExecutor) update(edb sql.EventDatabase, origEventName string, det
 // after its execution.
 func (ee *eventExecutor) remove(eventIdName string) {
 	ee.list.remove(eventIdName)
-	ee.list.sort()
 	// if not found, it might have been removed as it's currently executing
 	if s, ok := ee.runningEventsStatus.getStatus(eventIdName); ok && s {
 		ee.runningEventsStatus.update(eventIdName, s, false)
@@ -227,7 +223,6 @@ func (ee *eventExecutor) remove(eventIdName string) {
 // events after their execution.
 func (ee *eventExecutor) removeSchemaEvents(dbName string) {
 	ee.list.removeSchemaEvents(dbName)
-	ee.list.sort()
 	// if not found, it might be currently executing
 	ee.runningEventsStatus.removeSchemaEvents(dbName)
 }

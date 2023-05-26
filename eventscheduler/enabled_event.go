@@ -40,7 +40,7 @@ type enabledEvent struct {
 func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails) (*enabledEvent, bool, error) {
 	if ed.Status == sql.EventStatus_Enable.String() {
 		// evaluating each event schedules by updating/dropping events if applicable
-		nextExecution, eventEnded, err := ed.GetNextExecutionTime(time.Now().UTC())
+		nextExecution, eventEnded, err := ed.GetNextExecutionTime()
 		if err != nil {
 			return nil, false, err
 		} else if !eventEnded {
@@ -101,8 +101,10 @@ func (e *enabledEvent) name() string {
 // this function updates the enabledEvent with the next execution time. It also updates the event
 // metadata in the database.
 func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.EventDatabase, executionTime time.Time) (bool, error) {
+	// TODO: the lastExecuted value should be stored in the event's timezone
+	//  (currently, it is always SYSTEM, so conversion not needed for now)
 	e.eventDetails.LastExecuted = executionTime
-	nextExecutionAt, ended, err := e.eventDetails.GetNextExecutionTime(executionTime)
+	nextExecutionAt, ended, err := e.eventDetails.GetNextExecutionTime()
 	if err != nil {
 		return ended, err
 	} else if ended {
@@ -142,7 +144,9 @@ func newEnabledEventsList(list []*enabledEvent) *enabledEventsList {
 		mu:         &sync.Mutex{},
 		eventsList: list,
 	}
-	newList.sort()
+	sort.SliceStable(newList.eventsList, func(i, j int) bool {
+		return list[i].nextExecutionAt.Sub(list[j].nextExecutionAt).Seconds() < 1
+	})
 	return newList
 }
 
@@ -151,14 +155,6 @@ func (l *enabledEventsList) clear() {
 	defer l.mu.Unlock()
 	// TODO: do I need to set it to an empty list?
 	l.eventsList = []*enabledEvent{}
-}
-
-func (l *enabledEventsList) sort() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	sort.SliceStable(l.eventsList, func(i, j int) bool {
-		return l.eventsList[i].nextExecutionAt.Sub(l.eventsList[j].nextExecutionAt).Seconds() < 1
-	})
 }
 
 func (l *enabledEventsList) len() int {
@@ -185,12 +181,18 @@ func (l *enabledEventsList) pop() *enabledEvent {
 	return l.eventsList[0]
 }
 
+// add adds the event to the list and sorts the list.
 func (l *enabledEventsList) add(event *enabledEvent) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.eventsList = append(l.eventsList, event)
+	sort.SliceStable(l.eventsList, func(i, j int) bool {
+		return l.eventsList[i].nextExecutionAt.Sub(l.eventsList[j].nextExecutionAt).Seconds() < 1
+	})
 }
 
+// remove removes the event from the list,
+// the list order stays the same.
 func (l *enabledEventsList) remove(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -202,6 +204,8 @@ func (l *enabledEventsList) remove(key string) {
 	}
 }
 
+// remove removes all events of the given database from the list,
+// the list order stays the same.
 func (l *enabledEventsList) removeSchemaEvents(dbName string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

@@ -71,7 +71,7 @@ func InitEventScheduler(a *analyzer.Analyzer, bgt *sql.BackgroundThreads, ctx *s
 	return es, nil
 }
 
-// Close closes the EventScheduler.
+// Close closes the EventScheduler.-
 func (es *EventScheduler) Close() {
 	es.status = SchedulerOff
 	es.executor.shutdown()

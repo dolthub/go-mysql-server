@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"io"
 	"strings"
 	"sync"
@@ -144,7 +145,7 @@ func (c *CreateEvent) String() string {
 
 	onSchedule := ""
 	if c.At != nil {
-		onSchedule = fmt.Sprintf(" ON SCHEDULE AT %s", c.At.String())
+		onSchedule = fmt.Sprintf(" ON SCHEDULE %s", c.At.String())
 	} else {
 		onSchedule = onScheduleEveryString(c.Every, c.Starts, c.Ends)
 	}
@@ -228,7 +229,9 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	eventCreationTime := ctx.QueryTime()
-	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime, eventCreationTime, time.Time{}, true)
+	// TODO: event TZ will be always 'SYSTEM' TZ for now rather than session TZ
+	sessTz := gmstime.SystemTimezoneOffset()
+	eventDetails, err := c.GetEventDetails(ctx, sessTz, eventCreationTime, eventCreationTime, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +260,7 @@ func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNoti
 // It expects all timestamp and interval values to be resolved.
 // This function gets called either from RowIter of CreateEvent plan,
 // or from anywhere that getting eventDetails from EventDefinition retrieved from a database.
-func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, truncate bool) (sql.EventDetails, error) {
+func (c *CreateEvent) GetEventDetails(ctx *sql.Context, tz string, eventCreationTime, lastAltered, lastExecuted time.Time) (sql.EventDetails, error) {
 	eventDetails := sql.EventDetails{
 		Name:                 c.EventName,
 		Definer:              c.Definer,
@@ -265,12 +268,13 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastA
 		Status:               c.Status.String(),
 		Comment:              c.Comment,
 		Definition:           c.DefinitionString,
+		TimezoneOffset:       tz,
 	}
 
 	var err error
 	if c.At != nil {
 		eventDetails.HasExecuteAt = true
-		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx, truncate)
+		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx)
 		if err != nil {
 			return sql.EventDetails{}, err
 		}
@@ -284,7 +288,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastA
 		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
-			eventDetails.Starts, err = c.Starts.EvalTime(ctx, truncate)
+			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
 			if err != nil {
 				return sql.EventDetails{}, err
 			}
@@ -294,7 +298,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastA
 		}
 		if c.Ends != nil {
 			eventDetails.HasEnds = true
-			eventDetails.Ends, err = c.Ends.EvalTime(ctx, truncate)
+			eventDetails.Ends, err = c.Ends.EvalTime(ctx)
 			if err != nil {
 				return sql.EventDetails{}, err
 			}
@@ -348,7 +352,10 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	if c.eventDetails.HasExecuteAt {
-		// If the event execution time is in the past and  is set.
+		// If the event execution time is in the past and is set.
+		// TODO: executeAt value should be converted from event TZ to system TZ
+		//  for checking event should be executed or dropped.
+		//  (created time value should be current time in system TZ)
 		if c.eventDetails.ExecuteAt.Sub(c.eventDetails.Created).Seconds() < 0 {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
@@ -397,11 +404,11 @@ func onScheduleEveryString(every sql.Expression, starts, ends *OnScheduleTimesta
 	everyInterval := strings.TrimPrefix(every.String(), "INTERVAL ")
 	startsStr := ""
 	if starts != nil {
-		startsStr = fmt.Sprintf(" STARTS %s", starts.String())
+		startsStr = fmt.Sprintf(" %s", starts.String())
 	}
 	endsStr := ""
 	if ends != nil {
-		endsStr = fmt.Sprintf(" ENDS %s", ends.String())
+		endsStr = fmt.Sprintf(" %s", ends.String())
 	}
 
 	return fmt.Sprintf("ON SCHEDULE EVERY %s%s%s", everyInterval, startsStr, endsStr)
@@ -409,6 +416,7 @@ func onScheduleEveryString(every sql.Expression, starts, ends *OnScheduleTimesta
 
 // OnScheduleTimestamp is object used for EVENT ON SCHEDULE { AT / STARTS / ENDS } optional fields only.
 type OnScheduleTimestamp struct {
+	field     string
 	timestamp sql.Expression
 	intervals []sql.Expression
 }
@@ -416,8 +424,9 @@ type OnScheduleTimestamp struct {
 var _ sql.Expression = (*OnScheduleTimestamp)(nil)
 
 // NewOnScheduleTimestamp creates OnScheduleTimestamp object used for EVENT ON SCHEDULE { AT / STARTS / ENDS } optional fields only.
-func NewOnScheduleTimestamp(ts sql.Expression, i []sql.Expression) *OnScheduleTimestamp {
+func NewOnScheduleTimestamp(f string, ts sql.Expression, i []sql.Expression) *OnScheduleTimestamp {
 	return &OnScheduleTimestamp{
+		field: f,
 		timestamp: ts,
 		intervals: i,
 	}
@@ -454,7 +463,7 @@ func (ost *OnScheduleTimestamp) WithChildren(children ...sql.Expression) (sql.Ex
 		intervals = append(intervals, children[1:]...)
 	}
 
-	return NewOnScheduleTimestamp(children[0], intervals), nil
+	return NewOnScheduleTimestamp(ost.field, children[0], intervals), nil
 }
 
 // Resolved implements the sql.Node interface.
@@ -475,7 +484,7 @@ func (ost *OnScheduleTimestamp) String() string {
 	for _, interval := range ost.intervals {
 		intervals = fmt.Sprintf("%s + %s", intervals, interval.String())
 	}
-	return fmt.Sprintf("%s%s", ost.timestamp.String(), intervals)
+	return fmt.Sprintf("%s %s%s", ost.field, ost.timestamp.String(), intervals)
 }
 
 func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -484,42 +493,28 @@ func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}
 
 // EvalTime returns time.Time value converted to UTC evaluating given expressions
 // as expected to be time value and optional interval values. The value returned
-// is time.Time value from timestamp value plus all intervals given and converted
-// in UTC timezone.
-// This function is used for both evaluating time for CREATE/ALTER EVENT statements
-// run by user and retrieving event details from database by parsing the stored
-// CREATE EVENT statement. For that, the truncate value determines whether the
-// timestamp value should be timezone-truncated.
-func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, truncate bool) (time.Time, error) {
+// is time.Time value from timestamp value plus all intervals given
+// TODO: the time value should be converted into session timezone.
+func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 	value, err := ost.timestamp.Eval(ctx, nil)
 	if err != nil {
 		return time.Time{}, err
 	}
+
+	if bs, ok := value.([]byte); ok {
+		value = string(bs)
+	}
+
 	var t time.Time
 	switch v := value.(type) {
 	case time.Time:
+		// TODO: check if this value is in session timezone
 		t = v
-	case string, []byte:
-		d, _, err := types.Datetime.Convert(v)
+	case string:
+		t, err = sql.GetTimeValueFromStringInput(ost.field, v)
 		if err != nil {
 			return time.Time{}, err
 		}
-		tt, ok := d.(time.Time)
-		if !ok {
-			return time.Time{}, fmt.Errorf("expected time.Time type but got: %s", d)
-		}
-
-		// MySQL truncates timezone part of query input and gives warning.
-		if truncate {
-			t, err = validateTimeZoneIsSetToLocalTimeZone(tt)
-			if err != nil {
-				return time.Time{}, err
-			}
-			// TODO: give warning if the input had timezone defined.
-		} else {
-			t = tt
-		}
-
 	default:
 		return time.Time{}, fmt.Errorf("unexpected type: %s", v)
 	}
@@ -537,23 +532,7 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, truncate bool) (time.
 		t = timeDelta.Add(t)
 	}
 
-	return t.UTC(), nil
-}
-
-// validateTimeZoneIsSetToLocalTimeZone truncates the location and
-// re-evaluates the date and time parts in session/local timezone.
-func validateTimeZoneIsSetToLocalTimeZone(t time.Time) (time.Time, error) {
-	var res time.Time
-	if t.IsZero() {
-		return t, nil
-	}
-
-	tStr := t.Format(sql.EventDateTimeOnlyFormat)
-	res, err := time.ParseInLocation(sql.EventDateTimeOnlyFormat, tStr, time.Local)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return res, nil
+	return t, nil
 }
 
 var _ sql.Node = (*DropEvent)(nil)
