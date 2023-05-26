@@ -358,6 +358,9 @@ func (m *Memo) String() string {
 }
 
 type scalarProps struct {
+	cols          sql.ColSet
+	tables        sql.FastIntSet
+	nullRejecting bool
 }
 
 // relProps are relational attributes shared by all plans in an expression
@@ -899,7 +902,7 @@ type joinBase struct {
 	*relBase
 
 	op     plan.JoinType
-	filter []sql.Expression
+	filter []scalarExpr
 	left   *exprGroup
 	right  *exprGroup
 }

@@ -10,9 +10,18 @@ type scalarExprId uint8
 const (
 	unknownScalar scalarExprId = iota
 	equalExpr
-	notEqualExpr
+	notExpr
 	colRefExpr
 	literalExpr
+	orExpr
+	andExpr
+	inTupleExpr
+	ltExpr
+	leqExpr
+	gtExpr
+	geqExpr
+	nullSafeEqExpr
+	regexpExpr
 )
 
 func internExpr(e scalarExpr) uint64 {
@@ -21,7 +30,7 @@ func internExpr(e scalarExpr) uint64 {
 	case *literal:
 		h.Write([]byte(fmt.Sprintf("%v", e.val)))
 	case *colRef:
-		h.Write([]byte(fmt.Sprintf("%d", e.id)))
+		h.Write([]byte(fmt.Sprintf("%d", e.col)))
 	case *equal:
 		h.Write([]byte(fmt.Sprintf("%d%d%d", e.exprId(), internExpr(e.left.scalar), internExpr(e.right.scalar))))
 	}

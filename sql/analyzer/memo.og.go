@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type crossJoin struct {
@@ -120,8 +120,8 @@ func (r *concatJoin) joinPrivate() *joinBase {
 
 type hashJoin struct {
 	*joinBase
-	innerAttrs []sql.Expression
-	outerAttrs []sql.Expression
+	innerAttrs []*exprGroup
+	outerAttrs []*exprGroup
 }
 
 var _ relExpr = (*hashJoin)(nil)
@@ -422,7 +422,7 @@ func (r *emptyTable) children() []*exprGroup {
 type project struct {
 	*relBase
 	child       *exprGroup
-	projections []sql.Expression
+	projections []*exprGroup
 }
 
 var _ relExpr = (*project)(nil)
@@ -438,7 +438,13 @@ func (r *project) children() []*exprGroup {
 func (r *project) outputCols() sql.Schema {
 	var s = make(sql.Schema, len(r.projections))
 	for i, e := range r.projections {
-		s[i] = transform.ExpressionToColumn(e)
+		ref := e.scalar.(*colRef)
+		s[i] = &sql.Column{
+			Name:     ref.gf.Name(),
+			Source:   ref.gf.String(),
+			Type:     ref.gf.Type(),
+			Nullable: ref.gf.IsNullable(),
+		}
 	}
 	return s
 }
@@ -483,7 +489,7 @@ func (r *filter) outputCols() sql.Schema {
 }
 
 type equal struct {
-	*relBase
+	*scalarBase
 	left  *exprGroup
 	right *exprGroup
 }
@@ -526,6 +532,7 @@ type colRef struct {
 	*scalarBase
 	col   sql.ColumnId
 	table GroupId
+	gf    *expression.GetField
 }
 
 var _ scalarExpr = (*colRef)(nil)
@@ -540,6 +547,209 @@ func (r *colRef) String() string {
 
 func (r *colRef) children() []*exprGroup {
 	return nil
+}
+
+type not struct {
+	*relBase
+	child *exprGroup
+}
+
+var _ scalarExpr = (*not)(nil)
+
+func (r *not) exprId() scalarExprId {
+	return notExpr
+}
+
+func (r *not) String() string {
+	return formatExpr(r)
+}
+
+func (r *not) children() []*exprGroup {
+	return []*exprGroup{r.child}
+}
+
+func (r *not) outputCols() sql.Schema {
+	return r.child.relProps.OutputCols()
+}
+
+type or struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*or)(nil)
+
+func (r *or) exprId() scalarExprId {
+	return orExpr
+}
+
+func (r *or) String() string {
+	return formatExpr(r)
+}
+
+func (r *or) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type and struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*and)(nil)
+
+func (r *and) exprId() scalarExprId {
+	return andExpr
+}
+
+func (r *and) String() string {
+	return formatExpr(r)
+}
+
+func (r *and) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type inTuple struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*inTuple)(nil)
+
+func (r *inTuple) exprId() scalarExprId {
+	return inTupleExpr
+}
+
+func (r *inTuple) String() string {
+	return formatExpr(r)
+}
+
+func (r *inTuple) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type lt struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*lt)(nil)
+
+func (r *lt) exprId() scalarExprId {
+	return ltExpr
+}
+
+func (r *lt) String() string {
+	return formatExpr(r)
+}
+
+func (r *lt) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type leq struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*leq)(nil)
+
+func (r *leq) exprId() scalarExprId {
+	return leqExpr
+}
+
+func (r *leq) String() string {
+	return formatExpr(r)
+}
+
+func (r *leq) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type gt struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*gt)(nil)
+
+func (r *gt) exprId() scalarExprId {
+	return gtExpr
+}
+
+func (r *gt) String() string {
+	return formatExpr(r)
+}
+
+func (r *gt) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type geq struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*geq)(nil)
+
+func (r *geq) exprId() scalarExprId {
+	return geqExpr
+}
+
+func (r *geq) String() string {
+	return formatExpr(r)
+}
+
+func (r *geq) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type nullSafeEq struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*nullSafeEq)(nil)
+
+func (r *nullSafeEq) exprId() scalarExprId {
+	return nullSafeEqExpr
+}
+
+func (r *nullSafeEq) String() string {
+	return formatExpr(r)
+}
+
+func (r *nullSafeEq) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
+}
+
+type regexp struct {
+	*scalarBase
+	left  *exprGroup
+	right *exprGroup
+}
+
+var _ scalarExpr = (*regexp)(nil)
+
+func (r *regexp) exprId() scalarExprId {
+	return regexpExpr
+}
+
+func (r *regexp) String() string {
+	return formatExpr(r)
+}
+
+func (r *regexp) children() []*exprGroup {
+	return []*exprGroup{r.left, r.right}
 }
 
 func formatExpr(r exprType) string {
@@ -594,12 +804,32 @@ func formatExpr(r exprType) string {
 		return fmt.Sprintf("literal")
 	case *colRef:
 		return fmt.Sprintf("colRef")
+	case *not:
+		return fmt.Sprintf("not: %d", r.child.id)
+	case *or:
+		return fmt.Sprintf("or %d %d", r.left.id, r.right.id)
+	case *and:
+		return fmt.Sprintf("and %d %d", r.left.id, r.right.id)
+	case *inTuple:
+		return fmt.Sprintf("inTuple %d %d", r.left.id, r.right.id)
+	case *lt:
+		return fmt.Sprintf("lt %d %d", r.left.id, r.right.id)
+	case *leq:
+		return fmt.Sprintf("leq %d %d", r.left.id, r.right.id)
+	case *gt:
+		return fmt.Sprintf("gt %d %d", r.left.id, r.right.id)
+	case *geq:
+		return fmt.Sprintf("geq %d %d", r.left.id, r.right.id)
+	case *nullSafeEq:
+		return fmt.Sprintf("nullSafeEq %d %d", r.left.id, r.right.id)
+	case *regexp:
+		return fmt.Sprintf("regexp %d %d", r.left.id, r.right.id)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
 }
 
-func buildRelExpr(b *ExecBuilder, r exprType, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var result sql.Node
 	var err error
 
@@ -646,12 +876,6 @@ func buildRelExpr(b *ExecBuilder, r exprType, input sql.Schema, children ...sql.
 		result, err = b.buildProject(r, input, children...)
 	case *filter:
 		result, err = b.buildFilter(r, input, children...)
-	case *equal:
-		result, err = b.buildEqual(r, input, children...)
-	case *literal:
-		result, err = b.buildLiteral(r, input, children...)
-	case *colRef:
-		result, err = b.buildColRef(r, input, children...)
 	default:
 		panic(fmt.Sprintf("unknown relExpr type: %T", r))
 	}
@@ -665,4 +889,37 @@ func buildRelExpr(b *ExecBuilder, r exprType, input sql.Schema, children ...sql.
 		return nil, err
 	}
 	return result, nil
+}
+
+func buildScalarExpr(b *ExecBuilder, r scalarExpr, sch sql.Schema) (sql.Expression, error) {
+	switch r := r.(type) {
+	case *equal:
+		return b.buildEqual(r, sch)
+	case *literal:
+		return b.buildLiteral(r, sch)
+	case *colRef:
+		return b.buildColRef(r, sch)
+	case *not:
+		return b.buildNot(r, sch)
+	case *or:
+		return b.buildOr(r, sch)
+	case *and:
+		return b.buildAnd(r, sch)
+	case *inTuple:
+		return b.buildInTuple(r, sch)
+	case *lt:
+		return b.buildLt(r, sch)
+	case *leq:
+		return b.buildLeq(r, sch)
+	case *gt:
+		return b.buildGt(r, sch)
+	case *geq:
+		return b.buildGeq(r, sch)
+	case *nullSafeEq:
+		return b.buildNullSafeEq(r, sch)
+	case *regexp:
+		return b.buildRegexp(r, sch)
+	default:
+		panic(fmt.Sprintf("unknown scalarExpr type: %T", r))
+	}
 }

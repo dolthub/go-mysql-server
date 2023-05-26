@@ -1,34 +1,34 @@
 exprs:
 - name:   "crossJoin"
-  isJoin: true
+  join: true
 - name:   "innerJoin"
-  isJoin: true
+  join: true
 - name:   "leftJoin"
-  isJoin: true
+  join: true
 - name:   "semiJoin"
-  isJoin: true
+  join: true
 - name:   "antiJoin"
-  isJoin: true
+  join: true
 - name:   "lookupJoin"
-  isJoin: true
+  join: true
   attrs:
   - [lookup, "*lookup"]
 - name: "concatJoin"
-  isJoin: true
+  join: true
   attrs:
   - [concat, "[]*lookup"]
 - name: "hashJoin"
-  isJoin: true
+  join: true
   attrs:
-  - [innerAttrs, "[]sql.Expression"]
-  - [outerAttrs, "[]sql.Expression"]
+  - [innerAttrs, "[]*exprGroup"]
+  - [outerAttrs, "[]*exprGroup"]
 - name: "mergeJoin"
-  isJoin: true
+  join: true
   attrs:
   - [innerScan, "*indexScan"]
   - [outerScan, "*indexScan"]
 - name: "fullOuterJoin"
-  isJoin: true
+  join: true
 - name: "tableScan"
   sourceType: "*plan.ResolvedTable"
 - name: "values"
@@ -48,22 +48,21 @@ exprs:
 - name: "emptyTable"
   sourceType: "*plan.EmptyTable"
 - name: "project"
-  isUnary: true
+  unary: true
   attrs:
-  - [projections, "[]sql.Expression"]
+  - [projections, "[]*exprGroup"]
 - name: "distinct"
-  isUnary:  true
+  unary:  true
   skipExec: true
+
+# scalar
 - name: filter
-  isUnary: true
+  unary: true
   attrs:
   - [filters, "[]*exprGroup"]
 - name: "equal"
   scalar: true
   binary: true
-  attrs:
-  - [left, "*exprGroup"]
-  - [right, "*exprGroup"]
 - name: "literal"
   scalar: true
   attrs:
@@ -74,3 +73,34 @@ exprs:
   attrs:
   - [col, "sql.ColumnId"]
   - [table, "GroupId"]
+  - [gf, "*expression.GetField"]
+- name: "not"
+  unary: true
+  scalar: true
+- name: "or"
+  scalar: true
+  binary: true
+- name: "and"
+  scalar: true
+  binary: true
+- name: "inTuple"
+  scalar: true
+  binary: true
+- name: "lt"
+  scalar: true
+  binary: true
+- name: "leq"
+  scalar: true
+  binary: true
+- name: "gt"
+  scalar: true
+  binary: true
+- name: "geq"
+  scalar: true
+  binary: true
+- name: "nullSafeEq"
+  scalar: true
+  binary: true
+- name: "regexp"
+  scalar: true
+  binary: true

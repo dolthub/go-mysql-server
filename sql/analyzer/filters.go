@@ -163,19 +163,19 @@ func splitConjunction(expr sql.Expression) []sql.Expression {
 }
 
 // splitDisjunction breaks OR expressions into their left and right parts, recursively
-func splitDisjunction(expr sql.Expression) []sql.Expression {
-	if expr == nil {
-		return nil
+func splitDisjunction(e *or) []scalarExpr {
+	q := []scalarExpr{e.left.scalar, e.right.scalar}
+	var ret []scalarExpr
+	for len(q) > 0 {
+		next := q[0]
+		q = q[1:]
+		nextOr, ok := next.(*or)
+		if !ok {
+			ret = append(ret, next)
+		}
+		q = append(q, nextOr.left.scalar, nextOr.right.scalar)
 	}
-	and, ok := expr.(*expression.Or)
-	if !ok {
-		return []sql.Expression{expr}
-	}
-
-	return append(
-		splitDisjunction(and.Left),
-		splitDisjunction(and.Right)...,
-	)
+	return ret
 }
 
 // subtractExprSet returns all expressions in the first parameter that aren't present in the second.

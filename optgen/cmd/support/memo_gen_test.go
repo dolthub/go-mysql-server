@@ -104,8 +104,8 @@ func TestMemoGen(t *testing.T) {
 	defs := MemoExprs{
 		Exprs: []ExprDef{
 			{
-				Name:   "hashJoin",
-				IsJoin: true,
+				Name: "hashJoin",
+				Join: true,
 				Attrs: [][2]string{
 					{"innerAttrs", "[]sql.Expression"},
 					{"outerAttrs", "[]sql.Expression"},

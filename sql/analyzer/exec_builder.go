@@ -23,19 +23,11 @@ func (b *ExecBuilder) buildRel(r relExpr, input sql.Schema, children ...sql.Node
 	return b.buildDistinct(n, r.distinct())
 }
 
-func (b *ExecBuilder) buildFilters(scope *Scope, s sql.Schema, filters ...sql.Expression) (sql.Expression, error) {
-	f, _, err := FixFieldIndexesOnExpressions(scope, nil, s, filters...)
-	if err != nil {
-		return nil, err
-	}
-	return expression.JoinAnd(f...), nil
-}
-
 func (b *ExecBuilder) buildInnerJoin(j *innerJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	if len(j.filter) == 0 {
 		return plan.NewCrossJoin(children[0], children[1]), nil
 	}
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +39,7 @@ func (b *ExecBuilder) buildCrossJoin(j *crossJoin, input sql.Schema, children ..
 }
 
 func (b *ExecBuilder) buildLeftJoin(j *leftJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +47,7 @@ func (b *ExecBuilder) buildLeftJoin(j *leftJoin, input sql.Schema, children ...s
 }
 
 func (b *ExecBuilder) buildFullOuterJoin(j *fullOuterJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +55,7 @@ func (b *ExecBuilder) buildFullOuterJoin(j *fullOuterJoin, input sql.Schema, chi
 }
 
 func (b *ExecBuilder) buildSemiJoin(j *semiJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +64,7 @@ func (b *ExecBuilder) buildSemiJoin(j *semiJoin, input sql.Schema, children ...s
 }
 
 func (b *ExecBuilder) buildAntiJoin(j *antiJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +113,7 @@ func (b *ExecBuilder) buildLookupJoin(j *lookupJoin, input sql.Schema, children 
 	if err != nil {
 		return nil, err
 	}
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +150,7 @@ func (b *ExecBuilder) buildConcatJoin(j *concatJoin, input sql.Schema, children 
 		right = plan.NewTableAlias(alias, right)
 	}
 
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +159,16 @@ func (b *ExecBuilder) buildConcatJoin(j *concatJoin, input sql.Schema, children 
 }
 
 func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	innerAttrs, err := b.buildFilters(j.g.m.scope, input, expression.Tuple(j.innerAttrs))
+	innerFilters := make([]sql.Expression, len(j.innerAttrs))
+	var err error
+	for i := range j.innerAttrs {
+		innerFilters[i], err = b.buildScalar(j.innerAttrs[i].scalar, input)
+		if err != nil {
+			return nil, err
+		}
+	}
+	innerAttrs := expression.Tuple(innerFilters)
+
 	if err != nil {
 		return nil, err
 	}
@@ -175,11 +176,18 @@ func (b *ExecBuilder) buildHashJoin(j *hashJoin, input sql.Schema, children ...s
 	if tmpScope != nil {
 		tmpScope = tmpScope.newScopeNoJoin()
 	}
-	outerAttrs, err := b.buildFilters(tmpScope, j.right.relProps.OutputCols(), expression.Tuple(j.outerAttrs))
-	if err != nil {
-		return nil, err
+
+	outerFilters := make([]sql.Expression, len(j.outerAttrs))
+	for i := range j.outerAttrs {
+		outerFilters[i], err = b.buildScalar(j.outerAttrs[i].scalar, input)
+		if err != nil {
+			return nil, err
+		}
+
 	}
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	outerAttrs := expression.Tuple(outerFilters)
+
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +246,7 @@ func (b *ExecBuilder) buildMergeJoin(j *mergeJoin, input sql.Schema, children ..
 	if err != nil {
 		return nil, err
 	}
-	filters, err := b.buildFilters(j.g.m.scope, input, j.filter...)
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -282,11 +290,15 @@ func (b *ExecBuilder) buildEmptyTable(r *emptyTable, _ sql.Schema, _ ...sql.Node
 
 func (b *ExecBuilder) buildProject(r *project, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	projInput := input[len(input)-len(children[0].Schema()):]
-	p, _, err := FixFieldIndexesOnExpressions(r.g.m.scope, nil, projInput, r.projections...)
-	if err != nil {
-		return nil, err
+	proj := make([]sql.Expression, len(r.projections))
+	var err error
+	for i := range r.projections {
+		proj[i], err = b.buildScalar(r.projections[i].scalar, projInput)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return plan.NewProject(p, children[0]), nil
+	return plan.NewProject(proj, children[0]), nil
 }
 
 func (b *ExecBuilder) buildFilter(r *filter, input sql.Schema, children ...sql.Node) (sql.Node, error) {
@@ -306,14 +318,161 @@ func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) 
 	}
 }
 
-func (b *ExecBuilder) buildEqual(r *equal, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return nil, nil
+// scalar expressions
+
+func (b *ExecBuilder) buildScalar(e scalarExpr, sch sql.Schema) (sql.Expression, error) {
+	return buildScalarExpr(b, e, sch)
 }
 
-func (b *ExecBuilder) buildLiteral(r *literal, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return nil, nil
+func (b *ExecBuilder) buildFilterConjunction(scope *Scope, s sql.Schema, filters ...scalarExpr) (sql.Expression, error) {
+	var ret sql.Expression
+	for i := range filters {
+		filter, err := b.buildScalar(filters[i], s)
+		if err != nil {
+			return nil, err
+		}
+		if ret == nil {
+			ret = filter
+		} else {
+			ret = expression.NewAnd(ret, filter)
+		}
+	}
+	return ret, nil
 }
 
-func (b *ExecBuilder) buildColRef(r *colRef, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return nil, nil
+func (b *ExecBuilder) buildEqual(e *equal, sch sql.Schema) (sql.Expression, error) {
+	l, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	r, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewEquals(l, r), nil
+}
+
+func (b *ExecBuilder) buildLiteral(e *literal, sch sql.Schema) (sql.Expression, error) {
+	return expression.NewLiteral(e.val, e.typ), nil
+}
+
+func (b *ExecBuilder) buildColRef(e *colRef, sch sql.Schema) (sql.Expression, error) {
+	gf, _, err := FixFieldIndexes(e.g.m.scope, nil, sch, e.gf)
+	return gf, err
+}
+
+func (b *ExecBuilder) buildOr(e *or, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewOr(left, right), nil
+}
+
+func (b *ExecBuilder) buildAnd(e *and, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewAnd(left, right), nil
+}
+
+func (b *ExecBuilder) buildRegexp(e *regexp, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewRegexp(left, right), nil
+}
+
+func (b *ExecBuilder) buildLeq(e *leq, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewLessThanOrEqual(left, right), nil
+}
+
+func (b *ExecBuilder) buildLt(e *lt, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewLessThan(left, right), nil
+}
+
+func (b *ExecBuilder) buildGt(e *gt, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewGreaterThan(left, right), nil
+}
+
+func (b *ExecBuilder) buildGeq(e *geq, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewGreaterThanOrEqual(left, right), nil
+}
+
+func (b *ExecBuilder) buildInTuple(e *inTuple, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewInTuple(left, right), nil
+}
+
+func (b *ExecBuilder) buildNullSafeEq(e *nullSafeEq, sch sql.Schema) (sql.Expression, error) {
+	left, err := b.buildScalar(e.left.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	right, err := b.buildScalar(e.right.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewNullSafeEquals(left, right), nil
+}
+
+func (b *ExecBuilder) buildNot(e *not, sch sql.Schema) (sql.Expression, error) {
+	child, err := b.buildScalar(e.child.scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewNot(child), nil
 }

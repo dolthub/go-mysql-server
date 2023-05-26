@@ -140,9 +140,18 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil, newEq("c.x=d.x"), ""), // C x D
-				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil, newEq("b.y=d.y"), ""),     // B x (CD)
-				newEdge2(plan.JoinTypeCross, "0000", "1111", "1000", "0111", nil, nil, ""),                  // A x (BCD)
+				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil,
+					&equal{
+						left:  newColRef(3, 5, "c.x"),
+						right: newColRef(4, 7, "d.x"),
+					}, ""), // C x D
+				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil,
+					&equal{
+						left:  newColRef(2, 4, "b.y"),
+						right: newColRef(4, 8, "d.y"),
+					},
+					""), // B x (CD)
+				newEdge2(plan.JoinTypeCross, "0000", "1111", "1000", "0111", nil, nil, ""), // A x (BCD)
 			},
 		},
 		{
@@ -161,9 +170,23 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("a.z=b.z"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil, newEq("c.x=d.x"), ""),                                                                // C x D
-				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil, newEq("b.y=d.y"), ""),                                                                    // B x (CD)
-				newEdge2(plan.JoinTypeInner, "1100", "1100", "1000", "0111", []conflictRule{{from: newVertexSet("0001"), to: newVertexSet("0010")}}, newEq("a.z=b.z"), ""), // A x (BCD)
+				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil,
+					&equal{
+						left:  newColRef(3, 5, "c.x"),
+						right: newColRef(4, 7, "d.x"),
+					}, ""), // C x D
+				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil,
+					&equal{
+						left:  newColRef(2, 3, "b.y"),
+						right: newColRef(4, 8, "d.y"),
+					},
+					""), // B x (CD)
+				newEdge2(plan.JoinTypeInner, "1100", "1100", "1000", "0111", []conflictRule{{from: newVertexSet("0001"), to: newVertexSet("0010")}},
+					&equal{
+						left:  newColRef(1, 2, "a.z"),
+						right: newColRef(2, 4, "b.z"),
+					},
+					""), // A x (BCD)
 			},
 		},
 		{
@@ -182,9 +205,23 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("b.y=c.y"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "1100", "1100", "1000", "0100", nil, newEq("a.x=b.x"), ""), // A x B
-				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil, newEq("c.x=d.x"), ""), // C x D
-				newEdge2(plan.JoinTypeLeftOuter, "0110", "1111", "1100", "0011", nil, newEq("b.y=c.y"), ""), // (AB) x (CD)
+				newEdge2(plan.JoinTypeLeftOuter, "1100", "1100", "1000", "0100", nil,
+					&equal{
+						left:  newColRef(1, 1, "a.x"),
+						right: newColRef(2, 3, "b.x"),
+					}, ""), // A x B
+				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil,
+					&equal{
+						left:  newColRef(3, 5, "c.x"),
+						right: newColRef(4, 7, "d.x"),
+					},
+					""), // C x D
+				newEdge2(plan.JoinTypeLeftOuter, "0110", "1111", "1100", "0011", nil,
+					&equal{
+						left:  newColRef(2, 4, "b.y"),
+						right: newColRef(3, 6, "c.y"),
+					},
+					""), // (AB) x (CD)
 			},
 		},
 		{
@@ -202,8 +239,13 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("b.x=c.x"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeCross, "000", "110", "100", "010", nil, nil, ""),                  // A X B
-				newEdge2(plan.JoinTypeLeftOuter, "011", "111", "110", "001", nil, newEq("b.x=c.x"), ""), // (AB) x C
+				newEdge2(plan.JoinTypeCross, "000", "110", "100", "010", nil, nil, ""), // A X B
+				newEdge2(plan.JoinTypeLeftOuter, "011", "111", "110", "001", nil,
+					&equal{
+						left:  newColRef(2, 3, "b.x"),
+						right: newColRef(1, 1, "c.x"),
+					},
+					""), // (AB) x C
 			},
 		},
 		{
@@ -226,9 +268,14 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("a.x=c.x"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeInner, "0000", "1100", "1000", "0100", nil, expression.NewLiteral(true, types.Boolean), ""), // A x B
-				newEdge2(plan.JoinTypeInner, "0000", "0011", "0010", "0001", nil, expression.NewLiteral(true, types.Boolean), ""), // C x D
-				newEdge2(plan.JoinTypeFullOuter, "1010", "1111", "1100", "0011", nil, newEq("a.x=c.x"), ""),                       // (AB) x (CD)
+				newEdge2(plan.JoinTypeInner, "0000", "1100", "1000", "0100", nil, &literal{val: true, typ: types.Boolean}, ""), // A x B
+				newEdge2(plan.JoinTypeInner, "0000", "0011", "0010", "0001", nil, &literal{val: true, typ: types.Boolean}, ""), // C x D
+				newEdge2(plan.JoinTypeFullOuter, "1010", "1111", "1100", "0011", nil,
+					&equal{
+						left:  newColRef(1, 1, "a.x"),
+						right: newColRef(3, 5, "c.x"),
+					},
+					""), // (AB) x (CD)
 			},
 		},
 		{
@@ -251,8 +298,18 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("a.y=b.y"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "110", "110", "100", "010", nil, newEq("b.x=c.x"), ""), // B x C
-				newEdge2(plan.JoinTypeSemi, "101", "101", "110", "001", nil, newEq("a.y=b.y"), ""),      // A x (BC)
+				newEdge2(plan.JoinTypeLeftOuter, "110", "110", "100", "010", nil,
+					&equal{
+						left:  newColRef(2, 3, "b.x"),
+						right: newColRef(1, 1, "c.x"),
+					},
+					""), // B x C
+				newEdge2(plan.JoinTypeSemi, "101", "101", "110", "001", nil,
+					&equal{
+						left:  newColRef(3, 6, "a.y"),
+						right: newColRef(1, 2, "b.y"),
+					},
+					""), // A x (BC)
 			},
 		},
 	}
@@ -263,6 +320,17 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 			b.populateSubgraph(tt.join)
 			edgesEq(t, tt.expEdges, b.edges)
 		})
+	}
+}
+
+func newColRef(table GroupId, col sql.ColumnId, gf string) *exprGroup {
+	parts := strings.Split(gf, ".")
+	return &exprGroup{
+		scalar: &colRef{
+			table: table,
+			col:   col,
+			gf:    expression.NewGetFieldWithTable(0, types.Int64, parts[0], parts[1], false),
+		},
 	}
 }
 
@@ -471,10 +539,10 @@ func newEdge(op plan.JoinType, ses, leftV, rightV string) *edge {
 	}
 }
 
-func newEdge2(op plan.JoinType, ses, tes, leftV, rightV string, rules []conflictRule, filter sql.Expression, nullRej string) edge {
-	var filters []sql.Expression
+func newEdge2(op plan.JoinType, ses, tes, leftV, rightV string, rules []conflictRule, filter scalarExpr, nullRej string) edge {
+	var filters []scalarExpr
 	if filter != nil {
-		filters = []sql.Expression{filter}
+		filters = []scalarExpr{filter}
 	}
 	return edge{
 		op: &operator{

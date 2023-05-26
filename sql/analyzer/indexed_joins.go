@@ -250,7 +250,7 @@ func addLookupJoins(m *Memo) error {
 			return err
 		}
 
-		if or, ok := join.filter[0].(*expression.Or); ok && len(join.filter) == 1 {
+		if or, ok := join.filter[0].(*or); ok && len(join.filter) == 1 {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
 			// TODO: memoize equality expressions, index lookup, concat so that we
@@ -709,10 +709,10 @@ IndexExpressions:
 // splitIndexableOr attempts to build a list of index lookups for a disjoint
 // filter expression. The prototypical pattern will be a tree of OR and equality
 // expressions: [eq] OR [eq] OR [eq] ...
-func splitIndexableOr(filters []sql.Expression, indexes []sql.Index, attributeSource string, aliases TableAliases) []*lookup {
+func splitIndexableOr(filters []scalarExpr, indexes []sql.Index, attributeSource string, aliases TableAliases) []*lookup {
 	var concat []*lookup
 	for _, f := range filters {
-		if eq, ok := f.(*expression.Equals); ok {
+		if eq, ok := f.(*equal); ok {
 			i := firstMatchingIndex(eq, indexes, attributeSource, aliases)
 			if i == nil {
 				return nil
@@ -726,7 +726,11 @@ func splitIndexableOr(filters []sql.Expression, indexes []sql.Index, attributeSo
 // firstMatchingIndex returns first index that |e| can use as a lookup.
 // This simplifies index selection for concatJoin to avoid building
 // memo objects for equality expressions and indexes.
-func firstMatchingIndex(e *expression.Equals, indexes []sql.Index, attributeSource string, aliases TableAliases) *lookup {
+func firstMatchingIndex(e *equal, indexes []sql.Index, attributeSource string, aliases TableAliases) *lookup {
+	//todo this needs to be rewritten to account for functional dependencies at this join
+	// need info from join functional dependency - equiv, constants
+	// add equiv + constants + table fds
+	// Q: are the index expressions a strict key?
 	for _, lIdx := range indexes {
 		lConds := collectJoinConds(attributeSource, e)
 		lKeyExprs, lNullmask := indexMatchesKeyExprs(lIdx, lConds, aliases)
