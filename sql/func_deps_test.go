@@ -1,6 +1,8 @@
 package sql
 
 import (
+	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -232,6 +234,63 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
 		assert.Equal(t, "key(6,7); fd(1); lax-fd(2,3); fd(6,7)", join.String())
 	})
+}
+
+func TestEquivSets(t *testing.T) {
+	tests := []struct {
+		name string
+		sets []ColSet
+		exp  EquivSets
+	}{
+		{
+			name: "all overlap",
+			sets: []ColSet{
+				cols(1, 2),
+				cols(2, 3),
+				cols(3, 4),
+			},
+			exp: EquivSets{sets: []ColSet{cols(1, 2, 3, 4)}},
+		},
+		{
+			name: "no overlap",
+			sets: []ColSet{
+				cols(1, 2),
+				cols(3, 4),
+				cols(5, 6),
+			},
+			exp: EquivSets{sets: []ColSet{cols(1, 2), cols(3, 4), cols(5, 6)}},
+		},
+		{
+			name: "add merges two previous sets",
+			sets: []ColSet{
+				cols(1, 2),
+				cols(3, 4),
+				cols(2, 3),
+			},
+			exp: EquivSets{sets: []ColSet{cols(1, 2, 3, 4)}},
+		},
+		{
+			name: "add merges one previous set",
+			sets: []ColSet{
+				cols(1, 2),
+				cols(3, 4),
+				cols(2, 6),
+			},
+			exp: EquivSets{sets: []ColSet{cols(1, 2, 6), cols(3, 4)}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			equiv := EquivSets{}
+			for _, set := range tt.sets {
+				equiv.Add(set)
+			}
+			sort.Slice(equiv.sets, func(i, j int) bool {
+				return equiv.sets[i].set.String() < equiv.sets[j].set.String()
+			})
+			assert.Equal(t, tt.exp, equiv, fmt.Sprintf("exp != found:\n  [%s]\n  [%s]", tt.exp.String(), equiv.String()))
+		})
+	}
 }
 
 func cols(vals ...ColumnId) ColSet {

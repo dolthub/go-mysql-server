@@ -5,21 +5,24 @@ import (
 	"strings"
 )
 
-// EquivSets maintains equivalency sets
+// EquivSets maintains column equivalency sets created
+// by WHERE a = b filters.
 type EquivSets struct {
 	sets []ColSet
 }
 
+// Add adds a new equivalence set, compacting any intersections
+// with existing sets.
 func (e *EquivSets) Add(cols ColSet) {
-	for i := range e.sets {
+	i := 0
+	for i < len(e.sets) {
 		set := e.sets[i]
-		if cols.SubsetOf(set) {
-			return
-		} else if set.Intersects(cols) {
-			set = set.Union(cols)
-			e.sets[i] = set
-			e.simplifyFromEditedSet(i)
-			return
+		if cols.Intersects(set) {
+			cols = cols.Union(set)
+			e.sets[i] = e.sets[len(e.sets)-1]
+			e.sets = e.sets[:len(e.sets)-1]
+		} else {
+			i++
 		}
 	}
 	e.sets = append(e.sets, cols)
@@ -54,24 +57,10 @@ func (e *EquivSets) String() string {
 	return b.String()
 }
 
-func (e *EquivSets) simplifyFromEditedSet(j int) {
-	target := e.sets[j]
-	for i := j + 1; i < len(e.sets); i++ {
-		set := e.sets[i]
-		if set.Intersects(target) {
-			target = target.Union(set)
-			e.sets[j] = target
-			e.sets[i] = e.sets[len(e.sets)-1]
-			e.sets = e.sets[:len(e.sets)-1]
-		}
-	}
-}
-
 // Key maintains a strict or lax dependency
 type Key struct {
 	strict bool
 	cols   ColSet
-	// nullability is implicit, pass in SetNotNullCols
 }
 
 func (k *Key) Empty() bool {
@@ -131,10 +120,22 @@ type FuncDepsSet struct {
 	consts ColSet
 	// tracks in-scope equivalent closure
 	equivs *EquivSets
-	// first key is the lead key
+	// keys includes the set of primary and secondary keys
+	// accumulated in the relation. The first key is the best
+	// key we have seen so far, where stict > lax and shorter
+	// is better.
 	keys []Key
 }
 
+// StrictKey returns a set of columns that act as a row identifier.
+// No two rows can have the same identifier, like (b) below. Unique keys
+// are only strict if all columns are non-nullable. See LaxKey() for
+// explanation.
+//
+//	b  c
+//	----
+//	1  1
+//	2  1
 func (f *FuncDepsSet) StrictKey() (ColSet, bool) {
 	if len(f.keys) == 0 || !f.keys[0].strict {
 		return ColSet{}, false
@@ -142,6 +143,16 @@ func (f *FuncDepsSet) StrictKey() (ColSet, bool) {
 	return f.keys[0].cols, true
 }
 
+// LaxKey returns a set of columns that act as a null-safe row identifier.
+// For example, (b) below is a lax-key for (b,c), but not a strict key.
+// A strict key treats NULLs as equal to one-another. A lax key permits
+// the general NULL != NULL behavior. Filtering nulls from a relation can
+// promote a lax key into a strict key.
+//
+//	b     c
+//	----------
+//	NULL  1
+//	NULL  NULL
 func (f *FuncDepsSet) LaxKey() (ColSet, bool) {
 	if len(f.keys) == 0 || f.keys[0].strict {
 		return ColSet{}, false
@@ -324,6 +335,12 @@ func (f *FuncDepsSet) simplifyCols(key ColSet) ColSet {
 	return ret
 }
 
+// ColsAreStrictKey returns true if the set of columns acts
+// as a primary key into a relation.
+func (f *FuncDepsSet) ColsAreStrictKey(cols ColSet) bool {
+	return f.inClosureOf(f.keys[0].cols, cols)
+}
+
 func (f *FuncDepsSet) inClosureOf(cols1, cols2 ColSet) bool {
 	if cols1.SubsetOf(cols2) {
 		return true
@@ -337,10 +354,6 @@ func (f *FuncDepsSet) inClosureOf(cols1, cols2 ColSet) bool {
 		return true
 	}
 	return false
-}
-
-func (f *FuncDepsSet) ColsAreStrictKey(cols ColSet) bool {
-	return f.inClosureOf(f.keys[0].cols, cols)
 }
 
 // NewCrossJoinFDs makes functional dependencies for a cross join
