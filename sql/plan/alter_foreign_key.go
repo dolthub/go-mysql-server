@@ -503,7 +503,6 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 		}
 	}
 
-
 	colLen := len(exprCols)
 	var indexesWithLen []idxWithLen
 	for _, idx := range indexes {
