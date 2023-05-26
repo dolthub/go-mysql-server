@@ -31,10 +31,11 @@ type TableId uint16
 // an exprGroup, produce the same rows (possibly unordered) and schema.
 // Physical plans are stored in a linked list within an expression group.
 type Memo struct {
-	cnt   uint16
-	root  *exprGroup
-	exprs map[uint64]*exprGroup
-	hints *joinHints
+	cnt     uint16
+	root    *exprGroup
+	exprs   map[uint64]*exprGroup
+	columns map[string]sql.ColumnId
+	hints   *joinHints
 
 	c        Coster
 	s        Carder
@@ -59,12 +60,12 @@ func NewMemo(ctx *sql.Context, stats sql.StatsReadWriter, s *Scope, cost Coster,
 	}
 }
 
-// memoize creates a new logical expression group to encapsulate the
+// newExprGroup creates a new logical expression group to encapsulate the
 // action of a SQL clause.
 // TODO: this is supposed to deduplicate logically equivalent table scans
 // and scalar expressions, replacing references with a pointer. Currently
 // a hacky format to quickly support memoizing join trees.
-func (m *Memo) memoize(rel exprType) *exprGroup {
+func (m *Memo) newExprGroup(rel exprType) *exprGroup {
 	m.cnt++
 	id := GroupId(m.cnt)
 	grp := newExprGroup(m, id, rel)
@@ -75,9 +76,32 @@ func (m *Memo) memoize(rel exprType) *exprGroup {
 	return grp
 }
 
-func (m *Memo) getColumnId(table, name string) sql.ColumnId {
-	// todo find column given table and column name
-	return 0
+func (m *Memo) memoizeSourceRel(rel sourceRel) *exprGroup {
+	grp := m.newExprGroup(rel)
+	m.assignColumnIds(rel)
+	return grp
+}
+
+// TODO we need to remove this as soon as name resolution refactor is in
+func (m *Memo) assignColumnIds(rel sourceRel) {
+	for _, c := range rel.outputCols() {
+		var name string
+		if c.Source != "" {
+			name = fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))
+		} else {
+			name = fmt.Sprintf("%s", strings.ToLower(rel.name()), strings.ToLower(c.Name))
+		}
+		m.columns[name] = sql.ColumnId(len(m.columns) + 1)
+	}
+}
+
+func (m *Memo) getTableId(table string) (GroupId, bool) {
+	return m.tableProps.getId(table)
+}
+
+func (m *Memo) getColumnId(table, name string) (sql.ColumnId, bool) {
+	id, ok := m.columns[fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(name))]
+	return id, ok
 }
 
 func (m *Memo) preexistingGroup(e scalarExpr) *exprGroup {
@@ -86,47 +110,67 @@ func (m *Memo) preexistingGroup(e scalarExpr) *exprGroup {
 	return group
 }
 
-func (m *Memo) memoizeScalarComparison(f expression.Comparer, id scalarExprId) *exprGroup {
-	var lScalar scalarExpr
-	switch e := f.Left().(type) {
+func (m *Memo) memoizeScalar(e sql.Expression) *exprGroup {
+	var scalar *exprGroup
+	switch e := e.(type) {
+	case expression.Comparer:
+		scalar = m.memoizeComparison(e)
 	case *expression.Literal:
-		// TODO prevent duplicate literal, interning
-		lScalar = &literal{val: e.Value(), typ: e.Type()}
+		scalar = m.memoizeLiteral(e)
 	case *expression.GetField:
-		// TODO prevent duplicate colRef, interning
-		id := m.getColumnId(e.Table(), e.Name())
-		lScalar = &colRef{id: id}
+		scalar = m.memoizeColRef(e)
+	default:
+		panic(fmt.Sprintf("unsupported expression: %T", e))
 	}
-	lGroup := m.preexistingGroup(lScalar)
-	if lGroup == nil {
-		lGroup = m.memoize(lScalar)
-	}
+	// TODO fill FD's
+	// scalar.initScalarProps()
+	return scalar
+}
 
-	var rScalar scalarExpr
-	switch e := f.Right().(type) {
-	case *expression.Literal:
-		// TODO prevent duplicate literal, interning
-		rScalar = &literal{val: e.Value(), typ: e.Type()}
-	case *expression.GetField:
-		// TODO prevent duplicate colRef, interning
-		id := m.getColumnId(e.Table(), e.Name())
-		rScalar = &colRef{id: id}
+func (m *Memo) memoizeLiteral(lit *expression.Literal) *exprGroup {
+	scalar := &literal{val: lit.Value(), typ: lit.Type()}
+	grp := m.preexistingGroup(scalar)
+	if grp != nil {
+		return grp
 	}
-	rGroup := m.preexistingGroup(rScalar)
-	if rGroup == nil {
-		rGroup = m.memoize(rScalar)
-	}
+	grp = m.newExprGroup(scalar)
+	// TODO scalar props
+	return grp
+}
 
-	var e scalarExpr
-	switch id {
-	case equalExpr:
-		e = &equal{left: lGroup, right: rGroup}
-	case notEqualExpr:
-		e = &equal{left: lGroup, right: rGroup}
+func (m *Memo) memoizeColRef(e *expression.GetField) *exprGroup {
+	col, ok := m.getColumnId(e.Table(), e.Name())
+	if !ok {
+		panic("unreachable")
 	}
-	eGroup := m.preexistingGroup(e)
+	table, ok := m.getTableId(e.Table())
+	if !ok {
+		panic("unreachable")
+	}
+	scalar := &colRef{col: col, table: table}
+	grp := m.preexistingGroup(scalar)
+	if grp != nil {
+		return grp
+	}
+	grp = m.newExprGroup(scalar)
+	// TODO scalar props
+	// references table, col
+	return grp
+}
+
+func (m *Memo) memoizeComparison(comp expression.Comparer) *exprGroup {
+	lGrp := m.memoizeScalar(comp.Left())
+	rGrp := m.memoizeScalar(comp.Right())
+	var scalar scalarExpr
+	switch e := comp.(type) {
+	case *expression.Equals:
+		scalar = &equal{left: lGrp, right: rGrp}
+	default:
+		panic(fmt.Sprintf("unsupported type: %T", e))
+	}
+	eGroup := m.preexistingGroup(scalar)
 	if eGroup == nil {
-		eGroup = m.memoize(e)
+		eGroup = m.newExprGroup(scalar)
 	}
 	return eGroup
 }

@@ -524,7 +524,8 @@ func (r *literal) children() []*exprGroup {
 
 type colRef struct {
 	*scalarBase
-	id sql.ColumnId
+	col   sql.ColumnId
+	table GroupId
 }
 
 var _ scalarExpr = (*colRef)(nil)

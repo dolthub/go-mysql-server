@@ -253,12 +253,12 @@ func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *exp
 	}
 	var filterGroups []*exprGroup
 	for _, f := range equals {
-		filterGroups = append(filterGroups, j.m.memoizeScalarComparison(f, equalExpr))
+		filterGroups = append(filterGroups, j.m.memoizeComparison(f))
 	}
 
 	// TODO if child is a filter, combine filters
 	filter := &filter{filters: filterGroups, child: childGrp}
-	filterGrp := j.m.memoize(filter)
+	filterGrp := j.m.newExprGroup(filter)
 
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = filterGrp
@@ -268,7 +268,7 @@ func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *exp
 func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 	j.checkSize()
 
-	var rel relExpr
+	var rel sourceRel
 	b := &relBase{}
 	switch n := n.(type) {
 	case *plan.ResolvedTable:
@@ -301,7 +301,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *exprGroup {
 	// Initialize the plan for this vertex.
 	idx := vertexIndex(len(j.vertices) - 1)
 	relSet := vertexSet(0).add(idx)
-	grp := j.m.memoize(rel)
+	grp := j.m.memoizeSourceRel(rel)
 	j.plans[relSet] = grp
 	return grp
 }
@@ -487,7 +487,7 @@ func (j *joinOrderBuilder) memoize(
 	selFilter []sql.Expression,
 ) *exprGroup {
 	rel := j.constructJoin(op, left, right, joinFilter, nil)
-	return j.m.memoize(rel)
+	return j.m.newExprGroup(rel)
 }
 
 func (j *joinOrderBuilder) constructJoin(

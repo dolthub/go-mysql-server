@@ -72,4 +72,5 @@ exprs:
 - name: "colRef"
   scalar: true
   attrs:
-  - [id, "sql.ColumnId"]
+  - [col, "sql.ColumnId"]
+  - [table, "GroupId"]

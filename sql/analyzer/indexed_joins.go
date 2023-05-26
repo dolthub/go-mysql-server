@@ -342,7 +342,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 			child:       semi.right,
 			projections: projectExpressions,
 		}
-		rightGrp := m.memoize(newRight)
+		rightGrp := m.newExprGroup(newRight)
 		rightGrp.relProps.distinct = hashDistinctOp
 
 		// join and its commute are a new group
@@ -355,7 +355,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *Memo) error {
 				filter:  semi.filter,
 			},
 		}
-		joinGrp := m.memoize(newJoin)
+		joinGrp := m.newExprGroup(newJoin)
 
 		newJoinCommuted := &innerJoin{
 			joinBase: &joinBase{
@@ -424,7 +424,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 			child:       anti.right,
 			projections: projectExpressions,
 		}
-		rightGrp := m.memoize(newRight)
+		rightGrp := m.newExprGroup(newRight)
 
 		// join is a new group
 		newJoin := &leftJoin{
@@ -436,7 +436,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *Memo) error {
 				filter:  anti.filter,
 			},
 		}
-		joinGrp := m.memoize(newJoin)
+		joinGrp := m.newExprGroup(newJoin)
 
 		// drop null projected columns on right table
 		nullFilters := make([]sql.Expression, len(projectExpressions))
@@ -511,7 +511,7 @@ func addRightSemiJoins(m *Memo) error {
 				child:       rGroup,
 				projections: projectExpressions,
 			}
-			rGroup = m.memoize(projRight)
+			rGroup = m.newExprGroup(projRight)
 			rGroup.relProps.distinct = hashDistinctOp
 
 			rel := &lookupJoin{
