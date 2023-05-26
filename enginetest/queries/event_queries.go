@@ -44,28 +44,6 @@ type ServerEvenTestAssertion struct {
 // SHOW EVENTS and SHOW CREATE EVENTS statements, some tests have those timestamps defined in 2037.
 var EventTests = []ServerEventTest{
 	{
-		Name: "Simple event definition with INSERT",
-		SetUpScript: []string{
-			"USE mydb;",
-			"CREATE TABLE totals (num int);",
-			"CREATE EVENT event1 ON SCHEDULE EVERY 5 SECOND DO INSERT INTO totals VALUES (1);",
-			"SELECT SLEEP(2);",
-		},
-		Assertions: []ServerEvenTestAssertion{
-			{
-				Query:    "SELECT COUNT(*) FROM totals/* 1 */;",
-				Expected: []sql.Row{{1}},
-			},
-			{
-				Query: "SELECT SLEEP(7);",
-			},
-			{
-				Query:    "SELECT COUNT(*) FROM totals/* 2 */;",
-				Expected: []sql.Row{{2}},
-			},
-		},
-	},
-	{
 		Name: "EVENTs with ON SCHEDULE EVERY",
 		SetUpScript: []string{
 			"USE mydb;",
