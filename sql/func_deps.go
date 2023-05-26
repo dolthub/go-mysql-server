@@ -87,16 +87,43 @@ func (k *Key) implies(other Key) bool {
 
 // FuncDepsSet encodes functional dependencies for a relational
 // expression. Common uses for functional dependencies:
-// - Do a set of equality columns comprise a strict key? (lookup joins)
-// - Is there a strict key for a relation? (decorrelate scopes)
-// - What are the set of equivalent filters? (join planning)
+//   - Do a set of equality columns comprise a strict key? (lookup joins)
+//   - Is there a strict key for a relation? (decorrelate scopes)
+//   - What are the set of equivalent filters? (join planning)
+//   - Do a set of grouping columns constitute a strict key
+//     (only_full_group_by)
 //
 // This object expects fields to be set in the following order:
 // - notNull: what columns are non-nullable?
 // - consts: what columns are constant?
 // - equivs: transitive closure of column equivalence
 // - keys: primary and secondary keys, simplified
+//
+// We use an abbreviated form to represent functional dependencies.
+// Normally, we would encode determinant and dependency sets like
+// (det)-->(dep). I only keep track of determinant sets, that are
+// assumed to represent keys into the entire relation. This works
+// for simple cases where fractional functional dependencies can
+// be discarded. The limitation is clear when you consider joins,
+// whose FD sets can include keys that only implicitly determine
+// a fraction of the total input set. The first key always determines
+// the entire relation, which seems good enough for many cases.
+// Maintaining partials sets also requires much less bookkeeping.
+//
+// One observed downside of this approach is that left joins fail to
+// convert equivalencies on the null-extended side to lax functional
+// dependencies. For example, in the query below, the left join loses
+// (a) == (m) because (m) can now be NULL:
+//
+// SELECT * from adbcd LEFT_JOIN mnpq WHERE a = m
+//
+// But we could maintain (m)~~>(n), which higher-level null enforcement
+// (ex: GROUPING) can reclaim as equivalence. We would need to represent
+// full functional dependencies with determinant and dependency sets,
+// rather than just determinant FDs whose dependents are always the whole
+// relation.
 type FuncDepsSet struct {
+	// all columns in this relation
 	all ColSet
 	// non-null columns for relation
 	notNull ColSet
@@ -183,38 +210,12 @@ func (f *FuncDepsSet) EquivalenceClosure(cols ColSet) ColSet {
 	return cols
 }
 
-// Questions to answer:
-// - what columns are equivalent (building memo and spot filter)
-// - are filters redundant
-// - do the set of columns comprise a key? (do eq cols comprise index lookup)
-// - what is a strict key for the relation (subq decorrelation)
-
-// how to use constants for index lookup?
-
-// tagging expressions in join tree
-// - tables add colIds
-// - filters represented by colIds and converted back w/ indexing?
-
-// not null cols -- relProps collect non-null, set in FDs as one of last steps
-// would be really nice to be given nullability beforehand
-
-//todo
-// - Add strict key, lax key from table
-// - Add equivs from filter
-//   - strict key, lax key
-//   - fixup keys
-// - Add constant from column
-//   - fixup keys
-
 func (f *FuncDepsSet) AddNotNullable(cols ColSet) {
-	// must be called first
 	cols = f.simplifyCols(cols)
 	f.notNull = f.notNull.Union(cols)
 }
 
 func (f *FuncDepsSet) AddConstants(cols ColSet) {
-	// compute closure of all constants
-	// must be called after
 	f.consts = f.consts.Union(cols)
 }
 
@@ -249,10 +250,6 @@ func (f *FuncDepsSet) AddKey(k Key) {
 }
 
 func (f *FuncDepsSet) AddStrictKey(cols ColSet) {
-	// simplify colSet
-	// add the key
-	// try to simplify the current best key
-	// update the best key (strict > lax, shorter better)
 	cols = f.simplifyCols(cols)
 	newKey := Key{cols: cols, strict: true}
 	for i, key := range f.keys {
@@ -279,11 +276,6 @@ func (f *FuncDepsSet) AddStrictKey(cols ColSet) {
 }
 
 func (f *FuncDepsSet) AddLaxKey(cols ColSet) {
-	// if all cols are not null, make strict
-	// simplifyColset
-	// add key
-	// would need not nulls to convert to strict key
-	// update best key
 	nullableCols := cols.Difference(f.notNull)
 	if nullableCols.Empty() {
 		f.AddStrictKey(cols)
@@ -359,7 +351,12 @@ func NewCrossJoinFDs(left, right *FuncDepsSet) *FuncDepsSet {
 	ret.AddNotNullable(right.notNull)
 	ret.AddConstants(left.consts)
 	ret.AddConstants(right.consts)
-	// no equiv in cross join
+	for _, set := range left.equivs.Sets() {
+		ret.AddEquivSet(set)
+	}
+	for _, set := range right.equivs.Sets() {
+		ret.AddEquivSet(set)
+	}
 	// concatenate lead key, append others
 	var lKey, rKey Key
 	if len(left.keys) > 0 {
@@ -497,12 +494,6 @@ func NewProjectFDs(fds *FuncDepsSet, cols ColSet, distinct bool) *FuncDepsSet {
 }
 
 func NewLeftJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsSet {
-	// get strict key from left
-	// maybe need concat key from cross join
-	// make cross product + filters FDs-> see if left is a strict key for it
-	//  - inline inClosureOf, don't actually make?
-	// null extend right rows
-	// if max1Row, left cols in filter will be constant
 	leftKey, leftStrict := left.StrictKey()
 	leftColsAreInnerJoinKey := false
 	if leftStrict {
@@ -574,5 +565,6 @@ func NewLeftJoinFDs(left, right *FuncDepsSet, filters [][2]ColumnId) *FuncDepsSe
 		ret.keys = append(ret.keys, key)
 	}
 	// key w cols from both sides discarded unless strict key for whole rel
+	// TODO max1Row condition
 	return ret
 }
