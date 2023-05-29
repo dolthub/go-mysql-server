@@ -1908,7 +1908,7 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "create index `primary` on t(i)",
+				Query:          "create index `primary` on t(i)",
 				ExpectedErrStr: "incorrect index name 'primary'",
 			},
 		},
