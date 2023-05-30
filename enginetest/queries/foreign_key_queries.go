@@ -1896,15 +1896,15 @@ var ForeignKeyTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "alter table child1 add foreign key (fk1, pk1) references parent1 (fk1, pk1);",
+				Query:       "alter table child1 add foreign key (fk1, pk1) references parent1 (fk1, pk1);",
 				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 			{
-				Query: "alter table child1 add foreign key (fk1, pk1, pk2) references parent1 (fk1, pk1, pk2);",
+				Query:       "alter table child1 add foreign key (fk1, pk1, pk2) references parent1 (fk1, pk1, pk2);",
 				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 			{
-				Query: "alter table child1 add foreign key (fk1, pk2, pk3, pk1) references parent1 (fk1, pk2, pk3, pk1);",
+				Query:       "alter table child1 add foreign key (fk1, pk2, pk3, pk1) references parent1 (fk1, pk2, pk3, pk1);",
 				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
 			},
 			{
@@ -1940,7 +1940,7 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into child1 values (0, 99, 99, 99);",
+				Query:       "insert into child1 values (0, 99, 99, 99);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
@@ -1977,7 +1977,7 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into child2 values (0, 99, 2, 99);",
+				Query:       "insert into child2 values (0, 99, 2, 99);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
@@ -2008,7 +2008,7 @@ var ForeignKeyTests = []ScriptTest{
 					},
 			},
 			{
-				Query: "insert into child3 values (0, 1, 2, 99);",
+				Query:       "insert into child3 values (0, 1, 2, 99);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
