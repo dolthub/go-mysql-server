@@ -2028,8 +2028,32 @@ var ForeignKeyTests = []ScriptTest{
 						"  `pk2` int NOT NULL,\n" +
 						"  `pk3` int NOT NULL,\n" +
 						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
 						"  KEY `idx4` (`fk1`,`pk2`),\n" +
 						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					},
+			},
+			// idx4 satisfies the foreign key fk5
+			{
+				Query: "alter table child4 add constraint fk5 foreign key (fk1) references parent1 (fk1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child4",
+				Expected: []sql.Row{
+					{"child4", "CREATE TABLE `child4` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  KEY `idx4` (`fk1`,`pk2`),\n" +
+						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  CONSTRAINT `fk5` FOREIGN KEY (`fk1`) REFERENCES `parent1` (`fk1`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 					},
 			},

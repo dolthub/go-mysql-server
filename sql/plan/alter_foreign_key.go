@@ -246,7 +246,11 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 
-	_, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
+	// child table requires strict prefix
+	idx, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
+	if ok && len(idx.Expressions()) < len(fkDef.Columns) {
+		ok = false
+	}
 	if err != nil {
 		return err
 	}
