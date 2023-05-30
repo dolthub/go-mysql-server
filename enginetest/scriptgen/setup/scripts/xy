@@ -23,6 +23,30 @@ create table rs (r int primary key, s int, index s_idx(s));
 ----
 
 exec
+CREATE table xy_hasnull (x int primary key, y int);
+----
+
+exec
+CREATE table ab_hasnull (a int primary key, b int);
+----
+
+exec
+insert into xy_hasnull values
+  (1,0),
+  (2,1),
+  (0,2),
+  (3,NULL);
+----
+
+exec
+insert into ab_hasnull values
+  (0,2),
+  (1,2),
+  (2,NULL),
+  (3,1);
+----
+
+exec
 insert into xy values
   (1,0),
   (2,1),

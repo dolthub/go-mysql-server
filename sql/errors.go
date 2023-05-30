@@ -597,10 +597,6 @@ var (
 	// ErrInvalidSRID is thrown when attempting to create a Geometry with an invalid SRID
 	ErrInvalidSRID = errors.NewKind("SRID value is out of range in %s")
 
-	// ErrUnsupportedSpatialIdx is thrown when attempting to create a SPATIAL index
-	// TODO: remove this error when spatial index are created
-	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL")
-
 	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
 	// TODO: remove this error when all types are full supported by spatial type functions
 	ErrUnsupportedGISTypeForSpatialFunc = errors.NewKind("unsupported spatial type: %s for function %s")

@@ -193,3 +193,7 @@ func (t systemSetType) DecodeValue(val string) (interface{}, error) {
 	}
 	return outVal, nil
 }
+
+func (t systemSetType) UnderlyingType() sql.Type {
+	return t.SetType
+}

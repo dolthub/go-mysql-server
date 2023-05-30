@@ -710,6 +710,22 @@ JSON_TABLE(
 on w = 0;`,
 		Expected: []sql.Row{{0}},
 	},
+	{
+		Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab_hasnull)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab)`,
+		Expected: []sql.Row{{1, 0}},
+	},
+	{
+		Query:    `SELECT * from xy where y not in (SELECT b from ab_hasnull)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from xy where null not in (SELECT b from ab)`,
+		Expected: []sql.Row{},
+	},
 }
 
 var JoinScriptTests = []ScriptTest{

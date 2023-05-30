@@ -245,4 +245,6 @@ type SystemVariableType interface {
 	// DecodeValue returns the original value given to EncodeValue from the given string. This is different from `Convert`,
 	// as the encoded value may technically be an "illegal" value according to the type rules.
 	DecodeValue(string) (interface{}, error)
+	// UnderlyingType returns the underlying type that this system variable type is based on.
+	UnderlyingType() Type
 }

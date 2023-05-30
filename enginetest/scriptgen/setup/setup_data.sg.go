@@ -2854,6 +2854,18 @@ var XyData = []SetupScript{{
 	`CREATE table pq (p int primary key, q int);`,
 	`CREATE table mn (m int primary key, n int);`,
 	`create table rs (r int primary key, s int, index s_idx(s));`,
+	`CREATE table xy_hasnull (x int primary key, y int);`,
+	`CREATE table ab_hasnull (a int primary key, b int);`,
+	`insert into xy_hasnull values
+  (1,0),
+  (2,1),
+  (0,2),
+  (3,NULL);`,
+	`insert into ab_hasnull values
+  (0,2),
+  (1,2),
+  (2,NULL),
+  (3,1);`,
 	`insert into xy values
   (1,0),
   (2,1),
