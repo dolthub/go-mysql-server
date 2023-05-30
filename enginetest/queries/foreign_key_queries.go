@@ -1925,7 +1925,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  KEY `fk1pk2` (`fk1`,`pk2`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`fk1`,`pk2`) REFERENCES `parent1` (`fk1`,`pk2`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
+				},
 			},
 			{
 				Query: "insert into child1 values (0, 1, 2, 3);",
@@ -1962,7 +1962,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  KEY `fk1pk2pk1` (`fk1`,`pk2`,`pk1`),\n" +
 						"  CONSTRAINT `fk2` FOREIGN KEY (`fk1`,`pk2`,`pk1`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
+				},
 			},
 			{
 				Query: "insert into child2 values (0, 1, 2, 3);",
@@ -2005,7 +2005,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
 						"  CONSTRAINT `fk3` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
+				},
 			},
 			{
 				Query:       "insert into child3 values (0, 1, 2, 99);",
@@ -2032,7 +2032,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  KEY `idx4` (`fk1`,`pk2`),\n" +
 						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
+				},
 			},
 			// idx4 satisfies the foreign key fk5
 			{
@@ -2055,7 +2055,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
 						"  CONSTRAINT `fk5` FOREIGN KEY (`fk1`) REFERENCES `parent1` (`fk1`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
+				},
 			},
 		},
 	},
