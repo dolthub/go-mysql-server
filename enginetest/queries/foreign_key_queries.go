@@ -1883,4 +1883,90 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "foreign key prefix matches primary key",
+		SetUpScript: []string{
+			"create table parent1 (fk1 int, pk1 int, pk2 int, pk3 int, primary key(pk1, pk2, pk3), index (fk1, pk2));",
+			"insert into parent1 values (0, 1, 2, 3);",
+			"create table child1 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create table child2 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create table child3 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table child1 add foreign key (fk1, pk1) references parent1 (fk1, pk1);",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query: "alter table child1 add foreign key (fk1, pk1, pk2) references parent1 (fk1, pk1, pk2);",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query: "alter table child1 add foreign key (fk1, pk2, pk3, pk1) references parent1 (fk1, pk2, pk3, pk1);",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query: "alter table child1 add constraint fk1 foreign key (fk1, pk2) references parent1 (fk1, pk2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child1 values (0, 1, 2, 3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into child1 values (0, 99, 2, 99);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into child1 values (0, 99, 99, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Query: "alter table child2 add constraint fk2 foreign key (fk1, pk2, pk1) references parent1 (fk1, pk2, pk1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child2 values (0, 1, 2, 3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into child2 values (0, 1, 2, 99);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into child2 values (0, 99, 2, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Query: "alter table child3 add constraint fk3 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child3 values (0, 1, 2, 3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into child3 values (0, 1, 2, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
 }

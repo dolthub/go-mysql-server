@@ -84,11 +84,48 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
-func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
+func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.Range) (sql.Expression, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}
-	return expression.NewRangeFilterExpr(idx.Exprs, ranges)
+
+	exprs := idx.Exprs
+	if idx.Name == "PRIMARY" {
+		return expression.NewRangeFilterExpr(exprs, ranges)
+	}
+
+	// append any missing primary key columns to the secondary index
+	idxs, err := idx.Tbl.GetIndexes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var pkIndex sql.Index
+	for _, i := range idxs {
+		if i.ID() == "PRIMARY" {
+			pkIndex = i
+			break
+		}
+	}
+
+	if pkIndex == nil {
+		return expression.NewRangeFilterExpr(exprs, ranges)
+	}
+
+	exprMap := make(map[string]struct{})
+	for _, expr := range exprs {
+		exprMap[expr.String()] = struct{}{}
+	}
+	if memIdx, ok := pkIndex.(*Index); ok {
+		for _, pkExpr := range memIdx.Exprs {
+			if _, ok := exprMap[pkExpr.String()]; ok {
+				continue
+			}
+			exprs = append(exprs, pkExpr)
+		}
+	}
+
+	return expression.NewRangeFilterExpr(exprs, ranges)
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.

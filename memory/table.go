@@ -1093,7 +1093,7 @@ type IndexedTable struct {
 }
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	filter, err := lookup.Index.(*Index).rangeFilterExpr(lookup.Ranges...)
+	filter, err := lookup.Index.(*Index).rangeFilterExpr(ctx, lookup.Ranges...)
 	if err != nil {
 		return nil, err
 	}
