@@ -1891,6 +1891,8 @@ var ForeignKeyTests = []ScriptTest{
 			"create table child1 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
 			"create table child2 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
 			"create table child3 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create table child4 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create index idx4 on child4 (fk1, pk2);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1910,6 +1912,20 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
+			},
+			{
+				Query: "show create table child1",
+				Expected: []sql.Row{
+					{"child1", "CREATE TABLE `child1` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2` (`fk1`,`pk2`),\n" +
+						"  CONSTRAINT `fk1` FOREIGN KEY (`fk1`,`pk2`) REFERENCES `parent1` (`fk1`,`pk2`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					},
 			},
 			{
 				Query: "insert into child1 values (0, 1, 2, 3);",
@@ -1933,6 +1949,20 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
+			},
+			{
+				Query: "show create table child2",
+				Expected: []sql.Row{
+					{"child2", "CREATE TABLE `child2` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1` (`fk1`,`pk2`,`pk1`),\n" +
+						"  CONSTRAINT `fk2` FOREIGN KEY (`fk1`,`pk2`,`pk1`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					},
 			},
 			{
 				Query: "insert into child2 values (0, 1, 2, 3);",
@@ -1964,8 +1994,44 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
+				Query: "show create table child3",
+				Expected: []sql.Row{
+					{"child3", "CREATE TABLE `child3` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  CONSTRAINT `fk3` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					},
+			},
+			{
 				Query: "insert into child3 values (0, 1, 2, 99);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			// although idx4 would be a valid index, it is not used for the foreign key fk4
+			{
+				Query: "alter table child4 add constraint fk4 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child4",
+				Expected: []sql.Row{
+					{"child4", "CREATE TABLE `child4` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `idx4` (`fk1`,`pk2`),\n" +
+						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					},
 			},
 		},
 	},
