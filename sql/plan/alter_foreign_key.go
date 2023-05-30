@@ -410,7 +410,7 @@ func FindForeignKeyColMapping(
 			appendTypes = append(appendTypes, indexCol.Type)
 		}
 	}
-	// TODO: concat primary key?
+	// TODO: concat primary key? not always??
 	if pkIndex != nil {
 		i := len(indexColExprTypes)
 		for _, indexCol := range pkIndex.ColumnExpressionTypes() {

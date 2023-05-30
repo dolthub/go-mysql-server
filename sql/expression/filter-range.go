@@ -15,8 +15,6 @@
 package expression
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -33,10 +31,7 @@ func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.Range) (sql.Express
 	}
 
 	var rangeCollectionExpr sql.Expression
-	for rangIdx, rang := range ranges {
-		if len(rang) != len(exprs) {
-			return nil, fmt.Errorf("expected different key count: exprs(%d) != (ranges[%d])(%d)", len(exprs), rangIdx, len(rang))
-		}
+	for _, rang := range ranges {
 		var rangeExpr sql.Expression
 		for i, rce := range rang {
 			var rangeColumnExpr sql.Expression
