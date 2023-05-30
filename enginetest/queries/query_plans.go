@@ -769,7 +769,7 @@ Select * from (
 			"     ├─ columns: [xy.x:0!null, xy.y:1]\n" +
 			"     └─ Filter\n" +
 			"         ├─ scalarSubq0.u:2!null IS NULL\n" +
-			"         └─ LeftOuterHashJoin\n" +
+			"         └─ LeftOuterHashJoinExcludeNulls\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.x:0!null\n" +
 			"             │   └─ scalarSubq0.u:2!null\n" +
