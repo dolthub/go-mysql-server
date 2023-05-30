@@ -97,7 +97,8 @@ const (
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
 	foldEmptyJoinsId             // foldEmptyJoins
 	optimizeJoinsId              // optimizeJoins
-	pushdownFiltersId            // pushdownFilters
+	generateIndexScansId         // generateIndexScans
+	pushFiltersId                // pushFilters
 	subqueryIndexesId            // subqueryIndexes
 	pruneTablesId                // pruneTables
 	fixupAuxiliaryExprsId        // fixupAuxiliaryExprs

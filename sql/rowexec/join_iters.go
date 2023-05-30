@@ -153,9 +153,20 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		matches, err := conditionIsTrue(ctx, row, i.cond)
+		res, err := i.cond.Eval(ctx, row)
+		matches := res == true
 		if err != nil {
 			return nil, err
+		}
+
+		if res == nil && i.joinType.IsExcludeNulls() {
+			err = i.secondary.Close(ctx)
+			i.secondary = nil
+			if err != nil {
+				return nil, err
+			}
+			i.primaryRow = nil
+			continue
 		}
 
 		if !matches {
@@ -252,6 +263,7 @@ const (
 	esIncRight
 	esRightIterEOF
 	esCompare
+	esRejectNull
 	esRet
 )
 
@@ -316,10 +328,17 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		case esCompare:
 			row = i.buildRow(left, right)
-			matches, err = conditionIsTrue(ctx, row, i.cond)
+			res, err := i.cond.Eval(ctx, row)
+			matches = res == true
 			if err != nil {
 				return nil, err
 			}
+
+			if res == nil && i.typ.IsExcludeNulls() {
+				nextState = esRejectNull
+				continue
+			}
+
 			if !matches {
 				nextState = esIncRight
 			} else {
@@ -333,6 +352,12 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				} else {
 					nextState = esRet
 				}
+			}
+		case esRejectNull:
+			if i.typ.IsAnti() {
+				nextState = esIncLeft
+			} else {
+				nextState = esIncRight
 			}
 		case esRet:
 			if i.typ.IsRightPartial() {

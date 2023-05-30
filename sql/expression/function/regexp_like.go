@@ -252,7 +252,13 @@ func compileRegex(ctx *sql.Context, pattern, text, flags sql.Expression, funcNam
 		}
 	}
 
-	re := regex.CreateRegex()
+	bufferSize := uint32(524288)
+	if _, val, ok := sql.SystemVariables.GetGlobal("regexp_buffer_size"); ok {
+		bufferSize = uint32(val.(uint64))
+	} else {
+		ctx.Warn(1193, `System variable for regular expressions "regexp_buffer_size" is missing`)
+	}
+	re := regex.CreateRegex(bufferSize)
 	if err = re.SetRegexString(ctx, patternVal.(string), regexFlags); err != nil {
 		_ = re.Close()
 		return nil, err

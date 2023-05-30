@@ -282,13 +282,6 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			return n, transform.SameTree, nil
 		}
 
-		// Don't qualify unresolved JSON tables, wait for joins
-		if jt, ok := n.(*plan.JSONTable); ok {
-			if !jt.Resolved() {
-				return n, transform.SameTree, nil
-			}
-		}
-
 		// Updates need to have check constraints qualified since multiple tables could be involved
 		sameCheckConstraints := true
 		if nn, ok := n.(*plan.Update); ok {
