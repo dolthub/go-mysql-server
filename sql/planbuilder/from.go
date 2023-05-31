@@ -410,17 +410,25 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 		b.handleErr(sql.ErrInvalidArgument.New("JSON_TABLE"))
 	}
 
-	paths := make([]string, len(t.Spec.Columns))
+	colOpts := make([]plan.JSONTableColOpts, len(t.Spec.Columns))
 	for i, col := range t.Spec.Columns {
-		paths[i] = col.Type.Path
+		defaultErrorVal := b.buildScalar(inScope, col.Type.ValOnError)
+		defaultEmptyVal := b.buildScalar(inScope, col.Type.ValOnError)
+		colOpts[i].Path = col.Type.Path
+		colOpts[i].Exists = col.Type.Exists
+		colOpts[i].DefaultErrorVal = defaultErrorVal
+		colOpts[i].DefaultEmptyVal = defaultEmptyVal
+		colOpts[i].ErrorOnError = col.Type.ErrorOnError
+		colOpts[i].ErrorOnEmpty = col.Type.ErrorOnEmpty
 	}
 
 	sch, _ := b.tableSpecToSchema(inScope, t.Spec, false)
 
 	outScope = inScope.push()
 	outScope.ast = t
+	alias := t.Alias.String()
 	for _, col := range sch.Schema {
-		col.Source = strings.ToLower(t.Alias.String())
+		col.Source = strings.ToLower(alias)
 		outScope.newColumn(scopeColumn{
 			db:    "",
 			table: col.Source,
@@ -429,11 +437,11 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 		})
 	}
 	outScope.node = &plan.JSONTable{
-		TableName: t.Alias.String(),
+		TableName: alias,
 		DataExpr:  data,
 		Path:      t.Path,
 		Sch:       sch,
-		ColPaths:  paths,
+		ColOpts:   colOpts,
 	}
 	return outScope
 }

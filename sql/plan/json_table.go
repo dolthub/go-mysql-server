@@ -51,13 +51,22 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	return &jsonTablePartition{key}, nil
 }
 
+type JSONTableColOpts struct {
+	Path			string
+	Exists          bool
+	DefaultErrorVal sql.Expression
+	DefaultEmptyVal sql.Expression
+	ErrorOnError    bool
+	ErrorOnEmpty    bool
+}
+
 type JSONTable struct {
-	DataExpr  sql.Expression
-	TableName string
-	Path      string
-	Sch       sql.PrimaryKeySchema
-	ColPaths  []string
-	b         sql.NodeExecBuilder
+	DataExpr         sql.Expression
+	TableName        string
+	Path             string
+	Sch              sql.PrimaryKeySchema
+	ColOpts          []JSONTableColOpts
+	b                sql.NodeExecBuilder
 }
 
 var _ sql.Table = (*JSONTable)(nil)
@@ -100,7 +109,7 @@ func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sq
 
 // Resolved implements the sql.Resolvable interface
 func (t *JSONTable) Resolved() bool {
-	return t.DataExpr.Resolved()
+	return t.DataExpr.Resolved() // TODO: resolve on error/empty exprs
 }
 
 // Children implements the sql.Node interface
@@ -139,7 +148,7 @@ func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, err
 }
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
-func NewJSONTable(dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
+func NewJSONTable(dataExpr sql.Expression, path string, alias string, schema sql.PrimaryKeySchema, colOpts []JSONTableColOpts) (sql.Node, error) {
 	if _, ok := dataExpr.(*Subquery); ok {
 		return nil, sql.ErrInvalidArgument.New("JSON_TABLE")
 	}
@@ -149,6 +158,6 @@ func NewJSONTable(dataExpr sql.Expression, path string, colPaths []string, alias
 		DataExpr:  dataExpr,
 		Path:      path,
 		Sch:       schema,
-		ColPaths:  colPaths,
+		ColOpts:   colOpts,
 	}, nil
 }

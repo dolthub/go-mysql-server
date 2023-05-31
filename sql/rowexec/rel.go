@@ -132,7 +132,6 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}
-
 	if strData == nil {
 		return &jsonTableRowIter{}, nil
 	}
@@ -141,23 +140,38 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	if err := json.Unmarshal(strData.([]byte), &jsonData); err != nil {
 		return nil, err
 	}
-
-	// Get data specified from initial path
-	var jsonPathData []interface{}
-	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, n.Path); err == nil {
-		if data, ok := rootJSONData.([]interface{}); ok {
-			jsonPathData = data
-		} else {
-			jsonPathData = []interface{}{rootJSONData}
-		}
-	} else {
+	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, n.Path)
+	if err != nil {
 		return nil, err
+	}
+	if _, ok := jsonPathData.([]interface{}); !ok {
+		jsonPathData = []interface{}{jsonPathData}
+	}
+
+	colOpts := make([]jsonTableColOpts, len(n.ColOpts))
+	for i, col := range n.ColOpts {
+		var defaultErrorVal, defaultEmptyVal interface{}
+		defaultErrorVal, err = col.DefaultErrorVal.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		defaultEmptyVal, err = col.DefaultEmptyVal.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		colOpts[i].path = col.Path
+		colOpts[i].exists = col.Exists
+		colOpts[i].defaultErrorVal = defaultErrorVal
+		colOpts[i].defaultEmptyVal = defaultEmptyVal
+		colOpts[i].errorOnError = col.ErrorOnError
+		colOpts[i].errorOnEmpty = col.ErrorOnEmpty
 	}
 
 	return &jsonTableRowIter{
-		colPaths: n.ColPaths,
-		schema:   n.Schema(),
-		data:     jsonPathData,
+		schema:  n.Schema(),
+		data:    jsonPathData.([]interface{}),
+		colOpts: colOpts,
 	}, nil
 }
 

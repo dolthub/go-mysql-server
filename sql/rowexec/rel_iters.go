@@ -243,11 +243,20 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 
+type jsonTableColOpts struct {
+	path			string
+	exists          bool
+	defaultErrorVal interface{}
+	defaultEmptyVal interface{}
+	errorOnError    bool
+	errorOnEmpty    bool
+}
+
 type jsonTableRowIter struct {
-	colPaths []string
-	schema   sql.Schema
-	data     []interface{}
-	pos      int
+	schema    sql.Schema
+	data      []interface{}
+	pos       int
+	colOpts   []jsonTableColOpts
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}
@@ -259,18 +268,42 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	obj := j.data[j.pos]
 	j.pos++
 
-	row := make(sql.Row, len(j.colPaths))
-	for i, p := range j.colPaths {
-		var val interface{}
-		if v, err := jsonpath.JsonPathLookup(obj, p); err == nil {
-			val = v
+	row := make(sql.Row, len(j.schema))
+	for i := range j.schema {
+		// for ordinal column
+		if j.schema[i].AutoIncrement {
+			row[i] = j.pos
+			continue
+		}
+		opt := j.colOpts[i]
+		
+		val, err := jsonpath.JsonPathLookup(obj, opt.path)
+		if opt.exists {
+			if err == nil {
+				row[i] = 0
+			} else {
+				row[i] = 1
+			}
+			continue
+		}
+
+		if val == nil {
+			if opt.errorOnEmpty {
+				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", j.schema[i].Name)
+			}
+			val = opt.defaultEmptyVal
 		}
 
 		value, _, err := j.schema[i].Type.Convert(val)
 		if err != nil {
-			return nil, err
+			if opt.errorOnError {
+				return nil, err
+			}
+			value, _, err = j.schema[i].Type.Convert(opt.defaultErrorVal)
+			if err != nil {
+				return nil, err
+			}
 		}
-
 		row[i] = value
 	}
 
