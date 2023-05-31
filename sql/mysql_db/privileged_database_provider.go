@@ -103,9 +103,14 @@ func (pdp PrivilegedDatabaseProvider) AllDatabases(ctx *sql.Context) []sql.Datab
 	var databasesWithAccess []sql.Database
 	allDatabases := pdp.provider.AllDatabases(ctx)
 	for _, db := range allDatabases {
-		// If the user has any global static privileges or database-relevant privileges then the database is accessible.
-		// 'information_schema' database is always accessible.
-		if db.Name() == sql.InformationSchemaDatabaseName || privilegeSetCount > 0 || privilegeSet.Database(db.Name()).HasPrivileges() {
+		// If the user has any global static privileges or database-relevant privileges then the database is accessible
+		checkName := db.Name()
+
+		if adb, ok := db.(sql.AliasedDatabase); ok {
+			checkName = adb.AliasedName()
+		} 
+		
+		if privilegeSetCount > 0 || privilegeSet.Database(checkName).HasPrivileges() {
 			databasesWithAccess = append(databasesWithAccess, NewPrivilegedDatabase(pdp.grantTables, db))
 		}
 	}
@@ -303,9 +308,6 @@ func (pdb PrivilegedDatabase) RenameTable(ctx *sql.Context, oldName, newName str
 
 // GetTriggers implements the interface sql.TriggerDatabase.
 func (pdb PrivilegedDatabase) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
-	if pdb.db.Name() == "information_schema" {
-		return nil, nil
-	}
 	if db, ok := pdb.db.(sql.TriggerDatabase); ok {
 		return db.GetTriggers(ctx)
 	}
@@ -330,9 +332,6 @@ func (pdb PrivilegedDatabase) DropTrigger(ctx *sql.Context, name string) error {
 
 // GetStoredProcedure implements the interface sql.StoredProcedureDatabase.
 func (pdb PrivilegedDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.StoredProcedureDetails, bool, error) {
-	if pdb.db.Name() == "information_schema" {
-		return sql.StoredProcedureDetails{}, false, nil
-	}
 	if db, ok := pdb.db.(sql.StoredProcedureDatabase); ok {
 		return db.GetStoredProcedure(ctx, name)
 	}
@@ -341,9 +340,6 @@ func (pdb PrivilegedDatabase) GetStoredProcedure(ctx *sql.Context, name string) 
 
 // GetStoredProcedures implements the interface sql.StoredProcedureDatabase.
 func (pdb PrivilegedDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
-	if pdb.db.Name() == "information_schema" {
-		return nil, nil
-	}
 	if db, ok := pdb.db.(sql.StoredProcedureDatabase); ok {
 		return db.GetStoredProcedures(ctx)
 	}
@@ -368,9 +364,6 @@ func (pdb PrivilegedDatabase) DropStoredProcedure(ctx *sql.Context, name string)
 
 // GetEvent implements sql.EventDatabase
 func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
-	if pdb.db.Name() == "information_schema" {
-		return sql.EventDefinition{}, false, nil
-	}
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.GetEvent(ctx, name)
 	}
@@ -379,9 +372,6 @@ func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.Event
 
 // GetEvents implements sql.EventDatabase
 func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
-	if pdb.db.Name() == "information_schema" {
-		return nil, nil
-	}
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.GetEvents(ctx)
 	}
