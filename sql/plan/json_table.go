@@ -167,6 +167,7 @@ func NewJSONTable(dataExpr sql.Expression, path string, alias string, schema sql
 		DataExpr:  dataExpr,
 		Path:      path,
 		Sch:       schema,
+
 		ColOpts:   colOpts,
 	}, nil
 }

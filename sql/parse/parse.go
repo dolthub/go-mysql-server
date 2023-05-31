@@ -941,7 +941,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if s.ShowCollationFilterOpt != nil {
-			filterExpr, err := ExprToExpression(ctx, *s.ShowCollationFilterOpt)
+			filterExpr, err := ExprToExpression(ctx, s.ShowCollationFilterOpt)
 			if err != nil {
 				return nil, err
 			}
@@ -3559,7 +3559,7 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 		if err != nil {
 			return nil, err
 		}
-		defaultEmptyVal, err = ExprToExpression(ctx, col.Type.ValOnError)
+		defaultEmptyVal, err = ExprToExpression(ctx, col.Type.ValOnEmpty)
 		if err != nil {
 			return nil, err
 		}

@@ -276,10 +276,10 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			continue
 		}
 		opt := j.colOpts[i]
-		
+
 		val, err := jsonpath.JsonPathLookup(obj, opt.path)
 		if opt.exists {
-			if err == nil {
+			if err != nil {
 				row[i] = 0
 			} else {
 				row[i] = 1
@@ -287,7 +287,8 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			continue
 		}
 
-		if val == nil {
+		// key error means empty
+		if err != nil {
 			if opt.errorOnEmpty {
 				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", j.schema[i].Name)
 			}

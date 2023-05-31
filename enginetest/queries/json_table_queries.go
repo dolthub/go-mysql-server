@@ -25,6 +25,14 @@ var JSONTableQueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    "SELECT * FROM JSON_TABLE('{}','$[*]' COLUMNS(x int path '$.a')) as t;",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "SELECT * FROM JSON_TABLE('{\"a\":1}','$.b' COLUMNS(x varchar(100) path '$.a')) as tt;",
+		Expected: []sql.Row{},
+	},
+	{
 		Query: "SELECT * FROM JSON_TABLE('[{\"a\":1},{\"a\":2}]','$[*]' COLUMNS(x varchar(100) path '$.a')) as tt;",
 		Expected: []sql.Row{
 			{"1"},
@@ -469,6 +477,129 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 		Query:       "select * from json_table((select j from t), '$[*]' columns (a varchar(10) path '$')) as jt;",
 		ExpectedErr: sql.ErrInvalidArgument,
+	},
+
+	{
+		Name: "test FOR ORDINALITY",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion {
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS( pk FOR ORDINALITY, c1 INT PATH '$.c1')) as jt;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$[*]' COLUMNS( pk FOR ORDINALITY, c1 INT PATH '$.c1')) as jt;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('[{\"c1\": 333}, {\"c1\": 222}, {\"c1\": 111}]', '$[*]' COLUMNS( pk FOR ORDINALITY, c1 INT PATH '$.c1')) as jt;",
+				Expected: []sql.Row{
+					{1, 333},
+					{2, 222},
+					{3, 111},
+				},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('[{\"c1\": 333}, {\"c1\": 222}, {\"c1\": 111}]', '$[*]' COLUMNS( pk1 FOR ORDINALITY, pk2 FOR ORDINALITY, c1 INT PATH '$.c1')) as jt;",
+				Expected: []sql.Row{
+					{1, 1, 333},
+					{2, 2, 222},
+					{3, 3, 111},
+				},
+			},
+		},
+	},
+	{
+		Name: "test EXISTS",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion {
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT EXISTS PATH '$.c1')) as jt;",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{\"c1\": 123}', '$' COLUMNS(c1 INT EXISTS PATH '$.c1')) as jt;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('[{\"c1\": 333}, {\"c1\": 222}, {\"c1\": 111}, {\"notc1\": 123}]', '$[*]' COLUMNS(c1 INT EXISTS PATH '$.c1')) as jt;",
+				Expected: []sql.Row{
+					{1},
+					{1},
+					{1},
+					{0},
+				},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('[{\"a\": 333}, {\"b\": 222}, {\"a\": 111}, {\"b\": 123}]', '$[*]' COLUMNS(a INT EXISTS PATH '$.a', b INT EXISTS PATH '$.b')) as jt;",
+				Expected: []sql.Row{
+					{1, 0},
+					{0, 1},
+					{1, 0},
+					{0, 1},
+				},
+			},
+		},
+	},
+	{
+		Name: "test DEFAULT ON ERROR",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion {
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' DEFAULT '123' ON ERROR)) as jt;",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+		},
+	},
+
+	{
+		Name: "test DEFAULT ON EMPTY",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion {
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' DEFAULT '123' ON EMPTY)) as jt;",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('{\"notc1\": \"321321\"}', '$' COLUMNS(c1 INT PATH '$.c1' DEFAULT '123' ON EMPTY)) as jt;",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				// MySQL only supports string type for DEFAULT
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' DEFAULT 123 ON EMPTY)) as jt;",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+		},
+	},
+
+	{
+		Name: "test ERROR ON ERROR",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion {
+
+		},
+	},
+
+	{
+		Name: "test ERROR ON EMPTY",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion {
+
+		},
 	},
 }
 

@@ -516,7 +516,7 @@ func (b *PlanBuilder) buildShowCollation(inScope *scope, s *ast.Show) (outScope 
 	}
 
 	if s.ShowCollationFilterOpt != nil {
-		filterExpr := b.buildScalar(inScope, *s.ShowCollationFilterOpt)
+		filterExpr := b.buildScalar(inScope, s.ShowCollationFilterOpt)
 		// TODO: once collations are properly implemented, we should better be able to handle utf8 -> utf8mb3 comparisons as they're aliases
 		filterExpr, _, _ = transform.Expr(filterExpr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if exprLiteral, ok := expr.(*expression.Literal); ok {
