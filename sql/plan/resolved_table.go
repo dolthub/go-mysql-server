@@ -166,6 +166,10 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 // checkPrivilegeNameForDatabase returns the name of the database to check privileges for, which may not be the result 
 // of db.Name()
 func checkPrivilegeNameForDatabase(db sql.Database) string {
+	if db == nil {
+		return ""
+	}
+	
 	checkDbName := db.Name()
 	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
 		db = pdb.Unwrap()

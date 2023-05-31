@@ -86,27 +86,17 @@ func (p *DeleteFrom) Resolved() bool {
 	return true
 }
 
-func (p *DeleteFrom) Database() string {
-	return deleteDatabaseHelper(p.Child)
+// DB returns the database being deleted from. |Database| is used by another interface we implement.
+func (p *DeleteFrom) DB() sql.Database {
+	return getDatabase(p.Child)
 }
 
-func deleteDatabaseHelper(node sql.Node) string {
-	switch node := node.(type) {
-	case sql.DeletableTable:
+func (p *DeleteFrom) Database() string {
+	database := getDatabase(p.Child)
+	if database == nil {
 		return ""
-	case *IndexedTableAccess:
-		return deleteDatabaseHelper(node.ResolvedTable)
-	case *ResolvedTable:
-		return node.Database.Name()
-	case *UnresolvedTable:
-		return node.Database().Name()
 	}
-
-	for _, child := range node.Children() {
-		return deleteDatabaseHelper(child)
-	}
-
-	return ""
+	return database.Name()
 }
 
 // WithChildren implements the Node interface.
@@ -129,8 +119,10 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 			ctx.GetLogger().Warnf("unable to determine deletable table from delete target: %v", target)
 			return false
 		}
-		// TODO: this needs a real database, fix it
-		op := sql.NewPrivilegedOperation(p.Database(), deletable.Name(), "", sql.PrivilegeType_Delete)
+		
+		db := getDatabase(target)
+		checkName := checkPrivilegeNameForDatabase(db)
+		op := sql.NewPrivilegedOperation(checkName, deletable.Name(), "", sql.PrivilegeType_Delete)
 		if opChecker.UserHasPrivileges(ctx, op) == false {
 			return false
 		}
