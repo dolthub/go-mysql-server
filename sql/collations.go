@@ -592,7 +592,7 @@ var collationArray = [324]Collation{
 	/*199*/ {Collation_utf8mb3_spanish_ci, "utf8mb3_spanish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
 	/*200*/ {Collation_utf8mb3_swedish_ci, "utf8mb3_swedish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
 	/*201*/ {Collation_utf8mb3_turkish_ci, "utf8mb3_turkish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
-	/*202*/ {Collation_utf8mb3_czech_ci, "utf8mb3_czech_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
+	/*202*/ {Collation_utf8mb3_czech_ci, "utf8mb3_czech_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", encodings.Utf8mb3_czech_ci_RuneWeight},
 	/*203*/ {Collation_utf8mb3_danish_ci, "utf8mb3_danish_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
 	/*204*/ {Collation_utf8mb3_lithuanian_ci, "utf8mb3_lithuanian_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
 	/*205*/ {Collation_utf8mb3_slovak_ci, "utf8mb3_slovak_ci", CharacterSet_utf8mb3, false, true, 8, "PAD SPACE", nil},
