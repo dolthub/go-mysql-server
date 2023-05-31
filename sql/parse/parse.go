@@ -941,7 +941,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if s.ShowCollationFilterOpt != nil {
-			filterExpr, err := ExprToExpression(ctx, *s.ShowCollationFilterOpt)
+			filterExpr, err := ExprToExpression(ctx, s.ShowCollationFilterOpt)
 			if err != nil {
 				return nil, err
 			}
