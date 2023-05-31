@@ -47,11 +47,12 @@ func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (s
 		return pdp.grantTables, nil
 	}
 
-	db, err := pdp.provider.Database(ctx, name)
-	if sql.ErrDatabaseNotFound.Is(err) {
-		// continue to priv check below, which will deny access or return not found as appropriate
-	} else if err != nil {
-		return nil, err
+	db, providerErr := pdp.provider.Database(ctx, name)
+	if sql.ErrDatabaseNotFound.Is(providerErr) {
+		// continue to priv check below, which will deny access or return not found as appropriate, before returning this
+		// original not found error
+	} else if providerErr != nil {
+		return nil, providerErr
 	}
 
 	checkName := name
@@ -63,6 +64,10 @@ func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (s
 	// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
 	if privSet.Count() == 0 && !privSet.Database(checkName).HasPrivileges() {
 		return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), checkName)
+	}
+	
+	if providerErr != nil {
+		return nil, providerErr
 	}
 
 	return NewPrivilegedDatabase(pdp.grantTables, db), nil
