@@ -43,33 +43,54 @@ func NewPrivilegedDatabaseProvider(grantTables *MySQLDb, p sql.DatabaseProvider)
 
 // Database implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
-
-	if lowName := strings.ToLower(name); lowName != sql.InformationSchemaDatabaseName {
-		privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
-		// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
-		if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
-			return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), name)
-		}
-		if lowName == "mysql" {
-			return pdp.grantTables, nil
-		}
+	if strings.ToLower(name) == "mysql" {
+		return pdp.grantTables, nil
 	}
+
 	db, err := pdp.provider.Database(ctx, name)
 	if err != nil {
 		return nil, err
 	}
+	// if sql.ErrDatabaseNotFound.Is(err) {
+	// 	// continue to priv check below
+	// } else if err != nil {
+	// 	return nil, err
+	// }
+
+	if adb, ok := db.(sql.AliasedDatabase); ok {
+		name = adb.AliasedName()
+	}
+
+	privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
+	// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
+	if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
+		return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), name)
+	}
+
 	return NewPrivilegedDatabase(pdp.grantTables, db), nil
 }
 
 // HasDatabase implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) HasDatabase(ctx *sql.Context, name string) bool {
-	if name != sql.InformationSchemaDatabaseName {
-		privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
-		// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
-		if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
-			return false
+	database, err := pdp.provider.Database(ctx, name)
+	if sql.ErrDatabaseNotFound.Is(err) {
+		// continue to check below, which will deny access or return not found as appropriate
+	} else if err != nil {
+		return false
+	}
+	
+	if database != nil {
+		if  adb, ok := database.(sql.AliasedDatabase); ok {
+			name = adb.AliasedName()
 		}
 	}
+	
+	privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
+	// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
+	if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
+		return false
+	}
+	
 	return pdp.provider.HasDatabase(ctx, name)
 }
 
