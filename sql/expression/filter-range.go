@@ -34,8 +34,8 @@ func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.Range) (sql.Express
 
 	var rangeCollectionExpr sql.Expression
 	for rangIdx, rang := range ranges {
-		if len(rang) != len(exprs) {
-			return nil, fmt.Errorf("expected different key count: exprs(%d) != (ranges[%d])(%d)", len(exprs), rangIdx, len(rang))
+		if len(exprs) < len(rang) {
+			return nil, fmt.Errorf("expected different key count: exprs(%d) < (ranges[%d])(%d)", len(exprs), rangIdx, len(rang))
 		}
 		var rangeExpr sql.Expression
 		for i, rce := range rang {

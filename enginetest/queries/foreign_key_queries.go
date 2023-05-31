@@ -1883,4 +1883,175 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Referenced index includes implicit primary key columns",
+		SetUpScript: []string{
+			"create table parent1 (fk1 int, pk1 int, pk2 int, pk3 int, primary key(pk1, pk2, pk3), index (fk1, pk2));",
+			"insert into parent1 values (0, 1, 2, 3);",
+			"create table child1 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create table child2 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create table child3 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create table child4 (fk1 int, pk1 int, pk2 int, pk3 int, primary key (pk1, pk2, pk3));",
+			"create index idx4 on child4 (fk1, pk2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table child1 add foreign key (fk1, pk1) references parent1 (fk1, pk1);",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query:       "alter table child1 add foreign key (fk1, pk1, pk2) references parent1 (fk1, pk1, pk2);",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query:       "alter table child1 add foreign key (fk1, pk2, pk3, pk1) references parent1 (fk1, pk2, pk3, pk1);",
+				ExpectedErr: sql.ErrForeignKeyMissingReferenceIndex,
+			},
+			{
+				Query: "alter table child1 add constraint fk1 foreign key (fk1, pk2) references parent1 (fk1, pk2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child1",
+				Expected: []sql.Row{
+					{"child1", "CREATE TABLE `child1` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2` (`fk1`,`pk2`),\n" +
+						"  CONSTRAINT `fk1` FOREIGN KEY (`fk1`,`pk2`) REFERENCES `parent1` (`fk1`,`pk2`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into child1 values (0, 1, 2, 3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into child1 values (0, 99, 2, 99);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into child1 values (0, 99, 99, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "alter table child2 add constraint fk2 foreign key (fk1, pk2, pk1) references parent1 (fk1, pk2, pk1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child2",
+				Expected: []sql.Row{
+					{"child2", "CREATE TABLE `child2` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1` (`fk1`,`pk2`,`pk1`),\n" +
+						"  CONSTRAINT `fk2` FOREIGN KEY (`fk1`,`pk2`,`pk1`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into child2 values (0, 1, 2, 3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into child2 values (0, 1, 2, 99);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into child2 values (0, 99, 2, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "alter table child3 add constraint fk3 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child3 values (0, 1, 2, 3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "show create table child3",
+				Expected: []sql.Row{
+					{"child3", "CREATE TABLE `child3` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  CONSTRAINT `fk3` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into child3 values (0, 1, 2, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{ // although idx4 would be a valid index, it is not used for the foreign key fk4
+				Query: "alter table child4 add constraint fk4 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child4",
+				Expected: []sql.Row{
+					{"child4", "CREATE TABLE `child4` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  KEY `idx4` (`fk1`,`pk2`),\n" +
+						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{ // idx4 satisfies the foreign key fk5
+				Query: "alter table child4 add constraint fk5 foreign key (fk1) references parent1 (fk1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child4",
+				Expected: []sql.Row{
+					{"child4", "CREATE TABLE `child4` (\n" +
+						"  `fk1` int,\n" +
+						"  `pk1` int NOT NULL,\n" +
+						"  `pk2` int NOT NULL,\n" +
+						"  `pk3` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
+						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  KEY `idx4` (`fk1`,`pk2`),\n" +
+						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  CONSTRAINT `fk5` FOREIGN KEY (`fk1`) REFERENCES `parent1` (`fk1`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
