@@ -17,11 +17,9 @@ package memory
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
@@ -42,6 +40,7 @@ type Index struct {
 var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
 var _ sql.OrderedIndex = (*Index)(nil)
+var _ sql.ExtendedIndex = (*Index)(nil)
 
 func (idx *Index) Database() string                    { return idx.DB }
 func (idx *Index) Driver() string                      { return idx.DriverName }
@@ -53,6 +52,22 @@ func (idx *Index) Expressions() []string {
 	var exprs []string
 	for _, e := range idx.Exprs {
 		exprs = append(exprs, e.String())
+	}
+	return exprs
+}
+
+func (idx *Index) ExtendedExpressions() []string {
+	var exprs []string
+	foundCols := make(map[string]struct{})
+	for _, e := range idx.Exprs {
+		foundCols[strings.ToLower(e.(*expression.GetField).Name())] = struct{}{}
+		exprs = append(exprs, e.String())
+	}
+	for _, ord := range idx.Tbl.schema.PkOrdinals {
+		col := idx.Tbl.schema.Schema[ord]
+		if _, ok := foundCols[strings.ToLower(col.Name)]; !ok {
+			exprs = append(exprs, fmt.Sprintf("%s.%s", idx.Tbl.name, col.Name))
+		}
 	}
 	return exprs
 }
@@ -94,7 +109,7 @@ func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.Range) (sql.Ex
 		return expression.NewRangeFilterExpr(exprs, ranges)
 	}
 
-	// append any missing primary key columns to the secondary index
+	// Append any missing primary key columns to the secondary index
 	idxs, err := idx.Tbl.GetIndexes(ctx)
 	if err != nil {
 		return nil, err
@@ -135,6 +150,28 @@ func (idx *Index) ColumnExpressionTypes() []sql.ColumnExpressionType {
 		cets[i] = sql.ColumnExpressionType{
 			Expression: expr.String(),
 			Type:       expr.Type(),
+		}
+	}
+	return cets
+}
+
+func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
+	cets := make([]sql.ColumnExpressionType, 0, len(idx.Tbl.schema.Schema))
+	cetsInExprs := make(map[string]struct{})
+	for _, expr := range idx.Exprs {
+		cetsInExprs[strings.ToLower(expr.(*expression.GetField).Name())] = struct{}{}
+		cets = append(cets, sql.ColumnExpressionType{
+			Expression: expr.String(),
+			Type:       expr.Type(),
+		})
+	}
+	for _, ord := range idx.Tbl.schema.PkOrdinals {
+		col := idx.Tbl.schema.Schema[ord]
+		if _, ok := cetsInExprs[strings.ToLower(col.Name)]; !ok {
+			cets = append(cets, sql.ColumnExpressionType{
+				Expression: fmt.Sprintf("%s.%s", idx.Tbl.name, col.Name),
+				Type:       col.Type,
+			})
 		}
 	}
 	return cets
@@ -186,43 +223,6 @@ type ExpressionsIndex interface {
 	sql.Index
 	MemTable() *Table
 	ColumnExpressions() []sql.Expression
-}
-
-func getType(val interface{}) (interface{}, sql.Type) {
-	switch val := val.(type) {
-	case int:
-		return int64(val), types.Int64
-	case uint:
-		return int64(val), types.Int64
-	case int8:
-		return int64(val), types.Int64
-	case uint8:
-		return int64(val), types.Int64
-	case int16:
-		return int64(val), types.Int64
-	case uint16:
-		return int64(val), types.Int64
-	case int32:
-		return int64(val), types.Int64
-	case uint32:
-		return int64(val), types.Int64
-	case int64:
-		return int64(val), types.Int64
-	case uint64:
-		return int64(val), types.Int64
-	case float32:
-		return float64(val), types.Float64
-	case float64:
-		return float64(val), types.Float64
-	case string:
-		return val, types.LongText
-	case nil:
-		return nil, types.Null
-	case time.Time:
-		return val, types.Datetime
-	default:
-		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
-	}
 }
 
 func (idx *Index) Order() sql.IndexOrder {
