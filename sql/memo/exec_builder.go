@@ -317,7 +317,17 @@ func (b *ExecBuilder) buildProject(r *Project, input sql.Schema, children ...sql
 }
 
 func (b *ExecBuilder) buildFilter(r *Filter, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	return nil, nil
+	projInput := input[len(input)-len(children[0].Schema()):]
+	filters := make([]sql.Expression, len(r.Filters))
+	var err error
+	for i := range r.Filters {
+		filters[i], err = b.buildScalar(r.Filters[i].Scalar, projInput)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ret := plan.NewFilter(expression.JoinAnd(filters...), children[0])
+	return ret, nil
 }
 
 func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) {
@@ -336,6 +346,10 @@ func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) 
 // scalar expressions
 
 func (b *ExecBuilder) buildScalar(e ScalarExpr, sch sql.Schema) (sql.Expression, error) {
+	if h, ok := e.(*hidden); ok {
+		ret, _, err := fixidx.FixFieldIndexes(e.Group().m.scope, nil, sch, h.e)
+		return ret, err
+	}
 	return buildScalarExpr(b, e, sch)
 }
 

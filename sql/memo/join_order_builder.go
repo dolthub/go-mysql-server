@@ -275,8 +275,7 @@ func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *Exp
 	}
 
 	// TODO if child is a filter, combine filters
-	filter := &Filter{Filters: filterGroups, Child: childGrp}
-	filterGrp := j.m.NewExprGroup(filter)
+	filterGrp := j.m.MemoizeFilter(nil, childGrp, filterGroups)
 
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = filterGrp

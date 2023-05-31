@@ -91,6 +91,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costDistinct(ctx, n, s)
 	case *EmptyTable:
 		return c.costEmptyTable(ctx, n, s)
+	case *Filter:
+		return c.costFilter(ctx, n, s)
 	default:
 		panic(fmt.Sprintf("coster does not support type: %T", n))
 	}
@@ -251,6 +253,10 @@ func (c *coster) costEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader
 	return 0, nil
 }
 
+func (c *coster) costFilter(_ *sql.Context, f *Filter, _ sql.StatsReader) (float64, error) {
+	// assume 1 unit of compute for each input row
+	return f.Child.RelProps.card * cpuCostFactor * float64(len(f.Filters)), nil
+}
 func NewDefaultCarder() Carder {
 	return &carder{}
 }
@@ -309,6 +315,8 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return n.Child.RelProps.card, nil
 	case *Distinct:
 		return n.Child.RelProps.card, nil
+	case *Filter:
+		return n.Child.RelProps.card * .75, nil
 	default:
 		panic(fmt.Sprintf("unknown type %T", n))
 	}

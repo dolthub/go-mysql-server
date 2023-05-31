@@ -129,7 +129,7 @@ func (m *Memo) memoizeScalar(e sql.Expression) *ExprGroup {
 	case *expression.GetField:
 		scalar = m.MemoizeColRef(e)
 	case *expression.IsNull:
-		scalar = m.memoizeIsNull(e)
+		scalar = m.MemoizeIsNull(e.Child)
 	default:
 		scalar = m.memoizeHidden(e)
 	}
@@ -179,6 +179,18 @@ func (m *Memo) memoizeComparison(comp expression.Comparer) *ExprGroup {
 	switch e := comp.(type) {
 	case *expression.Equals:
 		scalar = &Equal{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
+	case *expression.NullSafeEquals:
+		scalar = &NullSafeEq{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
+	case *expression.GreaterThan:
+		scalar = &Gt{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
+	case *expression.GreaterThanOrEqual:
+		scalar = &Geq{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
+	case *expression.LessThan:
+		scalar = &Lt{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
+	case *expression.LessThanOrEqual:
+		scalar = &Leq{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
+	case *expression.Regexp:
+		scalar = &Regexp{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
 	default:
 		panic(fmt.Sprintf("unsupported type: %T", e))
 	}
@@ -189,8 +201,8 @@ func (m *Memo) memoizeComparison(comp expression.Comparer) *ExprGroup {
 	return eGroup
 }
 
-func (m *Memo) memoizeIsNull(lit *expression.IsNull) *ExprGroup {
-	childGrp := m.memoizeScalar(lit.Child)
+func (m *Memo) MemoizeIsNull(child sql.Expression) *ExprGroup {
+	childGrp := m.memoizeScalar(child)
 
 	scalar := &IsNull{scalarBase: &scalarBase{}, Child: childGrp}
 	grp := m.PreexistingScalar(scalar)
@@ -271,6 +283,20 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []*ExprGroup) *
 		relBase:     &relBase{},
 		Child:       child,
 		Projections: projections,
+	}
+	if grp == nil {
+		return m.NewExprGroup(rel)
+	}
+	rel.g = grp
+	grp.Prepend(rel)
+	return grp
+}
+
+func (m *Memo) MemoizeFilter(grp, child *ExprGroup, filters []*ExprGroup) *ExprGroup {
+	rel := &Filter{
+		relBase: &relBase{},
+		Child:   child,
+		Filters: filters,
 	}
 	if grp == nil {
 		return m.NewExprGroup(rel)
@@ -538,6 +564,8 @@ func (p *relProps) populateOutputTables() {
 		p.outputTables = n.Child.RelProps.OutputTables()
 	case *Project:
 		p.outputTables = n.Child.RelProps.OutputTables()
+	case *Filter:
+		p.outputTables = n.Child.RelProps.OutputTables()
 	case JoinRel:
 		p.outputTables = n.JoinPrivate().Left.RelProps.OutputTables().Union(n.JoinPrivate().Right.RelProps.OutputTables())
 	default:
@@ -555,6 +583,8 @@ func (p *relProps) populateInputTables() {
 	case *Distinct:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case *Project:
+		p.inputTables = n.Child.RelProps.InputTables()
+	case *Filter:
 		p.inputTables = n.Child.RelProps.InputTables()
 	case JoinRel:
 		p.inputTables = n.JoinPrivate().Left.RelProps.InputTables().Union(n.JoinPrivate().Right.RelProps.InputTables())
@@ -586,6 +616,8 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.Schema {
 	case *Distinct:
 		return r.Child.RelProps.OutputCols()
 	case *Project:
+		return r.outputCols()
+	case *Filter:
 		return r.outputCols()
 	case SourceRel:
 		return r.OutputCols()
@@ -728,7 +760,7 @@ func (p *tableProps) getTable(id GroupId) (string, bool) {
 }
 
 func (p *tableProps) GetId(n string) (GroupId, bool) {
-	id, ok := p.nameToGrp[n]
+	id, ok := p.nameToGrp[strings.ToLower(n)]
 	return id, ok
 }
 
@@ -1111,7 +1143,7 @@ type hidden struct {
 }
 
 func (h hidden) String() string {
-	return fmt.Sprintf("hide: %s", h.String())
+	return fmt.Sprintf("hide: %s", h.e.String())
 }
 
 func (h hidden) Children() []*ExprGroup {

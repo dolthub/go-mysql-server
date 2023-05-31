@@ -400,7 +400,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 		}
 
 		// project is a new group
-		rightGrp := m.MemoizeProject(e.Group(), semi.Right, projectExpressions)
+		rightGrp := m.MemoizeProject(nil, semi.Right, projectExpressions)
 		rightGrp.RelProps.Distinct = memo.HashDistinctOp
 
 		// join and its commute are a new group
@@ -441,6 +441,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 
 		rightOutTables := anti.Right.RelProps.OutputTables()
 		var projectExpressions []*memo.ExprGroup
+		var nullify []sql.Expression
 		onlyEquality := true
 		for _, f := range anti.Filter {
 			_ = dfsScalar(f, func(e memo.ScalarExpr) error {
@@ -448,6 +449,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 				case *memo.ColRef:
 					if rightOutTables.Contains(int(e.Table) - 1) {
 						projectExpressions = append(projectExpressions, e.Group())
+						nullify = append(nullify, e.Gf)
 					}
 				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
 				default:
@@ -462,25 +464,19 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 		}
 
 		// project is a new group
-		rightGrp := m.MemoizeProject(e.Group(), anti.Right, projectExpressions)
+		rightGrp := m.MemoizeProject(nil, anti.Right, projectExpressions)
 
 		// join is a new group
-		joinGrp := m.MemoizeLeftJoin(e.Group(), anti.Left, rightGrp, plan.JoinTypeLeftOuter, anti.Filter)
+		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, plan.JoinTypeLeftOuter, anti.Filter)
 
 		// todo memoize these filters, new expression group
 		// drop null projected columns on right table
-		nullFilters := make([]*memo.ExprGroup, len(projectExpressions))
-		for i, e := range projectExpressions {
-			in := &memo.IsNull{Child: e}
-			grp := m.PreexistingScalar(in)
-			if grp == nil {
-				grp = m.NewExprGroup(in)
-			}
-			nullFilters[i] = grp
+		nullFilters := make([]*memo.ExprGroup, len(nullify))
+		for i, e := range nullify {
+			nullFilters[i] = m.MemoizeIsNull(e)
 		}
 
-		filter := &memo.Filter{Filters: nullFilters, Child: joinGrp}
-		filterGrp := m.NewExprGroup(filter)
+		filterGrp := m.MemoizeFilter(nil, joinGrp, nullFilters)
 
 		// project belongs to the original group
 		leftCols := anti.Left.RelProps.OutputCols()
@@ -680,73 +676,6 @@ func dfsScalarHelper(e memo.ScalarExpr, seen map[memo.GroupId]struct{}, cb func(
 		return err
 	}
 	return nil
-}
-
-func collectJoinConds(attributeSource string, filters ...sql.Expression) []*joinColExpr {
-	var conds []*joinColExpr
-	var outer []sql.Expression
-	for i := range filters {
-		l, r := extractJoinColumnExpr(filters[i])
-		if l == nil || r == nil {
-			// unusable as lookup
-			outer = append(outer, filters[i])
-			continue
-		}
-		// TODO(max): expression algebra to isolate arithmetic
-		// ex: (b.i = c.i 	+ 1) cannot use a c.i lookup without converting the
-		// expression to (b.i - 1 = c.i), so that (b.i - 1) is a proper lookup
-		// key
-		if _, ok := l.colExpr.(*expression.GetField); ok && strings.ToLower(l.col.Table()) == attributeSource {
-			conds = append(conds, l)
-		} else if _, ok := r.colExpr.(*expression.GetField); ok && strings.ToLower(r.col.Table()) == attributeSource {
-			conds = append(conds, r)
-		} else {
-			outer = append(outer, filters[i])
-		}
-	}
-	return conds
-}
-
-// indexMatchesKeyExprs returns keyExprs and nullmask for a parametrized
-// lookup from the outer scope (row) into the given index for a join condition.
-// For example, the filters: [(ab.a + 1 = xy.y), (ab.b <=> xy.x)] will cover
-// the the index xy(x,y). The second filter is not null rejecting, so the nullmask
-// will be [0,1]. The keyExprs will be [(ab.a + 1), (ab.b)], which project into
-// the table lookup (xy.x, xy.y).
-func indexMatchesKeyExprs(i sql.Index, joinColExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, []bool) {
-	idxExprs := i.Expressions()
-	count := len(idxExprs)
-	if count > len(joinColExprs) {
-		count = len(joinColExprs)
-	}
-	keyExprs := make([]sql.Expression, count)
-	nullmask := make([]bool, count)
-
-IndexExpressions:
-	for i := 0; i < count; i++ {
-		for j, col := range joinColExprs {
-			// check same column name
-			if strings.ToLower(idxExprs[i]) == strings.ToLower(normalizeExpression(tableAliases, col.col).String()) {
-				// get field into left table
-				keyExprs[i] = joinColExprs[j].comparand
-				nullmask[i] = joinColExprs[j].matchnull
-				continue IndexExpressions
-			}
-		}
-		return nil, nil
-	}
-
-	// TODO: better way of validating that we can apply an index lookup
-	lb := plan.NewLookupBuilder(i, keyExprs, nullmask)
-	look, err := lb.GetLookup(lb.GetZeroKey())
-	if err != nil {
-		return nil, nil
-	}
-	if !i.CanSupport(look.Ranges...) {
-		return nil, nil
-	}
-
-	return keyExprs, nullmask
 }
 
 func addHashJoins(m *memo.Memo) error {
