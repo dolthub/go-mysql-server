@@ -183,26 +183,15 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 
 		// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
-		refTblIndex, ok, err := FindIndexWithPrefix(ctx, refTbl, fkDef.ParentColumns)
+		refTblIndex, ok, err := FindIndexWithPrefix(ctx, refTbl, fkDef.ParentColumns, true)
 		if err != nil {
 			return err
 		}
 		if !ok {
 			return sql.ErrForeignKeyMissingReferenceIndex.New(fkDef.Name, fkDef.ParentTable)
 		}
-		var refTblPk sql.Index
-		if idxs, err := refTbl.GetIndexes(ctx); err != nil {
-			return err
-		} else {
-			for _, idx := range idxs {
-				if idx.ID() == "PRIMARY" {
-					refTblPk = idx
-					break
-				}
-			}
-		}
 
-		indexPositions, appendTypes, err := FindForeignKeyColMapping(ctx, fkDef.Name, tbl, fkDef.Columns, fkDef.ParentColumns, refTblIndex, refTblPk)
+		indexPositions, appendTypes, err := FindForeignKeyColMapping(ctx, fkDef.Name, tbl, fkDef.Columns, fkDef.ParentColumns, refTblIndex)
 		if err != nil {
 			return err
 		}
@@ -246,11 +235,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 
-	// child table requires strict prefix
-	idx, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
-	if ok && len(idx.Expressions()) < len(fkDef.Columns) {
-		ok = false
-	}
+	_, ok, err := FindIndexWithPrefix(ctx, tbl, fkDef.Columns, false)
 	if err != nil {
 		return err
 	}
@@ -389,7 +374,7 @@ func FindForeignKeyColMapping(
 	localTbl sql.ForeignKeyTable,
 	localFKCols []string,
 	destFKCols []string,
-	index, pkIndex sql.Index,
+	index sql.Index,
 ) ([]int, []sql.Type, error) {
 	localFKCols = lowercaseSlice(localFKCols)
 	destFKCols = lowercaseSlice(destFKCols)
@@ -405,8 +390,13 @@ func FindForeignKeyColMapping(
 	var appendTypes []sql.Type
 	indexTypeMap := make(map[string]sql.Type)
 	indexColMap := make(map[string]int)
-	indexColExprTypes := index.ColumnExpressionTypes()
-	for i, indexCol := range indexColExprTypes {
+	var columnExpressionTypes []sql.ColumnExpressionType
+	if extendedIndex, ok := index.(sql.ExtendedIndex); ok {
+		columnExpressionTypes = extendedIndex.ExtendedColumnExpressionTypes()
+	} else {
+		columnExpressionTypes = index.ColumnExpressionTypes()
+	}
+	for i, indexCol := range columnExpressionTypes {
 		indexColName := strings.ToLower(indexCol.Expression)
 		indexTypeMap[indexColName] = indexCol.Type
 		indexColMap[indexColName] = i
@@ -414,23 +404,6 @@ func FindForeignKeyColMapping(
 			appendTypes = append(appendTypes, indexCol.Type)
 		}
 	}
-	// TODO: concat primary key? not always??
-	if pkIndex != nil {
-		i := len(indexColExprTypes)
-		for _, indexCol := range pkIndex.ColumnExpressionTypes() {
-			indexColName := strings.ToLower(indexCol.Expression)
-			if _, ok := indexColMap[indexColName]; ok {
-				continue
-			}
-			indexTypeMap[indexColName] = indexCol.Type
-			indexColMap[indexColName] = i
-			if i >= len(destFKCols) {
-				appendTypes = append(appendTypes, indexCol.Type)
-			}
-			i++
-		}
-	}
-
 	indexPositions := make([]int, len(destFKCols))
 
 	for fkIdx, colName := range localFKCols {
@@ -470,7 +443,11 @@ func FindForeignKeyColMapping(
 // prefix. For example, the slices [col1, col2] and [col2, col1] will match the same index, as their ordering does not
 // matter. The index [col1, col2, col3] would match, but the index [col1, col3] would not match as it is missing "col2".
 // Prefix columns are case-insensitive.
-func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefixCols []string, ignoredIndexes ...string) (sql.Index, bool, error) {
+//
+// If `useExtendedIndexes` is true, then this will include any implicit primary keys that were not explicitly defined on
+// the index. Some operations only consider explicitly indexed columns, while others also consider any implicit primary
+// keys as well, therefore this is a boolean to control the desired behavior.
+func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefixCols []string, useExtendedIndexes bool, ignoredIndexes ...string) (sql.Index, bool, error) {
 	type idxWithLen struct {
 		sql.Index
 		colLen int
@@ -485,12 +462,12 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 	if err != nil {
 		return nil, false, err
 	}
-	// ignore indexes with prefix lengths; they are unsupported in MySQL
+	// Ignore indexes with prefix lengths; they are unsupported in MySQL
 	// https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html#:~:text=Index%20prefixes%20on%20foreign%20key%20columns%20are%20not%20supported.
-	// ignore spatial indexes; MySQL will not pick them as the underlying secondary index for foreign keys
+	// Ignore spatial indexes; MySQL will not pick them as the underlying secondary index for foreign keys
 	for _, idx := range indexes {
 		if len(idx.PrefixLengths()) > 0 || idx.IsSpatial() {
-			ignoredIndexesMap[idx.ID()] = struct{}{}
+			ignoredIndexesMap[strings.ToLower(idx.ID())] = struct{}{}
 		}
 	}
 	tblName := strings.ToLower(tbl.Name())
@@ -498,23 +475,19 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, prefix
 	for i, prefixCol := range prefixCols {
 		exprCols[i] = tblName + "." + strings.ToLower(prefixCol)
 	}
-
-	var primaryIdxExprs []string
-	for _, idx := range indexes {
-		if idx.ID() == "PRIMARY" {
-			primaryIdxExprs = lowercaseSlice(idx.Expressions())
-			break
-		}
-	}
-
 	colLen := len(exprCols)
 	var indexesWithLen []idxWithLen
 	for _, idx := range indexes {
 		if _, ok := ignoredIndexesMap[strings.ToLower(idx.ID())]; ok {
 			continue
 		}
-		indexExprs := lowercaseSlice(idx.Expressions())
-		if ok := exprsAreIndexPrefix(exprCols, indexExprs, primaryIdxExprs); ok {
+		var indexExprs []string
+		if extendedIdx, ok := idx.(sql.ExtendedIndex); ok && useExtendedIndexes {
+			indexExprs = lowercaseSlice(extendedIdx.ExtendedExpressions())
+		} else {
+			indexExprs = lowercaseSlice(idx.Expressions())
+		}
+		if ok := exprsAreIndexPrefix(exprCols, indexExprs); ok {
 			indexesWithLen = append(indexesWithLen, idxWithLen{idx, len(indexExprs)})
 		}
 	}
@@ -569,18 +542,7 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 }
 
 // exprsAreIndexPrefix returns whether the given expressions are a prefix of the given index expressions
-func exprsAreIndexPrefix(exprs, indexExprs, primaryIndexExprs []string) bool {
-	indexExprsMap := make(map[string]struct{})
-	for _, e := range indexExprs {
-		indexExprsMap[e] = struct{}{}
-	}
-
-	for _, e := range primaryIndexExprs {
-		if _, ok := indexExprsMap[e]; !ok {
-			indexExprs = append(indexExprs, e)
-		}
-	}
-
+func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
 	if len(exprs) > len(indexExprs) {
 		return false
 	}

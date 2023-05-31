@@ -1884,7 +1884,7 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "foreign key prefix matches primary key",
+		Name: "Referenced index includes implicit primary key columns",
 		SetUpScript: []string{
 			"create table parent1 (fk1 int, pk1 int, pk2 int, pk3 int, primary key(pk1, pk2, pk3), index (fk1, pk2));",
 			"insert into parent1 values (0, 1, 2, 3);",
@@ -1943,7 +1943,6 @@ var ForeignKeyTests = []ScriptTest{
 				Query:       "insert into child1 values (0, 99, 99, 99);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
-
 			{
 				Query: "alter table child2 add constraint fk2 foreign key (fk1, pk2, pk1) references parent1 (fk1, pk2, pk1);",
 				Expected: []sql.Row{
@@ -1980,7 +1979,6 @@ var ForeignKeyTests = []ScriptTest{
 				Query:       "insert into child2 values (0, 99, 2, 99);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
-
 			{
 				Query: "alter table child3 add constraint fk3 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
 				Expected: []sql.Row{
@@ -2011,9 +2009,7 @@ var ForeignKeyTests = []ScriptTest{
 				Query:       "insert into child3 values (0, 1, 2, 99);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
-
-			// although idx4 would be a valid index, it is not used for the foreign key fk4
-			{
+			{ // although idx4 would be a valid index, it is not used for the foreign key fk4
 				Query: "alter table child4 add constraint fk4 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
@@ -2034,8 +2030,7 @@ var ForeignKeyTests = []ScriptTest{
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
-			// idx4 satisfies the foreign key fk5
-			{
+			{ // idx4 satisfies the foreign key fk5
 				Query: "alter table child4 add constraint fk5 foreign key (fk1) references parent1 (fk1);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
