@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -147,7 +148,6 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // CheckPrivileges implements the interface sql.Node.
-// TODO NEXT: need to change this for every single node type :(
 func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
 	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
@@ -156,8 +156,24 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 		return true
 	}
 
+	db := t.Database
+	checkDbName := checkPrivilegeNameForDatabase(db)
+
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
+		sql.NewPrivilegedOperation(checkDbName, t.Table.Name(), "", sql.PrivilegeType_Select))
+}
+
+// checkPrivilegeNameForDatabase returns the name of the database to check privileges for, which may not be the result 
+// of db.Name()
+func checkPrivilegeNameForDatabase(db sql.Database) string {
+	checkDbName := db.Name()
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+	if adb, ok := db.(sql.AliasedDatabase); ok {
+		checkDbName = adb.AliasedName()
+	}
+	return checkDbName
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -129,6 +129,7 @@ func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 			ctx.GetLogger().Warnf("unable to determine deletable table from delete target: %v", target)
 			return false
 		}
+		// TODO: this needs a real database, fix it
 		op := sql.NewPrivilegedOperation(p.Database(), deletable.Name(), "", sql.PrivilegeType_Delete)
 		if opChecker.UserHasPrivileges(ctx, op) == false {
 			return false
