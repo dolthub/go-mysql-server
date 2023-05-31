@@ -25,7 +25,7 @@ import (
 )
 
 // applyForeignKeys handles the application and resolution of foreign keys and their tables.
-func applyForeignKeys(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyForeignKeys(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
 	if err != nil {
 		return nil, transform.SameTree, err

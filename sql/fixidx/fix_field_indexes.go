@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package fixidx
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -23,15 +24,18 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// ErrFieldMissing is returned when the field is not on the schema.
+var ErrFieldMissing = errors.NewKind("field %q is not on schema")
+
 // FixFieldIndexesOnExpressions executes FixFieldIndexes on a list of exprs.
-func FixFieldIndexesOnExpressions(scope *Scope, a *Analyzer, schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, transform.TreeIdentity, error) {
+func FixFieldIndexesOnExpressions(scope *plan.Scope, logFn func(string, ...any), schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, transform.TreeIdentity, error) {
 	var result []sql.Expression
 	var res sql.Expression
 	var same transform.TreeIdentity
 	var err error
 	for i := range expressions {
 		e := expressions[i]
-		res, same, err = FixFieldIndexes(scope, a, schema, e)
+		res, same, err = FixFieldIndexes(scope, logFn, schema, e)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -52,7 +56,7 @@ func FixFieldIndexesOnExpressions(scope *Scope, a *Analyzer, schema sql.Schema, 
 // FixFieldIndexes transforms the given expression by correcting the indexes of columns in GetField expressions,
 // according to the schema given. Used when combining multiple tables together into a single join result, or when
 // otherwise changing / combining schemas in the node tree.
-func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+func FixFieldIndexes(scope *plan.Scope, logFn func(string, ...any), schema sql.Schema, exp sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 	scopeLen := len(scope.Schema())
 
 	return transform.Expr(exp, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
@@ -63,7 +67,9 @@ func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expre
 				newIndex := scopeLen + i
 				if strings.EqualFold(e.Name(), col.Name) && strings.EqualFold(e.Table(), col.Source) {
 					if newIndex != e.Index() {
-						a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
+						if logFn != nil {
+							logFn("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
+						}
 						return expression.NewGetFieldWithTable(
 							newIndex,
 							e.Type(),
@@ -80,13 +86,15 @@ func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expre
 			// inner-to-outer, in  accordance with MySQL scope naming precedence rules.
 			offset := 0
 			for _, n := range scope.InnerToOuter() {
-				schema := schemas(n.Children())
+				schema := Schemas(n.Children())
 				offset += len(schema)
 				for i, col := range schema {
 					if strings.EqualFold(e.Name(), col.Name) && strings.EqualFold(e.Table(), col.Source) {
 						newIndex := scopeLen - offset + i
 						if e.Index() != newIndex {
-							a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
+							if logFn != nil {
+								logFn("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
+							}
 							return expression.NewGetFieldWithTable(
 								newIndex,
 								e.Type(),
@@ -107,8 +115,8 @@ func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expre
 	})
 }
 
-// schemas returns the schemas for the nodes given appended in to a single one
-func schemas(nodes []sql.Node) sql.Schema {
+// Schemas returns the Schemas for the nodes given appended in to a single one
+func Schemas(nodes []sql.Node) sql.Schema {
 	var schema sql.Schema
 	for _, n := range nodes {
 		schema = append(schema, n.Schema()...)
@@ -117,7 +125,7 @@ func schemas(nodes []sql.Node) sql.Schema {
 }
 
 // FixFieldIndexesForExpressions transforms the expressions in the Node given, fixing the field indexes.
-func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, transform.SameTree, nil
 	}
@@ -133,7 +141,7 @@ func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sq
 
 	n, sameC, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		for _, schema := range schemas {
-			fixed, same, err := FixFieldIndexes(scope, a, schema, e)
+			fixed, same, err := FixFieldIndexes(scope, logFn, schema, e)
 			if err == nil {
 				return fixed, same, nil
 			}
@@ -164,7 +172,7 @@ func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sq
 		if !ok {
 			return n, sameC && sameJ, nil
 		}
-		cond, sameJ, err = FixFieldIndexes(scope, a, append(j.Left().Schema(), j.Right().Schema()...), j.JoinCond())
+		cond, sameJ, err = FixFieldIndexes(scope, logFn, append(j.Left().Schema(), j.Right().Schema()...), j.JoinCond())
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -175,7 +183,7 @@ func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sq
 			}
 		}
 	default:
-		cond, sameJ, err = FixFieldIndexes(scope, a, j.Schema(), j.JoinCond())
+		cond, sameJ, err = FixFieldIndexes(scope, logFn, j.Schema(), j.JoinCond())
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -193,13 +201,13 @@ func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sq
 // FixFieldIndexesForTableNode transforms the expressions in the Node given,
 // fixing the field indexes. This is useful for Table nodes that have
 // expressions but no children.
-func FixFieldIndexesForTableNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func FixFieldIndexesForTableNode(ctx *sql.Context, logFn func(string, ...any), node sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, transform.SameTree, nil
 	}
 	return transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		schema := node.Schema()
-		fixed, same, err := FixFieldIndexes(scope, a, schema, e)
+		fixed, same, err := FixFieldIndexes(scope, logFn, schema, e)
 		if err != nil {
 			if ErrFieldMissing.Is(err) {
 				return e, transform.SameTree, nil
@@ -210,24 +218,24 @@ func FixFieldIndexesForTableNode(ctx *sql.Context, a *Analyzer, node sql.Node, s
 	})
 }
 
-func FixFieldIndexesForNode(a *Analyzer, scope *Scope, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func FixFieldIndexesForNode(logFn func(string, ...any), scope *plan.Scope, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		ret := n
 		var err error
 		sameN := transform.SameTree
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			scope := scope.newScopeFromSubqueryAlias(n)
-			ret, sameN, err = FixFieldIndexesForExpressions(a, n, scope)
+			scope := scope.NewScopeFromSubqueryAlias(n)
+			ret, sameN, err = FixFieldIndexesForExpressions(logFn, n, scope)
 		default:
-			ret, sameN, err = FixFieldIndexesForExpressions(a, n, scope)
+			ret, sameN, err = FixFieldIndexesForExpressions(logFn, n, scope)
 		}
 		if err != nil {
 			return n, transform.SameTree, err
 		}
 		ret, sameE, err := transform.NodeExprs(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if sq, ok := e.(*plan.Subquery); ok {
-				return FixFieldIndexes(scope, a, ret.Schema(), sq)
+				return FixFieldIndexes(scope, logFn, ret.Schema(), sq)
 			}
 			return e, transform.SameTree, nil
 		})

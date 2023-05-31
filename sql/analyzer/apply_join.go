@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -36,7 +37,7 @@ type applyJoin struct {
 // into the parent scopes where possible.
 // TODO decorrelate lhs too
 // TODO non-null-rejecting with dual table
-func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n.(type) {
 	case *plan.DeleteFrom, *plan.InsertInto:
 		return n, transform.SameTree, nil
@@ -55,7 +56,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 			switch n := n.(type) {
 			case *plan.Filter:
 				child = n.Child
-				filters = splitConjunction(n.Expression)
+				filters = expression.SplitConjunction(n.Expression)
 			default:
 			}
 
@@ -63,7 +64,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				return n, transform.SameTree, nil
 			}
 
-			subScope := scope.newScopeFromSubqueryExpression(n)
+			subScope := scope.NewScopeFromSubqueryExpression(n)
 			var matches []applyJoin
 			var newFilters []sql.Expression
 
@@ -138,7 +139,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 					rightF = tup
 				}
 
-				q, _, err := FixFieldIndexesForNode(a, scope, subq.Query)
+				q, _, err := fixidx.FixFieldIndexesForNode(a.LogFn(), scope, subq.Query)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -157,7 +158,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				if err != nil {
 					return n, transform.SameTree, err
 				}
-				filter, _, err = FixFieldIndexes(scope, a, condSch, filter)
+				filter, _, err = fixidx.FixFieldIndexes(scope, a.LogFn(), condSch, filter)
 				if err != nil {
 					return n, transform.SameTree, err
 				}

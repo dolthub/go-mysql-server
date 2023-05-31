@@ -63,7 +63,7 @@ func getFiltersByTable(n sql.Node) filtersByTable {
 // the result.
 func exprToTableFilters(expr sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
-	for _, expr := range splitConjunction(expr) {
+	for _, expr := range expression.SplitConjunction(expr) {
 		var seenTables = make(map[string]bool)
 		var lastTable string
 		hasSubquery := false
@@ -102,7 +102,7 @@ type filterSet struct {
 // are necessary to normalize expressions from indexes when in the presence of aliases.
 func newFilterSet(filter sql.Expression, filtersByTable filtersByTable, tableAliases TableAliases) *filterSet {
 	return &filterSet{
-		filterPredicates: splitConjunction(filter),
+		filterPredicates: expression.SplitConjunction(filter),
 		filtersByTable:   filtersByTable,
 		tableAliases:     tableAliases,
 	}
@@ -144,38 +144,6 @@ func (fs *filterSet) markIndexesHandled(indexes []sql.Index) {
 	for _, index := range indexes {
 		fs.handledIndexFilters = append(fs.handledIndexFilters, index.Expressions()...)
 	}
-}
-
-// splitConjunction breaks AND expressions into their left and right parts, recursively
-func splitConjunction(expr sql.Expression) []sql.Expression {
-	if expr == nil {
-		return nil
-	}
-	and, ok := expr.(*expression.And)
-	if !ok {
-		return []sql.Expression{expr}
-	}
-
-	return append(
-		splitConjunction(and.Left),
-		splitConjunction(and.Right)...,
-	)
-}
-
-// splitDisjunction breaks OR expressions into their left and right parts, recursively
-func splitDisjunction(e *or) []scalarExpr {
-	q := []scalarExpr{e.left.scalar, e.right.scalar}
-	var ret []scalarExpr
-	for len(q) > 0 {
-		next := q[0]
-		q = q[1:]
-		nextOr, ok := next.(*or)
-		if !ok {
-			ret = append(ret, next)
-		}
-		q = append(q, nextOr.left.scalar, nextOr.right.scalar)
-	}
-	return ret
 }
 
 // subtractExprSet returns all expressions in the first parameter that aren't present in the second.

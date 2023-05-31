@@ -30,7 +30,7 @@ import (
 // validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
 // the trigger body. Also validates that these old and new references are being used appropriately -- they are only
 // valid for certain kinds of triggers and certain statements.
-func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := node.(*plan.CreateTrigger)
 	if !ok {
 		return node, transform.SameTree, nil
@@ -130,7 +130,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	return node, transform.NewTree, nil
 }
 
-func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Skip this step for CreateTrigger statements
 	if _, ok := n.(*plan.CreateTrigger); ok {
 		return n, transform.SameTree, nil
@@ -229,7 +229,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 }
 
 // applyTrigger applies the trigger given to the node given, returning the resulting node
-func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, transform.TreeIdentity, error) {
+func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger) (sql.Node, transform.TreeIdentity, error) {
 	triggerLogic, err := getTriggerLogic(ctx, a, originalNode, scope, trigger)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -311,7 +311,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
-func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
 	// For trigger body analysis, we don't want any row update accumulators applied to insert / update / delete
 	// statements, we need the raw output from them.
 	var noRowUpdateAccumulators RuleSelector
@@ -330,7 +330,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("new", getResolvedTable(n)),
 		)
-		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.UpdateStr:
 		scopeNode := plan.NewProject(
@@ -340,14 +340,14 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 				plan.NewTableAlias("new", getResolvedTable(n)),
 			),
 		)
-		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", getResolvedTable(n)),
 		)
-		s := (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()).withProcedureCache(scope.procedureCache())
+		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	}
 
@@ -356,7 +356,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 
 // validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any
 // table being updated in an outer scope of this analysis)
-func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *Scope) error {
+func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *plan.Scope) error {
 	var circularRef error
 	transform.Inspect(trigger.Body, func(node sql.Node) bool {
 		switch node := node.(type) {
@@ -395,7 +395,7 @@ func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 }
 
 // wrapWritesWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
-func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// Check if tree contains a TriggerExecutor
 	containsTrigger := false
 	transform.Inspect(n, func(n sql.Node) bool {

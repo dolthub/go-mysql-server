@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package plan
 
 import (
 	"math"
@@ -20,19 +20,18 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // ProcedureCache contains all non-built-in stored procedures for each database.
 type ProcedureCache struct {
-	dbToProcedureMap map[string]map[string]map[int]*plan.Procedure
+	dbToProcedureMap map[string]map[string]map[int]*Procedure
 	IsPopulating     bool
 }
 
 // NewProcedureCache returns a *ProcedureCache.
 func NewProcedureCache() *ProcedureCache {
 	return &ProcedureCache{
-		dbToProcedureMap: make(map[string]map[string]map[int]*plan.Procedure),
+		dbToProcedureMap: make(map[string]map[string]map[int]*Procedure),
 		IsPopulating:     false,
 	}
 }
@@ -40,7 +39,7 @@ func NewProcedureCache() *ProcedureCache {
 // Get returns the stored procedure with the given name from the given database. All names are case-insensitive. If the
 // procedure does not exist, then this returns nil. If the number of parameters do not match any given procedure, then
 // returns the procedure with the largest number of parameters.
-func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *plan.Procedure {
+func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *Procedure {
 	dbName = strings.ToLower(dbName)
 	procedureName = strings.ToLower(procedureName)
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
@@ -50,7 +49,7 @@ func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *pl
 			}
 
 			var largestParamLen int
-			var largestParamProc *plan.Procedure
+			var largestParamProc *Procedure
 			for _, procedure := range procedures {
 				paramLen := len(procedure.Params)
 				if procedure.HasVariadicParameter() {
@@ -69,9 +68,9 @@ func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *pl
 
 // AllForDatabase returns all stored procedures for the given database, sorted by name and parameter count
 // ascending. The database name is case-insensitive.
-func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
+func (pc *ProcedureCache) AllForDatabase(dbName string) []*Procedure {
 	dbName = strings.ToLower(dbName)
-	var proceduresForDb []*plan.Procedure
+	var proceduresForDb []*Procedure
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
 		for _, procedures := range procMap {
 			for _, procedure := range procedures {
@@ -90,7 +89,7 @@ func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
 
 // Register adds the given stored procedure to the cache. Will overwrite any procedures that already exist with the
 // same name and same number of parameters for the given database name.
-func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) error {
+func (pc *ProcedureCache) Register(dbName string, procedure *Procedure) error {
 	dbName = strings.ToLower(dbName)
 	paramLen := len(procedure.Params)
 	if procedure.HasVariadicParameter() {
@@ -103,10 +102,10 @@ func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) err
 			}
 			procedures[paramLen] = procedure
 		} else {
-			procMap[strings.ToLower(procedure.Name)] = map[int]*plan.Procedure{paramLen: procedure}
+			procMap[strings.ToLower(procedure.Name)] = map[int]*Procedure{paramLen: procedure}
 		}
 	} else {
-		pc.dbToProcedureMap[dbName] = map[string]map[int]*plan.Procedure{strings.ToLower(procedure.Name): {paramLen: procedure}}
+		pc.dbToProcedureMap[dbName] = map[string]map[int]*Procedure{strings.ToLower(procedure.Name): {paramLen: procedure}}
 	}
 	return nil
 }

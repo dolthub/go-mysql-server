@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_tables")
 	defer span.End()
 
@@ -187,7 +187,7 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
 // store supplementary schema information. This is useful for lazy resolution of column default values.
-func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("set_target_schema")
 	defer span.End()
 
@@ -235,7 +235,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 // table scans.
 // TODO this is racy, alter statements can change a table's schema in-between
 // prepare and execute
-func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var (
 			from *plan.ResolvedTable
@@ -344,7 +344,7 @@ func transferProjections(ctx *sql.Context, from, to *plan.ResolvedTable) *plan.R
 }
 
 // pruneDropTables removes all nodes that are not `*plan.ResolvedTable` from `plan.DropTable.Tables`
-func pruneDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func pruneDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
 		return n, transform.SameTree, nil
@@ -363,7 +363,7 @@ func pruneDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, se
 
 // validateDropTables ensures that each ResolvedTable in DropTable is droppable, any UnresolvedTables are
 // skipped due to `IF EXISTS` clause, and there aren't any non-table nodes.
-func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
 		return n, transform.SameTree, nil

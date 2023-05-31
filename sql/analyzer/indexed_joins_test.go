@@ -1,6 +1,11 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/memo"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -47,11 +52,34 @@ func TestHashJoins(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder())
-			j := newJoinOrderBuilder(m)
-			j.reorderJoin(tt.plan)
+			m := memo.NewMemo(nil, nil, nil, 0, memo.NewDefaultCoster(), memo.NewDefaultCarder())
+			j := memo.NewJoinOrderBuilder(m)
+			j.ReorderJoin(tt.plan)
 			addHashJoins(m)
-			require.Equal(t, tt.memo, j.m.String())
+			require.Equal(t, tt.memo, m.String())
 		})
 	}
+}
+
+var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
+	{Name: "i", Type: types.Int64, Nullable: true},
+	{Name: "s", Type: types.Text, Nullable: true},
+})
+
+func tableNode(name string) sql.Node {
+	t := memory.NewTable(name, childSchema, nil)
+	return plan.NewResolvedTable(t, nil, nil)
+}
+
+func newEq(eq string) sql.Expression {
+	vars := strings.Split(eq, "=")
+	if len(vars) > 2 {
+		panic("invalid equal expression")
+	}
+	left := strings.Split(vars[0], ".")
+	right := strings.Split(vars[1], ".")
+	return expression.NewEquals(
+		expression.NewGetFieldWithTable(0, types.Int64, left[0], left[1], false),
+		expression.NewGetFieldWithTable(0, types.Int64, right[0], right[1], false),
+	)
 }

@@ -1,106 +1,124 @@
 exprs:
-- name:   "crossJoin"
+- name: "CrossJoin"
   join: true
-- name:   "innerJoin"
+- name: "InnerJoin"
   join: true
-- name:   "leftJoin"
+- name: "LeftJoin"
   join: true
-- name:   "semiJoin"
+- name: "SemiJoin"
   join: true
-- name:   "antiJoin"
+- name: "AntiJoin"
   join: true
-- name:   "lookupJoin"
-  join: true
-  attrs:
-  - [lookup, "*lookup"]
-- name: "concatJoin"
+- name: "LookupJoin"
   join: true
   attrs:
-  - [concat, "[]*lookup"]
-- name: "hashJoin"
+  - [lookup, "*Lookup"]
+- name: "ConcatJoin"
   join: true
   attrs:
-  - [innerAttrs, "[]*exprGroup"]
-  - [outerAttrs, "[]*exprGroup"]
-- name: "mergeJoin"
+  - [concat, "[]*Lookup"]
+- name: "HashJoin"
   join: true
   attrs:
-  - [innerScan, "*indexScan"]
-  - [outerScan, "*indexScan"]
-- name: "fullOuterJoin"
+  - [fromAttrs, "[]*ExprGroup"]
+  - [toAttrs, "[]*ExprGroup"]
+- name: "MergeJoin"
   join: true
-- name: "tableScan"
+  attrs:
+  - [innerScan, "*IndexScan"]
+  - [outerScan, "*IndexScan"]
+  - [swapCmp, "bool"]
+- name: "FullOuterJoin"
+  join: true
+- name: "TableScan"
   sourceType: "*plan.ResolvedTable"
-- name: "values"
+- name: "Values"
   sourceType: "*plan.ValueDerivedTable"
-- name: "tableAlias"
+- name: "TableAlias"
   sourceType: "*plan.TableAlias"
-- name: "recursiveTable"
+- name: "RecursiveTable"
   sourceType: "*plan.RecursiveTable"
-- name: "recursiveCte"
+- name: "RecursiveCte"
   sourceType: "*plan.RecursiveCte"
-- name: "subqueryAlias"
+- name: "SubqueryAlias"
   sourceType: "*plan.SubqueryAlias"
-- name: "max1Row"
+- name: "Max1Row"
   sourceType: "sql.NameableNode"
-- name: "tableFunc"
+- name: "TableFunc"
   sourceType: "sql.TableFunction"
-- name: "emptyTable"
+- name: "EmptyTable"
   sourceType: "*plan.EmptyTable"
-- name: "project"
+- name: "Project"
   unary: true
   attrs:
-  - [projections, "[]*exprGroup"]
-- name: "distinct"
+  - [projections, "[]*ExprGroup"]
+- name: "Distinct"
   unary:  true
   skipExec: true
 
 # scalar
-- name: filter
+- name: "Filter"
   unary: true
   attrs:
-  - [filters, "[]*exprGroup"]
-- name: "equal"
+  - [filters, "[]*ExprGroup"]
+- name: "Equal"
   scalar: true
   binary: true
-- name: "literal"
+- name: "Literal"
   scalar: true
   attrs:
   - [val, "interface{}"]
   - [typ, "sql.Type"]
-- name: "colRef"
+- name: "ColRef"
   scalar: true
   attrs:
   - [col, "sql.ColumnId"]
   - [table, "GroupId"]
   - [gf, "*expression.GetField"]
-- name: "not"
+- name: "Not"
   unary: true
   scalar: true
-- name: "or"
+- name: "Or"
   scalar: true
   binary: true
-- name: "and"
+- name: "And"
   scalar: true
   binary: true
-- name: "inTuple"
+- name: "InTuple"
   scalar: true
   binary: true
-- name: "lt"
+- name: "Lt"
   scalar: true
   binary: true
-- name: "leq"
+- name: "Leq"
   scalar: true
   binary: true
-- name: "gt"
+- name: "Gt"
   scalar: true
   binary: true
-- name: "geq"
+- name: "Geq"
   scalar: true
   binary: true
-- name: "nullSafeEq"
+- name: "NullSafeEq"
   scalar: true
   binary: true
-- name: "regexp"
+- name: "Regexp"
   scalar: true
   binary: true
+- name: "Arithmetic"
+  scalar: true
+  binary: true
+  attrs:
+  - [op, "ArithType"]
+- name: "Bindvar"
+  scalar: true
+  attrs:
+  - [name, "string"]
+  - [typ, "sql.Type"]
+- name: "IsNull"
+  scalar: true
+  unary: true
+- name: "Tuple"
+  scalar: true
+  attrs:
+  - [values, "[]*ExprGroup"]

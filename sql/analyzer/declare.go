@@ -217,7 +217,7 @@ func (d *declarationScopeValidation) Child() *declarationScopeValidation {
 
 // resolveDeclarations handles all Declare nodes, ensuring correct node order and assigning variables and conditions to
 // their appropriate references.
-func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// First scope houses the parameters
 	scopeValidation := newDeclarationScopeValidation()
 	proc, ok := node.(*plan.Procedure)

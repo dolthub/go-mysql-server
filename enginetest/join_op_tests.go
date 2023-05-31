@@ -16,11 +16,11 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/memo"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
 type JoinOpTests struct {
@@ -29,12 +29,12 @@ type JoinOpTests struct {
 	Skip     bool
 }
 
-var biasedCosters = map[string]analyzer.Coster{
-	"inner":   analyzer.NewInnerBiasedCoster(),
-	"lookup":  analyzer.NewLookupBiasedCoster(),
-	"hash":    analyzer.NewHashBiasedCoster(),
-	"merge":   analyzer.NewMergeBiasedCoster(),
-	"partial": analyzer.NewPartialBiasedCoster(),
+var biasedCosters = map[string]memo.Coster{
+	"inner":   memo.NewInnerBiasedCoster(),
+	"lookup":  memo.NewLookupBiasedCoster(),
+	"hash":    memo.NewHashBiasedCoster(),
+	"merge":   memo.NewMergeBiasedCoster(),
+	"partial": memo.NewPartialBiasedCoster(),
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {

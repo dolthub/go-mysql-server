@@ -47,7 +47,7 @@ func (uc usedColumns) has(table, col string) bool {
 // TODO: as a result of reordering this rule to facilitate join planning, pruneColumns will not be called
 // in a scope with a join node.
 // TODO: this should be deprecated in favor of pruneTables (which will be renamed pruneColumns)
-func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
 	}
@@ -338,7 +338,7 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 
 // TODO: figure out why FixFieldIndexes cannot be used instead of this,
 // otherwise SystemDiff tests break.
-func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	return transform.NodeWithCtx(node, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case sql.SchemaTarget:

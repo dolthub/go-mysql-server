@@ -9,7 +9,7 @@ import (
 
 // modifyUpdateExpressionsForJoin searches for a JOIN for UPDATE query and updates the child of the original update
 // node to use a plan.UpdateJoin node as a child.
-func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.Update:
 		us, ok := n.Child.(*plan.UpdateSource)

@@ -1,4 +1,4 @@
-package analyzer
+package memo
 
 import (
 	"testing"
@@ -221,8 +221,8 @@ func TestOrderHintBuilding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
-			j.reorderJoin(tt.plan)
+			j := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j.ReorderJoin(tt.plan)
 			j.m.WithJoinOrder(tt.hint)
 			if tt.invalid {
 				require.Equal(t, j.m.hints.order, (*joinOrderHint)(nil))

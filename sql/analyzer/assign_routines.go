@@ -30,7 +30,7 @@ type RoutineTable interface {
 }
 
 // assignRoutines sets the catalog in the required nodes.
-func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("assign_routines")
 	defer span.End()
 
@@ -53,8 +53,8 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 			dbs := a.Catalog.AllDatabases(ctx)
 			pm := make(map[string][]*plan.Procedure)
 			for _, db := range dbs {
-				if scope != nil && scope.procedures != nil {
-					pm[db.Name()] = scope.procedures.AllForDatabase(db.Name())
+				if scope != nil && scope.Procedures != nil {
+					pm[db.Name()] = scope.Procedures.AllForDatabase(db.Name())
 				}
 			}
 

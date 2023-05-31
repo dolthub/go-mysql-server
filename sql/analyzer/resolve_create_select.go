@@ -6,7 +6,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok || ct.Select() == nil {
 		return n, transform.SameTree, nil

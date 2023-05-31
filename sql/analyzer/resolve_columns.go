@@ -28,7 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func validateUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// getTableAliases will error if any table name / alias is repeated
 	_, err := getTableAliases(n, scope)
 	if err != nil {
@@ -254,7 +254,7 @@ func findOnDupUpdateLeftExprs(onDupExprs []sql.Expression) map[*expression.Unres
 }
 
 // qualifyColumns assigns a table to any column expressions that don't have one already
-func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	originalNode := n
 
 	// Calculate the available symbols BEFORE we get into a transform function, since symbols need to be calculated
@@ -398,7 +398,7 @@ func qualifyCheckConstraints(update *plan.Update) (sql.CheckConstraints, error) 
 // getAvailableNamesByScope searches the node |n|, the current query being analyzed, as well as any nodes from outer
 // scope levels contained in |scope| in order to calculate the available columns, tables, and aliases available to
 // the current scope.
-func getAvailableNamesByScope(n sql.Node, scope *Scope) availableNames {
+func getAvailableNamesByScope(n sql.Node, scope *plan.Scope) availableNames {
 	symbols := make(availableNames)
 
 	scopeNodes := make([]sql.Node, 0, 1+len(scope.InnerToOuter()))
@@ -651,14 +651,14 @@ var errGlobalVariablesNotSupported = errors.NewKind("can't resolve global variab
 
 // resolveJSONTables is a helper function that resolves JSONTables in join as they have special visibility into the left side of the join
 // This function should return a *plan.JSONTable when there's no error
-func resolveJSONTables(ctx *sql.Context, a *Analyzer, scope *Scope, left sql.Node, jt *plan.JSONTable) (sql.Node, transform.TreeIdentity, error) {
+func resolveJSONTables(ctx *sql.Context, a *Analyzer, scope *plan.Scope, left sql.Node, jt *plan.JSONTable) (sql.Node, transform.TreeIdentity, error) {
 	if jt.Resolved() {
 		return jt, transform.SameTree, nil
 	}
 
 	// wrap left in project node to get scope.Schema to work correctly
 	proj := plan.NewProject([]sql.Expression{}, left)
-	rightScope := scope.newScope(proj)
+	rightScope := scope.NewScope(proj)
 	// json table has visibility into columns on left of joins
 	columns, err := indexColumns(ctx, a, jt, rightScope)
 	if err != nil {
@@ -681,7 +681,7 @@ func resolveJSONTables(ctx *sql.Context, a *Analyzer, scope *Scope, left sql.Nod
 	return newJt, transform.NewTree, nil
 }
 
-func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, transform.SameTree, nil
@@ -743,7 +743,7 @@ func resolveJSONTablesInJoin(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
 // the expression's child node.
-func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.End()
 
@@ -792,7 +792,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
+func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
 	var idx int
 
@@ -1000,7 +1000,7 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 
 // pushdownGroupByAliases reorders the aggregation in a groupby so aliases defined in it can be resolved in the grouping
 // of the groupby. To do so, all aliases are pushed down to a projection node under the group by.
-func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if n.Resolved() {
 		return n, transform.SameTree, nil
 	}

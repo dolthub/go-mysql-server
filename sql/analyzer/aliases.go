@@ -64,13 +64,13 @@ func (ta TableAliases) findConflicts(other TableAliases) (conflicts []string, no
 
 // getTableAliases returns a map of all aliases of resolved tables / subqueries in the node, keyed by their alias name.
 // Unaliased tables are returned keyed by their original lower-cased name.
-func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
+func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 	var passAliases TableAliases
 	var aliasFn func(node sql.Node) bool
 	var analysisErr error
-	var recScope *Scope
+	var recScope *plan.Scope
 	if !scope.IsEmpty() {
-		recScope = recScope.withMemos(scope.memos)
+		recScope = recScope.WithMemos(scope.Memos)
 	}
 
 	aliasFn = func(node sql.Node) bool {
@@ -143,7 +143,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		if analysisErr != nil {
 			return nil, analysisErr
 		}
-		recScope = recScope.newScope(scopeNode)
+		recScope = recScope.NewScope(scopeNode)
 		aliases.putAll(passAliases)
 	}
 
@@ -301,7 +301,7 @@ func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node
 	})
 }
 
-func disambiguateTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func disambiguateTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var i int
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {

@@ -30,19 +30,19 @@ import (
 // available, it fulfills the RowIter call by performing a hash lookup
 // on the projected results. If cached results are not available, it
 // simply delegates to the child.
-func NewHashLookup(n *CachedResults, childProjection sql.Expression, lookupProjection sql.Expression) *HashLookup {
+func NewHashLookup(n *CachedResults, fromProj sql.Expression, toProj sql.Expression) *HashLookup {
 	return &HashLookup{
 		UnaryNode: UnaryNode{n},
-		Inner:     childProjection,
-		Outer:     lookupProjection,
+		From:      fromProj,
+		To:        toProj,
 		Mutex:     new(sync.Mutex),
 	}
 }
 
 type HashLookup struct {
 	UnaryNode
-	Inner  sql.Expression
-	Outer  sql.Expression
+	From   sql.Expression
+	To     sql.Expression
 	Mutex  *sync.Mutex
 	Lookup map[interface{}][]sql.Row
 }
@@ -52,7 +52,7 @@ var _ sql.Expressioner = (*HashLookup)(nil)
 var _ sql.CollationCoercible = (*HashLookup)(nil)
 
 func (n *HashLookup) Expressions() []sql.Expression {
-	return []sql.Expression{n.Inner, n.Outer}
+	return []sql.Expression{n.From, n.To}
 }
 
 func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -60,8 +60,8 @@ func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), 2)
 	}
 	ret := *n
-	ret.Inner = exprs[0]
-	ret.Outer = exprs[1]
+	ret.From = exprs[0]
+	ret.To = exprs[1]
 	return &ret, nil
 }
 
@@ -69,8 +69,8 @@ func (n *HashLookup) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup")
 	children := make([]string, 3)
-	children[0] = fmt.Sprintf("outer: %s", n.Outer)
-	children[1] = fmt.Sprintf("inner: %s", n.Inner)
+	children[0] = fmt.Sprintf("outer: %s", n.To)
+	children[1] = fmt.Sprintf("inner: %s", n.From)
 	children[2] = n.Child.String()
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -80,8 +80,8 @@ func (n *HashLookup) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup")
 	children := make([]string, 3)
-	children[0] = fmt.Sprintf("source: %s", sql.DebugString(n.Outer))
-	children[1] = fmt.Sprintf("target: %s", sql.DebugString(n.Inner))
+	children[0] = fmt.Sprintf("source: %s", sql.DebugString(n.To))
+	children[1] = fmt.Sprintf("target: %s", sql.DebugString(n.From))
 	children[2] = sql.DebugString(n.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
@@ -118,7 +118,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	key, _, err = n.Outer.Type().Convert(key)
+	key, _, err = n.To.Type().Convert(key)
 	if err != nil {
 		return nil, err
 	}
