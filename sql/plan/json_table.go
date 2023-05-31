@@ -109,7 +109,15 @@ func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sq
 
 // Resolved implements the sql.Resolvable interface
 func (t *JSONTable) Resolved() bool {
-	return t.DataExpr.Resolved() // TODO: resolve on error/empty exprs
+	if !t.DataExpr.Resolved() {
+		return false
+	}
+	for _, opt := range t.ColOpts {
+		if !opt.DefaultErrorVal.Resolved() || !opt.DefaultEmptyVal.Resolved() {
+			return false
+		}
+	}
+	return true
 }
 
 // Children implements the sql.Node interface
@@ -134,11 +142,12 @@ func (*JSONTable) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Expressions implements the sql.Expressioner interface
 func (t *JSONTable) Expressions() []sql.Expression {
-	return []sql.Expression{t.DataExpr}
+	return []sql.Expression{t.DataExpr} // TODO: better to do nothing or return all exprs?
 }
 
 // WithExpressions implements the sql.Expressioner interface
 func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
+	// TODO: better to do nothing or return all exprs?
 	if len(expression) != 1 {
 		return nil, sql.ErrInvalidExpressionNumber.New(t, len(expression), 1)
 	}
