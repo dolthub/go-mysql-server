@@ -333,6 +333,35 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "JSON -> and ->> operator support",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 JSON);",
+			`insert into t values (1, JSON_OBJECT('key1', 1, 'key2', '"abc"'));`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `select col1->'$.key1' from t;`,
+				Expected: []sql.Row{{types.JSONDocument{Val: 1}}},
+			},
+			{
+				Query:    `select col1->>'$.key2' from t;`,
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    `select * from t where col1->'$.key1' = 1;`,
+				Expected: []sql.Row{{1, types.JSONDocument{Val: map[string]interface{}{"key1": 1, "key2": "\"abc\""}}}},
+			},
+			{
+				Query:    `select * from t where col1->>'$.key2' = 'abc';`,
+				Expected: []sql.Row{{1, types.JSONDocument{Val: map[string]interface{}{"key1": 1, "key2": "\"abc\""}}}},
+			},
+			{
+				Query:    `select * from t where col1->>'$.key2' = 'def';`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
 	// from https://dev.mysql.com/doc/refman/8.0/en/json.html#json-converting-between-types:~:text=information%20and%20examples.-,Comparison%20and%20Ordering%20of%20JSON%20Values,-JSON%20values%20can
 	{
 		Name: "json is ordered correctly",
