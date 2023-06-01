@@ -832,7 +832,9 @@ func (r *Tuple) Children() []*ExprGroup {
 
 type Hidden struct {
 	*scalarBase
-	E sql.Expression
+	E      sql.Expression
+	Cols   sql.ColSet
+	Tables sql.FastIntSet
 }
 
 var _ ScalarExpr = (*Hidden)(nil)

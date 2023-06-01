@@ -125,4 +125,6 @@ exprs:
 - name: "Hidden"
   scalar: true
   attrs:
-    - [e, "sql.Expression"]
+  - [e, "sql.Expression"]
+  - [cols, "sql.ColSet"]
+  - [tables, "sql.FastIntSet"]

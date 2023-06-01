@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -215,7 +216,19 @@ func (m *Memo) MemoizeIsNull(child sql.Expression) *ExprGroup {
 }
 
 func (m *Memo) memoizeHidden(e sql.Expression) *ExprGroup {
-	scalar := &Hidden{scalarBase: &scalarBase{}, E: e}
+	var cols sql.ColSet
+	var tables sql.FastIntSet
+	transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			colRef := m.MemoizeScalar(e).Scalar.(*ColRef)
+			cols.Add(colRef.Col)
+			tables.Add(int(colRef.Table) - 1)
+		default:
+		}
+		return false
+	})
+	scalar := &Hidden{scalarBase: &scalarBase{}, E: e, Cols: cols, Tables: tables}
 	return m.NewExprGroup(scalar)
 }
 
@@ -523,6 +536,9 @@ func newScalarProps(e ScalarExpr) *scalarProps {
 		cols.Add(e.Col)
 	case *NullSafeEq:
 		nullRejecting = false
+	case *Hidden:
+		cols = cols.Union(e.Cols)
+		tables = tables.Union(e.Tables)
 	default:
 	}
 
