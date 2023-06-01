@@ -22,9 +22,9 @@ func _() {
 	_ = x[ArithTypeShiftRight-11]
 }
 
-const _ArithType_name = "unknown\"&\"\"|\"\"^\"\"+\"\"-\"\"*\"\"/\"\"div\"\"%\"\"<<\"\">>\""
+const _ArithType_name = "unknown&|^+-*/div%<<>>"
 
-var _ArithType_index = [...]uint8{0, 7, 10, 13, 16, 19, 22, 25, 28, 33, 36, 40, 44}
+var _ArithType_index = [...]uint8{0, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 20, 22}
 
 func (i ArithType) String() string {
 	if i >= ArithType(len(_ArithType_index)-1) {

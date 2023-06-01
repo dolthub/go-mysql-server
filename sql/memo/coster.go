@@ -254,7 +254,7 @@ func (c *coster) costEmptyTable(_ *sql.Context, _ *EmptyTable, _ sql.StatsReader
 }
 
 func (c *coster) costFilter(_ *sql.Context, f *Filter, _ sql.StatsReader) (float64, error) {
-	// assume 1 unit of compute for each input row
+	// 1 unit of compute for each input row
 	return f.Child.RelProps.card * cpuCostFactor * float64(len(f.Filters)), nil
 }
 func NewDefaultCarder() Carder {

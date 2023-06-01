@@ -247,7 +247,7 @@ func addLookupJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		attrSource, indexes, err := lookupCandidates(m.Ctx, right.First, aliases)
+		attrSource, tableGrp, indexes, err := lookupCandidates(m.Ctx, right.First, aliases)
 		if err != nil {
 			return err
 		}
@@ -263,7 +263,9 @@ func addLookupJoins(m *memo.Memo) error {
 			for _, on := range conds {
 				filters := memo.SplitConjunction(on)
 				for _, idx := range indexes {
-					keyExprs, nullmask := keyExprsForIndex(m, idx, filters)
+					// todo replace table name in expressions
+					exprs := denormIdxExprs(attrSource, idx)
+					keyExprs, nullmask := keyExprsForIndex(m, tableGrp, exprs, filters)
 					if keyExprs != nil {
 						concat = append(concat, &memo.Lookup{
 							Source:   attrSource,
@@ -291,7 +293,8 @@ func addLookupJoins(m *memo.Memo) error {
 		}
 
 		for _, idx := range indexes {
-			keyExprs, nullmask := keyExprsForIndex(m, idx, join.Filter)
+			exprs := denormIdxExprs(attrSource, idx)
+			keyExprs, nullmask := keyExprsForIndex(m, tableGrp, exprs, join.Filter)
 			if keyExprs == nil {
 				continue
 			}
@@ -312,51 +315,65 @@ func addLookupJoins(m *memo.Memo) error {
 	})
 }
 
-func keyExprsForIndex(m *memo.Memo, idx sql.Index, filters []memo.ScalarExpr) ([]memo.ScalarExpr, []bool) {
+func denormIdxExprs(table string, idx sql.Index) []string {
+	denormExpr := make([]string, len(idx.Expressions()))
+	for i, e := range idx.Expressions() {
+		parts := strings.Split(e, ".")
+		denormExpr[i] = fmt.Sprintf("%s.%s", table, parts[1])
+	}
+	return denormExpr
+}
+
+func keyExprsForIndex(m *memo.Memo, tableGrp memo.GroupId, exprs []string, filters []memo.ScalarExpr) ([]memo.ScalarExpr, []bool) {
+	// every expression in index needs to be satisfied by equality or constant
 	var keyExprs []memo.ScalarExpr
 	var nullmask []bool
-	for _, e := range idx.Expressions() {
+	for _, e := range exprs {
 		// e => 'col.table'
 		// id => ColumnId
 		targetId := m.Columns[e]
-		key, nullable := keyForExpr(targetId, filters)
+		key, nullable := keyForExpr(targetId, tableGrp, filters)
 		if key == nil {
 			break
-		}
-		if keyExprs == nil {
-			keyExprs = make([]memo.ScalarExpr, len(idx.Expressions()))
-			nullmask = make([]bool, len(idx.Expressions()))
 		}
 		keyExprs = append(keyExprs, key)
 		nullmask = append(nullmask, nullable)
 	}
-	if len(keyExprs) != len(idx.Expressions()) {
+	if len(keyExprs) != len(exprs) {
 		return nil, nil
 	}
 	return keyExprs, nullmask
 }
 
-func keyForExpr(target sql.ColumnId, filters []memo.ScalarExpr) (memo.ScalarExpr, bool) {
+// keyForExpr returns an equality match or constant value to satisfy the
+// lookup index expression.
+func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.ScalarExpr) (memo.ScalarExpr, bool) {
 	for _, f := range filters {
-		var ref *memo.ColRef
-		var to memo.ScalarExpr
+		var left memo.ScalarExpr
+		var right memo.ScalarExpr
 		var nullable bool
 		switch e := f.Group().Scalar.(type) {
 		case *memo.Equal:
-			ref, _ = e.Left.Scalar.(*memo.ColRef)
-			to = e.Right.Scalar
+			left = e.Left.Scalar
+			right = e.Right.Scalar
 		case *memo.NullSafeEq:
 			nullable = true
-			ref, _ = e.Left.Scalar.(*memo.ColRef)
-			to = e.Right.Scalar
+			left = e.Left.Scalar
+			right = e.Right.Scalar
 		default:
 		}
-		if ref != nil && ref.Col == target {
-			switch e := to.(type) {
-			case *memo.Literal, *memo.ColRef:
-				return e, nullable
-			default:
-			}
+		var key memo.ScalarExpr
+		if ref, ok := left.(*memo.ColRef); ok && ref.Col == targetCol {
+			key = right
+		} else if ref, ok := right.(*memo.ColRef); ok && ref.Col == targetCol {
+			key = left
+		} else {
+			continue
+		}
+		// we don't care what expression the key is, as long as it does not
+		// reference the lookup table
+		if !key.Group().ScalarProps().Tables.Contains(int(tableGrp) - 1) {
+			return key, nullable
 		}
 	}
 	return nil, false
@@ -399,7 +416,8 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 			}
 		}
 		if len(projectExpressions) == 0 {
-			projectExpressions = append(projectExpressions, m.MemoizeScalar(expression.NewLiteral(1, types.Int64)))
+			p := expression.NewLiteral(1, types.Int64)
+			projectExpressions = append(projectExpressions, m.MemoizeScalar(p))
 		}
 
 		// project is a new group
@@ -457,7 +475,14 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 				return nil
 			}
 		}
-
+		if len(projectExpressions) == 0 {
+			p := expression.NewLiteral(1, types.Int64)
+			projectExpressions = append(projectExpressions, m.MemoizeScalar(p))
+			gf := expression.NewGetField(0, types.Int64, "1", true)
+			m.Columns[gf.String()] = sql.ColumnId(len(m.Columns) + 1)
+			m.MemoizeScalar(gf)
+			nullify = append(nullify, gf)
+		}
 		// project is a new group
 		rightGrp := m.MemoizeProject(nil, anti.Right, projectExpressions)
 
@@ -501,7 +526,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 		if len(semi.Filter) == 0 {
 			return nil
 		}
-		attrSource, indexes, err := lookupCandidates(m.Ctx, semi.Left.First, aliases)
+		attrSource, tableGrp, indexes, err := lookupCandidates(m.Ctx, semi.Left.First, aliases)
 		if err != nil {
 			return err
 		}
@@ -510,7 +535,8 @@ func addRightSemiJoins(m *memo.Memo) error {
 			if !idx.IsUnique() {
 				continue
 			}
-			keyExprs, nullmask := keyExprsForIndex(m, idx, semi.Filter)
+			exprs := denormIdxExprs(attrSource, idx)
+			keyExprs, nullmask := keyExprsForIndex(m, tableGrp, exprs, semi.Filter)
 			if keyExprs == nil {
 				continue
 			}
@@ -543,35 +569,31 @@ func addRightSemiJoins(m *memo.Memo) error {
 // lookupCandidates returns a normalized table name and a list of available
 // candidate indexes as replacements for the given relExpr, or empty values
 // if there are no suitable indexes.
-func lookupCandidates(ctx *sql.Context, rel memo.RelExpr, aliases TableAliases) (string, []sql.Index, error) {
+func lookupCandidates(ctx *sql.Context, rel memo.RelExpr, aliases TableAliases) (string, memo.GroupId, []sql.Index, error) {
+	for done := false; !done; {
+		
+		switch n := rel.(type) {
+		case *memo.Distinct:
+			rel = n.Child.First
+		case *memo.Filter:
+			rel = n.Child.First
+		case *memo.Project:
+			rel = n.Child.First
+		default:
+			done = true
+		}
+
+	}
 	switch n := rel.(type) {
 	case *memo.TableAlias:
-		return tableAliasLookupCand(ctx, n.Table, aliases)
+		tab, indexes, err := tableAliasLookupCand(ctx, n.Table, aliases)
+		return tab, n.Group().Id, indexes, err
 	case *memo.TableScan:
-		return tableScanLookupCand(ctx, n.Table)
-	case *memo.Distinct:
-		if s, ok := n.Child.First.(memo.SourceRel); ok {
-			switch n := s.(type) {
-			case *memo.TableAlias:
-				return tableAliasLookupCand(ctx, n.Table, aliases)
-			case *memo.TableScan:
-				return tableScanLookupCand(ctx, n.Table)
-			default:
-			}
-		}
-	case *memo.Project:
-		if s, ok := n.Child.First.(memo.SourceRel); ok {
-			switch n := s.(type) {
-			case *memo.TableAlias:
-				return tableAliasLookupCand(ctx, n.Table, aliases)
-			case *memo.TableScan:
-				return tableScanLookupCand(ctx, n.Table)
-			default:
-			}
-		}
+		tab, indexes, err := tableScanLookupCand(ctx, n.Table)
+		return tab, n.Group().Id, indexes, err
 	default:
 	}
-	return "", nil, nil
+	return "", 0, nil, nil
 
 }
 
@@ -747,24 +769,15 @@ func addMergeJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		lAttrSource, lIndexes, err := lookupCandidates(m.Ctx, join.Left.First, aliases)
+		lAttrSource, leftGrp, lIndexes, err := lookupCandidates(m.Ctx, join.Left.First, aliases)
 		if err != nil {
 			return err
 		} else if lAttrSource == "" {
 			return nil
 		}
-		rAttrSource, rIndexes, err := lookupCandidates(m.Ctx, join.Right.First, aliases)
+		rAttrSource, rightGrp, rIndexes, err := lookupCandidates(m.Ctx, join.Right.First, aliases)
 		if err != nil {
 			return err
-		}
-
-		leftId, ok := m.TableProps.GetId(lAttrSource)
-		if !ok {
-			return nil
-		}
-		rightId, ok := m.TableProps.GetId(rAttrSource)
-		if !ok {
-			return nil
 		}
 
 		if tab, ok := aliases[lAttrSource]; ok {
@@ -790,14 +803,12 @@ func addMergeJoins(m *memo.Memo) error {
 			}
 
 			var swap bool
-			if l.ScalarProps().Tables.Contains(int(leftId)-1) &&
-				r.ScalarProps().Tables.Contains(int(rightId)-1) {
-			} else if r.ScalarProps().Tables.Contains(int(leftId)-1) &&
-				l.ScalarProps().Tables.Contains(int(rightId)-1) {
+			if l.ScalarProps().Tables.Contains(int(leftGrp)-1) &&
+				r.ScalarProps().Tables.Contains(int(rightGrp)-1) {
+			} else if r.ScalarProps().Tables.Contains(int(leftGrp)-1) &&
+				l.ScalarProps().Tables.Contains(int(rightGrp)-1) {
 				swap = true
 				l, r = r, l
-				leftId, rightId = rightId, leftId
-				lAttrSource, rAttrSource = rAttrSource, lAttrSource
 			} else {
 				continue
 			}

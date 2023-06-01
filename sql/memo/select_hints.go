@@ -233,6 +233,8 @@ func (o joinOrderHint) satisfiesOrder(n RelExpr) bool {
 		return o.satisfiesOrder(n.Child.Best)
 	case *Distinct:
 		return o.satisfiesOrder(n.Child.Best)
+	case *Filter:
+		return o.satisfiesOrder(n.Child.Best)
 	case SourceRel:
 		return true
 	default:
@@ -302,6 +304,10 @@ func (o joinOpHint) depsMatch(n RelExpr) bool {
 	switch n := n.(type) {
 	case *Project:
 		return o.depsMatch(n.Child.Best)
+	case *Filter:
+		return o.depsMatch(n.Child.Best)
+	case *Distinct:
+		return o.depsMatch(n.Child.Best)
 	case JoinRel:
 		base := n.JoinPrivate()
 		if o.l.Intersects(base.Left.RelProps.InputTables()) &&
@@ -346,6 +352,10 @@ func (o joinOpHint) typeMatches(n RelExpr) bool {
 			return false
 		}
 	case *Project:
+		return o.typeMatches(n.Child.Best)
+	case *Filter:
+		return o.typeMatches(n.Child.Best)
+	case *Distinct:
 		return o.typeMatches(n.Child.Best)
 	default:
 	}

@@ -108,7 +108,12 @@ func (m *Memo) getTableId(table string) (GroupId, bool) {
 }
 
 func (m *Memo) getColumnId(table, name string) (sql.ColumnId, bool) {
-	tag := fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(name))
+	var tag string
+	if table != "" {
+		tag = fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(name))
+	} else {
+		tag = name
+	}
 	id, ok := m.Columns[tag]
 	return id, ok
 }
@@ -123,6 +128,8 @@ func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
 	//todo support everything that can be in an ON expression, including bindvars
 	var scalar *ExprGroup
 	switch e := e.(type) {
+	case expression.ArithmeticOp:
+		scalar = m.memoizeArithmetic(e)
 	case expression.Comparer:
 		scalar = m.memoizeComparison(e)
 	case *expression.Literal:
@@ -131,6 +138,10 @@ func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
 		scalar = m.MemoizeColRef(e)
 	case *expression.IsNull:
 		scalar = m.MemoizeIsNull(e.Child)
+	case *expression.And:
+		scalar = m.memoizeAnd(e)
+	case *expression.Or:
+		scalar = m.memoizeOr(e)
 	default:
 		scalar = m.memoizeHidden(e)
 	}
@@ -140,6 +151,32 @@ func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
 	// TODO fill FD's
 	// scalar.initScalarProps()
 	return scalar
+}
+
+func (m *Memo) memoizeAnd(e *expression.And) *ExprGroup {
+	left := m.MemoizeScalar(e.Left)
+	right := m.MemoizeScalar(e.Right)
+	scalar := &And{scalarBase: &scalarBase{}, Left: left, Right: right}
+	grp := m.PreexistingScalar(scalar)
+	if grp != nil {
+		return grp
+	}
+	grp = m.NewExprGroup(scalar)
+	// TODO scalar props
+	return grp
+}
+
+func (m *Memo) memoizeOr(e *expression.Or) *ExprGroup {
+	left := m.MemoizeScalar(e.Left)
+	right := m.MemoizeScalar(e.Right)
+	scalar := &Or{scalarBase: &scalarBase{}, Left: left, Right: right}
+	grp := m.PreexistingScalar(scalar)
+	if grp != nil {
+		return grp
+	}
+	grp = m.NewExprGroup(scalar)
+	// TODO scalar props
+	return grp
 }
 
 func (m *Memo) memoizeLiteral(lit *expression.Literal) *ExprGroup {
@@ -158,9 +195,12 @@ func (m *Memo) MemoizeColRef(e *expression.GetField) *ExprGroup {
 	if !ok {
 		panic("unreachable")
 	}
-	table, ok := m.getTableId(e.Table())
-	if !ok {
-		panic("unreachable")
+	var table GroupId
+	if e.Table() != "" {
+		table, ok = m.getTableId(e.Table())
+		if !ok {
+			panic("unreachable")
+		}
 	}
 	scalar := &ColRef{scalarBase: &scalarBase{}, Col: col, Table: table, Gf: e}
 	grp := m.PreexistingScalar(scalar)
@@ -171,6 +211,40 @@ func (m *Memo) MemoizeColRef(e *expression.GetField) *ExprGroup {
 	// TODO scalar props
 	// references table, col
 	return grp
+}
+
+func (m *Memo) memoizeArithmetic(comp expression.ArithmeticOp) *ExprGroup {
+	lGrp := m.MemoizeScalar(comp.LeftChild())
+	rGrp := m.MemoizeScalar(comp.RightChild())
+	var scalar ScalarExpr
+	var op ArithType
+	switch e := comp.(type) {
+	case *expression.Arithmetic:
+		switch e.Op {
+		case "+":
+			op = ArithTypePlus
+		case "-":
+			op = ArithTypeMinus
+		case "*":
+			op = ArithTypeMult
+		default:
+			panic(fmt.Sprintf("unsupported arithemtic type: %s", e.Op))
+		}
+	case *expression.Div:
+		op = ArithTypeDiv
+	case *expression.IntDiv:
+		op = ArithTypeIntDiv
+	case *expression.Mod:
+		op = ArithTypeIntDiv
+	default:
+		panic(fmt.Sprintf("unsupported type: %T", e))
+	}
+	scalar = &Arithmetic{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp, Op: op}
+	eGroup := m.PreexistingScalar(scalar)
+	if eGroup == nil {
+		eGroup = m.NewExprGroup(scalar)
+	}
+	return eGroup
 }
 
 func (m *Memo) memoizeComparison(comp expression.Comparer) *ExprGroup {
@@ -1140,17 +1214,17 @@ type ArithType uint8
 
 const (
 	ArithTypeUnknown    ArithType = iota // unknown
-	ArithTypeBitAnd                      // "&"
-	ArithTypeBitOr                       // "|"
-	ArithTypeBitXor                      // "^"
-	ArithTypePlus                        // "+"
-	ArithTypeMinus                       // "-"
-	ArithTypeMult                        // "*"
-	ArithTypeDiv                         // "/"
-	ArithTypeIntDiv                      // "div"
-	ArithTypeMod                         // "%"
-	ArithTypeShiftLeft                   // "<<"
-	ArithTypeShiftRight                  // ">>"
+	ArithTypeBitAnd                      // &
+	ArithTypeBitOr                       // |
+	ArithTypeBitXor                      // ^
+	ArithTypePlus                        // +
+	ArithTypeMinus                       // -
+	ArithTypeMult                        // *
+	ArithTypeDiv                         // /
+	ArithTypeIntDiv                      // div
+	ArithTypeMod                         // %
+	ArithTypeShiftLeft                   // <<
+	ArithTypeShiftRight                  // >>
 )
 
 // splitConjunction_memo breaks AND expressions into their left and right parts, recursively
@@ -1179,8 +1253,9 @@ func SplitDisjunction(e *Or) []ScalarExpr {
 		nextOr, ok := next.(*Or)
 		if !ok {
 			ret = append(ret, next)
+		} else {
+			q = append(q, nextOr.Left.Scalar, nextOr.Right.Scalar)
 		}
-		q = append(q, nextOr.Left.Scalar, nextOr.Right.Scalar)
 	}
 	return ret
 }
