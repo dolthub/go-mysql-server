@@ -64,6 +64,30 @@ func TestMarshalToMySqlString(t *testing.T) {
 			},
 			expected: `{"baz": "qux", "foo": "bar"}`,
 		},
+		{
+			name: "string formatting",
+			val: []string{
+				`simple`,
+				`With "quotes"`,
+				`With "quotes" not at the end`,
+				`with 'single quotes'`,
+				`with
+newlines
+`,
+				`with \n escaped newline`,
+				`with	`,
+			},
+			expected: `["simple", "With \"quotes\"", "With \"quotes\" not at the end", "with 'single quotes'", "with\nnewlines\n", "with \\n escaped newline", "with\t"]`,
+		},
+		{
+			name: "complicated string",
+			val: []string{
+				`{
+	"nested": "json",
+	"nested_escapedQuotes": "here \"you\" go"
+}`},
+			expected: `["{\n\t\"nested\": \"json\",\n\t\"nested_escapedQuotes\": \"here \\\"you\\\" go\"\n}"]`,
+		},
 	}
 
 	for _, test := range tests {
