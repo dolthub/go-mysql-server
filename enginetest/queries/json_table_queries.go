@@ -557,6 +557,16 @@ var JSONTableScriptTests = []ScriptTest{
 					{nil},
 				},
 			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{\"c1\":\"abc\"}', '$' COLUMNS(c1 INT PATH '$.c1' DEFAULT '123' ON ERROR)) as jt;",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{\"c1\":\"abc\"}', '$' COLUMNS(c1 INT PATH '$.c1' DEFAULT 'def' ON ERROR)) as jt;",
+				ExpectedErrStr: "error: 'def' is not a valid value for 'int'",
+			},
 		},
 	},
 
@@ -590,7 +600,16 @@ var JSONTableScriptTests = []ScriptTest{
 		Name: "test ERROR ON ERROR",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion {
-
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON ERROR)) as jt;",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{\"c1\":\"abc\"}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON ERROR)) as jt;",
+				ExpectedErrStr: "error: 'abc' is not a valid value for 'int'",
+			},
 		},
 	},
 
@@ -598,7 +617,49 @@ var JSONTableScriptTests = []ScriptTest{
 		Name: "test ERROR ON EMPTY",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion {
+			{
+				Query:    "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON EMPTY)) as jt;",
+				Expected: []sql.Row{
+					{123},
+				},
+				ExpectedErrStr: "missing value for JSON_TABLE column 'c1'",
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('{\"notc1\": \"321321\"}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON EMPTY)) as jt;",
+				ExpectedErrStr: "missing value for JSON_TABLE column 'c1'",
+			},
+		},
+	},
 
+	{
+		Name: "test combinations of options",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion {
+			{
+				// From MySQL docs
+				Query: "SELECT * FROM JSON_TABLE('[{\"a\":\"3\"},{\"a\":2},{\"b\":1},{\"a\":0},{\"a\":[1,2]}]', \"$[*]\" COLUMNS (rowid FOR ORDINALITY, ac VARCHAR(100) PATH \"$.a\" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR, aj JSON PATH \"$.a\" DEFAULT '{\"x\": 333}' ON EMPTY, bx INT EXISTS PATH \"$.b\")) AS tt;",
+				Expected: []sql.Row{
+					{1, "3", types.MustJSON("3"), 0},
+					{2, "2", types.MustJSON("2"), 0},
+					{3, "111", types.MustJSON("{\"x\": 333}"), 1},
+					{4, "0", types.MustJSON("0"), 0},
+					{5, "999", types.MustJSON("[1, 2]"), 0},
+				},
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('[{\"x\":2,\"y\":\"8\"},{\"x\":\"3\",\"y\":\"7\"},{\"x\":\"4\",\"y\":6}]', \"$[*]\" COLUMNS (xval VARCHAR(100) PATH \"$.x\", yval VARCHAR(100) PATH \"$.y\")) AS  jt1;",
+				Expected: []sql.Row{
+					{"2", "8"},
+					{"3", "7"},
+					{"4", "6"},
+				},
+			},
+			{
+				Query: "SELECT * FROM JSON_TABLE('[{\"x\":2,\"y\":\"8\"},{\"x\":\"3\",\"y\":\"7\"},{\"x\":\"4\",\"y\":6}]', \"$[1]\" COLUMNS (xval VARCHAR(100) PATH \"$.x\", yval VARCHAR(100) PATH \"$.y\")) AS  jt1;",
+				Expected: []sql.Row{
+					{"3", "7"},
+				},
+			},
 		},
 	},
 }
