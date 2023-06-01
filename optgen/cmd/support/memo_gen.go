@@ -184,16 +184,10 @@ func (g *MemoGen) genUnaryGroupInterface(define ExprDef) {
 
 	fmt.Fprintf(g.w, "func (r *%s) outputCols() sql.Schema {\n", define.Name)
 	switch define.Name {
-	case "project":
+	case "Project":
 		fmt.Fprintf(g.w, "  var s = make(sql.Schema, len(r.Projections))\n")
 		fmt.Fprintf(g.w, "  for i, e := range r.Projections {\n")
-		fmt.Fprintf(g.w, "    ref := e.Scalar.(*ColRef)\n")
-		fmt.Fprintf(g.w, "    s[i] = &sql.Column{\n")
-		fmt.Fprintf(g.w, "      Name:     ref.Gf.Name(),\n")
-		fmt.Fprintf(g.w, "      Source:   ref.Gf.String(),\n")
-		fmt.Fprintf(g.w, "      Type:     ref.Gf.Type(),\n")
-		fmt.Fprintf(g.w, "      Nullable: ref.Gf.IsNullable(),\n")
-		fmt.Fprintf(g.w, "    }\n")
+		fmt.Fprintf(g.w, "    s[i] = ScalarToSqlCol(e)\n")
 		fmt.Fprintf(g.w, "  }\n")
 		fmt.Fprintf(g.w, "  return s\n")
 
@@ -226,6 +220,8 @@ func (g *MemoGen) genFormatters(defines []ExprDef) {
 				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: '%%s.%%s'\", r.Gf.Table(), r.Gf.Name())\n", loweredName)
 			case "Bindvar":
 				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.Name)\n", loweredName)
+			case "Hidden":
+				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.E)\n", loweredName)
 			case "Tuple":
 				fmt.Fprintf(g.w, "    vals := make([]string, len(r.Values))\n")
 				fmt.Fprintf(g.w, "    for i, v := range r.Values {\n")

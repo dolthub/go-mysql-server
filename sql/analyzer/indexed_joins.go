@@ -398,6 +398,9 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 				return nil
 			}
 		}
+		if len(projectExpressions) == 0 {
+			projectExpressions = append(projectExpressions, m.MemoizeScalar(expression.NewLiteral(1, types.Int64)))
+		}
 
 		// project is a new group
 		rightGrp := m.MemoizeProject(nil, semi.Right, projectExpressions)
@@ -412,18 +415,10 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 		projections := make([]*memo.ExprGroup, len(leftCols))
 		for i := range leftCols {
 			col := leftCols[i]
-			projections[i] = m.MemoizeColRef(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable))
+			projections[i] = m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable))
 		}
 
 		m.MemoizeProject(e.Group(), joinGrp, projections)
-		//rel := &memo.Project{
-		//	relBase: &memo.relBase{
-		//		g: e.Group(),
-		//	},
-		//	Child:       joinGrp,
-		//	Projections: projections,
-		//}
-		//e.Group().Prepend(rel)
 
 		return nil
 	})
@@ -698,12 +693,12 @@ func addHashJoins(m *memo.Memo) error {
 			case *memo.Equal:
 				if satisfiesScalarRefs(f.Left.Scalar, join.Left) &&
 					satisfiesScalarRefs(f.Right.Scalar, join.Right) {
-					fromExpr = append(fromExpr, f.Left)
-					toExpr = append(toExpr, f.Right)
-				} else if satisfiesScalarRefs(f.Right.Scalar, join.Left) &&
-					satisfiesScalarRefs(f.Left.Scalar, join.Right) {
 					fromExpr = append(fromExpr, f.Right)
 					toExpr = append(toExpr, f.Left)
+				} else if satisfiesScalarRefs(f.Right.Scalar, join.Left) &&
+					satisfiesScalarRefs(f.Left.Scalar, join.Right) {
+					fromExpr = append(fromExpr, f.Left)
+					toExpr = append(toExpr, f.Right)
 				} else {
 					return nil
 				}

@@ -118,7 +118,7 @@ func (m *Memo) PreexistingScalar(e ScalarExpr) *ExprGroup {
 	return group
 }
 
-func (m *Memo) memoizeScalar(e sql.Expression) *ExprGroup {
+func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
 	//todo support everything that can be in an ON expression, including bindvars
 	var scalar *ExprGroup
 	switch e := e.(type) {
@@ -173,8 +173,8 @@ func (m *Memo) MemoizeColRef(e *expression.GetField) *ExprGroup {
 }
 
 func (m *Memo) memoizeComparison(comp expression.Comparer) *ExprGroup {
-	lGrp := m.memoizeScalar(comp.Left())
-	rGrp := m.memoizeScalar(comp.Right())
+	lGrp := m.MemoizeScalar(comp.Left())
+	rGrp := m.MemoizeScalar(comp.Right())
 	var scalar ScalarExpr
 	switch e := comp.(type) {
 	case *expression.Equals:
@@ -202,7 +202,7 @@ func (m *Memo) memoizeComparison(comp expression.Comparer) *ExprGroup {
 }
 
 func (m *Memo) MemoizeIsNull(child sql.Expression) *ExprGroup {
-	childGrp := m.memoizeScalar(child)
+	childGrp := m.MemoizeScalar(child)
 
 	scalar := &IsNull{scalarBase: &scalarBase{}, Child: childGrp}
 	grp := m.PreexistingScalar(scalar)
@@ -215,7 +215,7 @@ func (m *Memo) MemoizeIsNull(child sql.Expression) *ExprGroup {
 }
 
 func (m *Memo) memoizeHidden(e sql.Expression) *ExprGroup {
-	scalar := &hidden{scalarBase: &scalarBase{}, e: e}
+	scalar := &Hidden{scalarBase: &scalarBase{}, E: e}
 	return m.NewExprGroup(scalar)
 }
 
@@ -1137,25 +1137,6 @@ const (
 	ArithTypeShiftRight                  // ">>"
 )
 
-type hidden struct {
-	*scalarBase
-	e sql.Expression
-}
-
-func (h hidden) String() string {
-	return fmt.Sprintf("hide: %s", h.e.String())
-}
-
-func (h hidden) Children() []*ExprGroup {
-	return nil
-}
-
-func (h hidden) ExprId() ScalarExprId {
-	return ScalarExprHidden
-}
-
-var _ ScalarExpr = (*hidden)(nil)
-
 // splitConjunction_memo breaks AND expressions into their left and right parts, recursively
 func SplitConjunction(e ScalarExpr) []ScalarExpr {
 	if e == nil {
@@ -1186,4 +1167,23 @@ func SplitDisjunction(e *Or) []ScalarExpr {
 		q = append(q, nextOr.Left.Scalar, nextOr.Right.Scalar)
 	}
 	return ret
+}
+
+func ScalarToSqlCol(e *ExprGroup) *sql.Column {
+	switch e := e.Scalar.(type) {
+	case *ColRef:
+		return &sql.Column{
+			Name:     e.Gf.Name(),
+			Source:   e.Gf.Table(),
+			Type:     e.Gf.Type(),
+			Nullable: e.Gf.IsNullable(),
+		}
+	case *Literal:
+		return &sql.Column{
+			Name: fmt.Sprintf("%v", e.Val),
+			Type: e.Typ,
+		}
+	default:
+		return nil
+	}
 }

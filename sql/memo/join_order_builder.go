@@ -201,7 +201,7 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 	filters := splitConjunction(n.JoinCond())
 	filterGrps := make([]ScalarExpr, len(filters))
 	for i, f := range filters {
-		grp := j.m.memoizeScalar(f)
+		grp := j.m.MemoizeScalar(f)
 		filterGrps[i] = grp.Scalar
 	}
 	union := leftV.union(rightV)
@@ -271,7 +271,7 @@ func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *Exp
 	}
 	var filterGroups []*ExprGroup
 	for _, f := range equals {
-		filterGroups = append(filterGroups, j.m.memoizeComparison(f))
+		filterGroups = append(filterGroups, j.m.MemoizeScalar(f))
 	}
 
 	// TODO if child is a filter, combine filters

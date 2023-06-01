@@ -33,12 +33,12 @@ func internExpr(e ScalarExpr) uint64 {
 	h := xxhash.New()
 	switch e := e.(type) {
 	case *Literal:
-		h.Write([]byte(fmt.Sprintf("%v", e.Val)))
+		h.Write([]byte(fmt.Sprintf("%d%v", e.ExprId(), e.Val)))
 	case *ColRef:
-		h.Write([]byte(fmt.Sprintf("%d", e.Col)))
+		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), e.Col)))
 	case *Equal:
 		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
-	case *hidden:
+	case *Hidden:
 		h.Write([]byte(fmt.Sprintf("%d%s", e.ExprId(), e.String())))
 	}
 	return h.Sum64()

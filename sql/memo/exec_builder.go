@@ -177,9 +177,6 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, input sql.Schema, children ...s
 	}
 	toAttrs := expression.Tuple(toFilters)
 
-	if err != nil {
-		return nil, err
-	}
 	tmpScope := j.g.m.scope
 	if tmpScope != nil {
 		tmpScope = tmpScope.NewScopeNoJoin()
@@ -187,11 +184,10 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, input sql.Schema, children ...s
 
 	fromFilters := make([]sql.Expression, len(j.FromAttrs))
 	for i := range j.FromAttrs {
-		fromFilters[i], err = b.buildScalar(j.FromAttrs[i].Scalar, input)
+		fromFilters[i], err = b.buildScalar(j.FromAttrs[i].Scalar, j.Right.RelProps.OutputCols())
 		if err != nil {
 			return nil, err
 		}
-
 	}
 	fromAttrs := expression.Tuple(fromFilters)
 
@@ -346,10 +342,6 @@ func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) 
 // scalar expressions
 
 func (b *ExecBuilder) buildScalar(e ScalarExpr, sch sql.Schema) (sql.Expression, error) {
-	if h, ok := e.(*hidden); ok {
-		ret, _, err := fixidx.FixFieldIndexes(e.Group().m.scope, nil, sch, h.e)
-		return ret, err
-	}
 	return buildScalarExpr(b, e, sch)
 }
 
@@ -540,4 +532,9 @@ func (b *ExecBuilder) buildTuple(e *Tuple, sch sql.Schema) (sql.Expression, erro
 		}
 	}
 	return expression.NewTuple(values...), nil
+}
+
+func (b *ExecBuilder) buildHidden(e *Hidden, sch sql.Schema) (sql.Expression, error) {
+	ret, _, err := fixidx.FixFieldIndexes(e.g.m.scope, nil, sch, e.E)
+	return ret, err
 }

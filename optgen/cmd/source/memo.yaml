@@ -122,3 +122,7 @@ exprs:
   scalar: true
   attrs:
   - [values, "[]*ExprGroup"]
+- name: "Hidden"
+  scalar: true
+  attrs:
+    - [e, "sql.Expression"]

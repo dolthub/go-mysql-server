@@ -437,7 +437,11 @@ func (r *Project) Children() []*ExprGroup {
 }
 
 func (r *Project) outputCols() sql.Schema {
-	return r.Child.RelProps.OutputCols()
+	var s = make(sql.Schema, len(r.Projections))
+	for i, e := range r.Projections {
+		s[i] = ScalarToSqlCol(e)
+	}
+	return s
 }
 
 type Distinct struct {
@@ -826,6 +830,25 @@ func (r *Tuple) Children() []*ExprGroup {
 	return nil
 }
 
+type Hidden struct {
+	*scalarBase
+	E sql.Expression
+}
+
+var _ ScalarExpr = (*Hidden)(nil)
+
+func (r *Hidden) ExprId() ScalarExprId {
+	return ScalarExprHidden
+}
+
+func (r *Hidden) String() string {
+	return FormatExpr(r)
+}
+
+func (r *Hidden) Children() []*ExprGroup {
+	return nil
+}
+
 func FormatExpr(r exprType) string {
 	switch r := r.(type) {
 	case *CrossJoin:
@@ -910,6 +933,8 @@ func FormatExpr(r exprType) string {
 			vals[i] = fmt.Sprintf("%d", v.Id)
 		}
 		return fmt.Sprintf("tuple: %s", strings.Join(vals, " "))
+	case *Hidden:
+		return fmt.Sprintf("hidden: %s", r.E)
 	default:
 		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
 	}
@@ -1013,6 +1038,8 @@ func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expressi
 		return b.buildIsNull(r, sch)
 	case *Tuple:
 		return b.buildTuple(r, sch)
+	case *Hidden:
+		return b.buildHidden(r, sch)
 	default:
 		panic(fmt.Sprintf("unknown ScalarExpr type: %T", r))
 	}
