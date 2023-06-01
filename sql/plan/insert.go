@@ -217,7 +217,7 @@ func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	checkDbName := checkPrivilegeNameForDatabase(ii.db)
+	checkDbName := CheckPrivilegeNameForDatabase(ii.db)
 
 	if ii.IsReplace {
 		return opChecker.UserHasPrivileges(ctx,

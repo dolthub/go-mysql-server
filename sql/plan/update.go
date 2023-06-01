@@ -169,7 +169,7 @@ func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 	// For example: "UPDATE table SET x = y + 1 WHERE z > 0"
 	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
 	db := u.DB()
-	checkName := checkPrivilegeNameForDatabase(db)
+	checkName := CheckPrivilegeNameForDatabase(db)
 	
 	return opChecker.UserHasPrivileges(ctx,
 		// TODO: this needs a real database, fix it

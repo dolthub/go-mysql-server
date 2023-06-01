@@ -398,10 +398,10 @@ func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if c.temporary == IsTempTable {
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(checkPrivilegeNameForDatabase(c.Db), "", "", sql.PrivilegeType_CreateTempTable))
+			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(c.Db), "", "", sql.PrivilegeType_CreateTempTable))
 	} else {
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(checkPrivilegeNameForDatabase(c.Db), "", "", sql.PrivilegeType_Create))
+			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(c.Db), "", "", sql.PrivilegeType_Create))
 	}
 }
 
@@ -668,7 +668,7 @@ func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 	for _, tbl := range d.Tables {
 		db := getDatabase(tbl)
 		if !opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(checkPrivilegeNameForDatabase(db), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
+			sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(tbl), "", sql.PrivilegeType_Drop)) {
 			return false
 		}
 	}

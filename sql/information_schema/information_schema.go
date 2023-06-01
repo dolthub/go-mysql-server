@@ -2646,12 +2646,19 @@ func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, bo
 	return cnt, true, nil
 }
 
-func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
+func (n *defaultStatsTable) Analyze(ctx *Context, dbName, table string) error {
 	tableStats := &TableStatistics{
 		CreatedAt: time.Now(),
 	}
 
-	t, _, err := n.catalog.Table(ctx, db, table)
+	db, err := n.catalog.Database(ctx, dbName)
+	if err != nil {
+		return err
+	}
+	
+	effectiveDbName := plan.CheckPrivilegeNameForDatabase(db)
+	
+	t, _, err := n.catalog.DatabaseTable(ctx, db, table)
 	if err != nil {
 		return err
 	}
@@ -2666,7 +2673,7 @@ func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
 		break
 	}
 
-	n.stats[NewDbTable(db, table)] = tableStats
+	n.stats[NewDbTable(effectiveDbName, table)] = tableStats
 	return nil
 }
 
