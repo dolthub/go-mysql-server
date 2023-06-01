@@ -336,29 +336,45 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON -> and ->> operator support",
 		SetUpScript: []string{
-			"create table t (pk int primary key, col1 JSON);",
-			`insert into t values (1, JSON_OBJECT('key1', 1, 'key2', '"abc"'));`,
+			"create table t (pk int primary key, col1 JSON, col2 JSON);",
+			`insert into t values (1, JSON_OBJECT('key1', 1, 'key2', '"abc"'), JSON_ARRAY(3,10,5,17,"z"));`,
+			`insert into t values (2, JSON_OBJECT('key1', 100, 'key2', '"ghi"'), JSON_ARRAY(3,10,5,17,JSON_ARRAY(22,"y",66)));`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `select col1->'$.key1' from t;`,
-				Expected: []sql.Row{{types.JSONDocument{Val: 1}}},
+				Expected: []sql.Row{{types.JSONDocument{Val: 1}}, {types.JSONDocument{Val: 100}}},
 			},
 			{
 				Query:    `select col1->>'$.key2' from t;`,
-				Expected: []sql.Row{{"abc"}},
+				Expected: []sql.Row{{"abc"}, {"ghi"}},
 			},
 			{
-				Query:    `select * from t where col1->'$.key1' = 1;`,
+				Query:    `select pk, col1 from t where col1->'$.key1' = 1;`,
 				Expected: []sql.Row{{1, types.JSONDocument{Val: map[string]interface{}{"key1": 1, "key2": "\"abc\""}}}},
 			},
 			{
-				Query:    `select * from t where col1->>'$.key2' = 'abc';`,
+				Query:    `select pk, col1 from t where col1->>'$.key2' = 'abc';`,
 				Expected: []sql.Row{{1, types.JSONDocument{Val: map[string]interface{}{"key1": 1, "key2": "\"abc\""}}}},
 			},
 			{
 				Query:    `select * from t where col1->>'$.key2' = 'def';`,
 				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT col2->"$[3]", col2->>"$[3]" FROM t;`,
+				Expected: []sql.Row{{types.JSONDocument{Val: 17}, "17"}, {types.JSONDocument{Val: 17}, "17"}},
+			},
+			{
+				Query:    `SELECT col2->"$[4]", col2->>"$[4]" FROM t where pk=1;`,
+				Expected: []sql.Row{{types.JSONDocument{Val: "z"}, "z"}},
+			},
+			{
+				// TODO: JSON_Extract doesn't seem able to handle a JSON path expression that references a nested array
+				//       This errors with "object is not Slice"
+				Skip:     true,
+				Query:    `SELECT col2->>"$[3]", col2->>"$[4][0]" FROM t;`,
+				Expected: []sql.Row{{17, 44}, {17, "y"}},
 			},
 		},
 	},
