@@ -87,13 +87,6 @@ func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
 	return c
 }
 
-// WithAllColumns passes in a set of all columns.
-func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Table {
-	nc := *c
-	nc.allColsWithDefaultValue = cols
-	return &nc
-}
-
 // Partitions implements the sql.Table interface.
 func (c *ColumnsTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(c.Name())}}, nil
