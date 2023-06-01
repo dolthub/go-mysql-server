@@ -244,7 +244,7 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 }
 
 type jsonTableColOpts struct {
-	path			string
+	path            string
 	exists          bool
 	defaultErrorVal interface{}
 	defaultEmptyVal interface{}
@@ -253,10 +253,10 @@ type jsonTableColOpts struct {
 }
 
 type jsonTableRowIter struct {
-	schema    sql.Schema
-	data      []interface{}
-	pos       int
-	colOpts   []jsonTableColOpts
+	schema  sql.Schema
+	data    []interface{}
+	pos     int
+	colOpts []jsonTableColOpts
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}

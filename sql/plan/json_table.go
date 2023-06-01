@@ -52,7 +52,7 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 }
 
 type JSONTableColOpts struct {
-	Path			string
+	Path            string
 	Exists          bool
 	DefaultErrorVal sql.Expression
 	DefaultEmptyVal sql.Expression
@@ -61,12 +61,12 @@ type JSONTableColOpts struct {
 }
 
 type JSONTable struct {
-	DataExpr         sql.Expression
-	TableName        string
-	Path             string
-	Sch              sql.PrimaryKeySchema
-	ColOpts          []JSONTableColOpts
-	b                sql.NodeExecBuilder
+	DataExpr  sql.Expression
+	TableName string
+	Path      string
+	Sch       sql.PrimaryKeySchema
+	ColOpts   []JSONTableColOpts
+	b         sql.NodeExecBuilder
 }
 
 var _ sql.Table = (*JSONTable)(nil)
@@ -168,6 +168,6 @@ func NewJSONTable(dataExpr sql.Expression, path string, alias string, schema sql
 		Path:      path,
 		Sch:       schema,
 
-		ColOpts:   colOpts,
+		ColOpts: colOpts,
 	}, nil
 }
