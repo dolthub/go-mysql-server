@@ -8,6 +8,27 @@ import (
 	"strconv"
 )
 
+var isEscaped = [256]bool{}
+var escapeSeq = [256][]byte{}
+
+func init() {
+	isEscaped[uint8('\b')] = true
+	isEscaped[uint8('\f')] = true
+	isEscaped[uint8('\n')] = true
+	isEscaped[uint8('\r')] = true
+	isEscaped[uint8('\t')] = true
+	isEscaped[uint8('"')] = true
+	isEscaped[uint8('\\')] = true
+
+	escapeSeq[uint8('\b')] = []byte("\\b")
+	escapeSeq[uint8('\f')] = []byte("\\f")
+	escapeSeq[uint8('\n')] = []byte("\\n")
+	escapeSeq[uint8('\r')] = []byte("\\r")
+	escapeSeq[uint8('\t')] = []byte("\\t")
+	escapeSeq[uint8('"')] = []byte("\\\"")
+	escapeSeq[uint8('\\')] = []byte("\\\\")
+}
+
 type NoCopyBuilder struct {
 	buffers   [][]byte
 	curr      int
@@ -191,7 +212,28 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 	case string:
 		writer.Write([]byte{'"'})
-		writer.Write([]byte(val))
+		// iterate over each rune in the string to escape any special characters
+		start := 0
+		for i, r := range val {
+			if r > '\\' {
+				continue
+			}
+
+			b := uint8(r)
+			if isEscaped[b] {
+				if start != i {
+					writer.Write([]byte(val[start:i]))
+				}
+
+				writer.Write(escapeSeq[b])
+				start = i + 1
+			}
+		}
+
+		if start != len(val) {
+			writer.Write([]byte(val[start:]))
+		}
+
 		writer.Write([]byte{'"'})
 		return nil
 
