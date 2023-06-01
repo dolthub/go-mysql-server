@@ -430,12 +430,22 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 
 		// project belongs to the original group
 		leftCols := semi.Left.RelProps.OutputCols()
-		projections := make([]*memo.ExprGroup, len(leftCols))
+		var projections []*memo.ExprGroup
 		for i := range leftCols {
 			col := leftCols[i]
-			projections[i] = m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable))
+			if col.Name == "" && col.Source == "" {
+				continue
+			}
+			projections = append(projections, m.MemoizeScalar(expression.NewGetFieldWithTable(0, col.Type, col.Source, col.Name, col.Nullable)))
 		}
 
+		if len(projections) == 0 {
+			p := expression.NewLiteral(1, types.Int64)
+			projections = []*memo.ExprGroup{m.MemoizeScalar(p)}
+			//gf := expression.NewGetField(0, types.Int64, "1", true)
+			//m.Columns[gf.String()] = sql.ColumnId(len(m.Columns) + 1)
+			//m.MemoizeScalar(gf)
+		}
 		m.MemoizeProject(e.Group(), joinGrp, projections)
 
 		return nil
@@ -571,7 +581,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 // if there are no suitable indexes.
 func lookupCandidates(ctx *sql.Context, rel memo.RelExpr, aliases TableAliases) (string, memo.GroupId, []sql.Index, error) {
 	for done := false; !done; {
-		
+
 		switch n := rel.(type) {
 		case *memo.Distinct:
 			rel = n.Child.First

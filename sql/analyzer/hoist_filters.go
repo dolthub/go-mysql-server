@@ -1,7 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"strings"
 
@@ -25,7 +24,9 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 	}
 	ret, same, filters, err := recurseSubqueryForOuterFilters(n, a, scope)
 	if len(filters) != 0 {
-		return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
+		// todo empty table fold filters before here
+		return n, transform.SameTree, nil
+		//return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
 	}
 	return ret, same, err
 }

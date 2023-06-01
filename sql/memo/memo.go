@@ -92,14 +92,18 @@ func (m *Memo) memoizeSourceRel(rel SourceRel) *ExprGroup {
 
 // TODO we need to remove this as soon as name resolution refactor is in
 func (m *Memo) assignColumnIds(rel SourceRel) {
-	for _, c := range rel.OutputCols() {
-		var name string
-		if c.Source != "" {
-			name = fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))
-		} else {
-			name = fmt.Sprintf("%s.%s", strings.ToLower(rel.Name()), strings.ToLower(c.Name))
+	if rel.Name() == "" {
+		m.Columns["1"] = sql.ColumnId(len(m.Columns) + 1)
+	} else {
+		for _, c := range rel.OutputCols() {
+			var name string
+			if c.Source != "" {
+				name = fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))
+			} else {
+				name = fmt.Sprintf("%s.%s", strings.ToLower(rel.Name()), strings.ToLower(c.Name))
+			}
+			m.Columns[name] = sql.ColumnId(len(m.Columns) + 1)
 		}
-		m.Columns[name] = sql.ColumnId(len(m.Columns) + 1)
 	}
 }
 
@@ -632,7 +636,16 @@ func newRelProps(rel RelExpr) *relProps {
 		grp: rel.Group(),
 	}
 	if r, ok := rel.(SourceRel); ok {
-		p.outputCols = r.OutputCols()
+		if r.Name() == "" {
+			p.outputCols = []*sql.Column{
+				{
+					Name:   "1",
+					Source: "",
+				},
+			}
+		} else {
+			p.outputCols = r.OutputCols()
+		}
 	}
 	p.populateOutputTables()
 	p.populateInputTables()
