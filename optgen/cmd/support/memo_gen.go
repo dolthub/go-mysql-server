@@ -3,10 +3,11 @@ package support
 import (
 	"bytes"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 //go:generate go run ../optgen/main.go -out ../../../sql/memo/memo.og.go -pkg memo memo

@@ -17,10 +17,11 @@ package analyzer
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -442,10 +443,8 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 		if len(projections) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
 			projections = []*memo.ExprGroup{m.MemoizeScalar(p)}
-			//gf := expression.NewGetField(0, types.Int64, "1", true)
-			//m.Columns[gf.String()] = sql.ColumnId(len(m.Columns) + 1)
-			//m.MemoizeScalar(gf)
 		}
+
 		m.MemoizeProject(e.Group(), joinGrp, projections)
 
 		return nil

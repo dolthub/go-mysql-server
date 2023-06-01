@@ -2,6 +2,7 @@ package memo
 
 import (
 	"fmt"
+
 	"github.com/cespare/xxhash"
 )
 
