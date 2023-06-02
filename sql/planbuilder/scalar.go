@@ -304,7 +304,11 @@ func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Exp
 }
 
 func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
-	switch strings.ToLower(be.Operator) {
+	l := b.buildScalar(inScope, be.Left)
+	r := b.buildScalar(inScope, be.Right)
+
+	operator := strings.ToLower(be.Operator)
+	switch operator {
 	case
 		ast.PlusStr,
 		ast.MinusStr,
@@ -317,10 +321,6 @@ func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.
 		ast.BitXorStr,
 		ast.IntDivStr,
 		ast.ModStr:
-
-		l := b.buildScalar(inScope, be.Left)
-
-		r := b.buildScalar(inScope, be.Right)
 
 		_, lok := l.(*expression.Interval)
 		_, rok := r.(*expression.Interval)
@@ -347,11 +347,17 @@ func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.
 		default:
 			return expression.NewArithmetic(l, r, be.Operator)
 		}
-	case
-		ast.JSONExtractOp,
-		ast.JSONUnquoteExtractOp:
-		err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
-		b.handleErr(err)
+
+	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
+		jsonExtract, err := function.NewJSONExtract(l, r)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		if operator == ast.JSONUnquoteExtractOp {
+			return function.NewJSONUnquote(jsonExtract)
+		}
+		return jsonExtract
 
 	default:
 		err := sql.ErrUnsupportedFeature.New(be.Operator)
@@ -546,7 +552,11 @@ func (b *PlanBuilder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql
 }
 
 func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sql.Expression, error) {
-	switch strings.ToLower(be.Operator) {
+	l := b.buildScalar(inScope, be.Left)
+	r := b.buildScalar(inScope, be.Right)
+
+	operator := strings.ToLower(be.Operator)
+	switch operator {
 	case
 		ast.PlusStr,
 		ast.MinusStr,
@@ -560,9 +570,6 @@ func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr)
 		ast.IntDivStr,
 		ast.ModStr:
 
-		l := b.buildScalar(inScope, be.Left)
-		r := b.buildScalar(inScope, be.Right)
-
 		_, lok := l.(*expression.Interval)
 		_, rok := r.(*expression.Interval)
 		if lok && be.Operator == "-" {
@@ -573,7 +580,7 @@ func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr)
 			return nil, sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
 		}
 
-		switch strings.ToLower(be.Operator) {
+		switch operator {
 		case ast.DivStr:
 			return expression.NewDiv(l, r), nil
 		case ast.ModStr:
@@ -585,10 +592,17 @@ func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr)
 		default:
 			return expression.NewArithmetic(l, r, be.Operator), nil
 		}
-	case
-		ast.JSONExtractOp,
-		ast.JSONUnquoteExtractOp:
-		return nil, sql.ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
+
+	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
+		jsonExtract, err := function.NewJSONExtract(l, r)
+		if err != nil {
+			return nil, err
+		}
+
+		if operator == ast.JSONUnquoteExtractOp {
+			return function.NewJSONUnquote(jsonExtract), nil
+		}
+		return jsonExtract, nil
 
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(be.Operator)

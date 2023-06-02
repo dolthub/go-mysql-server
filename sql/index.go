@@ -85,6 +85,21 @@ type Index interface {
 	PrefixLengths() []uint16
 }
 
+// ExtendedIndex is an extension of Index, that allows access to appended primary keys. MySQL internally represents an
+// index as the collection of all explicitly referenced columns, while appending any unreferenced primary keys to the
+// end (in order of their declaration). For full MySQL compatibility, integrators are encouraged to mimic this, however
+// not all implementations may define their indexes (on tables with primary keys) in this way, therefore this interface
+// is optional.
+type ExtendedIndex interface {
+	Index
+	// ExtendedExpressions returns the same result as Expressions, but appends any primary keys that are implicitly in
+	// the index. The appended primary keys are in declaration order.
+	ExtendedExpressions() []string
+	// ExtendedColumnExpressionTypes returns the same result as ColumnExpressionTypes, but appends the type of any
+	// primary keys that are implicitly in the index. The appended primary keys are in declaration order.
+	ExtendedColumnExpressionTypes() []ColumnExpressionType
+}
+
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
 // information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.

@@ -946,7 +946,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if s.ShowCollationFilterOpt != nil {
-			filterExpr, err := ExprToExpression(ctx, *s.ShowCollationFilterOpt)
+			filterExpr, err := ExprToExpression(ctx, s.ShowCollationFilterOpt)
 			if err != nil {
 				return nil, err
 			}
@@ -4562,7 +4562,18 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 }
 
 func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Expression, error) {
-	switch strings.ToLower(be.Operator) {
+	l, err := ExprToExpression(ctx, be.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := ExprToExpression(ctx, be.Right)
+	if err != nil {
+		return nil, err
+	}
+
+	operator := strings.ToLower(be.Operator)
+	switch operator {
 	case
 		sqlparser.PlusStr,
 		sqlparser.MinusStr,
@@ -4576,16 +4587,6 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		sqlparser.IntDivStr,
 		sqlparser.ModStr:
 
-		l, err := ExprToExpression(ctx, be.Left)
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := ExprToExpression(ctx, be.Right)
-		if err != nil {
-			return nil, err
-		}
-
 		_, lok := l.(*expression.Interval)
 		_, rok := r.(*expression.Interval)
 		if lok && be.Operator == "-" {
@@ -4596,7 +4597,7 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 			return nil, sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
 		}
 
-		switch strings.ToLower(be.Operator) {
+		switch operator {
 		case sqlparser.DivStr:
 			return expression.NewDiv(l, r), nil
 		case sqlparser.ModStr:
@@ -4608,10 +4609,17 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		default:
 			return expression.NewArithmetic(l, r, be.Operator), nil
 		}
-	case
-		sqlparser.JSONExtractOp,
-		sqlparser.JSONUnquoteExtractOp:
-		return nil, sql.ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
+
+	case sqlparser.JSONExtractOp, sqlparser.JSONUnquoteExtractOp:
+		jsonExtract, err := function.NewJSONExtract(l, r)
+		if err != nil {
+			return nil, err
+		}
+
+		if operator == sqlparser.JSONUnquoteExtractOp {
+			return function.NewJSONUnquote(jsonExtract), nil
+		}
+		return jsonExtract, nil
 
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(be.Operator)

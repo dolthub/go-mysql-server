@@ -342,11 +342,17 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		if err != nil {
 			return nil, err
 		}
+		if collation.Sorter() == nil {
+			return nil, sql.ErrCollationNotYetImplementedTemp.New(collation.Name())
+		}
 		return CreateEnumType(ct.EnumValues, collation)
 	case "set":
 		collation, err := sql.ParseCollation(&ct.Charset, &ct.Collate, ct.BinaryCollate)
 		if err != nil {
 			return nil, err
+		}
+		if collation.Sorter() == nil {
+			return nil, sql.ErrCollationNotYetImplementedTemp.New(collation.Name())
 		}
 		return CreateSetType(ct.EnumValues, collation)
 	case "json":
