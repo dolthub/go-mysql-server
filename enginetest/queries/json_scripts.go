@@ -339,6 +339,8 @@ var JsonScripts = []ScriptTest{
 			"create table t (pk int primary key, col1 JSON, col2 JSON);",
 			`insert into t values (1, JSON_OBJECT('key1', 1, 'key2', '"abc"'), JSON_ARRAY(3,10,5,17,"z"));`,
 			`insert into t values (2, JSON_OBJECT('key1', 100, 'key2', '"ghi"'), JSON_ARRAY(3,10,5,17,JSON_ARRAY(22,"y",66)));`,
+			`CREATE TABLE t2 (i INT PRIMARY KEY, j JSON);`,
+			`INSERT INTO t2 VALUES (0, '{"a": "123", "outer": {"inner": 456}}');`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -375,6 +377,10 @@ var JsonScripts = []ScriptTest{
 				Skip:     true,
 				Query:    `SELECT col2->>"$[3]", col2->>"$[4][0]" FROM t;`,
 				Expected: []sql.Row{{17, 44}, {17, "y"}},
+			},
+			{
+				Query:    `SELECT k->"$.inner" from (SELECT j->"$.outer" AS k FROM t2) sq;`,
+				Expected: []sql.Row{{types.MustJSON("456")}},
 			},
 		},
 	},
