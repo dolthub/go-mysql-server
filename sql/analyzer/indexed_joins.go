@@ -320,7 +320,7 @@ func denormIdxExprs(table string, idx sql.Index) []string {
 	denormExpr := make([]string, len(idx.Expressions()))
 	for i, e := range idx.Expressions() {
 		parts := strings.Split(e, ".")
-		denormExpr[i] = fmt.Sprintf("%s.%s", table, parts[1])
+		denormExpr[i] = strings.ToLower(fmt.Sprintf("%s.%s", table, parts[1]))
 	}
 	return denormExpr
 }

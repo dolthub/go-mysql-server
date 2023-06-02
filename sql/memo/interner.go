@@ -51,7 +51,9 @@ func internExpr(e ScalarExpr) uint64 {
 	case *Leq:
 		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
 	case *IsNull:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Child.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), internExpr(e.Child.Scalar))))
+	case *Bindvar:
+		h.Write([]byte(fmt.Sprintf("%d%s", e.ExprId(), e.Name)))
 	case *Hidden:
 		h.Write([]byte(fmt.Sprintf("%d%s", e.ExprId(), e.String())))
 	case *Arithmetic:
