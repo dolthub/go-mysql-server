@@ -41,9 +41,9 @@ type EventSchedulerNotifierStatement interface {
 // to the EventSchedulerStatus.
 type EventSchedulerNotifier interface {
 	// AddEvent is called when there is an event created at runtime.
-	AddEvent(edb EventDatabase, details EventDetails)
+	AddEvent(ctx *Context, edb EventDatabase, details EventDetails)
 	// UpdateEvent is called when there is an event altered at runtime.
-	UpdateEvent(edb EventDatabase, orgEventName string, details EventDetails)
+	UpdateEvent(ctx *Context, edb EventDatabase, orgEventName string, details EventDetails)
 	// RemoveEvent is called when there is an event dropped at runtime. This function
 	// removes the given event if it exists in the enabled events list of the EventSchedulerStatus.
 	RemoveEvent(dbName, eventName string)
@@ -54,6 +54,7 @@ type EventSchedulerNotifier interface {
 
 // EventDefinition defines an event. Integrators are not expected to parse or
 // understand the event definitions, but must store and return them when asked.
+// All time values will be stored in UTC TZ.
 type EventDefinition struct {
 	// The name of this event. Event names in a database are unique.
 	Name string
@@ -97,12 +98,16 @@ type EventDetails struct {
 	ExecutionCount uint64
 }
 
-// GetEventStorageDefinition returns event's EventDefinition to be
-// stored in the database created from EventDetails. This function
-// is used to get EventDefinition that will be used to store the
-// event metadata in the database, so the timestamp values are
-// stored in UTC time zone and "2006-01-02T15:04:05Z07:00" format.
+// GetEventStorageDefinition returns event's EventDefinition that will be stored in the database.
+// All time values are converted into and stored in UTC TZ.
 func (e *EventDetails) GetEventStorageDefinition() EventDefinition {
+	e.ExecuteAt = e.ExecuteAt.UTC()
+	e.Starts = e.Starts.UTC()
+	e.Ends = e.Ends.UTC()
+	e.Created = e.Created.UTC()
+	e.LastAltered = e.LastAltered.UTC()
+	e.LastExecuted = e.LastExecuted.UTC()
+
 	return EventDefinition{
 		Name:            e.Name,
 		CreateStatement: e.CreateEventStatement(),
@@ -145,6 +150,45 @@ func (e *EventDetails) CreateEventStatement() string {
 
 	stmt = fmt.Sprintf("%s DO %s", stmt, e.Definition)
 	return stmt
+}
+
+// ConvertTimesFromUTCToTz returns new EventDetails with all its time values converted
+// from UTC TZ to the given TZ. This function should only be used when needing to display
+// data that includes the time values in string format for such as SHOW EVENTS or
+// SHOW CREATE EVENT statements.
+func (e *EventDetails) ConvertTimesFromUTCToTz(tz string) *EventDetails {
+	ne := *e
+	if ne.HasExecuteAt {
+		t, ok := gmstime.ConvertTimeZone(e.ExecuteAt, "+00:00", tz)
+		if ok {
+			ne.ExecuteAt = t
+		}
+	} else {
+		t, ok := gmstime.ConvertTimeZone(e.Starts, "+00:00", tz)
+		if ok {
+			ne.Starts = t
+		}
+		if ne.HasEnds {
+			t, ok = gmstime.ConvertTimeZone(e.Ends, "+00:00", tz)
+			if ok {
+				ne.Ends = t
+			}
+		}
+	}
+
+	t, ok := gmstime.ConvertTimeZone(e.Created, "+00:00", tz)
+	if ok {
+		ne.Created = t
+	}
+	t, ok = gmstime.ConvertTimeZone(e.LastAltered, "+00:00", tz)
+	if ok {
+		ne.LastAltered = t
+	}
+	t, ok = gmstime.ConvertTimeZone(e.LastExecuted, "+00:00", tz)
+	if ok {
+		ne.LastExecuted = t
+	}
+	return &ne
 }
 
 // GetNextExecutionTime returns the next execution timestamp for the event,
@@ -367,7 +411,7 @@ func GetTimeValueFromStringInput(field, t string) (time.Time, error) {
 	// TODO: the time value should be in session timezone rather than system timezone.
 	sessTz := gmstime.SystemTimezoneOffset()
 
-    // For MySQL datetime format, it accepts any valid date format
+	// For MySQL datetime format, it accepts any valid date format
 	// and tries parsing time part first and timezone part if time part is valid.
 	// Otherwise, any invalid time or timezone part is truncated and gives warning.
 	dt := strings.Split(t, "-")

@@ -245,13 +245,14 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	var err error
 	ed := a.Event
 	eventAlteredTime := ctx.QueryTime()
+	sysTz := gmstime.SystemTimezoneOffset()
 	ed.LastAltered = eventAlteredTime
 	ed.Definer = a.Definer
 
 	if a.AlterOnSchedule {
 		if a.At != nil {
 			ed.HasExecuteAt = true
-			ed.ExecuteAt, err = a.At.EvalTime(ctx)
+			ed.ExecuteAt, err = a.At.EvalTime(ctx, sysTz)
 			if err != nil {
 				return nil, err
 			}
@@ -270,7 +271,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			ed.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 			if a.Starts != nil {
-				ed.Starts, err = a.Starts.EvalTime(ctx)
+				ed.Starts, err = a.Starts.EvalTime(ctx, sysTz)
 				if err != nil {
 					return nil, err
 				}
@@ -280,7 +281,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 			if a.Ends != nil {
 				ed.HasEnds = true
-				ed.Ends, err = a.Ends.EvalTime(ctx)
+				ed.Ends, err = a.Ends.EvalTime(ctx, sysTz)
 				if err != nil {
 					return nil, err
 				}
@@ -420,13 +421,8 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		eventEndingTime = a.eventDetails.Ends
 	}
 
-	eventEndingTimeInSystemTz, ok := gmstime.ConvertTimeZone(eventEndingTime, a.eventDetails.TimezoneOffset, gmstime.SystemTimezoneOffset())
-	if !ok {
-		eventEndingTimeInSystemTz = eventEndingTime
-	}
-
 	// Here Altered time is set with current local time, so it's safe to do check here.
-	if eventEndingTimeInSystemTz.Sub(a.eventDetails.LastAltered).Seconds() < 0 {
+	if eventEndingTime.Sub(a.eventDetails.LastAltered).Seconds() < 0 {
 		// If the event execution/end time is altered and in the past.
 		if a.alterSchedule {
 			if a.eventDetails.OnCompletionPreserve {
@@ -457,15 +453,14 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	eventDefinition := a.eventDetails.GetEventStorageDefinition()
-	err := a.eventDb.UpdateEvent(ctx, a.originalName, eventDefinition)
+	err := a.eventDb.UpdateEvent(ctx, a.originalName, a.eventDetails)
 	if err != nil {
 		return nil, err
 	}
 
 	// make sure to notify the EventSchedulerStatus after updating the event in the database
 	if a.notifier != nil {
-		a.notifier.UpdateEvent(a.eventDb, a.originalName, a.eventDetails)
+		a.notifier.UpdateEvent(ctx, a.eventDb, a.originalName, a.eventDetails)
 	}
 
 	return sql.Row{types.NewOkResult(0)}, nil

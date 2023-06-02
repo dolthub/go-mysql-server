@@ -15,11 +15,10 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // loadEvents loads any events that are required for a plan node to operate properly (except for nodes dealing with
@@ -93,6 +92,8 @@ func loadEventFromDb(ctx *sql.Context, db sql.Database, name string) (sql.EventD
 	return GetEventDetailsFromEventDefinition(ctx, event)
 }
 
+// GetEventDetailsFromEventDefinition returns sql.EventDetails by parsing its CREATE statement.
+// All time values of events will be evaluated in UTC TZ as they are stored UTC TZ.
 func GetEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinition) (sql.EventDetails, error) {
 	parsedCreateEvent, err := parse.Parse(ctx, event.CreateStatement)
 	if err != nil {
@@ -102,5 +103,5 @@ func GetEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinit
 	if !ok {
 		return sql.EventDetails{}, sql.ErrEventCreateStatementInvalid.New(event.CreateStatement)
 	}
-	return eventPlan.GetEventDetails(ctx, event.TimezoneOffset, event.CreatedAt, event.LastAltered, event.LastExecuted)
+	return eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted, "+00:00")
 }

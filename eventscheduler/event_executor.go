@@ -68,10 +68,21 @@ func (ee *eventExecutor) start() {
 		default:
 			if ee.stop.Load() {
 				return
-			} else if ee.list.len() > 1 {
-				if ee.list.getNextExecutionTime().Sub(timeNow).Abs().Seconds() < 1 {
+			} else if ee.list.len() > 0 {
+				diff := ee.list.getNextExecutionTime().Sub(timeNow).Seconds()
+				if diff < -1 {
+					// in case the execution time is past, re-evaluated it
 					curEvent := ee.list.pop()
-					ee.executeEventAndUpdateListIfApplicable(curEvent, timeNow)
+					err := ee.addEvent(ee.ctx, curEvent.edb, curEvent.eventDetails)
+					if err != nil {
+						// TODO: log error
+					}
+				} else if diff < 1 {
+					curEvent := ee.list.pop()
+					err := ee.executeEventAndUpdateListIfApplicable(ee.ctx, curEvent, timeNow)
+					if err != nil {
+						// TODO: log error
+					}
 				}
 			}
 		}
@@ -88,25 +99,24 @@ func (ee *eventExecutor) shutdown() {
 // executeEventAndUpdateListIfApplicable executes the given event and updates the event's last executed time
 // in the database. If the event is still valid (not ended), then it updates the enabled event and re-adds it back
 // to the list.
-func (ee *eventExecutor) executeEventAndUpdateListIfApplicable(event *enabledEvent, executionTime time.Time) {
+func (ee *eventExecutor) executeEventAndUpdateListIfApplicable(ctx *sql.Context, event *enabledEvent, executionTime time.Time) error {
 	reAdd, qErr, tErr := ee.executeEvent(event)
 	if tErr != nil {
-		// TODO: log background thread error
+		return fmt.Errorf("error from background thread: %s", tErr)
 	}
 	if qErr != nil {
-		// TODO: log query error
+		return fmt.Errorf("error from event definition query: %s", qErr)
 	}
 
-	if !reAdd {
-		return
-	}
-
-	ended, err := event.updateEventAfterExecution(ee.ctx, event.edb, executionTime)
+	ended, err := event.updateEventAfterExecution(ctx, event.edb, executionTime)
 	if err != nil {
-		// TODO: log update error
+		return err
+	} else if !reAdd {
+		return nil
 	} else if !ended {
 		ee.list.add(event)
 	}
+	return nil
 }
 
 // executeEvent adds another background thread to run the given event's definition query.
@@ -130,61 +140,60 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 			return
 		default:
 			queryErr = ee.runQueryFunc(event.edb.Name(), event.eventDetails.Definition, event.username, event.address)
-			if queryErr != nil {
-				return
-			}
 		}
 	})
 
 	return reAdd, queryErr, threadErr
 }
 
-// add creates new enabledEvent only if the event being created is at ENABLE status
+// addEvent creates new enabledEvent only if the event being created is at ENABLE status
 // with valid schedule. If the updated event's schedule is starting at the same time
 // as created time, it executes immediately.
-func (ee *eventExecutor) add(edb sql.EventDatabase, details sql.EventDetails) {
+func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDetails) error {
 	// if the updated event status is not ENABLE, do not add it to the list.
 	if details.Status != sql.EventStatus_Enable.String() {
-		return
+		return nil
 	}
 
-	newEvent, created, err := newEnabledEventFromEventDetails(ee.ctx, edb, details)
+	newEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details)
 	if err != nil {
-		// TODO: log error
+		return err
 	} else if !created {
-		return
+		return nil
 	} else {
-		// TODO: created and starts value should be converted from event TZ to system TZ
-		//  for checking event should be executed.
 		// If Starts is set to current_timestamp or not set, then executeEvent the event once and update last executed At.
 		if newEvent.eventDetails.Created.Sub(newEvent.eventDetails.Starts).Abs().Seconds() <= 1 {
 			// after execution, the event is added to the list if applicable (if the event is not ended)
-			ee.executeEventAndUpdateListIfApplicable(newEvent, newEvent.eventDetails.Created)
+			err = ee.executeEventAndUpdateListIfApplicable(ctx, newEvent, newEvent.eventDetails.Created)
+			if err != nil {
+				return err
+			}
 		} else {
 			ee.list.add(newEvent)
 		}
+		return nil
 	}
 }
 
-// update removes the event from enabled events list if it exists. If the updated event status
+// updateEvent removes the event from enabled events list if it exists. If the updated event status
 // is ENABLE, then it creates new enabled event and adds to the enabled events list.
 // This function make sure the events that are disabled or expired do not get added to the
 // enabled events list. If the new event's schedule is starting at the same time as last altered
 // time, it executes immediately.
-func (ee *eventExecutor) update(edb sql.EventDatabase, origEventName string, details sql.EventDetails) {
+func (ee *eventExecutor) updateEvent(ctx *sql.Context, edb sql.EventDatabase, origEventName string, details sql.EventDetails) error {
 	var origEventKeyName = fmt.Sprintf("%s.%s", edb.Name(), origEventName)
 	// remove the original event if exists.
 	ee.list.remove(origEventKeyName)
 
 	// if the updated event status is not ENABLE, do not add it to the list.
 	if details.Status != sql.EventStatus_Enable.String() {
-		return
+		return nil
 	}
 
 	// add the updated event as new event
-	newUpdatedEvent, created, err := newEnabledEventFromEventDetails(ee.ctx, edb, details)
+	newUpdatedEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details)
 	if err != nil {
-		// TODO: log error
+		return err
 	} else if created {
 		// if the event being updated is currently running,
 		// then do not re-add the event to the list after execution
@@ -197,18 +206,22 @@ func (ee *eventExecutor) update(edb sql.EventDatabase, origEventName string, det
 		// if STARTS is set to current_timestamp or not set,
 		// then executeEvent the event once and update last executed At.
 		if details.LastAltered.Sub(details.Starts).Abs().Seconds() <= 1 {
-			go ee.executeEventAndUpdateListIfApplicable(newUpdatedEvent, newUpdatedEvent.eventDetails.LastAltered)
+			err = ee.executeEventAndUpdateListIfApplicable(ctx, newUpdatedEvent, newUpdatedEvent.eventDetails.LastAltered)
+			if err != nil {
+				return err
+			}
 		} else {
 			ee.list.add(newUpdatedEvent)
 		}
 	}
+	return nil
 }
 
-// remove removes the event if it exists in the enabled events list.
+// removeEvent removes the event if it exists in the enabled events list.
 // If the event is currently executing, it will not be in the list,
 // so it updates the running events status to not re-add this event
 // after its execution.
-func (ee *eventExecutor) remove(eventIdName string) {
+func (ee *eventExecutor) removeEvent(eventIdName string) {
 	ee.list.remove(eventIdName)
 	// if not found, it might have been removed as it's currently executing
 	if s, ok := ee.runningEventsStatus.getStatus(eventIdName); ok && s {
@@ -216,7 +229,7 @@ func (ee *eventExecutor) remove(eventIdName string) {
 	}
 }
 
-// remove removes all events of given database if any exists
+// removeSchemaEvents removes all events of given database if any exists
 // in the enabled events list. If any events of this database
 // is currently executing, it will not be in the list,
 // so it updates the running events status to not re-add those

@@ -348,14 +348,14 @@ func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d *BaseDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
+func (d *BaseDatabase) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
 	loweredName := strings.ToLower(ed.Name)
 	for _, existingEd := range d.events {
 		if strings.ToLower(existingEd.Name) == loweredName {
 			return sql.ErrEventAlreadyExists.New(ed.Name)
 		}
 	}
-	d.events = append(d.events, ed)
+	d.events = append(d.events, ed.GetEventStorageDefinition())
 	return nil
 }
 
@@ -377,7 +377,7 @@ func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDetails) error {
 	loweredOriginalName := strings.ToLower(originalName)
 	loweredNewName := strings.ToLower(ed.Name)
 	found := false
@@ -386,7 +386,7 @@ func (d *BaseDatabase) UpdateEvent(ctx *sql.Context, originalName string, ed sql
 			// renaming event to existing name
 			return sql.ErrEventAlreadyExists.New(loweredNewName)
 		} else if strings.ToLower(existingEd.Name) == loweredOriginalName {
-			d.events[i] = ed
+			d.events[i] = ed.GetEventStorageDefinition()
 			found = true
 		}
 	}

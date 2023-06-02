@@ -226,19 +226,24 @@ type StoredProcedureDatabase interface {
 // handle execution logic for events. Integrators only need to store and retrieve EventDetails.
 type EventDatabase interface {
 	Database
-	// GetEvent returns the desired EventDetails and if it exists in the database.
+	// GetEvent returns the desired EventDefinition and if it exists in the database.
+	// All time values of EventDefinition needs to be converted into appropriate TZ.
 	GetEvent(ctx *Context, name string) (EventDefinition, bool, error)
-	// GetEvents returns all EventDetails for the database.
+	// GetEvents returns all EventDefinition for the database.
+	// All time values of EventDefinition needs to be converted into appropriate TZ.
 	GetEvents(ctx *Context) ([]EventDefinition, error)
 	// SaveEvent stores the given EventDetails to the database. The integrator should verify that
-	// the name of the new event is unique amongst existing stored procedures.
-	SaveEvent(ctx *Context, ed EventDefinition) error
+	// the name of the new event is unique amongst existing events. The time values are converted
+	// into UTC TZ for storage.
+	SaveEvent(ctx *Context, ed EventDetails) error
 	// DropEvent removes the EventDetails with the matching name from the database.
 	DropEvent(ctx *Context, name string) error
-	// UpdateEvent updates existing event stored in the database with the given EventDetails with the updates.
-	// The original name event is required for renaming of an event.
-	UpdateEvent(ctx *Context, originalName string, ed EventDefinition) error
+	// UpdateEvent updates existing event stored in the database with the given EventDetails
+	// with the updates. The original name event is required for renaming of an event.
+	// The time values are converted into UTC TZ for storage.
+	UpdateEvent(ctx *Context, originalName string, ed EventDetails) error
 	// UpdateLastExecuted updated the lastExecuted metadata for the given event.
+	// The lastExecuted time is converted into UTC TZ for storage.
 	UpdateLastExecuted(ctx *Context, eventName string, lastExecuted time.Time) error
 }
 

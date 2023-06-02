@@ -46,7 +46,7 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 		} else if !eventEnded {
 			username, address, err := getUsernameAndAddressFromDefiner(ed.Definer)
 			if err != nil {
-				// log error
+				return nil, false, err
 			}
 			return &enabledEvent{
 				edb:             edb,
@@ -59,7 +59,7 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 			ed.Status = sql.EventStatus_Disable.String()
 			if ed.OnCompletionPreserve {
 				// update status to DISABLE
-				err = edb.UpdateEvent(ctx, ed.Name, ed.GetEventStorageDefinition())
+				err = edb.UpdateEvent(ctx, ed.Name, ed)
 				if err != nil {
 					return nil, false, err
 				}
@@ -103,7 +103,6 @@ func (e *enabledEvent) name() string {
 func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.EventDatabase, executionTime time.Time) (bool, error) {
 	// TODO: the lastExecuted value should be stored in the event's timezone
 	//  (currently, it is always SYSTEM, so conversion not needed for now)
-	e.eventDetails.LastExecuted = executionTime
 	nextExecutionAt, ended, err := e.eventDetails.GetNextExecutionTime()
 	if err != nil {
 		return ended, err
@@ -121,9 +120,11 @@ func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.Event
 		e.nextExecutionAt = nextExecutionAt
 	}
 
+	e.eventDetails.LastExecuted = executionTime
 	// update the database stored event with LastExecuted and Status metadata update if applicable.
-	err = edb.UpdateEvent(ctx, e.eventDetails.Name, e.eventDetails.GetEventStorageDefinition())
+	err = edb.UpdateEvent(ctx, e.eventDetails.Name, e.eventDetails)
 	if err != nil {
+		// TODO: getting event doesn't exist error because different ctx is used
 		return ended, err
 	}
 
@@ -172,13 +173,16 @@ func (l *enabledEventsList) getNextExecutionTime() time.Time {
 	return l.eventsList[0].nextExecutionAt
 }
 
+// pop returns the first element and removes it from the list.
 func (l *enabledEventsList) pop() *enabledEvent {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if len(l.eventsList) == 0 {
 		return nil
 	}
-	return l.eventsList[0]
+	firstInList := l.eventsList[0]
+	l.eventsList = l.eventsList[1:]
+	return firstInList
 }
 
 // add adds the event to the list and sorts the list.

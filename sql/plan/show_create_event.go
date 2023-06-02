@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"strings"
@@ -85,16 +86,24 @@ func (s *ShowCreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		return nil, err
 	}
 
-	createEventStmt := s.Event.CreateEventStatement()
-	// TODO: fill sql_mode and time_zone with appropriate values
+	e := s.Event.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
+	if err != nil {
+		return nil, err
+	}
+	sqlMode, sok := sysVal.(string)
+	if !sok {
+		return nil, sql.ErrSystemVariableCodeFail.New("sql_mode", sysVal)
+	}
+	// TODO: fill time_zone with appropriate value, for now it's default to SYSTEM
 	return sql.RowsToRowIter(sql.Row{
-		s.Event.Name,        // Event
-		"",                  // sql_mode
-		"SYSTEM",            // time_zone
-		createEventStmt,     // Create Event
-		characterSetClient,  // character_set_client
-		collationConnection, // collation_connection
-		collationServer,     // Database Collation
+		e.Name,                   // Event
+		sqlMode,                  // sql_mode
+		"SYSTEM",                 // time_zone
+		e.CreateEventStatement(), // Create Event
+		characterSetClient,       // character_set_client
+		collationConnection,      // collation_connection
+		collationServer,          // Database Collation
 	}), nil
 }
 

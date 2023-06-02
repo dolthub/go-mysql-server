@@ -229,9 +229,8 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (c *CreateEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	eventCreationTime := ctx.QueryTime()
-	// TODO: event TZ will be always 'SYSTEM' TZ for now rather than session TZ
-	sessTz := gmstime.SystemTimezoneOffset()
-	eventDetails, err := c.GetEventDetails(ctx, sessTz, eventCreationTime, eventCreationTime, time.Time{})
+	// TODO: event time values are evaluated in 'SYSTEM' TZ for now (should be session TZ)
+	eventDetails, err := c.GetEventDetails(ctx, eventCreationTime, eventCreationTime, time.Time{}, gmstime.SystemTimezoneOffset())
 	if err != nil {
 		return nil, err
 	}
@@ -259,8 +258,8 @@ func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNoti
 // GetEventDetails returns eventDetails based on CreateEvent object.
 // It expects all timestamp and interval values to be resolved.
 // This function gets called either from RowIter of CreateEvent plan,
-// or from anywhere that getting eventDetails from EventDefinition retrieved from a database.
-func (c *CreateEvent) GetEventDetails(ctx *sql.Context, tz string, eventCreationTime, lastAltered, lastExecuted time.Time) (sql.EventDetails, error) {
+// or from analyzer getting EventDetails from EventDefinition retrieved from a database.
+func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, tz string) (sql.EventDetails, error) {
 	eventDetails := sql.EventDetails{
 		Name:                 c.EventName,
 		Definer:              c.Definer,
@@ -271,10 +270,10 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, tz string, eventCreation
 		TimezoneOffset:       tz,
 	}
 
-	var err error
 	if c.At != nil {
+		var err error
 		eventDetails.HasExecuteAt = true
-		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx)
+		eventDetails.ExecuteAt, err = c.At.EvalTime(ctx, tz)
 		if err != nil {
 			return sql.EventDetails{}, err
 		}
@@ -288,7 +287,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, tz string, eventCreation
 		eventDetails.ExecuteEvery = fmt.Sprintf("%s %s", iVal, iField)
 
 		if c.Starts != nil {
-			eventDetails.Starts, err = c.Starts.EvalTime(ctx)
+			eventDetails.Starts, err = c.Starts.EvalTime(ctx, tz)
 			if err != nil {
 				return sql.EventDetails{}, err
 			}
@@ -298,7 +297,7 @@ func (c *CreateEvent) GetEventDetails(ctx *sql.Context, tz string, eventCreation
 		}
 		if c.Ends != nil {
 			eventDetails.HasEnds = true
-			eventDetails.Ends, err = c.Ends.EvalTime(ctx)
+			eventDetails.Ends, err = c.Ends.EvalTime(ctx, tz)
 			if err != nil {
 				return sql.EventDetails{}, err
 			}
@@ -337,8 +336,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	var eventDefinition = c.eventDetails.GetEventStorageDefinition()
-	err := c.eventDb.SaveEvent(ctx, eventDefinition)
+	err := c.eventDb.SaveEvent(ctx, c.eventDetails)
 	if err != nil {
 		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
 			ctx.Session.Warn(&sql.Warning{
@@ -360,8 +358,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.eventDetails.Status = sql.EventStatus_Disable.String()
-				eventDefinition = c.eventDetails.GetEventStorageDefinition()
-				err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, eventDefinition)
+				err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, c.eventDetails)
 				if err != nil {
 					return nil, err
 				}
@@ -386,9 +383,9 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	// make sure to notify the EventSchedulerStatus after adding the event in the database
+	// make sure to notify the EventSchedulerStatus AFTER adding the event in the database
 	if c.notifier != nil {
-		c.notifier.AddEvent(c.eventDb, c.eventDetails)
+		c.notifier.AddEvent(ctx, c.eventDb, c.eventDetails)
 	}
 
 	return sql.Row{types.NewOkResult(0)}, nil
@@ -426,7 +423,7 @@ var _ sql.Expression = (*OnScheduleTimestamp)(nil)
 // NewOnScheduleTimestamp creates OnScheduleTimestamp object used for EVENT ON SCHEDULE { AT / STARTS / ENDS } optional fields only.
 func NewOnScheduleTimestamp(f string, ts sql.Expression, i []sql.Expression) *OnScheduleTimestamp {
 	return &OnScheduleTimestamp{
-		field: f,
+		field:     f,
 		timestamp: ts,
 		intervals: i,
 	}
@@ -493,9 +490,8 @@ func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}
 
 // EvalTime returns time.Time value converted to UTC evaluating given expressions
 // as expected to be time value and optional interval values. The value returned
-// is time.Time value from timestamp value plus all intervals given
-// TODO: the time value should be converted into session timezone.
-func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
+// is time.Time value from timestamp value plus all intervals given.
+func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time, error) {
 	value, err := ost.timestamp.Eval(ctx, nil)
 	if err != nil {
 		return time.Time{}, err
@@ -532,7 +528,12 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context) (time.Time, error) {
 		t = timeDelta.Add(t)
 	}
 
-	return t, nil
+	// truncates the timezone part from the time value and returns the time value in given TZ
+	truncatedVal, err := time.Parse(sql.EventDateSpaceTimeFormat, t.Format(sql.EventDateSpaceTimeFormat))
+	if err != nil {
+		return time.Time{}, err
+	}
+	return gmstime.ConvertTimeToLocation(truncatedVal, tz)
 }
 
 var _ sql.Node = (*DropEvent)(nil)

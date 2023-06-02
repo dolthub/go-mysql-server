@@ -152,20 +152,26 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(a *analyzer.Anal
 
 // AddEvent implements sql.EventSchedulerNotifier interface.
 // This function is called when there is an event created at runtime.
-func (es *EventScheduler) AddEvent(edb sql.EventDatabase, details sql.EventDetails) {
+func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDetails) {
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
-	es.executor.add(edb, details)
+	err := es.executor.addEvent(ctx, edb, details)
+	if err != nil {
+		// TODO: log error
+	}
 }
 
 // UpdateEvent implements sql.EventSchedulerNotifier interface.
 // This function is called when there is an event altered at runtime.
-func (es *EventScheduler) UpdateEvent(edb sql.EventDatabase, orgEventName string, details sql.EventDetails) {
+func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, orgEventName string, details sql.EventDetails) {
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
-	es.executor.update(edb, orgEventName, details)
+	err := es.executor.updateEvent(ctx, edb, orgEventName, details)
+	if err != nil {
+		// TODO: log error
+	}
 }
 
 // RemoveEvent implements sql.EventSchedulerNotifier interface.
@@ -175,7 +181,7 @@ func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
-	es.executor.remove(fmt.Sprintf("%s.%s", dbName, eventName))
+	es.executor.removeEvent(fmt.Sprintf("%s.%s", dbName, eventName))
 }
 
 // RemoveSchemaEvents implements sql.EventSchedulerNotifier interface.

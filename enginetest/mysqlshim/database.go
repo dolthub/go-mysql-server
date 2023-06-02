@@ -239,8 +239,8 @@ func (d Database) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 }
 
 // SaveEvent implements sql.EventDatabase
-func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDefinition) error {
-	return d.shim.Exec(d.name, ed.CreateStatement)
+func (d Database) SaveEvent(ctx *sql.Context, ed sql.EventDetails) error {
+	return d.shim.Exec(d.name, ed.CreateEventStatement())
 }
 
 // DropEvent implements sql.EventDatabase
@@ -249,12 +249,12 @@ func (d Database) DropEvent(ctx *sql.Context, name string) error {
 }
 
 // UpdateEvent implements sql.EventDatabase
-func (d Database) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDefinition) error {
+func (d Database) UpdateEvent(ctx *sql.Context, originalName string, ed sql.EventDetails) error {
 	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", originalName))
 	if err != nil {
 		return err
 	}
-	return d.shim.Exec(d.name, ed.CreateStatement)
+	return d.shim.Exec(d.name, ed.CreateEventStatement())
 }
 
 func (d Database) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
