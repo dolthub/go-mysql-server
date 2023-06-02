@@ -16,10 +16,11 @@ package plan
 
 import (
 	"fmt"
+	"strings"
+
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"strings"
 )
 
 type ShowCreateEvent struct {

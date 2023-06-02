@@ -16,11 +16,12 @@ package sql
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 )
