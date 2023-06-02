@@ -65,7 +65,7 @@ func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (s
 	if privSet.Count() == 0 && !privSet.Database(checkName).HasPrivileges() {
 		return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), checkName)
 	}
-	
+
 	if providerErr != nil {
 		return nil, providerErr
 	}
@@ -91,7 +91,7 @@ func (pdp PrivilegedDatabaseProvider) HasDatabase(ctx *sql.Context, name string)
 	if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
 		return false
 	}
-	
+
 	return pdp.provider.HasDatabase(ctx, name)
 }
 
@@ -108,8 +108,8 @@ func (pdp PrivilegedDatabaseProvider) AllDatabases(ctx *sql.Context) []sql.Datab
 
 		if adb, ok := db.(sql.AliasedDatabase); ok {
 			checkName = adb.AliasedName()
-		} 
-		
+		}
+
 		if privilegeSetCount > 0 || privilegeSet.Database(checkName).HasPrivileges() {
 			databasesWithAccess = append(databasesWithAccess, NewPrivilegedDatabase(pdp.grantTables, db))
 		}
@@ -164,7 +164,7 @@ func (pdb PrivilegedDatabase) GetTableInsensitive(ctx *sql.Context, tblName stri
 	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
 		checkName = adb.AliasedName()
 	}
-	
+
 	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 	dbSet := privSet.Database(checkName)
 	// If there are no usable privileges for this database then the table is inaccessible.
@@ -191,7 +191,7 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
 		checkName = adb.AliasedName()
 	}
-	
+
 	dbSet := privSet.Database(checkName)
 	// If there are no usable privileges for this database then no table is accessible.
 	privSetCount := privSet.Count()
@@ -227,7 +227,7 @@ func (pdb PrivilegedDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName 
 	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
 		checkName = adb.AliasedName()
 	}
-	
+
 	dbSet := privSet.Database(checkName)
 	// If there are no usable privileges for this database then the table is inaccessible.
 	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
@@ -258,7 +258,7 @@ func (pdb PrivilegedDatabase) GetTableNamesAsOf(ctx *sql.Context, asOf interface
 	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
 		checkName = adb.AliasedName()
 	}
-	
+
 	dbSet := privSet.Database(checkName)
 	// If there are no usable privileges for this database then no table is accessible.
 	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
@@ -278,7 +278,7 @@ func (pdb PrivilegedDatabase) GetTableNamesAsOf(ctx *sql.Context, asOf interface
 			tablesWithAccess = append(tablesWithAccess, tblName)
 		}
 	}
-	
+
 	return tablesWithAccess, nil
 }
 

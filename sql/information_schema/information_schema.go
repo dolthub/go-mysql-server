@@ -2655,9 +2655,9 @@ func (n *defaultStatsTable) Analyze(ctx *Context, dbName, table string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	effectiveDbName := plan.CheckPrivilegeNameForDatabase(db)
-	
+
 	t, _, err := n.catalog.DatabaseTable(ctx, db, table)
 	if err != nil {
 		return err

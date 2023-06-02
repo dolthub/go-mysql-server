@@ -170,7 +170,7 @@ func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
 	db := u.DB()
 	checkName := CheckPrivilegeNameForDatabase(db)
-	
+
 	return opChecker.UserHasPrivileges(ctx,
 		// TODO: this needs a real database, fix it
 		sql.NewPrivilegedOperation(checkName, getTableName(u.Child), "", sql.PrivilegeType_Update))

@@ -170,7 +170,7 @@ func GetDatabaseName(nodeToSearch sql.Node) string {
 	return ""
 }
 
-// CheckPrivilegeNameForDatabase returns the name of the database to check privileges for, which may not be the result 
+// CheckPrivilegeNameForDatabase returns the name of the database to check privileges for, which may not be the result
 // of db.Name()
 func CheckPrivilegeNameForDatabase(db sql.Database) string {
 	if db == nil {
