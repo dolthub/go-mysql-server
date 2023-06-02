@@ -173,7 +173,7 @@ func TestHandlerComPrepare(t *testing.T) {
 		}
 		return nil, sql.ErrDatabaseNotFound.New(dbName)
 	}
-	
+
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
@@ -699,7 +699,7 @@ func TestSchemaToFields(t *testing.T) {
 		}
 		return nil, sql.ErrDatabaseNotFound.New(dbName)
 	}
-	
+
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
@@ -791,7 +791,7 @@ func TestHandlerTimeout(t *testing.T) {
 		}
 		return nil, sql.ErrDatabaseNotFound.New(dbName)
 	}
-	
+
 	timeOutHandler := &Handler{
 		e: e,
 		sm: NewSessionManager(testSessionBuilder,
