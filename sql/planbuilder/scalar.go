@@ -356,9 +356,8 @@ func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.
 
 		if operator == ast.JSONUnquoteExtractOp {
 			return function.NewJSONUnquote(jsonExtract)
-		} else {
-			return jsonExtract
 		}
+		return jsonExtract
 
 	default:
 		err := sql.ErrUnsupportedFeature.New(be.Operator)
@@ -602,9 +601,8 @@ func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr)
 
 		if operator == ast.JSONUnquoteExtractOp {
 			return function.NewJSONUnquote(jsonExtract), nil
-		} else {
-			return jsonExtract, nil
 		}
+		return jsonExtract, nil
 
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(be.Operator)

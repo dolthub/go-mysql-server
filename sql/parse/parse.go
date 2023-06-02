@@ -4613,9 +4613,8 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 
 		if operator == sqlparser.JSONUnquoteExtractOp {
 			return function.NewJSONUnquote(jsonExtract), nil
-		} else {
-			return jsonExtract, nil
 		}
+		return jsonExtract, nil
 
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(be.Operator)
