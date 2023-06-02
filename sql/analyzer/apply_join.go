@@ -95,6 +95,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				case *plan.InSubquery:
 					sq, _ = e.Right.(*plan.Subquery)
 					l = e.Left
+
 					joinF = expression.NewEquals(nil, nil)
 				case expression.Comparer:
 					sq, _ = e.Right().(*plan.Subquery)
@@ -165,7 +166,8 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope,
 				if c, ok := ret.(sql.CommentedNode); ok {
 					comment = c.Comment()
 				}
-				ret = plan.NewJoin(ret, newSubq, m.op, filter).WithComment(comment)
+				newJoin := plan.NewJoin(ret, newSubq, m.op, filter)
+				ret = newJoin.WithComment(comment)
 			}
 
 			if len(newFilters) == 0 {

@@ -1816,7 +1816,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				return err
 			}
 			for _, fk := range fks {
-				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, fk.Columns, n.IndexName)
+				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, fk.Columns, false, n.IndexName)
 				if err != nil {
 					return err
 				}
@@ -1830,7 +1830,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				return err
 			}
 			for _, parentFk := range parentFks {
-				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, n.IndexName)
+				_, ok, err := plan.FindIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, true, n.IndexName)
 				if err != nil {
 					return err
 				}
