@@ -185,7 +185,7 @@ func (r *TableScan) Name() string {
 }
 
 func (r *TableScan) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *TableScan) OutputCols() sql.Schema {
@@ -213,7 +213,7 @@ func (r *Values) Name() string {
 }
 
 func (r *Values) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *Values) OutputCols() sql.Schema {
@@ -241,7 +241,7 @@ func (r *TableAlias) Name() string {
 }
 
 func (r *TableAlias) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *TableAlias) OutputCols() sql.Schema {
@@ -269,7 +269,7 @@ func (r *RecursiveTable) Name() string {
 }
 
 func (r *RecursiveTable) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *RecursiveTable) OutputCols() sql.Schema {
@@ -297,7 +297,7 @@ func (r *RecursiveCte) Name() string {
 }
 
 func (r *RecursiveCte) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *RecursiveCte) OutputCols() sql.Schema {
@@ -325,7 +325,7 @@ func (r *SubqueryAlias) Name() string {
 }
 
 func (r *SubqueryAlias) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *SubqueryAlias) OutputCols() sql.Schema {
@@ -353,7 +353,7 @@ func (r *Max1Row) Name() string {
 }
 
 func (r *Max1Row) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *Max1Row) OutputCols() sql.Schema {
@@ -381,7 +381,7 @@ func (r *TableFunc) Name() string {
 }
 
 func (r *TableFunc) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *TableFunc) OutputCols() sql.Schema {
@@ -409,7 +409,7 @@ func (r *EmptyTable) Name() string {
 }
 
 func (r *EmptyTable) TableId() TableId {
-	return tableIdForSource(r.g.Id)
+	return TableIdForSource(r.g.Id)
 }
 
 func (r *EmptyTable) OutputCols() sql.Schema {

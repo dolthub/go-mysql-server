@@ -222,8 +222,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 // appropriate execution plan among options added to an expression group.
 func addLookupJoins(m *memo.Memo) error {
 	var aliases = make(TableAliases)
-	seen := make(map[memo.GroupId]struct{})
-	return dfsExprGroup(m.Root(), m, seen, func(e memo.RelExpr) error {
+	return dfsRel(m.Root(), func(e memo.RelExpr) error {
 		var right *memo.ExprGroup
 		var join *memo.JoinBase
 		switch e := e.(type) {
@@ -264,7 +263,6 @@ func addLookupJoins(m *memo.Memo) error {
 			for _, on := range conds {
 				filters := memo.SplitConjunction(on)
 				for _, idx := range indexes {
-					// todo replace table name in expressions
 					exprs := denormIdxExprs(attrSource, idx)
 					keyExprs, nullmask := keyExprsForIndex(m, tableGrp, exprs, filters)
 					if keyExprs != nil {
@@ -316,6 +314,8 @@ func addLookupJoins(m *memo.Memo) error {
 	})
 }
 
+// denormIdxExprs replaces the native table name in index
+// expression strings with the aliased name.
 func denormIdxExprs(table string, idx sql.Index) []string {
 	denormExpr := make([]string, len(idx.Expressions()))
 	for i, e := range idx.Expressions() {
@@ -325,13 +325,13 @@ func denormIdxExprs(table string, idx sql.Index) []string {
 	return denormExpr
 }
 
+// keyExprsForIndex returns a list of expression groups that compute a lookup
+// key into the given index. The key fields will either be equality filters
+// (from ON conditions) or constants.
 func keyExprsForIndex(m *memo.Memo, tableGrp memo.GroupId, exprs []string, filters []memo.ScalarExpr) ([]memo.ScalarExpr, []bool) {
-	// every expression in index needs to be satisfied by equality or constant
 	var keyExprs []memo.ScalarExpr
 	var nullmask []bool
 	for _, e := range exprs {
-		// e => 'col.table'
-		// id => ColumnId
 		targetId := m.Columns[e]
 		key, nullable := keyForExpr(targetId, tableGrp, filters)
 		if key == nil {
@@ -346,7 +346,7 @@ func keyExprsForIndex(m *memo.Memo, tableGrp memo.GroupId, exprs []string, filte
 	return keyExprs, nullmask
 }
 
-// keyForExpr returns an equality match or constant value to satisfy the
+// keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
 func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.ScalarExpr) (memo.ScalarExpr, bool) {
 	for _, f := range filters {
@@ -373,7 +373,7 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 		}
 		// we don't care what expression the key is, as long as it does not
 		// reference the lookup table
-		if !key.Group().ScalarProps().Tables.Contains(int(tableGrp) - 1) {
+		if !key.Group().ScalarProps().Tables.Contains(int(memo.TableIdForSource(tableGrp))) {
 			return key, nullable
 		}
 	}
@@ -387,8 +387,7 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 // https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner
 func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
-	seen := make(map[memo.GroupId]struct{})
-	return dfsExprGroup(m.Root(), m, seen, func(e memo.RelExpr) error {
+	return dfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
 			return nil
@@ -402,7 +401,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 			_ = dfsScalar(f, func(e memo.ScalarExpr) error {
 				switch e := e.(type) {
 				case *memo.ColRef:
-					if rightOutTables.Contains(int(e.Table) - 1) {
+					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
 						projectExpressions = append(projectExpressions, e.Group())
 					}
 				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
@@ -454,8 +453,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 // convertAntiToLeftJoin adds left join alternatives for anti join
 // ANTI_JOIN(left, right) => PROJECT(left sch) -> FILTER(right attr IS NULL) -> LEFT_JOIN(left, right)
 func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
-	seen := make(map[memo.GroupId]struct{})
-	return dfsExprGroup(m.Root(), m, seen, func(e memo.RelExpr) error {
+	return dfsRel(m.Root(), func(e memo.RelExpr) error {
 		anti, ok := e.(*memo.AntiJoin)
 		if !ok {
 			return nil
@@ -469,7 +467,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 			_ = dfsScalar(f, func(e memo.ScalarExpr) error {
 				switch e := e.(type) {
 				case *memo.ColRef:
-					if rightOutTables.Contains(int(e.Table) - 1) {
+					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
 						projectExpressions = append(projectExpressions, e.Group())
 						nullify = append(nullify, e.Gf)
 					}
@@ -498,7 +496,6 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 		// join is a new group
 		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, plan.JoinTypeLeftOuter, anti.Filter)
 
-		// todo memoize these filters, new expression group
 		// drop null projected columns on right table
 		nullFilters := make([]*memo.ExprGroup, len(nullify))
 		for i, e := range nullify {
@@ -525,8 +522,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 // the join attributes of the left side are provably unique.
 func addRightSemiJoins(m *memo.Memo) error {
 	var aliases = make(TableAliases)
-	seen := make(map[memo.GroupId]struct{})
-	return dfsExprGroup(m.Root(), m, seen, func(e memo.RelExpr) error {
+	return dfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
 			return nil
@@ -645,13 +641,25 @@ func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAli
 	return attributeSource, indexes, nil
 }
 
-// dfsExprGroup runs a callback |cb| on all execution plans in the memo expression
+var HaltErr = errors.New("halt dfs")
+
+// dfsRel runs a callback |cb| on all execution plans in the memo expression
 // group. An expression group is defined by 1) a set of child expression
 // groups that serve as logical inputs to this operator, and 2) a set of logically
 // equivalent plans for executing this expression group's operator. We recursively
 // walk to expression group leaves, and then traverse every execution plan in leaf
-// groups before working upwards back to the root group.
-func dfsExprGroup(grp *memo.ExprGroup, m *memo.Memo, seen map[memo.GroupId]struct{}, cb func(rel memo.RelExpr) error) error {
+// groups before working upwards back to the root group. Returning a HaltErr
+// short circuits the walk.
+func dfsRel(grp *memo.ExprGroup, cb func(rel memo.RelExpr) error) error {
+	seen := make(map[memo.GroupId]struct{})
+	err := dfsRelHelper(grp, seen, cb)
+	if errors.Is(err, HaltErr) {
+		return nil
+	}
+	return err
+}
+
+func dfsRelHelper(grp *memo.ExprGroup, seen map[memo.GroupId]struct{}, cb func(rel memo.RelExpr) error) error {
 	if _, ok := seen[grp.Id]; ok {
 		return nil
 	} else {
@@ -660,7 +668,7 @@ func dfsExprGroup(grp *memo.ExprGroup, m *memo.Memo, seen map[memo.GroupId]struc
 	n := grp.First
 	for n != nil {
 		for _, c := range n.Children() {
-			err := dfsExprGroup(c, m, seen, cb)
+			err := dfsRelHelper(c, seen, cb)
 			if err != nil {
 				return err
 			}
@@ -674,8 +682,8 @@ func dfsExprGroup(grp *memo.ExprGroup, m *memo.Memo, seen map[memo.GroupId]struc
 	return nil
 }
 
-var HaltErr = errors.New("halt dfs")
-
+// dfsScalar walks scalar expression memo groups. Returning a HaltErr
+// short circuits the walk.
 func dfsScalar(e memo.ScalarExpr, cb func(e memo.ScalarExpr) error) error {
 	seen := make(map[memo.GroupId]struct{})
 	err := dfsScalarHelper(e, seen, cb)
@@ -705,8 +713,7 @@ func dfsScalarHelper(e memo.ScalarExpr, seen map[memo.GroupId]struct{}, cb func(
 }
 
 func addHashJoins(m *memo.Memo) error {
-	seen := make(map[memo.GroupId]struct{})
-	return dfsExprGroup(m.Root(), m, seen, func(e memo.RelExpr) error {
+	return dfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.InnerJoin, *memo.LeftJoin:
 		default:
@@ -761,8 +768,7 @@ func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 // TODO: sort-merge joins
 func addMergeJoins(m *memo.Memo) error {
 	var aliases = make(TableAliases)
-	seen := make(map[memo.GroupId]struct{})
-	return dfsExprGroup(m.Root(), m, seen, func(e memo.RelExpr) error {
+	return dfsRel(m.Root(), func(e memo.RelExpr) error {
 		var join *memo.JoinBase
 		switch e := e.(type) {
 		case *memo.InnerJoin:
@@ -812,10 +818,10 @@ func addMergeJoins(m *memo.Memo) error {
 			}
 
 			var swap bool
-			if l.ScalarProps().Tables.Contains(int(leftGrp)-1) &&
-				r.ScalarProps().Tables.Contains(int(rightGrp)-1) {
-			} else if r.ScalarProps().Tables.Contains(int(leftGrp)-1) &&
-				l.ScalarProps().Tables.Contains(int(rightGrp)-1) {
+			if l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
+				r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
+			} else if r.ScalarProps().Tables.Contains(int(memo.TableIdForSource(leftGrp))) &&
+				l.ScalarProps().Tables.Contains(int(memo.TableIdForSource(rightGrp))) {
 				swap = true
 				l, r = r, l
 			} else {

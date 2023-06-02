@@ -312,7 +312,7 @@ func (m *Memo) memoizeHidden(e sql.Expression) *ExprGroup {
 		case *expression.GetField:
 			colRef := m.MemoizeScalar(e).Scalar.(*ColRef)
 			cols.Add(colRef.Col)
-			tables.Add(int(colRef.Table) - 1)
+			tables.Add(int(TableIdForSource(colRef.Table)))
 		default:
 		}
 		return false
@@ -570,16 +570,16 @@ func (m *Memo) String() string {
 	for len(groups) > 0 {
 		newGroups := make([]*ExprGroup, 0)
 		for _, g := range groups {
-			if exprs[int(g.Id)-1] != "" {
+			if exprs[int(TableIdForSource(g.Id))] != "" {
 				continue
 			}
-			exprs[int(g.Id)-1] = g.String()
+			exprs[int(TableIdForSource(g.Id))] = g.String()
 			newGroups = append(newGroups, g.children()...)
 		}
 		groups = newGroups
 	}
 	for _, e := range m.exprs {
-		exprs[int(e.Id)-1] = e.String()
+		exprs[int(TableIdForSource(e.Id))] = e.String()
 	}
 	b := strings.Builder{}
 	b.WriteString("memo:\n")
@@ -741,7 +741,7 @@ func (r *relBase) Cost() float64 {
 	return r.c
 }
 
-func tableIdForSource(id GroupId) TableId {
+func TableIdForSource(id GroupId) TableId {
 	return TableId(id - 1)
 }
 
@@ -751,6 +751,11 @@ type exprType interface {
 	SetGroup(g *ExprGroup)
 }
 
+// ScalarExpr is a sql.Expression equivalent. Both ScalarExpr
+// and RelExpr are embedded in Memo as *ExprGroup. ScalarExpr
+// will only have one implementation.
+// todo: do we need scalar expressions in the memo? or could
+// they be ref'd out
 type ScalarExpr interface {
 	fmt.Stringer
 	exprType

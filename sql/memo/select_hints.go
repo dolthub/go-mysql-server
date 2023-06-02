@@ -285,8 +285,8 @@ type joinOpHint struct {
 func newjoinOpHint(op HintType, left, right GroupId) joinOpHint {
 	return joinOpHint{
 		op: op,
-		l:  sql.NewFastIntSet(int(tableIdForSource(left))),
-		r:  sql.NewFastIntSet(int(tableIdForSource(right))),
+		l:  sql.NewFastIntSet(int(TableIdForSource(left))),
+		r:  sql.NewFastIntSet(int(TableIdForSource(right))),
 	}
 }
 
