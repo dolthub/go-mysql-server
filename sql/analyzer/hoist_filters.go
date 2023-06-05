@@ -159,9 +159,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 // exprRefsTableSet returns |foundRef| if the expression directly
 // references a table in the table set, and |foundAlias| if the expression
 // references an alias that is scope-ambiguous.
-func exprRefsTableSet(e sql.Expression, tables TableAliases) (bool, bool) {
-	var foundRef bool
-	var foundAlias bool
+func exprRefsTableSet(e sql.Expression, tables TableAliases) (foundRef, foundAlias bool) {
 	transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
@@ -181,5 +179,5 @@ func exprRefsTableSet(e sql.Expression, tables TableAliases) (bool, bool) {
 		}
 		return foundRef && foundAlias
 	})
-	return foundRef, foundAlias
+	return
 }
