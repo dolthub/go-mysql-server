@@ -249,7 +249,7 @@ Select * from (
 	},
 	{
 		Query: `select * from uv where not exists (select * from xy where not exists (select * from xy where not(u = 1)))`,
-		ExpectedPlan: "Filter\n" +
+		ExpectedPlan: "AntiJoin\n" +
 			" ├─ NOT\n" +
 			" │   └─ AND\n" +
 			" │       ├─ EXISTS Subquery\n" +
@@ -258,19 +258,15 @@ Select * from (
 			" │       │       ├─ name: xy\n" +
 			" │       │       └─ columns: [x y]\n" +
 			" │       └─ NOT\n" +
-			" │           └─ AND\n" +
-			" │               ├─ EXISTS Subquery\n" +
-			" │               │   ├─ cacheable: true\n" +
-			" │               │   └─ Table\n" +
-			" │               │       ├─ name: xy\n" +
-			" │               │       └─ columns: [x y]\n" +
-			" │               └─ NOT\n" +
-			" │                   └─ Eq\n" +
-			" │                       ├─ uv.u:0!null\n" +
-			" │                       └─ 1 (tinyint)\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ uv.u:0!null\n" +
+			" │               └─ 1 (tinyint)\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: uv\n" +
+			" │   └─ columns: [u v]\n" +
 			" └─ Table\n" +
-			"     ├─ name: uv\n" +
-			"     └─ columns: [u v]\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
 			"",
 	},
 	{
