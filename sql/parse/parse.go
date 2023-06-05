@@ -2849,7 +2849,7 @@ func getPkOrdinals(ts *sqlparser.TableSpec) []int {
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.JSONTableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
+func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, error) {
 	tableCollation := sql.Collation_Unspecified
 	if !forceInvalidCollation {
 		if len(tableSpec.Options) > 0 {
@@ -2900,31 +2900,38 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.JSONTableSpec, for
 	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, nil
 }
 
+func jsonTableSpecToSchemaHelper(jsonTableSpec *sqlparser.JSONTableSpec, schema sql.Schema) error {
+	for _, cd := range jsonTableSpec.Columns {
+		if cd.Spec != nil {
+			err := jsonTableSpecToSchemaHelper(cd.Spec, schema)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		typ, err := types.ColumnTypeToType(&cd.Type)
+		if err != nil {
+			return err
+		}
+		col := &sql.Column{
+			Type: typ,
+			Name: cd.Name.String(),
+			AutoIncrement: bool(cd.Type.Autoincrement),
+		}
+		schema = append(schema, col)
+	}
+	return nil
+}
+
 // JSONTableSpecToSchema creates a sql.Schema from a parsed JSONTableSpec
 func JSONTableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.JSONTableSpec) (sql.PrimaryKeySchema, error) {
-	tableCollation := sql.Collation_Unspecified
-
 	var schema sql.Schema
-	for _, cd := range tableSpec.Columns {
-		// Use the table's collation if no character or collation was specified for the table
-		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
-			if tableCollation != sql.Collation_Unspecified {
-				cd.Type.Collate = tableCollation.Name()
-			}
-		}
-		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
-		if err != nil {
-			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, err
-		}
-
-		if column.PrimaryKey && bool(cd.Type.Null) {
-			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ErrPrimaryKeyOnNullField.New()
-		}
-
-		schema = append(schema, column)
+	err := jsonTableSpecToSchemaHelper(tableSpec, schema)
+	if err != nil {
+		return sql.PrimaryKeySchema{}, err
 	}
-
-	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, nil
+	return sql.NewPrimaryKeySchema(schema), nil
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
@@ -3573,32 +3580,47 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 	}
 }
 
+func jsonTableColOpts(ctx *sql.Context, jsonTableSpec *sqlparser.JSONTableSpec) ([]plan.JSONTableColOpts, error) {
+	colOpts := make([]plan.JSONTableColOpts, len(jsonTableSpec.Columns))
+	for i, col := range jsonTableSpec.Columns {
+		var err error
+		if col.Spec != nil {
+			colOpts[i].ColOpts, err = jsonTableColOpts(ctx, col.Spec)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if col.Opts.ValOnError == nil {
+			col.Opts.ValOnError = &sqlparser.NullVal{}
+		}
+		defaultErrorVal, err := ExprToExpression(ctx, col.Opts.ValOnError)
+		if err != nil {
+			return nil, err
+		}
+		if col.Opts.ValOnEmpty == nil {
+			col.Opts.ValOnEmpty = &sqlparser.NullVal{}
+		}
+		defaultEmptyVal, err := ExprToExpression(ctx, col.Opts.ValOnEmpty)
+		if err != nil {
+			return nil, err
+		}
+		colOpts[i].Path = col.Opts.Path
+		colOpts[i].Exists = col.Opts.Exists
+		colOpts[i].DefaultEmptyVal = defaultEmptyVal
+		colOpts[i].DefaultErrorVal = defaultErrorVal
+		colOpts[i].ErrorOnEmpty = col.Opts.ErrorOnEmpty
+		colOpts[i].ErrorOnError = col.Opts.ErrorOnError
+	}
+	return colOpts, nil
+}
+
 func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, error) {
 	data, err := ExprToExpression(ctx, t.Data)
 	if err != nil {
 		return nil, err
 	}
 
-	colOpts := make([]plan.JSONTableColOpts, len(t.Spec.Columns))
-	for i, col := range t.Spec.Columns {
-		var defaultErrorVal, defaultEmptyVal sql.Expression
-		defaultErrorVal, err = ExprToExpression(ctx, col.Opts.ValOnError)
-		if err != nil {
-			return nil, err
-		}
-		defaultEmptyVal, err = ExprToExpression(ctx, col.Opts.ValOnEmpty)
-		if err != nil {
-			return nil, err
-		}
-		colOpts[i].Path = col.Opts.Path
-		colOpts[i].Exists = col.Opts.Exists
-		colOpts[i].DefaultErrorVal = defaultErrorVal
-		colOpts[i].DefaultEmptyVal = defaultEmptyVal
-		colOpts[i].ErrorOnError = col.Opts.ErrorOnError
-		colOpts[i].ErrorOnEmpty = col.Opts.ErrorOnEmpty
-	}
-
-	// TODO: remember to flatten schema
 	sch, err := JSONTableSpecToSchema(ctx, t.Spec)
 	if err != nil {
 		return nil, err
@@ -3607,6 +3629,11 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 	alias := t.Alias.String()
 	for _, col := range sch.Schema {
 		col.Source = alias
+	}
+
+	colOpts, err := jsonTableColOpts(ctx, t.Spec)
+	if err != nil {
+		return nil, err
 	}
 
 	return plan.NewJSONTable(data, t.Spec.Path, alias, sch, colOpts)

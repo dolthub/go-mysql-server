@@ -51,6 +51,7 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	return &jsonTablePartition{key}, nil
 }
 
+
 type JSONTableColOpts struct {
 	Path            string
 	Exists          bool
@@ -58,6 +59,7 @@ type JSONTableColOpts struct {
 	DefaultEmptyVal sql.Expression
 	ErrorOnError    bool
 	ErrorOnEmpty    bool
+	ColOpts         []JSONTableColOpts
 }
 
 type JSONTable struct {

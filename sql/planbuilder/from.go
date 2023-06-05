@@ -404,25 +404,27 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	return
 }
 
+func (b *PlanBuilder) buildJsonTableCol(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
+	colOpts := make([]plan.JSONTableColOpts, len(t.Spec.Columns))
+	for i, col := range t.Spec.Columns {
+		defaultErrorVal := b.buildScalar(inScope, col.Opts.ValOnError)
+		defaultEmptyVal := b.buildScalar(inScope, col.Opts.ValOnError)
+		colOpts[i].Path = col.Opts.Path
+		colOpts[i].Exists = col.Opts.Exists
+		colOpts[i].DefaultErrorVal = defaultErrorVal
+		colOpts[i].DefaultEmptyVal = defaultEmptyVal
+		colOpts[i].ErrorOnError = col.Opts.ErrorOnError
+		colOpts[i].ErrorOnEmpty = col.Opts.ErrorOnEmpty
+	}
+}
+
 func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
 	data := b.buildScalar(inScope, t.Data)
 	if _, ok := data.(*plan.Subquery); ok {
 		b.handleErr(sql.ErrInvalidArgument.New("JSON_TABLE"))
 	}
 
-	colOpts := make([]plan.JSONTableColOpts, len(t.Spec.Columns))
-	for i, col := range t.Spec.Columns {
-		defaultErrorVal := b.buildScalar(inScope, col.Type.ValOnError)
-		defaultEmptyVal := b.buildScalar(inScope, col.Type.ValOnError)
-		colOpts[i].Path = col.Type.Path
-		colOpts[i].Exists = col.Type.Exists
-		colOpts[i].DefaultErrorVal = defaultErrorVal
-		colOpts[i].DefaultEmptyVal = defaultEmptyVal
-		colOpts[i].ErrorOnError = col.Type.ErrorOnError
-		colOpts[i].ErrorOnEmpty = col.Type.ErrorOnEmpty
-	}
-
-	sch, _ := b.tableSpecToSchema(inScope, t.Spec, false)
+	sch := b.jsonTableSpecToSchema(inScope, t.Spec)
 
 	outScope = inScope.push()
 	outScope.ast = t
@@ -439,7 +441,6 @@ func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outS
 	outScope.node = &plan.JSONTable{
 		TableName: alias,
 		DataExpr:  data,
-		Path:      t.Path,
 		Sch:       sch,
 		ColOpts:   colOpts,
 	}
