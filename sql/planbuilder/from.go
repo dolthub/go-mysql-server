@@ -417,8 +417,8 @@ func (b *PlanBuilder) buildJSONTableColOpts(inScope *scope, t *ast.JSONTableSpec
 			continue
 		}
 		colOpt := plan.JSONTableColOpts{
-			Path: append(currPath, col.Opts.Path),
-			Exists: col.Opts.Exists,
+			Path:         append(currPath, col.Opts.Path),
+			Exists:       col.Opts.Exists,
 			ErrorOnEmpty: col.Opts.ErrorOnEmpty,
 			ErrorOnError: col.Opts.ErrorOnError,
 		}
