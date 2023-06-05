@@ -894,7 +894,7 @@ func addMergeJoins(m *memo.Memo) error {
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
 func sortedIndexScanForTableCol(is []sql.Index, table, col string) *memo.IndexScan {
-	tc := fmt.Sprintf("%s.%s", table, col)
+	tc := fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(col))
 	for _, idx := range is {
 		if strings.ToLower(idx.Expressions()[0]) != tc {
 			continue
