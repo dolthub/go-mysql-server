@@ -20,8 +20,8 @@ exprs:
 - name: "HashJoin"
   join: true
   attrs:
-  - [fromAttrs, "[]*ExprGroup"]
-  - [toAttrs, "[]*ExprGroup"]
+  - [rightAttrs, "[]*ExprGroup"]
+  - [leftAttrs, "[]*ExprGroup"]
 - name: "MergeJoin"
   join: true
   attrs:

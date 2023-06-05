@@ -523,7 +523,7 @@ func (m *Memo) ApplyHint(hint Hint) {
 	case HintTypeJoinOrder:
 		m.WithJoinOrder(hint.Args)
 	case HintTypeJoinFixedOrder:
-	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin, HintTypeLeftOuterLookupJoin, HintTypeRightSemiLookupJoin:
+	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin, HintTypeLeftOuterLookupJoin:
 		m.WithJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
 	default:
 	}

@@ -168,29 +168,29 @@ func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, input sql.Schema, children 
 }
 
 func (b *ExecBuilder) buildHashJoin(j *HashJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	toFilters := make([]sql.Expression, len(j.ToAttrs))
+	leftProbeFilters := make([]sql.Expression, len(j.LeftAttrs))
 	var err error
-	for i := range j.ToAttrs {
-		toFilters[i], err = b.buildScalar(j.ToAttrs[i].Scalar, input)
+	for i := range j.LeftAttrs {
+		leftProbeFilters[i], err = b.buildScalar(j.LeftAttrs[i].Scalar, input)
 		if err != nil {
 			return nil, err
 		}
 	}
-	toAttrs := expression.Tuple(toFilters)
+	leftProbeKey := expression.Tuple(leftProbeFilters)
 
 	tmpScope := j.g.m.scope
 	if tmpScope != nil {
 		tmpScope = tmpScope.NewScopeNoJoin()
 	}
 
-	fromFilters := make([]sql.Expression, len(j.FromAttrs))
-	for i := range j.FromAttrs {
-		fromFilters[i], err = b.buildScalar(j.FromAttrs[i].Scalar, j.Right.RelProps.OutputCols())
+	rightEntryFilters := make([]sql.Expression, len(j.RightAttrs))
+	for i := range j.RightAttrs {
+		rightEntryFilters[i], err = b.buildScalar(j.RightAttrs[i].Scalar, j.Right.RelProps.OutputCols())
 		if err != nil {
 			return nil, err
 		}
 	}
-	fromAttrs := expression.Tuple(fromFilters)
+	rightEntryKey := expression.Tuple(rightEntryFilters)
 
 	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
 	if err != nil {
@@ -198,7 +198,7 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, input sql.Schema, children ...s
 	}
 
 	cr := plan.NewCachedResults(children[1])
-	outer := plan.NewHashLookup(cr, fromAttrs, toAttrs)
+	outer := plan.NewHashLookup(cr, rightEntryKey, leftProbeKey)
 	inner := children[0]
 	return plan.NewJoin(inner, outer, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }

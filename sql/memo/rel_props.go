@@ -114,9 +114,7 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.Schema {
 	case *AntiJoin:
 		return r.Left.RelProps.OutputCols()
 	case *LookupJoin:
-		if r.Op.IsRightPartial() {
-			return r.Right.RelProps.OutputCols()
-		} else if r.Op.IsPartial() {
+		if r.Op.IsPartial() {
 			return r.Left.RelProps.OutputCols()
 		} else {
 			return append(r.JoinPrivate().Left.RelProps.OutputCols(), r.JoinPrivate().Right.RelProps.OutputCols()...)

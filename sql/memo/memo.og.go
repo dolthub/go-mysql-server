@@ -120,8 +120,8 @@ func (r *ConcatJoin) JoinPrivate() *JoinBase {
 
 type HashJoin struct {
 	*JoinBase
-	FromAttrs []*ExprGroup
-	ToAttrs   []*ExprGroup
+	RightAttrs []*ExprGroup
+	LeftAttrs  []*ExprGroup
 }
 
 var _ RelExpr = (*HashJoin)(nil)

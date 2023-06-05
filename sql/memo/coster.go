@@ -211,8 +211,8 @@ func lookupJoinSelectivityMultiplier(l *Lookup, filterCnt int) float64 {
 	if filterCnt > len(l.KeyExprs) {
 		mult += float64(filterCnt-len(l.KeyExprs)) * .1
 	}
-	if len(l.KeyExprs) > len(l.KeyExprs) {
-		mult += float64(len(l.KeyExprs)-filterCnt) * .1
+	if len(l.Index.Expressions()) > len(l.KeyExprs) {
+		mult += float64(len(l.Index.Expressions())-filterCnt) * .1
 	}
 	for _, m := range l.Nullmask {
 		if m {

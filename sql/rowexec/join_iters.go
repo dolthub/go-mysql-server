@@ -335,9 +335,6 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 			}
 		case esRet:
-			if i.typ.IsRightPartial() {
-				return append(left[:i.scopeLen], right...), nil
-			}
 			return i.removeParentRow(left), nil
 		default:
 			return nil, fmt.Errorf("invalid exists join state")

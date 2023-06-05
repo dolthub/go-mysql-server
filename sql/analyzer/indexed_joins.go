@@ -340,7 +340,7 @@ func keyExprsForIndex(m *memo.Memo, tableGrp memo.GroupId, exprs []string, filte
 		keyExprs = append(keyExprs, key)
 		nullmask = append(nullmask, nullable)
 	}
-	if len(keyExprs) != len(exprs) {
+	if len(keyExprs) == 0 {
 		return nil, nil
 	}
 	return keyExprs, nullmask
@@ -565,7 +565,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 				KeyExprs: keyExprs,
 				Nullmask: nullmask,
 			}
-			m.MemoizeLookupJoin(e.Group(), rGroup, semi.Left, plan.JoinTypeRightSemiLookup, semi.Filter, lookup)
+			m.MemoizeLookupJoin(e.Group(), rGroup, semi.Left, plan.JoinTypeLookup, semi.Filter, lookup)
 		}
 		return nil
 	})
@@ -745,9 +745,9 @@ func addHashJoins(m *memo.Memo) error {
 			}
 		}
 		rel := &memo.HashJoin{
-			JoinBase:  join.Copy(),
-			ToAttrs:   toExpr,
-			FromAttrs: fromExpr,
+			JoinBase:   join.Copy(),
+			LeftAttrs:  toExpr,
+			RightAttrs: fromExpr,
 		}
 		rel.Op = rel.Op.AsHash()
 		e.Group().Prepend(rel)
