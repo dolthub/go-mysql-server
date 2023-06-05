@@ -807,8 +807,8 @@ func (b *PlanBuilder) jsonTableSpecToSchema(inScope *scope, tableSpec *ast.JSONT
 
 		// TODO: flatten nested columns
 		column := &sql.Column{
-			Type: typ,
-			Name: cd.Name.String(),
+			Type:          typ,
+			Name:          cd.Name.String(),
 			AutoIncrement: bool(cd.Type.Autoincrement),
 		}
 

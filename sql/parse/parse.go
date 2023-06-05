@@ -2915,8 +2915,8 @@ func jsonTableSpecToSchemaHelper(jsonTableSpec *sqlparser.JSONTableSpec, schema 
 			return err
 		}
 		col := &sql.Column{
-			Type: typ,
-			Name: cd.Name.String(),
+			Type:          typ,
+			Name:          cd.Name.String(),
 			AutoIncrement: bool(cd.Type.Autoincrement),
 		}
 		schema = append(schema, col)
