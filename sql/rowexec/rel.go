@@ -144,7 +144,6 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	if err != nil {
 		jsonPathData = []interface{}{}
 	}
-	// TODO: necessary?
 	if _, ok := jsonPathData.([]interface{}); !ok {
 		jsonPathData = []interface{}{jsonPathData}
 	}

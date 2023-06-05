@@ -142,7 +142,8 @@ func (*JSONTable) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Expressions implements the sql.Expressioner interface
 func (t *JSONTable) Expressions() []sql.Expression {
-	return []sql.Expression{t.DataExpr} // TODO: better to do nothing or return all exprs?
+	// TODO: better to do nothing or return all exprs?
+	return []sql.Expression{t.DataExpr}
 }
 
 // WithExpressions implements the sql.Expressioner interface
