@@ -179,6 +179,14 @@ var joinOpTests = []struct {
 		},
 		tests: []JoinOpTests{
 			{
+				Query: `SELECT xy.x, xy.y
+					FROM xy
+					WHERE EXISTS (
+					SELECT 1 FROM uv WHERE xy.x = uv.v AND (EXISTS (
+					SELECT 1 FROM ab WHERE uv.u = ab.b)))`,
+				Expected: []sql.Row{{1, 0}, {2, 1}},
+			},
+			{
 				// natural join w/ inner join
 				Query: "select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
 				Expected: []sql.Row{
