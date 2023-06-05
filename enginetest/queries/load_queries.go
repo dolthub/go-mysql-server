@@ -205,6 +205,40 @@ var LoadDataScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Load data can ignore row with existing primary key",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 varchar(10))",
+			"insert into loadtable values (1, 'test')",
+			"LOAD DATA INFILE './testdata/test2.csv' IGNORE INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from loadtable",
+				Expected: []sql.Row{
+					{1, "test"},
+					{2, "hello"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Load data can replace row with existing primary key",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 varchar(10))",
+			"insert into loadtable values (1, 'test')",
+			"LOAD DATA INFILE './testdata/test2.csv' REPLACE INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from loadtable",
+				Expected: []sql.Row{
+					{1, "hi"},
+					{2, "hello"},
+				},
+			},
+		},
+	},
 }
 
 var LoadDataErrorScripts = []ScriptTest{
@@ -258,6 +292,19 @@ var LoadDataErrorScripts = []ScriptTest{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY 'xx' (pk)",
 				ExpectedErr: sql.ErrLoadDataCharacterLength,
+			},
+		},
+	},
+	{
+		Name: "Load data errors on primary key duplicate",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 varchar(10))",
+			"insert into loadtable values (1, 'test')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "LOAD DATA INFILE './testdata/test2.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES",
+				ExpectedErrStr: "duplicate primary key given: [1]",
 			},
 		},
 	},
