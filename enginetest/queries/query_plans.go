@@ -25,6 +25,34 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `SELECT col1->'$.key1' from (SELECT JSON_OBJECT('key1', 1, 'key2', 'abc')) as dt(col1);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [json_extract(dt.col1, '$.key1') as col1->'$.key1']\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: dt\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [json_object('key1',1,'key2','abc') as JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: \n" +
+			"             └─ columns: []\n",
+	},
+	{
+		Query: `SELECT col1->>'$.key1' from (SELECT JSON_OBJECT('key1', 1, 'key2', 'abc')) as dt(col1);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [json_unquote(json_extract(dt.col1, '$.key1')) as col1->>'$.key1']\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: dt\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [json_object('key1',1,'key2','abc') as JSON_OBJECT('key1', 1, 'key2', 'abc')]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: \n" +
+			"             └─ columns: []\n",
+	},
+	{
 		Query: `
 Select x
 from (select * from xy) sq1
@@ -249,7 +277,7 @@ Select * from (
 	},
 	{
 		Query: `select * from uv where not exists (select * from xy where not exists (select * from xy where not(u = 1)))`,
-		ExpectedPlan: "Filter\n" +
+		ExpectedPlan: "AntiJoin\n" +
 			" ├─ NOT\n" +
 			" │   └─ AND\n" +
 			" │       ├─ EXISTS Subquery\n" +
@@ -258,19 +286,15 @@ Select * from (
 			" │       │       ├─ name: xy\n" +
 			" │       │       └─ columns: [x y]\n" +
 			" │       └─ NOT\n" +
-			" │           └─ AND\n" +
-			" │               ├─ EXISTS Subquery\n" +
-			" │               │   ├─ cacheable: true\n" +
-			" │               │   └─ Table\n" +
-			" │               │       ├─ name: xy\n" +
-			" │               │       └─ columns: [x y]\n" +
-			" │               └─ NOT\n" +
-			" │                   └─ Eq\n" +
-			" │                       ├─ uv.u:0!null\n" +
-			" │                       └─ 1 (tinyint)\n" +
+			" │           └─ Eq\n" +
+			" │               ├─ uv.u:0!null\n" +
+			" │               └─ 1 (tinyint)\n" +
+			" ├─ Table\n" +
+			" │   ├─ name: uv\n" +
+			" │   └─ columns: [u v]\n" +
 			" └─ Table\n" +
-			"     ├─ name: uv\n" +
-			"     └─ columns: [u v]\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
 			"",
 	},
 	{
