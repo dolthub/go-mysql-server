@@ -2900,38 +2900,31 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec, forceIn
 	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, nil
 }
 
-func jsonTableSpecToSchemaHelper(jsonTableSpec *sqlparser.JSONTableSpec, schema sql.Schema) error {
+// jsonTableSpecToSchema creates a sql.Schema from a parsed JSONTableSpec
+func jsonTableSpecToSchema(jsonTableSpec *sqlparser.JSONTableSpec) (sql.Schema, error) {
+	var sch sql.Schema
 	for _, cd := range jsonTableSpec.Columns {
 		if cd.Spec != nil {
-			err := jsonTableSpecToSchemaHelper(cd.Spec, schema)
+			nestedSch, err := jsonTableSpecToSchema(cd.Spec)
 			if err != nil {
-				return err
+				return nil, err
 			}
+			sch = append(sch, nestedSch...)
 			continue
 		}
 
 		typ, err := types.ColumnTypeToType(&cd.Type)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		col := &sql.Column{
 			Type:          typ,
 			Name:          cd.Name.String(),
 			AutoIncrement: bool(cd.Type.Autoincrement),
 		}
-		schema = append(schema, col)
+		sch = append(sch, col)
 	}
-	return nil
-}
-
-// JSONTableSpecToSchema creates a sql.Schema from a parsed JSONTableSpec
-func JSONTableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.JSONTableSpec) (sql.PrimaryKeySchema, error) {
-	var schema sql.Schema
-	err := jsonTableSpecToSchemaHelper(tableSpec, schema)
-	if err != nil {
-		return sql.PrimaryKeySchema{}, err
-	}
-	return sql.NewPrimaryKeySchema(schema), nil
+	return sch, nil
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
@@ -3580,37 +3573,46 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 	}
 }
 
-func jsonTableColOpts(ctx *sql.Context, jsonTableSpec *sqlparser.JSONTableSpec) ([]plan.JSONTableColOpts, error) {
-	colOpts := make([]plan.JSONTableColOpts, len(jsonTableSpec.Columns))
-	for i, col := range jsonTableSpec.Columns {
-		var err error
+func jsonTableColOpts(ctx *sql.Context, jsonTableSpec *sqlparser.JSONTableSpec, currPath []string) ([]plan.JSONTableColOpts, error) {
+	var colOpts []plan.JSONTableColOpts
+	for _, col := range jsonTableSpec.Columns {
+		// nested column definitions need to be flattened into multiple colOpts with all paths appended
 		if col.Spec != nil {
-			colOpts[i].ColOpts, err = jsonTableColOpts(ctx, col.Spec)
+			newCurrPath := make([]string, len(currPath))
+			copy(currPath, newCurrPath)
+			newCurrPath = append(newCurrPath, jsonTableSpec.Path)
+			nestedColOpts, err := jsonTableColOpts(ctx, col.Spec, newCurrPath)
 			if err != nil {
 				return nil, err
 			}
+			colOpts = append(colOpts, nestedColOpts...)
 			continue
 		}
-		if col.Opts.ValOnError == nil {
-			col.Opts.ValOnError = &sqlparser.NullVal{}
+
+		colOpt := plan.JSONTableColOpts{
+			Path: append(currPath, col.Opts.Path),
+			Exists: col.Opts.Exists,
+			ErrorOnEmpty: col.Opts.ErrorOnEmpty,
+			ErrorOnError: col.Opts.ErrorOnError,
 		}
-		defaultErrorVal, err := ExprToExpression(ctx, col.Opts.ValOnError)
-		if err != nil {
-			return nil, err
+		var err error
+		if col.Opts.ValOnEmpty != nil {
+			colOpt.DefaultEmptyVal, err = ExprToExpression(ctx, col.Opts.ValOnEmpty)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			colOpt.DefaultEmptyVal = expression.NewLiteral(nil, types.Null)
 		}
-		if col.Opts.ValOnEmpty == nil {
-			col.Opts.ValOnEmpty = &sqlparser.NullVal{}
+		if col.Opts.ValOnError != nil {
+			colOpt.DefaultErrorVal, err = ExprToExpression(ctx, col.Opts.ValOnError)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			colOpt.DefaultErrorVal = expression.NewLiteral(nil, types.Null)
 		}
-		defaultEmptyVal, err := ExprToExpression(ctx, col.Opts.ValOnEmpty)
-		if err != nil {
-			return nil, err
-		}
-		colOpts[i].Path = col.Opts.Path
-		colOpts[i].Exists = col.Opts.Exists
-		colOpts[i].DefaultEmptyVal = defaultEmptyVal
-		colOpts[i].DefaultErrorVal = defaultErrorVal
-		colOpts[i].ErrorOnEmpty = col.Opts.ErrorOnEmpty
-		colOpts[i].ErrorOnError = col.Opts.ErrorOnError
+		colOpts = append(colOpts, colOpt)
 	}
 	return colOpts, nil
 }
@@ -3621,19 +3623,24 @@ func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, erro
 		return nil, err
 	}
 
-	sch, err := JSONTableSpecToSchema(ctx, t.Spec)
+	sch, err := jsonTableSpecToSchema(t.Spec)
 	if err != nil {
 		return nil, err
 	}
 
 	alias := t.Alias.String()
-	for _, col := range sch.Schema {
+	for _, col := range sch {
 		col.Source = alias
 	}
 
-	colOpts, err := jsonTableColOpts(ctx, t.Spec)
+	colOpts, err := jsonTableColOpts(ctx, t.Spec, []string{})
 	if err != nil {
 		return nil, err
+	}
+
+	// sanity check
+	if len(sch) != len(colOpts) {
+		panic("schema and colOpts length mismatch")
 	}
 
 	return plan.NewJSONTable(data, t.Spec.Path, alias, sch, colOpts)

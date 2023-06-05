@@ -244,7 +244,7 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 }
 
 type jsonTableColOpts struct {
-	path            string
+	paths           []string
 	exists          bool
 	defaultErrorVal interface{}
 	defaultEmptyVal interface{}
@@ -260,6 +260,18 @@ type jsonTableRowIter struct {
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}
+
+func jsonPathLookups(obj interface{}, paths []string) (interface{}, error) {
+	res := obj
+	var err error
+	for _, path := range paths {
+		res, err = jsonpath.JsonPathLookup(res, path)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
 
 func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if j.pos >= len(j.data) {
@@ -277,7 +289,8 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		opt := j.colOpts[i]
 
-		val, err := jsonpath.JsonPathLookup(obj, opt.path)
+		// TODO: handle sibling nested?
+		val, err := jsonPathLookups(obj, opt.paths)
 		if opt.exists {
 			if err != nil {
 				row[i] = 0

@@ -230,7 +230,7 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 		return b.buildJoin(inScope, t)
 
 	case *ast.JSONTableExpr:
-		return b.buildJsonTable(inScope, t)
+		return b.buildJSONTable(inScope, t)
 
 	case *ast.ParenTableExpr:
 		if len(t.Exprs) == 1 {
@@ -404,45 +404,62 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	return
 }
 
-func (b *PlanBuilder) buildJsonTableCol(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
-	colOpts := make([]plan.JSONTableColOpts, len(t.Spec.Columns))
-	for i, col := range t.Spec.Columns {
-		defaultErrorVal := b.buildScalar(inScope, col.Opts.ValOnError)
-		defaultEmptyVal := b.buildScalar(inScope, col.Opts.ValOnError)
-		colOpts[i].Path = col.Opts.Path
-		colOpts[i].Exists = col.Opts.Exists
-		colOpts[i].DefaultErrorVal = defaultErrorVal
-		colOpts[i].DefaultEmptyVal = defaultEmptyVal
-		colOpts[i].ErrorOnError = col.Opts.ErrorOnError
-		colOpts[i].ErrorOnEmpty = col.Opts.ErrorOnEmpty
+func (b *PlanBuilder) buildJSONTableColOpts(inScope *scope, t *ast.JSONTableSpec, currPath []string) []plan.JSONTableColOpts {
+	var colOpts []plan.JSONTableColOpts
+	for _, col := range t.Columns {
+		// nested col defs need to be flattened into multiple colOpts with all paths appended
+		if col.Spec != nil {
+			newCurrPath := make([]string, len(currPath))
+			copy(currPath, newCurrPath)
+			newCurrPath = append(newCurrPath, t.Path)
+			nestedColOpts := b.buildJSONTableColOpts(inScope, col.Spec, newCurrPath)
+			colOpts = append(colOpts, nestedColOpts...)
+			continue
+		}
+		colOpt := plan.JSONTableColOpts{
+			Path: append(currPath, col.Opts.Path),
+			Exists: col.Opts.Exists,
+			ErrorOnEmpty: col.Opts.ErrorOnEmpty,
+			ErrorOnError: col.Opts.ErrorOnError,
+		}
+		if col.Opts.ValOnEmpty != nil {
+			colOpt.DefaultEmptyVal = b.buildScalar(inScope, col.Opts.ValOnError)
+		} else {
+			colOpt.DefaultEmptyVal = expression.NewLiteral(nil, types.Null)
+		}
+		if col.Opts.ValOnError != nil {
+			colOpt.DefaultErrorVal = b.buildScalar(inScope, col.Opts.ValOnError)
+		} else {
+			colOpt.DefaultErrorVal = expression.NewLiteral(nil, types.Null)
+		}
+		colOpts = append(colOpts, colOpt)
 	}
+	return colOpts
 }
 
-func (b *PlanBuilder) buildJsonTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
+func (b *PlanBuilder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
 	data := b.buildScalar(inScope, t.Data)
 	if _, ok := data.(*plan.Subquery); ok {
 		b.handleErr(sql.ErrInvalidArgument.New("JSON_TABLE"))
 	}
 
-	sch := b.jsonTableSpecToSchema(inScope, t.Spec)
+	sch := b.jsonTableSpecToSchema(t.Spec)
 
 	outScope = inScope.push()
 	outScope.ast = t
 	alias := t.Alias.String()
-	for _, col := range sch.Schema {
+	for _, col := range sch {
 		col.Source = strings.ToLower(alias)
 		outScope.newColumn(scopeColumn{
-			db:    "",
 			table: col.Source,
 			col:   col.Name,
 			typ:   col.Type,
 		})
 	}
-	outScope.node = &plan.JSONTable{
-		TableName: alias,
-		DataExpr:  data,
-		Sch:       sch,
-		ColOpts:   colOpts,
+	var err error
+	colOpts := b.buildJSONTableColOpts(inScope, t.Spec, []string{})
+	if outScope.node, err = plan.NewJSONTable(data, t.Spec.Path, alias, sch, colOpts); err != nil {
+		b.handleErr(err)
 	}
 	return outScope
 }

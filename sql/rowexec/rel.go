@@ -144,6 +144,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	if err != nil {
 		jsonPathData = []interface{}{}
 	}
+	// TODO: necessary?
 	if _, ok := jsonPathData.([]interface{}); !ok {
 		jsonPathData = []interface{}{jsonPathData}
 	}
@@ -160,7 +161,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 			return nil, err
 		}
 
-		colOpts[i].path = col.Path
+		colOpts[i].paths = col.Path
 		colOpts[i].exists = col.Exists
 		colOpts[i].defaultErrorVal = defaultErrorVal
 		colOpts[i].defaultEmptyVal = defaultEmptyVal
