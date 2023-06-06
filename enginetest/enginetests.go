@@ -1856,13 +1856,18 @@ func TestEvents(t *testing.T, h Harness) {
 			defer engine.Close()
 			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
 			engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
+
+			// get new session each time query executes?
+			getCtxFunc := func() (*sql.Context, error) {
+				return NewSession(harness), nil
+			}
+			err := engine.InitializeEventScheduler(getCtxFunc, eventscheduler.SchedulerOn)
+			require.NoError(t, err)
+
 			ctx := NewContextWithClient(harness, sql.Client{
 				User:    "root",
 				Address: "localhost",
 			})
-			err := engine.InitializeEventScheduler(ctx, eventscheduler.SchedulerOn)
-			require.NoError(t, err)
-
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
 					if sh.SkipQueryTest(statement) {

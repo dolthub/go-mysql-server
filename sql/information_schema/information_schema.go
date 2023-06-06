@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"io"
 	"sort"
 	"strings"
@@ -975,6 +976,133 @@ func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			c.Savepoints(),
 		})
 	}
+	return RowsToRowIter(rows...), nil
+}
+
+// eventsRowIter implements the sql.RowIter for the information_schema.EVENTS table.
+func eventsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
+	var rows []Row
+
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+	if err != nil {
+		return nil, err
+	}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
+	}
+	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
+	if err != nil {
+		return nil, err
+	}
+	sqlMode, sok := sysVal.(string)
+	if !sok {
+		return nil, ErrSystemVariableCodeFail.New("sql_mode", sysVal)
+	}
+
+	for _, db := range cat.AllDatabases(ctx) {
+		dbCollation := plan.GetDatabaseCollation(ctx, db)
+		dbName := db.Name()
+		eventDb, ok := db.(EventDatabase)
+		if ok {
+			eventDefs, err := eventDb.GetEvents(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if len(eventDefs) == 0 {
+				continue
+			}
+
+			var events []EventDetails
+			for _, event := range eventDefs {
+				parsedEvent, err := parse.Parse(ctx, event.CreateStatement)
+				if err != nil {
+					return nil, err
+				}
+				eventPlan, ok := parsedEvent.(*plan.CreateEvent)
+				if !ok {
+					return nil, ErrEventCreateStatementInvalid.New(event.CreateStatement)
+				}
+				ed, err := eventPlan.GetEventDetails(ctx, event.CreatedAt, event.LastAltered, event.LastExecuted, event.TimezoneOffset)
+				if err != nil {
+					return nil, err
+				}
+				events = append(events, ed)
+			}
+
+			for _, e := range events {
+				ed := e.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+				var at, intervalVal, intervalField, starts, ends interface{}
+				var eventType, status string
+				if ed.HasExecuteAt {
+					eventType = "ONE TIME"
+					at = ed.ExecuteAt.Format(EventDateSpaceTimeFormat)
+				} else {
+					eventType = "RECURRING"
+					interval, err := EventOnScheduleEveryIntervalFromString(ed.ExecuteEvery)
+					if err != nil {
+						return nil, err
+					}
+					intervalVal, intervalField = interval.GetIntervalValAndField()
+					starts = ed.Starts.Format(EventDateSpaceTimeFormat)
+					if ed.HasEnds {
+						ends = ed.Ends.Format(EventDateSpaceTimeFormat)
+					}
+				}
+
+				eventStatus, err := EventStatusFromString(ed.Status)
+				if err != nil {
+					return nil, err
+				}
+				switch eventStatus {
+				case EventStatus_Enable:
+					status = "ENABLED"
+				case EventStatus_Disable:
+					status = "DISABLED"
+				case EventStatus_DisableOnSlave:
+					status = "SLAVESIDE_DISABLED"
+				}
+
+				onCompPerserve := "NOT PRESERVE"
+				if ed.OnCompletionPreserve {
+					onCompPerserve = "PRESERVE"
+				}
+
+				created := ed.Created.Format(EventDateSpaceTimeFormat)
+				lastAltered := ed.LastAltered.Format(EventDateSpaceTimeFormat)
+				lastExecuted := ed.ExecuteAt.Format(EventDateSpaceTimeFormat)
+				// TODO: timezone should use e.TimezoneOffest, but is always 'SYSTEM' for now.
+
+				rows = append(rows, Row{
+					"def",                // event_catalog
+					dbName,               // event_schema
+					ed.Name,              // event_name
+					ed.Definer,           // definer
+					"SYSTEM",             // time_zone
+					"SQL",                // event_body
+					ed.Definition,        // event_definition
+					eventType,            // event_type
+					at,                   // execute_at
+					intervalVal,          // interval_value
+					intervalField,        // interval_field
+					sqlMode,              // sql_mode
+					starts,               // starts
+					ends,                 // ends
+					status,               // status
+					onCompPerserve,       // on_completion
+					created,              // created
+					lastAltered,          // last_altered
+					lastExecuted,         // last_executed
+					ed.Comment,           // event_comment
+					0,                    // originator
+					characterSetClient,   // character_set_client
+					collationConnection,  // collation_connection
+					dbCollation.String(), // database_collation
+				})
+			}
+		}
+	}
+
 	return RowsToRowIter(rows...), nil
 }
 
@@ -2166,7 +2294,7 @@ func NewInformationSchemaDatabase() Database {
 			EventsTableName: &informationSchemaTable{
 				name:   EventsTableName,
 				schema: eventsSchema,
-				reader: emptyRowIter,
+				reader: eventsRowIter,
 			},
 			FilesTableName: &informationSchemaTable{
 				name:   FilesTableName,

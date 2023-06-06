@@ -79,7 +79,7 @@ func getUsernameAndAddressFromDefiner(definer string) (string, string, error) {
 	// make sure definer has username and address information here
 	ua := strings.Split(definer, "@")
 	if len(ua) != 2 {
-		// log error
+		return "", "", fmt.Errorf("invalid definer for the event")
 	}
 
 	username := strings.TrimSuffix(strings.TrimPrefix(ua[0], "`"), "`")
@@ -124,7 +124,6 @@ func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.Event
 	// update the database stored event with LastExecuted and Status metadata update if applicable.
 	err = edb.UpdateEvent(ctx, e.eventDetails.Name, e.eventDetails)
 	if err != nil {
-		// TODO: getting event doesn't exist error because different ctx is used
 		return ended, err
 	}
 

@@ -633,22 +633,17 @@ func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]s
 // InitializeEventScheduler initializes the EventScheduler for the engine with given sql.Context
 // and the --event-scheduler status or --skip-grant-tables defined in the configuration.
 // This function also initializes the EventSchedulerNotifier of the analyzer of this engine.
-func (e *Engine) InitializeEventScheduler(eventExecutionCtx *sql.Context, status eventscheduler.SchedulerStatus) error {
-	// sanity check
-	if eventExecutionCtx == nil {
-		return fmt.Errorf("event scheduler cannot have nil context")
-	}
-
-	queryFunc := func(dbName, query, username, address string) error {
+func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, error), status eventscheduler.SchedulerStatus) error {
+	queryFunc := func(ctx *sql.Context, dbName, query, username, address string) error {
 		// the context can be set to any database and event execution needs specific database
-		eventExecutionCtx.SetCurrentDatabase(dbName)
+		ctx.SetCurrentDatabase(dbName)
 		// the event definition query needs to be run with the definer as user for the ctx?
-		eventExecutionCtx.Session.SetClient(sql.Client{User: username, Address: address})
-		sch, iter, err := e.Query(eventExecutionCtx, query)
+		ctx.Session.SetClient(sql.Client{User: username, Address: address})
+		sch, iter, err := e.Query(ctx, query)
 		if err != nil {
 			return err
 		}
-		_, err = sql.RowIterToRows(eventExecutionCtx, sch, iter)
+		_, err = sql.RowIterToRows(ctx, sch, iter)
 		if err != nil {
 			return err
 		}
@@ -656,7 +651,7 @@ func (e *Engine) InitializeEventScheduler(eventExecutionCtx *sql.Context, status
 	}
 
 	var err error
-	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, eventExecutionCtx, status, queryFunc)
+	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctxGetterFunc, status, queryFunc)
 	if err != nil {
 		return err
 	}

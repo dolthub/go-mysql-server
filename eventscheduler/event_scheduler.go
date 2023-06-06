@@ -53,16 +53,26 @@ type EventScheduler struct {
 // creating eventExecutor with empty events list. The enabled events will be loaded into the eventExecutor
 // if the EventScheduler status is 'ON' or undefined. The runQueryFunc is used to run the event definition during
 // event execution.
-func InitEventScheduler(a *analyzer.Analyzer, bgt *sql.BackgroundThreads, ctx *sql.Context, status SchedulerStatus, runQueryFunc func(dbName, query, username, address string) error) (*EventScheduler, error) {
+func InitEventScheduler(
+	a *analyzer.Analyzer,
+	bgt *sql.BackgroundThreads,
+	getSqlCtxFunc func() (*sql.Context, error),
+	status SchedulerStatus,
+	runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error,
+) (*EventScheduler, error) {
 	var es = &EventScheduler{
 		status:   status,
-		executor: newEventExecutor(bgt, ctx, runQueryFunc),
+		executor: newEventExecutor(bgt, getSqlCtxFunc, runQueryFunc),
 	}
 
 	// If the EventSchedulerStatus is set to ON, then load enabled
 	// events and start executing events on schedule.
 	if es.status == SchedulerOn {
-		err := es.loadEventsAndStartEventExecutor(a, ctx)
+		ctx, err := getSqlCtxFunc()
+		if err != nil {
+			return nil, err
+		}
+		err = es.loadEventsAndStartEventExecutor(a, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -156,10 +166,7 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
-	err := es.executor.addEvent(ctx, edb, details)
-	if err != nil {
-		// TODO: log error
-	}
+	es.executor.addEvent(ctx, edb, details)
 }
 
 // UpdateEvent implements sql.EventSchedulerNotifier interface.
@@ -168,10 +175,7 @@ func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, o
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
-	err := es.executor.updateEvent(ctx, edb, orgEventName, details)
-	if err != nil {
-		// TODO: log error
-	}
+	es.executor.updateEvent(ctx, edb, orgEventName, details)
 }
 
 // RemoveEvent implements sql.EventSchedulerNotifier interface.
