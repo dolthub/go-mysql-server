@@ -569,7 +569,6 @@ var JSONTableScriptTests = []ScriptTest{
 			},
 		},
 	},
-
 	{
 		Name:        "test DEFAULT ON EMPTY",
 		SetUpScript: []string{},
@@ -595,7 +594,6 @@ var JSONTableScriptTests = []ScriptTest{
 			},
 		},
 	},
-
 	{
 		Name:        "test ERROR ON ERROR",
 		SetUpScript: []string{},
@@ -612,16 +610,12 @@ var JSONTableScriptTests = []ScriptTest{
 			},
 		},
 	},
-
 	{
 		Name:        "test ERROR ON EMPTY",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON EMPTY)) as jt;",
-				Expected: []sql.Row{
-					{123},
-				},
 				ExpectedErrStr: "missing value for JSON_TABLE column 'c1'",
 			},
 			{
@@ -630,7 +624,40 @@ var JSONTableScriptTests = []ScriptTest{
 			},
 		},
 	},
-
+	{
+		Name: "test NESTED simple",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS(a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$'))) AS jt;",
+				Expected: []sql.Row{
+					{1, float64(11)},
+					{1, float64(111)},
+					{2, float64(22)},
+					{2, float64(222)},
+				},
+			},
+			{
+				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS( a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$', b2 INT PATH '$'))) AS jt;",
+				Expected: []sql.Row{
+					{1, float64(11), float64(11)},
+					{1, float64(111), float64(111)},
+					{2, float64(22), float64(22)},
+					{2, float64(222), float64(222)},
+				},
+			},
+		},
+	},
+	{
+		Name:        "test NESTED NESTED",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{},
+	},
+	{
+		Name:        "test NESTED siblings",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{},
+	},
 	{
 		Name:        "test combinations of options",
 		SetUpScript: []string{},

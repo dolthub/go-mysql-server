@@ -274,9 +274,8 @@ func (c *jsonTableCol) LoadData(obj interface{}) {
 }
 
 func (c *jsonTableCol) Reset() {
+	c.data, c.err = nil, nil
 	c.finished = false
-	c.data = nil
-	c.err = nil
 	for _, col := range c.cols {
 		col.Reset()
 	}
@@ -331,6 +330,7 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		return sql.Row{val}, nil
 	}
 
+	// this block should probably be merged with the one above, but I'm afraid of breaking all my exists tests
 	// when nested, we expect a slice of objects
 	if len(c.cols) == 0 && c.nested {
 		if pass || c.finished {
@@ -358,6 +358,8 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 	if c.data == nil {
 		c.LoadData(obj)
 	}
+
+	// TODO: sibling logic needed here for more deeply nested schemas
 
 	// TODO: determine when to pass
 	var row sql.Row
