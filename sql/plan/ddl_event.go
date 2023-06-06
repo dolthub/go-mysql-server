@@ -583,6 +583,11 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		}
 	}
 
+	// make sure to notify the EventSchedulerStatus before dropping the event in the database
+	if d.notifier != nil {
+		d.notifier.RemoveEvent(eventDb.Name(), d.EventName)
+	}
+
 	err := eventDb.DropEvent(ctx, d.EventName)
 	if d.IfExists && sql.ErrEventDoesNotExist.Is(err) {
 		ctx.Session.Warn(&sql.Warning{
@@ -592,11 +597,6 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		})
 	} else if err != nil {
 		return nil, err
-	}
-
-	// make sure to notify the EventSchedulerStatus after dropping the event in the database
-	if d.notifier != nil {
-		d.notifier.RemoveEvent(eventDb.Name(), d.EventName)
 	}
 
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil

@@ -445,6 +445,10 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				a.eventDetails.Status = sql.EventStatus_Disable.String()
 			} else {
 				// If event status was set to ENABLE and ON COMPLETION NOT PRESERVE, it gets dropped.
+				// make sure to notify the EventSchedulerStatus before dropping the event in the database
+				if a.notifier != nil {
+					a.notifier.RemoveEvent(a.eventDb.Name(), a.originalName)
+				}
 				err := a.eventDb.DropEvent(ctx, a.originalName)
 				if err != nil {
 					return nil, err

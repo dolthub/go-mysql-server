@@ -186,13 +186,13 @@ func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, detai
 	newEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details)
 	if err != nil {
 		ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, details.Name)
-	} else if !created {
-		return
-	} else {
-		// If Starts is set to current_timestamp or not set, then executeEvent the event once and update last executed At.
-		if newEvent.eventDetails.Created.Sub(newEvent.eventDetails.Starts).Abs().Seconds() <= 0.4 {
+	} else if created {
+		newDetails := newEvent.eventDetails
+		// if STARTS is set to current_timestamp or not set,
+		// then executeEvent the event once and update lastExecuted.
+		if newDetails.Created.Sub(newDetails.Starts).Seconds() <= 0.0000001 {
 			// after execution, the event is added to the list if applicable (if the event is not ended)
-			err = ee.executeEventAndUpdateListIfApplicable(ctx, newEvent, newEvent.eventDetails.Created)
+			err = ee.executeEventAndUpdateListIfApplicable(ctx, newEvent, newDetails.Created)
 			if err != nil {
 				ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, details.Name)
 				return
@@ -200,8 +200,8 @@ func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, detai
 		} else {
 			ee.list.add(newEvent)
 		}
-		return
 	}
+	return
 }
 
 // updateEvent removes the event from enabled events list if it exists. If the updated event status
@@ -224,6 +224,7 @@ func (ee *eventExecutor) updateEvent(ctx *sql.Context, edb sql.EventDatabase, or
 	if err != nil {
 		return
 	} else if created {
+		newDetails := newUpdatedEvent.eventDetails
 		// if the event being updated is currently running,
 		// then do not re-add the event to the list after execution
 		if s, ok := ee.runningEventsStatus.getStatus(origEventKeyName); ok && s {
@@ -231,11 +232,11 @@ func (ee *eventExecutor) updateEvent(ctx *sql.Context, edb sql.EventDatabase, or
 		}
 
 		// if STARTS is set to current_timestamp or not set,
-		// then executeEvent the event once and update last executed At.
-		if details.LastAltered.Sub(details.Starts).Abs().Seconds() <= 1 {
-			err = ee.executeEventAndUpdateListIfApplicable(ctx, newUpdatedEvent, newUpdatedEvent.eventDetails.LastAltered)
+		// then executeEvent the event once and update lastExecuted.
+		if newDetails.LastAltered.Sub(newDetails.Starts).Seconds() <= 0.0000001 {
+			err = ee.executeEventAndUpdateListIfApplicable(ctx, newUpdatedEvent, newDetails.LastAltered)
 			if err != nil {
-				ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, details.Name)
+				ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, newDetails.Name)
 				return
 			}
 		} else {

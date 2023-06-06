@@ -652,8 +652,8 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 		}
 	}
 
+	// make sure to notify the EventSchedulerStatus before dropping the database
 	if n.Notifier != nil {
-		// tests without defined context, the event scheduler will be nil
 		n.Notifier.RemoveSchemaEvents(n.DbName)
 	}
 
