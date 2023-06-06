@@ -15,11 +15,10 @@
 package analyzer
 
 import (
-	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/memo"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
@@ -222,7 +221,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 // appropriate execution plan among options added to an expression group.
 func addLookupJoins(m *memo.Memo) error {
 	var aliases = make(TableAliases)
-	return dfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var right *memo.ExprGroup
 		var join *memo.JoinBase
 		switch e := e.(type) {
@@ -316,6 +315,8 @@ func addLookupJoins(m *memo.Memo) error {
 
 // denormIdxExprs replaces the native table name in index
 // expression strings with the aliased name.
+// TODO: this is unstable while periods in Index.Expressions()
+// table identifiers are ambiguous
 func denormIdxExprs(table string, idx sql.Index) []string {
 	denormExpr := make([]string, len(idx.Expressions()))
 	for i, e := range idx.Expressions() {
@@ -387,18 +388,17 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 // https://www.researchgate.net/publication/221311318_Cost-Based_Query_Transformation_in_Oracle
 // TODO: need more elegant way to extend the number of groups, interner
 func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
-	return dfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
 			return nil
 		}
 
-		// todo this should be table ids
 		rightOutTables := semi.Right.RelProps.OutputTables()
 		var projectExpressions []*memo.ExprGroup
 		onlyEquality := true
 		for _, f := range semi.Filter {
-			_ = dfsScalar(f, func(e memo.ScalarExpr) error {
+			_ = memo.DfsScalar(f, func(e memo.ScalarExpr) error {
 				switch e := e.(type) {
 				case *memo.ColRef:
 					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
@@ -407,7 +407,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
 				default:
 					onlyEquality = false
-					return HaltErr
+					return memo.HaltErr
 				}
 				return nil
 			})
@@ -453,7 +453,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 // convertAntiToLeftJoin adds left join alternatives for anti join
 // ANTI_JOIN(left, right) => PROJECT(left sch) -> FILTER(right attr IS NULL) -> LEFT_JOIN(left, right)
 func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
-	return dfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		anti, ok := e.(*memo.AntiJoin)
 		if !ok {
 			return nil
@@ -464,7 +464,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 		var nullify []sql.Expression
 		onlyEquality := true
 		for _, f := range anti.Filter {
-			_ = dfsScalar(f, func(e memo.ScalarExpr) error {
+			_ = memo.DfsScalar(f, func(e memo.ScalarExpr) error {
 				switch e := e.(type) {
 				case *memo.ColRef:
 					if rightOutTables.Contains(int(memo.TableIdForSource(e.Table))) {
@@ -474,7 +474,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 				case *memo.Literal, *memo.And, *memo.Or, *memo.Equal, *memo.Arithmetic, *memo.Bindvar:
 				default:
 					onlyEquality = false
-					return HaltErr
+					return memo.HaltErr
 				}
 				return nil
 			})
@@ -522,7 +522,7 @@ func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
 // the join attributes of the left side are provably unique.
 func addRightSemiJoins(m *memo.Memo) error {
 	var aliases = make(TableAliases)
-	return dfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
 			return nil
@@ -548,7 +548,7 @@ func addRightSemiJoins(m *memo.Memo) error {
 
 			var projectExpressions []*memo.ExprGroup
 			for _, e := range keyExprs {
-				dfsScalar(e, func(e memo.ScalarExpr) error {
+				memo.DfsScalar(e, func(e memo.ScalarExpr) error {
 					if c, ok := e.(*memo.ColRef); ok {
 						projectExpressions = append(projectExpressions, c.Group())
 					}
@@ -641,79 +641,8 @@ func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAli
 	return attributeSource, indexes, nil
 }
 
-var HaltErr = errors.New("halt dfs")
-
-// dfsRel runs a callback |cb| on all execution plans in the memo expression
-// group. An expression group is defined by 1) a set of child expression
-// groups that serve as logical inputs to this operator, and 2) a set of logically
-// equivalent plans for executing this expression group's operator. We recursively
-// walk to expression group leaves, and then traverse every execution plan in leaf
-// groups before working upwards back to the root group. Returning a HaltErr
-// short circuits the walk.
-func dfsRel(grp *memo.ExprGroup, cb func(rel memo.RelExpr) error) error {
-	seen := make(map[memo.GroupId]struct{})
-	err := dfsRelHelper(grp, seen, cb)
-	if errors.Is(err, HaltErr) {
-		return nil
-	}
-	return err
-}
-
-func dfsRelHelper(grp *memo.ExprGroup, seen map[memo.GroupId]struct{}, cb func(rel memo.RelExpr) error) error {
-	if _, ok := seen[grp.Id]; ok {
-		return nil
-	} else {
-		seen[grp.Id] = struct{}{}
-	}
-	n := grp.First
-	for n != nil {
-		for _, c := range n.Children() {
-			err := dfsRelHelper(c, seen, cb)
-			if err != nil {
-				return err
-			}
-		}
-		err := cb(n)
-		if err != nil {
-			return err
-		}
-		n = n.Next()
-	}
-	return nil
-}
-
-// dfsScalar walks scalar expression memo groups. Returning a HaltErr
-// short circuits the walk.
-func dfsScalar(e memo.ScalarExpr, cb func(e memo.ScalarExpr) error) error {
-	seen := make(map[memo.GroupId]struct{})
-	err := dfsScalarHelper(e, seen, cb)
-	if errors.Is(err, HaltErr) {
-		return nil
-	}
-	return err
-}
-
-func dfsScalarHelper(e memo.ScalarExpr, seen map[memo.GroupId]struct{}, cb func(e memo.ScalarExpr) error) error {
-	if _, ok := seen[e.Group().Id]; ok {
-		return nil
-	} else {
-		seen[e.Group().Id] = struct{}{}
-	}
-	for _, c := range e.Children() {
-		err := dfsScalarHelper(c.Scalar, seen, cb)
-		if err != nil {
-			return err
-		}
-	}
-	err := cb(e)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func addHashJoins(m *memo.Memo) error {
-	return dfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.InnerJoin, *memo.LeftJoin:
 		default:
@@ -768,7 +697,7 @@ func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 // TODO: sort-merge joins
 func addMergeJoins(m *memo.Memo) error {
 	var aliases = make(TableAliases)
-	return dfsRel(m.Root(), func(e memo.RelExpr) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var join *memo.JoinBase
 		switch e := e.(type) {
 		case *memo.InnerJoin:
@@ -829,22 +758,20 @@ func addMergeJoins(m *memo.Memo) error {
 			}
 
 			var lRef *memo.ColRef
-			dfsScalar(l.Scalar, func(e memo.ScalarExpr) error {
-				var err error
+			memo.DfsScalar(l.Scalar, func(e memo.ScalarExpr) (err error) {
 				if c, ok := e.(*memo.ColRef); ok {
 					lRef = c
-					err = HaltErr
+					return memo.HaltErr
 				}
-				return err
+				return
 			})
 			var rRef *memo.ColRef
-			dfsScalar(r.Scalar, func(e memo.ScalarExpr) error {
-				var err error
+			memo.DfsScalar(r.Scalar, func(e memo.ScalarExpr) (err error) {
 				if c, ok := e.(*memo.ColRef); ok {
 					rRef = c
-					err = HaltErr
+					return memo.HaltErr
 				}
-				return err
+				return
 			})
 
 			// check that comparer is not non-decreasing
@@ -852,11 +779,11 @@ func addMergeJoins(m *memo.Memo) error {
 				continue
 			}
 
-			lIdx := sortedIndexScanForTableCol(lIndexes, lAttrSource, lRef.Gf.Name())
+			lIdx := sortedIndexScanForTableCol(lIndexes, lAttrSource, lRef.Gf.Name(), lRef.Gf.Type())
 			if lIdx == nil {
 				continue
 			}
-			rIdx := sortedIndexScanForTableCol(rIndexes, rAttrSource, rRef.Gf.Name())
+			rIdx := sortedIndexScanForTableCol(rIndexes, rAttrSource, rRef.Gf.Name(), rRef.Gf.Type())
 			if rIdx == nil {
 				continue
 			}
@@ -893,13 +820,13 @@ func addMergeJoins(m *memo.Memo) error {
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
-func sortedIndexScanForTableCol(is []sql.Index, table, col string) *memo.IndexScan {
+func sortedIndexScanForTableCol(is []sql.Index, table, col string, typ sql.Type) *memo.IndexScan {
 	tc := fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(col))
 	for _, idx := range is {
 		if strings.ToLower(idx.Expressions()[0]) != tc {
 			continue
 		}
-		rang := sql.Range{sql.AllRangeColumnExpr(types.Null)}
+		rang := sql.Range{sql.AllRangeColumnExpr(typ)}
 		if !idx.CanSupport(rang) {
 			return nil
 		}
@@ -926,7 +853,7 @@ func sortedIndexScanForTableCol(is []sql.Index, table, col string) *memo.IndexSc
 // TODO: stricter monotonic check
 func isWeaklyMonotonic(e memo.ScalarExpr) bool {
 	isMonotonic := true
-	dfsScalar(e, func(e memo.ScalarExpr) error {
+	memo.DfsScalar(e, func(e memo.ScalarExpr) error {
 		switch e := e.(type) {
 		case *memo.Arithmetic:
 			if e.Op == memo.ArithTypeMinus {
@@ -939,7 +866,7 @@ func isWeaklyMonotonic(e memo.ScalarExpr) bool {
 			isMonotonic = false
 		}
 		if !isMonotonic {
-			return HaltErr
+			return memo.HaltErr
 		}
 		return nil
 	})

@@ -35,7 +35,6 @@ type relProps struct {
 
 	Distinct distinctOp
 	limit    sql.Expression
-	filter   sql.Expression
 }
 
 func newRelProps(rel RelExpr) *relProps {

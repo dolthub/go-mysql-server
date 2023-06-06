@@ -295,8 +295,6 @@ func (j *JoinNode) Schema() sql.Schema {
 		return append(makeNullable(j.left.Schema()), j.right.Schema()...)
 	case j.Op.IsFullOuter():
 		return append(makeNullable(j.left.Schema()), makeNullable(j.right.Schema())...)
-	//case j.Op.IsRightPartial():
-	//	return j.Right().Schema()
 	case j.Op.IsPartial():
 		return j.Left().Schema()
 	case j.Op.IsNatural():

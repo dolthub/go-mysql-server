@@ -270,6 +270,8 @@ func (m *Memo) memoizeComparison(comp expression.Comparer) *ExprGroup {
 		scalar = &Leq{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
 	case *expression.Regexp:
 		scalar = &Regexp{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
+	case *expression.InTuple:
+		scalar = &InTuple{scalarBase: &scalarBase{}, Left: lGrp, Right: rGrp}
 	default:
 		panic(fmt.Sprintf("unsupported type: %T", e))
 	}

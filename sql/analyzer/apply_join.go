@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
 
 	"github.com/dolthub/go-mysql-server/sql"

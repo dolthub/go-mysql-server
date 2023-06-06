@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -101,14 +100,6 @@ func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) {
 func (e *ExprGroup) finalize(node sql.Node, input sql.Schema) (sql.Node, error) {
 	props := e.RelProps
 	var result = node
-	if props.filter != nil {
-		sch := append(input, node.Schema()...)
-		filter, _, err := fixidx.FixFieldIndexes(e.m.scope, nil, sch, props.filter)
-		if err != nil {
-			return nil, err
-		}
-		result = plan.NewFilter(filter, result)
-	}
 	if props.limit != nil {
 		result = plan.NewLimit(props.limit, result)
 	}

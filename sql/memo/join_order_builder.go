@@ -198,7 +198,7 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 		rightEdges:    rightE,
 	}
 
-	filters := splitConjunction(n.JoinCond())
+	filters := expression.SplitConjunction(n.JoinCond())
 	filterGrps := make([]ScalarExpr, len(filters))
 	for i, f := range filters {
 		grp := j.m.MemoizeScalar(f)
@@ -223,54 +223,12 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 	return group
 }
 
-// splitConjunction breaks AND expressions into their left and right parts, recursively
-func splitConjunction(expr sql.Expression) []sql.Expression {
-	if expr == nil {
-		return nil
-	}
-	and, ok := expr.(*expression.And)
-	if !ok {
-		return []sql.Expression{expr}
-	}
-
-	return append(
-		splitConjunction(and.Left),
-		splitConjunction(and.Right)...,
-	)
-}
-
 func (j *joinOrderBuilder) buildFilter(n *plan.Filter) (vertexSet, edgeSet, *ExprGroup) {
 	// memoize child
 	childV, childE, childGrp := j.populateSubgraph(n.Child)
 	// memoize filter components for simple filters
-	filters := splitConjunction(n.Expression)
-	var equals []*expression.Equals
-	for _, f := range filters {
-		hideFilter := false
-		switch f := f.(type) {
-		case *expression.Equals:
-			switch f.Left().(type) {
-			case *expression.Literal, *expression.GetField:
-			default:
-				hideFilter = true
-			}
-			switch f.Right().(type) {
-			case *expression.Literal, *expression.GetField:
-			default:
-				hideFilter = true
-			}
-			equals = append(equals, f)
-		default:
-			hideFilter = true
-		}
-		if hideFilter {
-			// TODO could use a subset, hide others
-			childGrp.RelProps.filter = n.Expression
-			return childV, childE, childGrp
-		}
-	}
 	var filterGroups []*ExprGroup
-	for _, f := range equals {
+	for _, f := range expression.SplitConjunction(n.Expression) {
 		filterGroups = append(filterGroups, j.m.MemoizeScalar(f))
 	}
 
