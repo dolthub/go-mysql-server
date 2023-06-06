@@ -268,6 +268,11 @@ type jsonTableCol struct {
 	finished bool // exhausted all rows in data
 }
 
+func (c *jsonTableCol) Finish() {
+	c.data, c.err = nil, nil
+	c.finished = true
+}
+
 func (c *jsonTableCol) LoadData(obj interface{}) {
 	c.data, c.err = jsonpath.JsonPathLookup(obj, c.path)
 	c.pos = 0
@@ -290,98 +295,82 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		return sql.Row{c.pos}, nil
 	}
 
-	if len(c.cols) == 0 && !c.nested {
-		if c.opts.forOrd {
-			c.pos++
-			return sql.Row{c.pos}, nil
-		}
-
-		val, err := jsonpath.JsonPathLookup(obj, c.path)
-
-		if c.opts.exists {
-			if err != nil {
-				return sql.Row{0}, nil
-			} else {
-				return sql.Row{1}, nil
-			}
-		}
-
-		// key error means empty
-		if err != nil {
-			if c.opts.errOnEmp {
-				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.opts.name)
-			}
-			val = c.opts.defEmpVal
-		}
-
-		val, _, err = c.opts.typ.Convert(val)
-		if err != nil {
-			if c.opts.errOnErr {
-				return nil, err
-			}
-			val, _, err = c.opts.typ.Convert(c.opts.defErrVal)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return sql.Row{val}, nil
+	if c.data == nil {
+		c.LoadData(obj)
 	}
 
-	// this block should probably be merged with the one above, but I'm afraid of breaking all my exists tests
-	// when nested, we expect a slice of objects
-	if len(c.cols) == 0 && c.nested {
+	// nested column should recurse
+	if len(c.cols) != 0 {
+		var row sql.Row
+		for _, col := range c.cols {
+			rowPart, err := col.Next(c.data, false)
+			if err != nil {
+				return nil, err
+			}
+			row = append(row, rowPart...)
+		}
+
+		// check if all nested columns are finished
+		c.finished = true
+		for _, col := range c.cols {
+			if !col.finished {
+				c.finished = false
+				break
+			}
+		}
+
+		return row, nil
+	}
+
+	if c.opts.exists {
+		if c.err != nil {
+			return sql.Row{0}, nil
+		} else {
+			return sql.Row{1}, nil
+		}
+	}
+
+	// key error means empty
+	var val interface{}
+	if c.nested {
 		if pass || c.finished {
 			return sql.Row{nil}, nil
 		}
-
-		if c.data == nil {
-			c.LoadData(obj)
-		}
-
-		var val interface{}
 		switch data := c.data.(type) {
 		case []interface{}:
 			val = data[c.pos]
 			c.pos++
 			if c.pos >= len(data) {
-				c.data, c.err = nil, nil
-				c.finished = true
+				c.Finish()
 			}
 		case interface{}:
 			val = data
-			c.finished = true
+			c.Finish()
 		}
-
-		return sql.Row{val}, nil
+		// TODO: deal with empty here?
+	} else {
+		if c.err != nil {
+			if c.opts.errOnEmp {
+				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.opts.name)
+			}
+			val = c.opts.defEmpVal
+		} else {
+			val = c.data
+		}
+		c.Finish()
 	}
 
-	// we have nested columns, so we must recurse
-	if c.data == nil {
-		c.LoadData(obj)
-	}
-
-	// TODO: sibling logic needed here for more deeply nested schemas
-
-	// TODO: determine when to pass
-	var row sql.Row
-	for _, col := range c.cols {
-		rowPart, err := col.Next(c.data, false)
+	val, _, err := c.opts.typ.Convert(val)
+	if err != nil {
+		if c.opts.errOnErr {
+			return nil, err
+		}
+		val, _, err = c.opts.typ.Convert(c.opts.defErrVal)
 		if err != nil {
 			return nil, err
 		}
-		row = append(row, rowPart...)
 	}
-
-	// check if all nested columns are finished
-	c.finished = true
-	for _, col := range c.cols {
-		if !col.finished {
-			c.finished = false
-			break
-		}
-	}
-
-	return row, nil
+	return sql.Row{val}, nil
 }
 
 type jsonTableRowIter struct {

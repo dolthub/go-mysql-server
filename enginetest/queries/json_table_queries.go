@@ -631,26 +631,26 @@ var JSONTableScriptTests = []ScriptTest{
 			{
 				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS(a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$'))) AS jt;",
 				Expected: []sql.Row{
-					{1, float64(11)},
-					{1, float64(111)},
-					{2, float64(22)},
-					{2, float64(222)},
+					{1, 11},
+					{1, 111},
+					{2, 22},
+					{2, 222},
 				},
 			},
 			{
 				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS( a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$', b2 INT PATH '$'))) AS jt;",
 				Expected: []sql.Row{
-					{1, float64(11), float64(11)},
-					{1, float64(111), float64(111)},
-					{2, float64(22), float64(22)},
-					{2, float64(222), float64(222)},
+					{1, 11, 11},
+					{1, 111, 111},
+					{2, 22, 22},
+					{2, 222, 222},
 				},
 			},
 			{
 				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS( a INT PATH '$.a', NESTED PATH '$.b' COLUMNS (b1 INT PATH '$[0]', b2 INT PATH '$[1]'))) AS jt;",
 				Expected: []sql.Row{
-					{1, float64(11), float64(111)},
-					{2, float64(22), float64(222)},
+					{1, 11, 111},
+					{2, 22, 222},
 				},
 			},
 		},
