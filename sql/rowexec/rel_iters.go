@@ -244,83 +244,128 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 }
 
 type jsonTableColOpts struct {
-	paths           []string
-	exists          bool
-	defaultErrorVal interface{}
-	defaultEmptyVal interface{}
-	errorOnError    bool
-	errorOnEmpty    bool
+	name 	  string
+	typ       sql.Type
+	forOrd    bool
+	exists    bool
+	defErrVal interface{}
+	defEmpVal interface{}
+	errOnErr  bool
+	errOnEmp  bool
 }
 
-type jsonTableRowIter struct {
-	schema  sql.Schema
-	data    []interface{}
-	pos     int
-	colOpts []jsonTableColOpts
+// jsonTableCol represents a column in a json table.
+// TODO: this wastes memory for each column
+type jsonTableCol struct {
+	path string
+	opts *jsonTableColOpts
+	cols []*jsonTableCol // nested columns
+
+	nested bool // if this column is nested
+	data   interface{}
+	err    error
+	pos    int
 }
 
-var _ sql.RowIter = &jsonTableRowIter{}
+// Next returns the next row for this column.
+// TODO: this is actually an iterator
+// TODO: we should have an iterator over a []]columns aka a schema
+func (c *jsonTableCol) Next(obj interface{}) (sql.Row, error) {
+	if c.opts.forOrd {
+		c.pos++
+		return sql.Row{c.pos}, nil
+	}
 
-func jsonPathLookups(obj interface{}, paths []string) (interface{}, error) {
-	res := obj
-	var err error
-	for _, path := range paths {
-		res, err = jsonpath.JsonPathLookup(res, path)
+	// TODO: just don't use data if not nested?
+	if c.data == nil {
+		val, err := jsonpath.JsonPathLookup(obj, c.path)
+		c.data = val
+		c.err = err
+		c.pos = 0
+	}
+
+	if len(c.cols) == 0 {
+		opt := c.opts
+
+		var val interface{}
+		if c.nested {
+			if data, ok := c.data.([]interface{}); ok {
+				val = data[c.pos]
+				c.pos++
+			}
+		} else {
+			val = c.data
+			c.data = nil
+		}
+
+		if opt.exists {
+			if c.err != nil {
+				return sql.Row{0}, nil
+			} else {
+				return sql.Row{1}, nil
+			}
+		}
+
+		// key error means empty
+		if c.err != nil {
+			if opt.errOnEmp {
+				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", opt.name)
+			}
+			val = opt.defEmpVal
+		}
+
+		var err error
+		val, _, err = opt.typ.Convert(val)
+		if err != nil {
+			if opt.errOnErr {
+				return nil, err
+			}
+			val, _, err = opt.typ.Convert(opt.defErrVal)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return sql.Row{val}, nil
+	}
+
+	var row sql.Row
+	for _, col := range c.cols {
+		val, err := jsonpath.JsonPathLookup(obj, col.path)
 		if err != nil {
 			return nil, err
 		}
+		rowPart, err := col.Next(val)
+		if err != nil {
+			return nil, err
+		}
+		row = append(row, rowPart...)
 	}
-	return res, nil
+	return row, nil
 }
+
+type jsonTableRowIter struct {
+	data    []interface{}
+	pos     int
+	cols    []*jsonTableCol
+}
+
+var _ sql.RowIter = &jsonTableRowIter{}
 
 func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if j.pos >= len(j.data) {
 		return nil, io.EOF
 	}
 	obj := j.data[j.pos]
-	j.pos++
+	j.pos++ // TODO: need to increment this differently based on NESTED
 
-	row := make(sql.Row, len(j.schema))
-	for i := range j.schema {
-		// for ordinal column
-		if j.schema[i].AutoIncrement {
-			row[i] = j.pos
-			continue
-		}
-		opt := j.colOpts[i]
-
-		// TODO: handle sibling nested?
-		val, err := jsonPathLookups(obj, opt.paths)
-		if opt.exists {
-			if err != nil {
-				row[i] = 0
-			} else {
-				row[i] = 1
-			}
-			continue
-		}
-
-		// key error means empty
+	var row sql.Row
+	for _, col := range j.cols {
+		rowPart, err := col.Next(obj)
 		if err != nil {
-			if opt.errorOnEmpty {
-				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", j.schema[i].Name)
-			}
-			val = opt.defaultEmptyVal
+			return nil, err
 		}
-
-		value, _, err := j.schema[i].Type.Convert(val)
-		if err != nil {
-			if opt.errorOnError {
-				return nil, err
-			}
-			value, _, err = j.schema[i].Type.Convert(opt.defaultErrorVal)
-			if err != nil {
-				return nil, err
-			}
-		}
-		row[i] = value
+		row = append(row, rowPart...)
 	}
-
 	return row, nil
 }
 

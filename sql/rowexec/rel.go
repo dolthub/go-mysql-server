@@ -122,6 +122,43 @@ func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row)
 	return sql.NewSpanIter(span, &offsetIter{offset, it}), nil
 }
 
+func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row, isNested bool) ([]*jsonTableCol, error) {
+	var cols []*jsonTableCol
+	for _, col := range jtCols {
+		var err error
+		var defErrVal, defEmpVal interface{}
+		defErrVal, err = col.Opts.DefErrorVal.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		defEmpVal, err = col.Opts.DefEmptyVal.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		var innerCols []*jsonTableCol
+		innerCols, err = b.buildJSONTableCols(ctx, col.Cols, row, true)
+		if err != nil {
+			return nil, err
+		}
+		cols = append(cols, &jsonTableCol{
+			path:   col.Path,
+			opts:   &jsonTableColOpts{
+				name:      col.Opts.Name,
+				typ:       col.Opts.Type,
+				forOrd:    col.Opts.ForOrd,
+				exists:    col.Opts.Exists,
+				defErrVal: defErrVal,
+				defEmpVal: defEmpVal,
+				errOnErr:  col.Opts.ErrorOnError,
+				errOnEmp:  col.Opts.ErrorOnEmpty,
+			},
+			cols:   innerCols,
+			nested: isNested,
+		})
+	}
+	return cols, nil
+}
+
 func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sql.Row) (sql.RowIter, error) {
 	// data must evaluate to JSON string
 	data, err := n.DataExpr.Eval(ctx, row)
@@ -137,10 +174,10 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	}
 
 	var jsonData interface{}
-	if err := json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
 		return nil, err
 	}
-	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, n.Path)
+	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, n.RootPath)
 	if err != nil {
 		jsonPathData = []interface{}{}
 	}
@@ -148,30 +185,11 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 		jsonPathData = []interface{}{jsonPathData}
 	}
 
-	colOpts := make([]jsonTableColOpts, len(n.ColOpts))
-	for i, col := range n.ColOpts {
-		var defaultErrorVal, defaultEmptyVal interface{}
-		defaultErrorVal, err = col.DefaultErrorVal.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		defaultEmptyVal, err = col.DefaultEmptyVal.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		colOpts[i].paths = col.Path
-		colOpts[i].exists = col.Exists
-		colOpts[i].defaultErrorVal = defaultErrorVal
-		colOpts[i].defaultEmptyVal = defaultEmptyVal
-		colOpts[i].errorOnError = col.ErrorOnError
-		colOpts[i].errorOnEmpty = col.ErrorOnEmpty
-	}
+	cols, err := b.buildJSONTableCols(ctx, n.Cols, row, false)
 
 	return &jsonTableRowIter{
-		schema:  n.Schema(),
-		data:    jsonPathData.([]interface{}),
-		colOpts: colOpts,
+		data: jsonPathData.([]interface{}),
+		cols: cols,
 	}, nil
 }
 
