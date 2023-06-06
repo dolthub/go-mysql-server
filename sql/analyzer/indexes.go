@@ -249,7 +249,7 @@ func getIndexes(
 			}
 		}
 	case *expression.And:
-		exprs := splitConjunction(e)
+		exprs := expression.SplitConjunction(e)
 
 		// First treat the AND expression as a match on >= 2 columns (for keys that span multiple columns)
 		multiColumnIndexes, unusedExprs, err := getMultiColumnIndexes(ctx, exprs, ia, tableAliases)

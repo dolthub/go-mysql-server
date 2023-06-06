@@ -3,6 +3,8 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -12,18 +14,18 @@ import (
 // fixupAuxiliaryExprs calls FixUpExpressions on Sort and Project nodes
 // to compensate for the new name resolution expression overloading GetField
 // indexes.
-func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n.(type) {
 		case *plan.Sort, *plan.Project:
-			return FixFieldIndexesForExpressions(a, n, scope)
+			return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
 		default:
 			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n.(type) {
 	case *plan.DeleteFrom, *plan.InsertInto:
 		return n, transform.SameTree, nil
@@ -46,7 +48,7 @@ func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, 
 			switch n := n.(type) {
 			case *plan.Filter:
 				child = n.Child
-				filters = splitConjunction(n.Expression)
+				filters = expression.SplitConjunction(n.Expression)
 			default:
 			}
 
@@ -54,7 +56,7 @@ func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, 
 				return n, transform.SameTree, nil
 			}
 
-			subScope := scope.newScopeFromSubqueryExpression(n)
+			subScope := scope.NewScopeFromSubqueryExpression(n)
 			var matches []applyJoin
 			var newFilters []sql.Expression
 
@@ -132,7 +134,7 @@ func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, 
 					rightF = tup
 				}
 
-				q, _, err := FixFieldIndexesForNode(a, scope, subq.Query)
+				q, _, err := fixidx.FixFieldIndexesForNode(a.LogFn(), scope, subq.Query)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -151,7 +153,7 @@ func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, 
 				if err != nil {
 					return n, transform.SameTree, err
 				}
-				filter, _, err = FixFieldIndexes(scope, a, condSch, filter)
+				filter, _, err = fixidx.FixFieldIndexes(scope, a.LogFn(), condSch, filter)
 				if err != nil {
 					return n, transform.SameTree, err
 				}

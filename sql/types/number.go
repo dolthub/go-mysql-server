@@ -190,11 +190,11 @@ func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
 	default:
 		ca, _, err := convertToInt64(t, a)
 		if err != nil {
-			return 0, err
+			ca = 0
 		}
 		cb, _, err := convertToInt64(t, b)
 		if err != nil {
-			return 0, err
+			cb = 0
 		}
 
 		if ca == cb {

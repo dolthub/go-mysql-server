@@ -28,7 +28,7 @@ const MaxBytePrefix = 3072
 
 // validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
 // at execution time, and should be moved here over time.
-func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
 		return n, transform.SameTree, nil
@@ -56,7 +56,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return n, transform.SameTree, nil
 }
 
-func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var sch sql.Schema
 	var indexes []string
 	var keyedColumns map[string]bool

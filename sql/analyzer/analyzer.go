@@ -27,6 +27,8 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
+	"github.com/dolthub/go-mysql-server/sql/memo"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -264,8 +266,8 @@ func (ab *Builder) Build() *Analyzer {
 		Batches:      batches,
 		Catalog:      NewCatalog(ab.provider),
 		Parallelism:  ab.parallelism,
-		Coster:       NewDefaultCoster(),
-		Carder:       NewDefaultCarder(),
+		Coster:       memo.NewDefaultCoster(),
+		Carder:       memo.NewDefaultCarder(),
 		ExecBuilder:  rowexec.DefaultBuilder,
 	}
 }
@@ -290,9 +292,9 @@ type Analyzer struct {
 	// replication messages (e.g. "start replica").
 	BinlogReplicaController binlogreplication.BinlogReplicaController
 	// Carder estimates the number of rows returned by a relational expression.
-	Carder Carder
+	Carder memo.Carder
 	// Coster estimates the incremental CPU+memory cost for execution operators.
-	Coster Coster
+	Coster memo.Coster
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
 	ExecBuilder sql.NodeExecBuilder
 }
@@ -356,6 +358,19 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 			log.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
 		} else {
 			log.Infof(msg, args...)
+		}
+	}
+}
+
+func (a *Analyzer) LogFn() func(string, ...any) {
+	return func(msg string, args ...interface{}) {
+		if a != nil && a.Debug {
+			if len(a.contextStack) > 0 {
+				ctx := strings.Join(a.contextStack, "/")
+				log.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
+			} else {
+				log.Infof(msg, args...)
+			}
 		}
 	}
 }
@@ -504,7 +519,7 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
-func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *plan.Scope) (sql.Node, error) {
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector)
 	return n, err
 }
@@ -540,7 +555,7 @@ func prePrepareRuleSelector(id RuleId) bool {
 }
 
 // PrepareQuery applies a partial set of transformations to a prepared plan.
-func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+func (a *Analyzer) PrepareQuery(ctx *sql.Context, n sql.Node, scope *plan.Scope) (sql.Node, error) {
 	ctx.Version = sql.VersionStable
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, prePrepareRuleSelector)
 	return n, err
@@ -625,12 +640,12 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 }
 
 // AnalyzePrepared runs a partial rule set against a previously analyzed plan.
-func (a *Analyzer) AnalyzePrepared(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func (a *Analyzer) AnalyzePrepared(ctx *sql.Context, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	ctx.Version = sql.VersionStable
 	return a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, postPrepareRuleSelector)
 }
 
-func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *plan.Scope, until string, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	stop := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if stop {
@@ -649,7 +664,7 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 // cause infinite recursion. This limit is high but arbitrary
 const maxBatchRecursion = 100
 
-func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan.Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze")
 
 	if scope.RecursionDepth() > maxBatchRecursion {
@@ -691,7 +706,7 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 	return n, allSame, err
 }
 
-func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *plan.Scope, startAt string, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	start := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if desc == startAt {

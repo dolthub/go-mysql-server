@@ -23,7 +23,7 @@ import (
 // loadInfoSchema is a grab-bag analyzer function to assign information schema info
 // to any plan nodes that need it, like various SHOW *  statements. The logic for
 // each node is necessarily pretty custom.
-func loadInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func loadInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch x := n.(type) {
 		case *plan.ShowIndexes:

@@ -26,7 +26,7 @@ import (
 // validatePrivileges verifies the given statement (node n) by checking that the calling user has the necessary privileges
 // to execute it.
 // TODO: add the remaining statements that interact with the grant tables
-func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	mysqlDb := a.Catalog.MySQLDb
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,

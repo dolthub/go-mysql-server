@@ -173,7 +173,7 @@ func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row 
 			n.Lookup = make(map[interface{}][]sql.Row)
 			for _, row := range res {
 				// TODO: Maybe do not put nil stuff in here.
-				key, err := n.GetHashKey(ctx, n.Inner, row)
+				key, err := n.GetHashKey(ctx, n.RightEntryKey, row)
 				if err != nil {
 					return nil, err
 				}
@@ -185,7 +185,7 @@ func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row 
 		}
 	}
 	if n.Lookup != nil {
-		key, err := n.GetHashKey(ctx, n.Outer, row)
+		key, err := n.GetHashKey(ctx, n.LeftProbeKey, row)
 		if err != nil {
 			return nil, err
 		}

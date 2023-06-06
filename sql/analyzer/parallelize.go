@@ -44,7 +44,7 @@ var (
 	SingleThreadFeatureFlag = false
 )
 
-func shouldParallelize(node sql.Node, scope *Scope) bool {
+func shouldParallelize(node sql.Node, scope *plan.Scope) bool {
 	if SingleThreadFeatureFlag {
 		return false
 	}
@@ -62,7 +62,7 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	return !plan.IsNoRowNode(node)
 }
 
-func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if a.Parallelism <= 1 || !node.Resolved() {
 		return node, transform.SameTree, nil
 	}
