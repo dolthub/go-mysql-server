@@ -192,10 +192,13 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 
 	cols, err := b.buildJSONTableCols(ctx, n.Cols, row, false)
 
-	return &jsonTableRowIter{
+	rowIter := &jsonTableRowIter{
 		data: jsonPathData.([]interface{}),
 		cols: cols,
-	}, nil
+	}
+	rowIter.NextSibling() // set to first sibling
+
+	return rowIter, nil
 }
 
 func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row sql.Row) (sql.RowIter, error) {

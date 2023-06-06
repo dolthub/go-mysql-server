@@ -46,4 +46,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
+replace github.com/dolthub/vitess => ../vitess
+
 go 1.19

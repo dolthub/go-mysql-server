@@ -282,8 +282,6 @@ func (c *jsonTableCol) Reset() {
 }
 
 // Next returns the next row for this column.
-// TODO: this is actually an iterator
-// TODO: we should have an iterator over a []]columns aka a schema
 func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 	if c.opts != nil && c.opts.forOrd {
 		if !pass {
@@ -293,15 +291,14 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 	}
 
 	if len(c.cols) == 0 && !c.nested {
-		opt := c.opts
-		if opt.forOrd {
+		if c.opts.forOrd {
 			c.pos++
 			return sql.Row{c.pos}, nil
 		}
 
 		val, err := jsonpath.JsonPathLookup(obj, c.path)
 
-		if opt.exists {
+		if c.opts.exists {
 			if err != nil {
 				return sql.Row{0}, nil
 			} else {
@@ -311,18 +308,18 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 
 		// key error means empty
 		if err != nil {
-			if opt.errOnEmp {
-				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", opt.name)
+			if c.opts.errOnEmp {
+				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.opts.name)
 			}
-			val = opt.defEmpVal
+			val = c.opts.defEmpVal
 		}
 
-		val, _, err = opt.typ.Convert(val)
+		val, _, err = c.opts.typ.Convert(val)
 		if err != nil {
-			if opt.errOnErr {
+			if c.opts.errOnErr {
 				return nil, err
 			}
-			val, _, err = opt.typ.Convert(opt.defErrVal)
+			val, _, err = c.opts.typ.Convert(c.opts.defErrVal)
 			if err != nil {
 				return nil, err
 			}
@@ -342,13 +339,17 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		}
 
 		var val interface{}
-		if v, ok := c.data.([]interface{}); ok {
-			val = v[c.pos]
+		switch data := c.data.(type) {
+		case []interface{}:
+			val = data[c.pos]
 			c.pos++
-			if c.pos >= len(v) {
+			if c.pos >= len(data) {
 				c.data, c.err = nil, nil
 				c.finished = true
 			}
+		case interface{}:
+			val = data
+			c.finished = true
 		}
 
 		return sql.Row{val}, nil
@@ -392,54 +393,53 @@ type jsonTableRowIter struct {
 
 var _ sql.RowIter = &jsonTableRowIter{}
 
+// NextSibling starts at the current sibling and moves to the next unfinished sibling
+// if there are no more unfinished siblings, it resets to the first sibling
+func (j *jsonTableRowIter) NextSibling() bool {
+	reset := true
+	for i := j.currSib; i < len(j.cols); i++ {
+		if !j.cols[i].finished && len(j.cols[i].cols) != 0 {
+			j.currSib = i
+			reset = false
+			break
+		}
+	}
+	if reset {
+		j.currSib = 0
+		for i := 0; i < len(j.cols); i++ {
+			if len(j.cols[i].cols) != 0 {
+				j.currSib = i
+				break
+			}
+		}
+	}
+	return reset
+}
+
+func (j *jsonTableRowIter) ResetAll() {
+	for _, col := range j.cols {
+		col.Reset()
+	}
+}
+
 func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if j.pos >= len(j.data) {
 		return nil, io.EOF
 	}
 	obj := j.data[j.pos]
 
-	sibIdx := 0
 	var row sql.Row
-	for _, col := range j.cols {
-		rowPart, err := col.Next(obj, sibIdx != j.currSib)
+	for i, col := range j.cols {
+		pass := len(col.cols) != 0 && i != j.currSib
+		rowPart, err := col.Next(obj, pass)
 		if err != nil {
 			return nil, err
 		}
 		row = append(row, rowPart...)
-		if len(col.cols) != 0 {
-			sibIdx++
-		}
-	}
-	j.currSib++
-
-	// TODO: store this before iterating
-	numSibs := 0
-	for _, col := range j.cols {
-		if len(col.cols) != 0 {
-			numSibs++
-		}
 	}
 
-	if j.currSib >= numSibs {
-		j.currSib = 0
-	}
-
-	// only increment pos iff all nested columns are done
-	finished := true
-	for _, col := range j.cols {
-		if len(col.cols) == 0 {
-			continue
-		}
-		if !col.finished {
-			finished = false
-			break
-		}
-	}
-
-	if finished {
-		for _, col := range j.cols {
-			col.Reset()
-		}
+	if j.NextSibling() {
+		j.ResetAll()
 		j.pos++
 	}
 
