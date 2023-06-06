@@ -172,7 +172,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	err = convertAntiToLeftJoin(a, m)
+	err = convertAntiToLeftJoin(m)
 	if err != nil {
 		return nil, err
 	}
@@ -452,7 +452,7 @@ func convertSemiToInnerJoin(a *Analyzer, m *memo.Memo) error {
 
 // convertAntiToLeftJoin adds left join alternatives for anti join
 // ANTI_JOIN(left, right) => PROJECT(left sch) -> FILTER(right attr IS NULL) -> LEFT_JOIN(left, right)
-func convertAntiToLeftJoin(a *Analyzer, m *memo.Memo) error {
+func convertAntiToLeftJoin(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		anti, ok := e.(*memo.AntiJoin)
 		if !ok {

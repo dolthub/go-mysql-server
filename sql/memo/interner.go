@@ -76,6 +76,20 @@ func internExpr(e ScalarExpr) uint64 {
 		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
 	case *And:
 		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+	case *InTuple:
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+	case *Tuple:
+
+		h.Write([]byte(fmt.Sprintf("%d", e.ExprId())))
+		for _, c := range e.Values {
+			h.Write([]byte(fmt.Sprintf("%d", internExpr(c.Scalar))))
+		}
+	case *Regexp:
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+	case *Not:
+		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), internExpr(e.Child.Scalar))))
+	default:
+		return 0
 	}
 	return h.Sum64()
 }
