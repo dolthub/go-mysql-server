@@ -283,6 +283,7 @@ func (c *jsonTableCol) Next(obj interface{}) (sql.Row, error) {
 		c.err = err
 		c.pos = 0
 	}
+	
 
 	if len(c.cols) == 0 {
 		opt := c.opts
