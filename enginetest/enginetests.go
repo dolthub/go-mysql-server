@@ -35,7 +35,6 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
-	"github.com/dolthub/go-mysql-server/eventscheduler"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -1844,59 +1843,8 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 }
 
 func TestEvents(t *testing.T, h Harness) {
-	harness, ok := h.(ClientHarness)
-	if !ok {
-		t.Skip("Cannot run TestEvents as the harness must implement ClientHarness")
-	}
-	harness.Setup(setup.MydbData)
-
 	for _, script := range queries.EventTests {
-		t.Run(script.Name, func(t *testing.T) {
-			engine := mustNewEngine(t, harness)
-			defer engine.Close()
-			engine.Analyzer.Catalog.MySQLDb.AddRootAccount()
-			engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
-
-			// get new session each time query executes?
-			getCtxFunc := func() (*sql.Context, error) {
-				return NewSession(harness), nil
-			}
-			err := engine.InitializeEventScheduler(getCtxFunc, eventscheduler.SchedulerOn)
-			require.NoError(t, err)
-
-			ctx := NewContextWithClient(harness, sql.Client{
-				User:    "root",
-				Address: "localhost",
-			})
-			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				RunQueryWithContext(t, engine, harness, ctx, statement)
-			}
-
-			for _, assertion := range script.Assertions {
-				if assertion.ExpectedErr != nil {
-					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, assertion.ExpectedErr)
-					})
-				} else if assertion.ExpectedErrStr != "" {
-					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
-					})
-				} else if assertion.ExpectedWarning != 0 {
-					AssertWarningAndTestQuery(t, engine, nil, h, assertion.Query,
-						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
-						assertion.ExpectedWarningMessageSubstring, false)
-				} else {
-					t.Run(assertion.Query, func(t *testing.T) {
-						TestQueryWithContext(t, ctx, engine, harness, assertion.Query, assertion.Expected, nil, nil)
-					})
-				}
-			}
-		})
+		TestScript(t, h, script)
 	}
 }
 

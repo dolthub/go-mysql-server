@@ -15,41 +15,20 @@
 package queries
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ServerEventTest is used to define a test on the user and privilege systems. These tests always have the root
-// account available, and the root account is used with any queries in the SetUpScript.
-type ServerEventTest struct {
-	Name        string
-	SetUpScript []string
-	Assertions  []ServerEvenTestAssertion
-}
-
-// ServerEvenTestAssertion is within a ServerEventTest to assert functionality.
-type ServerEvenTestAssertion struct {
-	Query                           string
-	Expected                        []sql.Row
-	ExpectedErr                     *errors.Kind
-	ExpectedErrStr                  string
-	ExpectedWarning                 int
-	ExpectedWarningsCount           int
-	ExpectedWarningMessageSubstring string
-}
-
 // EventTests tests any EVENT related behavior. Events have at least one timestamp value (AT/STARTS/ENDS), so to test
 // SHOW EVENTS and SHOW CREATE EVENTS statements, some tests have those timestamps defined in 2037.
-var EventTests = []ServerEventTest{
+var EventTests = []ScriptTest{
 	{
 		Name: "EVENTs with ON SCHEDULE EVERY",
 		SetUpScript: []string{
 			"USE mydb;",
 			"CREATE TABLE totals (num int);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE EVENT event_with_starts_and_ends ON SCHEDULE EVERY '1:2' MINUTE_SECOND STARTS CURRENT_TIMESTAMP + INTERVAL 1 HOUR ENDS CURRENT_TIMESTAMP + INTERVAL 1 DAY DISABLE DO INSERT INTO totals VALUES (1);",
 				Expected: []sql.Row{{types.OkResult{}}},
@@ -88,7 +67,7 @@ var EventTests = []ServerEventTest{
 			"USE mydb;",
 			"CREATE TABLE totals (num int);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE EVENT event2 ON SCHEDULE AT '38-01-16 12:2:3.' + INTERVAL 1 DAY ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (100);",
 				Expected: []sql.Row{{types.OkResult{}}},
@@ -106,7 +85,7 @@ var EventTests = []ServerEventTest{
 			"CREATE TABLE totals (num int);",
 			"CREATE EVENT event1 ON SCHEDULE AT '2038-01-15 23:59:00' + INTERVAL 2 DAY DISABLE DO INSERT INTO totals VALUES (100);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW EVENTS;",
 				Expected: []sql.Row{{"mydb", "event1", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
@@ -128,7 +107,7 @@ var EventTests = []ServerEventTest{
 			"CREATE TABLE totals (num int);",
 			"CREATE EVENT my_event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CREATE EVENT my_event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 				ExpectedErr: sql.ErrEventAlreadyExists,
@@ -194,7 +173,7 @@ var EventTests = []ServerEventTest{
 			"CREATE TABLE totals (num int);",
 			"CREATE EVENT my_event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "ALTER EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION NOT PRESERVE;",
 				ExpectedErrStr: "Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was not changed. Specify a time in the future.",
@@ -223,7 +202,7 @@ var EventTests = []ServerEventTest{
 			"CREATE TABLE totals (num int);",
 			"CREATE EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER EVENT my_event1 ENABLE;",
 				Expected: []sql.Row{{types.OkResult{}}},
@@ -241,7 +220,7 @@ var EventTests = []ServerEventTest{
 			"CREATE TABLE totals (num int);",
 			"CREATE EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER EVENT my_event1 ON COMPLETION NOT PRESERVE;",
 				Expected: []sql.Row{{types.OkResult{}}},
@@ -271,7 +250,7 @@ var EventTests = []ServerEventTest{
 			"CREATE TABLE totals (num int);",
 			"CREATE EVENT my_event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE;",
 				Expected: []sql.Row{{types.OkResult{}}},
@@ -297,7 +276,7 @@ var EventTests = []ServerEventTest{
 			"CREATE TABLE totals (num int);",
 			"CREATE EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1);",
 		},
-		Assertions: []ServerEvenTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER EVENT my_event1 RENAME TO newEventName;",
 				Expected: []sql.Row{{types.OkResult{}}},
