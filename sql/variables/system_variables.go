@@ -22,7 +22,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1983,6 +1982,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("read_rnd_buffer_size", 1, 2147483647, false),
 		Default:           int64(262144),
 	},
+	"regexp_buffer_size": {
+		Name:              "regexp_buffer_size",
+		Scope:             sql.SystemVariableScope_Global,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemUintType("regexp_buffer_size", 0, 67108864), // 64MB upperbound
+		Default:           uint64(524288),
+	},
 	"regexp_stack_limit": {
 		Name:              "regexp_stack_limit",
 		Scope:             sql.SystemVariableScope_Global,
@@ -2485,9 +2492,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("system_time_zone"),
-		ValueFunction: func() (interface{}, error) {
-			return gmstime.SystemTimezoneOffset(), nil
-		},
+		Default:           "UTC",
 	},
 	"table_definition_cache": {
 		Name:              "table_definition_cache",

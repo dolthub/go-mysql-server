@@ -26,7 +26,7 @@ import (
 )
 
 // applyIndexesFromOuterScope attempts to apply an indexed lookup to a subquery using variables from the outer scope.
-// It functions similarly to pushdownFilters, in that it applies an index to a table. But unlike that function, it must
+// It functions similarly to generateIndexScans, in that it applies an index to a table. But unlike that function, it must
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
 func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {

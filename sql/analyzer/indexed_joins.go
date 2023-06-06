@@ -28,9 +28,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// constructJoinPlan finds an optimal table ordering and access plan
+// optimizeJoins finds an optimal table ordering and access plan
 // for the tables in the query.
-func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("construct_join_plan")
 	defer span.End()
 
@@ -494,7 +494,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		rightGrp := m.MemoizeProject(nil, anti.Right, projectExpressions)
 
 		// join is a new group
-		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, plan.JoinTypeLeftOuter, anti.Filter)
+		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, plan.JoinTypeLeftOuterExcludeNulls, anti.Filter)
 
 		// drop null projected columns on right table
 		nullFilters := make([]*memo.ExprGroup, len(nullify))

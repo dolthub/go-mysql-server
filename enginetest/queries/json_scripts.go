@@ -333,6 +333,57 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "JSON -> and ->> operator support",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 JSON, col2 JSON);",
+			`insert into t values (1, JSON_OBJECT('key1', 1, 'key2', '"abc"'), JSON_ARRAY(3,10,5,17,"z"));`,
+			`insert into t values (2, JSON_OBJECT('key1', 100, 'key2', '"ghi"'), JSON_ARRAY(3,10,5,17,JSON_ARRAY(22,"y",66)));`,
+			`CREATE TABLE t2 (i INT PRIMARY KEY, j JSON);`,
+			`INSERT INTO t2 VALUES (0, '{"a": "123", "outer": {"inner": 456}}');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `select col1->'$.key1' from t;`,
+				Expected: []sql.Row{{types.MustJSON("1")}, {types.MustJSON("100")}},
+			},
+			{
+				Query:    `select col1->>'$.key2' from t;`,
+				Expected: []sql.Row{{"abc"}, {"ghi"}},
+			},
+			{
+				Query:    `select pk, col1 from t where col1->'$.key1' = 1;`,
+				Expected: []sql.Row{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
+			},
+			{
+				Query:    `select pk, col1 from t where col1->>'$.key2' = 'abc';`,
+				Expected: []sql.Row{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
+			},
+			{
+				Query:    `select * from t where col1->>'$.key2' = 'def';`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT col2->"$[3]", col2->>"$[3]" FROM t;`,
+				Expected: []sql.Row{{types.MustJSON("17"), "17"}, {types.MustJSON("17"), "17"}},
+			},
+			{
+				Query:    `SELECT col2->"$[4]", col2->>"$[4]" FROM t where pk=1;`,
+				Expected: []sql.Row{{types.MustJSON("\"z\""), "z"}},
+			},
+			{
+				// TODO: JSON_Extract doesn't seem able to handle a JSON path expression that references a nested array
+				//       This errors with "object is not Slice"
+				Skip:     true,
+				Query:    `SELECT col2->>"$[3]", col2->>"$[4][0]" FROM t;`,
+				Expected: []sql.Row{{17, 44}, {17, "y"}},
+			},
+			{
+				Query:    `SELECT k->"$.inner" from (SELECT j->"$.outer" AS k FROM t2) sq;`,
+				Expected: []sql.Row{{types.MustJSON("456")}},
+			},
+		},
+	},
 	// from https://dev.mysql.com/doc/refman/8.0/en/json.html#json-converting-between-types:~:text=information%20and%20examples.-,Comparison%20and%20Ordering%20of%20JSON%20Values,-JSON%20values%20can
 	{
 		Name: "json is ordered correctly",
@@ -472,6 +523,16 @@ var JsonScripts = []ScriptTest{
 					{2, nil},
 					{3, nil},
 					{4, nil},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select pk, json_extract(col1, '$.items.*') from t order by pk;",
+				Expected: []sql.Row{
+					{1, types.MustJSON("[1, 2]")},
+					{2, nil},
+					{3, nil},
+					{4, types.MustJSON("null")},
 					{5, nil},
 				},
 			},

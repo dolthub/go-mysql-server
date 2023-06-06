@@ -184,7 +184,6 @@ func hoistExistSubqueries(scope *plan.Scope, a *Analyzer, filter *plan.Filter, s
 		default:
 			return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 		}
-
 	}
 
 	if same {

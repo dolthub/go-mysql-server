@@ -130,15 +130,11 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				ErrKind: sql.ErrCharSetNotYetImplementedTemp,
 			},
 			{
-				Query:    "CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf16);",
+				Query:    "CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4);",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:   "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf16_croatian_ci;",
-				ErrKind: sql.ErrCollationNotYetImplementedTemp,
-			},
-			{
-				Query:   "CREATE TABLE test4 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16_croatian_ci);",
+				Query:   "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf8mb4_sr_latn_0900_as_cs;",
 				ErrKind: sql.ErrCollationNotYetImplementedTemp,
 			},
 		},

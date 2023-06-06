@@ -32,6 +32,8 @@ type LoadData struct {
 	Fields                  *sqlparser.Fields
 	Lines                   *sqlparser.Lines
 	IgnoreNum               int64
+	IsIgnore                bool
+	IsReplace               bool
 	FieldsTerminatedByDelim string
 	FieldsEnclosedByDelim   string
 	FieldsOptionallyDelim   bool
@@ -158,7 +160,9 @@ func (*LoadData) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 7
 }
 
-func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64) *LoadData {
+func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64, ignoreOrReplace string) *LoadData {
+	isReplace := ignoreOrReplace == sqlparser.ReplaceStr
+	isIgnore := ignoreOrReplace == sqlparser.IgnoreStr || (local && !isReplace)
 	return &LoadData{
 		Local:                   local,
 		File:                    file,
@@ -167,6 +171,8 @@ func NewLoadData(local bool, file string, destination sql.Node, cols []string, f
 		Fields:                  fields,
 		Lines:                   lines,
 		IgnoreNum:               ignoreNum,
+		IsIgnore:                isIgnore,
+		IsReplace:               isReplace,
 		LinesStartingByDelim:    defaultLinesStartingByDelim,
 		LinesTerminatedByDelim:  defaultLinesTerminatedByDelim,
 		FieldsEnclosedByDelim:   defaultFieldsEnclosedByDelim,

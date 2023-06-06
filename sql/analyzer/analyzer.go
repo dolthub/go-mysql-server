@@ -589,7 +589,7 @@ func postPrepareRuleSelector(id RuleId) bool {
 		flattenAggregationExprsId,
 
 		// OnceAfterDefault
-		pushdownFiltersId,
+		generateIndexScansId,
 		subqueryIndexesId,
 		stripTableNameInDefaultsId,
 		resolvePreparedInsertId,
@@ -626,7 +626,7 @@ func postPrepareInsertSourceRuleSelector(id RuleId) bool {
 		qualifyColumnsId,
 		resolveColumnsId,
 
-		pushdownFiltersId,
+		generateIndexScansId,
 		subqueryIndexesId,
 		resolveInsertRowsId,
 

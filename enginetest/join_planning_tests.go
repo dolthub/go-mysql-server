@@ -250,18 +250,18 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash, plan.JoinTypeLeftOuterHash, plan.JoinTypeLeftOuterMerge},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterMerge},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				q:     "select * from xy where x != (select r from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// anti join will be cross-join-right, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
 			{
@@ -276,25 +276,25 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCross, plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCross, plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
 				// cast prevents scope merging
 				q:     "select * from xy where x != (select cast(r as signed) from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// order by will be discarded
 				q:     "select * from xy where x != (select r from rs where r = 1 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// limit prevents scope merging
 				q:     "select * from xy where x != (select r from rs where r = 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -666,7 +666,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select a from empty_tbl) order by x",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
 					{1, 0},
@@ -676,7 +676,7 @@ where u in (select * from rec);`,
 			},
 			{
 				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv) order by x",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
 					{3, 3},
@@ -684,7 +684,7 @@ where u in (select * from rec);`,
 			},
 			{
 				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x not in (select v from uv where u = 2) order by x",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
 					{1, 0},
@@ -693,7 +693,7 @@ where u in (select * from rec);`,
 			},
 			{
 				q:     "select /*+ HASH_JOIN(xy,scalarSubq0) */ * from xy where x != (select v from uv where u = 2) order by x",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHash},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp: []sql.Row{
 					{0, 2},
 					{1, 0},

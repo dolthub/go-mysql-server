@@ -124,8 +124,6 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *plan.Scope) 
 			}
 
 			// (2) evaluate if expression hoistable
-			var innerRef bool
-			var maybeAlias bool
 			if inScope == nil {
 				var err error
 				inScope, err = getTableAliases(n, nil)
@@ -133,23 +131,10 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *plan.Scope) 
 					return n, transform.SameTree, err
 				}
 			}
-			transform.InspectExpr(e, func(e sql.Expression) bool {
-				gf, _ := e.(*expression.GetField)
-				if gf == nil {
-					return false
-				}
-				tName := strings.ToLower(gf.Table())
-				if tName == "" {
-					maybeAlias = true
-				} else if _, ok := inScope[tName]; ok {
-					innerRef = true
-				}
-
-				return innerRef && maybeAlias
-			})
+			foundRef, foundAlias := exprRefsTableSet(e, inScope)
 
 			// (3) bucket filter into parent or current scope
-			if !innerRef && !maybeAlias {
+			if !foundRef && !foundAlias {
 				// belongs in outer scope
 				hoistFilters = append(hoistFilters, e)
 			} else {
@@ -171,4 +156,30 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *plan.Scope) 
 		return ret, transform.NewTree, nil
 	})
 	return ret, same, hoistFilters, err
+}
+
+// exprRefsTableSet returns |foundRef| if the expression directly
+// references a table in the table set, and |foundAlias| if the expression
+// references an alias that is scope-ambiguous.
+func exprRefsTableSet(e sql.Expression, tables TableAliases) (foundRef, foundAlias bool) {
+	transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			tName := strings.ToLower(e.Table())
+			if tName == "" {
+				foundAlias = true
+			} else if _, ok := tables[tName]; ok {
+				foundRef = true
+			}
+		case *plan.Subquery:
+			transform.InspectExpressions(e.Query, func(e sql.Expression) bool {
+				subqRef, subqAlias := exprRefsTableSet(e, tables)
+				foundRef = foundRef || subqRef
+				foundAlias = foundAlias || subqAlias
+				return foundRef && foundAlias
+			})
+		}
+		return foundRef && foundAlias
+	})
+	return
 }
