@@ -244,7 +244,7 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 }
 
 type jsonTableColOpts struct {
-	name 	  string
+	name      string
 	typ       sql.Type
 	forOrd    bool
 	exists    bool
@@ -283,7 +283,6 @@ func (c *jsonTableCol) Next(obj interface{}) (sql.Row, error) {
 		c.err = err
 		c.pos = 0
 	}
-	
 
 	if len(c.cols) == 0 {
 		opt := c.opts
@@ -345,9 +344,9 @@ func (c *jsonTableCol) Next(obj interface{}) (sql.Row, error) {
 }
 
 type jsonTableRowIter struct {
-	data    []interface{}
-	pos     int
-	cols    []*jsonTableCol
+	data []interface{}
+	pos  int
+	cols []*jsonTableCol
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}

@@ -141,8 +141,8 @@ func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTab
 			return nil, err
 		}
 		cols = append(cols, &jsonTableCol{
-			path:   col.Path,
-			opts:   &jsonTableColOpts{
+			path: col.Path,
+			opts: &jsonTableColOpts{
 				name:      col.Opts.Name,
 				typ:       col.Opts.Type,
 				forOrd:    col.Opts.ForOrd,

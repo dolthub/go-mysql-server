@@ -97,7 +97,7 @@ func (t *JSONTable) FlattenSchema(cols []JSONTableCol) sql.Schema {
 	for _, col := range cols {
 		if len(col.Cols) == 0 {
 			sch = append(sch, &sql.Column{
-				Source: 	   t.TableName,
+				Source:        t.TableName,
 				Name:          col.Opts.Name,
 				Type:          col.Opts.Type,
 				AutoIncrement: col.Opts.ForOrd,
