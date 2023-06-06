@@ -332,32 +332,26 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 
 	// key error means empty
 	var val interface{}
-	if c.nested {
-		if pass || c.finished {
-			return sql.Row{nil}, nil
+	if pass || (c.finished && c.nested) {
+		return sql.Row{nil}, nil
+	}
+	if c.err != nil {
+		if c.opts.errOnEmp {
+			return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.opts.name)
 		}
-		switch data := c.data.(type) {
-		case []interface{}:
+		val = c.opts.defEmpVal
+	} else {
+		data, ok := c.data.([]interface{})
+		if c.nested && ok {
 			val = data[c.pos]
 			c.pos++
 			if c.pos >= len(data) {
 				c.Finish()
 			}
-		case interface{}:
-			val = data
-			c.Finish()
-		}
-		// TODO: deal with empty here?
-	} else {
-		if c.err != nil {
-			if c.opts.errOnEmp {
-				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.opts.name)
-			}
-			val = c.opts.defEmpVal
 		} else {
 			val = c.data
+			c.Finish()
 		}
-		c.Finish()
 	}
 
 	val, _, err := c.opts.typ.Convert(val)
