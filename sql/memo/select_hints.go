@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package memo
 
 import (
 	"fmt"
@@ -39,7 +39,6 @@ const (
 	HintTypeAntiJoin                                 // ANTI_JOIN
 	HintTypeInnerJoin                                // INNER_JOIN
 	HintTypeLeftOuterLookupJoin                      // LEFT_OUTER_LOOKUP_JOIN
-	HintTypeRightSemiLookupJoin                      // RIGHT_SEMI_LOOKUP_JOIN
 	HintTypeNoIndexConditionPushDown                 // NO_ICP
 )
 
@@ -77,8 +76,6 @@ func newHint(joinTyp string, args []string) Hint {
 		typ = HintTypeAntiJoin
 	case "left_outer_lookup_join":
 		typ = HintTypeLeftOuterLookupJoin
-	case "right_semi_lookup_join":
-		typ = HintTypeRightSemiLookupJoin
 	case "no_icp":
 		typ = HintTypeNoIndexConditionPushDown
 	default:
@@ -107,8 +104,6 @@ func (h Hint) valid() bool {
 		return len(h.Args) == 2
 	case HintTypeLeftOuterLookupJoin:
 		return len(h.Args) == 2
-	case HintTypeRightSemiLookupJoin:
-		return len(h.Args) == 2
 	case HintTypeNoIndexConditionPushDown:
 		return len(h.Args) == 0
 	case HintTypeUnknown:
@@ -121,7 +116,7 @@ func (h Hint) valid() bool {
 var hintRegex = regexp.MustCompile("([a-z_]+)(\\(([^\\(]+)\\))?")
 var argsRegex = regexp.MustCompile("\\s*([^\\(,\\s]+)\\s*[,\\s*]?")
 
-func extractJoinHint(n *plan.JoinNode) []Hint {
+func ExtractJoinHint(n *plan.JoinNode) []Hint {
 	if n.Comment() != "" {
 		return parseJoinHints(n.Comment())
 	}
@@ -169,7 +164,7 @@ func parseJoinHints(comment string) []Hint {
 type joinOrderHint struct {
 	groups map[GroupId]vertexSet
 	order  map[GroupId]uint64
-	// cache avoids recomputing satisfiability for a relExpr
+	// cache avoids recomputing satisfiability for a RelExpr
 	cache map[uint64]bool
 }
 
@@ -181,10 +176,10 @@ func newJoinOrderHint(order map[GroupId]uint64) *joinOrderHint {
 	}
 }
 
-func (o joinOrderHint) build(grp *exprGroup) {
+func (o joinOrderHint) build(grp *ExprGroup) {
 	s := vertexSet(0)
 	// convert global table order to hint order
-	inputs := grp.relProps.InputTables()
+	inputs := grp.RelProps.InputTables()
 	for idx, ok := inputs.Next(0); ok; idx, ok = inputs.Next(idx + 1) {
 		if i, ok := o.order[GroupId(idx+1)]; ok {
 			// If group |idx+1| is a dependency of this table, record the
@@ -192,10 +187,10 @@ func (o joinOrderHint) build(grp *exprGroup) {
 			s = s.add(i)
 		}
 	}
-	o.groups[grp.id] = s
+	o.groups[grp.Id] = s
 
 	for _, g := range grp.children() {
-		if _, ok := o.groups[g.id]; !ok {
+		if _, ok := o.groups[g.Id]; !ok {
 			// avoid duplicate work
 			o.build(g)
 		}
@@ -213,27 +208,29 @@ func (o joinOrderHint) isValid() bool {
 	return true
 }
 
-func (o joinOrderHint) satisfiesOrder(n relExpr) bool {
+func (o joinOrderHint) satisfiesOrder(n RelExpr) bool {
 	key := relKey(n)
 	if v, ok := o.cache[key]; ok {
 		return v
 	}
 	switch n := n.(type) {
-	case joinRel:
-		base := n.joinPrivate()
-		if !base.left.hintOk || !base.right.hintOk {
+	case JoinRel:
+		base := n.JoinPrivate()
+		if !base.Left.HintOk || !base.Right.HintOk {
 			return false
 		}
-		l := o.groups[base.left.id]
-		r := o.groups[base.right.id]
+		l := o.groups[base.Left.Id]
+		r := o.groups[base.Right.Id]
 		valid := o.isOrdered(l, r) && o.isCompact(l, r)
 		o.cache[key] = valid
 		return valid
-	case *project:
-		return o.satisfiesOrder(n.child.best)
-	case *distinct:
-		return o.satisfiesOrder(n.child.best)
-	case sourceRel:
+	case *Project:
+		return o.satisfiesOrder(n.Child.Best)
+	case *Distinct:
+		return o.satisfiesOrder(n.Child.Best)
+	case *Filter:
+		return o.satisfiesOrder(n.Child.Best)
+	case SourceRel:
 		return true
 	default:
 		panic(fmt.Sprintf("missed type: %T", n))
@@ -283,8 +280,8 @@ type joinOpHint struct {
 func newjoinOpHint(op HintType, left, right GroupId) joinOpHint {
 	return joinOpHint{
 		op: op,
-		l:  sql.NewFastIntSet(int(tableIdForSource(left))),
-		r:  sql.NewFastIntSet(int(tableIdForSource(right))),
+		l:  sql.NewFastIntSet(int(TableIdForSource(left))),
+		r:  sql.NewFastIntSet(int(TableIdForSource(right))),
 	}
 }
 
@@ -293,21 +290,25 @@ func (o joinOpHint) isValid() bool {
 	return !o.l.Empty() && !o.r.Empty()
 }
 
-// depsMatch returns whether this relExpr is a join with left/right inputs
+// depsMatch returns whether this RelExpr is a join with left/right inputs
 // that match the join hint.
 //
 // Ex: LOOKUP_JOIN(a,b) will match [a] x [b], and [ac] x [b],
 // but not [ab] x [c].
-func (o joinOpHint) depsMatch(n relExpr) bool {
+func (o joinOpHint) depsMatch(n RelExpr) bool {
 	switch n := n.(type) {
-	case *project:
-		return o.depsMatch(n.child.best)
-	case joinRel:
-		base := n.joinPrivate()
-		if o.l.Intersects(base.left.relProps.InputTables()) &&
-			o.r.Intersects(base.right.relProps.InputTables()) ||
-			o.l.Intersects(base.right.relProps.InputTables()) &&
-				o.r.Intersects(base.left.relProps.InputTables()) {
+	case *Project:
+		return o.depsMatch(n.Child.Best)
+	case *Filter:
+		return o.depsMatch(n.Child.Best)
+	case *Distinct:
+		return o.depsMatch(n.Child.Best)
+	case JoinRel:
+		base := n.JoinPrivate()
+		if o.l.Intersects(base.Left.RelProps.InputTables()) &&
+			o.r.Intersects(base.Right.RelProps.InputTables()) ||
+			o.l.Intersects(base.Right.RelProps.InputTables()) &&
+				o.r.Intersects(base.Left.RelProps.InputTables()) {
 			// currently permit the permutation of the hint
 			return true
 		}
@@ -317,36 +318,38 @@ func (o joinOpHint) depsMatch(n relExpr) bool {
 	return false
 }
 
-// typeMatches returns whether a relExpr implements
+// typeMatches returns whether a RelExpr implements
 // the physical join operator indicated by the hint.
 //
 // Ex: MERGE_JOIN(a,b) will match merge and left-merge joins.
-func (o joinOpHint) typeMatches(n relExpr) bool {
+func (o joinOpHint) typeMatches(n RelExpr) bool {
 	switch n := n.(type) {
-	case joinRel:
-		base := n.joinPrivate()
+	case JoinRel:
+		base := n.JoinPrivate()
 		switch o.op {
 		case HintTypeLookupJoin:
-			return base.op.IsLookup()
+			return base.Op.IsLookup()
 		case HintTypeMergeJoin:
-			return base.op.IsMerge()
+			return base.Op.IsMerge()
 		case HintTypeInnerJoin:
-			return !base.op.IsPhysical()
+			return !base.Op.IsPhysical()
 		case HintTypeHashJoin:
-			return base.op.IsHash()
+			return base.Op.IsHash()
 		case HintTypeSemiJoin:
-			return base.op.IsSemi() && !base.op.IsPhysical()
+			return base.Op.IsSemi() && !base.Op.IsPhysical()
 		case HintTypeAntiJoin:
-			return base.op.IsAnti() && !base.op.IsPhysical()
+			return base.Op.IsAnti() && !base.Op.IsPhysical()
 		case HintTypeLeftOuterLookupJoin:
-			return base.op == plan.JoinTypeLeftOuterLookup
-		case HintTypeRightSemiLookupJoin:
-			return base.op == plan.JoinTypeRightSemiLookup
+			return base.Op == plan.JoinTypeLeftOuterLookup
 		default:
 			return false
 		}
-	case *project:
-		return o.typeMatches(n.child.best)
+	case *Project:
+		return o.typeMatches(n.Child.Best)
+	case *Filter:
+		return o.typeMatches(n.Child.Best)
+	case *Distinct:
+		return o.typeMatches(n.Child.Best)
 	default:
 	}
 	return true
@@ -359,10 +362,10 @@ type joinHints struct {
 	order *joinOrderHint
 }
 
-// satisfiedBy returns whether a relExpr satisfies every join hint. This
+// satisfiedBy returns whether a RelExpr satisfies every join hint. This
 // is binary, an expr that satisfies most of the join hints but fails one
 // returns |false| and is subject to genpop costing.
-func (h joinHints) satisfiedBy(n relExpr) bool {
+func (h joinHints) satisfiedBy(n RelExpr) bool {
 	if h.order != nil && !h.order.satisfiesOrder(n) {
 		return false
 	}

@@ -26,7 +26,7 @@ const maxCteDepth = 5
 
 // resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 // tree with the subqueries defined in the CTEs.
-func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// TODO: recurse bottom up for all with nodes?
 	_, ok := n.(*plan.With)
 	if !ok {
@@ -36,7 +36,7 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node), 0, sel)
 }
 
-func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node, depth int, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, ctes map[string]sql.Node, depth int, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if depth > maxCteDepth {
 		return node, transform.SameTree, nil
 	}
@@ -141,7 +141,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 func stripWith(
 	ctx *sql.Context,
 	a *Analyzer,
-	scope *Scope,
+	scope *plan.Scope,
 	n sql.Node,
 	ctes map[string]sql.Node,
 	sel RuleSelector,
@@ -236,7 +236,7 @@ func schemaLength(node sql.Node) int {
 // where the CTE will be visible on the second half of the UNION. We live with
 // it for now.
 // note: MySQL appears to exhibit the same left-deep parsing limitations
-func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Union:
@@ -277,7 +277,7 @@ func hoistCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	})
 }
 
-func hoistRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func hoistRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		ta, ok := n.(*plan.TableAlias)
 		if !ok {
@@ -343,7 +343,7 @@ func resolveRecursiveCte(
 	ctx *sql.Context,
 	a *Analyzer,
 	rCte *plan.RecursiveCte,
-	scope *Scope,
+	scope *plan.Scope,
 	sel RuleSelector,
 ) (sql.Node, error) {
 	newInit, _, err := a.analyzeThroughBatch(ctx, rCte.Left(), scope, "default-rules", sel)

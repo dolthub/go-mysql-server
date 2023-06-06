@@ -142,7 +142,7 @@ func TestResolveSubqueries(t *testing.T) {
 	finalizeSubqueries := getRule(finalizeSubqueriesId)
 	runTestCases(t, ctx, testCases, a, Rule{
 		Id: -1,
-		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 			n, _, err := resolveSubqueries.Apply(ctx, a, n, scope, DefaultRuleSelector)
 			if err != nil {
 				return nil, transform.SameTree, err

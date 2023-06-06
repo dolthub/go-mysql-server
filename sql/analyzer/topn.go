@@ -23,7 +23,7 @@ import (
 
 // insertTopNNodes replaces Limit(Sort(...)) and Limit(Offset(Sort(...))) with
 // a TopN node.
-func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var updateCalcFoundRows bool
 	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if o, ok := tc.Node.(*plan.Offset); ok {

@@ -21,7 +21,7 @@ import (
 )
 
 // assignCatalog sets the catalog in the required nodes.
-func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("assign_catalog")
 	defer span.End()
 
@@ -94,7 +94,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel 
 
 // resolveAnalyzeTables verifies analyze node target tables exist, and provides
 // access to the statistics table.
-func resolveAnalyzeTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveAnalyzeTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_analyze_tables")
 	defer span.End()
 

@@ -1,49 +1,75 @@
 package support
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
-type MemoDef struct {
-	Name string
+//go:generate go run ../optgen/main.go -out ../../../sql/memo/memo.og.go -pkg memo memo
 
-	SourceType string
-
-	IsJoin bool
-	Attrs  [][2]string
-
-	IsUnary  bool
-	SkipExec bool
+type MemoExprs struct {
+	Exprs []ExprDef `yaml:"exprs"`
 }
 
-var _ GenDefs = ([]MemoDef)(nil)
+type ExprDef struct {
+	Name       string      `yaml:"name"`
+	SourceType string      `yaml:"sourceType"`
+	Join       bool        `yaml:"join"`
+	Attrs      [][2]string `yaml:"attrs"`
+	Unary      bool        `yaml:"unary"`
+	SkipExec   bool        `yaml:"skipExec"`
+	Scalar     bool        `yaml:"scalar"`
+	Binary     bool        `yaml:"binary"`
+}
+
+func DecodeMemoExprs(path string) (MemoExprs, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return MemoExprs{}, err
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(contents))
+	dec.KnownFields(true)
+	var res MemoExprs
+	return res, dec.Decode(&res)
+}
+
+var _ GenDefs = (*MemoExprs)(nil)
 
 type MemoGen struct {
-	defines []MemoDef
+	defines []ExprDef
 	w       io.Writer
 }
 
 func (g *MemoGen) Generate(defines GenDefs, w io.Writer) {
-	g.defines = defines.([]MemoDef)
+	g.defines = defines.(MemoExprs).Exprs
 
 	g.w = w
 
 	g.genImport()
 	for _, define := range g.defines {
 		g.genType(define)
-		g.genInterfaces(define)
+		if define.Scalar {
+			g.genScalarInterfaces(define)
+		} else {
+			g.genRelInterfaces(define)
+		}
 		g.genStringer(define)
-		g.genRelExprInterface(define)
 		if define.SourceType != "" {
 			g.genSourceRelInterface(define)
 		}
-		if define.IsJoin {
+		if define.Join {
 			g.genJoinRelInterface(define)
-		}
-		if define.IsUnary {
-			g.genUnaryRelInterface(define)
+		} else if define.Binary {
+			g.genBinaryGroupInterface(define)
+		} else if define.Unary {
+			g.genUnaryGroupInterface(define)
+		} else {
+			g.genChildlessGroupInterface(define)
 		}
 	}
 	g.genFormatters(g.defines)
@@ -59,134 +85,197 @@ func (g *MemoGen) genImport() {
 	fmt.Fprintf(g.w, ")\n\n")
 }
 
-func (g *MemoGen) genType(define MemoDef) {
-	fmt.Fprintf(g.w, "type %s struct {\n", define.Name)
+func (g *MemoGen) genType(define ExprDef) {
+	fmt.Fprintf(g.w, "type %s struct {\n", strings.Title(define.Name))
 	if define.SourceType != "" {
 		fmt.Fprintf(g.w, "  *relBase\n")
-		fmt.Fprintf(g.w, "  table %s\n", define.SourceType)
-	} else if define.IsJoin {
-		fmt.Fprintf(g.w, "  *joinBase\n")
-	} else if define.IsUnary {
-		fmt.Fprintf(g.w, "  *relBase\n")
-		fmt.Fprintf(g.w, "  child *exprGroup\n")
+		fmt.Fprintf(g.w, "  Table %s\n", define.SourceType)
+	} else if define.Join {
+		fmt.Fprintf(g.w, "  *JoinBase\n")
+	} else if define.Unary {
+		if define.Scalar {
+			fmt.Fprintf(g.w, "  *scalarBase\n")
+		} else {
+			fmt.Fprintf(g.w, "  *relBase\n")
+		}
+		fmt.Fprintf(g.w, "  Child *ExprGroup\n")
+	} else if define.Binary {
+		if define.Scalar {
+			fmt.Fprintf(g.w, "  *scalarBase\n")
+		} else {
+			fmt.Fprintf(g.w, "  *relBase\n")
+		}
+		fmt.Fprintf(g.w, "  Left *ExprGroup\n")
+		fmt.Fprintf(g.w, "  Right *ExprGroup\n")
+	} else if define.Scalar {
+		fmt.Fprintf(g.w, "  *scalarBase\n")
 	}
 	for _, attr := range define.Attrs {
-		fmt.Fprintf(g.w, "  %s %s\n", attr[0], attr[1])
+		fmt.Fprintf(g.w, "  %s %s\n", strings.Title(attr[0]), attr[1])
 	}
 
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genInterfaces(define MemoDef) {
-	fmt.Fprintf(g.w, "var _ relExpr = (*%s)(nil)\n", define.Name)
+func (g *MemoGen) genRelInterfaces(define ExprDef) {
+	fmt.Fprintf(g.w, "var _ RelExpr = (*%s)(nil)\n", define.Name)
 	if define.SourceType != "" {
-		fmt.Fprintf(g.w, "var _ sourceRel = (*%s)(nil)\n", define.Name)
-	} else if define.IsJoin {
-		fmt.Fprintf(g.w, "var _ joinRel = (*%s)(nil)\n", define.Name)
-	} else if define.IsUnary {
-
+		fmt.Fprintf(g.w, "var _ SourceRel = (*%s)(nil)\n", define.Name)
+	} else if define.Join {
+		fmt.Fprintf(g.w, "var _ JoinRel = (*%s)(nil)\n", define.Name)
+	} else if define.Unary || define.Binary {
 	} else {
 		panic("unreachable")
 	}
 	fmt.Fprintf(g.w, "\n")
 }
 
-func (g *MemoGen) genStringer(define MemoDef) {
+func (g *MemoGen) genScalarInterfaces(define ExprDef) {
+	fmt.Fprintf(g.w, "var _ ScalarExpr = (*%s)(nil)\n", define.Name)
+
+	fmt.Fprintf(g.w, "\n")
+
+	fmt.Fprintf(g.w, "func (r *%s) ExprId() ScalarExprId {\n", define.Name)
+	fmt.Fprintf(g.w, "  return ScalarExpr%s\n", strings.Title(define.Name))
+	fmt.Fprintf(g.w, "}\n\n")
+}
+
+func (g *MemoGen) genStringer(define ExprDef) {
 	fmt.Fprintf(g.w, "func (r *%s) String() string {\n", define.Name)
-	fmt.Fprintf(g.w, "  return formatRelExpr(r)\n")
+	fmt.Fprintf(g.w, "  return FormatExpr(r)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genRelExprInterface(define MemoDef) {
+func (g *MemoGen) genSourceRelInterface(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) Name() string {\n", define.Name)
+	fmt.Fprintf(g.w, "  return strings.ToLower(r.Table.Name())\n")
+	fmt.Fprintf(g.w, "}\n\n")
+
+	fmt.Fprintf(g.w, "func (r *%s) TableId() TableId {\n", define.Name)
+	fmt.Fprintf(g.w, "  return tableIdForSource(r.g.Id)\n")
+	fmt.Fprintf(g.w, "}\n\n")
+
+	fmt.Fprintf(g.w, "func (r *%s) OutputCols() sql.Schema {\n", define.Name)
+	fmt.Fprintf(g.w, "  return r.Table.Schema()\n")
+	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genSourceRelInterface(define MemoDef) {
-	fmt.Fprintf(g.w, "func (r *%s) name() string {\n", define.Name)
-	fmt.Fprintf(g.w, "  return strings.ToLower(r.table.Name())\n")
+func (g *MemoGen) genJoinRelInterface(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) JoinPrivate() *JoinBase {\n", define.Name)
+	fmt.Fprintf(g.w, "  return r.JoinBase\n")
 	fmt.Fprintf(g.w, "}\n\n")
+}
 
-	fmt.Fprintf(g.w, "func (r *%s) tableId() TableId {\n", define.Name)
-	fmt.Fprintf(g.w, "  return tableIdForSource(r.g.id)\n")
+func (g *MemoGen) genBinaryGroupInterface(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) Children() []*ExprGroup {\n", define.Name)
+	fmt.Fprintf(g.w, "  return []*ExprGroup{r.Left, r.Right}\n")
 	fmt.Fprintf(g.w, "}\n\n")
+}
 
-	fmt.Fprintf(g.w, "func (r *%s) children() []*exprGroup {\n", define.Name)
+func (g *MemoGen) genChildlessGroupInterface(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) Children() []*ExprGroup {\n", define.Name)
 	fmt.Fprintf(g.w, "  return nil\n")
 	fmt.Fprintf(g.w, "}\n\n")
-
-	fmt.Fprintf(g.w, "func (r *%s) outputCols() sql.Schema {\n", define.Name)
-	fmt.Fprintf(g.w, "  return r.table.Schema()\n")
-	fmt.Fprintf(g.w, "}\n\n")
 }
 
-func (g *MemoGen) genJoinRelInterface(define MemoDef) {
-	fmt.Fprintf(g.w, "func (r *%s) joinPrivate() *joinBase {\n", define.Name)
-	fmt.Fprintf(g.w, "  return r.joinBase\n")
-	fmt.Fprintf(g.w, "}\n\n")
-}
-
-func (g *MemoGen) genUnaryRelInterface(define MemoDef) {
-	fmt.Fprintf(g.w, "func (r *%s) children() []*exprGroup {\n", define.Name)
-	fmt.Fprintf(g.w, "  return []*exprGroup{r.child}\n")
+func (g *MemoGen) genUnaryGroupInterface(define ExprDef) {
+	fmt.Fprintf(g.w, "func (r *%s) Children() []*ExprGroup {\n", define.Name)
+	fmt.Fprintf(g.w, "  return []*ExprGroup{r.Child}\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) outputCols() sql.Schema {\n", define.Name)
 	switch define.Name {
-	case "project":
-		fmt.Fprintf(g.w, "  var s = make(sql.Schema, len(r.projections))\n")
-		fmt.Fprintf(g.w, "  for i, e := range r.projections {\n")
-		fmt.Fprintf(g.w, "    s[i] = transform.ExpressionToColumn(e)\n")
+	case "Project":
+		fmt.Fprintf(g.w, "  var s = make(sql.Schema, len(r.Projections))\n")
+		fmt.Fprintf(g.w, "  for i, e := range r.Projections {\n")
+		fmt.Fprintf(g.w, "    s[i] = ScalarToSqlCol(e)\n")
 		fmt.Fprintf(g.w, "  }\n")
 		fmt.Fprintf(g.w, "  return s\n")
 
 	default:
-		fmt.Fprintf(g.w, "  return r.child.relProps.OutputCols()\n")
+		fmt.Fprintf(g.w, "  return r.Child.RelProps.OutputCols()\n")
 	}
+
 	fmt.Fprintf(g.w, "}\n\n")
 
 }
 
-func (g *MemoGen) genFormatters(defines []MemoDef) {
-	fmt.Fprintf(g.w, "func formatRelExpr(r relExpr) string {\n")
+func (g *MemoGen) genFormatters(defines []ExprDef) {
+	// printer
+	fmt.Fprintf(g.w, "func FormatExpr(r exprType) string {\n")
 	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
 	for _, d := range defines {
+		loweredName := strings.ToLower(d.Name)
 		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
 		if d.SourceType != "" {
-			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.name())\n", d.Name)
-		} else if d.IsJoin {
-			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s %%d %%d\", r.left.id, r.right.id)\n", d.Name)
-		} else if d.IsUnary {
-			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%d\", r.child.id)\n", d.Name)
+			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.Name())\n", loweredName)
+		} else if d.Join || d.Binary {
+			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s %%d %%d\", r.Left.Id, r.Right.Id)\n", loweredName)
+		} else if d.Unary {
+			fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%d\", r.Child.Id)\n", loweredName)
+		} else if d.Scalar {
+			switch d.Name {
+			case "Literal":
+				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%v %%s\", r.Val, r.Typ)\n", loweredName)
+			case "ColRef":
+				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: '%%s.%%s'\", r.Gf.Table(), r.Gf.Name())\n", loweredName)
+			case "Bindvar":
+				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.Name)\n", loweredName)
+			case "Hidden":
+				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", r.E)\n", loweredName)
+			case "Tuple":
+				fmt.Fprintf(g.w, "    vals := make([]string, len(r.Values))\n")
+				fmt.Fprintf(g.w, "    for i, v := range r.Values {\n")
+				fmt.Fprintf(g.w, "      vals[i] = fmt.Sprintf(\"%%d\",v.Id)\n")
+				fmt.Fprintf(g.w, "    }\n")
+				fmt.Fprintf(g.w, "    return fmt.Sprintf(\"%s: %%s\", strings.Join(vals, \" \"))\n", loweredName)
+			}
 		} else {
 			panic("unreachable")
 		}
 	}
 	fmt.Fprintf(g.w, "  default:\n")
-	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown relExpr type: %%T\", r))\n")
+	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown RelExpr type: %%T\", r))\n")
 	fmt.Fprintf(g.w, "  }\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {\n")
+	// to sqlNode
+	fmt.Fprintf(g.w, "func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {\n")
 	fmt.Fprintf(g.w, "  var result sql.Node\n")
 	fmt.Fprintf(g.w, "  var err error\n\n")
 	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
 	for _, d := range defines {
-		if d.SkipExec {
+		if d.SkipExec || d.Scalar {
 			continue
 		}
 		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
 		fmt.Fprintf(g.w, "  result, err = b.build%s(r, input, children...)\n", strings.Title(d.Name))
 	}
 	fmt.Fprintf(g.w, "  default:\n")
-	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown relExpr type: %%T\", r))\n")
+	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown RelExpr type: %%T\", r))\n")
 	fmt.Fprintf(g.w, "  }\n\n")
 	fmt.Fprintf(g.w, "  if err != nil {\n")
 	fmt.Fprintf(g.w, "    return nil, err\n")
 	fmt.Fprintf(g.w, "  }\n\n")
-	fmt.Fprintf(g.w, "  result, err = r.group().finalize(result, input)\n")
+	fmt.Fprintf(g.w, "  result, err = r.Group().finalize(result, input)\n")
 	fmt.Fprintf(g.w, "  if err != nil {\n")
 	fmt.Fprintf(g.w, "    return nil, err\n")
 	fmt.Fprintf(g.w, "  }\n")
 	fmt.Fprintf(g.w, "  return result, nil\n")
+	fmt.Fprintf(g.w, "}\n\n")
 
+	// to sqlExpr
+	fmt.Fprintf(g.w, "func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expression, error) {\n")
+	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
+	for _, d := range defines {
+		if d.SkipExec || !d.Scalar {
+			continue
+		}
+		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
+		fmt.Fprintf(g.w, "  return b.build%s(r, sch)\n", strings.Title(d.Name))
+	}
+	fmt.Fprintf(g.w, "  default:\n")
+	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown ScalarExpr type: %%T\", r))\n")
+	fmt.Fprintf(g.w, "  }\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }

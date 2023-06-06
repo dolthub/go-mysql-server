@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package analyzer
+package memo
 
 import (
 	"fmt"
@@ -41,25 +41,32 @@ func TestJoinOrderBuilder(t *testing.T) {
 					plan.NewInnerJoin(
 						tableNode("a"),
 						tableNode("b"),
-						newEq("a.i = b.i"),
+						newEq("a.x = b.x"),
 					),
 					tableNode("c"),
-					newEq("b.i = c.i"),
+					newEq("b.x = c.x"),
 				),
 				tableNode("d"),
-				newEq("c.i = d.i"),
+				newEq("c.x = d.x"),
 			),
 			plans: `memo:
-├── G1: (tableScan: a)
-├── G2: (tableScan: b)
-├── G3: (innerJoin 2 1) (innerJoin 1 2)
-├── G4: (tableScan: c)
-├── G5: (innerJoin 4 3) (innerJoin 8 1) (innerJoin 1 8) (innerJoin 3 4)
-├── G6: (tableScan: d)
-├── G7: (innerJoin 6 5) (innerJoin 9 3) (innerJoin 3 9) (innerJoin 10 1) (innerJoin 1 10) (innerJoin 5 6)
-├── G8: (innerJoin 4 2) (innerJoin 2 4)
-├── G9: (innerJoin 6 4) (innerJoin 4 6)
-└── G10: (innerJoin 6 8) (innerJoin 8 6) (innerJoin 9 2) (innerJoin 2 9)
+├── G1: (tablescan: a)
+├── G2: (tablescan: b)
+├── G3: (colref: 'a.x')
+├── G4: (colref: 'b.x')
+├── G5: (equal 3 4)
+├── G6: (innerjoin 2 1) (innerjoin 1 2)
+├── G7: (tablescan: c)
+├── G8: (colref: 'c.x')
+├── G9: (equal 4 8)
+├── G10: (innerjoin 7 6) (innerjoin 15 1) (innerjoin 1 15) (innerjoin 6 7)
+├── G11: (tablescan: d)
+├── G12: (colref: 'd.x')
+├── G13: (equal 8 12)
+├── G14: (innerjoin 11 10) (innerjoin 16 6) (innerjoin 6 16) (innerjoin 17 1) (innerjoin 1 17) (innerjoin 10 11)
+├── G15: (innerjoin 7 2) (innerjoin 2 7)
+├── G16: (innerjoin 11 7) (innerjoin 7 11)
+└── G17: (innerjoin 11 15) (innerjoin 15 11) (innerjoin 16 2) (innerjoin 2 16)
 `,
 		},
 		{
@@ -69,51 +76,67 @@ func TestJoinOrderBuilder(t *testing.T) {
 					plan.NewLeftOuterJoin(
 						tableNode("a"),
 						tableNode("b"),
-						newEq("a.i = b.i"),
+						newEq("a.x = b.x"),
 					),
 					plan.NewLeftOuterJoin(
 						plan.NewFullOuterJoin(
 							tableNode("c"),
 							tableNode("d"),
-							newEq("c.i = d.i"),
+							newEq("c.x = d.x"),
 						),
 						tableNode("e"),
-						newEq("c.i = e.i"),
+						newEq("c.x = e.x"),
 					),
-					newEq("a.i = e.i"),
+					newEq("a.x = e.x"),
 				),
 				plan.NewInnerJoin(
 					tableNode("f"),
 					tableNode("g"),
-					newEq("f.i = g.i"),
+					newEq("f.x = g.x"),
 				),
-				newEq("e.i = g.i"),
+				newEq("e.x = g.x"),
 			),
 			plans: `memo:
-├── G1: (tableScan: a)
-├── G2: (tableScan: b)
-├── G3: (leftJoin 1 2)
-├── G4: (tableScan: c)
-├── G5: (tableScan: d)
-├── G6: (fullOuterJoin 4 5)
-├── G7: (tableScan: e)
-├── G8: (leftJoin 6 7)
-├── G9: (innerJoin 8 3) (leftJoin 14 2) (innerJoin 3 8)
-├── G10: (tableScan: f)
-├── G11: (tableScan: g)
-├── G12: (innerJoin 11 10) (innerJoin 10 11)
-├── G13: (innerJoin 12 9) (innerJoin 15 3) (innerJoin 3 15) (leftJoin 16 2) (innerJoin 9 12)
-├── G14: (innerJoin 8 1) (innerJoin 1 8)
-├── G15: (innerJoin 12 8) (innerJoin 8 12)
-└── G16: (innerJoin 12 14) (innerJoin 14 12) (innerJoin 15 1) (innerJoin 1 15)
+├── G1: (tablescan: a)
+├── G2: (tablescan: b)
+├── G3: (colref: 'a.x')
+├── G4: (colref: 'b.x')
+├── G5: (equal 3 4)
+├── G6: (leftjoin 1 2)
+├── G7: (tablescan: c)
+├── G8: (tablescan: d)
+├── G9: (colref: 'c.x')
+├── G10: (colref: 'd.x')
+├── G11: (equal 9 10)
+├── G12: (fullouterjoin 7 8)
+├── G13: (tablescan: e)
+├── G14: (colref: 'e.x')
+├── G15: (equal 9 14)
+├── G16: (leftjoin 12 13)
+├── G17: (equal 3 14)
+├── G18: (innerjoin 16 6) (leftjoin 27 2) (innerjoin 6 16)
+├── G19: (tablescan: f)
+├── G20: (tablescan: g)
+├── G21: (colref: 'f.x')
+├── G22: (colref: 'g.x')
+├── G23: (equal 21 22)
+├── G24: (innerjoin 20 19) (innerjoin 19 20)
+├── G25: (equal 14 22)
+├── G26: (innerjoin 30 19) (innerjoin 19 30) (innerjoin 24 18) (innerjoin 31 6) (innerjoin 6 31) (leftjoin 32 2) (innerjoin 18 24)
+├── G27: (innerjoin 16 1) (innerjoin 1 16)
+├── G28: (innerjoin 20 16) (innerjoin 16 20)
+├── G29: (innerjoin 20 27) (innerjoin 27 20) (innerjoin 28 1) (innerjoin 1 28)
+├── G30: (innerjoin 20 18) (innerjoin 18 20) (innerjoin 28 6) (innerjoin 6 28) (leftjoin 29 2)
+├── G31: (innerjoin 28 19) (innerjoin 19 28) (innerjoin 24 16) (innerjoin 16 24)
+└── G32: (innerjoin 29 19) (innerjoin 19 29) (innerjoin 24 27) (innerjoin 27 24) (innerjoin 31 1) (innerjoin 1 31)
 `,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
-			j.reorderJoin(tt.in)
+			j := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j.ReorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
 		})
 	}
@@ -140,9 +163,20 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil, newEq("c.x=d.x"), ""), // C x D
-				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil, newEq("b.y=d.y"), ""),     // B x (CD)
-				newEdge2(plan.JoinTypeCross, "0000", "1111", "1000", "0111", nil, nil, ""),                  // A x (BCD)
+				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil,
+					&Equal{
+						scalarBase: &scalarBase{},
+						Left:       newColRef(3, 7, "c.x"),
+						Right:      newColRef(4, 10, "d.x"),
+					}, ""), // C x D
+				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil,
+					&Equal{
+						scalarBase: &scalarBase{},
+						Left:       newColRef(2, 5, "b.y"),
+						Right:      newColRef(4, 11, "d.y"),
+					},
+					""), // B x (CD)
+				newEdge2(plan.JoinTypeCross, "0000", "1111", "1000", "0111", nil, nil, ""), // A x (BCD)
 			},
 		},
 		{
@@ -161,9 +195,23 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("a.z=b.z"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil, newEq("c.x=d.x"), ""),                                                                // C x D
-				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil, newEq("b.y=d.y"), ""),                                                                    // B x (CD)
-				newEdge2(plan.JoinTypeInner, "1100", "1100", "1000", "0111", []conflictRule{{from: newVertexSet("0001"), to: newVertexSet("0010")}}, newEq("a.z=b.z"), ""), // A x (BCD)
+				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil,
+					&Equal{
+						Left:  newColRef(3, 7, "c.x"),
+						Right: newColRef(4, 10, "d.x"),
+					}, ""), // C x D
+				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil,
+					&Equal{
+						Left:  newColRef(2, 5, "b.y"),
+						Right: newColRef(4, 11, "d.y"),
+					},
+					""), // B x (CD)
+				newEdge2(plan.JoinTypeInner, "1100", "1100", "1000", "0111", []conflictRule{{from: newVertexSet("0001"), to: newVertexSet("0010")}},
+					&Equal{
+						Left:  newColRef(1, 3, "a.z"),
+						Right: newColRef(2, 6, "b.z"),
+					},
+					""), // A x (BCD)
 			},
 		},
 		{
@@ -182,9 +230,23 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("b.y=c.y"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "1100", "1100", "1000", "0100", nil, newEq("a.x=b.x"), ""), // A x B
-				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil, newEq("c.x=d.x"), ""), // C x D
-				newEdge2(plan.JoinTypeLeftOuter, "0110", "1111", "1100", "0011", nil, newEq("b.y=c.y"), ""), // (AB) x (CD)
+				newEdge2(plan.JoinTypeLeftOuter, "1100", "1100", "1000", "0100", nil,
+					&Equal{
+						Left:  newColRef(1, 1, "a.x"),
+						Right: newColRef(2, 4, "b.x"),
+					}, ""), // A x B
+				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil,
+					&Equal{
+						Left:  newColRef(7, 7, "c.x"),  // offset by filters
+						Right: newColRef(8, 10, "d.x"), // offset by filters
+					},
+					""), // C x D
+				newEdge2(plan.JoinTypeLeftOuter, "0110", "1111", "1100", "0011", nil,
+					&Equal{
+						Left:  newColRef(2, 5, "b.y"),
+						Right: newColRef(7, 8, "c.y"),
+					},
+					""), // (AB) x (CD)
 			},
 		},
 		{
@@ -202,8 +264,13 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("b.x=c.x"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeCross, "000", "110", "100", "010", nil, nil, ""),                  // A X B
-				newEdge2(plan.JoinTypeLeftOuter, "011", "111", "110", "001", nil, newEq("b.x=c.x"), ""), // (AB) x C
+				newEdge2(plan.JoinTypeCross, "000", "110", "100", "010", nil, nil, ""), // A X B
+				newEdge2(plan.JoinTypeLeftOuter, "011", "111", "110", "001", nil,
+					&Equal{
+						Left:  newColRef(2, 4, "b.x"),
+						Right: newColRef(4, 7, "c.x"),
+					},
+					""), // (AB) x C
 			},
 		},
 		{
@@ -226,9 +293,14 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("a.x=c.x"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeInner, "0000", "1100", "1000", "0100", nil, expression.NewLiteral(true, types.Boolean), ""), // A x B
-				newEdge2(plan.JoinTypeInner, "0000", "0011", "0010", "0001", nil, expression.NewLiteral(true, types.Boolean), ""), // C x D
-				newEdge2(plan.JoinTypeFullOuter, "1010", "1111", "1100", "0011", nil, newEq("a.x=c.x"), ""),                       // (AB) x (CD)
+				newEdge2(plan.JoinTypeInner, "0000", "1100", "1000", "0100", nil, &Literal{Val: true, Typ: types.Boolean}, ""), // A x B
+				newEdge2(plan.JoinTypeInner, "0000", "0011", "0010", "0001", nil, &Literal{Val: true, Typ: types.Boolean}, ""), // C x D
+				newEdge2(plan.JoinTypeFullOuter, "1010", "1111", "1100", "0011", nil,
+					&Equal{
+						Left:  newColRef(1, 1, "a.x"),
+						Right: newColRef(5, 7, "c.x"),
+					},
+					""), // (AB) x (CD)
 			},
 		},
 		{
@@ -251,23 +323,45 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 				newEq("a.y=b.y"),
 			),
 			expEdges: []edge{
-				newEdge2(plan.JoinTypeLeftOuter, "110", "110", "100", "010", nil, newEq("b.x=c.x"), ""), // B x C
-				newEdge2(plan.JoinTypeSemi, "101", "101", "110", "001", nil, newEq("a.y=b.y"), ""),      // A x (BC)
+				newEdge2(plan.JoinTypeLeftOuter, "110", "110", "100", "010", nil,
+					&Equal{
+						Left:  newColRef(1, 1, "b.x"),
+						Right: newColRef(2, 4, "c.x"),
+					},
+					""), // B x C
+				newEdge2(plan.JoinTypeSemi, "101", "101", "110", "001", nil,
+					&Equal{
+						Left:  newColRef(7, 8, "a.y"),
+						Right: newColRef(1, 2, "b.y"),
+					},
+					""), // A x (BC)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
+			b := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
 			b.populateSubgraph(tt.join)
 			edgesEq(t, tt.expEdges, b.edges)
 		})
 	}
 }
 
+func newColRef(table GroupId, col sql.ColumnId, gf string) *ExprGroup {
+	parts := strings.Split(gf, ".")
+	return &ExprGroup{
+		Scalar: &ColRef{
+			scalarBase: &scalarBase{},
+			Table:      table,
+			Col:        col,
+			Gf:         expression.NewGetFieldWithTable(0, types.Int64, parts[0], parts[1], false),
+		},
+	}
+}
+
 func newEq(eq string) sql.Expression {
-	vars := strings.Split(eq, "=")
+	vars := strings.Split(strings.Replace(eq, " ", "", -1), "=")
 	if len(vars) > 2 {
 		panic("invalid equal expression")
 	}
@@ -441,9 +535,10 @@ func TestAssociativeTransforms(t *testing.T) {
 }
 
 var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "i", Type: types.Int64, Nullable: true},
-	{Name: "s", Type: types.Text, Nullable: true},
-})
+	{Name: "x", Type: types.Int64, Nullable: true},
+	{Name: "y", Type: types.Text, Nullable: true},
+	{Name: "z", Type: types.Int64, Nullable: true},
+}, 0)
 
 func tableNode(name string) sql.Node {
 	t := memory.NewTable(name, childSchema, nil)
@@ -471,10 +566,10 @@ func newEdge(op plan.JoinType, ses, leftV, rightV string) *edge {
 	}
 }
 
-func newEdge2(op plan.JoinType, ses, tes, leftV, rightV string, rules []conflictRule, filter sql.Expression, nullRej string) edge {
-	var filters []sql.Expression
+func newEdge2(op plan.JoinType, ses, tes, leftV, rightV string, rules []conflictRule, filter ScalarExpr, nullRej string) edge {
+	var filters []ScalarExpr
 	if filter != nil {
-		filters = []sql.Expression{filter}
+		filters = []ScalarExpr{filter}
 	}
 	return edge{
 		op: &operator{
@@ -500,11 +595,34 @@ func edgesEq(t *testing.T, edges1, edges2 []edge) bool {
 		require.Equal(t, e1.op.joinType, e2.op.joinType)
 		require.Equal(t, e1.op.leftVertices.String(), e2.op.leftVertices.String())
 		require.Equal(t, e1.op.rightVertices.String(), e2.op.rightVertices.String())
-		require.Equal(t, e1.filters, e2.filters)
+		require.Equal(t, len(e1.filters), len(e2.filters))
+		for i := range e1.filters {
+			assertScalarEq(t, e1.filters[i], e2.filters[i])
+		}
 		require.Equal(t, e1.nullRejectedRels, e2.nullRejectedRels)
 		require.Equal(t, e1.tes, e2.tes)
 		require.Equal(t, e1.ses, e2.ses)
 		require.Equal(t, e1.rules, e2.rules)
 	}
 	return true
+}
+
+func assertScalarEq(t *testing.T, exp, cmp ScalarExpr) {
+	switch cmp := cmp.(type) {
+	case *Equal:
+		exp, ok := exp.(*Equal)
+		require.True(t, ok)
+		assertScalarEq(t, exp.Left.Scalar, cmp.Left.Scalar)
+		assertScalarEq(t, exp.Right.Scalar, cmp.Right.Scalar)
+	case *Literal:
+		exp, ok := exp.(*Literal)
+		require.True(t, ok)
+		require.Equal(t, exp.Val, cmp.Val)
+	case *ColRef:
+		exp, ok := exp.(*ColRef)
+		require.True(t, ok)
+		require.Equal(t, exp.Table, cmp.Table)
+		require.Equal(t, exp.Col, cmp.Col)
+		require.Equal(t, exp.Gf.String(), cmp.Gf.String())
+	}
 }

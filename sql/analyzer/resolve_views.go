@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_views")
 	defer span.End()
 

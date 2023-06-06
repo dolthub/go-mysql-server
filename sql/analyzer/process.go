@@ -35,7 +35,7 @@ func init() {
 
 // trackProcess will wrap the query in a process node and add progress items
 // to the already existing process.
-func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
