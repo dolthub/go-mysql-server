@@ -261,10 +261,10 @@ type jsonTableCol struct {
 	opts *jsonTableColOpts
 	cols []*jsonTableCol // nested columns
 
-	nested bool // if this column is nested
-	data   interface{}
-	err    error
-	pos    int
+	nested   bool // if this column is nested
+	data     interface{}
+	err      error
+	pos      int
 	finished bool // exhausted all rows in data
 }
 
@@ -385,9 +385,9 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 }
 
 type jsonTableRowIter struct {
-	data []interface{}
-	pos  int
-	cols []*jsonTableCol
+	data    []interface{}
+	pos     int
+	cols    []*jsonTableCol
 	currSib int // this is the sibling that's going to print
 }
 

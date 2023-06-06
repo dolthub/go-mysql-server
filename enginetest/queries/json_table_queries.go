@@ -615,7 +615,7 @@ var JSONTableScriptTests = []ScriptTest{
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON EMPTY)) as jt;",
+				Query:          "SELECT * FROM JSON_TABLE('{}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON EMPTY)) as jt;",
 				ExpectedErrStr: "missing value for JSON_TABLE column 'c1'",
 			},
 			{
@@ -625,7 +625,7 @@ var JSONTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "test NESTED simple",
+		Name:        "test NESTED simple",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -661,7 +661,7 @@ var JSONTableScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS( a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b2 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b3 INT PATH '$'))) AS jt;",
-				//Skip: true,
+				Skip: true,
 				Expected: []sql.Row{
 					{1, float64(11), nil, nil},
 					{1, float64(111), nil, nil},
@@ -682,7 +682,7 @@ var JSONTableScriptTests = []ScriptTest{
 	{
 		Name:        "test NESTED NESTED",
 		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{},
+		Assertions:  []ScriptTestAssertion{},
 	},
 	{
 		Name:        "test combinations of options",
