@@ -661,7 +661,7 @@ var JSONTableScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS( a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b2 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b3 INT PATH '$'))) AS jt;",
-				Skip: true,
+				Skip:  true,
 				Expected: []sql.Row{
 					{1, float64(11), nil, nil},
 					{1, float64(111), nil, nil},
