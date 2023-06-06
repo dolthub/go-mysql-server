@@ -3,13 +3,14 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // generateIndexScans generates indexscan alternatives for sql.IndexAddressableTable
 // relations with filters.
-func generateIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func generateIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("generate_index_scans")
 	defer span.End()
 
@@ -54,7 +55,7 @@ func convertFiltersToIndexedAccess(
 	ctx *sql.Context,
 	a *Analyzer,
 	n sql.Node,
-	scope *Scope,
+	scope *plan.Scope,
 	indexes indexLookupsByTable,
 	tableAliases TableAliases,
 ) (sql.Node, transform.TreeIdentity, error) {
@@ -117,9 +118,9 @@ func convertFiltersToIndexedAccess(
 			filters.markFiltersHandled(handled...)
 			newF := removePushedDownPredicates(ctx, a, n, filters)
 			if newF == nil {
-				return FixFieldIndexesForExpressions(a, n, scope)
+				return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
 			}
-			ret, _, err := FixFieldIndexesForExpressions(a, newF, scope)
+			ret, _, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), newF, scope)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -148,7 +149,7 @@ func convertFiltersToIndexedAccess(
 
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
-func pushdownIndexesToTable(scope *Scope, a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error, *indexLookup) {
+func pushdownIndexesToTable(scope *plan.Scope, a *Analyzer, tableNode sql.NameableNode, indexes map[string]*indexLookup) (sql.Node, transform.TreeIdentity, error, *indexLookup) {
 	var lookup *indexLookup
 	ret, same, err := transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
@@ -175,7 +176,7 @@ func pushdownIndexesToTable(scope *Scope, a *Analyzer, tableNode sql.NameableNod
 					// save reference
 					lookup = indexLookup
 
-					newExprs, _, err := FixFieldIndexesOnExpressions(scope, a, table.Schema(), ita.Expressions()...)
+					newExprs, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), table.Schema(), ita.Expressions()...)
 					if err != nil {
 						return nil, transform.SameTree, err
 					}
@@ -204,7 +205,7 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, name string
 		return nil, nil
 	}
 
-	idxFilters := splitConjunction(lookup.expr)
+	idxFilters := expression.SplitConjunction(lookup.expr)
 	if len(idxFilters) == 0 {
 		return nil, nil
 	}

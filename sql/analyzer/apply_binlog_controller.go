@@ -22,7 +22,7 @@ import (
 
 // applyBinlogReplicaController configures all BinlogReplicaControllerCommand nodes with the
 // BinlogReplicaController that the Analyzer holds.
-func applyBinlogReplicaController(_ *sql.Context, a *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyBinlogReplicaController(_ *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if nn, ok := n.(plan.BinlogReplicaControllerCommand); ok {
 			return nn.WithBinlogReplicaController(a.BinlogReplicaController), transform.NewTree, nil

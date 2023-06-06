@@ -32,7 +32,7 @@ import (
 //
 // TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
 // checks that will never evaluate correctly.
-func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
 		return validateCreateCheckNode(n)
@@ -43,7 +43,7 @@ func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	return n, transform.SameTree, nil
 }
 
-func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	columns, err := indexColumns(ctx, a, n, scope)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -118,7 +118,7 @@ func checkExpressionValid(e sql.Expression) error {
 
 // loadChecks loads any checks that are required for a plan node to operate properly (except for nodes dealing with
 // check execution).
-func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("loadChecks")
 	defer span.End()
 

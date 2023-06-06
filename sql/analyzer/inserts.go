@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// We capture all INSERTs along the tree, such as those inside of block statements.
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		ii, ok := n.(*plan.InsertInto)
@@ -54,7 +54,7 @@ func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 	})
 }
 
-func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
 		return n, transform.SameTree, nil
 	} else if _, ok := n.(*plan.CreateProcedure); ok {
@@ -140,7 +140,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 
 // resolvePreparedInsert applies post-optimization
 // rules to Insert.Source for prepared statements.
-func resolvePreparedInsert(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolvePreparedInsert(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		ins, ok := n.(*plan.InsertInto)
 		if !ok {

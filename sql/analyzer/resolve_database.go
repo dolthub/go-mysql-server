@@ -25,7 +25,7 @@ import (
 // resolveDatabases sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
 // actual sql.Database implementation from the catalog. Also sets the database provider for nodes that implement
 // sql.MultiDatabaser.
-func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_database")
 	defer span.End()
 
@@ -83,7 +83,7 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 }
 
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
-func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	transform.Inspect(n, func(node sql.Node) bool {
 		switch n.(type) {

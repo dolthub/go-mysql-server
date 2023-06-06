@@ -50,7 +50,7 @@ import (
 // because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
 // here, as well as in the `resolve_functions` rule.
 
-func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validateColumnDefaults")
 	defer span.End()
 
@@ -107,7 +107,7 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope,
 	})
 }
 
-func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolveColumnDefaults")
 	defer span.End()
 
@@ -245,7 +245,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, 
 // Default values can only reference their host table, and since we serialize the GetField expression for storage, it's
 // important that we remove the table name before passing it off for storage. Otherwise we end up with serialized
 // defaults like `tableName.field + 1` instead of just `field + 1`.
-func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("stripTableNamesFromColumnDefaults")
 	defer span.End()
 
@@ -351,7 +351,7 @@ func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex
 // parseColumnDefaults transforms UnresolvedColumnDefault expressions into ColumnDefaultValue expressions, which
 // amounts to parsing the string representation into an actual expression. We only require an actual column default
 // value for some node types, where the value will be used.
-func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func parseColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("parse_column_defaults")
 	defer span.End()
 

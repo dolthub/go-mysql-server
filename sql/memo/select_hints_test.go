@@ -1,6 +1,7 @@
-package analyzer
+package memo
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -143,13 +144,13 @@ func TestOrderHintBuilding(t *testing.T) {
 			plan.NewInnerJoin(
 				tableNode("ab"),
 				tableNode("xy"),
-				newEq("ab.i = xy.i"),
+				newEq("ab.x=xy.x"),
 			),
 			tableNode("pq"),
-			newEq("xy.i = pq.i"),
+			newEq("xy.x=pq.x"),
 		),
 		tableNode("uv"),
-		newEq("pq.i=uv.i"),
+		newEq("pq.x=uv.x"),
 	)
 
 	tests := []struct {
@@ -166,14 +167,14 @@ func TestOrderHintBuilding(t *testing.T) {
 			exp: map[GroupId]vertexSet{
 				1:  testVertexSet(0),          // ab
 				2:  testVertexSet(1),          // xy
-				3:  testVertexSet(0, 1),       // ab x xy
-				4:  testVertexSet(2),          // pq
-				5:  testVertexSet(0, 1, 2),    // ab x xy x pq
-				6:  testVertexSet(3),          // uv
-				7:  testVertexSet(0, 1, 2, 3), // ab x xy x pq x uv
-				8:  testVertexSet(1, 2),       // xy x pq
-				9:  testVertexSet(2, 3),       // pq x uv
-				10: testVertexSet(1, 2, 3),    // xy x pq x uv
+				6:  testVertexSet(0, 1),       // ab x xy
+				7:  testVertexSet(2),          // pq
+				10: testVertexSet(0, 1, 2),    // ab x xy x pq
+				11: testVertexSet(3),          // uv
+				14: testVertexSet(0, 1, 2, 3), // ab x xy x pq x uv
+				15: testVertexSet(1, 2),       // xy x pq
+				16: testVertexSet(2, 3),       // pq x uv
+				17: testVertexSet(1, 2, 3),    // xy x pq x uv
 			},
 		},
 		{
@@ -183,14 +184,14 @@ func TestOrderHintBuilding(t *testing.T) {
 			exp: map[GroupId]vertexSet{
 				1:  testVertexSet(2),          // ab
 				2:  testVertexSet(1),          // xy
-				3:  testVertexSet(2, 1),       // ab x xy
-				4:  testVertexSet(0),          // pq
-				5:  testVertexSet(2, 1, 0),    // ab x xy x pq
-				6:  testVertexSet(3),          // uv
-				7:  testVertexSet(2, 1, 0, 3), // ab x xy x pq x uv
-				8:  testVertexSet(1, 0),       // xy x pq
-				9:  testVertexSet(0, 3),       // pq x uv
-				10: testVertexSet(1, 0, 3),    // xy x pq x uv
+				6:  testVertexSet(2, 1),       // ab x xy
+				7:  testVertexSet(0),          // pq
+				10: testVertexSet(2, 1, 0),    // ab x xy x pq
+				11: testVertexSet(3),          // uv
+				14: testVertexSet(2, 1, 0, 3), // ab x xy x pq x uv
+				15: testVertexSet(1, 0),       // xy x pq
+				16: testVertexSet(0, 3),       // pq x uv
+				17: testVertexSet(1, 0, 3),    // xy x pq x uv
 			},
 		},
 		{
@@ -221,12 +222,13 @@ func TestOrderHintBuilding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := newJoinOrderBuilder(NewMemo(nil, nil, nil, NewDefaultCoster(), NewDefaultCarder()))
-			j.reorderJoin(tt.plan)
+			j := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			j.ReorderJoin(tt.plan)
 			j.m.WithJoinOrder(tt.hint)
 			if tt.invalid {
 				require.Equal(t, j.m.hints.order, (*joinOrderHint)(nil))
 			} else {
+				fmt.Println(j.m.String())
 				require.Equal(t, tt.exp, j.m.hints.order.groups)
 			}
 		})

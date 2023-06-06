@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {

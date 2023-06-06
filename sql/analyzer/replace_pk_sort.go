@@ -9,11 +9,11 @@ import (
 )
 
 // replacePkSort applies an IndexAccess when there is an `OrderBy` over a prefix of any `PrimaryKey`s
-func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func replacePkSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return replacePkSortHelper(ctx, scope, n, nil)
 }
 
-func replacePkSortHelper(ctx *sql.Context, scope *Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
+func replacePkSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
 	case *plan.Sort:
 		sortNode = n // TODO: this only preserves the most recent Sort node

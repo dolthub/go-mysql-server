@@ -7,13 +7,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"path/filepath"
 
 	"golang.org/x/tools/imports"
 
 	"github.com/dolthub/go-mysql-server/optgen/cmd/support"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
+
+//go:generate go run main.go -out ../../../sql/expression/function/aggregation/unary_aggs.og.go -pkg aggregation aggs
 
 var (
 	errInvalidArgCount     = errors.New("invalid number of arguments")
@@ -32,34 +34,33 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	if len(args) < 2 {
+	if len(args) < 1 {
 		flag.Usage()
 		exit(errInvalidArgCount)
 	}
 
+	var defs support.GenDefs
+	var err error
 	cmd := args[0]
 	switch cmd {
 	case "aggs":
+		absPath, _ := filepath.Abs(path.Join("..", "source", "unary_aggs.yaml"))
+		defs, err = support.DecodeUnaryAggDefs(absPath)
+		if err != nil {
+			exit(err)
+		}
 	case "frame":
 	case "frameFactory":
 	case "framer":
 	case "memo":
-
-	default:
-		flag.Usage()
-		exit(errUnrecognizedCommand)
-	}
-
-	sources := flag.Args()[1:]
-	readers := make([]io.Reader, len(sources))
-	for i, name := range sources {
-		file, err := os.Open(name)
+		absPath, _ := filepath.Abs(path.Join("..", "source", "memo.yaml"))
+		defs, err = support.DecodeMemoExprs(absPath)
 		if err != nil {
 			exit(err)
 		}
-
-		defer file.Close()
-		readers[i] = file
+	default:
+		flag.Usage()
+		exit(errUnrecognizedCommand)
 	}
 
 	var writer io.Writer
@@ -75,10 +76,9 @@ func main() {
 		writer = os.Stderr
 	}
 
-	var err error
 	switch cmd {
 	case "aggs":
-		err = generateAggs(aggregation.UnaryAggDefs, writer)
+		err = generateAggs(defs, writer)
 	case "frame":
 		err = generateFrames(nil, writer)
 	case "frameFactory":
@@ -86,7 +86,7 @@ func main() {
 	case "framer":
 		err = generateFramers(nil, writer)
 	case "memo":
-		err = generateMemo(analyzer.ExprDefs, writer)
+		err = generateMemo(defs, writer)
 	}
 
 	if err != nil {

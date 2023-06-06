@@ -46,7 +46,7 @@ import (
 //     satisfied by tablescans in the subquery
 //   - stars: a tablescan with a qualified star or cannot be pruned. An
 //     unqualified star prevents pruning every child tablescan.
-func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	// the same table can appear in multiple table scans,
 	// so we use a counter to pin references
 	parentCols := make(map[tableCol]int)
