@@ -2188,7 +2188,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 				if commentVal := column.Type.Comment; commentVal != nil {
 					comment = commentVal.String()
 				}
-				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
+				columns := []sql.IndexColumn{{Name: column.Name.String()}}
 				if isUnique {
 					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment), nil
 					if err != nil {
@@ -2820,9 +2820,9 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 		}
 	}
 
-	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
 
-	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil, false), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore), nil
 }
 
 func getPkOrdinals(ts *sqlparser.TableSpec) []int {
