@@ -125,18 +125,24 @@ func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row)
 func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row, isNested bool) ([]*jsonTableCol, error) {
 	var cols []*jsonTableCol
 	for _, col := range jtCols {
-		var err error
-		var defErrVal, defEmpVal interface{}
-		defErrVal, err = col.Opts.DefErrorVal.Eval(ctx, row)
+		if col.Opts == nil {
+			innerCols, err := b.buildJSONTableCols(ctx, col.Cols, row, true)
+			if err != nil {
+				return nil, err
+			}
+			cols = append(cols, &jsonTableCol{
+				path:   col.Path,
+				cols:   innerCols,
+				nested: isNested,
+			})
+			continue
+		}
+
+		defErrVal, err := col.Opts.DefErrorVal.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		defEmpVal, err = col.Opts.DefEmptyVal.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		var innerCols []*jsonTableCol
-		innerCols, err = b.buildJSONTableCols(ctx, col.Cols, row, true)
+		defEmpVal, err := col.Opts.DefEmptyVal.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +158,6 @@ func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTab
 				errOnErr:  col.Opts.ErrorOnError,
 				errOnEmp:  col.Opts.ErrorOnEmpty,
 			},
-			cols:   innerCols,
 			nested: isNested,
 		})
 	}

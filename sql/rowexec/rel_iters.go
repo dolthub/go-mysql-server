@@ -257,7 +257,7 @@ type jsonTableColOpts struct {
 // jsonTableCol represents a column in a json table.
 // TODO: this wastes memory for each column
 type jsonTableCol struct {
-	path string
+	path string // if there are nested columns, this is a schema path, otherwise it is a col path
 	opts *jsonTableColOpts
 	cols []*jsonTableCol // nested columns
 
@@ -265,41 +265,45 @@ type jsonTableCol struct {
 	data   interface{}
 	err    error
 	pos    int
+	finished bool // exhausted all rows in data
+}
+
+func (c *jsonTableCol) LoadData(obj interface{}) {
+	c.data, c.err = jsonpath.JsonPathLookup(obj, c.path)
+	c.pos = 0
+}
+
+func (c *jsonTableCol) Reset() {
+	c.finished = false
+	c.data = nil
+	c.err = nil
+	for _, col := range c.cols {
+		col.Reset()
+	}
 }
 
 // Next returns the next row for this column.
 // TODO: this is actually an iterator
 // TODO: we should have an iterator over a []]columns aka a schema
-func (c *jsonTableCol) Next(obj interface{}) (sql.Row, error) {
-	if c.opts.forOrd {
-		c.pos++
+func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
+	if c.opts != nil && c.opts.forOrd {
+		if !pass {
+			c.pos++
+		}
 		return sql.Row{c.pos}, nil
 	}
 
-	// TODO: just don't use data if not nested?
-	if c.data == nil {
-		val, err := jsonpath.JsonPathLookup(obj, c.path)
-		c.data = val
-		c.err = err
-		c.pos = 0
-	}
-
-	if len(c.cols) == 0 {
+	if len(c.cols) == 0 && !c.nested {
 		opt := c.opts
-
-		var val interface{}
-		if c.nested {
-			if data, ok := c.data.([]interface{}); ok {
-				val = data[c.pos]
-				c.pos++
-			}
-		} else {
-			val = c.data
-			c.data = nil
+		if opt.forOrd {
+			c.pos++
+			return sql.Row{c.pos}, nil
 		}
 
+		val, err := jsonpath.JsonPathLookup(obj, c.path)
+
 		if opt.exists {
-			if c.err != nil {
+			if err != nil {
 				return sql.Row{0}, nil
 			} else {
 				return sql.Row{1}, nil
@@ -307,14 +311,13 @@ func (c *jsonTableCol) Next(obj interface{}) (sql.Row, error) {
 		}
 
 		// key error means empty
-		if c.err != nil {
+		if err != nil {
 			if opt.errOnEmp {
 				return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", opt.name)
 			}
 			val = opt.defEmpVal
 		}
 
-		var err error
 		val, _, err = opt.typ.Convert(val)
 		if err != nil {
 			if opt.errOnErr {
@@ -328,18 +331,53 @@ func (c *jsonTableCol) Next(obj interface{}) (sql.Row, error) {
 		return sql.Row{val}, nil
 	}
 
+	// when nested, we expect a slice of objects
+	if len(c.cols) == 0 && c.nested {
+		if pass || c.finished {
+			return sql.Row{nil}, nil
+		}
+
+		if c.data == nil {
+			c.LoadData(obj)
+		}
+
+		var val interface{}
+		if v, ok := c.data.([]interface{}); ok {
+			val = v[c.pos]
+			c.pos++
+			if c.pos >= len(v) {
+				c.data, c.err = nil, nil
+				c.finished = true
+			}
+		}
+
+		return sql.Row{val}, nil
+	}
+
+	// we have nested columns, so we must recurse
+	if c.data == nil {
+		c.LoadData(obj)
+	}
+
+	// TODO: determine when to pass
 	var row sql.Row
 	for _, col := range c.cols {
-		val, err := jsonpath.JsonPathLookup(obj, col.path)
-		if err != nil {
-			return nil, err
-		}
-		rowPart, err := col.Next(val)
+		rowPart, err := col.Next(c.data, false)
 		if err != nil {
 			return nil, err
 		}
 		row = append(row, rowPart...)
 	}
+
+	// check if all nested columns are finished
+	c.finished = true
+	for _, col := range c.cols {
+		if !col.finished {
+			c.finished = false
+			break
+		}
+	}
+
 	return row, nil
 }
 
@@ -347,6 +385,7 @@ type jsonTableRowIter struct {
 	data []interface{}
 	pos  int
 	cols []*jsonTableCol
+	currSib int // this is the sibling that's going to print
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}
@@ -356,16 +395,52 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 	obj := j.data[j.pos]
-	j.pos++ // TODO: need to increment this differently based on NESTED
 
+	sibIdx := 0
 	var row sql.Row
 	for _, col := range j.cols {
-		rowPart, err := col.Next(obj)
+		rowPart, err := col.Next(obj, sibIdx != j.currSib)
 		if err != nil {
 			return nil, err
 		}
 		row = append(row, rowPart...)
+		if len(col.cols) != 0 {
+			sibIdx++
+		}
 	}
+	j.currSib++
+
+	// TODO: store this before iterating
+	numSibs := 0
+	for _, col := range j.cols {
+		if len(col.cols) != 0 {
+			numSibs++
+		}
+	}
+
+	if j.currSib >= numSibs {
+		j.currSib = 0
+	}
+
+	// only increment pos iff all nested columns are done
+	finished := true
+	for _, col := range j.cols {
+		if len(col.cols) == 0 {
+			continue
+		}
+		if !col.finished {
+			finished = false
+			break
+		}
+	}
+
+	if finished {
+		for _, col := range j.cols {
+			col.Reset()
+		}
+		j.pos++
+	}
+
 	return row, nil
 }
 
