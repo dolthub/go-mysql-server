@@ -278,24 +278,20 @@ func (c *jsonTableCol) IsSibling() bool {
 // if the c.currSib is unfinished, nothing changes
 // TODO: implement a HasSiblings() to save time on schemas that don't have siblings
 func (c *jsonTableCol) NextSibling() bool {
-	reset := true
 	for i := c.currSib; i < len(c.cols); i++ {
 		if c.cols[i].IsSibling() && !c.cols[i].finished {
 			c.currSib = i
-			reset = false
+			return false
+		}
+	}
+	c.currSib = 0
+	for i := 0; i < len(c.cols); i++ {
+		if c.cols[i].IsSibling() {
+			c.currSib = i
 			break
 		}
 	}
-	if reset {
-		c.currSib = 0
-		for i := 0; i < len(c.cols); i++ {
-			if c.cols[i].IsSibling() {
-				c.currSib = i
-				break
-			}
-		}
-	}
-	return reset
+	return true
 }
 
 // LoadData loads the data for this column from the given object and c.path
@@ -422,24 +418,20 @@ var _ sql.RowIter = &jsonTableRowIter{}
 // NextSibling starts at the current sibling and moves to the next unfinished sibling
 // if there are no more unfinished siblings, it resets to the first sibling
 func (j *jsonTableRowIter) NextSibling() bool {
-	reset := true
 	for i := j.currSib; i < len(j.cols); i++ {
 		if !j.cols[i].finished && len(j.cols[i].cols) != 0 {
 			j.currSib = i
-			reset = false
+			return false
+		}
+	}
+	j.currSib = 0
+	for i := 0; i < len(j.cols); i++ {
+		if len(j.cols[i].cols) != 0 {
+			j.currSib = i
 			break
 		}
 	}
-	if reset {
-		j.currSib = 0
-		for i := 0; i < len(j.cols); i++ {
-			if len(j.cols[i].cols) != 0 {
-				j.currSib = i
-				break
-			}
-		}
-	}
-	return reset
+	return true
 }
 
 func (j *jsonTableRowIter) ResetAll() {
