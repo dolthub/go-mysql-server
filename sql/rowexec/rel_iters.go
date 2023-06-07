@@ -261,7 +261,6 @@ type jsonTableCol struct {
 	opts *jsonTableColOpts
 	cols []*jsonTableCol // nested columns
 
-	nested   bool // if this column is nested
 	data     []interface{}
 	err      error
 	pos      int

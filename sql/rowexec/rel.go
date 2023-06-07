@@ -122,18 +122,17 @@ func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row)
 	return sql.NewSpanIter(span, &offsetIter{offset, it}), nil
 }
 
-func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row, isNested bool) ([]*jsonTableCol, error) {
+func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row) ([]*jsonTableCol, error) {
 	var cols []*jsonTableCol
 	for _, col := range jtCols {
 		if col.Opts == nil {
-			innerCols, err := b.buildJSONTableCols(ctx, col.Cols, row, true)
+			innerCols, err := b.buildJSONTableCols(ctx, col.Cols, row)
 			if err != nil {
 				return nil, err
 			}
 			cols = append(cols, &jsonTableCol{
 				path:   col.Path,
 				cols:   innerCols,
-				nested: isNested,
 			})
 			continue
 		}
@@ -158,7 +157,6 @@ func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTab
 				errOnErr:  col.Opts.ErrorOnError,
 				errOnEmp:  col.Opts.ErrorOnEmpty,
 			},
-			nested: isNested,
 		})
 	}
 	return cols, nil
@@ -190,7 +188,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 		jsonPathData = []interface{}{jsonPathData}
 	}
 
-	cols, err := b.buildJSONTableCols(ctx, n.Cols, row, false)
+	cols, err := b.buildJSONTableCols(ctx, n.Cols, row)
 
 	rowIter := &jsonTableRowIter{
 		data: jsonPathData.([]interface{}),
