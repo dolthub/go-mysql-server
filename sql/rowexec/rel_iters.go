@@ -269,12 +269,19 @@ type jsonTableCol struct {
 	currSib  int
 }
 
+// IsSibling returns if the jsonTableCol contains multiple columns
+func (c *jsonTableCol) IsSibling() bool {
+	return len(c.cols) != 0
+}
+
 // NextSibling starts at the current sibling and moves to the next unfinished sibling
-// if there are no more unfinished siblings, it resets to the first sibling
+// if there are no more unfinished siblings, it sets c.currSib to the first sibling and returns true
+// if the c.currSib is unfinished, nothing changes
+// TODO: implement a HasSiblings() to save time on schemas that don't have siblings
 func (c *jsonTableCol) NextSibling() bool {
 	reset := true
 	for i := c.currSib; i < len(c.cols); i++ {
-		if !c.cols[i].finished && len(c.cols[i].cols) != 0 {
+		if c.cols[i].IsSibling() && !c.cols[i].finished {
 			c.currSib = i
 			reset = false
 			break
@@ -283,7 +290,7 @@ func (c *jsonTableCol) NextSibling() bool {
 	if reset {
 		c.currSib = 0
 		for i := 0; i < len(c.cols); i++ {
-			if len(c.cols[i].cols) != 0 {
+			if c.cols[i].IsSibling() {
 				c.currSib = i
 				break
 			}
@@ -292,20 +299,9 @@ func (c *jsonTableCol) NextSibling() bool {
 	return reset
 }
 
-func (c *jsonTableCol) Finished() bool {
-	if c.finished {
-		return true
-	}
-	for _, col := range c.cols {
-		if !col.Finished() {
-			c.finished = false
-			return false
-		}
-	}
-	c.finished = true
-	return true
-}
-
+// LoadData loads the data for this column from the given object and c.path
+// LoadData will always wrap the data in a slice to ensure it is iterable
+// Additionally, this function will set the c.currSib to the first sibling
 func (c *jsonTableCol) LoadData(obj interface{}) {
 	var data interface{}
 	data, c.err = jsonpath.JsonPathLookup(obj, c.path)
@@ -332,20 +328,18 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 	// nested column should recurse
 	if len(c.cols) != 0 {
 		if c.data == nil {
-			// TODO: deal with c.err?
 			c.LoadData(obj)
 		}
 
-		// TODO: watch for panics
 		var innerObj interface{}
 		if !c.finished {
 			innerObj = c.data[c.pos]
 		}
 
 		var row sql.Row
-		for _, col := range c.cols {
-			// TODO: sibling logic
-			rowPart, err := col.Next(innerObj, pass || c.finished)
+		for i, col := range c.cols {
+			innerPass := len(col.cols) != 0 && i != c.currSib
+			rowPart, err := col.Next(innerObj, pass || innerPass)
 			if err != nil {
 				return nil, err
 			}
@@ -357,7 +351,6 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		}
 
 		if c.NextSibling() {
-			// TODO: make reset children function
 			for _, col := range c.cols {
 				col.Reset()
 			}
@@ -384,14 +377,7 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		return sql.Row{c.pos}, nil
 	}
 
-	// TODO: store c.err and c.data for base case columns, even thought it may not be necessary
-	// TODO: c.finished might be the same as c.pos >= len(c.data)
-
-	//if c.data == nil { // TODO: check err as well?
-	//	c.LoadData(obj)
-	//}
-
-	// TODO: figure out some way to cache this for base columns? just reload everytime for now
+	// TODO: cache this?
 	val, err := jsonpath.JsonPathLookup(obj, c.path)
 	if c.opts.exists {
 		if err != nil {
@@ -421,7 +407,7 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 	}
 
 	// Base columns are always finished
-	c.finished = true // TODO: maybe defer this? not sure if errors count as finishing
+	c.finished = true // TODO: use defer?
 	return sql.Row{val}, nil
 }
 

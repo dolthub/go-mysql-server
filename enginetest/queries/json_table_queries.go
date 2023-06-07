@@ -664,15 +664,15 @@ var JSONTableScriptTests = []ScriptTest{
 			{
 				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS( a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b2 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b3 INT PATH '$'))) AS jt;",
 				Expected: []sql.Row{
-					{1, 11, nil, nil},
+					{1, 11,  nil, nil},
 					{1, 111, nil, nil},
-					{1, nil, 11, nil},
+					{1, nil, 11,  nil},
 					{1, nil, 111, nil},
 					{1, nil, nil, 11},
 					{1, nil, nil, 111},
-					{2, 22, nil, nil},
+					{2, 22,  nil, nil},
 					{2, 222, nil, nil},
-					{2, nil, 22, nil},
+					{2, nil, 22,  nil},
 					{2, nil, 222, nil},
 					{2, nil, nil, 22},
 					{2, nil, nil, 222},
@@ -683,7 +683,70 @@ var JSONTableScriptTests = []ScriptTest{
 	{
 		Name:        "test NESTED NESTED",
 		SetUpScript: []string{},
-		Assertions:  []ScriptTestAssertion{},
+		Assertions:  []ScriptTestAssertion{
+			// TODO: double check the for ordinal column
+			{
+				Query: `
+SELECT *
+FROM
+JSON_TABLE(
+    '{"a": [123, 456]}',
+    '$.a[*]' COLUMNS(
+        id1 FOR ORDINALITY,
+        a1 INT PATH '$',
+        b1 INT PATH '$',
+        c1 INT PATH '$',
+        NESTED PATH '$' COLUMNS (
+            id2 FOR ORDINALITY,
+            i1 INT PATH '$',
+            j1 INT PATH '$',
+            k1 INT PATH '$',
+            NESTED PATH '$' COLUMNS (
+                id4 FOR ORDINALITY,
+                x1 INT PATH '$',
+                y1 INT PATH '$',
+                z1 INT PATH '$'
+            ),
+            NESTED PATH '$' COLUMNS (
+                id5 FOR ORDINALITY,
+                x2 INT PATH '$',
+                y2 INT PATH '$',
+                z2 INT PATH '$'
+            )
+        ),
+        NESTED PATH '$' COLUMNS (
+            id6 FOR ORDINALITY,
+            i2 INT PATH '$',
+            j2 INT PATH '$',
+            k2 INT PATH '$',
+            NESTED PATH '$' COLUMNS (
+                id7 FOR ORDINALITY,
+                x3 INT PATH '$',
+                y3 INT PATH '$',
+                z3 INT PATH '$'
+            ),
+            NESTED PATH '$' COLUMNS (
+                id8 FOR ORDINALITY,
+                x4 INT PATH '$',
+                y4 INT PATH '$',
+                z4 INT PATH '$'
+            )
+        )
+    )
+) as jt;
+`,
+				Expected: []sql.Row{
+					{1, 123, 123, 123, 1, 123, 123, 123, 1, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+					{2, 123, 123, 123, 2, 123, 123, 123, nil, nil, nil, nil, 1, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+					{3, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 1, 123, 123, 123, 1, 123, 123, 123, nil, nil, nil, nil},
+					{4, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 2, 123, 123, 123, nil, nil, nil, nil, 1, 123, 123, 123},
+					{5, 456, 456, 456, 3, 456, 456, 456, 2, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+					{6, 456, 456, 456, 4, 456, 456, 456, nil, nil, nil, nil, 2, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+					{7, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 3, 456, 456, 456, 2, 456, 456, 456, nil, nil, nil, nil},
+					{8, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 4, 456, 456, 456, nil, nil, nil, nil, 2, 456, 456, 456},
+				},
+			},
+		},
 	},
 	{
 		Name:        "test combinations of options",
