@@ -42,8 +42,9 @@ func TestPreparedStatementQueryTracking(t *testing.T) {
 		{Name: "commit_author_when", Source: "commits", Type: types.Text},
 	}), nil)
 
-	db := memory.NewDatabase("")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("commits", commits)
+	ctx.SetCurrentDatabase("mydb")
 
 	provider := sql.NewDatabaseProvider(db)
 	a := NewDefault(provider)

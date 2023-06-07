@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // Use changes the current database.
@@ -61,13 +62,18 @@ func (Use) Schema() sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	db, err := u.Catalog.Database(ctx, u.db.Name())
+	// We want to return to the session interface the same database instance they gave us, unwrap it if necessary
+	db := u.db
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
+	err := ctx.Session.UseDatabase(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx.SetCurrentDatabase(db.Name())
-
+	ctx.SetCurrentDatabase(u.db.Name())
 	return sql.RowsToRowIter(), nil
 }
 

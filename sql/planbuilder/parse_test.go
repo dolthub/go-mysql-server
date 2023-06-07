@@ -1001,6 +1001,18 @@ func (t *testCatalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf
 	return t.Table(ctx, dbName, tableName)
 }
 
+func (t *testCatalog) DatabaseTable(ctx *sql.Context, db sql.Database, tableName string) (sql.Table, sql.Database, error) {
+	if t, ok, err := db.GetTableInsensitive(ctx, tableName); ok {
+		return t, db, nil
+	} else {
+		return nil, nil, err
+	}
+}
+
+func (t *testCatalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
+	return t.DatabaseTable(ctx, db, tableName)
+}
+
 func (t *testCatalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 	//TODO implement me
 	panic("implement me")

@@ -34,7 +34,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 		}
 
 		viewName := urt.Name()
-		dbName := urt.Database()
+		dbName := urt.Database().Name()
 		if dbName == "" {
 			dbName = ctx.GetCurrentDatabase()
 		}
@@ -87,8 +87,8 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 		}
 
 		// If the view name was qualified with a database name, apply that same qualifier to any tables in it
-		if urt.Database() != "" {
-			query, _, err = applyDatabaseQualifierToView(query, a, urt.Database())
+		if urt.Database().Name() != "" {
+			query, _, err = applyDatabaseQualifierToView(query, a, urt.Database().Name())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -180,7 +180,7 @@ func applyDatabaseQualifierToView(n sql.Node, a *Analyzer, dbName string) (sql.N
 		}
 
 		a.Log("applying database name to view table " + urt.Name())
-		if urt.Database() == "" {
+		if urt.Database().Name() == "" {
 			n, err := urt.WithDatabase(dbName)
 			if err != nil {
 				return nil, transform.SameTree, err

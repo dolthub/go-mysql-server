@@ -110,8 +110,11 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Node, error) {
 	name := t.Name()
 	db := t.Database()
-	if db == "" {
-		db = ctx.GetCurrentDatabase()
+	if db.Name() == "" {
+		if ctx.GetCurrentDatabase() == "" {
+			return nil, sql.ErrNoDatabaseSelected.New()
+		}
+		db = sql.UnresolvedDatabase(ctx.GetCurrentDatabase())
 	}
 
 	var asofBindVar bool
@@ -143,13 +146,8 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 				return nil, err
 			}
 
-			rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
+			rt, database, err := a.Catalog.DatabaseTableAsOf(ctx, db, name, asOf)
 			if err != nil {
-				if sql.ErrDatabaseNotFound.Is(err) {
-					if db == "" {
-						err = sql.ErrNoDatabaseSelected.New()
-					}
-				}
 				return nil, err
 			}
 
@@ -162,13 +160,8 @@ func resolveTable(ctx *sql.Context, t sql.UnresolvedTable, a *Analyzer) (sql.Nod
 		}
 	}
 
-	rt, database, err := a.Catalog.Table(ctx, db, name)
+	rt, database, err := a.Catalog.DatabaseTable(ctx, db, name)
 	if err != nil {
-		if sql.ErrDatabaseNotFound.Is(err) {
-			if db == "" {
-				err = sql.ErrNoDatabaseSelected.New()
-			}
-		}
 		return nil, err
 	}
 
@@ -236,19 +229,17 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 // TODO this is racy, alter statements can change a table's schema in-between
 // prepare and execute
 func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var (
 			from *plan.ResolvedTable
 			to   sql.Node
-			db   string
+			db   sql.Database
 			err  error
 		)
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			from = n
-			if n.Database != nil {
-				db = n.Database.Name()
-			}
+			db = n.Database
 			var asof sql.Expression
 			if n.AsOf != nil {
 				asof = expression.NewLiteral(n.AsOf, nil)
@@ -256,7 +247,7 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			if plan.IsDualTable(n) {
 				to = n
 			} else {
-				to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOf(n.Name(), db, asof), a)
+				to, err = resolveTable(ctx, plan.NewUnresolvedTableAsOfWithDatabase(n.Name(), db, asof), a)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -265,10 +256,8 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			return new, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			from = n.ResolvedTable
-			if n.Database() != nil {
-				db = n.Database().Name()
-			}
-			to, err = resolveTable(ctx, plan.NewUnresolvedTable(n.ResolvedTable.Name(), db), a)
+			db = n.Database()
+			to, err = resolveTable(ctx, plan.NewUnresolvedTableWithDatabase(n.ResolvedTable.Name(), db), a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

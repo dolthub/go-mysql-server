@@ -89,6 +89,17 @@ type PrivilegeSetDatabase interface {
 	ToSlice() []PrivilegeType
 }
 
+// AliasedDatabase is a database that has an alias: a name that is different from the name to be used system
+// tables such as information_schema, or the mysql grant tables. This is the case when an integrator supports multiple
+// ways to address a single physical database, but all such names should resolve to the same underlying name for
+// permission checks.
+type AliasedDatabase interface {
+	Database
+
+	// AliasedName returns the alias (the underlying name for information_schema, privileges) for this database.
+	AliasedName() string
+}
+
 // PrivilegeSetTable is a set containing table-level privileges. Integrators should not implement this interface.
 type PrivilegeSetTable interface {
 	// Name returns the name of the table that this privilege set belongs to.

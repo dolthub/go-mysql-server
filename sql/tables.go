@@ -367,8 +367,8 @@ type AlterableTable interface {
 // Used by the analyzer during planning, and is not expected to be implemented by integrators.
 type UnresolvedTable interface {
 	Nameable
-	// Database returns the database name
-	Database() string
+	// Database returns the database, which may be unresolved
+	Database() Database
 	// WithAsOf returns a copy of this versioned table with its AsOf
 	// field set to the given value. Analogous to WithChildren.
 	WithAsOf(asOf Expression) (Node, error)
