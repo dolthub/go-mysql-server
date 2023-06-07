@@ -262,20 +262,61 @@ type jsonTableCol struct {
 	cols []*jsonTableCol // nested columns
 
 	nested   bool // if this column is nested
-	data     interface{}
+	data     []interface{}
 	err      error
 	pos      int
 	finished bool // exhausted all rows in data
+	currSib  int
 }
 
-func (c *jsonTableCol) Finish() {
-	c.data, c.err = nil, nil
+// NextSibling starts at the current sibling and moves to the next unfinished sibling
+// if there are no more unfinished siblings, it resets to the first sibling
+func (c *jsonTableCol) NextSibling() bool {
+	reset := true
+	for i := c.currSib; i < len(c.cols); i++ {
+		if !c.cols[i].finished && len(c.cols[i].cols) != 0 {
+			c.currSib = i
+			reset = false
+			break
+		}
+	}
+	if reset {
+		c.currSib = 0
+		for i := 0; i < len(c.cols); i++ {
+			if len(c.cols[i].cols) != 0 {
+				c.currSib = i
+				break
+			}
+		}
+	}
+	return reset
+}
+
+func (c *jsonTableCol) Finished() bool {
+	if c.finished {
+		return true
+	}
+	for _, col := range c.cols {
+		if !col.Finished() {
+			c.finished = false
+			return false
+		}
+	}
 	c.finished = true
+	return true
 }
 
 func (c *jsonTableCol) LoadData(obj interface{}) {
-	c.data, c.err = jsonpath.JsonPathLookup(obj, c.path)
+	var data interface{}
+	data, c.err = jsonpath.JsonPathLookup(obj, c.path)
+	if d, ok := data.([]interface{}); ok {
+		c.data = d
+	} else {
+		c.data = []interface{}{data}
+	}
 	c.pos = 0
+
+	c.NextSibling()
 }
 
 func (c *jsonTableCol) Reset() {
@@ -288,6 +329,54 @@ func (c *jsonTableCol) Reset() {
 
 // Next returns the next row for this column.
 func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
+	// nested column should recurse
+	if len(c.cols) != 0 {
+		if c.data == nil {
+			// TODO: deal with c.err?
+			c.LoadData(obj)
+		}
+
+		// TODO: watch for panics
+		var innerObj interface{}
+		if !c.finished {
+			innerObj = c.data[c.pos]
+		}
+
+		var row sql.Row
+		for _, col := range c.cols {
+			// TODO: sibling logic
+			rowPart, err := col.Next(innerObj, pass || c.finished)
+			if err != nil {
+				return nil, err
+			}
+			row = append(row, rowPart...)
+		}
+
+		if pass {
+			return row, nil
+		}
+
+		if c.NextSibling() {
+			// TODO: make reset children function
+			for _, col := range c.cols {
+				col.Reset()
+			}
+			c.pos++
+		}
+
+		if c.pos >= len(c.data) {
+			c.finished = true
+		}
+
+		return row, nil
+	}
+
+	// this should only apply to nested columns, maybe...
+	if pass {
+		return sql.Row{nil}, nil
+	}
+
+	// TODO: FOR ORDINAL is a special case
 	if c.opts != nil && c.opts.forOrd {
 		if !pass {
 			c.pos++
@@ -295,35 +384,17 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		return sql.Row{c.pos}, nil
 	}
 
-	if c.data == nil {
-		c.LoadData(obj)
-	}
+	// TODO: store c.err and c.data for base case columns, even thought it may not be necessary
+	// TODO: c.finished might be the same as c.pos >= len(c.data)
 
-	// nested column should recurse
-	if len(c.cols) != 0 {
-		var row sql.Row
-		for _, col := range c.cols {
-			rowPart, err := col.Next(c.data, false)
-			if err != nil {
-				return nil, err
-			}
-			row = append(row, rowPart...)
-		}
+	//if c.data == nil { // TODO: check err as well?
+	//	c.LoadData(obj)
+	//}
 
-		// check if all nested columns are finished
-		c.finished = true
-		for _, col := range c.cols {
-			if !col.finished {
-				c.finished = false
-				break
-			}
-		}
-
-		return row, nil
-	}
-
+	// TODO: figure out some way to cache this for base columns? just reload everytime for now
+	val, err := jsonpath.JsonPathLookup(obj, c.path)
 	if c.opts.exists {
-		if c.err != nil {
+		if err != nil {
 			return sql.Row{0}, nil
 		} else {
 			return sql.Row{1}, nil
@@ -331,30 +402,14 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 	}
 
 	// key error means empty
-	var val interface{}
-	if pass || (c.finished && c.nested) {
-		return sql.Row{nil}, nil
-	}
-	if c.err != nil {
+	if err != nil {
 		if c.opts.errOnEmp {
 			return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.opts.name)
 		}
 		val = c.opts.defEmpVal
-	} else {
-		data, ok := c.data.([]interface{})
-		if c.nested && ok {
-			val = data[c.pos]
-			c.pos++
-			if c.pos >= len(data) {
-				c.Finish()
-			}
-		} else {
-			val = c.data
-			c.Finish()
-		}
 	}
 
-	val, _, err := c.opts.typ.Convert(val)
+	val, _, err = c.opts.typ.Convert(val)
 	if err != nil {
 		if c.opts.errOnErr {
 			return nil, err
@@ -364,6 +419,9 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 			return nil, err
 		}
 	}
+
+	// Base columns are always finished
+	c.finished = true // TODO: maybe defer this? not sure if errors count as finishing
 	return sql.Row{val}, nil
 }
 
