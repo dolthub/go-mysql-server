@@ -276,7 +276,6 @@ func (c *jsonTableCol) IsSibling() bool {
 // NextSibling starts at the current sibling and moves to the next unfinished sibling
 // if there are no more unfinished siblings, it sets c.currSib to the first sibling and returns true
 // if the c.currSib is unfinished, nothing changes
-// TODO: implement a HasSiblings() to save time on schemas that don't have siblings
 func (c *jsonTableCol) NextSibling() bool {
 	for i := c.currSib; i < len(c.cols); i++ {
 		if c.cols[i].IsSibling() && !c.cols[i].finished {
@@ -310,6 +309,7 @@ func (c *jsonTableCol) LoadData(obj interface{}) {
 	c.NextSibling()
 }
 
+// Reset clears the column's data and error, and recursively resets all nested columns
 func (c *jsonTableCol) Reset() {
 	c.data, c.err = nil, nil
 	c.finished = false
@@ -410,7 +410,7 @@ type jsonTableRowIter struct {
 	data    []interface{}
 	pos     int
 	cols    []*jsonTableCol
-	currSib int // this is the sibling that's going to print
+	currSib int
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}
