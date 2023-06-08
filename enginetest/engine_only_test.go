@@ -619,6 +619,11 @@ func TestTableFunctions(t *testing.T) {
 			ExpectedErr: sql.ErrColumnNotFound,
 		},
 		{
+			Name:        "projection of non-existent qualified column from table function",
+			Query:       "SELECT simple_TABLE_function_1.none from simple_TABLE_function(123);",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
 			Name:     "basic table function",
 			Query:    "SELECT * from simple_table_function(123);",
 			Expected: []sql.Row{{"foo", 123}},

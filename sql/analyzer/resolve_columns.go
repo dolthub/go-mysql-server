@@ -444,7 +444,7 @@ func getAvailableNamesByScope(n sql.Node, scope *plan.Scope) availableNames {
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
 				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias,
-					*plan.RecursiveTable, *plan.IndexedTableAccess:
+					*plan.RecursiveTable, *plan.IndexedTableAccess, sql.TableFunction:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					symbols.indexTable(alias, name, scopeLevel)

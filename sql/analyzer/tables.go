@@ -38,6 +38,9 @@ func getTableName(node sql.Node) string {
 		case *plan.IndexedTableAccess:
 			tableName = node.Name()
 			return false
+		case sql.TableFunction:
+			tableName = node.Name()
+			return false
 		}
 		return true
 	})
