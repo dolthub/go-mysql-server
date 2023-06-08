@@ -125,10 +125,9 @@ var _ sql.CollationCoercible = (*UnresolvedTableFunction)(nil)
 var _ sql.RenameableNode = (*UnresolvedTableFunction)(nil)
 
 // NewUnresolvedTableFunction creates a new UnresolvedTableFunction node for a sql plan.
-func NewUnresolvedTableFunction(name, alias string, arguments []sql.Expression) *UnresolvedTableFunction {
+func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *UnresolvedTableFunction {
 	return &UnresolvedTableFunction{
 		name:      name,
-		Alias:     alias,
 		Arguments: arguments,
 	}
 }

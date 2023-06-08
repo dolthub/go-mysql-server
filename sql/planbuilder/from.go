@@ -365,7 +365,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 		}
 	}
 
-	utf := expression.NewUnresolvedTableFunction(t.Name, t.Alias.String(), args)
+	utf := expression.NewUnresolvedTableFunction(t.Name, args)
 
 	tableFunction, err := b.cat.TableFunction(b.ctx, utf.Name())
 	if err != nil {
@@ -392,8 +392,16 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	if err != nil {
 		b.handleErr(err)
 	}
-	outScope.node = newInstance
-	for _, c := range newInstance.Schema() {
+
+	var newAlias *plan.TableAlias
+	if t.Alias.IsEmpty() {
+		newAlias = plan.NewTableAlias(t.Name, utf)
+	} else {
+		newAlias = plan.NewTableAlias(t.Alias.String(), newInstance)
+	}
+
+	outScope.node = newAlias
+	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:    database.Name(),
 			table: "",

@@ -3479,8 +3479,11 @@ func tableExprToTable(
 		if err != nil {
 			return nil, err
 		}
-
-		return expression.NewUnresolvedTableFunction(t.Name, t.Alias.String(), exprs), nil
+		utf := expression.NewUnresolvedTableFunction(t.Name, exprs)
+		if t.Alias.IsEmpty() {
+			return plan.NewTableAlias(t.Name, utf), nil
+		}
+		return plan.NewTableAlias(t.Alias.String(), utf), nil
 
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)
