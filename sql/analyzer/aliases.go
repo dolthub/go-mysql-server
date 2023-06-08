@@ -300,22 +300,3 @@ func renameAliases(node sql.Node, oldNameLower string, newName string) (sql.Node
 		}
 	})
 }
-
-func disambiguateTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// TODO: remove this function
-	return n, transform.SameTree, nil
-
-	var i int
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *expression.UnresolvedTableFunction:
-			if n.Alias != "" {
-				return plan.NewTableAlias(n.Alias, n), transform.NewTree, nil
-			}
-			i++
-			return plan.NewTableAlias(fmt.Sprintf("%s_%d", n.Name(), i), n), transform.NewTree, nil
-		default:
-			return n, transform.SameTree, nil
-		}
-	})
-}
