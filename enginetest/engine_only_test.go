@@ -620,7 +620,12 @@ func TestTableFunctions(t *testing.T) {
 		},
 		{
 			Name:        "projection of non-existent qualified column from table function",
-			Query:       "SELECT simple_TABLE_function_1.none from simple_TABLE_function(123);",
+			Query:       "SELECT simple_TABLE_function.none from simple_TABLE_function(123);",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Name:        "projection of non-existent qualified column from table function",
+			Query:       "SELECT stf.none from simple_TABLE_function(123) as stf;",
 			ExpectedErr: sql.ErrTableColumnNotFound,
 		},
 		{
