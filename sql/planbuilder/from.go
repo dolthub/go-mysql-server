@@ -365,7 +365,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 		}
 	}
 
-	utf := expression.NewUnresolvedTableFunction(t.Name, args)
+	utf := expression.NewUnresolvedTableFunction(t.Name, t.Alias.String(), args)
 
 	tableFunction, err := b.cat.TableFunction(b.ctx, utf.Name())
 	if err != nil {

@@ -3480,7 +3480,7 @@ func tableExprToTable(
 			return nil, err
 		}
 
-		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
+		return expression.NewUnresolvedTableFunction(t.Name, t.Alias.String(), exprs), nil
 
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)

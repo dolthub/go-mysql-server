@@ -668,6 +668,10 @@ func TestTableFunctions(t *testing.T) {
 			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 		},
 		{
+			Query:    "select seq.x from sequence_table('x', 5) as seq",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
 			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
 			Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
 		},
