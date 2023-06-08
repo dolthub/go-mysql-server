@@ -703,6 +703,18 @@ func TestTableFunctions(t *testing.T) {
 			Query:    "select * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
 			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
 		},
+		{
+			Query:    "with cte as (select seq.x from sequence_table('x', 5) seq) select cte.x from cte",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:    "select sq.x from (select seq.x from sequence_table('x', 5) seq) sq",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:       "select seq.x from (select seq.x from sequence_table('x', 5) seq) sq",
+			ExpectedErr: sql.ErrTableNotFound,
+		},
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
