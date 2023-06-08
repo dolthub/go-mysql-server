@@ -151,6 +151,7 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 
 func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	j.populateSubgraph(n)
+	j.ensureClosure(j.m.root)
 	j.dbSube()
 }
 
@@ -180,6 +181,93 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		panic(fmt.Sprintf("expected Nameable node, found: %T", n))
 	}
 	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
+}
+
+func (j *joinOrderBuilder) ensureClosure(grp *ExprGroup) {
+	fds := grp.RelProps.fds
+	for _, set := range fds.Equiv().Sets() {
+		for col1, ok1 := set.Next(1); ok1; col1, ok1 = set.Next(col1 + 1) {
+			for col2, ok2 := set.Next(col1 + 1); ok2; col2, ok2 = set.Next(col2 + 1) {
+				if !j.hasEqEdge(col1, col2) {
+					j.makeTransitiveEdge(col1, col2)
+				}
+			}
+		}
+	}
+}
+
+// hasEqEdge returns true if the inner edges include a direct equality between
+// the two given columns (e.g. x = a).
+func (j joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
+	for idx, ok := j.innerEdges.Next(0); ok; idx, ok = j.innerEdges.Next(idx + 1) {
+		for _, f := range j.edges[idx].filters {
+			switch f := f.(type) {
+			case *Equal:
+				if r, ok := f.Right.Scalar.(*ColRef); ok {
+					if l, ok := f.Left.Scalar.(*ColRef); ok {
+						return (r.Col == leftCol && l.Col == rightCol) ||
+							(r.Col == rightCol && l.Col == leftCol)
+					}
+				}
+			}
+			return false
+		}
+	}
+	return false
+}
+
+func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
+	// tables
+	var vert vertexSet
+	var tab1 GroupId
+	var tab2 GroupId
+	for i, v := range j.vertices {
+		if t, ok := v.(SourceRel); ok {
+			if t.Group().RelProps.FuncDeps().All().Contains(col1) {
+				vert = vert.add(vertexIndex(i))
+				tab1 = t.Group().Id
+			} else if t.Group().RelProps.FuncDeps().All().Contains(col2) {
+				vert = vert.add(vertexIndex(i))
+				tab2 = t.Group().Id
+			}
+		}
+	}
+
+	// find edge where the vertices are provided but partitioned
+	var op *operator
+	for _, e := range j.edges {
+		if vert.isSubsetOf(e.op.leftVertices.union(e.op.rightVertices)) &&
+			!vert.isSubsetOf(e.op.leftVertices) &&
+			!vert.isSubsetOf(e.op.rightVertices) {
+			op = e.op
+			break
+		}
+	}
+	if op == nil {
+		// columns are common to one table, not a join edge
+		return
+	}
+
+	//make filter
+	grp1 := j.m.PreexistingScalar(&ColRef{Col: col1, Table: tab1})
+	grp2 := j.m.PreexistingScalar(&ColRef{Col: col2, Table: tab2})
+	if grp1 == nil || grp2 == nil {
+		panic("transitive columns should be memoized")
+	}
+	eq := &Equal{scalarBase: &scalarBase{}, Left: grp1, Right: grp2}
+	eqGroup := j.m.PreexistingScalar(eq)
+	if eqGroup == nil {
+		eqGroup = j.m.NewExprGroup(eq)
+	}
+	hash := internExpr(eqGroup.Scalar)
+	if hash != 0 {
+		j.m.exprs[hash] = eqGroup
+	}
+	// Add the edge to the join graph.
+	// TODO always inner join?
+	j.edges = append(j.edges, *j.makeEdge(op, eqGroup.Scalar))
+	j.innerEdges.Add(len(j.edges) - 1)
+
 }
 
 func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
@@ -244,28 +332,28 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *ExprGroup {
 	j.checkSize()
 
 	var rel SourceRel
-	b := &relBase{}
+	b := &sourceBase{relBase: &relBase{}}
 	switch n := n.(type) {
 	case *plan.ResolvedTable:
-		rel = &TableScan{relBase: b, Table: n}
+		rel = &TableScan{sourceBase: b, Table: n}
 	case *plan.TableAlias:
-		rel = &TableAlias{relBase: b, Table: n}
+		rel = &TableAlias{sourceBase: b, Table: n}
 	case *plan.RecursiveTable:
-		rel = &RecursiveTable{relBase: b, Table: n}
+		rel = &RecursiveTable{sourceBase: b, Table: n}
 	case *plan.SubqueryAlias:
-		rel = &SubqueryAlias{relBase: b, Table: n}
+		rel = &SubqueryAlias{sourceBase: b, Table: n}
 	case *plan.Max1Row:
-		rel = &Max1Row{relBase: b, Table: n}
+		rel = &Max1Row{sourceBase: b, Table: n}
 	case *plan.RecursiveCte:
-		rel = &RecursiveCte{relBase: b, Table: n}
+		rel = &RecursiveCte{sourceBase: b, Table: n}
 	case *plan.IndexedTableAccess:
-		rel = &TableScan{relBase: b, Table: n.ResolvedTable}
+		rel = &TableScan{sourceBase: b, Table: n.ResolvedTable}
 	case *plan.ValueDerivedTable:
-		rel = &Values{relBase: b, Table: n}
+		rel = &Values{sourceBase: b, Table: n}
 	case sql.TableFunction:
-		rel = &TableFunc{relBase: b, Table: n}
+		rel = &TableFunc{sourceBase: b, Table: n}
 	case *plan.EmptyTable:
-		rel = &EmptyTable{relBase: b, Table: n}
+		rel = &EmptyTable{sourceBase: b, Table: n}
 	default:
 		panic(fmt.Sprintf("unrecognized join leaf: %T", n))
 	}
@@ -284,7 +372,7 @@ func (j *joinOrderBuilder) buildJoinLeaf(n sql.Nameable) *ExprGroup {
 func (j *joinOrderBuilder) buildInnerEdge(op *operator, filters ...ScalarExpr) {
 	if len(filters) == 0 {
 		// cross join
-		j.edges = append(j.edges, *j.makeEdge(op, filters...))
+		j.edges = append(j.edges, *j.makeEdge(op))
 		j.innerEdges.Add(len(j.edges) - 1)
 		return
 	}

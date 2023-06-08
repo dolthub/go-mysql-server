@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
@@ -676,11 +675,21 @@ func getMultiColumnIndexes(
 			continue
 		}
 
-		exprList := ia.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), colExprs...)
+		exprList := ia.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, colExprs...)...)
 		if len(exprList) == 0 {
 			continue
 		}
 
+		firstGf, ok := colExprs[0].(*expression.GetField)
+		if ok {
+			for i, e := range exprList[0] {
+				gf, ok := e.(*expression.GetField)
+				if !ok {
+					continue
+				}
+				exprList[0][i] = gf.WithTable(firstGf.Table())
+			}
+		}
 		lookup, err := getMultiColumnIndexForExpressions(ctx, ia, table, exprList[0], exps, tableAliases)
 		if err != nil {
 			return nil, nil, err
@@ -742,11 +751,12 @@ func getMultiColumnIndexForExpressions(
 
 	var expressions []sql.Expression
 	var allMatches joinColExprs
-	for _, selectedExpr := range normalizedExpressions {
+	for _, selectedExpr := range selected {
 		matchedExprs := findColumns(exprs, selectedExpr.String())
 		allMatches = append(allMatches, matchedExprs...)
 
 		for _, expr := range matchedExprs {
+			col := normalizeExpression(tableAliases, expr.col)
 			switch expr.comparison.(type) {
 			case *expression.Equals,
 				*expression.NullSafeEquals,
@@ -771,7 +781,7 @@ func getMultiColumnIndexForExpressions(
 						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), val)
 					}
 				case *expression.Equals:
-					indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), val)
+					indexBuilder = indexBuilder.Equals(ctx, col.String(), val)
 				case *expression.GreaterThan:
 					indexBuilder = indexBuilder.GreaterThan(ctx, expr.col.String(), val)
 				case *expression.GreaterThanOrEqual:

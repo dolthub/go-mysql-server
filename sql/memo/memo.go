@@ -86,7 +86,6 @@ func (m *Memo) NewExprGroup(rel exprType) *ExprGroup {
 
 func (m *Memo) memoizeSourceRel(rel SourceRel) *ExprGroup {
 	grp := m.NewExprGroup(rel)
-	m.assignColumnIds(rel)
 	return grp
 }
 
@@ -95,7 +94,7 @@ func (m *Memo) assignColumnIds(rel SourceRel) {
 	if rel.Name() == "" {
 		m.Columns["1"] = sql.ColumnId(len(m.Columns) + 1)
 	} else {
-		for _, c := range rel.OutputCols() {
+		for _, c := range allTableCols(rel) {
 			var name string
 			if c.Source != "" {
 				name = fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))
@@ -107,6 +106,42 @@ func (m *Memo) assignColumnIds(rel SourceRel) {
 	}
 }
 
+func allTableCols(rel SourceRel) sql.Schema {
+	var table sql.Table
+	switch rel := rel.(type) {
+	case *TableAlias:
+		rt, ok := rel.Table.Child.(*plan.ResolvedTable)
+		if !ok {
+			break
+		}
+		table = rt.Table
+	case *TableScan:
+		table = rel.Table.Table
+	}
+	if w, ok := table.(sql.TableWrapper); ok {
+		table = w.Underlying()
+	}
+	if pr, ok := table.(sql.PrimaryKeyTable); ok {
+		sch := pr.PrimaryKeySchema().Schema
+		ret := make(sql.Schema, len(sch))
+		for i, c := range sch {
+			ret[i] = &sql.Column{
+				Name:           c.Name,
+				Type:           c.Type,
+				Default:        c.Default,
+				AutoIncrement:  c.AutoIncrement,
+				Nullable:       c.Nullable,
+				Source:         rel.Name(),
+				DatabaseSource: c.DatabaseSource,
+				PrimaryKey:     c.PrimaryKey,
+				Comment:        c.Comment,
+				Extra:          c.Extra,
+			}
+		}
+		return ret
+	}
+	return rel.OutputCols()
+}
 func (m *Memo) getTableId(table string) (GroupId, bool) {
 	return m.TableProps.GetId(table)
 }
@@ -382,6 +417,30 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	return grp
 }
 
+func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []ScalarExpr, swapCmp bool) *ExprGroup {
+	rel := &MergeJoin{
+		JoinBase: &JoinBase{
+			relBase: &relBase{},
+			Op:      op,
+			Filter:  filter,
+			Left:    left,
+			Right:   right,
+		},
+		InnerScan: lIdx,
+		OuterScan: rIdx,
+		SwapCmp:   swapCmp,
+	}
+	rel.InnerScan.Parent = rel.JoinBase
+	rel.OuterScan.Parent = rel.JoinBase
+
+	if grp == nil {
+		return m.NewExprGroup(rel)
+	}
+	rel.g = grp
+	grp.Prepend(rel)
+	return grp
+}
+
 func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []*ExprGroup) *ExprGroup {
 	rel := &Project{
 		relBase:     &relBase{},
@@ -612,7 +671,7 @@ func (p *tableProps) addTable(n string, id GroupId) {
 	p.nameToGrp[n] = id
 }
 
-func (p *tableProps) getTable(id GroupId) (string, bool) {
+func (p *tableProps) GetTable(id GroupId) (string, bool) {
 	n, ok := p.grpToName[id]
 	return n, ok
 }
@@ -627,7 +686,7 @@ func (p *tableProps) getTableNames(f sql.FastIntSet) []string {
 	for idx, ok := f.Next(0); ok; idx, ok = f.Next(idx + 1) {
 		if ok {
 			groupId := GroupId(idx + 1)
-			table, ok := p.getTable(groupId)
+			table, ok := p.GetTable(groupId)
 			if !ok {
 				panic(fmt.Sprintf("table not found for group %d", groupId))
 			}
@@ -787,6 +846,41 @@ type SourceRel interface {
 	OutputCols() sql.Schema
 	Name() string
 	TableId() TableId
+	Indexes() []*Index
+	SetIndexes(indexes []*Index)
+}
+
+type Index struct {
+	// ordered list of index columns
+	order []sql.ColumnId
+	// unordered column set
+	set sql.ColSet
+	idx sql.Index
+}
+
+func (i *Index) Cols() []sql.ColumnId {
+	return i.order
+}
+
+func (i *Index) ColSet() sql.ColSet {
+	return i.set
+}
+
+func (i *Index) SqlIdx() sql.Index {
+	return i.idx
+}
+
+type sourceBase struct {
+	*relBase
+	indexes []*Index
+}
+
+func (s *sourceBase) Indexes() []*Index {
+	return s.indexes
+}
+
+func (s *sourceBase) SetIndexes(indexes []*Index) {
+	s.indexes = indexes
 }
 
 // JoinRel represents a plan.JoinNode or plan.CrossJoin. See plan.JoinType
@@ -842,8 +936,7 @@ func (r *JoinBase) Copy() *JoinBase {
 }
 
 type Lookup struct {
-	Source   string
-	Index    sql.Index
+	Index    *Index
 	KeyExprs []ScalarExpr
 	Nullmask []bool
 
@@ -851,9 +944,8 @@ type Lookup struct {
 }
 
 type IndexScan struct {
-	Source string
-	Idx    sql.Index
-
+	Idx    *Index
+	Range  sql.Range
 	Parent *JoinBase
 }
 

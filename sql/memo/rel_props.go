@@ -27,6 +27,7 @@ import (
 type relProps struct {
 	grp *ExprGroup
 
+	fds          *sql.FuncDepSet
 	outputCols   sql.Schema
 	inputTables  sql.FastIntSet
 	outputTables sql.FastIntSet
@@ -56,7 +57,198 @@ func newRelProps(rel RelExpr) *relProps {
 	p.populateOutputTables()
 	p.populateInputTables()
 
+	// FDs
+	var fds *sql.FuncDepSet
+	switch rel := rel.(type) {
+	case JoinRel:
+		jp := rel.JoinPrivate()
+		switch {
+		case jp.Op.IsDegenerate():
+			fds = sql.NewCrossJoinFDs(jp.Left.RelProps.fds, jp.Right.RelProps.fds)
+		case jp.Op.IsLeftOuter():
+			fds = sql.NewLeftJoinFDs(jp.Left.RelProps.fds, jp.Right.RelProps.fds, getEquivs(jp.Filter))
+		default:
+			fds = sql.NewInnerJoinFDs(jp.Left.RelProps.fds, jp.Right.RelProps.fds, getEquivs(jp.Filter))
+		}
+	case *Max1Row:
+		start := len(rel.Group().m.Columns)
+		rel.Group().m.assignColumnIds(rel)
+		end := len(rel.Group().m.Columns)
+
+		// TODO lazily compute FDs
+		sch := allTableCols(rel)
+
+		var all sql.ColSet
+		var notNull sql.ColSet
+		for i := start; i < end; i++ {
+			all.Add(sql.ColumnId(i + 1))
+			if !sch[i-start].Nullable {
+				notNull.Add(sql.ColumnId(i + 1))
+			}
+		}
+		fds = sql.NewMax1RowFDs(all)
+	case SourceRel:
+		// allCols
+		start := len(rel.Group().m.Columns)
+		rel.Group().m.assignColumnIds(rel)
+		end := len(rel.Group().m.Columns)
+
+		// TODO lazily compute FDs
+		sch := allTableCols(rel)
+
+		var all sql.ColSet
+		var notNull sql.ColSet
+		for i := start; i < end; i++ {
+			all.Add(sql.ColumnId(i + 1))
+			if !sch[i-start].Nullable {
+				notNull.Add(sql.ColumnId(i + 1))
+			}
+		}
+
+		var indexes []sql.Index
+		switch n := rel.(type) {
+		case *TableAlias:
+			rt, ok := n.Table.Child.(*plan.ResolvedTable)
+			if !ok {
+				break
+			}
+			table := rt.Table
+			if w, ok := table.(sql.TableWrapper); ok {
+				table = w.Underlying()
+			}
+			indexableTable, ok := table.(sql.IndexAddressableTable)
+			if !ok {
+				break
+			}
+			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
+		case *TableScan:
+			table := n.Table.Table
+			if w, ok := table.(sql.TableWrapper); ok {
+				table = w.Underlying()
+			}
+			indexableTable, ok := table.(sql.IndexAddressableTable)
+			if !ok {
+				break
+			}
+			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
+		default:
+		}
+
+		var strictKeys []sql.ColSet
+		var laxKeys []sql.ColSet
+		var indexesNorm []*Index
+		for _, idx := range indexes {
+			// get columns for expressions
+			// strict if primary key or all nonNull and unique
+			exprs := denormIdxExprs(rel.Name(), idx)
+			strict := true
+			//var idxColSet sql.ColSet
+			normIdx := &Index{idx: idx, order: make([]sql.ColumnId, len(exprs))}
+			for i, e := range exprs {
+				colId := rel.Group().m.Columns[e]
+				if colId == 0 {
+					panic("unregistered column")
+				}
+				normIdx.set.Add(colId)
+				normIdx.order[i] = colId
+				if !notNull.Contains(colId) {
+					strict = false
+				}
+			}
+			if !idx.IsUnique() {
+			} else if strict {
+				strictKeys = append(strictKeys, normIdx.set)
+			} else {
+				laxKeys = append(laxKeys, normIdx.set)
+			}
+			indexesNorm = append(indexesNorm, normIdx)
+		}
+		rel.SetIndexes(indexesNorm)
+		fds = sql.NewTablescanFDs(all, strictKeys, laxKeys, notNull)
+	case *Filter:
+		var notNull sql.ColSet
+		var constant sql.ColSet
+		var equiv [][2]sql.ColumnId
+		for _, f := range rel.Filters {
+			switch f := f.Scalar.(type) {
+			case *Equal:
+				if l, ok := f.Left.Scalar.(*ColRef); ok {
+					switch r := f.Right.Scalar.(type) {
+					case *ColRef:
+						equiv = append(equiv, [2]sql.ColumnId{l.Col, r.Col})
+					case *Literal:
+						constant.Add(l.Col)
+					}
+				}
+				if r, ok := f.Right.Scalar.(*ColRef); ok {
+					switch l := f.Left.Scalar.(type) {
+					case *ColRef:
+						equiv = append(equiv, [2]sql.ColumnId{l.Col, r.Col})
+					case *Literal:
+						constant.Add(r.Col)
+					}
+				}
+			case *Not:
+				child, ok := f.Child.Scalar.(*IsNull)
+				if ok {
+					col, ok := child.Child.Scalar.(*ColRef)
+					if ok {
+						notNull.Add(col.Col)
+					}
+				}
+			}
+		}
+		fds = sql.NewFilterFDs(rel.Child.RelProps.fds, notNull, constant, equiv)
+	case *Project:
+		// get col refs in project
+		var projCols sql.ColSet
+		for _, e := range rel.Projections {
+			projCols = projCols.Union(e.scalarProps.Cols)
+		}
+		fds = sql.NewProjectFDs(rel.Child.RelProps.fds, projCols, false)
+	case *Distinct:
+		fds = sql.NewProjectFDs(rel.Child.RelProps.fds, rel.Child.RelProps.fds.All(), true)
+	default:
+		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
+	}
+	p.fds = fds
 	return p
+}
+
+// denormIdxExprs replaces the native table name in index
+// expression strings with the aliased name.
+// TODO: this is unstable while periods in Index.Expressions()
+// table identifiers are ambiguous
+func denormIdxExprs(table string, idx sql.Index) []string {
+	denormExpr := make([]string, len(idx.Expressions()))
+	for i, e := range idx.Expressions() {
+		parts := strings.Split(e, ".")
+		denormExpr[i] = strings.ToLower(fmt.Sprintf("%s.%s", table, parts[1]))
+	}
+	return denormExpr
+}
+
+func getEquivs(filters []ScalarExpr) [][2]sql.ColumnId {
+	var ret [][2]sql.ColumnId
+	for _, f := range filters {
+		var l, r *ColRef
+		switch f := f.(type) {
+		case *Equal:
+			l, _ = f.Left.Scalar.(*ColRef)
+			r, _ = f.Right.Scalar.(*ColRef)
+		case *NullSafeEq:
+			l, _ = f.Left.Scalar.(*ColRef)
+			r, _ = f.Right.Scalar.(*ColRef)
+		}
+		if l != nil && r != nil {
+			ret = append(ret, [2]sql.ColumnId{l.Col, r.Col})
+		}
+	}
+	return ret
+}
+
+func (p *relProps) FuncDeps() *sql.FuncDepSet {
+	return p.fds
 }
 
 // populateOutputTables initializes the bitmap indicating which tables'
@@ -202,7 +394,7 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 		}
 	case *MergeJoin:
 		var ret sql.Schema
-		for _, e := range r.InnerScan.Idx.Expressions() {
+		for _, e := range r.InnerScan.Idx.SqlIdx().Expressions() {
 			// TODO columns can have "." characters, this will miss cases
 			parts := strings.Split(e, ".")
 			var name string
@@ -213,7 +405,7 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 			}
 			ret = append(ret, &sql.Column{
 				Name:     strings.ToLower(name),
-				Source:   strings.ToLower(r.InnerScan.Idx.Table()),
+				Source:   strings.ToLower(r.InnerScan.Idx.SqlIdx().Table()),
 				Nullable: true},
 			)
 		}

@@ -219,7 +219,6 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 // attributes in the join filter. Costing is responsible for choosing the most
 // appropriate execution plan among options added to an expression group.
 func addLookupJoins(m *memo.Memo) error {
-	var aliases = make(TableAliases)
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var right *memo.ExprGroup
 		var join *memo.JoinBase
@@ -245,11 +244,7 @@ func addLookupJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		attrSource, tableGrp, indexes, err := lookupCandidates(m.Ctx, right.First, aliases)
-		if err != nil {
-			return err
-		}
-
+		tableGrp, indexes, extraFilters := lookupCandidates(right.First)
 		if or, ok := join.Filter[0].(*memo.Or); ok && len(join.Filter) == 1 {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
@@ -261,11 +256,9 @@ func addLookupJoins(m *memo.Memo) error {
 			for _, on := range conds {
 				filters := memo.SplitConjunction(on)
 				for _, idx := range indexes {
-					exprs := denormIdxExprs(attrSource, idx)
-					keyExprs, nullmask := keyExprsForIndex(m, tableGrp, exprs, filters)
+					keyExprs, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(filters, extraFilters...))
 					if keyExprs != nil {
 						concat = append(concat, &memo.Lookup{
-							Source:   attrSource,
 							Index:    idx,
 							KeyExprs: keyExprs,
 							Nullmask: nullmask,
@@ -290,15 +283,13 @@ func addLookupJoins(m *memo.Memo) error {
 		}
 
 		for _, idx := range indexes {
-			exprs := denormIdxExprs(attrSource, idx)
-			keyExprs, nullmask := keyExprsForIndex(m, tableGrp, exprs, join.Filter)
+			keyExprs, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(join.Filter, extraFilters...))
 			if keyExprs == nil {
 				continue
 			}
 			rel := &memo.LookupJoin{
 				JoinBase: join.Copy(),
 				Lookup: &memo.Lookup{
-					Source:   attrSource,
 					Index:    idx,
 					KeyExprs: keyExprs,
 					Nullmask: nullmask,
@@ -312,28 +303,14 @@ func addLookupJoins(m *memo.Memo) error {
 	})
 }
 
-// denormIdxExprs replaces the native table name in index
-// expression strings with the aliased name.
-// TODO: this is unstable while periods in Index.Expressions()
-// table identifiers are ambiguous
-func denormIdxExprs(table string, idx sql.Index) []string {
-	denormExpr := make([]string, len(idx.Expressions()))
-	for i, e := range idx.Expressions() {
-		parts := strings.Split(e, ".")
-		denormExpr[i] = strings.ToLower(fmt.Sprintf("%s.%s", table, parts[1]))
-	}
-	return denormExpr
-}
-
 // keyExprsForIndex returns a list of expression groups that compute a lookup
 // key into the given index. The key fields will either be equality filters
 // (from ON conditions) or constants.
-func keyExprsForIndex(m *memo.Memo, tableGrp memo.GroupId, exprs []string, filters []memo.ScalarExpr) ([]memo.ScalarExpr, []bool) {
+func keyExprsForIndex(tableGrp memo.GroupId, idxExprs []sql.ColumnId, filters []memo.ScalarExpr) ([]memo.ScalarExpr, []bool) {
 	var keyExprs []memo.ScalarExpr
 	var nullmask []bool
-	for _, e := range exprs {
-		targetId := m.Columns[e]
-		key, nullable := keyForExpr(targetId, tableGrp, filters)
+	for _, col := range idxExprs {
+		key, nullable := keyForExpr(col, tableGrp, filters)
 		if key == nil {
 			break
 		}
@@ -371,7 +348,7 @@ func keyForExpr(targetCol sql.ColumnId, tableGrp memo.GroupId, filters []memo.Sc
 		} else {
 			continue
 		}
-		// we don't care what expression the key is, as long as it does not
+		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
 		if !key.Group().ScalarProps().Tables.Contains(int(memo.TableIdForSource(tableGrp))) {
 			return key, nullable
@@ -520,7 +497,6 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 // addRightSemiJoins allows for a reversed semiJoin operator when
 // the join attributes of the left side are provably unique.
 func addRightSemiJoins(m *memo.Memo) error {
-	var aliases = make(TableAliases)
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
@@ -530,17 +506,14 @@ func addRightSemiJoins(m *memo.Memo) error {
 		if len(semi.Filter) == 0 {
 			return nil
 		}
-		attrSource, tableGrp, indexes, err := lookupCandidates(m.Ctx, semi.Left.First, aliases)
-		if err != nil {
-			return err
-		}
+		tableGrp, indexes, filters := lookupCandidates(semi.Left.First)
 
 		for _, idx := range indexes {
-			if !idx.IsUnique() {
+			if !semi.Group().RelProps.FuncDeps().ColsAreStrictKey(idx.ColSet()) {
 				continue
 			}
-			exprs := denormIdxExprs(attrSource, idx)
-			keyExprs, nullmask := keyExprsForIndex(m, tableGrp, exprs, semi.Filter)
+
+			keyExprs, nullmask := keyExprsForIndex(tableGrp, idx.Cols(), append(semi.Filter, filters...))
 			if keyExprs == nil {
 				continue
 			}
@@ -559,7 +532,6 @@ func addRightSemiJoins(m *memo.Memo) error {
 			rGroup.RelProps.Distinct = memo.HashDistinctOp
 
 			lookup := &memo.Lookup{
-				Source:   attrSource,
 				Index:    idx,
 				KeyExprs: keyExprs,
 				Nullmask: nullmask,
@@ -570,17 +542,19 @@ func addRightSemiJoins(m *memo.Memo) error {
 	})
 }
 
-// lookupCandidates returns a normalized table name and a list of available
-// candidate indexes as replacements for the given relExpr, or empty values
+// lookupCandidates name and filters list e for the given relExpr, or empty values
 // if there are no suitable indexes.
-func lookupCandidates(ctx *sql.Context, rel memo.RelExpr, aliases TableAliases) (string, memo.GroupId, []sql.Index, error) {
+func lookupCandidates(rel memo.RelExpr) (memo.GroupId, []*memo.Index, []memo.ScalarExpr) {
+	var filters []memo.ScalarExpr
 	for done := false; !done; {
-
 		switch n := rel.(type) {
 		case *memo.Distinct:
 			rel = n.Child.First
 		case *memo.Filter:
 			rel = n.Child.First
+			for i := range n.Filters {
+				filters = append(filters, n.Filters[i].Scalar)
+			}
 		case *memo.Project:
 			rel = n.Child.First
 		default:
@@ -590,54 +564,13 @@ func lookupCandidates(ctx *sql.Context, rel memo.RelExpr, aliases TableAliases) 
 	}
 	switch n := rel.(type) {
 	case *memo.TableAlias:
-		tab, indexes, err := tableAliasLookupCand(ctx, n.Table, aliases)
-		return tab, n.Group().Id, indexes, err
+		return n.Group().Id, n.Indexes(), filters
 	case *memo.TableScan:
-		tab, indexes, err := tableScanLookupCand(ctx, n.Table)
-		return tab, n.Group().Id, indexes, err
+		return n.Group().Id, n.Indexes(), filters
 	default:
 	}
-	return "", 0, nil, nil
+	return 0, nil, nil
 
-}
-
-func tableScanLookupCand(ctx *sql.Context, n *plan.ResolvedTable) (string, []sql.Index, error) {
-	attributeSource := strings.ToLower(n.Name())
-	table := n.Table
-	if w, ok := table.(sql.TableWrapper); ok {
-		table = w.Underlying()
-	}
-	indexableTable, ok := table.(sql.IndexAddressableTable)
-	if !ok {
-		return "", nil, nil
-	}
-	indexes, err := indexableTable.GetIndexes(ctx)
-	if err != nil {
-		return "", nil, err
-	}
-	return attributeSource, indexes, nil
-}
-
-func tableAliasLookupCand(ctx *sql.Context, n *plan.TableAlias, aliases TableAliases) (string, []sql.Index, error) {
-	attributeSource := strings.ToLower(n.Name())
-	rt, ok := n.Child.(*plan.ResolvedTable)
-	if !ok {
-		return "", nil, nil
-	}
-	table := rt.Table
-	if w, ok := table.(sql.TableWrapper); ok {
-		table = w.Underlying()
-	}
-	indexableTable, ok := table.(sql.IndexAddressableTable)
-	if !ok {
-		return "", nil, nil
-	}
-	aliases.add(n, indexableTable)
-	indexes, err := indexableTable.GetIndexes(ctx)
-	if err != nil {
-		return "", nil, nil
-	}
-	return attributeSource, indexes, nil
 }
 
 func addHashJoins(m *memo.Memo) error {
@@ -695,7 +628,6 @@ func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 // filter.
 // TODO: sort-merge joins
 func addMergeJoins(m *memo.Memo) error {
-	var aliases = make(TableAliases)
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var join *memo.JoinBase
 		switch e := e.(type) {
@@ -712,22 +644,12 @@ func addMergeJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		lAttrSource, leftGrp, lIndexes, err := lookupCandidates(m.Ctx, join.Left.First, aliases)
-		if err != nil {
-			return err
-		} else if lAttrSource == "" {
-			return nil
-		}
-		rAttrSource, rightGrp, rIndexes, err := lookupCandidates(m.Ctx, join.Right.First, aliases)
-		if err != nil {
-			return err
-		}
+		leftGrp, lIndexes, lFilters := lookupCandidates(join.Left.First)
+		rightGrp, rIndexes, rFilters := lookupCandidates(join.Right.First)
 
-		if tab, ok := aliases[lAttrSource]; ok {
-			lAttrSource = strings.ToLower(tab.Name())
-		}
-		if tab, ok := aliases[rAttrSource]; ok {
-			rAttrSource = strings.ToLower(tab.Name())
+		lAttrSource, _ := m.TableProps.GetTable(leftGrp)
+		if lAttrSource == "" {
+			return nil
 		}
 
 		for i, f := range join.Filter {
@@ -778,39 +700,23 @@ func addMergeJoins(m *memo.Memo) error {
 				continue
 			}
 
-			lIdx := sortedIndexScanForTableCol(lIndexes, lAttrSource, lRef.Gf.Name(), lRef.Gf.Type())
-			if lIdx == nil {
-				continue
-			}
-			rIdx := sortedIndexScanForTableCol(rIndexes, rAttrSource, rRef.Gf.Name(), rRef.Gf.Type())
-			if rIdx == nil {
-				continue
-			}
-
 			newFilters := make([]memo.ScalarExpr, len(join.Filter))
 			copy(newFilters, join.Filter)
 			// merge cond first
 			newFilters[0], newFilters[i] = newFilters[i], newFilters[0]
 
-			jb := join.Copy()
-			if d, ok := jb.Left.First.(*memo.Distinct); ok && lIdx.Idx.IsUnique() {
-				jb.Left = d.Child
+			for _, rIdx := range sortedIndexScansForTableCol(rIndexes, rRef, join.Right.RelProps.FuncDeps().Constants(), rFilters) {
+				for _, lIdx := range sortedIndexScansForTableCol(lIndexes, lRef, join.Left.RelProps.FuncDeps().Constants(), lFilters) {
+					jb := join.Copy()
+					if d, ok := jb.Left.First.(*memo.Distinct); ok && lIdx.Idx.SqlIdx().IsUnique() {
+						jb.Left = d.Child
+					}
+					if d, ok := jb.Right.First.(*memo.Distinct); ok && rIdx.Idx.SqlIdx().IsUnique() {
+						jb.Right = d.Child
+					}
+					m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIdx, rIdx, jb.Op.AsMerge(), newFilters, swap)
+				}
 			}
-			if d, ok := jb.Right.First.(*memo.Distinct); ok && rIdx.Idx.IsUnique() {
-				jb.Right = d.Child
-			}
-
-			jb.Filter = newFilters
-			jb.Op = jb.Op.AsMerge()
-			rel := &memo.MergeJoin{
-				JoinBase:  jb,
-				InnerScan: lIdx,
-				OuterScan: rIdx,
-				SwapCmp:   swap,
-			}
-			rel.InnerScan.Parent = rel.JoinBase
-			rel.OuterScan.Parent = rel.JoinBase
-			e.Group().Prepend(rel)
 		}
 		return nil
 	})
@@ -819,22 +725,58 @@ func addMergeJoins(m *memo.Memo) error {
 // sortedIndexScanForTableCol returns the first indexScan found for a relation
 // that provide a prefix for the joinFilters rel free attribute. I.e. the
 // indexScan will return the same rows as the rel, but sorted by |col|.
-func sortedIndexScanForTableCol(is []sql.Index, table, col string, typ sql.Type) *memo.IndexScan {
-	tc := fmt.Sprintf("%s.%s", strings.ToLower(table), strings.ToLower(col))
-	for _, idx := range is {
-		if strings.ToLower(idx.Expressions()[0]) != tc {
+func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, constants sql.ColSet, filters []memo.ScalarExpr) (ret []*memo.IndexScan) {
+	// valid index prefix is (constants..., targetCol)
+	for _, idx := range indexes {
+		found := false
+		matchedIdx := 0
+		for i, idxCol := range idx.Cols() {
+			if constants.Contains(idxCol) {
+				// idxCol constant OK
+				continue
+			}
+			if idxCol == targetCol.Col {
+				found = true
+				matchedIdx = i
+			} else {
+				break
+			}
+		}
+		if !found {
 			continue
 		}
-		rang := sql.Range{sql.AllRangeColumnExpr(typ)}
-		if !idx.CanSupport(rang) {
+		rang := make(sql.Range, len(idx.Cols()))
+		for j := 0; j < matchedIdx; j++ {
+			var lit *memo.Literal
+			for _, f := range filters {
+				if eq, ok := f.(*memo.Equal); ok {
+					if l, ok := eq.Left.Scalar.(*memo.ColRef); ok && l.Col == idx.Cols()[j] {
+						lit, _ = eq.Right.Scalar.(*memo.Literal)
+					}
+					if r, ok := eq.Right.Scalar.(*memo.ColRef); ok && r.Col == idx.Cols()[j] {
+						lit, _ = eq.Left.Scalar.(*memo.Literal)
+					}
+					if lit != nil {
+						break
+					}
+				}
+			}
+			rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, lit.Typ)
+		}
+		for j := matchedIdx; j < len(idx.Cols()); j++ {
+			// all range bound Compare() is type insensitive
+			rang[j] = sql.AllRangeColumnExpr(types.Null)
+		}
+
+		if !idx.SqlIdx().CanSupport(rang) {
 			return nil
 		}
-		return &memo.IndexScan{
-			Source: table,
-			Idx:    idx,
-		}
+		ret = append(ret, &memo.IndexScan{
+			Idx:   idx,
+			Range: rang,
+		})
 	}
-	return nil
+	return ret
 }
 
 // isWeaklyMonotonic is a weak test of whether an expression

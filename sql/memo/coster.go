@@ -16,7 +16,6 @@ package memo
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -205,19 +204,47 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 // if source table filters limit the number of rows returned by the left table.
 func lookupJoinSelectivityMultiplier(l *Lookup, filterCnt int) float64 {
 	var mult float64 = 1
-	if !l.Index.IsUnique() {
+	if !l.Index.SqlIdx().IsUnique() {
 		mult += .1
 	}
 	if filterCnt > len(l.KeyExprs) {
 		mult += float64(filterCnt-len(l.KeyExprs)) * .1
 	}
-	if len(l.Index.Expressions()) > len(l.KeyExprs) {
-		mult += float64(len(l.Index.Expressions())-filterCnt) * .1
+	if len(l.Index.SqlIdx().Expressions()) > len(l.KeyExprs) {
+		mult += float64(len(l.Index.SqlIdx().Expressions())-filterCnt) * .1
 	}
 	for _, m := range l.Nullmask {
 		if m {
 			mult += .1
 		}
+	}
+
+	joinFds := l.Parent.Group().RelProps.FuncDeps()
+
+	var notNull sql.ColSet
+	var constCols sql.ColSet
+	for i, nullable := range l.Nullmask {
+		props := l.KeyExprs[i].Group().ScalarProps()
+		onCols := joinFds.EquivalenceClosure(props.Cols)
+		if !nullable {
+			if props.nullRejecting {
+				// columns with nulls will be filtered out
+				// TODO double-checking nullRejecting might be redundant
+				notNull = notNull.Union(onCols)
+			}
+		}
+		// from the perspective of the secondary table, lookup keys
+		// will be constant
+		constCols = constCols.Union(onCols)
+	}
+	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), notNull, constCols, joinFds.Equiv())
+	strict := fds.ColsAreStrictKey(l.Index.ColSet())
+	if strict {
+		mult = 1
+	}
+	max1Row := fds.HasMax1Row()
+	if max1Row {
+		mult = 1
 	}
 	return mult
 }

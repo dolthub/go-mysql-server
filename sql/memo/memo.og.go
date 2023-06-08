@@ -169,7 +169,7 @@ func (r *FullOuterJoin) JoinPrivate() *JoinBase {
 }
 
 type TableScan struct {
-	*relBase
+	*sourceBase
 	Table *plan.ResolvedTable
 }
 
@@ -197,7 +197,7 @@ func (r *TableScan) Children() []*ExprGroup {
 }
 
 type Values struct {
-	*relBase
+	*sourceBase
 	Table *plan.ValueDerivedTable
 }
 
@@ -225,7 +225,7 @@ func (r *Values) Children() []*ExprGroup {
 }
 
 type TableAlias struct {
-	*relBase
+	*sourceBase
 	Table *plan.TableAlias
 }
 
@@ -253,7 +253,7 @@ func (r *TableAlias) Children() []*ExprGroup {
 }
 
 type RecursiveTable struct {
-	*relBase
+	*sourceBase
 	Table *plan.RecursiveTable
 }
 
@@ -281,7 +281,7 @@ func (r *RecursiveTable) Children() []*ExprGroup {
 }
 
 type RecursiveCte struct {
-	*relBase
+	*sourceBase
 	Table *plan.RecursiveCte
 }
 
@@ -309,7 +309,7 @@ func (r *RecursiveCte) Children() []*ExprGroup {
 }
 
 type SubqueryAlias struct {
-	*relBase
+	*sourceBase
 	Table *plan.SubqueryAlias
 }
 
@@ -337,7 +337,7 @@ func (r *SubqueryAlias) Children() []*ExprGroup {
 }
 
 type Max1Row struct {
-	*relBase
+	*sourceBase
 	Table sql.NameableNode
 }
 
@@ -365,7 +365,7 @@ func (r *Max1Row) Children() []*ExprGroup {
 }
 
 type TableFunc struct {
-	*relBase
+	*sourceBase
 	Table sql.TableFunction
 }
 
@@ -393,7 +393,7 @@ func (r *TableFunc) Children() []*ExprGroup {
 }
 
 type EmptyTable struct {
-	*relBase
+	*sourceBase
 	Table *plan.EmptyTable
 }
 
