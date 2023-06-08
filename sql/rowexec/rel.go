@@ -131,8 +131,8 @@ func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTab
 				return nil, err
 			}
 			cols = append(cols, &jsonTableCol{
-				path:   col.Path,
-				cols:   innerCols,
+				path: col.Path,
+				cols: innerCols,
 			})
 			continue
 		}
