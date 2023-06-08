@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	bbhash "github.com/opencoff/go-bbhash"
 )
 
