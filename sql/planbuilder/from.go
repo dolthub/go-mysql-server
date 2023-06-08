@@ -393,6 +393,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 		b.handleErr(err)
 	}
 
+	// Table Function must always have an alias, pick function name as alias if none is provided
 	var newAlias *plan.TableAlias
 	if t.Alias.IsEmpty() {
 		newAlias = plan.NewTableAlias(t.Name, utf)
