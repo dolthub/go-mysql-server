@@ -629,6 +629,11 @@ func TestTableFunctions(t *testing.T) {
 			ExpectedErr: sql.ErrTableColumnNotFound,
 		},
 		{
+			Name:        "projection of aliased non-existent qualified column from table function",
+			Query:       "SELECT stf.none as none from simple_TABLE_function(123) as stf;",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
 			Name:     "basic table function",
 			Query:    "SELECT * from simple_table_function(123);",
 			Expected: []sql.Row{{"foo", 123}},
@@ -724,6 +729,10 @@ func TestTableFunctions(t *testing.T) {
 		{
 			Query:       "select seq.x from (select seq.x from sequence_table('x', 5) seq) sq",
 			ExpectedErr: sql.ErrTableNotFound,
+		},
+		{
+			Query:    "select sq.xx from (select seq.x as xx from sequence_table('x', 5) seq) sq",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 		},
 	}
 
