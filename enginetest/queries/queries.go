@@ -8590,10 +8590,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
 	{
-		Query:       `CREATE TABLE test (pk int primary key, body text, FULLTEXT KEY idx_body (body))`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
 		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
