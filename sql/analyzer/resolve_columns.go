@@ -194,16 +194,6 @@ func (a availableNames) allTables() []string {
 	return dedupStrings(allTables)
 }
 
-func (a availableNames) String() string {
-	for _, symbols := range a {
-		log.Println(symbols.availableTables)
-		log.Println(symbols.availableTableCols)
-		log.Println(symbols.availableAliases)
-		log.Println(symbols.availableColumns)
-	}
-	return ""
-}
-
 // aliasesAndTablesForColumnAtLevel returns a slice of strings indicating how many distinct alias definitions are available
 // for the specified column name, as well as a slice of strings indicating which distinct tables are available with that
 // column name.
@@ -454,7 +444,7 @@ func getAvailableNamesByScope(n sql.Node, scope *plan.Scope) availableNames {
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
 				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias,
-					*plan.RecursiveTable, *plan.IndexedTableAccess, sql.TableFunction:
+					*plan.RecursiveTable, *plan.IndexedTableAccess:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					symbols.indexTable(alias, name, scopeLevel)
@@ -513,14 +503,7 @@ func qualifyExpression(e sql.Expression, node sql.Node, symbols availableNames) 
 			if validateQualifiedColumn(col, symbols) {
 				return col, transform.SameTree, nil
 			} else {
-				log.Println(symbols.allTables())
 				similar := similartext.Find(symbols.allTables(), col.Table())
-				for _, s := range symbols {
-					log.Println(s.availableTables)
-					log.Println(s.availableTableCols)
-					log.Println(s.availableAliases)
-					log.Println(s.availableColumns)
-				}
 				return nil, transform.SameTree, sql.ErrTableNotFound.New(col.Table() + similar)
 			}
 		}
