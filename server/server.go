@@ -49,7 +49,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 		tracer = sql.NoopTracer
 	}
 
-	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDatabase, e.MemoryManager, e.ProcessList, cfg.Address)
+	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
 	handler := &Handler{
 		e:                 e,
 		sm:                sm,
@@ -79,7 +79,7 @@ func NewValidatingServer(
 		tracer = sql.NoopTracer
 	}
 
-	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.HasDatabase, e.MemoryManager, e.ProcessList, cfg.Address)
+	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
 	h := &Handler{
 		e:                 e,
 		sm:                sm,

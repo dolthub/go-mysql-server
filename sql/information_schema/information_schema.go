@@ -818,7 +818,7 @@ func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1116,7 +1116,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1230,7 +1230,7 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1497,7 +1497,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1602,7 +1602,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1678,7 +1678,7 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -2774,12 +2774,19 @@ func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, bo
 	return cnt, true, nil
 }
 
-func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
+func (n *defaultStatsTable) Analyze(ctx *Context, dbName, table string) error {
 	tableStats := &TableStatistics{
 		CreatedAt: time.Now(),
 	}
 
-	t, _, err := n.catalog.Table(ctx, db, table)
+	db, err := n.catalog.Database(ctx, dbName)
+	if err != nil {
+		return err
+	}
+
+	effectiveDbName := plan.CheckPrivilegeNameForDatabase(db)
+
+	t, _, err := n.catalog.DatabaseTable(ctx, db, table)
 	if err != nil {
 		return err
 	}
@@ -2794,7 +2801,7 @@ func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
 		break
 	}
 
-	n.stats[NewDbTable(db, table)] = tableStats
+	n.stats[NewDbTable(effectiveDbName, table)] = tableStats
 	return nil
 }
 

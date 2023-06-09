@@ -87,10 +87,10 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	var operations []sql.PrivilegedOperation
 	for _, oldName := range r.OldNames {
-		operations = append(operations, sql.NewPrivilegedOperation(r.Db.Name(), oldName, "", sql.PrivilegeType_Alter, sql.PrivilegeType_Drop))
+		operations = append(operations, sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(r.Db), oldName, "", sql.PrivilegeType_Alter, sql.PrivilegeType_Drop))
 	}
 	for _, newName := range r.NewNames {
-		operations = append(operations, sql.NewPrivilegedOperation(r.Db.Name(), newName, "", sql.PrivilegeType_Create, sql.PrivilegeType_Insert))
+		operations = append(operations, sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(r.Db), newName, "", sql.PrivilegeType_Create, sql.PrivilegeType_Insert))
 	}
 	return opChecker.UserHasPrivileges(ctx, operations...)
 }
@@ -383,7 +383,7 @@ func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (a *AddColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(a.Db.Name(), getTableName(a.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(a.Db), getTableName(a.Table), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -572,7 +572,7 @@ func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.Database().Name(), getTableName(d.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(d.Db), getTableName(d.Table), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -712,7 +712,7 @@ func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (r *RenameColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(r.Db.Name(), getTableName(r.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(r.Db), getTableName(r.Table), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -808,7 +808,7 @@ func (m ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (m *ModifyColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(m.Database().Name(), getTableName(m.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(m.Db), getTableName(m.Table), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -972,5 +972,5 @@ func (atc *AlterTableCollation) WithChildren(children ...sql.Node) (sql.Node, er
 // CheckPrivileges implements the interface sql.Node.
 func (atc *AlterTableCollation) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(atc.Db.Name(), getTableName(atc.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(atc.Db), getTableName(atc.Table), "", sql.PrivilegeType_Alter))
 }

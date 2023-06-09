@@ -44,33 +44,55 @@ func NewPrivilegedDatabaseProvider(grantTables *MySQLDb, p sql.DatabaseProvider)
 
 // Database implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
+	if strings.ToLower(name) == "mysql" {
+		return pdp.grantTables, nil
+	}
 
-	if lowName := strings.ToLower(name); lowName != sql.InformationSchemaDatabaseName {
-		privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
-		// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
-		if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
-			return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), name)
-		}
-		if lowName == "mysql" {
-			return pdp.grantTables, nil
-		}
+	db, providerErr := pdp.provider.Database(ctx, name)
+	if sql.ErrDatabaseNotFound.Is(providerErr) {
+		// continue to priv check below, which will deny access or return not found as appropriate, before returning this
+		// original not found error
+	} else if providerErr != nil {
+		return nil, providerErr
 	}
-	db, err := pdp.provider.Database(ctx, name)
-	if err != nil {
-		return nil, err
+
+	checkName := name
+	if adb, ok := db.(sql.AliasedDatabase); ok {
+		checkName = adb.AliasedName()
 	}
+
+	privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
+	// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
+	if privSet.Count() == 0 && !privSet.Database(checkName).HasPrivileges() {
+		return nil, sql.ErrDatabaseAccessDeniedForUser.New(pdp.usernameFromCtx(ctx), checkName)
+	}
+
+	if providerErr != nil {
+		return nil, providerErr
+	}
+
 	return NewPrivilegedDatabase(pdp.grantTables, db), nil
 }
 
 // HasDatabase implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) HasDatabase(ctx *sql.Context, name string) bool {
-	if name != sql.InformationSchemaDatabaseName {
-		privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
-		// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
-		if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
-			return false
-		}
+	db, err := pdp.provider.Database(ctx, name)
+	if sql.ErrDatabaseNotFound.Is(err) {
+		// continue to check below, which will deny access or return not found as appropriate
+	} else if err != nil {
+		return false
 	}
+
+	if adb, ok := db.(sql.AliasedDatabase); ok {
+		name = adb.AliasedName()
+	}
+
+	privSet := pdp.grantTables.UserActivePrivilegeSet(ctx)
+	// If the user has no global static privileges or database-relevant privileges then the database is not accessible.
+	if privSet.Count() == 0 && !privSet.Database(name).HasPrivileges() {
+		return false
+	}
+
 	return pdp.provider.HasDatabase(ctx, name)
 }
 
@@ -82,9 +104,14 @@ func (pdp PrivilegedDatabaseProvider) AllDatabases(ctx *sql.Context) []sql.Datab
 	var databasesWithAccess []sql.Database
 	allDatabases := pdp.provider.AllDatabases(ctx)
 	for _, db := range allDatabases {
-		// If the user has any global static privileges or database-relevant privileges then the database is accessible.
-		// 'information_schema' database is always accessible.
-		if db.Name() == sql.InformationSchemaDatabaseName || privilegeSetCount > 0 || privilegeSet.Database(db.Name()).HasPrivileges() {
+		// If the user has any global static privileges or database-relevant privileges then the database is accessible
+		checkName := db.Name()
+
+		if adb, ok := db.(sql.AliasedDatabase); ok {
+			checkName = adb.AliasedName()
+		}
+
+		if privilegeSetCount > 0 || privilegeSet.Database(checkName).HasPrivileges() {
 			databasesWithAccess = append(databasesWithAccess, NewPrivilegedDatabase(pdp.grantTables, db))
 		}
 	}
@@ -134,20 +161,23 @@ func (pdb PrivilegedDatabase) Name() string {
 
 // GetTableInsensitive implements the interface sql.Database.
 func (pdb PrivilegedDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
-	if pdb.db.Name() != sql.InformationSchemaDatabaseName {
-		privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-		dbSet := privSet.Database(pdb.db.Name())
-		// If there are no usable privileges for this database then the table is inaccessible.
-		if privSet.Count() == 0 && !dbSet.HasPrivileges() {
-			return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), pdb.db.Name())
-		}
+	checkName := pdb.db.Name()
+	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
+		checkName = adb.AliasedName()
+	}
 
-		tblSet := dbSet.Table(tblName)
-		// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
-		// table is not accessible.
-		if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
-			return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
-		}
+	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
+	dbSet := privSet.Database(checkName)
+	// If there are no usable privileges for this database then the table is inaccessible.
+	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
+		return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), checkName)
+	}
+
+	tblSet := dbSet.Table(tblName)
+	// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
+	// table is not accessible.
+	if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
+		return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
 	}
 	return pdb.db.GetTableInsensitive(ctx, tblName)
 }
@@ -156,31 +186,30 @@ func (pdb PrivilegedDatabase) GetTableInsensitive(ctx *sql.Context, tblName stri
 func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	var tablesWithAccess []string
 	var err error
-	if pdb.db.Name() != sql.InformationSchemaDatabaseName {
-		privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-		dbSet := privSet.Database(pdb.db.Name())
-		// If there are no usable privileges for this database then no table is accessible.
-		privSetCount := privSet.Count()
-		if privSetCount == 0 && !dbSet.HasPrivileges() {
-			return nil, nil
-		}
+	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 
-		tblNames, err := pdb.db.GetTableNames(ctx)
-		if err != nil {
-			return nil, err
-		}
-		dbSetCount := dbSet.Count()
-		for _, tblName := range tblNames {
-			// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
-			// table is accessible.
-			if privSetCount > 0 || dbSetCount > 0 || dbSet.Table(tblName).HasPrivileges() {
-				tablesWithAccess = append(tablesWithAccess, tblName)
-			}
-		}
-	} else {
-		tablesWithAccess, err = pdb.db.GetTableNames(ctx)
-		if err != nil {
-			return nil, err
+	checkName := pdb.db.Name()
+	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
+		checkName = adb.AliasedName()
+	}
+
+	dbSet := privSet.Database(checkName)
+	// If there are no usable privileges for this database then no table is accessible.
+	privSetCount := privSet.Count()
+	if privSetCount == 0 && !dbSet.HasPrivileges() {
+		return nil, nil
+	}
+
+	tblNames, err := pdb.db.GetTableNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dbSetCount := dbSet.Count()
+	for _, tblName := range tblNames {
+		// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
+		// table is accessible.
+		if privSetCount > 0 || dbSetCount > 0 || dbSet.Table(tblName).HasPrivileges() {
+			tablesWithAccess = append(tablesWithAccess, tblName)
 		}
 	}
 	return tablesWithAccess, nil
@@ -193,20 +222,24 @@ func (pdb PrivilegedDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName 
 		return nil, false, sql.ErrAsOfNotSupported.New(pdb.db.Name())
 	}
 
-	if pdb.db.Name() != sql.InformationSchemaDatabaseName {
-		privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-		dbSet := privSet.Database(pdb.db.Name())
-		// If there are no usable privileges for this database then the table is inaccessible.
-		if privSet.Count() == 0 && !dbSet.HasPrivileges() {
-			return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), pdb.db.Name())
-		}
+	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 
-		tblSet := dbSet.Table(tblName)
-		// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
-		// table is not accessible.
-		if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
-			return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
-		}
+	checkName := pdb.db.Name()
+	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
+		checkName = adb.AliasedName()
+	}
+
+	dbSet := privSet.Database(checkName)
+	// If there are no usable privileges for this database then the table is inaccessible.
+	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
+		return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), checkName)
+	}
+
+	tblSet := dbSet.Table(tblName)
+	// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
+	// table is not accessible.
+	if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
+		return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
 	}
 	return db.GetTableInsensitiveAsOf(ctx, tblName, asOf)
 }
@@ -220,31 +253,30 @@ func (pdb PrivilegedDatabase) GetTableNamesAsOf(ctx *sql.Context, asOf interface
 
 	var tablesWithAccess []string
 	var err error
-	if pdb.db.Name() != sql.InformationSchemaDatabaseName {
-		privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-		dbSet := privSet.Database(pdb.db.Name())
-		// If there are no usable privileges for this database then no table is accessible.
-		if privSet.Count() == 0 && !dbSet.HasPrivileges() {
-			return nil, nil
-		}
+	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
 
-		tblNames, err := db.GetTableNamesAsOf(ctx, asOf)
-		if err != nil {
-			return nil, err
-		}
-		privSetCount := privSet.Count()
-		dbSetCount := dbSet.Count()
-		for _, tblName := range tblNames {
-			// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
-			// table is accessible.
-			if privSetCount > 0 || dbSetCount > 0 && dbSet.Table(tblName).HasPrivileges() {
-				tablesWithAccess = append(tablesWithAccess, tblName)
-			}
-		}
-	} else {
-		tablesWithAccess, err = db.GetTableNamesAsOf(ctx, asOf)
-		if err != nil {
-			return nil, err
+	checkName := pdb.db.Name()
+	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
+		checkName = adb.AliasedName()
+	}
+
+	dbSet := privSet.Database(checkName)
+	// If there are no usable privileges for this database then no table is accessible.
+	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
+		return nil, nil
+	}
+
+	tblNames, err := db.GetTableNamesAsOf(ctx, asOf)
+	if err != nil {
+		return nil, err
+	}
+	privSetCount := privSet.Count()
+	dbSetCount := dbSet.Count()
+	for _, tblName := range tblNames {
+		// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
+		// table is accessible.
+		if privSetCount > 0 || dbSetCount > 0 && dbSet.Table(tblName).HasPrivileges() {
+			tablesWithAccess = append(tablesWithAccess, tblName)
 		}
 	}
 
@@ -277,9 +309,6 @@ func (pdb PrivilegedDatabase) RenameTable(ctx *sql.Context, oldName, newName str
 
 // GetTriggers implements the interface sql.TriggerDatabase.
 func (pdb PrivilegedDatabase) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
-	if pdb.db.Name() == "information_schema" {
-		return nil, nil
-	}
 	if db, ok := pdb.db.(sql.TriggerDatabase); ok {
 		return db.GetTriggers(ctx)
 	}
@@ -304,9 +333,6 @@ func (pdb PrivilegedDatabase) DropTrigger(ctx *sql.Context, name string) error {
 
 // GetStoredProcedure implements the interface sql.StoredProcedureDatabase.
 func (pdb PrivilegedDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.StoredProcedureDetails, bool, error) {
-	if pdb.db.Name() == "information_schema" {
-		return sql.StoredProcedureDetails{}, false, nil
-	}
 	if db, ok := pdb.db.(sql.StoredProcedureDatabase); ok {
 		return db.GetStoredProcedure(ctx, name)
 	}
@@ -315,9 +341,6 @@ func (pdb PrivilegedDatabase) GetStoredProcedure(ctx *sql.Context, name string) 
 
 // GetStoredProcedures implements the interface sql.StoredProcedureDatabase.
 func (pdb PrivilegedDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
-	if pdb.db.Name() == "information_schema" {
-		return nil, nil
-	}
 	if db, ok := pdb.db.(sql.StoredProcedureDatabase); ok {
 		return db.GetStoredProcedures(ctx)
 	}
@@ -342,9 +365,6 @@ func (pdb PrivilegedDatabase) DropStoredProcedure(ctx *sql.Context, name string)
 
 // GetEvent implements sql.EventDatabase
 func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
-	if pdb.db.Name() == "information_schema" {
-		return sql.EventDefinition{}, false, nil
-	}
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.GetEvent(ctx, name)
 	}
@@ -353,9 +373,6 @@ func (pdb PrivilegedDatabase) GetEvent(ctx *sql.Context, name string) (sql.Event
 
 // GetEvents implements sql.EventDatabase
 func (pdb PrivilegedDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
-	if pdb.db.Name() == "information_schema" {
-		return nil, nil
-	}
 	if db, ok := pdb.db.(sql.EventDatabase); ok {
 		return db.GetEvents(ctx)
 	}

@@ -42,6 +42,8 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
+
+	// TODO: this is incorrect, getTable returns only the first table, there could be others in the tree
 	if plan.IsDualTable(getTable(n)) {
 		return n, transform.SameTree, nil
 	}

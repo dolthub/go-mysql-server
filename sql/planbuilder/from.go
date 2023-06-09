@@ -392,8 +392,17 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	if err != nil {
 		b.handleErr(err)
 	}
-	outScope.node = newInstance
-	for _, c := range newInstance.Schema() {
+
+	// Table Function must always have an alias, pick function name as alias if none is provided
+	var newAlias *plan.TableAlias
+	if t.Alias.IsEmpty() {
+		newAlias = plan.NewTableAlias(t.Name, newInstance)
+	} else {
+		newAlias = plan.NewTableAlias(t.Alias.String(), newInstance)
+	}
+
+	outScope.node = newAlias
+	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:    database.Name(),
 			table: "",

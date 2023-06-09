@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -160,11 +161,28 @@ func GetDatabaseName(nodeToSearch sql.Node) string {
 		case *ResolvedTable:
 			return n.Database.Name()
 		case *UnresolvedTable:
-			return n.Database()
+			return n.Database().Name()
 		case *IndexedTableAccess:
 			return n.Database().Name()
 		}
 		nodeStack = append(nodeStack, node.Children()...)
 	}
 	return ""
+}
+
+// CheckPrivilegeNameForDatabase returns the name of the database to check privileges for, which may not be the result
+// of db.Name()
+func CheckPrivilegeNameForDatabase(db sql.Database) string {
+	if db == nil {
+		return ""
+	}
+
+	checkDbName := db.Name()
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+	if adb, ok := db.(sql.AliasedDatabase); ok {
+		checkDbName = adb.AliasedName()
+	}
+	return checkDbName
 }

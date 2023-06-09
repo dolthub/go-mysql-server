@@ -229,7 +229,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 		{Name: "history_index", Source: "ref_commits", Type: types.Int64},
 	}), nil)
 
-	db := memory.NewDatabase("")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("refs", refs)
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)
@@ -238,6 +238,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	a := withoutProcessTracking(NewDefault(provider))
 
 	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("mydb")
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.True(result.Resolved())
