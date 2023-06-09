@@ -2537,6 +2537,27 @@ var Invert_pkData = []SetupScript{{
     (2, 0, 1)`,
 }}
 
+var JoinData = []SetupScript{{
+	`create table asset (
+  id int primary key,
+  orgId varchar(10),
+  assetId varchar(10),
+  name varchar(20),
+  val varchar(20),
+  key idx1 (orgId, assetId),
+  unique key (orgId, name, assetId),
+  key (orgId, name, val)
+);`,
+	`insert into asset values
+    (0, 'org1', 'small', 'style', 'curve'),
+    (1, 'org1', 'small', 'dimension', 'wide'),
+    (2, 'org1', 'small', 'color', 'blue'),
+    (3, 'org1', 'small', 'retries', 'curve'),
+    (4, 'org1', 'medium', 'style', 'straight'),
+    (5, 'org1', 'medium', 'color', 'green'),
+    (6, 'org1', 'medium', 'dimension', 'narrow');`,
+}}
+
 var JsontableData = []SetupScript{{
 	`create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)`,
 	`insert into jsontable values

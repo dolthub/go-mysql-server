@@ -25,6 +25,107 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `
+select /*+ LOOKUP_JOIN(style, dimension) LOOKUP_JOIN(dimension, color) */ style.assetId
+from asset style
+join asset dimension
+  on style.assetId = dimension.assetId
+join asset color
+  on style.assetId = color.assetId
+where
+  dimension.val = 'wide' and
+  style.val = 'curve' and
+  color.val = 'blue' and
+  dimension.name = 'dimension' and
+  style.name = 'style' and
+  color.name = 'color' and
+  dimension.orgId = 'org1' and
+  style.orgId = 'org1' and
+  color.orgId = 'org1';
+`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [style.assetId:9]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ AND\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ style.assetId:9\n" +
+			"     │   │   └─ dimension.assetId:5\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ style.assetId:9\n" +
+			"     │       └─ color.assetId:1\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ dimension.assetId:5\n" +
+			"     │   │   └─ color.assetId:1\n" +
+			"     │   ├─ Filter\n" +
+			"     │   │   ├─ AND\n" +
+			"     │   │   │   ├─ AND\n" +
+			"     │   │   │   │   ├─ Eq\n" +
+			"     │   │   │   │   │   ├─ color.val:3\n" +
+			"     │   │   │   │   │   └─ blue (longtext)\n" +
+			"     │   │   │   │   └─ Eq\n" +
+			"     │   │   │   │       ├─ color.name:2\n" +
+			"     │   │   │   │       └─ color (longtext)\n" +
+			"     │   │   │   └─ Eq\n" +
+			"     │   │   │       ├─ color.orgId:0\n" +
+			"     │   │   │       └─ org1 (longtext)\n" +
+			"     │   │   └─ TableAlias(color)\n" +
+			"     │   │       └─ IndexedTableAccess(asset)\n" +
+			"     │   │           ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"     │   │           ├─ static: [{[org1, org1], [color, color], [blue, blue]}]\n" +
+			"     │   │           └─ columns: [orgid assetid name val]\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ AND\n" +
+			"     │       │   ├─ AND\n" +
+			"     │       │   │   ├─ Eq\n" +
+			"     │       │   │   │   ├─ dimension.val:3\n" +
+			"     │       │   │   │   └─ wide (longtext)\n" +
+			"     │       │   │   └─ Eq\n" +
+			"     │       │   │       ├─ dimension.name:2\n" +
+			"     │       │   │       └─ dimension (longtext)\n" +
+			"     │       │   └─ Eq\n" +
+			"     │       │       ├─ dimension.orgId:0\n" +
+			"     │       │       └─ org1 (longtext)\n" +
+			"     │       └─ TableAlias(dimension)\n" +
+			"     │           └─ IndexedTableAccess(asset)\n" +
+			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"     │               └─ columns: [orgid assetid name val]\n" +
+			"     └─ Filter\n" +
+			"         ├─ AND\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ Eq\n" +
+			"         │   │   │   ├─ style.val:3\n" +
+			"         │   │   │   └─ curve (longtext)\n" +
+			"         │   │   └─ Eq\n" +
+			"         │   │       ├─ style.name:2\n" +
+			"         │   │       └─ style (longtext)\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ style.orgId:0\n" +
+			"         │       └─ org1 (longtext)\n" +
+			"         └─ TableAlias(style)\n" +
+			"             └─ IndexedTableAccess(asset)\n" +
+			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"                 └─ columns: [orgid assetid name val]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable alias where i = 1 and s = 'first row'`,
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ Eq\n" +
+			" │   │   ├─ alias.i:0!null\n" +
+			" │   │   └─ 1 (tinyint)\n" +
+			" │   └─ Eq\n" +
+			" │       ├─ alias.s:1!null\n" +
+			" │       └─ first row (longtext)\n" +
+			" └─ TableAlias(alias)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.s,mytable.i]\n" +
+			"         ├─ static: [{[first row, first row], [1, 1]}]\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+	},
+	{
 		Query: `SELECT col1->'$.key1' from (SELECT JSON_OBJECT('key1', 1, 'key2', 'abc')) as dt(col1);`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [json_extract(dt.col1, '$.key1') as col1->'$.key1']\n" +

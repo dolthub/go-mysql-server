@@ -742,6 +742,10 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select i from mytable alias where i = 1 and s = 'first row'",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query: `
 Select x
 from (select * from xy) sq1
