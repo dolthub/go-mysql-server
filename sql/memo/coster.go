@@ -219,6 +219,10 @@ func lookupJoinSelectivityMultiplier(l *Lookup, filterCnt int) float64 {
 		}
 	}
 
+	if !l.Index.SqlIdx().IsUnique() {
+		return mult
+	}
+
 	joinFds := l.Parent.Group().RelProps.FuncDeps()
 
 	var notNull sql.ColSet
@@ -237,11 +241,8 @@ func lookupJoinSelectivityMultiplier(l *Lookup, filterCnt int) float64 {
 		// will be constant
 		constCols = constCols.Union(onCols)
 	}
-	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), notNull, constCols, joinFds.Equiv())
-	strict := fds.ColsAreStrictKey(l.Index.ColSet())
-	if strict {
-		mult = 1
-	}
+
+	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), l.Index.ColSet(), notNull, constCols, joinFds.Equiv())
 	max1Row := fds.HasMax1Row()
 	if max1Row {
 		mult = 1

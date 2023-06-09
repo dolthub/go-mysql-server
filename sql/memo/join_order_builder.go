@@ -201,16 +201,23 @@ func (j *joinOrderBuilder) ensureClosure(grp *ExprGroup) {
 func (j joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 	for idx, ok := j.innerEdges.Next(0); ok; idx, ok = j.innerEdges.Next(idx + 1) {
 		for _, f := range j.edges[idx].filters {
+			var l *ColRef
+			var r *ColRef
 			switch f := f.(type) {
 			case *Equal:
-				if r, ok := f.Right.Scalar.(*ColRef); ok {
-					if l, ok := f.Left.Scalar.(*ColRef); ok {
-						return (r.Col == leftCol && l.Col == rightCol) ||
-							(r.Col == rightCol && l.Col == leftCol)
-					}
-				}
+				l, _ = f.Left.Scalar.(*ColRef)
+				r, _ = f.Right.Scalar.(*ColRef)
+			case *NullSafeEq:
+				l, _ = f.Left.Scalar.(*ColRef)
+				r, _ = f.Right.Scalar.(*ColRef)
 			}
-			return false
+			if l == nil || r == nil {
+				continue
+			}
+			if (r.Col == leftCol && l.Col == rightCol) ||
+				(r.Col == rightCol && l.Col == leftCol) {
+				return true
+			}
 		}
 	}
 	return false

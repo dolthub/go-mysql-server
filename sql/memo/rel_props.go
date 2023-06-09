@@ -178,6 +178,9 @@ func newRelProps(rel RelExpr) *relProps {
 						equiv = append(equiv, [2]sql.ColumnId{l.Col, r.Col})
 					case *Literal:
 						constant.Add(l.Col)
+						if r.Val != nil {
+							notNull.Add(l.Col)
+						}
 					}
 				}
 				if r, ok := f.Right.Scalar.(*ColRef); ok {
@@ -186,6 +189,9 @@ func newRelProps(rel RelExpr) *relProps {
 						equiv = append(equiv, [2]sql.ColumnId{l.Col, r.Col})
 					case *Literal:
 						constant.Add(r.Col)
+						if l.Val != nil {
+							notNull.Add(r.Col)
+						}
 					}
 				}
 			case *Not:
