@@ -27,7 +27,7 @@ import (
 )
 
 // expandStars replaces star expressions into lists of concrete column expressions
-func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("expand_stars")
 	defer span.End()
 
@@ -119,7 +119,7 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, n sql.Node, 
 
 // replaceCountStar replaces count(*) expressions with count(1) expressions, which are semantically equivalent and
 // lets us prune all the unused columns from the target tables.
-func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if plan.IsDDLNode(n) {
 		return n, transform.SameTree, nil
 	}

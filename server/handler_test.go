@@ -39,14 +39,20 @@ import (
 )
 
 func TestHandlerOutput(t *testing.T) {
-	e := setupMemDB(require.New(t))
+	e, db1 := setupMemDB(require.New(t))
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db1, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 	dummyConn := newConn(1)
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo",
@@ -159,14 +165,21 @@ func TestHandlerOutput(t *testing.T) {
 }
 
 func TestHandlerComPrepare(t *testing.T) {
-	e := setupMemDB(require.New(t))
+	e, db := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
+
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo",
@@ -229,14 +242,20 @@ func TestHandlerComPrepare(t *testing.T) {
 }
 
 func TestHandlerComPrepareExecute(t *testing.T) {
-	e := setupMemDB(require.New(t))
+	e, db := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo",
@@ -302,14 +321,20 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 }
 
 func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
-	e := setupMemDB(require.New(t))
+	e, db := setupMemDB(require.New(t))
 	dummyConn := newConn(1)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo",
@@ -407,7 +432,13 @@ func (tl *TestListener) QueryCompleted(success bool, duration time.Duration) {
 
 func TestServerEventListener(t *testing.T) {
 	require := require.New(t)
-	e := setupMemDB(require)
+	e, db := setupMemDB(require)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 	listener := &TestListener{}
 	handler := &Handler{
 		e: e,
@@ -416,7 +447,7 @@ func TestServerEventListener(t *testing.T) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			e.MemoryManager,
 			e.ProcessList,
 			"foo",
@@ -487,7 +518,13 @@ func TestServerEventListener(t *testing.T) {
 
 func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
-	e := setupMemDB(require)
+	e, db := setupMemDB(require)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 
 	handler := &Handler{
 		e: e,
@@ -496,7 +533,7 @@ func TestHandlerKill(t *testing.T) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			e.MemoryManager,
 			e.ProcessList,
 			"foo",
@@ -655,12 +692,20 @@ func TestSchemaToFields(t *testing.T) {
 
 	require.Equal(len(schema), len(expected))
 
+	e, db := setupMemDB(require)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
+
 	handler := &Handler{
-		e: setupMemDB(require),
+		e: e,
 		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo",
@@ -731,14 +776,27 @@ func TestHandlerMaxTextResponseBytes(t *testing.T) {
 func TestHandlerTimeout(t *testing.T) {
 	require := require.New(t)
 
-	e := setupMemDB(require)
-	e2 := setupMemDB(require)
+	e, db1 := setupMemDB(require)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db1, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
+
+	e2, db2 := setupMemDB(require)
+	dbFunc2 := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db2, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 
 	timeOutHandler := &Handler{
 		e: e,
 		sm: NewSessionManager(testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
@@ -749,7 +807,7 @@ func TestHandlerTimeout(t *testing.T) {
 		e: e2,
 		sm: NewSessionManager(testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc2,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
@@ -783,7 +841,13 @@ func TestHandlerTimeout(t *testing.T) {
 
 func TestOkClosedConnection(t *testing.T) {
 	require := require.New(t)
-	e := setupMemDB(require)
+	e, db := setupMemDB(require)
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 	port, err := getFreePort()
 	require.NoError(err)
 
@@ -801,7 +865,7 @@ func TestOkClosedConnection(t *testing.T) {
 		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo",
@@ -940,7 +1004,13 @@ func TestBindingsToExprs(t *testing.T) {
 
 // Tests the CLIENT_FOUND_ROWS capabilities flag
 func TestHandlerFoundRowsCapabilities(t *testing.T) {
-	e := setupMemDB(require.New(t))
+	e, db := setupMemDB(require.New(t))
+	dbFunc := func(ctx *sql.Context, dbName string) (sql.Database, error) {
+		if dbName == "test" {
+			return db, nil
+		}
+		return nil, sql.ErrDatabaseNotFound.New(dbName)
+	}
 	dummyConn := newConn(1)
 
 	// Set the capabilities to include found rows
@@ -952,7 +1022,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		sm: NewSessionManager(
 			testSessionBuilder,
 			sql.NoopTracer,
-			func(ctx *sql.Context, db string) bool { return db == "test" },
+			dbFunc,
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo",
@@ -1011,7 +1081,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	}
 }
 
-func setupMemDB(require *require.Assertions) *sqle.Engine {
+func setupMemDB(require *require.Assertions) (*sqle.Engine, sql.Database) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
@@ -1028,7 +1098,7 @@ func setupMemDB(require *require.Assertions) *sqle.Engine {
 
 	db.AddTable("test", tableTest)
 
-	return e
+	return e, db
 }
 
 func getFreePort() (string, error) {

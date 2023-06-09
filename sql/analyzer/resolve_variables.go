@@ -28,7 +28,7 @@ import (
 )
 
 // resolveVariables replaces UnresolvedColumn which are variables with their literal values
-func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_variables")
 	defer span.End()
 
@@ -84,7 +84,7 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, s
 // resolveSetVariables replaces SET @@var and SET @var expressions with appropriately resolved expressions for the
 // left-hand side, and evaluate the right-hand side where possible, including filling in defaults. Also validates that
 // system variables are known to the system.
-func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		_, ok := n.(*plan.Set)
 		if !ok || n.Resolved() {
@@ -164,7 +164,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 // resolveUnquotedSetVariables does a similar pass as resolveSetVariables, but handles system vars that were provided
 // as barewords (vars not prefixed with @@, and string values unquoted). These will have been deferred into
 // deferredColumns by the resolve_columns rule.
-func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	_, ok := n.(*plan.Set)
 	if !ok || n.Resolved() {
 		return n, transform.SameTree, nil

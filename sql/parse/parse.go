@@ -2134,7 +2134,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.AddStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				c.Database = table.Database()
+				c.Database = table.Database().Name()
 				c.Table = table.Name()
 				if c.Database == "" {
 					c.Database = ctx.GetCurrentDatabase()
@@ -2149,11 +2149,11 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				database := table.Database()
-				if database == "" {
-					database = ctx.GetCurrentDatabase()
+				databaseName := table.Database().Name()
+				if databaseName == "" {
+					databaseName = ctx.GetCurrentDatabase()
 				}
-				return plan.NewAlterDropForeignKey(database, table.Name(), c.Name), nil
+				return plan.NewAlterDropForeignKey(databaseName, table.Name(), c.Name), nil
 			case *sql.CheckConstraint:
 				return plan.NewAlterDropCheck(table, c.Name), nil
 			case namedConstraint:
@@ -2511,7 +2511,8 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
 			// TODO: We do not support FULLTEXT indexes or keys
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 
 		columns, err := gatherIndexColumns(idxDef.Columns)
@@ -2536,7 +2537,9 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 
 	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			// TODO: We do not support FULLTEXT indexes or keys
+			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
@@ -3479,8 +3482,11 @@ func tableExprToTable(
 		if err != nil {
 			return nil, err
 		}
-
-		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
+		utf := expression.NewUnresolvedTableFunction(t.Name, exprs)
+		if t.Alias.IsEmpty() {
+			return plan.NewTableAlias(t.Name, utf), nil
+		}
+		return plan.NewTableAlias(t.Alias.String(), utf), nil
 
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)

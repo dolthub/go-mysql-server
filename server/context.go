@@ -53,7 +53,7 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 type SessionManager struct {
 	addr        string
 	tracer      trace.Tracer
-	hasDBFunc   func(ctx *sql.Context, name string) bool
+	getDbFunc   func(ctx *sql.Context, db string) (sql.Database, error)
 	memory      *sql.MemoryManager
 	processlist sql.ProcessList
 	mu          *sync.Mutex
@@ -67,7 +67,7 @@ type SessionManager struct {
 func NewSessionManager(
 	builder SessionBuilder,
 	tracer trace.Tracer,
-	hasDBFunc func(ctx *sql.Context, name string) bool,
+	getDbFunc func(ctx *sql.Context, db string) (sql.Database, error),
 	memory *sql.MemoryManager,
 	processlist sql.ProcessList,
 	addr string,
@@ -75,7 +75,7 @@ func NewSessionManager(
 	return &SessionManager{
 		addr:        addr,
 		tracer:      tracer,
-		hasDBFunc:   hasDBFunc,
+		getDbFunc:   getDbFunc,
 		memory:      memory,
 		processlist: processlist,
 		mu:          new(sync.Mutex),
@@ -132,19 +132,33 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	return err
 }
 
-func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
+func (s *SessionManager) SetDB(conn *mysql.Conn, dbName string) error {
 	sess, err := s.getOrCreateSession(context.Background(), conn)
 	if err != nil {
 		return err
 	}
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
-	if db != "" && !s.hasDBFunc(ctx, db) {
-		return sql.ErrDatabaseNotFound.New(db)
+	var db sql.Database
+	if dbName != "" {
+		db, err = s.getDbFunc(ctx, dbName)
+		if err != nil {
+			return err
+		}
 	}
-	sess.SetCurrentDatabase(db)
-	s.processlist.ConnectionReady(sess)
 
+	sess.SetCurrentDatabase(dbName)
+	if dbName != "" {
+		if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+			db = pdb.Unwrap()
+		}
+		err = sess.UseDatabase(ctx, db)
+		if err != nil {
+			return err
+		}
+	}
+
+	s.processlist.ConnectionReady(sess)
 	return nil
 }
 

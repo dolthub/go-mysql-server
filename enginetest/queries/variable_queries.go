@@ -228,6 +228,7 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set multiple variables including 'names'",
 		SetUpScript: []string{
+			"set SESSION sql_mode = 'ANSI'",
 			`SET sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')), time_zone='+00:00', NAMES utf8mb3 COLLATE utf8mb3_bin;`,
 		},
 		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",

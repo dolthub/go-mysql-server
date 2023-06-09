@@ -90,27 +90,35 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	}
 }
 
-func updateDatabaseHelper(node sql.Node) string {
+// getDatabase returns the first database found in the node tree given
+func getDatabase(node sql.Node) sql.Database {
 	switch node := node.(type) {
-	case sql.UpdatableTable:
-		return ""
 	case *IndexedTableAccess:
-		return updateDatabaseHelper(node.ResolvedTable)
+		return getDatabase(node.ResolvedTable)
 	case *ResolvedTable:
-		return node.Database.Name()
+		return node.Database
 	case *UnresolvedTable:
 		return node.Database()
 	}
 
 	for _, child := range node.Children() {
-		return updateDatabaseHelper(child)
+		return getDatabase(child)
 	}
 
-	return ""
+	return nil
+}
+
+// DB returns the database being updated. |Database| is already used by another interface we implement.
+func (u *Update) DB() sql.Database {
+	return getDatabase(u.Child)
 }
 
 func (u *Update) Database() string {
-	return updateDatabaseHelper(u.Child)
+	db := getDatabase(u.Child)
+	if db == nil {
+		return ""
+	}
+	return db.Name()
 }
 
 func (u *Update) Expressions() []sql.Expression {
@@ -160,8 +168,12 @@ func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 	//TODO: If column values are retrieved then the SELECT privilege is required
 	// For example: "UPDATE table SET x = y + 1 WHERE z > 0"
 	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
+	db := u.DB()
+	checkName := CheckPrivilegeNameForDatabase(db)
+
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(u.Database(), getTableName(u.Child), "", sql.PrivilegeType_Update))
+		// TODO: this needs a real database, fix it
+		sql.NewPrivilegedOperation(checkName, getTableName(u.Child), "", sql.PrivilegeType_Update))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

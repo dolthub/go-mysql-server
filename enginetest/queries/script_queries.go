@@ -662,7 +662,6 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "Test cases on select into statement",
 		SetUpScript: []string{
-			"SELECT 1 INTO @abc",
 			"SELECT * FROM (VALUES ROW(22,44,88)) AS t INTO @x,@y,@z",
 			"CREATE TABLE tab1 (id int primary key, v1 int)",
 			"INSERT INTO tab1 VALUES (1, 1), (2, 3), (3, 6)",
@@ -675,6 +674,13 @@ var ScriptTests = []ScriptTest{
 			"SELECT id FROM tab1 WHERE id > 3 UNION select s FROM tab2 WHERE s < 'f' INTO @mustSingleVar",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				// SELECT INTO has an empty result schema
+				// https://github.com/dolthub/dolt/issues/6105
+				Query:           `SELECT 1 INTO @abc`,
+				Expected:        []sql.Row{{}},
+				ExpectedColumns: nil,
+			},
 			{
 				Query:    `SELECT @abc`,
 				Expected: []sql.Row{{int8(1)}},

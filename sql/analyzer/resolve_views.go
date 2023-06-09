@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_views")
 	defer span.End()
 
@@ -34,7 +34,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		}
 
 		viewName := urt.Name()
-		dbName := urt.Database()
+		dbName := urt.Database().Name()
 		if dbName == "" {
 			dbName = ctx.GetCurrentDatabase()
 		}
@@ -87,8 +87,8 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		}
 
 		// If the view name was qualified with a database name, apply that same qualifier to any tables in it
-		if urt.Database() != "" {
-			query, _, err = applyDatabaseQualifierToView(query, a, urt.Database())
+		if urt.Database().Name() != "" {
+			query, _, err = applyDatabaseQualifierToView(query, a, urt.Database().Name())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -180,7 +180,7 @@ func applyDatabaseQualifierToView(n sql.Node, a *Analyzer, dbName string) (sql.N
 		}
 
 		a.Log("applying database name to view table " + urt.Name())
-		if urt.Database() == "" {
+		if urt.Database().Name() == "" {
 			n, err := urt.WithDatabase(dbName)
 			if err != nil {
 				return nil, transform.SameTree, err

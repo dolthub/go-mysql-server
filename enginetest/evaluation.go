@@ -68,7 +68,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 					t.Skip()
 				}
 			}
-			ctx := NewContext(harness)
+			ctx := NewContext(harness).WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 
@@ -125,58 +125,60 @@ func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest
 // TestScriptWithEnginePrepared runs the test script with bindvars substituted for literals
 // using the engine provided.
 func TestScriptWithEnginePrepared(t *testing.T, e *sqle.Engine, harness Harness, script queries.ScriptTest) {
-	ctx := NewContextWithEngine(harness, e)
-	for _, statement := range script.SetUpScript {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(statement) {
-				t.Skip()
+	t.Run(script.Name, func(t *testing.T) {
+		for _, statement := range script.SetUpScript {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(statement) {
+					t.Skip()
+				}
+			}
+			ctx := NewContext(harness).WithQuery(statement)
+			RunQueryWithContext(t, e, harness, ctx, statement)
+			validateEngine(t, ctx, harness, e)
+		}
+
+		assertions := script.Assertions
+		if len(assertions) == 0 {
+			assertions = []queries.ScriptTestAssertion{
+				{
+					Query:       script.Query,
+					Expected:    script.Expected,
+					ExpectedErr: script.ExpectedErr,
+				},
 			}
 		}
-		RunQueryWithContext(t, e, harness, ctx, statement)
-		validateEngine(t, ctx, harness, e)
-	}
 
-	assertions := script.Assertions
-	if len(assertions) == 0 {
-		assertions = []queries.ScriptTestAssertion{
-			{
-				Query:       script.Query,
-				Expected:    script.Expected,
-				ExpectedErr: script.ExpectedErr,
-			},
-		}
-	}
+		for _, assertion := range assertions {
+			t.Run(assertion.Query, func(t *testing.T) {
 
-	for _, assertion := range assertions {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(assertion.Query) {
-				t.Skip()
-			}
-		}
-		if assertion.Skip {
-			t.Skip()
-		}
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(assertion.Query) {
+						t.Skip()
+					}
+				}
+				if assertion.Skip {
+					t.Skip()
+				}
 
-		if assertion.ExpectedErr != nil {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
+				if assertion.ExpectedErr != nil {
+					AssertErrPrepared(t, e, harness, assertion.Query, assertion.ExpectedErr)
+				} else if assertion.ExpectedErrStr != "" {
+					AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+				} else if assertion.ExpectedWarning != 0 {
+					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
+						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
+				} else if assertion.SkipResultsCheck {
+					ctx := NewContext(harness).WithQuery(assertion.Query)
+					_, _, err := runQueryPreparedWithCtx(t, ctx, e, assertion.Query)
+					require.NoError(t, err)
+				} else {
+					ctx := NewContext(harness).WithQuery(assertion.Query)
+					TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil)
+				}
 			})
-		} else if assertion.ExpectedErrStr != "" {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErrPrepared(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-			})
-		} else if assertion.ExpectedWarning != 0 {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
-					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
-					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
-			})
-		} else if assertion.SkipResultsCheck {
-			runQueryPreparedWithCtx(t, ctx, e, assertion.Query)
-		} else {
-			TestPreparedQueryWithContext(t, ctx, e, harness, assertion.Query, assertion.Expected, nil)
 		}
-	}
+	})
 }
 
 // TestTransactionScript runs the test script given, making any assertions given

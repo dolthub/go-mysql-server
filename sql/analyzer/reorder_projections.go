@@ -32,7 +32,7 @@ import (
 // Project([a, foo], Sort(foo, Project([a, 1 as foo], table)))
 // This process also converts higher-level projected fields to GetField expressions, since we don't want to evaluate
 // the original expression more than once (which could actually produce incorrect results in some cases).
-func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("reorder_projection")
 	defer span.End()
 

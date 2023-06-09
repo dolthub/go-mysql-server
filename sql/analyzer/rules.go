@@ -55,7 +55,6 @@ var OnceBeforeDefault = []Rule{
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},
-	{disambiguateTableFunctionsId, disambiguateTableFunctions},
 	{checkUniqueTableNamesId, validateUniqueTableNames},
 	{resolveTableFunctionsId, resolveTableFunctions},
 	{resolveDeclarationsId, resolveDeclarations},
@@ -160,8 +159,6 @@ var OnceAfterAll = []Rule{
 }
 
 var (
-	// ErrFieldMissing is returned when the field is not on the schema.
-	ErrFieldMissing = errors.NewKind("field %q is not on schema")
 	// ErrOrderByColumnIndex is returned when in an order clause there is a
 	// column that is unknown.
 	ErrOrderByColumnIndex = errors.NewKind("unknown column %d in order by clause")
