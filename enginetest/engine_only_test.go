@@ -619,6 +619,31 @@ func TestTableFunctions(t *testing.T) {
 			ExpectedErr: sql.ErrColumnNotFound,
 		},
 		{
+			Name:        "projection of non-existent qualified column from table function",
+			Query:       "SELECT simple_TABLE_function.none from simple_TABLE_function(123);",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Name:        "projection of non-existent aliased qualified column from table function",
+			Query:       "SELECT stf.none from simple_TABLE_function(123) as stf;",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Name:        "projection of non-existent aliased qualified column from table function in join",
+			Query:       "SELECT stf1.none from simple_TABLE_function(123) as stf1 join simple_TABLE_function(123) stf2;",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Name:        "alias overwrites original name",
+			Query:       "SELECT simple_table_function.none from simple_TABLE_function(123) stf;",
+			ExpectedErr: sql.ErrTableNotFound,
+		},
+		{
+			Name:        "projection of aliased non-existent qualified column from table function",
+			Query:       "SELECT stf.none as none from simple_TABLE_function(123) as stf;",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
 			Name:     "basic table function",
 			Query:    "SELECT * from simple_table_function(123);",
 			Expected: []sql.Row{{"foo", 123}},
@@ -672,6 +697,10 @@ func TestTableFunctions(t *testing.T) {
 			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 		},
 		{
+			Query:    "select sequence_table.x from sequence_table('x', 5)",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
 			Query:       "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
 			ExpectedErr: sql.ErrDuplicateAliasOrTable,
 		},
@@ -714,6 +743,10 @@ func TestTableFunctions(t *testing.T) {
 		{
 			Query:       "select seq.x from (select seq.x from sequence_table('x', 5) seq) sq",
 			ExpectedErr: sql.ErrTableNotFound,
+		},
+		{
+			Query:    "select sq.xx from (select seq.x as xx from sequence_table('x', 5) seq) sq",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 		},
 	}
 
