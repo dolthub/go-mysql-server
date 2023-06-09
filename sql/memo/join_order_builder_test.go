@@ -157,7 +157,6 @@ func TestJoinOrderBuilder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			j := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
 			j.ReorderJoin(tt.in)
-			fmt.Println(j.m.String())
 			require.Equal(t, tt.plans, j.m.String())
 		})
 	}
