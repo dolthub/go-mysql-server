@@ -119,10 +119,7 @@ import (
 // to require the dependency table set R2 when any subset of R1 is present in a
 // candidate plan.
 //
-// TODO: transitive predicates
 // TODO: null rejecting tables
-// TODO: redundancy checks
-// TODO: functional dependencies
 type joinOrderBuilder struct {
 	// plans maps from a set of base relations to the memo group for the join tree
 	// that contains those relations (and only those relations). As an example,
@@ -183,8 +180,12 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 	return j.allVertices().difference(startV), j.allEdges().Difference(startE), group
 }
 
+// ensureClosure adds the closure of all transitive equivalency groups
+// to the join tree. Each transitive edge will add an inner edge, filter,
+// and join group that inherit join type and tree depth from the original
+// join tree.
 func (j *joinOrderBuilder) ensureClosure(grp *ExprGroup) {
-	fds := grp.RelProps.fds
+	fds := grp.RelProps.FuncDeps()
 	for _, set := range fds.Equiv().Sets() {
 		for col1, ok1 := set.Next(1); ok1; col1, ok1 = set.Next(col1 + 1) {
 			for col2, ok2 := set.Next(col1 + 1); ok2; col2, ok2 = set.Next(col2 + 1) {
@@ -223,8 +224,9 @@ func (j joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 	return false
 }
 
+// makeTransitiveEdge constructs a new join tree edge and memo group
+// on an equality filter between two columns.
 func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
-	// tables
 	var vert vertexSet
 	var tab1 GroupId
 	var tab2 GroupId
@@ -255,11 +257,10 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 		return
 	}
 
-	//make filter
 	grp1 := j.m.PreexistingScalar(&ColRef{Col: col1, Table: tab1})
 	grp2 := j.m.PreexistingScalar(&ColRef{Col: col2, Table: tab2})
 	if grp1 == nil || grp2 == nil {
-		panic("transitive columns should be memoized")
+		panic("should be unreachable: transitive filters are derived from pre-existing filters")
 	}
 	eq := &Equal{scalarBase: &scalarBase{}, Left: grp1, Right: grp2}
 	eqGroup := j.m.PreexistingScalar(eq)
@@ -270,8 +271,7 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 	if hash != 0 {
 		j.m.exprs[hash] = eqGroup
 	}
-	// Add the edge to the join graph.
-	// TODO always inner join?
+
 	j.edges = append(j.edges, *j.makeEdge(op, eqGroup.Scalar))
 	j.innerEdges.Add(len(j.edges) - 1)
 

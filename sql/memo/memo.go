@@ -106,42 +106,6 @@ func (m *Memo) assignColumnIds(rel SourceRel) {
 	}
 }
 
-func allTableCols(rel SourceRel) sql.Schema {
-	var table sql.Table
-	switch rel := rel.(type) {
-	case *TableAlias:
-		rt, ok := rel.Table.Child.(*plan.ResolvedTable)
-		if !ok {
-			break
-		}
-		table = rt.Table
-	case *TableScan:
-		table = rel.Table.Table
-	}
-	if w, ok := table.(sql.TableWrapper); ok {
-		table = w.Underlying()
-	}
-	if pr, ok := table.(sql.PrimaryKeyTable); ok {
-		sch := pr.PrimaryKeySchema().Schema
-		ret := make(sql.Schema, len(sch))
-		for i, c := range sch {
-			ret[i] = &sql.Column{
-				Name:           c.Name,
-				Type:           c.Type,
-				Default:        c.Default,
-				AutoIncrement:  c.AutoIncrement,
-				Nullable:       c.Nullable,
-				Source:         rel.Name(),
-				DatabaseSource: c.DatabaseSource,
-				PrimaryKey:     c.PrimaryKey,
-				Comment:        c.Comment,
-				Extra:          c.Extra,
-			}
-		}
-		return ret
-	}
-	return rel.OutputCols()
-}
 func (m *Memo) getTableId(table string) (GroupId, bool) {
 	return m.TableProps.GetId(table)
 }

@@ -53,29 +53,46 @@ func newRelProps(rel RelExpr) *relProps {
 		} else {
 			p.outputCols = r.OutputCols()
 		}
+		// need to assign column ids
+		// TODO name resolution should replace assignColumnIds, then Fds can stay lazy
+		p.populateFds()
 	}
 	p.populateOutputTables()
 	p.populateInputTables()
+	return p
+}
 
-	// FDs
+// denormIdxExprs replaces the native table name in index
+// expression strings with the aliased name.
+// TODO: this is unstable as long as periods in Index.Expressions()
+// identifiers are ambiguous.
+func denormIdxExprs(table string, idx sql.Index) []string {
+	denormExpr := make([]string, len(idx.Expressions()))
+	for i, e := range idx.Expressions() {
+		parts := strings.Split(e, ".")
+		denormExpr[i] = strings.ToLower(fmt.Sprintf("%s.%s", table, parts[1]))
+	}
+	return denormExpr
+}
+
+func (p *relProps) populateFds() {
 	var fds *sql.FuncDepSet
-	switch rel := rel.(type) {
+	switch rel := p.grp.First.(type) {
 	case JoinRel:
 		jp := rel.JoinPrivate()
 		switch {
 		case jp.Op.IsDegenerate():
-			fds = sql.NewCrossJoinFDs(jp.Left.RelProps.fds, jp.Right.RelProps.fds)
+			fds = sql.NewCrossJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps())
 		case jp.Op.IsLeftOuter():
-			fds = sql.NewLeftJoinFDs(jp.Left.RelProps.fds, jp.Right.RelProps.fds, getEquivs(jp.Filter))
+			fds = sql.NewLeftJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps(), getEquivs(jp.Filter))
 		default:
-			fds = sql.NewInnerJoinFDs(jp.Left.RelProps.fds, jp.Right.RelProps.fds, getEquivs(jp.Filter))
+			fds = sql.NewInnerJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps(), getEquivs(jp.Filter))
 		}
 	case *Max1Row:
 		start := len(rel.Group().m.Columns)
 		rel.Group().m.assignColumnIds(rel)
 		end := len(rel.Group().m.Columns)
 
-		// TODO lazily compute FDs
 		sch := allTableCols(rel)
 
 		var all sql.ColSet
@@ -88,12 +105,10 @@ func newRelProps(rel RelExpr) *relProps {
 		}
 		fds = sql.NewMax1RowFDs(all)
 	case SourceRel:
-		// allCols
 		start := len(rel.Group().m.Columns)
 		rel.Group().m.assignColumnIds(rel)
 		end := len(rel.Group().m.Columns)
 
-		// TODO lazily compute FDs
 		sch := allTableCols(rel)
 
 		var all sql.ColSet
@@ -138,11 +153,9 @@ func newRelProps(rel RelExpr) *relProps {
 		var laxKeys []sql.ColSet
 		var indexesNorm []*Index
 		for _, idx := range indexes {
-			// get columns for expressions
 			// strict if primary key or all nonNull and unique
 			exprs := denormIdxExprs(rel.Name(), idx)
 			strict := true
-			//var idxColSet sql.ColSet
 			normIdx := &Index{idx: idx, order: make([]sql.ColumnId, len(exprs))}
 			for i, e := range exprs {
 				colId := rel.Group().m.Columns[e]
@@ -156,6 +169,7 @@ func newRelProps(rel RelExpr) *relProps {
 				}
 			}
 			if !idx.IsUnique() {
+				// not an FD
 			} else if strict {
 				strictKeys = append(strictKeys, normIdx.set)
 			} else {
@@ -204,36 +218,66 @@ func newRelProps(rel RelExpr) *relProps {
 				}
 			}
 		}
-		fds = sql.NewFilterFDs(rel.Child.RelProps.fds, notNull, constant, equiv)
+		fds = sql.NewFilterFDs(rel.Child.RelProps.FuncDeps(), notNull, constant, equiv)
 	case *Project:
-		// get col refs in project
 		var projCols sql.ColSet
 		for _, e := range rel.Projections {
 			projCols = projCols.Union(e.scalarProps.Cols)
 		}
-		fds = sql.NewProjectFDs(rel.Child.RelProps.fds, projCols, false)
+		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(), projCols, false)
 	case *Distinct:
-		fds = sql.NewProjectFDs(rel.Child.RelProps.fds, rel.Child.RelProps.fds.All(), true)
+		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(), rel.Child.RelProps.FuncDeps().All(), true)
 	default:
 		panic(fmt.Sprintf("unsupported relProps type: %T", rel))
 	}
 	p.fds = fds
-	return p
 }
 
-// denormIdxExprs replaces the native table name in index
-// expression strings with the aliased name.
-// TODO: this is unstable while periods in Index.Expressions()
-// table identifiers are ambiguous
-func denormIdxExprs(table string, idx sql.Index) []string {
-	denormExpr := make([]string, len(idx.Expressions()))
-	for i, e := range idx.Expressions() {
-		parts := strings.Split(e, ".")
-		denormExpr[i] = strings.ToLower(fmt.Sprintf("%s.%s", table, parts[1]))
+// allTableCols returns the full schema of a table ignoring
+// declared projections.
+func allTableCols(rel SourceRel) sql.Schema {
+	var table sql.Table
+	switch rel := rel.(type) {
+	case *TableAlias:
+		rt, ok := rel.Table.Child.(*plan.ResolvedTable)
+		if !ok {
+			break
+		}
+		table = rt.Table
+	case *TableScan:
+		table = rel.Table.Table
+	default:
+		return rel.OutputCols()
 	}
-	return denormExpr
+	if w, ok := table.(sql.TableWrapper); ok {
+		table = w.Underlying()
+	}
+	projTab, ok := table.(sql.PrimaryKeyTable)
+	if !ok {
+		return rel.OutputCols()
+	}
+
+	sch := projTab.PrimaryKeySchema().Schema
+	ret := make(sql.Schema, len(sch))
+	for i, c := range sch {
+		ret[i] = &sql.Column{
+			Name:           c.Name,
+			Type:           c.Type,
+			Default:        c.Default,
+			AutoIncrement:  c.AutoIncrement,
+			Nullable:       c.Nullable,
+			Source:         rel.Name(),
+			DatabaseSource: c.DatabaseSource,
+			PrimaryKey:     c.PrimaryKey,
+			Comment:        c.Comment,
+			Extra:          c.Extra,
+		}
+	}
+	return ret
+
 }
 
+// getEquivs collects column equivalencies in the format sql.EquivSet expects.
 func getEquivs(filters []ScalarExpr) [][2]sql.ColumnId {
 	var ret [][2]sql.ColumnId
 	for _, f := range filters {
@@ -254,6 +298,9 @@ func getEquivs(filters []ScalarExpr) [][2]sql.ColumnId {
 }
 
 func (p *relProps) FuncDeps() *sql.FuncDepSet {
+	if p.fds == nil {
+		p.populateFds()
+	}
 	return p.fds
 }
 
