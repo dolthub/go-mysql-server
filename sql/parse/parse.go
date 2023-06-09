@@ -2511,7 +2511,8 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
 			// TODO: We do not support FULLTEXT indexes or keys
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 
 		columns, err := gatherIndexColumns(idxDef.Columns)
@@ -2536,7 +2537,9 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 
 	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			// TODO: We do not support FULLTEXT indexes or keys
+			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
@@ -3479,8 +3482,11 @@ func tableExprToTable(
 		if err != nil {
 			return nil, err
 		}
-
-		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
+		utf := expression.NewUnresolvedTableFunction(t.Name, exprs)
+		if t.Alias.IsEmpty() {
+			return plan.NewTableAlias(t.Name, utf), nil
+		}
+		return plan.NewTableAlias(t.Alias.String(), utf), nil
 
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)

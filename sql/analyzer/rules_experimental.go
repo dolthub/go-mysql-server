@@ -32,9 +32,8 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateDropConstraintId, validateDropConstraint},
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
-	{resolveDescribeQueryId, resolveDescribeQuery},             //TODO
-	{disambiguateTableFunctionsId, disambiguateTableFunctions}, //TODO
-	{checkUniqueTableNamesId, validateUniqueTableNames},        //TODO
+	{resolveDescribeQueryId, resolveDescribeQuery},      //TODO
+	{checkUniqueTableNamesId, validateUniqueTableNames}, //TODO
 	{resolveDeclarationsId, resolveDeclarations},
 	{validateCreateTriggerId, validateCreateTrigger},
 	{loadInfoSchemaId, loadInfoSchema},               //TODO

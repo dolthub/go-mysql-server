@@ -37,7 +37,6 @@ const (
 	resolveUnionsId                              // resolveUnions
 	resolveDescribeQueryId                       // resolveDescribeQuery
 	checkUniqueTableNamesId                      // checkUniqueTableNames
-	disambiguateTableFunctionsId                 // disambiguateTableFunctions
 	resolveTableFunctionsId                      // resolveTableFunctions
 	resolveDeclarationsId                        // resolveDeclarations
 	resolveColumnDefaultsId                      // resolveColumnDefaults
