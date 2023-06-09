@@ -624,9 +624,19 @@ func TestTableFunctions(t *testing.T) {
 			ExpectedErr: sql.ErrTableColumnNotFound,
 		},
 		{
-			Name:        "projection of non-existent qualified column from table function",
+			Name:        "projection of non-existent aliased qualified column from table function",
 			Query:       "SELECT stf.none from simple_TABLE_function(123) as stf;",
 			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Name:        "projection of non-existent aliased qualified column from table function in join",
+			Query:       "SELECT stf1.none from simple_TABLE_function(123) as stf1 join simple_TABLE_function(123) stf2;",
+			ExpectedErr: sql.ErrTableColumnNotFound,
+		},
+		{
+			Name:        "alias overwrites original name",
+			Query:       "SELECT simple_table_function.none from simple_TABLE_function(123) stf;",
+			ExpectedErr: sql.ErrTableNotFound,
 		},
 		{
 			Name:        "projection of aliased non-existent qualified column from table function",
