@@ -195,13 +195,9 @@ func (e *EventDetails) ConvertTimesFromUTCToTz(tz string) *EventDetails {
 // GetNextExecutionTime returns the next execution timestamp for the event,
 // which depends on AT or EVERY field of EventDetails. It also returns whether
 // the event is ended/expired.
-func (e *EventDetails) GetNextExecutionTime() (time.Time, bool, error) {
-	// curTime needs to be in system timezone, which is the local timezone.
-	curTime := time.Now()
-	// TODO: when retrieving any time values from event details,
-	//  it should be converted from event TZ to system TZ.
+func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
 	if e.HasExecuteAt {
-		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() < 1, nil
+		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() < -1, nil
 	} else {
 		timeDur, err := getTimeDurationFromEveryInterval(e.ExecuteEvery)
 		if err != nil {

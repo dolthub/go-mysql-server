@@ -17,6 +17,7 @@ package eventscheduler
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -148,7 +149,7 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(a *analyzer.Anal
 				if err != nil {
 					return nil, err
 				}
-				newEnabledEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, ed)
+				newEnabledEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, ed, time.Now())
 				if err != nil {
 					return nil, err
 				} else if created {

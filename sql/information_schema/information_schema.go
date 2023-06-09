@@ -1070,7 +1070,7 @@ func eventsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 				created := ed.Created.Format(EventDateSpaceTimeFormat)
 				lastAltered := ed.LastAltered.Format(EventDateSpaceTimeFormat)
-				lastExecuted := ed.ExecuteAt.Format(EventDateSpaceTimeFormat)
+				lastExecuted := ed.LastExecuted.Format(EventDateSpaceTimeFormat)
 				// TODO: timezone should use e.TimezoneOffest, but is always 'SYSTEM' for now.
 
 				rows = append(rows, Row{

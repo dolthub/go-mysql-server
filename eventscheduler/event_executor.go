@@ -65,27 +65,35 @@ func (ee *eventExecutor) start() {
 		if ee.stop.Load() {
 			return
 		} else if ee.list.len() > 0 {
-			diff := ee.list.getNextExecutionTime().Sub(timeNow).Seconds()
-			if diff <= -0.0000001 {
-				// in case the execution time is past, re-evaluate it ( TODO: should not happen )
-				curEvent := ee.list.pop()
-				ctx, err := ee.ctxGetter()
-				if err != nil {
-					ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
-				}
-				err = ee.reevaluateEvent(ctx, curEvent.edb, curEvent.eventDetails)
-				if err != nil {
-					ctx.GetLogger().Errorf("Received error '%s' re-evaluating event to scheduler: %s", err, curEvent.eventDetails.Name)
-				}
-			} else if diff <= 0.0000001 {
-				curEvent := ee.list.pop()
-				ctx, err := ee.ctxGetter()
-				if err != nil {
-					ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
-				}
-				err = ee.executeEventAndUpdateListIfApplicable(ctx, curEvent, timeNow)
-				if err != nil {
-					ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.eventDetails.Name)
+			// safeguard list entry getting removed while in check
+			nextAt, ok := ee.list.getNextExecutionTime()
+			if ok {
+				diff := nextAt.Sub(timeNow).Seconds()
+				if diff <= -0.0000001 {
+					// in case the execution time is past, re-evaluate it ( TODO: should not happen )
+					curEvent := ee.list.pop()
+					if curEvent != nil {
+						ctx, err := ee.ctxGetter()
+						if err != nil {
+							ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
+						}
+						err = ee.reevaluateEvent(ctx, curEvent.edb, curEvent.eventDetails)
+						if err != nil {
+							ctx.GetLogger().Errorf("Received error '%s' re-evaluating event to scheduler: %s", err, curEvent.eventDetails.Name)
+						}
+					}
+				} else if diff <= 0.0000001 {
+					curEvent := ee.list.pop()
+					if curEvent != nil {
+						ctx, err := ee.ctxGetter()
+						if err != nil {
+							ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
+						}
+						err = ee.executeEventAndUpdateListIfApplicable(ctx, curEvent, timeNow)
+						if err != nil {
+							ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.eventDetails.Name)
+						}
+					}
 				}
 			}
 		}
@@ -164,7 +172,7 @@ func (ee *eventExecutor) reevaluateEvent(ctx *sql.Context, edb sql.EventDatabase
 		return nil
 	}
 
-	newEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details)
+	newEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details, time.Now())
 	if err != nil {
 		return err
 	} else if created {
@@ -183,14 +191,20 @@ func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, detai
 		return
 	}
 
-	newEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details)
+	newEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details, details.Created)
 	if err != nil {
 		ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, details.Name)
 	} else if created {
 		newDetails := newEvent.eventDetails
 		// if STARTS is set to current_timestamp or not set,
 		// then executeEvent the event once and update lastExecuted.
-		if newDetails.Created.Sub(newDetails.Starts).Seconds() <= 0.0000001 {
+		var firstExecutionTime time.Time
+		if newDetails.HasExecuteAt {
+			firstExecutionTime = newDetails.ExecuteAt
+		} else {
+			firstExecutionTime = newDetails.Starts
+		}
+		if newDetails.Created.Sub(firstExecutionTime).Seconds() <= 1 {
 			// after execution, the event is added to the list if applicable (if the event is not ended)
 			err = ee.executeEventAndUpdateListIfApplicable(ctx, newEvent, newDetails.Created)
 			if err != nil {
@@ -220,7 +234,7 @@ func (ee *eventExecutor) updateEvent(ctx *sql.Context, edb sql.EventDatabase, or
 	}
 
 	// add the updated event as new event
-	newUpdatedEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details)
+	newUpdatedEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details, details.LastAltered)
 	if err != nil {
 		return
 	} else if created {

@@ -37,10 +37,10 @@ type enabledEvent struct {
 // An event with ENABLE status might NOT be created if the event SCHEDULE is ended/expired. If the
 // event is expired, then this function either updates its status in the database or drops it from
 // the database.
-func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails) (*enabledEvent, bool, error) {
+func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails, curTime time.Time) (*enabledEvent, bool, error) {
 	if ed.Status == sql.EventStatus_Enable.String() {
 		// evaluating each event schedules by updating/dropping events if applicable
-		nextExecution, eventEnded, err := ed.GetNextExecutionTime()
+		nextExecution, eventEnded, err := ed.GetNextExecutionTime(curTime)
 		if err != nil {
 			return nil, false, err
 		} else if !eventEnded {
@@ -101,9 +101,7 @@ func (e *enabledEvent) name() string {
 // this function updates the enabledEvent with the next execution time. It also updates the event
 // metadata in the database.
 func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.EventDatabase, executionTime time.Time) (bool, error) {
-	// TODO: the lastExecuted value should be stored in the event's timezone
-	//  (currently, it is always SYSTEM, so conversion not needed for now)
-	nextExecutionAt, ended, err := e.eventDetails.GetNextExecutionTime()
+	nextExecutionAt, ended, err := e.eventDetails.GetNextExecutionTime(time.Now())
 	if err != nil {
 		return ended, err
 	} else if ended {
@@ -163,13 +161,13 @@ func (l *enabledEventsList) len() int {
 	return len(l.eventsList)
 }
 
-func (l *enabledEventsList) getNextExecutionTime() time.Time {
+func (l *enabledEventsList) getNextExecutionTime() (time.Time, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if len(l.eventsList) == 0 {
-		return time.Time{}
+		return time.Time{}, false
 	}
-	return l.eventsList[0].nextExecutionAt
+	return l.eventsList[0].nextExecutionAt, true
 }
 
 // pop returns the first element and removes it from the list.

@@ -422,8 +422,7 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		eventEndingTime = a.eventDetails.Ends
 	}
 
-	// Here Altered time is set with current local time, so it's safe to do check here.
-	if eventEndingTime.Sub(a.eventDetails.LastAltered).Seconds() < 0 {
+	if (a.eventDetails.HasExecuteAt || a.eventDetails.HasEnds) && eventEndingTime.Sub(a.eventDetails.LastAltered).Seconds() < 0 {
 		// If the event execution/end time is altered and in the past.
 		if a.alterSchedule {
 			if a.eventDetails.OnCompletionPreserve {

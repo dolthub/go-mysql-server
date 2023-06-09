@@ -352,10 +352,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	if c.eventDetails.HasExecuteAt {
 		// If the event execution time is in the past and is set.
-		// TODO: executeAt value should be converted from event TZ to system TZ
-		//  for checking event should be executed or dropped.
-		//  (created time value should be current time in system TZ)
-		if c.eventDetails.ExecuteAt.Sub(c.eventDetails.Created).Seconds() < 0 {
+		if c.eventDetails.ExecuteAt.Sub(c.eventDetails.Created).Seconds() <= -1 {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.eventDetails.Status = sql.EventStatus_Disable.String()
