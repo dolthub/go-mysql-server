@@ -55,7 +55,6 @@ var OnceBeforeDefault = []Rule{
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery},
-	{disambiguateTableFunctionsId, disambiguateTableFunctions},
 	{checkUniqueTableNamesId, validateUniqueTableNames},
 	{resolveTableFunctionsId, resolveTableFunctions},
 	{resolveDeclarationsId, resolveDeclarations},

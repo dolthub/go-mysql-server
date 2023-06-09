@@ -668,16 +668,52 @@ func TestTableFunctions(t *testing.T) {
 			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 		},
 		{
-			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
-			Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+			Query:    "select sequence_table.x from sequence_table('x', 5)",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 		},
 		{
-			Query:    "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0",
-			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+			Query:       "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = y",
+			ExpectedErr: sql.ErrDuplicateAliasOrTable,
+		},
+		{
+			Query:       "select * from sequence_table('x', 5) join sequence_table('y', 5) on x = 0",
+			ExpectedErr: sql.ErrDuplicateAliasOrTable,
 		},
 		{
 			Query:    "select * from sequence_table('x', 2) where x is not null",
 			Expected: []sql.Row{{0}, {1}},
+		},
+		{
+			Query:    "select seq.x from sequence_table('x', 5) as seq",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:    "select seq.x from sequence_table('x', 5) seq",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:       "select not_seq.x from sequence_table('x', 5) as seq",
+			ExpectedErr: sql.ErrTableNotFound,
+		},
+		{
+			Query:    "select seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
+			Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+		},
+		{
+			Query:    "select * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
+			Expected: []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+		},
+		{
+			Query:    "with cte as (select seq.x from sequence_table('x', 5) seq) select cte.x from cte",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:    "select sq.x from (select seq.x from sequence_table('x', 5) seq) sq",
+			Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
+		},
+		{
+			Query:       "select seq.x from (select seq.x from sequence_table('x', 5) seq) sq",
+			ExpectedErr: sql.ErrTableNotFound,
 		},
 	}
 
