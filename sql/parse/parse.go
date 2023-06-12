@@ -303,6 +303,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertExecute(ctx, n)
 	case *sqlparser.Deallocate:
 		return convertDeallocate(ctx, n)
+	case *sqlparser.CreateSpatialRefSys:
+		return convertCreateSpatialRefSys(ctx, n)
 	}
 }
 
@@ -4818,4 +4820,33 @@ func getUnresolvedDatabase(ctx *sql.Context, dbName string) (sql.UnresolvedDatab
 		return udb, sql.ErrNoDatabaseSelected.New()
 	}
 	return udb, nil
+}
+
+func convertCreateSpatialRefSys(ctx *sql.Context, n *sqlparser.CreateSpatialRefSys) (sql.Node, error) {
+	srid, err := strconv.ParseInt(string(n.SRID.Val), 10, 16)
+	if err != nil {
+		return nil, err
+	}
+
+	srsAttr, err := convertSrsAttribute(ctx, n.SrsAttr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewCreateSpatialRefSys(int(srid), n.OrReplace, n.IfNotExists, srsAttr), nil
+}
+
+func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.SrsAttribute, error) {
+	orgID, err := strconv.ParseInt(string(attr.OrgID.Val), 10, 16)
+	if err != nil {
+		return plan.SrsAttribute{}, err
+	}
+	// TODO: check limits
+	return plan.SrsAttribute{
+		Name: 	      attr.Name,
+		Definition:   attr.Definition,
+		Organization: attr.Organization,
+		OrgID:        int(orgID),
+		Description:  attr.Description,
+	}, nil
 }
