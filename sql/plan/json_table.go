@@ -68,6 +68,16 @@ type JSONTableCol struct {
 	Cols []JSONTableCol
 }
 
+func (c *JSONTableCol) Resolved() bool {
+	for _, col := range c.Cols {
+		if !col.Resolved() {
+			return false
+		}
+	}
+
+	return c.Opts == nil || (c.Opts.DefErrorVal.Resolved() && c.Opts.DefEmptyVal.Resolved())
+}
+
 type JSONTable struct {
 	DataExpr  sql.Expression
 	TableName string
@@ -137,7 +147,11 @@ func (t *JSONTable) Resolved() bool {
 	if !t.DataExpr.Resolved() {
 		return false
 	}
-	// TODO: implement this recursively
+	for _, col := range t.Cols {
+		if !col.Resolved() {
+			return false
+		}
+	}
 	return true
 }
 
