@@ -137,9 +137,6 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 				nullable: expr.IsNullable(),
 			}
 		}
-		//if _, ok := g.grouping[col.col]; ok {
-		//	continue
-		//}
 		if col.scalar == nil {
 			gf := expression.NewGetFieldWithTable(0, col.typ, col.table, col.col, col.nullable)
 			id, ok := fromScope.getExpr(gf.String())

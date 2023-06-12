@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -104,7 +105,7 @@ func (s *scope) setTableAlias(t string) {
 			s.b.handleErr(err)
 		}
 		delete(s.exprs, beforeColStr)
-		s.exprs[s.cols[i].String()] = id
+		s.exprs[strings.ToLower(s.cols[i].String())] = id
 	}
 	id, ok := s.tables[oldTable]
 	if !ok {
@@ -128,6 +129,7 @@ func (s *scope) setColAlias(cols []string) {
 		beforeColStr := s.cols[i].String()
 		id, ok := s.getExpr(beforeColStr)
 		if !ok {
+			log.Println(s.exprs)
 			err := sql.ErrColumnNotFound.New(beforeColStr)
 			s.b.handleErr(err)
 		}
@@ -258,7 +260,7 @@ func (s *scope) addColumn(col scopeColumn) {
 	if col.table != "" {
 		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = col.id
 	} else {
-		s.exprs[col.col] = col.id
+		s.exprs[strings.ToLower(col.col)] = col.id
 	}
 	return
 }
