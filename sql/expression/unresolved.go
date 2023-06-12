@@ -115,6 +115,7 @@ var _ sql.TableFunction = (*UnresolvedTableFunction)(nil)
 // intended to be used.
 type UnresolvedTableFunction struct {
 	name      string
+	Alias     string
 	Arguments []sql.Expression
 	database  sql.Database
 }

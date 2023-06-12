@@ -879,8 +879,8 @@ func (b *PlanBuilder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDef
 			b.handleErr(err)
 		}
 
-		if uint32(sridVal) != types.CartesianSRID && uint32(sridVal) != types.GeoSpatialSRID {
-			b.handleErr(sql.ErrUnsupportedFeature.New("unsupported SRID value"))
+		if err = types.ValidateSRID(int(sridVal), ""); err != nil {
+			b.handleErr(err)
 		}
 		if s, ok := internalTyp.(sql.SpatialColumnType); ok {
 			internalTyp = s.SetSRID(uint32(sridVal))

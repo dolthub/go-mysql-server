@@ -18,18 +18,19 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // applyIndexesFromOuterScope attempts to apply an indexed lookup to a subquery using variables from the outer scope.
-// It functions similarly to pushdownFilters, in that it applies an index to a table. But unlike that function, it must
+// It functions similarly to generateIndexScans, in that it applies an index to a table. But unlike that function, it must
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
-func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if scope.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
@@ -132,7 +133,7 @@ func getOuterScopeIndexes(
 	ctx *sql.Context,
 	a *Analyzer,
 	node sql.Node,
-	scope *Scope,
+	scope *plan.Scope,
 	tableAliases TableAliases,
 ) ([]subqueryIndexLookup, error) {
 	indexSpan, ctx := ctx.Span("getOuterScopeIndexes")
@@ -231,7 +232,7 @@ func getSubqueryIndexes(
 	ctx *sql.Context,
 	a *Analyzer,
 	e sql.Expression,
-	scope *Scope,
+	scope *plan.Scope,
 	ia *indexAnalyzer,
 	tableAliases TableAliases,
 ) (map[string]sql.Index, joinExpressionsByTable, error) {
@@ -241,7 +242,7 @@ func getSubqueryIndexes(
 	// build a list of candidate predicate expressions, those that might be used for an index lookup
 	var candidatePredicates []sql.Expression
 
-	for _, e := range splitConjunction(e) {
+	for _, e := range expression.SplitConjunction(e) {
 		// We are only interested in expressions that involve an outer scope variable (those whose index is less than the
 		// scope length)
 		isScopeExpr := false
@@ -284,10 +285,10 @@ func getSubqueryIndexes(
 	return result, exprsByTable, nil
 }
 
-func tablesInScope(scope *Scope) []string {
+func tablesInScope(scope *plan.Scope) []string {
 	tables := make(map[string]bool)
 	for _, node := range scope.InnerToOuter() {
-		for _, col := range schemas(node.Children()) {
+		for _, col := range fixidx.Schemas(node.Children()) {
 			tables[col.Source] = true
 		}
 	}

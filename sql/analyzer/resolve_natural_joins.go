@@ -32,7 +32,7 @@ import (
 // NATURAL_JOIN(xyz,xyw)
 // =>
 // Project([a.x,a.y,a.z,b.w])-> InnerJoin(xyz->a, xyw->b, [a.x=b.x, a.y=b.y])
-func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_natural_joins")
 	defer span.End()
 

@@ -341,7 +341,6 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	// Statement creation parts for each column
 	for i, col := range schema {
-
 		var colDefault string
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
@@ -372,8 +371,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	for _, index := range i.indexes {
-		// The primary key may or may not be declared as an index by the table. Don't print it twice if it's here.
-		if isPrimaryKeyIndex(index, table) {
+		// The primary key may or may not be declared as an index by the table; don't print it twice.
+		if index.ID() == "PRIMARY" {
 			continue
 		}
 
@@ -419,40 +418,6 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	return sql.GenerateCreateTableStatement(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name()), nil
-}
-
-// isPrimaryKeyIndex returns whether the index given matches the table's primary key columns. Order is not considered.
-func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
-	var pks []*sql.Column
-
-	for _, col := range table.Schema() {
-		if col.PrimaryKey {
-			pks = append(pks, col)
-		}
-	}
-
-	if len(index.Expressions()) != len(pks) {
-		return false
-	}
-
-	for _, expr := range index.Expressions() {
-		if col := plan.GetColumnFromIndexExpr(expr, table); col != nil {
-			found := false
-			for _, pk := range pks {
-				if col == pk {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return false
-			}
-		} else {
-			return false
-		}
-	}
-
-	return true
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {

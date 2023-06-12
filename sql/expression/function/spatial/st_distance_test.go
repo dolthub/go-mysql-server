@@ -65,6 +65,17 @@ func TestDistance(t *testing.T) {
 		require.Equal(0.0, v)
 	})
 
+	t.Run("non-cartesian SRIDs error", func(t *testing.T) {
+		require := require.New(t)
+		p1 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
+		p2 := types.Point{SRID: types.GeoSpatialSRID, X: 0, Y: 0}
+		f, err := NewDistance(expression.NewLiteral(p1, types.PointType{}), expression.NewLiteral(p2, types.PointType{}))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
 	t.Run("different SRIDs error", func(t *testing.T) {
 		require := require.New(t)
 		p1 := types.Point{SRID: types.CartesianSRID, X: 0, Y: 0}

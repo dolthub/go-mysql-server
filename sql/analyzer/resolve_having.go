@@ -27,7 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	scopeLen := len(scope.Schema())
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		having, ok := node.(*plan.Having)
@@ -74,7 +74,7 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, s
 	})
 }
 
-func findMissingColumns(node sql.Node, scope *Scope, expr sql.Expression) map[string]bool {
+func findMissingColumns(node sql.Node, scope *plan.Scope, expr sql.Expression) map[string]bool {
 	var schemaCols []string
 	for _, col := range node.Schema() {
 		schemaCols = append(schemaCols, strings.ToLower(col.Name))

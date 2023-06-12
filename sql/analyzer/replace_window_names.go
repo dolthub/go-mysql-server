@@ -25,7 +25,7 @@ import (
 // 2) resolve window name references, 3) embed resolved window definitions in sql.Window clauses
 // (currently in expression.UnresolvedFunction instances), and 4) replace the plan.NamedWindows
 // node with its child *plan.Window.
-func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n.(type) {
 		case *plan.NamedWindows:

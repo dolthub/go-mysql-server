@@ -93,8 +93,9 @@ func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	db := getDatabase(c.Child)
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(GetDatabaseName(c.Child), getTableName(c.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(c.Child), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -124,8 +125,9 @@ func (p *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	db := getDatabase(p.Child)
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(GetDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(p.Child), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -197,8 +199,9 @@ func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropConstraint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	db := getDatabase(d.Child)
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(GetDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(CheckPrivilegeNameForDatabase(db), getTableName(d.Child), "", sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

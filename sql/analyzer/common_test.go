@@ -25,47 +25,24 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func not(e sql.Expression) sql.Expression {
-	return expression.NewNot(e)
-}
-
-func gt(left, right sql.Expression) sql.Expression {
-	return expression.NewGreaterThan(left, right)
-}
-
-func gte(left, right sql.Expression) sql.Expression {
-	return expression.NewGreaterThanOrEqual(left, right)
-}
-
-func lt(left, right sql.Expression) sql.Expression {
-	return expression.NewLessThan(left, right)
-}
-
-func lte(left, right sql.Expression) sql.Expression {
-	return expression.NewLessThanOrEqual(left, right)
-}
-
-func or(left, right sql.Expression) sql.Expression {
-	return expression.NewOr(left, right)
-}
-
-func in(col sql.Expression, tuple sql.Expression) sql.Expression {
-	return expression.NewInTuple(col, tuple)
-}
-
-func tuple(vals ...sql.Expression) sql.Expression {
-	return expression.NewTuple(vals...)
+func col(idx int, table, col string) sql.Expression {
+	return expression.NewGetFieldWithTable(idx, types.Int64, table, col, false)
 }
 
 func and(left, right sql.Expression) sql.Expression {
 	return expression.NewAnd(left, right)
 }
 
-func col(idx int, table, col string) sql.Expression {
-	return expression.NewGetFieldWithTable(idx, types.Int64, table, col, false)
+func gt(left, right sql.Expression) sql.Expression {
+	return expression.NewGreaterThan(left, right)
+}
+
+func or(left, right sql.Expression) sql.Expression {
+	return expression.NewOr(left, right)
 }
 
 func eq(left, right sql.Expression) sql.Expression {
@@ -109,8 +86,8 @@ func litNull() sql.Expression {
 }
 
 // Creates a new top-level scope from the node given
-func newTestScope(n sql.Node) *Scope {
-	return (*Scope)(nil).newScope(n)
+func newTestScope(n sql.Node) *plan.Scope {
+	return (*plan.Scope)(nil).NewScope(n)
 }
 
 var analyzeRules = [][]Rule{
@@ -147,7 +124,7 @@ func getRuleFrom(rules []Rule, id RuleId) *Rule {
 type analyzerFnTestCase struct {
 	name     string
 	node     sql.Node
-	scope    *Scope
+	scope    *plan.Scope
 	expected sql.Node
 	err      *errors.Kind
 }

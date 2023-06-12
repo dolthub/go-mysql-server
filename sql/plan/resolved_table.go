@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/memory"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -155,8 +154,11 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 		return true
 	}
 
+	db := t.Database
+	checkDbName := CheckPrivilegeNameForDatabase(db)
+
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
+		sql.NewPrivilegedOperation(checkDbName, t.Table.Name(), "", sql.PrivilegeType_Select))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

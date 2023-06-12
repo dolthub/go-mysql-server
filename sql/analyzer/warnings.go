@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
 		return node, transform.SameTree, nil

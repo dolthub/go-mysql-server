@@ -18,13 +18,13 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // RuleFunc is the function to be applied in a rule.
-type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *Scope, RuleSelector) (sql.Node, transform.TreeIdentity, error)
+type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *plan.Scope, RuleSelector) (sql.Node, transform.TreeIdentity, error)
 
 // RuleSelector filters analysis rules by id
 type RuleSelector func(RuleId) bool
@@ -52,11 +52,11 @@ type Batch struct {
 // Eval executes the rules of the batch. On any error, the partially transformed node is returned along with the error.
 // If the batch's max number of iterations is reached without achieving stabilization (batch evaluation no longer
 // changes the node), then this method returns ErrMaxAnalysisIters.
-func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return b.EvalWithSelector(ctx, a, n, scope, sel)
 }
 
-func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if b.Iterations == 0 {
 		return n, transform.SameTree, nil
 	}
@@ -103,7 +103,7 @@ func (b *Batch) EvalWithSelector(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result
 // of the last successful transformation is returned along with the error. If no transformation was successful, the
 // input node is returned as-is.
-func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var (
 		same    = transform.SameTree
 		allSame = transform.SameTree

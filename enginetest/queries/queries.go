@@ -5554,8 +5554,8 @@ Select * from (
 	//	Expected: []sql.Row{{int32(3)}},
 	//},
 	{
-		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
-		Expected: []sql.Row{{int64(4)}},
+		Query:    `SELECT GREATEST(@@back_log,@@auto_increment_offset)`,
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, "3", 4)`,
@@ -5572,6 +5572,10 @@ Select * from (
 	{
 		Query:    `SELECT GREATEST(i, s) FROM mytable`,
 		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
+		Expected: []sql.Row{{int64(4)}},
 	},
 	{
 		Query:    "select abs(-i) from mytable order by 1",
@@ -5736,6 +5740,10 @@ Select * from (
 	{
 		Query:    `SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
 		Expected: []sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT LEAST(@@back_log,@@auto_increment_offset)`,
+		Expected: []sql.Row{{-1}},
 	},
 	{
 		Query:    `SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
@@ -8579,10 +8587,6 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `alter table a add fulltext index idx (id)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
-		Query:       `CREATE TABLE test (pk int primary key, body text, FULLTEXT KEY idx_body (body))`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
 	{

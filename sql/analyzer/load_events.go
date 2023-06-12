@@ -24,7 +24,7 @@ import (
 
 // loadEvents loads any events that are required for a plan node to operate properly (except for nodes dealing with
 // event execution).
-func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func loadEvents(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("loadEvents")
 	defer span.End()
 

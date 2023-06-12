@@ -25,7 +25,7 @@ import (
 )
 
 // applyForeignKeys handles the application and resolution of foreign keys and their tables.
-func applyForeignKeys(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyForeignKeys(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -263,7 +263,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			}
 		}
 
-		parentIndex, ok, err := plan.FindIndexWithPrefix(ctx, parentTbl, fk.ParentColumns)
+		parentIndex, ok, err := plan.FindIndexWithPrefix(ctx, parentTbl, fk.ParentColumns, true)
 		if err != nil {
 			return nil, err
 		}
@@ -272,8 +272,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
-		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.Columns,
-			fk.ParentColumns, parentIndex)
+		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.Columns, fk.ParentColumns, parentIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +363,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			}
 		}
 
-		childIndex, ok, err := plan.FindIndexWithPrefix(ctx, childTbl, fk.Columns)
+		childIndex, ok, err := plan.FindIndexWithPrefix(ctx, childTbl, fk.Columns, false)
 		if err != nil {
 			return nil, err
 		}
@@ -373,8 +372,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
 				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
-		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.ParentColumns,
-			fk.Columns, childIndex)
+		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.ParentColumns, fk.Columns, childIndex)
 		if err != nil {
 			return nil, err
 		}

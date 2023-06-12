@@ -27,7 +27,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	. "github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -818,7 +817,7 @@ func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -989,7 +988,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1103,7 +1102,7 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1302,7 +1301,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				typeName, _ := getDtdIdAndDataType(col.Type)
 
 				if srid, d := s.GetSpatialTypeSRID(); d {
-					srsName = spatial.SupportedSRIDs[srid].Name
+					srsName = types.SupportedSRIDs[srid].Name
 					srsId = srid
 				}
 
@@ -1329,7 +1328,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 // stSpatialReferenceSystemsRowIter implements the sql.RowIter for the information_schema.ST_SPATIAL_REFERENCE_SYSTEMS table.
 func stSpatialReferenceSystemsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
-	for _, spRef := range spatial.SupportedSRIDs {
+	for _, spRef := range types.SupportedSRIDs {
 		rows = append(rows, Row{
 			spRef.Name,          // srs_name
 			spRef.ID,            // srs_id
@@ -1370,7 +1369,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1475,7 +1474,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -1551,7 +1550,7 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 		}
 
 		for _, tableName := range tableNames {
-			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			tbl, _, err := c.DatabaseTable(ctx, db, tableName)
 			if err != nil {
 				return nil, err
 			}
@@ -2647,12 +2646,19 @@ func (n *defaultStatsTable) RowCount(ctx *Context, db, table string) (uint64, bo
 	return cnt, true, nil
 }
 
-func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
+func (n *defaultStatsTable) Analyze(ctx *Context, dbName, table string) error {
 	tableStats := &TableStatistics{
 		CreatedAt: time.Now(),
 	}
 
-	t, _, err := n.catalog.Table(ctx, db, table)
+	db, err := n.catalog.Database(ctx, dbName)
+	if err != nil {
+		return err
+	}
+
+	effectiveDbName := plan.CheckPrivilegeNameForDatabase(db)
+
+	t, _, err := n.catalog.DatabaseTable(ctx, db, table)
 	if err != nil {
 		return err
 	}
@@ -2667,7 +2673,7 @@ func (n *defaultStatsTable) Analyze(ctx *Context, db, table string) error {
 		break
 	}
 
-	n.stats[NewDbTable(db, table)] = tableStats
+	n.stats[NewDbTable(effectiveDbName, table)] = tableStats
 	return nil
 }
 

@@ -150,9 +150,25 @@ func TestJSONTableQueries(t *testing.T, harness Harness) {
 	}
 }
 
+func TestJSONTableQueriesPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData, setup.Pk_tablesData)
+	e, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
+	for _, tt := range queries.JSONTableQueryTests {
+		TestPreparedQueryWithEngine(t, harness, e, tt)
+	}
+}
+
 func TestJSONTableScripts(t *testing.T, harness Harness) {
 	for _, tt := range queries.JSONTableScriptTests {
 		TestScript(t, harness, tt)
+	}
+}
+
+func TestJSONTableScriptsPrepared(t *testing.T, harness Harness) {
+	for _, tt := range queries.JSONTableScriptTests {
+		TestScriptPrepared(t, harness, tt)
 	}
 }
 
@@ -1188,7 +1204,7 @@ func TestLoadDataPrepared(t *testing.T, harness Harness) {
 
 func TestScriptsPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
-	for _, script := range append(queries.ScriptTests, queries.SpatialScriptTests...) {
+	for _, script := range queries.ScriptTests {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(script.Name) {
 				t.Run(script.Name, func(t *testing.T) {

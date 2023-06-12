@@ -298,14 +298,7 @@ func (b *BaseBuilder) buildExecuteQuery(ctx *sql.Context, n *plan.ExecuteQuery, 
 }
 
 func (b *BaseBuilder) buildUse(ctx *sql.Context, n *plan.Use, row sql.Row) (sql.RowIter, error) {
-	db, err := n.Catalog.Database(ctx, n.Database().Name())
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.SetCurrentDatabase(db.Name())
-
-	return sql.RowsToRowIter(), nil
+	return n.RowIter(ctx, row)
 }
 
 func (b *BaseBuilder) buildTransactionCommittingNode(ctx *sql.Context, n *plan.TransactionCommittingNode, row sql.Row) (sql.RowIter, error) {

@@ -170,7 +170,7 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrDiffSRIDs.New(d.FunctionName(), srid1, srid2)
 	}
 
-	if srid1 == types.GeoSpatialSRID {
+	if srid1 != types.CartesianSRID {
 		return nil, sql.ErrUnsupportedSRID.New(srid1)
 	}
 

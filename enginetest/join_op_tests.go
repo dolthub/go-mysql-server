@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/memo"
+
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
 type JoinOpTests struct {
@@ -29,12 +30,12 @@ type JoinOpTests struct {
 	Skip     bool
 }
 
-var biasedCosters = map[string]analyzer.Coster{
-	"inner":   analyzer.NewInnerBiasedCoster(),
-	"lookup":  analyzer.NewLookupBiasedCoster(),
-	"hash":    analyzer.NewHashBiasedCoster(),
-	"merge":   analyzer.NewMergeBiasedCoster(),
-	"partial": analyzer.NewPartialBiasedCoster(),
+var biasedCosters = map[string]memo.Coster{
+	"inner":   memo.NewInnerBiasedCoster(),
+	"lookup":  memo.NewLookupBiasedCoster(),
+	"hash":    memo.NewHashBiasedCoster(),
+	"merge":   memo.NewMergeBiasedCoster(),
+	"partial": memo.NewPartialBiasedCoster(),
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {
@@ -178,6 +179,14 @@ var joinOpTests = []struct {
 			setup.XyData[0],
 		},
 		tests: []JoinOpTests{
+			{
+				Query: `SELECT xy.x, xy.y
+					FROM xy
+					WHERE EXISTS (
+					SELECT 1 FROM uv WHERE xy.x = uv.v AND (EXISTS (
+					SELECT 1 FROM ab WHERE uv.u = ab.b)))`,
+				Expected: []sql.Row{{1, 0}, {2, 1}},
+			},
 			{
 				// natural join w/ inner join
 				Query: "select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",

@@ -28,7 +28,7 @@ import (
 // e.g. GroupBy(sum(a) + sum(b)) becomes project(sum(a) + sum(b), GroupBy(sum(a), sum(b)).
 // e.g. Window(sum(a) + sum(b) over (partition by a)) becomes
 // project(sum(a) + sum(b) over (partition by a), Window(sum(a), sum(b) over (partition by a))).
-func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("flatten_aggregation_exprs")
 	defer span.End()
 
@@ -56,7 +56,7 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	})
 }
 
-func flattenedGroupBy(ctx *sql.Context, scope *Scope, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func flattenedGroupBy(ctx *sql.Context, scope *plan.Scope, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, scope, projection)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -84,7 +84,7 @@ func flattenedGroupBy(ctx *sql.Context, scope *Scope, projection, grouping []sql
 // There are two basic kinds of aggregation expressions:
 // 1) Passthrough columns from scope input relation.
 // 2) Synthesized columns from in-scope aggregation relation.
-func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *Scope, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
+func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *plan.Scope, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
 	scopeLen := len(scope.Schema())
@@ -147,7 +147,7 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *Scope, proj
 	return newProjection, newAggregates, transform.NewTree, nil
 }
 
-func flattenedWindow(ctx *sql.Context, scope *Scope, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func flattenedWindow(ctx *sql.Context, scope *plan.Scope, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, scope, projection)
 	if err != nil {
 		return nil, transform.SameTree, err

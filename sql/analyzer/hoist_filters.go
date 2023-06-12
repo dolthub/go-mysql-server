@@ -1,8 +1,9 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -16,7 +17,7 @@ import (
 // select * from xy where exists (select * from uv where x = 1)
 // =>
 // select * from xy where x = 1 and exists (select * from uv)
-func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n.(type) {
 	case *plan.TriggerBeginEndBlock:
 		return n, transform.SameTree, nil
@@ -24,7 +25,9 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	}
 	ret, same, filters, err := recurseSubqueryForOuterFilters(n, a, scope)
 	if len(filters) != 0 {
-		return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
+		// todo empty table fold filters before here
+		return n, transform.SameTree, nil
+		//return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
 	}
 	return ret, same, err
 }
@@ -34,14 +37,14 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 // subquery filters. We do a BFS to extract hoistable filters from subquery
 // expressions before checking the normalized subquery and its hoisted
 // filters for further hoisting.
-func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.Node, transform.TreeIdentity, []sql.Expression, error) {
+func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *plan.Scope) (sql.Node, transform.TreeIdentity, []sql.Expression, error) {
 	var hoistFilters []sql.Expression
 	lowestAllowedIdx := len(scope.Schema())
 	var inScope TableAliases
 	ret, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		sq, _ := n.(*plan.SubqueryAlias)
 		if sq != nil {
-			subScope := scope.newScopeFromSubqueryAlias(sq)
+			subScope := scope.NewScope(sq)
 			newQ, same, hoisted, err := recurseSubqueryForOuterFilters(sq.Child, a, subScope)
 			if err != nil {
 				return n, transform.SameTree, err
@@ -61,7 +64,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 
 		var keepFilters []sql.Expression
 		allSame := transform.SameTree
-		queue := splitConjunction(f.Expression)
+		queue := expression.SplitConjunction(f.Expression)
 		for len(queue) > 0 {
 			e := queue[0]
 			queue = queue[1:]
@@ -86,7 +89,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			}
 			if sq != nil {
 				children := e.Children()
-				subScope := scope.newScopeFromSubqueryExpression(n)
+				subScope := scope.NewScopeFromSubqueryExpression(n)
 				newQ, same, hoisted, err := recurseSubqueryForOuterFilters(sq.Query, a, subScope)
 				if err != nil {
 					return n, transform.SameTree, err
@@ -97,7 +100,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 				e, _ = e.WithChildren(children...)
 
 				if len(hoisted) > 0 {
-					newScopeFilters, _, err := FixFieldIndexesOnExpressions(scope, a, n.Schema(), hoisted...)
+					newScopeFilters, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), n.Schema(), hoisted...)
 					if err != nil {
 						return n, transform.SameTree, err
 					}
@@ -122,8 +125,6 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 			}
 
 			// (2) evaluate if expression hoistable
-			var innerRef bool
-			var maybeAlias bool
 			if inScope == nil {
 				var err error
 				inScope, err = getTableAliases(n, nil)
@@ -131,23 +132,10 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 					return n, transform.SameTree, err
 				}
 			}
-			transform.InspectExpr(e, func(e sql.Expression) bool {
-				gf, _ := e.(*expression.GetField)
-				if gf == nil {
-					return false
-				}
-				tName := strings.ToLower(gf.Table())
-				if tName == "" {
-					maybeAlias = true
-				} else if _, ok := inScope[tName]; ok {
-					innerRef = true
-				}
-
-				return innerRef && maybeAlias
-			})
+			foundRef, foundAlias := exprRefsTableSet(e, inScope)
 
 			// (3) bucket filter into parent or current scope
-			if !innerRef && !maybeAlias {
+			if !foundRef && !foundAlias {
 				// belongs in outer scope
 				hoistFilters = append(hoistFilters, e)
 			} else {
@@ -169,4 +157,30 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, scope *Scope) (sql.
 		return ret, transform.NewTree, nil
 	})
 	return ret, same, hoistFilters, err
+}
+
+// exprRefsTableSet returns |foundRef| if the expression directly
+// references a table in the table set, and |foundAlias| if the expression
+// references an alias that is scope-ambiguous.
+func exprRefsTableSet(e sql.Expression, tables TableAliases) (foundRef, foundAlias bool) {
+	transform.InspectExpr(e, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.GetField:
+			tName := strings.ToLower(e.Table())
+			if tName == "" {
+				foundAlias = true
+			} else if _, ok := tables[tName]; ok {
+				foundRef = true
+			}
+		case *plan.Subquery:
+			transform.InspectExpressions(e.Query, func(e sql.Expression) bool {
+				subqRef, subqAlias := exprRefsTableSet(e, tables)
+				foundRef = foundRef || subqRef
+				foundAlias = foundAlias || subqAlias
+				return foundRef && foundAlias
+			})
+		}
+		return foundRef && foundAlias
+	})
+	return
 }

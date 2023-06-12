@@ -25,7 +25,7 @@ import (
 
 // applyUpdateAccumulators wraps any Insert, Update, or Delete nodes with RowUpdateAccumulators to tally the results
 // for report to the client.
-func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 		accumulatorType, err := getUpdateAccumulatorType(n)

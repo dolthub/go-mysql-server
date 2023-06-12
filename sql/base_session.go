@@ -293,6 +293,12 @@ func (s *BaseSession) SetCurrentDatabase(dbName string) {
 	s.logger = logger.WithField(ConnectionDbLogField, dbName)
 }
 
+func (s *BaseSession) UseDatabase(ctx *Context, db Database) error {
+	// Nothing to do for default implementation
+	// Integrators should override this method on custom session implementations as necessary
+	return nil
+}
+
 // ID implements the Session interface.
 func (s *BaseSession) ID() uint32 { return s.id }
 

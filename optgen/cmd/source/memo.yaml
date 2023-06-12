@@ -1,0 +1,130 @@
+exprs:
+- name: "CrossJoin"
+  join: true
+- name: "InnerJoin"
+  join: true
+- name: "LeftJoin"
+  join: true
+- name: "SemiJoin"
+  join: true
+- name: "AntiJoin"
+  join: true
+- name: "LookupJoin"
+  join: true
+  attrs:
+  - [lookup, "*Lookup"]
+- name: "ConcatJoin"
+  join: true
+  attrs:
+  - [concat, "[]*Lookup"]
+- name: "HashJoin"
+  join: true
+  attrs:
+  - [rightAttrs, "[]*ExprGroup"]
+  - [leftAttrs, "[]*ExprGroup"]
+- name: "MergeJoin"
+  join: true
+  attrs:
+  - [innerScan, "*IndexScan"]
+  - [outerScan, "*IndexScan"]
+  - [swapCmp, "bool"]
+- name: "FullOuterJoin"
+  join: true
+- name: "TableScan"
+  sourceType: "*plan.ResolvedTable"
+- name: "Values"
+  sourceType: "*plan.ValueDerivedTable"
+- name: "TableAlias"
+  sourceType: "*plan.TableAlias"
+- name: "RecursiveTable"
+  sourceType: "*plan.RecursiveTable"
+- name: "RecursiveCte"
+  sourceType: "*plan.RecursiveCte"
+- name: "SubqueryAlias"
+  sourceType: "*plan.SubqueryAlias"
+- name: "Max1Row"
+  sourceType: "sql.NameableNode"
+- name: "TableFunc"
+  sourceType: "sql.TableFunction"
+- name: "EmptyTable"
+  sourceType: "*plan.EmptyTable"
+- name: "Project"
+  unary: true
+  attrs:
+  - [projections, "[]*ExprGroup"]
+- name: "Distinct"
+  unary:  true
+  skipExec: true
+
+# scalar
+- name: "Filter"
+  unary: true
+  attrs:
+  - [filters, "[]*ExprGroup"]
+- name: "Equal"
+  scalar: true
+  binary: true
+- name: "Literal"
+  scalar: true
+  attrs:
+  - [val, "interface{}"]
+  - [typ, "sql.Type"]
+- name: "ColRef"
+  scalar: true
+  attrs:
+  - [col, "sql.ColumnId"]
+  - [table, "GroupId"]
+  - [gf, "*expression.GetField"]
+- name: "Not"
+  unary: true
+  scalar: true
+- name: "Or"
+  scalar: true
+  binary: true
+- name: "And"
+  scalar: true
+  binary: true
+- name: "InTuple"
+  scalar: true
+  binary: true
+- name: "Lt"
+  scalar: true
+  binary: true
+- name: "Leq"
+  scalar: true
+  binary: true
+- name: "Gt"
+  scalar: true
+  binary: true
+- name: "Geq"
+  scalar: true
+  binary: true
+- name: "NullSafeEq"
+  scalar: true
+  binary: true
+- name: "Regexp"
+  scalar: true
+  binary: true
+- name: "Arithmetic"
+  scalar: true
+  binary: true
+  attrs:
+  - [op, "ArithType"]
+- name: "Bindvar"
+  scalar: true
+  attrs:
+  - [name, "string"]
+  - [typ, "sql.Type"]
+- name: "IsNull"
+  scalar: true
+  unary: true
+- name: "Tuple"
+  scalar: true
+  attrs:
+  - [values, "[]*ExprGroup"]
+- name: "Hidden"
+  scalar: true
+  attrs:
+  - [e, "sql.Expression"]
+  - [cols, "sql.ColSet"]
+  - [tables, "sql.FastIntSet"]

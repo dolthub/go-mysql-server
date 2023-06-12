@@ -43,6 +43,8 @@ import (
 )
 
 var (
+	errIncorrectIndexName = errors.NewKind("incorrect index name '%s'")
+
 	errInvalidDescribeFormat = errors.NewKind("invalid format %q for DESCRIBE, supported formats: %s")
 
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
@@ -939,7 +941,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if s.ShowCollationFilterOpt != nil {
-			filterExpr, err := ExprToExpression(ctx, *s.ShowCollationFilterOpt)
+			filterExpr, err := ExprToExpression(ctx, s.ShowCollationFilterOpt)
 			if err != nil {
 				return nil, err
 			}
@@ -2132,7 +2134,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.AddStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				c.Database = table.Database()
+				c.Database = table.Database().Name()
 				c.Table = table.Name()
 				if c.Database == "" {
 					c.Database = ctx.GetCurrentDatabase()
@@ -2147,11 +2149,11 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				database := table.Database()
-				if database == "" {
-					database = ctx.GetCurrentDatabase()
+				databaseName := table.Database().Name()
+				if databaseName == "" {
+					databaseName = ctx.GetCurrentDatabase()
 				}
-				return plan.NewAlterDropForeignKey(database, table.Name(), c.Name), nil
+				return plan.NewAlterDropForeignKey(databaseName, table.Name(), c.Name), nil
 			case *sql.CheckConstraint:
 				return plan.NewAlterDropCheck(table, c.Name), nil
 			case namedConstraint:
@@ -2181,7 +2183,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 				if commentVal := column.Type.Comment; commentVal != nil {
 					comment = commentVal.String()
 				}
-				columns := []sql.IndexColumn{sql.IndexColumn{Name: column.Name.String()}}
+				columns := []sql.IndexColumn{{Name: column.Name.String()}}
 				if isUnique {
 					alteredTable, err = plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), alteredTable, column.Name.String(), sql.IndexUsing_BTree, sql.IndexConstraint_Unique, columns, comment), nil
 					if err != nil {
@@ -2257,7 +2259,12 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			return plan.NewAlterCreatePk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, columns), nil
 		}
 
-		return plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment), nil
+		indexName := ddl.IndexSpec.ToName.String()
+		if strings.ToLower(indexName) == sqlparser.PrimaryStr {
+			return nil, errIncorrectIndexName.New(indexName)
+		}
+
+		return plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, indexName, using, constraint, columns, comment), nil
 	case sqlparser.DropStr:
 		if ddl.IndexSpec.Type == sqlparser.PrimaryStr {
 			return plan.NewAlterDropPk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table), nil
@@ -2504,7 +2511,8 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
 			// TODO: We do not support FULLTEXT indexes or keys
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 
 		columns, err := gatherIndexColumns(idxDef.Columns)
@@ -2529,7 +2537,9 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 
 	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			// TODO: We do not support FULLTEXT indexes or keys
+			ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
@@ -2808,9 +2818,9 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 		}
 	}
 
-	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
 
-	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil, false), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore), nil
 }
 
 func getPkOrdinals(ts *sqlparser.TableSpec) []int {
@@ -2939,8 +2949,8 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		if sErr != nil {
 			return nil, sErr
 		}
-		if uint32(sridVal) != types.CartesianSRID && uint32(sridVal) != types.GeoSpatialSRID {
-			return nil, sql.ErrUnsupportedFeature.New("unsupported SRID value")
+		if err = types.ValidateSRID(int(sridVal), ""); err != nil {
+			return nil, err
 		}
 		if s, ok := internalTyp.(sql.SpatialColumnType); ok {
 			internalTyp = s.SetSRID(uint32(sridVal))
@@ -3472,8 +3482,11 @@ func tableExprToTable(
 		if err != nil {
 			return nil, err
 		}
-
-		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
+		utf := expression.NewUnresolvedTableFunction(t.Name, exprs)
+		if t.Alias.IsEmpty() {
+			return plan.NewTableAlias(t.Name, utf), nil
+		}
+		return plan.NewTableAlias(t.Alias.String(), utf), nil
 
 	case *sqlparser.JoinTableExpr:
 		return joinTableExpr(ctx, t)
@@ -4550,7 +4563,18 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 }
 
 func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Expression, error) {
-	switch strings.ToLower(be.Operator) {
+	l, err := ExprToExpression(ctx, be.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := ExprToExpression(ctx, be.Right)
+	if err != nil {
+		return nil, err
+	}
+
+	operator := strings.ToLower(be.Operator)
+	switch operator {
 	case
 		sqlparser.PlusStr,
 		sqlparser.MinusStr,
@@ -4564,16 +4588,6 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		sqlparser.IntDivStr,
 		sqlparser.ModStr:
 
-		l, err := ExprToExpression(ctx, be.Left)
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := ExprToExpression(ctx, be.Right)
-		if err != nil {
-			return nil, err
-		}
-
 		_, lok := l.(*expression.Interval)
 		_, rok := r.(*expression.Interval)
 		if lok && be.Operator == "-" {
@@ -4584,7 +4598,7 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 			return nil, sql.ErrUnsupportedSyntax.New("intervals cannot be added or subtracted from other intervals")
 		}
 
-		switch strings.ToLower(be.Operator) {
+		switch operator {
 		case sqlparser.DivStr:
 			return expression.NewDiv(l, r), nil
 		case sqlparser.ModStr:
@@ -4596,10 +4610,17 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		default:
 			return expression.NewArithmetic(l, r, be.Operator), nil
 		}
-	case
-		sqlparser.JSONExtractOp,
-		sqlparser.JSONUnquoteExtractOp:
-		return nil, sql.ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
+
+	case sqlparser.JSONExtractOp, sqlparser.JSONUnquoteExtractOp:
+		jsonExtract, err := function.NewJSONExtract(l, r)
+		if err != nil {
+			return nil, err
+		}
+
+		if operator == sqlparser.JSONUnquoteExtractOp {
+			return function.NewJSONUnquote(jsonExtract), nil
+		}
+		return jsonExtract, nil
 
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(be.Operator)

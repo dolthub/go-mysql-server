@@ -157,8 +157,8 @@ func (ov TableNamesReplicationOptionValue) String() string {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		if urt.Database() != "" {
-			sb.WriteString(urt.Database())
+		if urt.Database().Name() != "" {
+			sb.WriteString(urt.Database().Name())
 			sb.WriteString(".")
 		}
 		sb.WriteString(urt.Name())

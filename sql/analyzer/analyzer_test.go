@@ -45,7 +45,7 @@ func TestMaxIterations(t *testing.T) {
 
 	count := 0
 	a := withoutProcessTracking(NewBuilder(provider).AddPostAnalyzeRule(-1,
-		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+		func(c *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 			switch n.(type) {
 			case *plan.ResolvedTable:
 				count++
@@ -81,7 +81,7 @@ func TestAddRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPostAnalyzeRule(-1, pushdownFilters).Build()
+	a := NewBuilder(nil).AddPostAnalyzeRule(-1, generateIndexScans).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -91,7 +91,7 @@ func TestAddPreValidationRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPreValidationRule(-1, pushdownFilters).Build()
+	a := NewBuilder(nil).AddPreValidationRule(-1, generateIndexScans).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -101,7 +101,7 @@ func TestAddPostValidationRule(t *testing.T) {
 
 	defRulesCount := countRules(NewDefault(nil).Batches)
 
-	a := NewBuilder(nil).AddPostValidationRule(-1, pushdownFilters).Build()
+	a := NewBuilder(nil).AddPostValidationRule(-1, generateIndexScans).Build()
 
 	require.Equal(countRules(a.Batches), defRulesCount+1)
 }
@@ -229,7 +229,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 		{Name: "history_index", Source: "ref_commits", Type: types.Int64},
 	}), nil)
 
-	db := memory.NewDatabase("")
+	db := memory.NewDatabase("mydb")
 	db.AddTable("refs", refs)
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)
@@ -238,6 +238,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	a := withoutProcessTracking(NewDefault(provider))
 
 	ctx := sql.NewContext(context.Background())
+	ctx.SetCurrentDatabase("mydb")
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.True(result.Resolved())

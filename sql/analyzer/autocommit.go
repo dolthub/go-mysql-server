@@ -21,7 +21,7 @@ import (
 )
 
 // addAutocommitNode wraps each query with a TransactionCommittingNode.
-func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -87,7 +87,7 @@ func getDbHelper(tables ...sql.Node) string {
 	}
 	switch t := tables[0].(type) {
 	case *plan.UnresolvedTable:
-		return t.Database()
+		return t.Database().Name()
 	case *plan.ResolvedTable:
 		return t.Database.Name()
 	case *plan.IndexedTableAccess:

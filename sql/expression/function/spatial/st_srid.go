@@ -111,7 +111,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if err = ValidateSRID(int(val.(int64)), s.FunctionName()); err != nil {
+	if err = types.ValidateSRID(int(val.(int64)), s.FunctionName()); err != nil {
 		return nil, err
 	}
 	srid := uint32(val.(int64))
