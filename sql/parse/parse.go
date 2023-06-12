@@ -4843,7 +4843,7 @@ func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.S
 	}
 	// TODO: check limits
 	return plan.SrsAttribute{
-		Name: 	      attr.Name,
+		Name:         attr.Name,
 		Definition:   attr.Definition,
 		Organization: attr.Organization,
 		OrgID:        int(orgID),
