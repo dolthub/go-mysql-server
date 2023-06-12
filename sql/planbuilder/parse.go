@@ -3,6 +3,7 @@ package planbuilder
 import (
 	goerrors "errors"
 	"strings"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
@@ -37,9 +38,10 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 	defer span.End()
 
 	s := strings.TrimSpace(query)
-	if strings.HasSuffix(s, ";") {
-		s = s[:len(s)-1]
-	}
+	// trim spaces and empty statements
+	s = strings.TrimRightFunc(s, func(r rune) bool {
+		return r == ';' || unicode.IsSpace(r)
+	})
 
 	var stmt sqlparser.Statement
 	var err error
@@ -55,9 +57,10 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)
-			if strings.HasSuffix(parsed, ";") {
-				parsed = parsed[:len(parsed)-1]
-			}
+			// trim spaces and empty statements
+			parsed = strings.TrimRightFunc(parsed, func(r rune) bool {
+				return r == ';' || unicode.IsSpace(r)
+			})
 			remainder = s[ri:]
 		}
 	}
