@@ -4885,7 +4885,27 @@ func convertCreateSpatialRefSys(ctx *sql.Context, n *sqlparser.CreateSpatialRefS
 	return plan.NewCreateSpatialRefSys(int(srid), n.OrReplace, n.IfNotExists, srsAttr)
 }
 
+var ErrMissingMandatoryAttribute = errors.NewKind("missing mandatory attribute %s")
+
 func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.SrsAttribute, error) {
+	if attr == nil {
+		return plan.SrsAttribute{}, fmt.Errorf("missing attribute")
+	}
+	if attr.Name == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("NAME")
+	}
+	if attr.Definition == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("DEFINITION")
+	}
+	if attr.Organization == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION NAME")
+	}
+	if attr.OrgID == nil {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION ID")
+	}
+	if attr.Description == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("DESCRIPTION")
+	}
 	orgID, err := strconv.ParseInt(string(attr.OrgID.Val), 10, 16)
 	if err != nil {
 		return plan.SrsAttribute{}, err

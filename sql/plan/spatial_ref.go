@@ -72,5 +72,6 @@ func (n *CreateSpatialRefSys) WithChildren(children ...sql.Node) (sql.Node, erro
 
 // CheckPrivileges implements the interface sql.Node
 func (n *CreateSpatialRefSys) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return false
+	// TODO: user must have privileges to mysql_db / is root
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("mysql", "st_spatial_references_systems", "", sql.PrivilegeType_Insert))
 }
