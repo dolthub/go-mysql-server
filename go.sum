@@ -63,6 +63,8 @@ github.com/dolthub/vitess v0.0.0-20230608223125-8cd7c28985bf h1:xUGTpOlvHw6TdwXZ
 github.com/dolthub/vitess v0.0.0-20230608223125-8cd7c28985bf/go.mod h1:IyoysiiOzrIs7QsEHC+yVF0yRQ6W70GXyCXqtI2vVTs=
 github.com/dolthub/vitess v0.0.0-20230609174301-177af3210dfb h1:h4g5j/XH5K9A+mszzIC4WkSUvpwxJ3Bg9jM6mUV3wfA=
 github.com/dolthub/vitess v0.0.0-20230609174301-177af3210dfb/go.mod h1:IyoysiiOzrIs7QsEHC+yVF0yRQ6W70GXyCXqtI2vVTs=
+github.com/dolthub/vitess v0.0.0-20230613202357-d1dee78f23a5 h1:ehcWixYh39Qy2b11tlca7EzqWGrbvrc8o/xqa2yQ5yQ=
+github.com/dolthub/vitess v0.0.0-20230613202357-d1dee78f23a5/go.mod h1:IyoysiiOzrIs7QsEHC+yVF0yRQ6W70GXyCXqtI2vVTs=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
