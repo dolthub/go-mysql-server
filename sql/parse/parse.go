@@ -3556,26 +3556,75 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 	}
 }
 
+func jsonTableCols(ctx *sql.Context, jtSpec *sqlparser.JSONTableSpec) ([]plan.JSONTableCol, error) {
+	var cols []plan.JSONTableCol
+	for _, jtColDef := range jtSpec.Columns {
+		if jtColDef.Spec != nil {
+			nestedCols, err := jsonTableCols(ctx, jtColDef.Spec)
+			if err != nil {
+				return nil, err
+			}
+			col := plan.JSONTableCol{
+				Path:       jtColDef.Spec.Path,
+				NestedCols: nestedCols,
+			}
+			cols = append(cols, col)
+			continue
+		}
+
+		typ, err := types.ColumnTypeToType(&jtColDef.Type)
+		if err != nil {
+			return nil, err
+		}
+
+		var defEmptyVal, defErrorVal sql.Expression
+		if jtColDef.Opts.ValOnEmpty == nil {
+			defEmptyVal = expression.NewLiteral(nil, types.Null)
+		} else {
+			defEmptyVal, err = ExprToExpression(ctx, jtColDef.Opts.ValOnEmpty)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if jtColDef.Opts.ValOnError == nil {
+			defErrorVal = expression.NewLiteral(nil, types.Null)
+		} else {
+			defErrorVal, err = ExprToExpression(ctx, jtColDef.Opts.ValOnError)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		planCol := plan.JSONTableCol{
+			Path: jtColDef.Opts.Path,
+			Opts: &plan.JSONTableColOpts{
+				Name:         jtColDef.Name.String(),
+				Type:         typ,
+				ForOrd:       bool(jtColDef.Type.Autoincrement),
+				Exists:       jtColDef.Opts.Exists,
+				DefEmptyVal:  defEmptyVal,
+				DefErrorVal:  defErrorVal,
+				ErrorOnEmpty: jtColDef.Opts.ErrorOnEmpty,
+				ErrorOnError: jtColDef.Opts.ErrorOnError,
+			},
+		}
+		cols = append(cols, planCol)
+	}
+	return cols, nil
+}
+
 func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, error) {
 	data, err := ExprToExpression(ctx, t.Data)
 	if err != nil {
 		return nil, err
 	}
-
-	paths := make([]string, len(t.Spec.Columns))
-	for i, col := range t.Spec.Columns {
-		paths[i] = col.Type.Path
-	}
-
-	sch, _, err := TableSpecToSchema(ctx, t.Spec, false)
-	for _, col := range sch.Schema {
-		col.Source = t.Alias.String()
-	}
+	alias := t.Alias.String()
+	cols, err := jsonTableCols(ctx, t.Spec)
 	if err != nil {
 		return nil, err
 	}
-
-	return plan.NewJSONTable(data, t.Path, paths, t.Alias.String(), sch)
+	return plan.NewJSONTable(data, t.Spec.Path, alias, cols)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {

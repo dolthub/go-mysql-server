@@ -408,6 +408,10 @@ func injectBindVarsAndPrepare(
 		t.Skip()
 	}
 
+	if err != nil {
+		return nil, err
+	}
+
 	prepared, err := e.Analyzer.PrepareQuery(ctx, bound, nil)
 	if err != nil {
 		return nil, err
