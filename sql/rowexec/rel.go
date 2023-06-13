@@ -126,7 +126,7 @@ func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTab
 	var cols []*jsonTableCol
 	for _, col := range jtCols {
 		if col.Opts == nil {
-			innerCols, err := b.buildJSONTableCols(ctx, col.Cols, row)
+			innerCols, err := b.buildJSONTableCols(ctx, col.NestedCols, row)
 			if err != nil {
 				return nil, err
 			}

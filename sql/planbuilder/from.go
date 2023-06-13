@@ -420,8 +420,8 @@ func (b *PlanBuilder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSp
 		if jtColDef.Spec != nil {
 			nestedCols := b.buildJSONTableCols(inScope, jtColDef.Spec)
 			col := plan.JSONTableCol{
-				Path: jtColDef.Spec.Path,
-				Cols: nestedCols,
+				Path:       jtColDef.Spec.Path,
+				NestedCols: nestedCols,
 			}
 			cols = append(cols, col)
 			continue

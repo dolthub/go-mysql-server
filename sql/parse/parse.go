@@ -3563,8 +3563,8 @@ func jsonTableCols(ctx *sql.Context, jtSpec *sqlparser.JSONTableSpec) ([]plan.JS
 				return nil, err
 			}
 			col := plan.JSONTableCol{
-				Path: jtColDef.Spec.Path,
-				Cols: nestedCols,
+				Path:       jtColDef.Spec.Path,
+				NestedCols: nestedCols,
 			}
 			cols = append(cols, col)
 			continue
