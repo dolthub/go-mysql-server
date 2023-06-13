@@ -5252,7 +5252,7 @@ func TestParseOne(t *testing.T) {
 		},
 		{
 			"SELECT 1 /* testing */ ;",
-			[]string{"SELECT 1 /* testing */ "},
+			[]string{"SELECT 1 /* testing */"},
 		},
 		{
 			"SELECT 1 -- this is a test",
@@ -5260,11 +5260,11 @@ func TestParseOne(t *testing.T) {
 		},
 		{
 			"-- empty statement with comment\n; SELECT 1; SELECT 2",
-			[]string{"-- empty statement with comment\n", "SELECT 1", "SELECT 2"},
+			[]string{"-- empty statement with comment", "SELECT 1", "SELECT 2"},
 		},
 		{
 			"SELECT 1; -- empty statement with comment\n; SELECT 2",
-			[]string{"SELECT 1", "-- empty statement with comment\n", "SELECT 2"},
+			[]string{"SELECT 1", "-- empty statement with comment", "SELECT 2"},
 		},
 		{
 			"SELECT 1; SELECT 2; -- empty statement with comment\n",
