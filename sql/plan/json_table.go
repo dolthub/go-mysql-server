@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -76,6 +77,36 @@ func (c *JSONTableCol) Resolved() bool {
 	}
 
 	return c.Opts == nil || (c.Opts.DefErrorVal.Resolved() && c.Opts.DefEmptyVal.Resolved())
+}
+
+func (c *JSONTableCol) Expressions() []sql.Expression {
+	if c.Opts != nil {
+		return []sql.Expression{c.Opts.DefEmptyVal, c.Opts.DefErrorVal}
+	}
+	var exprs []sql.Expression
+	for _, col := range c.Cols {
+		exprs = append(exprs, col.Expressions()...)
+	}
+	return exprs
+}
+
+func (c *JSONTableCol) WithExpressions(exprs []sql.Expression, idx *int) error {
+	i := *idx
+	if i >= len(exprs) {
+		return fmt.Errorf("not enough expressions for JSONTableCol")
+	}
+	if c.Opts != nil {
+		c.Opts.DefEmptyVal = exprs[i]
+		c.Opts.DefErrorVal = exprs[i+1]
+		*idx += 2
+		return nil
+	}
+	for _, col := range c.Cols {
+		if err := col.WithExpressions(exprs, idx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type JSONTable struct {
@@ -177,18 +208,27 @@ func (*JSONTable) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Expressions implements the sql.Expressioner interface
 func (t *JSONTable) Expressions() []sql.Expression {
-	// TODO: better to do nothing or return all exprs?
-	return []sql.Expression{t.DataExpr}
+	exprs := []sql.Expression{t.DataExpr}
+	for _, col := range t.Cols {
+		innerExprs := col.Expressions()
+		exprs = append(exprs, innerExprs...)
+	}
+	return exprs
 }
 
 // WithExpressions implements the sql.Expressioner interface
 func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
-	// TODO: better to do nothing or return all exprs?
-	if len(expression) != 1 {
-		return nil, sql.ErrInvalidExpressionNumber.New(t, len(expression), 1)
-	}
 	nt := *t
 	nt.DataExpr = expression[0]
+	idx := 1
+	for i := range nt.Cols {
+		if err := nt.Cols[i].WithExpressions(expression, &idx); err != nil {
+			return nil, err
+		}
+	}
+	if idx != len(expression) {
+		return nil, fmt.Errorf("too many expressions for JSONTable")
+	}
 	return &nt, nil
 }
 
