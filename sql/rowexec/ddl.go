@@ -1021,3 +1021,8 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 
 	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
+
+func (b *BaseBuilder) buildCreateSpatialRefSys(ctx *sql.Context, n *plan.CreateSpatialRefSys, row sql.Row) (sql.RowIter, error) {
+	// TODO: modify the information_schema
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+}

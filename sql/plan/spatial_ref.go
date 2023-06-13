@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type SrsAttribute struct {
@@ -57,7 +58,7 @@ func (n *CreateSpatialRefSys) String() string {
 
 // Schema implements the interface sql.Node
 func (n *CreateSpatialRefSys) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 // Children implements the interface sql.Node
