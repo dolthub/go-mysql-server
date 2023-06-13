@@ -255,7 +255,6 @@ type jsonTableColOpts struct {
 }
 
 // jsonTableCol represents a column in a json table.
-// TODO: this wastes memory for each column
 type jsonTableCol struct {
 	path string // if there are nested columns, this is a schema path, otherwise it is a col path
 	opts *jsonTableColOpts
