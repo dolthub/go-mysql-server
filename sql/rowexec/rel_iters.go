@@ -319,7 +319,7 @@ func (c *jsonTableCol) Reset() {
 }
 
 // Next returns the next row for this column.
-func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
+func (c *jsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error) {
 	// nested column should recurse
 	if len(c.cols) != 0 {
 		if c.data == nil {
@@ -334,7 +334,7 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		var row sql.Row
 		for i, col := range c.cols {
 			innerPass := len(col.cols) != 0 && i != c.currSib
-			rowPart, err := col.Next(innerObj, pass || innerPass)
+			rowPart, err := col.Next(innerObj, pass || innerPass, c.pos+1)
 			if err != nil {
 				return nil, err
 			}
@@ -364,12 +364,9 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 		return sql.Row{nil}, nil
 	}
 
-	// TODO: FOR ORDINAL is a special case
+	// FOR ORDINAL is a special case
 	if c.opts != nil && c.opts.forOrd {
-		if !pass {
-			c.pos++
-		}
-		return sql.Row{c.pos}, nil
+		return sql.Row{ord}, nil
 	}
 
 	// TODO: cache this?
@@ -402,7 +399,7 @@ func (c *jsonTableCol) Next(obj interface{}, pass bool) (sql.Row, error) {
 	}
 
 	// Base columns are always finished
-	c.finished = true // TODO: use defer?
+	c.finished = true
 	return sql.Row{val}, nil
 }
 
@@ -449,7 +446,7 @@ func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var row sql.Row
 	for i, col := range j.cols {
 		pass := len(col.cols) != 0 && i != j.currSib
-		rowPart, err := col.Next(obj, pass)
+		rowPart, err := col.Next(obj, pass, j.pos+1)
 		if err != nil {
 			return nil, err
 		}

@@ -646,7 +646,7 @@ var JSONTableScriptTests = []ScriptTest{
 					{2, 222, 222},
 				},
 			},
-			// TODO: there's something wrong with how we handle these
+			// TODO: the path '$.b' and `$.b[*]` are equivalent, but somehow MySQL can differentiate this from the above test
 			{
 				Query: "SELECT * FROM  JSON_TABLE('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' COLUMNS( a INT PATH '$.a', NESTED PATH '$.b' COLUMNS (b1 INT PATH '$[0]', b2 INT PATH '$[1]'))) AS jt;",
 				Skip:  true,
@@ -737,13 +737,13 @@ JSON_TABLE(
 `,
 				Expected: []sql.Row{
 					{1, 123, 123, 123, 1, 123, 123, 123, 1, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
-					{2, 123, 123, 123, 2, 123, 123, 123, nil, nil, nil, nil, 1, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
-					{3, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 1, 123, 123, 123, 1, 123, 123, 123, nil, nil, nil, nil},
-					{4, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 2, 123, 123, 123, nil, nil, nil, nil, 1, 123, 123, 123},
-					{5, 456, 456, 456, 3, 456, 456, 456, 2, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
-					{6, 456, 456, 456, 4, 456, 456, 456, nil, nil, nil, nil, 2, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
-					{7, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 3, 456, 456, 456, 2, 456, 456, 456, nil, nil, nil, nil},
-					{8, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 4, 456, 456, 456, nil, nil, nil, nil, 2, 456, 456, 456},
+					{1, 123, 123, 123, 1, 123, 123, 123, nil, nil, nil, nil, 1, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+					{1, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 1, 123, 123, 123, 1, 123, 123, 123, nil, nil, nil, nil},
+					{1, 123, 123, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 1, 123, 123, 123, nil, nil, nil, nil, 1, 123, 123, 123},
+					{2, 456, 456, 456, 1, 456, 456, 456, 1, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+					{2, 456, 456, 456, 1, 456, 456, 456, nil, nil, nil, nil, 1, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil},
+					{2, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 1, 456, 456, 456, 1, 456, 456, 456, nil, nil, nil, nil},
+					{2, 456, 456, 456, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 1, 456, 456, 456, nil, nil, nil, nil, 1, 456, 456, 456},
 				},
 			},
 		},
