@@ -4833,7 +4833,7 @@ func convertCreateSpatialRefSys(ctx *sql.Context, n *sqlparser.CreateSpatialRefS
 		return nil, err
 	}
 
-	return plan.NewCreateSpatialRefSys(int(srid), n.OrReplace, n.IfNotExists, srsAttr), nil
+	return plan.NewCreateSpatialRefSys(int(srid), n.OrReplace, n.IfNotExists, srsAttr)
 }
 
 func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.SrsAttribute, error) {
