@@ -244,9 +244,8 @@ func lookupJoinSelectivityMultiplier(l *Lookup, filterCnt int) float64 {
 	}
 
 	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), l.Index.ColSet(), notNull, constCols, joinFds.Equiv())
-	max1Row := fds.HasMax1Row()
-	if max1Row {
-		mult = 1
+	if fds.HasMax1Row() {
+		return 1
 	}
 	return mult
 }

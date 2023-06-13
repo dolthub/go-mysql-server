@@ -103,7 +103,7 @@ func (p *relProps) populateFds() {
 				notNull.Add(sql.ColumnId(i + 1))
 			}
 		}
-		fds = sql.NewMax1RowFDs(all)
+		fds = sql.NewMax1RowFDs(all, notNull)
 	case SourceRel:
 		start := len(rel.Group().m.Columns)
 		rel.Group().m.assignColumnIds(rel)

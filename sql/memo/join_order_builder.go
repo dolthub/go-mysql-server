@@ -187,8 +187,8 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 func (j *joinOrderBuilder) ensureClosure(grp *ExprGroup) {
 	fds := grp.RelProps.FuncDeps()
 	for _, set := range fds.Equiv().Sets() {
-		for col1, ok1 := set.Next(1); ok1; col1, ok1 = set.Next(col1 + 1) {
-			for col2, ok2 := set.Next(col1 + 1); ok2; col2, ok2 = set.Next(col2 + 1) {
+		for col1, hasNext1 := set.Next(1); hasNext1; col1, hasNext1 = set.Next(col1 + 1) {
+			for col2, hasNext2 := set.Next(col1 + 1); hasNext2; col2, hasNext2 = set.Next(col2 + 1) {
 				if !j.hasEqEdge(col1, col2) {
 					j.makeTransitiveEdge(col1, col2)
 				}

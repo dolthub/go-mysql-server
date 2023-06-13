@@ -554,6 +554,112 @@ func TestAssociativeTransforms(t *testing.T) {
 	}
 }
 
+func TestEnsureClosure(t *testing.T) {
+	tests := []struct {
+		in       sql.Node
+		name     string
+		expEdges []edge
+	}{
+		{
+			name: "inner joins",
+			in: plan.NewInnerJoin(
+				plan.NewInnerJoin(
+					plan.NewInnerJoin(
+						tableNode("a"),
+						tableNode("b"),
+						newEq("a.x = b.x"),
+					),
+					tableNode("c"),
+					newEq("b.x = c.x"),
+				),
+				tableNode("d"),
+				newEq("c.x = d.x"),
+			),
+			expEdges: []edge{
+				newEdge2(plan.JoinTypeInner, "1010", "1010", "1100", "0010", nil,
+					&Equal{
+						scalarBase: &scalarBase{},
+						Left:       newColRef(1, 1, "a.x"),
+						Right:      newColRef(7, 7, "c.x"),
+					}, ""), // (A)B x (C)
+				newEdge2(plan.JoinTypeInner, "1001", "1001", "1110", "0001", []conflictRule{{from: 4, to: 2}},
+					&Equal{
+						scalarBase: &scalarBase{},
+						Left:       newColRef(1, 1, "a.x"),
+						Right:      newColRef(11, 10, "d.x"),
+					},
+					""), // (A)BC x (D)
+				newEdge2(plan.JoinTypeInner, "0101", "0101", "1110", "0001", nil,
+					&Equal{
+						scalarBase: &scalarBase{},
+						Left:       newColRef(2, 4, "b.x"),
+						Right:      newColRef(11, 10, "d.x"),
+					},
+					""), // A(B)C x (D)
+			},
+		},
+		{
+			name: "left joins",
+			in: plan.NewLeftOuterJoin(
+				plan.NewInnerJoin(
+					plan.NewInnerJoin(
+						tableNode("a"),
+						tableNode("b"),
+						newEq("a.x = b.x"),
+					),
+					tableNode("c"),
+					newEq("b.x = c.x"),
+				),
+				tableNode("d"),
+				newEq("c.x = d.x"),
+			),
+			expEdges: []edge{
+				newEdge2(plan.JoinTypeInner, "1010", "1010", "1100", "0010", nil,
+					&Equal{
+						scalarBase: &scalarBase{},
+						Left:       newColRef(1, 1, "a.x"),
+						Right:      newColRef(7, 7, "c.x"),
+					}, ""), // (A)B x (C)
+			},
+		},
+		{
+			name: "left join equivalence doesn't hold",
+			in: plan.NewLeftOuterJoin(
+				plan.NewInnerJoin(
+					plan.NewInnerJoin(
+						tableNode("a"),
+						tableNode("b"),
+						newEq("a.x = b.x"),
+					),
+					tableNode("c"),
+					newEq("b.x = c.x"),
+				),
+				tableNode("d"),
+				newEq("c.x = d.x"),
+			),
+			expEdges: []edge{
+				newEdge2(plan.JoinTypeInner, "1010", "1010", "1100", "0010", nil,
+					&Equal{
+						scalarBase: &scalarBase{},
+						Left:       newColRef(1, 1, "a.x"),
+						Right:      newColRef(7, 7, "c.x"),
+					}, ""), // (A)B x (C)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewJoinOrderBuilder(NewMemo(nil, nil, nil, 0, NewDefaultCoster(), NewDefaultCarder()))
+			b.populateSubgraph(tt.in)
+			beforeLen := len(b.edges)
+			b.ensureClosure(b.m.Root())
+			newEdges := b.edges[beforeLen:]
+			edgesEq(t, tt.expEdges, newEdges)
+		})
+	}
+}
+
 var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
 	{Name: "x", Type: types.Int64, Nullable: true},
 	{Name: "y", Type: types.Text, Nullable: true},

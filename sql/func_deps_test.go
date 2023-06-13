@@ -131,6 +131,37 @@ func TestFuncDeps_InnerJoin(t *testing.T) {
 		join := NewInnerJoinFDs(cust, ware, [][2]ColumnId{{3, 6}})
 		assert.Equal(t, "key(); constant(1-3,6); equiv(3,6)", join.String())
 	})
+	t.Run("equiv on both sides inner join", func(t *testing.T) {
+		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
+		abcde.AddNotNullable(cols(1))
+		abcde.AddEquivSet(cols(2, 3, 4))
+		abcde.AddStrictKey(cols(1))
+		abcde.AddLaxKey(cols(2, 3))
+
+		mnpq := &FuncDepSet{all: cols(6, 7, 8, 9)}
+		mnpq.AddNotNullable(cols(6, 7))
+		mnpq.AddEquivSet(cols(6, 8, 9))
+		mnpq.AddStrictKey(cols(6, 7))
+
+		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{})
+		assert.Equal(t, "key(1,6,7); equiv(6,8,9); equiv(2-4); lax-fd(3)", join.String())
+	})
+	t.Run("max1Row inner join", func(t *testing.T) {
+		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
+		abcde.AddNotNullable(cols(1, 2, 3))
+		abcde.AddConstants(cols(3))
+		abcde.AddEquiv(2, 3)
+		abcde.AddStrictKey(cols(1))
+		abcde.AddLaxKey(cols(2, 3))
+
+		mnpq := &FuncDepSet{all: cols(6, 7, 8, 9)}
+		mnpq.AddNotNullable(cols(6, 7))
+		mnpq.AddConstants(cols(6, 7))
+		mnpq.AddStrictKey(cols(6, 7))
+
+		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
+		assert.Equal(t, "key(); constant(1-3,6,7); equiv(1-3,6)", join.String())
+	})
 }
 
 func TestFuncDeps_LeftJoin(t *testing.T) {
@@ -191,21 +222,6 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{})
 		assert.Equal(t, "key(1,6,7); lax-fd(2)", join.String())
 	})
-	t.Run("equiv on both sides inner join", func(t *testing.T) {
-		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
-		abcde.AddNotNullable(cols(1))
-		abcde.AddEquivSet(cols(2, 3, 4))
-		abcde.AddStrictKey(cols(1))
-		abcde.AddLaxKey(cols(2, 3))
-
-		mnpq := &FuncDepSet{all: cols(6, 7, 8, 9)}
-		mnpq.AddNotNullable(cols(6, 7))
-		mnpq.AddEquivSet(cols(6, 8, 9))
-		mnpq.AddStrictKey(cols(6, 7))
-
-		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{})
-		assert.Equal(t, "key(1,6,7); equiv(6,8,9); equiv(2-4); lax-fd(3)", join.String())
-	})
 	t.Run("equiv on both sides left join", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
 		abcde.AddNotNullable(cols(1))
@@ -264,22 +280,6 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
 		assert.Equal(t, "key(); constant(1,6,7)", join.String())
-	})
-	t.Run("max1Row inner join", func(t *testing.T) {
-		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
-		abcde.AddNotNullable(cols(1, 2, 3))
-		abcde.AddConstants(cols(3))
-		abcde.AddEquiv(2, 3)
-		abcde.AddStrictKey(cols(1))
-		abcde.AddLaxKey(cols(2, 3))
-
-		mnpq := &FuncDepSet{all: cols(6, 7, 8, 9)}
-		mnpq.AddNotNullable(cols(6, 7))
-		mnpq.AddConstants(cols(6, 7))
-		mnpq.AddStrictKey(cols(6, 7))
-
-		join := NewInnerJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
-		assert.Equal(t, "key(); constant(1-3,6,7); equiv(1-3,6)", join.String())
 	})
 }
 

@@ -542,8 +542,9 @@ func addRightSemiJoins(m *memo.Memo) error {
 	})
 }
 
-// lookupCandidates name and filters list e for the given relExpr, or empty values
-// if there are no suitable indexes.
+// lookupCandidates extracts source relation information required to check for
+// index lookups, including the source relation GroupId, the list of Indexes,
+// and the list of table filters.
 func lookupCandidates(rel memo.RelExpr) (memo.GroupId, []*memo.Index, []memo.ScalarExpr) {
 	var filters []memo.ScalarExpr
 	for done := false; !done; {

@@ -164,6 +164,10 @@ func (f *FuncDepSet) All() ColSet {
 	return f.all
 }
 
+func (f *FuncDepSet) NotNull() ColSet {
+	return f.notNull
+}
+
 func (f *FuncDepSet) Equiv() *EquivSets {
 	return f.equivs
 }
@@ -573,8 +577,8 @@ func NewProjectFDs(fds *FuncDepSet, cols ColSet, distinct bool) *FuncDepSet {
 	return ret
 }
 
-func NewMax1RowFDs(cols ColSet) *FuncDepSet {
-	ret := &FuncDepSet{all: cols, consts: cols}
+func NewMax1RowFDs(cols, notNull ColSet) *FuncDepSet {
+	ret := &FuncDepSet{all: cols, consts: cols, notNull: notNull}
 	ret.AddStrictKey(ColSet{})
 	return ret
 }
@@ -640,7 +644,9 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	}
 
 	// no filter equivs are valid
+	// TODO if right columns are non-nullable in ON filter, equivs hold
 	// technically we could do (r)~~>(l), but is this useful?
+
 	// right-side keys become lax unless all non-nullable in original
 	for _, key := range rightKeys {
 		if !key.cols.SubsetOf(right.notNull) {
