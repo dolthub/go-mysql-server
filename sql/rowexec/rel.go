@@ -122,6 +122,46 @@ func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row)
 	return sql.NewSpanIter(span, &offsetIter{offset, it}), nil
 }
 
+func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row) ([]*jsonTableCol, error) {
+	var cols []*jsonTableCol
+	for _, col := range jtCols {
+		if col.Opts == nil {
+			innerCols, err := b.buildJSONTableCols(ctx, col.NestedCols, row)
+			if err != nil {
+				return nil, err
+			}
+			cols = append(cols, &jsonTableCol{
+				path: col.Path,
+				cols: innerCols,
+			})
+			continue
+		}
+
+		defErrVal, err := col.Opts.DefErrorVal.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		defEmpVal, err := col.Opts.DefEmptyVal.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		cols = append(cols, &jsonTableCol{
+			path: col.Path,
+			opts: &jsonTableColOpts{
+				name:      col.Opts.Name,
+				typ:       col.Opts.Type,
+				forOrd:    col.Opts.ForOrd,
+				exists:    col.Opts.Exists,
+				defErrVal: defErrVal,
+				defEmpVal: defEmpVal,
+				errOnErr:  col.Opts.ErrorOnError,
+				errOnEmp:  col.Opts.ErrorOnEmpty,
+			},
+		})
+	}
+	return cols, nil
+}
+
 func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sql.Row) (sql.RowIter, error) {
 	// data must evaluate to JSON string
 	data, err := n.DataExpr.Eval(ctx, row)
@@ -132,33 +172,31 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	if err != nil {
 		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
 	}
-
 	if strData == nil {
 		return &jsonTableRowIter{}, nil
 	}
 
 	var jsonData interface{}
-	if err := json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
 		return nil, err
 	}
-
-	// Get data specified from initial path
-	var jsonPathData []interface{}
-	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, n.Path); err == nil {
-		if data, ok := rootJSONData.([]interface{}); ok {
-			jsonPathData = data
-		} else {
-			jsonPathData = []interface{}{rootJSONData}
-		}
-	} else {
-		return nil, err
+	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, n.RootPath)
+	if err != nil {
+		jsonPathData = []interface{}{}
+	}
+	if _, ok := jsonPathData.([]interface{}); !ok {
+		jsonPathData = []interface{}{jsonPathData}
 	}
 
-	return &jsonTableRowIter{
-		colPaths: n.ColPaths,
-		schema:   n.Schema(),
-		data:     jsonPathData,
-	}, nil
+	cols, err := b.buildJSONTableCols(ctx, n.Cols, row)
+
+	rowIter := &jsonTableRowIter{
+		data: jsonPathData.([]interface{}),
+		cols: cols,
+	}
+	rowIter.NextSibling() // set to first sibling
+
+	return rowIter, nil
 }
 
 func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row sql.Row) (sql.RowIter, error) {

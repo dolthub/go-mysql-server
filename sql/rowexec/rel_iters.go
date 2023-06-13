@@ -243,35 +243,218 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 
-type jsonTableRowIter struct {
-	colPaths []string
-	schema   sql.Schema
+type jsonTableColOpts struct {
+	name      string
+	typ       sql.Type
+	forOrd    bool
+	exists    bool
+	defErrVal interface{}
+	defEmpVal interface{}
+	errOnErr  bool
+	errOnEmp  bool
+}
+
+// jsonTableCol represents a column in a json table.
+type jsonTableCol struct {
+	path string // if there are nested columns, this is a schema path, otherwise it is a col path
+	opts *jsonTableColOpts
+	cols []*jsonTableCol // nested columns
+
 	data     []interface{}
+	err      error
 	pos      int
+	finished bool // exhausted all rows in data
+	currSib  int
+}
+
+// IsSibling returns if the jsonTableCol contains multiple columns
+func (c *jsonTableCol) IsSibling() bool {
+	return len(c.cols) != 0
+}
+
+// NextSibling starts at the current sibling and moves to the next unfinished sibling
+// if there are no more unfinished siblings, it sets c.currSib to the first sibling and returns true
+// if the c.currSib is unfinished, nothing changes
+func (c *jsonTableCol) NextSibling() bool {
+	for i := c.currSib; i < len(c.cols); i++ {
+		if c.cols[i].IsSibling() && !c.cols[i].finished {
+			c.currSib = i
+			return false
+		}
+	}
+	c.currSib = 0
+	for i := 0; i < len(c.cols); i++ {
+		if c.cols[i].IsSibling() {
+			c.currSib = i
+			break
+		}
+	}
+	return true
+}
+
+// LoadData loads the data for this column from the given object and c.path
+// LoadData will always wrap the data in a slice to ensure it is iterable
+// Additionally, this function will set the c.currSib to the first sibling
+func (c *jsonTableCol) LoadData(obj interface{}) {
+	var data interface{}
+	data, c.err = jsonpath.JsonPathLookup(obj, c.path)
+	if d, ok := data.([]interface{}); ok {
+		c.data = d
+	} else {
+		c.data = []interface{}{data}
+	}
+	c.pos = 0
+
+	c.NextSibling()
+}
+
+// Reset clears the column's data and error, and recursively resets all nested columns
+func (c *jsonTableCol) Reset() {
+	c.data, c.err = nil, nil
+	c.finished = false
+	for _, col := range c.cols {
+		col.Reset()
+	}
+}
+
+// Next returns the next row for this column.
+func (c *jsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error) {
+	// nested column should recurse
+	if len(c.cols) != 0 {
+		if c.data == nil {
+			c.LoadData(obj)
+		}
+
+		var innerObj interface{}
+		if !c.finished {
+			innerObj = c.data[c.pos]
+		}
+
+		var row sql.Row
+		for i, col := range c.cols {
+			innerPass := len(col.cols) != 0 && i != c.currSib
+			rowPart, err := col.Next(innerObj, pass || innerPass, c.pos+1)
+			if err != nil {
+				return nil, err
+			}
+			row = append(row, rowPart...)
+		}
+
+		if pass {
+			return row, nil
+		}
+
+		if c.NextSibling() {
+			for _, col := range c.cols {
+				col.Reset()
+			}
+			c.pos++
+		}
+
+		if c.pos >= len(c.data) {
+			c.finished = true
+		}
+
+		return row, nil
+	}
+
+	// this should only apply to nested columns, maybe...
+	if pass {
+		return sql.Row{nil}, nil
+	}
+
+	// FOR ORDINAL is a special case
+	if c.opts != nil && c.opts.forOrd {
+		return sql.Row{ord}, nil
+	}
+
+	// TODO: cache this?
+	val, err := jsonpath.JsonPathLookup(obj, c.path)
+	if c.opts.exists {
+		if err != nil {
+			return sql.Row{0}, nil
+		} else {
+			return sql.Row{1}, nil
+		}
+	}
+
+	// key error means empty
+	if err != nil {
+		if c.opts.errOnEmp {
+			return nil, fmt.Errorf("missing value for JSON_TABLE column '%s'", c.opts.name)
+		}
+		val = c.opts.defEmpVal
+	}
+
+	val, _, err = c.opts.typ.Convert(val)
+	if err != nil {
+		if c.opts.errOnErr {
+			return nil, err
+		}
+		val, _, err = c.opts.typ.Convert(c.opts.defErrVal)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Base columns are always finished
+	c.finished = true
+	return sql.Row{val}, nil
+}
+
+type jsonTableRowIter struct {
+	data    []interface{}
+	pos     int
+	cols    []*jsonTableCol
+	currSib int
 }
 
 var _ sql.RowIter = &jsonTableRowIter{}
+
+// NextSibling starts at the current sibling and moves to the next unfinished sibling
+// if there are no more unfinished siblings, it resets to the first sibling
+func (j *jsonTableRowIter) NextSibling() bool {
+	for i := j.currSib; i < len(j.cols); i++ {
+		if !j.cols[i].finished && len(j.cols[i].cols) != 0 {
+			j.currSib = i
+			return false
+		}
+	}
+	j.currSib = 0
+	for i := 0; i < len(j.cols); i++ {
+		if len(j.cols[i].cols) != 0 {
+			j.currSib = i
+			break
+		}
+	}
+	return true
+}
+
+func (j *jsonTableRowIter) ResetAll() {
+	for _, col := range j.cols {
+		col.Reset()
+	}
+}
 
 func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if j.pos >= len(j.data) {
 		return nil, io.EOF
 	}
 	obj := j.data[j.pos]
-	j.pos++
 
-	row := make(sql.Row, len(j.colPaths))
-	for i, p := range j.colPaths {
-		var val interface{}
-		if v, err := jsonpath.JsonPathLookup(obj, p); err == nil {
-			val = v
-		}
-
-		value, _, err := j.schema[i].Type.Convert(val)
+	var row sql.Row
+	for i, col := range j.cols {
+		pass := len(col.cols) != 0 && i != j.currSib
+		rowPart, err := col.Next(obj, pass, j.pos+1)
 		if err != nil {
 			return nil, err
 		}
+		row = append(row, rowPart...)
+	}
 
-		row[i] = value
+	if j.NextSibling() {
+		j.ResetAll()
+		j.pos++
 	}
 
 	return row, nil
