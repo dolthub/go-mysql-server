@@ -64,13 +64,13 @@ type JSONTableColOpts struct {
 }
 
 type JSONTableCol struct {
-	Path string
-	Opts *JSONTableColOpts
-	Cols []JSONTableCol
+	Path       string
+	Opts       *JSONTableColOpts
+	NestedCols []JSONTableCol
 }
 
 func (c *JSONTableCol) Resolved() bool {
-	for _, col := range c.Cols {
+	for _, col := range c.NestedCols {
 		if !col.Resolved() {
 			return false
 		}
@@ -84,7 +84,7 @@ func (c *JSONTableCol) Expressions() []sql.Expression {
 		return []sql.Expression{c.Opts.DefEmptyVal, c.Opts.DefErrorVal}
 	}
 	var exprs []sql.Expression
-	for _, col := range c.Cols {
+	for _, col := range c.NestedCols {
 		exprs = append(exprs, col.Expressions()...)
 	}
 	return exprs
@@ -101,7 +101,7 @@ func (c *JSONTableCol) WithExpressions(exprs []sql.Expression, idx *int) error {
 		*idx += 2
 		return nil
 	}
-	for _, col := range c.Cols {
+	for _, col := range c.NestedCols {
 		if err := col.WithExpressions(exprs, idx); err != nil {
 			return err
 		}
@@ -132,11 +132,11 @@ func (t *JSONTable) String() string {
 	return t.TableName
 }
 
-// FlattenSchema returns the flattened the schema of a JSONTableCol
+// FlattenSchema returns the flattened schema of a JSONTableCol
 func (t *JSONTable) FlattenSchema(cols []JSONTableCol) sql.Schema {
 	var sch sql.Schema
 	for _, col := range cols {
-		if len(col.Cols) == 0 {
+		if len(col.NestedCols) == 0 {
 			sch = append(sch, &sql.Column{
 				Source:        t.TableName,
 				Name:          col.Opts.Name,
@@ -145,7 +145,7 @@ func (t *JSONTable) FlattenSchema(cols []JSONTableCol) sql.Schema {
 			})
 			continue
 		}
-		sch = append(sch, t.FlattenSchema(col.Cols)...)
+		sch = append(sch, t.FlattenSchema(col.NestedCols)...)
 	}
 	return sch
 }
