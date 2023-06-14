@@ -2498,6 +2498,8 @@ func NewInformationSchemaDatabase() Database {
 
 	isDb.tables[StatisticsTableName] = NewDefaultStats()
 
+	// TODO: add spatial ref sys table here
+
 	return isDb
 }
 

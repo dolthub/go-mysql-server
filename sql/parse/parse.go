@@ -4882,7 +4882,7 @@ func convertCreateSpatialRefSys(ctx *sql.Context, n *sqlparser.CreateSpatialRefS
 		return nil, err
 	}
 
-	return plan.NewCreateSpatialRefSys(int(srid), n.OrReplace, n.IfNotExists, srsAttr)
+	return plan.NewCreateSpatialRefSys(uint32(srid), n.OrReplace, n.IfNotExists, srsAttr)
 }
 
 var ErrMissingMandatoryAttribute = errors.NewKind("missing mandatory attribute %s")
@@ -4915,7 +4915,7 @@ func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.S
 		Name:         attr.Name,
 		Definition:   attr.Definition,
 		Organization: attr.Organization,
-		OrgID:        int(orgID),
+		OrgID:        uint32(orgID),
 		Description:  attr.Description,
 	}, nil
 }

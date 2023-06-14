@@ -374,3 +374,25 @@ func (b *BaseBuilder) buildAnalyzeTable(ctx *sql.Context, n *plan.AnalyzeTable, 
 		stats:  n.Stats,
 	}, nil
 }
+
+func (b *BaseBuilder) buildCreateSpatialRefSys(ctx *sql.Context, n *plan.CreateSpatialRefSys, row sql.Row) (sql.RowIter, error) {
+	if _, ok := types.SupportedSRIDs[n.SRID]; ok {
+		if n.IfNotExists {
+			return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+		}
+		if !n.OrReplace {
+			return nil, sql.ErrSpatialRefSysAlreadyExists.New(n.SRID)
+		}
+	}
+
+	types.SupportedSRIDs[n.SRID] = types.SpatialRef{
+		Name:          n.SrsAttr.Name,
+		ID:            n.SRID,
+		Organization:  n.SrsAttr.Organization,
+		OrgCoordsysId: n.SrsAttr.OrgID,
+		Definition:    n.SrsAttr.Definition,
+		Description:   n.SrsAttr.Description,
+	}
+
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
+}

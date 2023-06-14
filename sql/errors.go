@@ -597,6 +597,9 @@ var (
 	// ErrInvalidSRID is thrown when attempting to create a Geometry with an invalid SRID
 	ErrInvalidSRID = errors.NewKind("SRID value is out of range in %s")
 
+	// ErrSpatialRefSysAlreadyExists is thrown when attempting to create a spatial reference system with an existing SRID
+	ErrSpatialRefSysAlreadyExists = errors.NewKind("There is already a spatial reference system with SRID %v")
+
 	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
 	// TODO: remove this error when all types are full supported by spatial type functions
 	ErrUnsupportedGISTypeForSpatialFunc = errors.NewKind("unsupported spatial type: %s for function %s")

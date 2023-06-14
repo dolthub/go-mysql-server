@@ -23,13 +23,14 @@ type SrsAttribute struct {
 	Name         string
 	Definition   string
 	Organization string
-	OrgID        int
+	OrgID        uint32
 	Description  string
 }
 
 // CreateSpatialRefSys represents the statement CREATE SPATIAL REFERENCE SYSTEM ...
 type CreateSpatialRefSys struct {
-	SRID        int
+	Catalog     sql.Catalog
+	SRID        uint32
 	OrReplace   bool
 	IfNotExists bool
 	SrsAttr     SrsAttribute
@@ -37,7 +38,7 @@ type CreateSpatialRefSys struct {
 
 var _ sql.Node = (*CreateSpatialRefSys)(nil)
 
-func NewCreateSpatialRefSys(srid int, orReplace, ifNotExists bool, srsAttr SrsAttribute) (sql.Node, error) {
+func NewCreateSpatialRefSys(srid uint32, orReplace, ifNotExists bool, srsAttr SrsAttribute) (sql.Node, error) {
 	return &CreateSpatialRefSys{
 		SRID:        srid,
 		OrReplace:   orReplace,
