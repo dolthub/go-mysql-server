@@ -86,10 +86,6 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				return &nc, transform.NewTree, nil
 			}
 			return node, transform.SameTree, nil
-		case *plan.CreateSpatialRefSys:
-			nc := *node
-			nc.Catalog = a.Catalog
-			return &nc, transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}

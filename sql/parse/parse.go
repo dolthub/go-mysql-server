@@ -4903,9 +4903,6 @@ func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.S
 	if attr.OrgID == nil {
 		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION ID")
 	}
-	if attr.Description == "" {
-		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("DESCRIPTION")
-	}
 	orgID, err := strconv.ParseInt(string(attr.OrgID.Val), 10, 16)
 	if err != nil {
 		return plan.SrsAttribute{}, err

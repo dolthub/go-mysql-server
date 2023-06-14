@@ -29,7 +29,6 @@ type SrsAttribute struct {
 
 // CreateSpatialRefSys represents the statement CREATE SPATIAL REFERENCE SYSTEM ...
 type CreateSpatialRefSys struct {
-	Catalog     sql.Catalog
 	SRID        uint32
 	OrReplace   bool
 	IfNotExists bool
