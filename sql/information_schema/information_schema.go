@@ -2497,6 +2497,7 @@ func NewInformationSchemaDatabase() Database {
 	}
 
 	isDb.tables[StatisticsTableName] = NewDefaultStats()
+	
 	return isDb
 }
 
