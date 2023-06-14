@@ -82,7 +82,11 @@ func (n *CreateSpatialRefSys) Children() []sql.Node {
 
 // WithChildren implements the interface sql.Node
 func (n *CreateSpatialRefSys) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return nil, nil
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
+	}
+	nn := *n
+	return &nn, nil
 }
 
 // CheckPrivileges implements the interface sql.Node
