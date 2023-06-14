@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -53,7 +54,19 @@ func (n *CreateSpatialRefSys) Resolved() bool {
 
 // String implements the interface sql.Node
 func (n *CreateSpatialRefSys) String() string {
-	return ""
+	str := "CREATE "
+	if n.OrReplace {
+		str += "OR REPLACE "
+	}
+	str += "SPATIAL REFERENCE SYSTEM "
+	if n.IfNotExists {
+		str += "IF NOT EXISTS "
+	}
+	str += fmt.Sprintf("NAME '%s' ", n.SrsAttr.Name)
+	str += fmt.Sprintf("DEFINITION '%s' ", n.SrsAttr.Definition)
+	str += fmt.Sprintf("ORGANIZATION '%s' IDENTIFIED BY %v ", n.SrsAttr.Organization, n.SrsAttr.OrgID)
+	str += fmt.Sprintf("DESCRIPTION '%s' ", n.SrsAttr.Description)
+	return str
 }
 
 // Schema implements the interface sql.Node
