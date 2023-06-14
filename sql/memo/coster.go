@@ -177,7 +177,10 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	sel := lookupJoinSelectivity(n.Lookup)
-	return l*(1+sel)*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
+	if sel == 0 {
+		return l*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
+	}
+	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
 func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsReader) (float64, error) {
@@ -208,7 +211,7 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 func lookupJoinSelectivity(l *Lookup) float64 {
 	var sel float64 = 1
 	if len(l.Index.SqlIdx().Expressions()) == len(l.KeyExprs) {
-		sel = 0.05
+		sel = 0.1
 	} else {
 		sel = math.Pow(0.5, float64(len(l.KeyExprs)))
 	}
