@@ -16,6 +16,7 @@ package memo
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -173,18 +174,20 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) 
 }
 
 func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader) (float64, error) {
+	// selectivity, nnt multiplier
 	l := n.Left.RelProps.card
-	m := lookupJoinSelectivityMultiplier(n.Lookup, len(n.Filter))
-	return l*randIOCostFactor + l*m*cpuCostFactor - n.Right.RelProps.card*seqIOCostFactor, nil
+	r := n.Right.RelProps.card
+	sel := lookupJoinSelectivity(n.Lookup)
+	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
 func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
-	var mult float64
+	var sel float64
 	for _, l := range n.Concat {
-		mult += lookupJoinSelectivityMultiplier(l, len(n.Filter))
+		sel += lookupJoinSelectivity(l)
 	}
-	return l*mult*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.Right.RelProps.card*seqIOCostFactor, nil
+	return l*sel*concatCostFactor*(randIOCostFactor+cpuCostFactor) - n.Right.RelProps.card*seqIOCostFactor, nil
 }
 
 func (c *coster) costRecursiveCte(_ *sql.Context, n *RecursiveCte, _ sql.StatsReader) (float64, error) {
@@ -199,29 +202,19 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
-// lookupJoinSelectivityMultiplier estimates the selectivity of a join condition.
+// lookupJoinSelectivity estimates the selectivity of a join condition.
 // A join with no selectivity will return n x m rows. A join with a selectivity
 // of 1 will return n rows. It is possible for join selectivity to be below 1
 // if source table filters limit the number of rows returned by the left table.
-func lookupJoinSelectivityMultiplier(l *Lookup, filterCnt int) float64 {
-	var mult float64 = 1
+func lookupJoinSelectivity(l *Lookup) float64 {
+	var sel float64 = 1
+	if len(l.Index.SqlIdx().Expressions()) == len(l.KeyExprs) {
+		sel = 0.05
+	} else {
+		sel = math.Pow(0.5, float64(len(l.KeyExprs)))
+	}
 	if !l.Index.SqlIdx().IsUnique() {
-		mult += .1
-	}
-	if filterCnt > len(l.KeyExprs) {
-		mult += float64(filterCnt-len(l.KeyExprs)) * .1
-	}
-	if len(l.Index.SqlIdx().Expressions()) > len(l.KeyExprs) {
-		mult += float64(len(l.Index.SqlIdx().Expressions())-filterCnt) * .1
-	}
-	for _, m := range l.Nullmask {
-		if m {
-			mult += .1
-		}
-	}
-
-	if !l.Index.SqlIdx().IsUnique() {
-		return mult
+		return sel
 	}
 
 	joinFds := l.Parent.Group().RelProps.FuncDeps()
@@ -245,9 +238,9 @@ func lookupJoinSelectivityMultiplier(l *Lookup, filterCnt int) float64 {
 
 	fds := sql.NewLookupFDs(l.Parent.Right.RelProps.FuncDeps(), l.Index.ColSet(), notNull, constCols, joinFds.Equiv())
 	if fds.HasMax1Row() {
-		return 1
+		return 0
 	}
-	return mult
+	return sel
 }
 
 func (c *coster) costAntiJoin(_ *sql.Context, n *AntiJoin, _ sql.StatsReader) (float64, error) {
@@ -327,13 +320,17 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		jp := n.JoinPrivate()
 		switch n := n.(type) {
 		case *LookupJoin:
-			return n.Left.RelProps.card * optimisticJoinSel * lookupJoinSelectivityMultiplier(n.Lookup, len(jp.Filter)), nil
-		case *ConcatJoin:
-			m := 0.0
-			for _, l := range n.Concat {
-				m += lookupJoinSelectivityMultiplier(l, len(n.Filter))
+			sel := lookupJoinSelectivity(n.Lookup) * optimisticJoinSel
+			if sel == 0 {
+				return n.Left.RelProps.card, nil
 			}
-			return n.Left.RelProps.card * optimisticJoinSel * m, nil
+			return n.Left.RelProps.card * n.Right.RelProps.card * sel, nil
+		case *ConcatJoin:
+			var sel float64
+			for _, l := range n.Concat {
+				sel += lookupJoinSelectivity(l)
+			}
+			return n.Left.RelProps.card * optimisticJoinSel * sel, nil
 		default:
 		}
 		if jp.Op.IsPartial() {

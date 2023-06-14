@@ -109,7 +109,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = s-1 order by 1, 3",
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{4, 4, 3, 3}, {5, 4, 3, 3}},
 			},
 			//{
@@ -245,7 +245,7 @@ var JoinPlanningTests = []struct {
 			},
 			{
 				q:     "select * from xy where y+1 not in (select u from uv);",
-				types: []plan.JoinType{plan.JoinTypeAntiLookup},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
@@ -299,7 +299,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where y-1 in (select u from uv) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -331,7 +331,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where y-1 in (select u from uv order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeSemiLookup},
+				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -341,7 +341,7 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
@@ -419,21 +419,21 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x in (select cnt from (select count(u) as cnt from uv group by v having cnt > 0) sq) order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -478,7 +478,7 @@ select * from xy where x in (
     )
     SELECT u FROM uv, tree where u = s
 )`,
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 		},
@@ -530,22 +530,22 @@ select * from xy where x in (
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select * from (select 1) r where x = 1);",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x in (select 1 where 1 in (select 1 where 1 in (select 1 where x != 2)) and x = 1);",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash, plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x in (select * from (select 1 where 1 in (select 1 where x != 2)) r where x = 1);",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x in (select * from (select 1) r);",
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
@@ -554,7 +554,7 @@ with recursive rec(x) as (select 1 union select 1)
 select * from xy where x in (
   select * from rec
 );`,
-				types: []plan.JoinType{plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
@@ -811,7 +811,7 @@ where u in (select * from rec);`,
 			},
 			{
 				q:     "select /*+ LOOKUP_JOIN(b,a) HASH_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeHash},
 			},
 			{
 				q:     "select /*+ LOOKUP_JOIN(b,a) MERGE_JOIN(b,c) */ 1 from xy a join uv b on a.x = b.u join xy c on b.u = c.x",
@@ -849,7 +849,7 @@ from xy a
 join uv b on a.x = b.u
 join xy c on a.x = c.x
 join uv d on d.u = c.x`,
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeMerge, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeHash, plan.JoinTypeMerge},
 				order: []string{"a", "b", "c", "d"},
 			},
 			{
