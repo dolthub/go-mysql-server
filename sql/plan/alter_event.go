@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"io"
 	"sync"
 	"time"
@@ -299,7 +300,17 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		ed.Name = a.RenameToName
 	}
 	if a.AlterStatus {
-		ed.Status = a.Status.String()
+		// TODO: support DISABLE ON SLAVE event status
+		if a.Status == sql.EventStatus_DisableOnSlave {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERNotSupportedYet,
+				Message: fmt.Sprintf("DISABLE ON SLAVE status is not supported yet, used DISABLE status instead."),
+			})
+			ed.Status = sql.EventStatus_Disable.String()
+		} else {
+			ed.Status = a.Status.String()
+		}
 	}
 	if a.AlterComment {
 		ed.Comment = a.Comment

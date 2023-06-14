@@ -197,7 +197,7 @@ func (e *EventDetails) ConvertTimesFromUTCToTz(tz string) *EventDetails {
 // the event is ended/expired.
 func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
 	if e.HasExecuteAt {
-		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() < -1, nil
+		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() <= -1, nil
 	} else {
 		timeDur, err := getTimeDurationFromEveryInterval(e.ExecuteEvery)
 		if err != nil {

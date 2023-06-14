@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"io"
 	"strings"
 	"sync"
@@ -261,6 +262,16 @@ func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNoti
 // This function gets called either from RowIter of CreateEvent plan,
 // or from analyzer getting EventDetails from EventDefinition retrieved from a database.
 func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, tz string) (sql.EventDetails, error) {
+	// TODO: support DISABLE ON SLAVE event status
+	if c.Status == sql.EventStatus_DisableOnSlave {
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Warning",
+			Code:    mysql.ERNotSupportedYet,
+			Message: fmt.Sprintf("DISABLE ON SLAVE status is not supported yet, used DISABLE status instead."),
+		})
+		c.Status = sql.EventStatus_Disable
+	}
+
 	eventDetails := sql.EventDetails{
 		Name:                 c.EventName,
 		Definer:              c.Definer,

@@ -57,7 +57,7 @@ type EventScheduler struct {
 func InitEventScheduler(
 	a *analyzer.Analyzer,
 	bgt *sql.BackgroundThreads,
-	getSqlCtxFunc func() (*sql.Context, error),
+	getSqlCtxFunc func() (*sql.Context, func() error, error),
 	status SchedulerStatus,
 	runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error,
 ) (*EventScheduler, error) {
@@ -69,11 +69,15 @@ func InitEventScheduler(
 	// If the EventSchedulerStatus is set to ON, then load enabled
 	// events and start executing events on schedule.
 	if es.status == SchedulerOn {
-		ctx, err := getSqlCtxFunc()
+		ctx, commit, err := getSqlCtxFunc()
 		if err != nil {
 			return nil, err
 		}
-		err = es.loadEventsAndStartEventExecutor(a, ctx)
+		err = es.loadEventsAndStartEventExecutor(ctx, a)
+		if err != nil {
+			return nil, err
+		}
+		err = commit()
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +95,7 @@ func (es *EventScheduler) Close() {
 // TurnOnEventScheduler is called when user sets --event-scheduler system variable to ON or 1.
 // This function requires valid analyzer and sql context to evaluate all events in all databases
 // to load enabled events to the EventScheduler.
-func (es *EventScheduler) TurnOnEventScheduler(a *analyzer.Analyzer, ctx *sql.Context) error {
+func (es *EventScheduler) TurnOnEventScheduler(ctx *sql.Context, a *analyzer.Analyzer) error {
 	if es.status == SchedulerDisabled {
 		return ErrEventSchedulerDisabled
 	} else if es.status == SchedulerOn {
@@ -99,7 +103,8 @@ func (es *EventScheduler) TurnOnEventScheduler(a *analyzer.Analyzer, ctx *sql.Co
 	}
 
 	es.status = SchedulerOn
-	return es.loadEventsAndStartEventExecutor(a, ctx)
+	// TODO: make sure to commit transaction of the given context
+	return es.loadEventsAndStartEventExecutor(ctx, a)
 }
 
 // TurnOffEventScheduler is called when user sets --event-scheduler system variable to OFF or 0.
@@ -118,8 +123,8 @@ func (es *EventScheduler) TurnOffEventScheduler() error {
 
 // loadEventsAndStartEventExecutor evaluates all events of all databases and retrieves the enabled events
 // with valid schedule to load into the eventExecutor. Then, it starts the eventExecutor.
-func (es *EventScheduler) loadEventsAndStartEventExecutor(a *analyzer.Analyzer, ctx *sql.Context) error {
-	enabledEvents, err := es.evaluateAllEventsAndLoadEnabledEvents(a, ctx)
+func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *analyzer.Analyzer) error {
+	enabledEvents, err := es.evaluateAllEventsAndLoadEnabledEvents(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -133,7 +138,7 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(a *analyzer.Analyzer, 
 // set to DISABLED when server started. This function retrieves all events evaluating them by dropping
 // events that are expired or updating the appropriate events metadata in the databases.
 // This function returns list of events that are enabled and have valid schedule.
-func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(a *analyzer.Analyzer, ctx *sql.Context) ([]*enabledEvent, error) {
+func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context, a *analyzer.Analyzer) ([]*enabledEvent, error) {
 	dbs := a.Catalog.AllDatabases(ctx)
 	events := make([]*enabledEvent, 0)
 	for _, db := range dbs {

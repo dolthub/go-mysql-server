@@ -56,9 +56,9 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 				address:         address,
 			}, true, nil
 		} else {
-			ed.Status = sql.EventStatus_Disable.String()
 			if ed.OnCompletionPreserve {
 				// update status to DISABLE
+				ed.Status = sql.EventStatus_Disable.String()
 				err = edb.UpdateEvent(ctx, ed.Name, ed)
 				if err != nil {
 					return nil, false, err
@@ -101,10 +101,20 @@ func (e *enabledEvent) name() string {
 // this function updates the enabledEvent with the next execution time. It also updates the event
 // metadata in the database.
 func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.EventDatabase, executionTime time.Time) (bool, error) {
-	nextExecutionAt, ended, err := e.eventDetails.GetNextExecutionTime(time.Now())
-	if err != nil {
-		return ended, err
-	} else if ended {
+	var nextExecutionAt time.Time
+	var ended bool
+	var err error
+	if e.eventDetails.HasExecuteAt {
+		// one-time event is ended after one execution
+		ended = true
+	} else {
+		nextExecutionAt, ended, err = e.eventDetails.GetNextExecutionTime(time.Now())
+		if err != nil {
+			return ended, err
+		}
+	}
+
+	if ended {
 		if e.eventDetails.OnCompletionPreserve {
 			e.eventDetails.Status = sql.EventStatus_Disable.String()
 		} else {

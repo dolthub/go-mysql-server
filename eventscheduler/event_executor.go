@@ -30,7 +30,7 @@ import (
 // event execution.
 type eventExecutor struct {
 	bThreads            *sql.BackgroundThreads
-	ctxGetter           func() (*sql.Context, error)
+	ctxGetter           func() (*sql.Context, func() error, error)
 	list                *enabledEventsList
 	runningEventsStatus *runningEventsStatus
 	stop                atomic.Bool
@@ -39,7 +39,7 @@ type eventExecutor struct {
 
 // newEventExecutor returns eventExecutor object with empty enabled events list.
 // The enabled events list is loaded only when the EventScheduler status is ENABLED.
-func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, error), runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error) *eventExecutor {
+func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, func() error, error), runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error) *eventExecutor {
 	return &eventExecutor{
 		bThreads:            bgt,
 		ctxGetter:           ctxFunc,
@@ -73,23 +73,20 @@ func (ee *eventExecutor) start() {
 					// in case the execution time is past, re-evaluate it ( TODO: should not happen )
 					curEvent := ee.list.pop()
 					if curEvent != nil {
-						ctx, err := ee.ctxGetter()
-						if err != nil {
-							ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
-						}
-						err = ee.reevaluateEvent(ctx, curEvent.edb, curEvent.eventDetails)
-						if err != nil {
-							ctx.GetLogger().Errorf("Received error '%s' re-evaluating event to scheduler: %s", err, curEvent.eventDetails.Name)
-						}
+						ee.reevaluateEvent(curEvent.edb, curEvent.eventDetails)
 					}
 				} else if diff <= 0.0000001 {
 					curEvent := ee.list.pop()
 					if curEvent != nil {
-						ctx, err := ee.ctxGetter()
+						ctx, commit, err := ee.ctxGetter()
 						if err != nil {
 							ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
 						}
 						err = ee.executeEventAndUpdateListIfApplicable(ctx, curEvent, timeNow)
+						if err != nil {
+							ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.eventDetails.Name)
+						}
+						err = commit()
 						if err != nil {
 							ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.eventDetails.Name)
 						}
@@ -142,6 +139,10 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 		// should not happen, but sanity check
 		reAdd = false
 	}
+	// if event is ONE TIME, then do not re-add
+	if event.eventDetails.HasExecuteAt {
+		reAdd = false
+	}
 
 	var queryErr error
 	threadErr := ee.bThreads.Add(fmt.Sprintf("executing %s", event.name()), func(ctx context.Context) {
@@ -151,12 +152,23 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 			return
 		default:
 			// get new session sql context for each event definition execution
-			sqlCtx, err := ee.ctxGetter()
+			sqlCtx, commit, err := ee.ctxGetter()
 			if err != nil {
 				queryErr = err
 				return
 			}
+
 			queryErr = ee.runQueryFunc(sqlCtx, event.edb.Name(), event.eventDetails.Definition, event.username, event.address)
+			if queryErr != nil {
+				queryErr = err
+				return
+			}
+
+			err = commit()
+			if err != nil {
+				queryErr = err
+				return
+			}
 		}
 	})
 
@@ -166,20 +178,29 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 // reevaluateEvent creates new enabledEvent only if the event being created is at ENABLE status
 // with valid schedule. This function is used when the event misses the check time of event execution
 // for some reason.
-func (ee *eventExecutor) reevaluateEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDetails) error {
+func (ee *eventExecutor) reevaluateEvent(edb sql.EventDatabase, details sql.EventDetails) {
 	// if the updated event status is not ENABLE, do not add it to the list.
 	if details.Status != sql.EventStatus_Enable.String() {
-		return nil
+		return
+	}
+
+	ctx, commit, err := ee.ctxGetter()
+	if err != nil {
+		ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
 	}
 
 	newEvent, created, err := newEnabledEventFromEventDetails(ctx, edb, details, time.Now())
 	if err != nil {
-		return err
+		ctx.GetLogger().Errorf("Received error '%s' re-evaluating event to scheduler: %s", err, details.Name)
 	} else if created {
 		ee.list.add(newEvent)
 	}
 
-	return nil
+	err = commit()
+	if err != nil {
+		ctx.GetLogger().Errorf("Received error '%s' re-evaluating event to scheduler: %s", err, details.Name)
+	}
+	return
 }
 
 // addEvent creates new enabledEvent only if the event being created is at ENABLE status
@@ -204,7 +225,7 @@ func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, detai
 		} else {
 			firstExecutionTime = newDetails.Starts
 		}
-		if newDetails.Created.Sub(firstExecutionTime).Seconds() <= 1 {
+		if firstExecutionTime.Sub(newDetails.Created).Abs().Seconds() <= 1 {
 			// after execution, the event is added to the list if applicable (if the event is not ended)
 			err = ee.executeEventAndUpdateListIfApplicable(ctx, newEvent, newDetails.Created)
 			if err != nil {
@@ -247,7 +268,7 @@ func (ee *eventExecutor) updateEvent(ctx *sql.Context, edb sql.EventDatabase, or
 
 		// if STARTS is set to current_timestamp or not set,
 		// then executeEvent the event once and update lastExecuted.
-		if newDetails.LastAltered.Sub(newDetails.Starts).Seconds() <= 0.0000001 {
+		if newDetails.Starts.Sub(newDetails.LastAltered).Abs().Seconds() <= 1 {
 			err = ee.executeEventAndUpdateListIfApplicable(ctx, newUpdatedEvent, newDetails.LastAltered)
 			if err != nil {
 				ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, newDetails.Name)

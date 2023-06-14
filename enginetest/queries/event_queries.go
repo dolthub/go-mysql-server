@@ -164,6 +164,13 @@ var EventTests = []ScriptTest{
 				Query:    "SHOW EVENTS LIKE 'past_event2';",
 				Expected: []sql.Row{{"mydb", "past_event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2006-02-10 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
+			{
+				Query:                           "CREATE EVENT myevent ON SCHEDULE AT CURRENT_TIMESTAMP ON COMPLETION PRESERVE DISABLE ON SLAVE DO INSERT INTO totals VALUES (100);",
+				Expected:                        []sql.Row{{types.OkResult{}}},
+				ExpectedWarning:                 1235,
+				ExpectedWarningMessageSubstring: "DISABLE ON SLAVE status is not supported yet, used DISABLE status instead",
+				ExpectedWarningsCount:           1,
+			},
 		},
 	},
 	{
