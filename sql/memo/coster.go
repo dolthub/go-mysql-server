@@ -174,11 +174,10 @@ func (c *coster) costMergeJoin(_ *sql.Context, n *MergeJoin, _ sql.StatsReader) 
 }
 
 func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader) (float64, error) {
-	// selectivity, nnt multiplier
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 	sel := lookupJoinSelectivity(n.Lookup)
-	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
+	return l*(1+sel)*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
 func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsReader) (float64, error) {
