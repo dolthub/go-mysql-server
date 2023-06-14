@@ -4886,6 +4886,8 @@ func convertCreateSpatialRefSys(ctx *sql.Context, n *sqlparser.CreateSpatialRefS
 }
 
 var ErrMissingMandatoryAttribute = errors.NewKind("missing mandatory attribute %s")
+var ErrInvalidName = errors.NewKind("the spatial reference system name can't be an empty string or start or end with whitespace")
+var ErrInvalidOrgName = errors.NewKind("the organization name can't be an empty string or start or end with whitespace")
 
 func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.SrsAttribute, error) {
 	if attr == nil {
@@ -4894,11 +4896,18 @@ func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.S
 	if attr.Name == "" {
 		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("NAME")
 	}
+	if unicode.IsSpace(rune(attr.Name[0])) || unicode.IsSpace(rune(attr.Name[len(attr.Name)-1])) {
+		return plan.SrsAttribute{}, ErrInvalidName.New()
+	}
+	// TODO: there are additional rules to validate the attribute definition
 	if attr.Definition == "" {
 		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("DEFINITION")
 	}
 	if attr.Organization == "" {
 		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION NAME")
+	}
+	if unicode.IsSpace(rune(attr.Organization[0])) || unicode.IsSpace(rune(attr.Organization[len(attr.Organization)-1])) {
+		return plan.SrsAttribute{}, ErrInvalidOrgName.New()
 	}
 	if attr.OrgID == nil {
 		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION ID")
@@ -4907,7 +4916,6 @@ func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.S
 	if err != nil {
 		return plan.SrsAttribute{}, err
 	}
-	// TODO: check limits
 	return plan.SrsAttribute{
 		Name:         attr.Name,
 		Definition:   attr.Definition,

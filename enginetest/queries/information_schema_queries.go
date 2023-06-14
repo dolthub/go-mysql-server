@@ -1486,6 +1486,22 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 				ExpectedErrStr: "missing mandatory attribute DEFINITION",
 			},
 			{
+				Query: "create or replace spatial reference system 1234 " +
+					"name ' test_name ' " +
+					"definition 'test_definition' " +
+					"organization 'test_org' identified by 1234 " +
+					"description 'test_description'",
+				ExpectedErrStr: "the spatial reference system name can't be an empty string or start or end with whitespace",
+			},
+			{
+				Query: "create or replace spatial reference system 1234 " +
+					"name 'test_name' " +
+					"definition 'test_definition' " +
+					"organization ' test_org ' identified by 1234 " +
+					"description 'test_description'",
+				ExpectedErrStr: "the organization name can't be an empty string or start or end with whitespace",
+			},
+			{
 				// TODO: can't reliably test this along with the prepared version as the information_schema is persisted between test runs
 				Skip: true,
 				Query: "create spatial reference system 1234 " +
