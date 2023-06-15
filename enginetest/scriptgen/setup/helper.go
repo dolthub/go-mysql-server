@@ -32,6 +32,7 @@ var (
 	ComplexIndexSetup [][]SetupScript
 	LoadDataSetup     [][]SetupScript
 	XySetup           [][]SetupScript
+	JoinsSetup        [][]SetupScript
 )
 
 func init() {
@@ -68,6 +69,7 @@ func init() {
 	ComplexIndexSetup = [][]SetupScript{MydbData, Comp_index_tablesData}
 	LoadDataSetup = [][]SetupScript{MydbData, LoadtableData}
 	XySetup = [][]SetupScript{MydbData, XyData}
+	JoinsSetup = [][]SetupScript{MydbData, JoinData}
 	SimpleSetup = concatenateSetupSources(
 		Mytable,
 		SpecialSetup,
@@ -91,6 +93,7 @@ func init() {
 		FooSetup,
 		GraphSetup,
 		XySetup,
+		JoinsSetup,
 	)
 }
 
