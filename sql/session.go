@@ -147,13 +147,6 @@ type Session interface {
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is 
 	// executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context) error
-	// SetTransactionDatabase is called when a transaction begins, and is set to the name of the database in scope for
-	// that transaction. GetTransactionDatabase can be called by integrators to retrieve this database later, when it's
-	// time to commit via TransactionSession.CommitTransaction. This supports implementations that can only support a
-	// single database being modified per transaction.
-	SetTransactionDatabase(dbName string)
-	// GetTransactionDatabase returns the name of the database considered in scope when the current transaction began.
-	GetTransactionDatabase() string
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
