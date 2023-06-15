@@ -9,12 +9,13 @@ import (
 // TableCountLookup short-circuits `select count(*) from table`
 // using the sql.StatisticsTable interface.
 type TableCountLookup struct {
-	table sql.StatisticsTable
-	cnt   uint64
+	aliasName string
+	table     sql.StatisticsTable
+	cnt       uint64
 }
 
-func NewTableCount(table sql.StatisticsTable, cnt uint64) sql.Node {
-	return &TableCountLookup{table: table, cnt: cnt}
+func NewTableCount(aliasName string, table sql.StatisticsTable, cnt uint64) sql.Node {
+	return &TableCountLookup{aliasName: aliasName, table: table, cnt: cnt}
 }
 
 var _ sql.Node = (*TableCountLookup)(nil)
@@ -28,12 +29,12 @@ func (t TableCountLookup) Resolved() bool {
 }
 
 func (t TableCountLookup) String() string {
-	return fmt.Sprintf("table_count(%s)", t.table.Name())
+	return fmt.Sprintf("table_count(%s) as %s", t.table.Name(), t.aliasName)
 }
 
 func (t TableCountLookup) Schema() sql.Schema {
 	return sql.Schema{{
-		Name:     "count(1)",
+		Name:     t.aliasName,
 		Type:     types.Int64,
 		Nullable: false,
 		Source:   t.table.Name(),
@@ -44,10 +45,10 @@ func (t TableCountLookup) Children() []sql.Node {
 	return nil
 }
 
-func (t TableCountLookup) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t TableCountLookup) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
-func (t TableCountLookup) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (t TableCountLookup) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
 	return true
 }
