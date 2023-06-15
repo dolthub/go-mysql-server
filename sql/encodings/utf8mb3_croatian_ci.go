@@ -17,7 +17,7 @@ package encodings
 // Utf8mb3_croatian_ci_RuneWeight returns the weight of a given rune based on its relational sort order from
 // the `utf8mb3_croatian_ci` collation.
 func Utf8mb3_croatian_ci_RuneWeight(r rune) int32 {
-	weight, ok := utf8mb3_croatian_ci_Weights()[r]
+	weight, ok := common_utf_croatian_ci_Weights()[r]
 	if ok {
 		return weight
 	} else if r >= 9003 && r <= 9168 {

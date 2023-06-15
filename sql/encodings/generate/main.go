@@ -17,8 +17,13 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"sort"
+	"strings"
+	"unsafe"
+
+	"golang.org/x/exp/constraints"
 )
 
 var Header = `// Copyright 2023 Dolthub, Inc.
@@ -53,23 +58,99 @@ func loadWeightsMap(m map[rune]int32, bin []byte) {
 `
 
 func main() {
+	// Verify that (sizeof(rune) == sizeof(int32)), just in case a future Go version breaks this assumption
+	if unsafe.Sizeof(rune(0)) != unsafe.Sizeof(int32(0)) {
+		panic("sizeof(rune) != sizeof(int32)")
+	}
+
+	// Hash the contents of all maps
+	for k, v := range WeightMaps {
+		runesInMap := SortedMapKeys(v)
+		hash := fnv.New64a()
+		for _, r := range runesInMap {
+			sortOrder := v[r]
+			_, _ = hash.Write([]byte{byte(r), byte(r>>8), byte(r>>16), byte(r>>24)})
+			_, _ = hash.Write([]byte{byte(sortOrder), byte(sortOrder>>8), byte(sortOrder>>16), byte(sortOrder>>24)})
+		}
+		FileContentHashes[k] = hash.Sum64()
+	}
+
+	// Check for duplicate weight maps
+	weightKeys := SortedMapKeys(WeightMaps)
+	allDuplicatedMaps := make(map[string][]string)
+	for i := 0; i < len(weightKeys); i++ {
+		weightKey := weightKeys[i]
+		contentHash := FileContentHashes[weightKey]
+		var duplicateKeyNames []string
+		for j := len(weightKeys)-1; j > i; j-- {
+			compareWeightKey := weightKeys[j]
+			if contentHash == FileContentHashes[compareWeightKey] {
+				duplicateKeyNames = append(duplicateKeyNames, compareWeightKey)
+				weightKeys = append(weightKeys[:j], weightKeys[j+1:]...)
+			}
+		}
+		sort.Strings(duplicateKeyNames)
+		// Find the common prefix of all names if they exist, else concatenate all names
+		if len(duplicateKeyNames) > 0 {
+			// Grab the duplicated map and delete the first key
+			duplicatedMap := WeightMaps[weightKey]
+			delete(WeightMaps, weightKey)
+			// Find the common prefix and delete the duplicate keys
+			prefix, _ := GetCharacterSet(weightKey)
+			for _, duplicateKeyName := range duplicateKeyNames {
+				delete(WeightMaps, duplicateKeyName)
+				prefix = CommonPrefix(prefix, duplicateKeyName)
+			}
+			// If there is a common prefix then we'll prepend "common_", else concatenate all of the character sets
+			if len(prefix) > 0 {
+				prefix = "common_" + prefix
+			} else {
+				allCharsets := make([]string, 0, len(duplicateKeyNames))
+				allCharsetsMap := make(map[string]struct{})
+				firstCharset, _ := GetCharacterSet(weightKey)
+				allCharsets = append(allCharsets, firstCharset)
+				allCharsetsMap[firstCharset] = struct{}{}
+				for _, duplicateKeyName := range duplicateKeyNames {
+					charset, _ := GetCharacterSet(duplicateKeyName)
+					// Some duplicate collations may be in the same character set, so we filter those out too
+					if _, ok := allCharsetsMap[charset]; !ok {
+						allCharsets = append(allCharsets, charset)
+						allCharsetsMap[charset] = struct{}{}
+					}
+				}
+				prefix = "common_" + strings.Join(allCharsets, "_")
+			}
+			// Add the new key to the weight maps
+			_, newKey := GetCharacterSet(weightKey)
+			newKey = prefix + newKey
+			WeightMaps[newKey] = duplicatedMap
+			allDuplicatedMaps[newKey] = append([]string{weightKey}, duplicateKeyNames...)
+		}
+	}
+	weightKeys = SortedMapKeys(WeightMaps)
+
+	// Load the weightmaps file for writing
 	gofile, err := os.OpenFile("../weightmaps.go", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		panic(err)
 	}
 	defer gofile.Close()
-
-	fmt.Fprintf(gofile, "%s", Header)
-
-	var weightkeys []string
-	for k := range WeightMaps {
-		weightkeys = append(weightkeys, k)
+	_, err = fmt.Fprintf(gofile, "%s", Header)
+	if err != nil {
+		panic(err)
 	}
-	sort.Strings(weightkeys)
-	for _, k := range weightkeys {
+
+	// Write all of the keys and their corresponding weight maps to files
+	for _, k := range weightKeys {
 		v := WeightMaps[k]
 		OutputWeights(k, v)
 		OutputGoForMap(gofile, k)
+	}
+
+	// Display all of the duplicate maps and their new map name
+	duplicates := SortedMapKeys(allDuplicatedMaps)
+	for _, duplicate := range duplicates {
+		fmt.Printf("%s: [%s]\n", duplicate, strings.Join(allDuplicatedMaps[duplicate], ", "))
 	}
 }
 
@@ -80,14 +161,8 @@ func OutputWeights(name string, weights map[rune]int32) {
 	}
 	defer binfile.Close()
 
-	var keys []int
-	for k := range weights {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-
-	for _, ki := range keys {
-		k := rune(ki)
+	keys := SortedMapKeys(weights)
+	for _, k := range keys {
 		v := weights[k]
 		err := binary.Write(binfile, binary.BigEndian, k)
 		if err != nil {
@@ -258,4 +333,34 @@ var WeightMaps = map[string]map[rune]int32{
 	"utf8mb4_vi_0900_as_cs_Weights":      utf8mb4_vi_0900_as_cs_Weights,
 	"utf8mb4_vietnamese_ci_Weights":      utf8mb4_vietnamese_ci_Weights,
 	"utf8mb4_zh_0900_as_cs_Weights":      utf8mb4_zh_0900_as_cs_Weights,
+}
+
+var FileContentHashes = map[string]uint64{}
+
+func SortedMapKeys[K constraints.Ordered, V any](m map[K]V) []K {
+	keys := make([]K, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	return keys
+}
+
+func CommonPrefix(str1 string, str2 string) string {
+	minLen := len(str1)
+	if len(str2) < minLen {
+		minLen = len(str2)
+	}
+	i := 0
+	for ; i < minLen; i++ {
+		if str1[i] != str2[i] {
+			break
+		}
+	}
+	return str1[:i]
+}
+
+func GetCharacterSet(str string) (charset string, restOfString string) {
+	index := strings.Index(str, "_")
+	return str[:index], str[index:]
 }
