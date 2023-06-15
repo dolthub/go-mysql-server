@@ -37,7 +37,7 @@ func TestMemoGen(t *testing.T) {
         }
 
         type TableScan struct {
-          *relBase
+          *sourceBase
           Table *plan.ResolvedTable
         }
 
@@ -53,7 +53,7 @@ func TestMemoGen(t *testing.T) {
         }
 
         func (r *tableScan) TableId() TableId {
-          return tableIdForSource(r.g.Id)
+          return TableIdForSource(r.g.Id)
         }
 
         func (r *tableScan) OutputCols() sql.Schema {
@@ -131,7 +131,7 @@ func TestMemoGen(t *testing.T) {
             panic(fmt.Sprintf("unknown ScalarExpr type: %T", r))
           }
         }
-		`,
+`,
 	}
 
 	defs := MemoExprs{

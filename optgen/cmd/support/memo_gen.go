@@ -88,7 +88,7 @@ func (g *MemoGen) genImport() {
 func (g *MemoGen) genType(define ExprDef) {
 	fmt.Fprintf(g.w, "type %s struct {\n", strings.Title(define.Name))
 	if define.SourceType != "" {
-		fmt.Fprintf(g.w, "  *relBase\n")
+		fmt.Fprintf(g.w, "  *sourceBase\n")
 		fmt.Fprintf(g.w, "  Table %s\n", define.SourceType)
 	} else if define.Join {
 		fmt.Fprintf(g.w, "  *JoinBase\n")
@@ -152,7 +152,7 @@ func (g *MemoGen) genSourceRelInterface(define ExprDef) {
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) TableId() TableId {\n", define.Name)
-	fmt.Fprintf(g.w, "  return tableIdForSource(r.g.Id)\n")
+	fmt.Fprintf(g.w, "  return TableIdForSource(r.g.Id)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) OutputCols() sql.Schema {\n", define.Name)

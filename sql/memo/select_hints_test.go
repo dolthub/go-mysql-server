@@ -1,7 +1,6 @@
 package memo
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -172,9 +171,14 @@ func TestOrderHintBuilding(t *testing.T) {
 				10: testVertexSet(0, 1, 2),    // ab x xy x pq
 				11: testVertexSet(3),          // uv
 				14: testVertexSet(0, 1, 2, 3), // ab x xy x pq x uv
-				15: testVertexSet(1, 2),       // xy x pq
-				16: testVertexSet(2, 3),       // pq x uv
-				17: testVertexSet(1, 2, 3),    // xy x pq x uv
+				18: testVertexSet(0, 2),       // ab x pq
+				19: testVertexSet(1, 2),       // xy x pq
+				20: testVertexSet(0, 3),       // ab x uv
+				21: testVertexSet(1, 3),       // xy x uv
+				22: testVertexSet(0, 1, 3),    //  (ab x xy) x uv
+				23: testVertexSet(2, 3),       // pq x uv
+				24: testVertexSet(0, 2, 3),    // uv x (ab x pq)
+				25: testVertexSet(1, 2, 3),    // xy x pq x uv
 			},
 		},
 		{
@@ -189,9 +193,15 @@ func TestOrderHintBuilding(t *testing.T) {
 				10: testVertexSet(2, 1, 0),    // ab x xy x pq
 				11: testVertexSet(3),          // uv
 				14: testVertexSet(2, 1, 0, 3), // ab x xy x pq x uv
-				15: testVertexSet(1, 0),       // xy x pq
-				16: testVertexSet(0, 3),       // pq x uv
-				17: testVertexSet(1, 0, 3),    // xy x pq x uv
+				18: testVertexSet(2, 0),       // ab x pq
+				19: testVertexSet(1, 0),       // xy x pq
+				20: testVertexSet(2, 3),       // ab x uv
+				21: testVertexSet(1, 3),       // xy x uv
+				22: testVertexSet(2, 1, 3),    // (ab x xy) x uv
+				23: testVertexSet(0, 3),       // pq x uv
+				24: testVertexSet(3, 2, 0),    // uv x (ab x pq)
+				25: testVertexSet(1, 0, 3),    // xy x pq x uv
+
 			},
 		},
 		{
@@ -228,7 +238,6 @@ func TestOrderHintBuilding(t *testing.T) {
 			if tt.invalid {
 				require.Equal(t, j.m.hints.order, (*joinOrderHint)(nil))
 			} else {
-				fmt.Println(j.m.String())
 				require.Equal(t, tt.exp, j.m.hints.order.groups)
 			}
 		})
