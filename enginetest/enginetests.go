@@ -3148,7 +3148,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE mydb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-		
+
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 		require.Error(t, err)
 
@@ -3167,7 +3167,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		ctx.SetCurrentDatabase("testdb")
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-		
+
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
 
