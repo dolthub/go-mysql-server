@@ -69,8 +69,8 @@ func main() {
 		hash := fnv.New64a()
 		for _, r := range runesInMap {
 			sortOrder := v[r]
-			_, _ = hash.Write([]byte{byte(r), byte(r>>8), byte(r>>16), byte(r>>24)})
-			_, _ = hash.Write([]byte{byte(sortOrder), byte(sortOrder>>8), byte(sortOrder>>16), byte(sortOrder>>24)})
+			_, _ = hash.Write([]byte{byte(r), byte(r >> 8), byte(r >> 16), byte(r >> 24)})
+			_, _ = hash.Write([]byte{byte(sortOrder), byte(sortOrder >> 8), byte(sortOrder >> 16), byte(sortOrder >> 24)})
 		}
 		FileContentHashes[k] = hash.Sum64()
 	}
@@ -82,7 +82,7 @@ func main() {
 		weightKey := weightKeys[i]
 		contentHash := FileContentHashes[weightKey]
 		var duplicateKeyNames []string
-		for j := len(weightKeys)-1; j > i; j-- {
+		for j := len(weightKeys) - 1; j > i; j-- {
 			compareWeightKey := weightKeys[j]
 			if contentHash == FileContentHashes[compareWeightKey] {
 				duplicateKeyNames = append(duplicateKeyNames, compareWeightKey)

@@ -34,7 +34,9 @@ var common_utf8mb4_es_0900_ai_ci_Weights_map = make(map[rune]int32)
 var common_utf8mb4_es_0900_ai_ci_Weights_once sync.Once
 
 func common_utf8mb4_es_0900_ai_ci_Weights() map[rune]int32 {
-	common_utf8mb4_es_0900_ai_ci_Weights_once.Do(func() { loadWeightsMap(common_utf8mb4_es_0900_ai_ci_Weights_map, common_utf8mb4_es_0900_ai_ci_Weights_bin) })
+	common_utf8mb4_es_0900_ai_ci_Weights_once.Do(func() {
+		loadWeightsMap(common_utf8mb4_es_0900_ai_ci_Weights_map, common_utf8mb4_es_0900_ai_ci_Weights_bin)
+	})
 	return common_utf8mb4_es_0900_ai_ci_Weights_map
 }
 
@@ -44,7 +46,9 @@ var common_utf8mb4_es_0900_as_cs_Weights_map = make(map[rune]int32)
 var common_utf8mb4_es_0900_as_cs_Weights_once sync.Once
 
 func common_utf8mb4_es_0900_as_cs_Weights() map[rune]int32 {
-	common_utf8mb4_es_0900_as_cs_Weights_once.Do(func() { loadWeightsMap(common_utf8mb4_es_0900_as_cs_Weights_map, common_utf8mb4_es_0900_as_cs_Weights_bin) })
+	common_utf8mb4_es_0900_as_cs_Weights_once.Do(func() {
+		loadWeightsMap(common_utf8mb4_es_0900_as_cs_Weights_map, common_utf8mb4_es_0900_as_cs_Weights_bin)
+	})
 	return common_utf8mb4_es_0900_as_cs_Weights_map
 }
 
