@@ -277,7 +277,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 			return nil, nil, err
 		}
 	}
-	
+
 	// Give the integrator a chance to reject the session before proceeding
 	err = ctx.Session.ValidateSession(ctx)
 	if err != nil {
