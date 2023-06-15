@@ -16,13 +16,13 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"io"
 	"sync"
 	"time"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
+	"github.com/dolthub/vitess/go/mysql"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
