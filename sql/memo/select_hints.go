@@ -304,12 +304,19 @@ func (o joinOpHint) depsMatch(n RelExpr) bool {
 	case *Distinct:
 		return o.depsMatch(n.Child.Best)
 	case JoinRel:
-		base := n.JoinPrivate()
-		if o.l.Intersects(base.Left.RelProps.InputTables()) &&
-			o.r.Intersects(base.Right.RelProps.InputTables()) ||
-			o.l.Intersects(base.Right.RelProps.InputTables()) &&
-				o.r.Intersects(base.Left.RelProps.InputTables()) {
-			// currently permit the permutation of the hint
+		jp := n.JoinPrivate()
+		if !jp.Left.Best.Group().HintOk || !jp.Right.Best.Group().HintOk {
+			// equiv closures can generate child plans that bypass hints
+			return false
+		}
+
+		leftTab := jp.Left.RelProps.InputTables()
+		rightTab := jp.Right.RelProps.InputTables()
+		deps := o.l.Union(o.r)
+		if deps.SubsetOf(leftTab.Union(rightTab)) &&
+			!deps.SubsetOf(leftTab) &&
+			!deps.SubsetOf(rightTab) {
+			// join tables satisfy but partition the hint rels
 			return true
 		}
 	default:
