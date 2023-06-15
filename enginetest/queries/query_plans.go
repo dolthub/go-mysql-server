@@ -25,6 +25,109 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select count(*) from mytable`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.count(1):0!null as count(*)]\n" +
+			" └─ table_count(mytable)\n" +
+			"",
+	},
+	{
+		Query: `select count(*) as cnt from mytable`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.count(1):0!null as cnt]\n" +
+			" └─ table_count(mytable)\n" +
+			"",
+	},
+	{
+		Query: `select count(*) from xy`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.count(1):0!null as count(*)]\n" +
+			" └─ table_count(xy)\n" +
+			"",
+	},
+	{
+		Query: `select count(1) from mytable`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.count(1):0!null as count(1)]\n" +
+			" └─ table_count(mytable)\n" +
+			"",
+	},
+	{
+		Query: `select count(1) from xy`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy.count(1):0!null as count(1)]\n" +
+			" └─ table_count(xy)\n" +
+			"",
+	},
+	{
+		Query: `select count(1) from xy, uv`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as count(1)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (tinyint))\n" +
+			"     ├─ group: \n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: xy\n" +
+			"         │   └─ columns: []\n" +
+			"         └─ Table\n" +
+			"             ├─ name: uv\n" +
+			"             └─ columns: []\n" +
+			"",
+	},
+	{
+		Query: `select * from (select count(*) from xy) dt`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: dt\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.count(1):0!null as count(*)]\n" +
+			"     └─ table_count(xy)\n" +
+			"",
+	},
+	{
+		Query: `select (select count(*) from xy), (select count(*) from uv)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [Subquery\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [xy.count(1):1!null as count(*)]\n" +
+			" │       └─ table_count(xy)\n" +
+			" │   as (select count(*) from xy), Subquery\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [uv.count(1):1!null as count(*)]\n" +
+			" │       └─ table_count(uv)\n" +
+			" │   as (select count(*) from uv)]\n" +
+			" └─ Table\n" +
+			"     ├─ name: \n" +
+			"     └─ columns: []\n" +
+			"",
+	},
+	{
+		Query: `select (select count(*) from xy), (select count(*) from uv), count(*) from ab`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [Subquery\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [xy.count(1):1!null as count(*)]\n" +
+			" │       └─ table_count(xy)\n" +
+			" │   as (select count(*) from xy), Subquery\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [uv.count(1):1!null as count(*)]\n" +
+			" │       └─ table_count(uv)\n" +
+			" │   as (select count(*) from uv), COUNT(1):0!null as count(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Table\n" +
+			"         ├─ name: ab\n" +
+			"         └─ columns: [a b]\n" +
+			"",
+	},
+	{
 		Query: `
 SELECT COUNT(DISTINCT (s_i_id))
 FROM order_line1, stock1
@@ -11226,13 +11329,8 @@ WHERE
 		Query: `
 	SELECT COUNT(*) FROM NOXN3`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [COUNT(1):0!null as COUNT(*)]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(1 (bigint))\n" +
-			"     ├─ group: \n" +
-			"     └─ Table\n" +
-			"         ├─ name: NOXN3\n" +
-			"         └─ columns: []\n" +
+			" ├─ columns: [NOXN3.count(1):0!null as COUNT(*)]\n" +
+			" └─ table_count(NOXN3)\n" +
 			"",
 	},
 	{
@@ -15421,13 +15519,8 @@ ORDER BY id ASC`,
 		Query: `
 SELECT COUNT(*) FROM E2I7U`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [COUNT(1):0!null as COUNT(*)]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(1 (bigint))\n" +
-			"     ├─ group: \n" +
-			"     └─ Table\n" +
-			"         ├─ name: E2I7U\n" +
-			"         └─ columns: []\n" +
+			" ├─ columns: [E2I7U.count(1):0!null as COUNT(*)]\n" +
+			" └─ table_count(E2I7U)\n" +
 			"",
 	},
 	{

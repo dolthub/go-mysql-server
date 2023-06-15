@@ -163,6 +163,33 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	return table
 }
 
+// Finds first ResolvedTable node that is a descendant of the node given
+func getSingleResolvedTable(node sql.Node) *plan.ResolvedTable {
+	var table *plan.ResolvedTable
+	transform.Inspect(node, func(node sql.Node) bool {
+		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
+		// only want the first ResolvedTable match.
+		if table != nil {
+			return false
+		}
+
+		switch n := node.(type) {
+		case *plan.JoinNode:
+			return false
+		case *plan.ResolvedTable:
+			if !plan.IsDualTable(n) {
+				table = n
+				return false
+			}
+		case *plan.IndexedTableAccess:
+			table = n.ResolvedTable
+			return false
+		}
+		return true
+	})
+	return table
+}
+
 // getTablesByName takes a node and returns all found resolved tables in a map.
 func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)

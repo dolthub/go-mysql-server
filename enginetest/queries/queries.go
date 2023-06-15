@@ -742,6 +742,46 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select count(*) from mytable",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    `select count(*) as cnt from mytable`,
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select count(*) from xy",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select count(*) from xy alias",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select count(1) from mytable",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select count(1) from xy",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select count(1) from xy, uv",
+		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select * from (select count(*) from xy) dt",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select (select count(*) from xy), (select count(*) from uv)",
+		Expected: []sql.Row{{4, 4}},
+	},
+	{
+		Query:    "select (select count(*) from xy), (select count(*) from uv), count(*) from ab",
+		Expected: []sql.Row{{4, 4, 4}},
+	},
+	{
 		Query:    "select i from mytable alias where i = 1 and s = 'first row'",
 		Expected: []sql.Row{{1}},
 	},
