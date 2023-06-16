@@ -99,9 +99,11 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *plan.Scope,
 				newAggregates = append(newAggregates, e)
 				aggPassthrough[e.String()] = struct{}{}
 				typ := e.Type()
-				// special case for sum, which should always return a float64
-				if _, ok := e.(*aggregation.Sum); ok {
+				switch e.(type) {
+				case *aggregation.Sum, *aggregation.Avg:
 					typ = types.Float64
+				case *aggregation.Count:
+					typ = types.Int64
 				}
 				return expression.NewGetField(scopeLen+len(newAggregates)-1, typ, e.String(), e.IsNullable()), transform.NewTree, nil
 			default:
