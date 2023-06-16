@@ -148,7 +148,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 											[]sql.Expression{
 												expression.NewAlias(alias.Name(), expression.NewGetFieldWithTable(0, types.Int64, statsTable.Name(), alias.Name(), false)),
 											},
-											plan.NewTableCount(alias.Name(), statsTable, cnt),
+											plan.NewTableCount(alias.Name(), rt.Database, statsTable, cnt),
 										), transform.SameTree, nil
 									}
 								}

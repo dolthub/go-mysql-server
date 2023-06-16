@@ -11,15 +11,20 @@ import (
 // using the sql.StatisticsTable interface.
 type TableCountLookup struct {
 	aliasName string
+	db        sql.Database
 	table     sql.StatisticsTable
 	cnt       uint64
 }
 
-func NewTableCount(aliasName string, table sql.StatisticsTable, cnt uint64) sql.Node {
-	return &TableCountLookup{aliasName: aliasName, table: table, cnt: cnt}
+func NewTableCount(aliasName string, db sql.Database, table sql.StatisticsTable, cnt uint64) sql.Node {
+	return &TableCountLookup{aliasName: aliasName, db: db, table: table, cnt: cnt}
 }
 
 var _ sql.Node = (*TableCountLookup)(nil)
+
+func (t TableCountLookup) Name() string {
+	return t.aliasName
+}
 
 func (t TableCountLookup) Count() uint64 {
 	return t.cnt
@@ -27,6 +32,14 @@ func (t TableCountLookup) Count() uint64 {
 
 func (t TableCountLookup) Resolved() bool {
 	return true
+}
+
+func (t TableCountLookup) Table() sql.Table {
+	return t.table
+}
+
+func (t TableCountLookup) Db() sql.Database {
+	return t.db
 }
 
 func (t TableCountLookup) String() string {
