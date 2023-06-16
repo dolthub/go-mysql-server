@@ -303,6 +303,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertExecute(ctx, n)
 	case *sqlparser.Deallocate:
 		return convertDeallocate(ctx, n)
+	case *sqlparser.CreateSpatialRefSys:
+		return convertCreateSpatialRefSys(ctx, n)
 	}
 }
 
@@ -4867,4 +4869,58 @@ func getUnresolvedDatabase(ctx *sql.Context, dbName string) (sql.UnresolvedDatab
 		return udb, sql.ErrNoDatabaseSelected.New()
 	}
 	return udb, nil
+}
+
+func convertCreateSpatialRefSys(ctx *sql.Context, n *sqlparser.CreateSpatialRefSys) (sql.Node, error) {
+	srid, err := strconv.ParseInt(string(n.SRID.Val), 10, 16)
+	if err != nil {
+		return nil, err
+	}
+
+	srsAttr, err := convertSrsAttribute(ctx, n.SrsAttr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewCreateSpatialRefSys(uint32(srid), n.OrReplace, n.IfNotExists, srsAttr)
+}
+
+var ErrMissingMandatoryAttribute = errors.NewKind("missing mandatory attribute %s")
+var ErrInvalidName = errors.NewKind("the spatial reference system name can't be an empty string or start or end with whitespace")
+var ErrInvalidOrgName = errors.NewKind("the organization name can't be an empty string or start or end with whitespace")
+
+func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.SrsAttribute, error) {
+	if attr == nil {
+		return plan.SrsAttribute{}, fmt.Errorf("missing attribute")
+	}
+	if attr.Name == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("NAME")
+	}
+	if unicode.IsSpace(rune(attr.Name[0])) || unicode.IsSpace(rune(attr.Name[len(attr.Name)-1])) {
+		return plan.SrsAttribute{}, ErrInvalidName.New()
+	}
+	// TODO: there are additional rules to validate the attribute definition
+	if attr.Definition == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("DEFINITION")
+	}
+	if attr.Organization == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION NAME")
+	}
+	if unicode.IsSpace(rune(attr.Organization[0])) || unicode.IsSpace(rune(attr.Organization[len(attr.Organization)-1])) {
+		return plan.SrsAttribute{}, ErrInvalidOrgName.New()
+	}
+	if attr.OrgID == nil {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION ID")
+	}
+	orgID, err := strconv.ParseInt(string(attr.OrgID.Val), 10, 16)
+	if err != nil {
+		return plan.SrsAttribute{}, err
+	}
+	return plan.SrsAttribute{
+		Name:         attr.Name,
+		Definition:   attr.Definition,
+		Organization: attr.Organization,
+		OrgID:        uint32(orgID),
+		Description:  attr.Description,
+	}, nil
 }
