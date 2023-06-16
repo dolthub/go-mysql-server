@@ -23,6 +23,7 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	go.opentelemetry.io/otel v1.7.0
 	go.opentelemetry.io/otel/trace v1.7.0
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.3.8
 	golang.org/x/tools v0.3.0
