@@ -4090,6 +4090,33 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 
 var PreparedScriptTests = []ScriptTest{
 	{
+		Name: "table_count optimization refreshes result",
+		SetUpScript: []string{
+			"create table a (a int primary key);",
+			"insert into a values (0), (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "prepare cnt from 'select count(*) from a';",
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:    "execute cnt",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query: "insert into a values (3), (4)",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query:    "execute cnt",
+				Expected: []sql.Row{{5}},
+			},
+		},
+	},
+	{
 		Name:        "bad prepare",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
