@@ -4,9 +4,10 @@ package server
 
 import (
 	"context"
-	"golang.org/x/sys/unix"
 	"net"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // Very rarely in our CI, the server fails to bind to the port with the error: "port already in use."
