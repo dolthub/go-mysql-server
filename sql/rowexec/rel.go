@@ -730,3 +730,7 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, n.Table, partitions)), nil
 }
+
+func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.Row{int64(n.Count())}), nil
+}

@@ -17,7 +17,7 @@ package encodings
 // Utf32_persian_ci_RuneWeight returns the weight of a given rune based on its relational sort order from
 // the `utf32_persian_ci` collation.
 func Utf32_persian_ci_RuneWeight(r rune) int32 {
-	weight, ok := utf32_persian_ci_Weights()[r]
+	weight, ok := common_utf_persian_ci_Weights()[r]
 	if ok {
 		return weight
 	} else if r >= 9003 && r <= 9168 {

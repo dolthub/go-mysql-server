@@ -51,6 +51,8 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildPrepareQuery(ctx, n, row)
 	case *plan.ResolvedTable:
 		return b.buildResolvedTable(ctx, n, row)
+	case *plan.TableCountLookup:
+		return b.buildTableCount(ctx, n, row)
 	case *plan.ShowCreateTable:
 		return b.buildShowCreateTable(ctx, n, row)
 	case *plan.ShowIndexes:
