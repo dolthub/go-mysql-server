@@ -279,11 +279,11 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			}
 			rt, ok := new.(*plan.ResolvedTable)
 			if !ok {
-				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup")
+				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup; expected *plan.ResolvedTable, found: %T", new)
 			}
 			statsTable, ok := rt.Table.(sql.StatisticsTable)
 			if !ok {
-				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup")
+				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup; expected sql.StatisticsTable, found: %T", new)
 			}
 
 			cnt, err := statsTable.RowCount(ctx)
