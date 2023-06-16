@@ -99,7 +99,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "COL2",
-						Type: types.Int64,
+						Type: types.Float64,
 					},
 				},
 				Expected: []sql.Row{
@@ -128,7 +128,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "coL2",
-						Type: types.Int64,
+						Type: types.Float64,
 					},
 				},
 				Expected: []sql.Row{
@@ -147,7 +147,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "TimeStamp",
-						Type: types.Int64,
+						Type: types.Float64,
 					},
 				},
 				Expected: []sql.Row{

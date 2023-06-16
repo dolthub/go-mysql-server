@@ -1053,9 +1053,9 @@ SELECT SUM(x) FROM xy WHERE x IN (
 			{
 				Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
 				Expected: []sql.Row{
-					{int64(2)},
-					{int64(4)},
-					{int64(6)},
+					{float64(2)},
+					{float64(4)},
+					{float64(6)},
 				},
 			},
 			{
