@@ -742,6 +742,22 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select count(1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(100)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select sum(1)",
+		Expected: []sql.Row{{float64(1)}},
+	},
+	{
+		Query:    "select sum(100)",
+		Expected: []sql.Row{{float64(100)}},
+	},
+	{
 		Query:    "select count(*) from mytable",
 		Expected: []sql.Row{{3}},
 	},
@@ -772,6 +788,22 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select count(1) from xy, uv",
 		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select count('abc') from xy, uv",
+		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select sum('abc') from mytable",
+		Expected: []sql.Row{{float64(0)}},
+	},
+	{
+		Query:    "select sum(10) from mytable",
+		Expected: []sql.Row{{float64(30)}},
+	},
+	{
+		Query:    "select sum(1) from emptytable",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "select * from (select count(*) from xy) dt",
