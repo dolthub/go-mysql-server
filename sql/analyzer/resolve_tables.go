@@ -291,8 +291,6 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				return n, transform.SameTree, err
 			}
 
-			log.Printf("new count %d", cnt)
-
 			return plan.NewTableCount(n.Name(), n.Db(), statsTable, cnt), transform.NewTree, nil
 		default:
 		}
