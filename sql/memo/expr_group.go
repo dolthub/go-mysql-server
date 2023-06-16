@@ -41,7 +41,7 @@ type ExprGroup struct {
 }
 
 func newExprGroup(m *Memo, id GroupId, expr exprType) *ExprGroup {
-	// bit of circularity: |grp| references |ref|, |rel| references |grp|,
+	// bit of circularity: |grp| references |rel|, |rel| references |grp|,
 	// and |relProps| references |rel| and |grp| info.
 	grp := &ExprGroup{
 		m:  m,
