@@ -39,6 +39,18 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select count(*) from keyless`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as count(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Table\n" +
+			"         ├─ name: keyless\n" +
+			"         └─ columns: []\n" +
+			"",
+	},
+	{
 		Query: `select count(*) from xy`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.count(*):0!null as count(*)]\n" +

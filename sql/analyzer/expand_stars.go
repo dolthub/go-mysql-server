@@ -140,7 +140,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 									rt = t
 								}
 							}
-							if rt != nil {
+							if rt != nil && !sql.IsKeyless(rt.Table.Schema()) {
 								if statsTable, ok := rt.Table.(sql.StatisticsTable); ok {
 									cnt, err := statsTable.RowCount(ctx)
 									if err == nil {

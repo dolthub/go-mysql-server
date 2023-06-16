@@ -750,6 +750,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{3}},
 	},
 	{
+		Query:    "select count(*) from keyless",
+		Expected: []sql.Row{{4}},
+	},
+	{
 		Query:    "select count(*) from xy",
 		Expected: []sql.Row{{4}},
 	},
