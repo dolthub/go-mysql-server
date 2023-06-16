@@ -732,5 +732,5 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 }
 
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{int(n.Count())}), nil
+	return sql.RowsToRowIter(sql.Row{int64(n.Count())}), nil
 }
