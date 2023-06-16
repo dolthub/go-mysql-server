@@ -38,7 +38,6 @@ func (b *PlanBuilder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpat
 		b.handleErr(fmt.Errorf("missing attribute"))
 	}
 
-
 	if n.SrsAttr.Name == "" {
 		b.handleErr(fmt.Errorf("missing mandatory attribute NAME"))
 	}
