@@ -69,7 +69,7 @@ func (b *PlanBuilder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpat
 		OrgID:        uint32(orgID),
 		Description:  n.SrsAttr.Description,
 	}
-	newN, err := plan.NewCreateSpatialRefSys(srid, orReplace, ifNotExists, srsAttr)
+	newN, err := plan.NewCreateSpatialRefSys(uint32(srid), n.OrReplace, n.IfNotExists, srsAttr)
 	if err != nil {
 		b.handleErr(err)
 	}
