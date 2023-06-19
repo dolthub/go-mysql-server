@@ -17,7 +17,7 @@ package encodings
 // Utf8mb4_es_trad_0900_as_cs_RuneWeight returns the weight of a given rune based on its relational sort order from
 // the `utf8mb4_es_trad_0900_as_cs` collation.
 func Utf8mb4_es_trad_0900_as_cs_RuneWeight(r rune) int32 {
-	weight, ok := utf8mb4_es_trad_0900_as_cs_Weights()[r]
+	weight, ok := common_utf8mb4_es_0900_as_cs_Weights()[r]
 	if ok {
 		return weight
 	} else if r >= 9003 && r <= 9214 {

@@ -51,6 +51,8 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 		return b.buildPrepareQuery(ctx, n, row)
 	case *plan.ResolvedTable:
 		return b.buildResolvedTable(ctx, n, row)
+	case *plan.TableCountLookup:
+		return b.buildTableCount(ctx, n, row)
 	case *plan.ShowCreateTable:
 		return b.buildShowCreateTable(ctx, n, row)
 	case *plan.ShowIndexes:
@@ -356,6 +358,8 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 	case sql.ExecSourceRel:
 		// escape hatch for custom data sources
 		return n.RowIter(ctx, row)
+	case *plan.CreateSpatialRefSys:
+		return b.buildCreateSpatialRefSys(ctx, n, row)
 	default:
 		return nil, fmt.Errorf("exec builder found unknown Node type %T", n)
 	}

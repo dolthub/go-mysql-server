@@ -6,7 +6,7 @@ require (
 	github.com/dolthub/go-icu-regex v0.0.0-20230524105445-af7e7991c97e
 	github.com/dolthub/jsonpath v0.0.2-0.20230525180605-8dc13778fd72
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20230613202357-d1dee78f23a5
+	github.com/dolthub/vitess v0.0.0-20230616193433-43f638d9426f
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
@@ -23,6 +23,7 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	go.opentelemetry.io/otel v1.7.0
 	go.opentelemetry.io/otel/trace v1.7.0
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.3.8
 	golang.org/x/tools v0.3.0
