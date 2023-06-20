@@ -5111,6 +5111,42 @@ Select * from (
 		},
 	},
 	{
+		Query: `SELECT if(1, 123, 456)`,
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Query: `SELECT if(0, 123, 456)`,
+		Expected: []sql.Row{
+			{456},
+		},
+	},
+	{
+		Query: `SELECT if(0, "abc", 456)`,
+		Expected: []sql.Row{
+			{456},
+		},
+	},
+	{
+		Query: `SELECT if(1, "abc", 456)`,
+		Expected: []sql.Row{
+			{"abc"},
+		},
+	},
+	{
+		Query: `SELECT 1 as foo, if((select foo), "a", "b")`,
+		Expected: []sql.Row{
+			{1, "a"},
+		},
+	},
+	{
+		Query: `SELECT 0 as foo, if((select foo), "a", "b")`,
+		Expected: []sql.Row{
+			{0, "b"},
+		},
+	},
+	{
 		Query: `SELECT if(NULL, "a", "b")`,
 		Expected: []sql.Row{
 			{"b"},
