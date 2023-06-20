@@ -16,6 +16,8 @@ package server
 
 import (
 	"errors"
+	"fmt"
+	"net"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -97,6 +99,16 @@ func NewValidatingServer(
 	return newServerFromHandler(cfg, e, sm, handler)
 }
 
+func portInUse(hostPort string) bool {
+	timeout := time.Second
+	conn, _ := net.DialTimeout("tcp", hostPort, timeout)
+	if conn != nil {
+		defer conn.Close()
+		return true
+	}
+	return false
+}
+
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler) (*Server, error) {
 	if cfg.ConnReadTimeout < 0 {
 		cfg.ConnReadTimeout = 0
@@ -109,6 +121,11 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 	}
 
 	var unixSocketInUse error
+
+	if portInUse(cfg.Address) {
+		unixSocketInUse = fmt.Errorf("Port %s already in use.", cfg.Address)
+	}
+
 	l, err := NewListener(cfg.Protocol, cfg.Address, cfg.Socket)
 	if err != nil {
 		if errors.Is(err, UnixSocketInUseError) {
