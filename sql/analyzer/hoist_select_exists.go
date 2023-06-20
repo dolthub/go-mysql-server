@@ -141,9 +141,11 @@ func hoistExistSubqueries(scope *plan.Scope, a *Analyzer, filter *plan.Filter, s
 		}
 
 		// recurse
-		s.inner, _, err = hoistSelectExistsHelper(scope.NewScopeFromSubqueryExpression(filter), a, s.inner, aliasDisambig)
-		if err != nil {
-			return nil, transform.SameTree, err
+		if s.inner != nil {
+			s.inner, _, err = hoistSelectExistsHelper(scope.NewScopeFromSubqueryExpression(filter), a, s.inner, aliasDisambig)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 		}
 
 		// if we reached here, |s| contains the state we need to

@@ -459,7 +459,7 @@ WHERE EXISTS (
 			},
 			{
 				q:     `select * from xy where exists (select * from uv) and x = 0`,
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeCross},
 				exp:   []sql.Row{{0, 2}},
 			},
 			{
@@ -498,13 +498,13 @@ FROM xy
           ab.a = uv.v
     )
   )`,
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}, {2, 1}},
 			},
 			{
 				q:     `select * from xy where exists (select * from uv join ab on u = a)`,
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
-				exp:   []sql.Row{{1, 0}, {2, 1}},
+				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeMerge},
+				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}, {3, 3}},
 			},
 		},
 	},
