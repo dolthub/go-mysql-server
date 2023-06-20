@@ -79,7 +79,10 @@ func hoistSelectExists(
 	sel RuleSelector,
 ) (sql.Node, transform.TreeIdentity, error) {
 	aliasDisambig := newAliasDisambiguator(n, scope)
+	return hoistSelectExistsHelper(scope, a, n, aliasDisambig)
+}
 
+func hoistSelectExistsHelper(scope *plan.Scope, a *Analyzer, n sql.Node, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
@@ -137,6 +140,12 @@ func hoistExistSubqueries(scope *plan.Scope, a *Analyzer, filter *plan.Filter, s
 			continue
 		}
 
+		// recurse
+		s.inner, _, err = hoistSelectExistsHelper(scope.NewScopeFromSubqueryExpression(filter), a, s.inner, aliasDisambig)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+
 		// if we reached here, |s| contains the state we need to
 		// decorrelate the subquery expression into a new node
 		same = transform.NewTree
@@ -164,8 +173,7 @@ func hoistExistSubqueries(scope *plan.Scope, a *Analyzer, filter *plan.Filter, s
 				ret = plan.NewAntiJoin(ret, s.inner, cond).WithComment(comment)
 
 			case plan.JoinTypeSemi:
-				cond := expression.NewLiteral(true, types.Boolean)
-				ret = plan.NewSemiJoin(ret, s.inner, cond).WithComment(comment)
+				ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
 			default:
 				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 			}
@@ -232,7 +240,6 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		filters := expression.SplitConjunction(f.Expression)
 		for _, f := range filters {
 			var outerRef bool
-			//var usesQuerySources bool
 			transform.InspectExpr(f, func(e sql.Expression) bool {
 				gf, ok := e.(*expression.GetField)
 				if ok {

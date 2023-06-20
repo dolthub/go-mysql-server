@@ -179,6 +179,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
+	err = addCrossHashJoins(m)
+	if err != nil {
+		return nil, err
+	}
 	err = addLookupJoins(m)
 	if err != nil {
 		return nil, err
@@ -572,6 +576,30 @@ func lookupCandidates(rel memo.RelExpr) (memo.GroupId, []*memo.Index, []memo.Sca
 	}
 	return 0, nil, nil
 
+}
+
+func addCrossHashJoins(m *memo.Memo) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		switch e.(type) {
+		case *memo.CrossJoin:
+		default:
+			return nil
+		}
+
+		join := e.(memo.JoinRel).JoinPrivate()
+		if len(join.Filter) > 0 {
+			return nil
+		}
+
+		rel := &memo.HashJoin{
+			JoinBase:   join.Copy(),
+			LeftAttrs:  nil,
+			RightAttrs: nil,
+		}
+		rel.Op = rel.Op.AsHash()
+		e.Group().Prepend(rel)
+		return nil
+	})
 }
 
 func addHashJoins(m *memo.Memo) error {

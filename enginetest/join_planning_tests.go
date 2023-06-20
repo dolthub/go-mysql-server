@@ -481,6 +481,31 @@ select * from xy where x in (
 				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
 				exp:   []sql.Row{{1, 0}},
 			},
+			{
+				q: `
+SELECT *
+FROM xy
+  WHERE
+    EXISTS (
+    SELECT 1
+    FROM ab
+    WHERE
+      xy.x = ab.a AND
+      EXISTS (
+        SELECT 1
+        FROM uv
+        WHERE
+          ab.a = uv.v
+    )
+  )`,
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				exp:   []sql.Row{{1, 0}, {2, 1}},
+			},
+			{
+				q:     `select * from xy where exists (select * from uv join ab on u = a)`,
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeHash},
+				exp:   []sql.Row{{1, 0}, {2, 1}},
+			},
 		},
 	},
 	{
