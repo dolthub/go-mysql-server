@@ -841,6 +841,37 @@ Project
              └─ columns: [x y z]
 `,
 		},
+		{
+			Query: "select 1 as foo, concat((select foo), 'abc');",
+			ExpectedPlan: `
+Project
+ ├─ columns: [1 (tinyint) as foo, concat(Subquery
+ │   ├─ cacheable: false
+ │   └─ Project
+ │       ├─ columns: [foo:0!null]
+ │       └─ Table
+ │           ├─ name: 
+ │           └─ columns: []
+ │  ,abc (longtext)) as concat((select foo), 'abc')]
+ └─ Table
+     ├─ name: 
+     └─ columns: []
+`,
+			//ExpectedPlan: "\n" +
+			//	"Project\n" +
+			//	" ├─ columns: [1 (tinyint) as foo, concat(Subquery\n" +
+			//	" │   ├─ cacheable: false\n" +
+			//	" │   └─ Project\n" +
+			//	" │       ├─ columns: [foo:0!null]\n" +
+			//	" │       └─ Table\n" +
+			//	" │           ├─ name: \n" +
+			//	" │           └─ columns: []\n" +
+			//	" │  ,abc (longtext)) as concat((select foo), 'abc')]\n" +
+			//	" └─ Table\n" +
+			//	"     ├─ name: \n" +
+			//	"     └─ columns: []\n" +
+			//	"",
+		},
 	}
 
 	var verbose, rewrite bool
