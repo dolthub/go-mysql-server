@@ -742,6 +742,22 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select count(1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(100)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select sum(1)",
+		Expected: []sql.Row{{float64(1)}},
+	},
+	{
+		Query:    "select sum(100)",
+		Expected: []sql.Row{{float64(100)}},
+	},
+	{
 		Query:    "select count(*) from mytable",
 		Expected: []sql.Row{{3}},
 	},
@@ -772,6 +788,22 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select count(1) from xy, uv",
 		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select count('abc') from xy, uv",
+		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select sum('abc') from mytable",
+		Expected: []sql.Row{{float64(0)}},
+	},
+	{
+		Query:    "select sum(10) from mytable",
+		Expected: []sql.Row{{float64(30)}},
+	},
+	{
+		Query:    "select sum(1) from emptytable",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "select * from (select count(*) from xy) dt",
@@ -1023,15 +1055,15 @@ Select * from (
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + sum(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), int64(28)},
-			{int64(1), int64(108)},
+			{int64(0), float64(28)},
+			{int64(1), float64(108)},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + min(c3) as sum_and_min FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), int64(16)},
-			{int64(1), int64(76)},
+			{int64(0), float64(16)},
+			{int64(1), float64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -1040,15 +1072,15 @@ Select * from (
 			},
 			{
 				Name: "sum_and_min",
-				Type: types.Int64,
+				Type: types.Float64,
 			},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(`c3`) +    min( c3 ) FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), int64(16)},
-			{int64(1), int64(76)},
+			{int64(0), float64(16)},
+			{int64(1), float64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -1057,7 +1089,7 @@ Select * from (
 			},
 			{
 				Name: "SUM(`c3`) +    min( c3 )",
-				Type: types.Int64,
+				Type: types.Float64,
 			},
 		},
 	},
@@ -4668,9 +4700,9 @@ Select * from (
 	{
 		Query: "SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
 		Expected: []sql.Row{
-			{int64(2), int64(1)},
-			{int64(3), int64(2)},
-			{int64(4), int64(3)},
+			{float64(2), int64(1)},
+			{float64(3), int64(2)},
+			{float64(4), int64(3)},
 		},
 	},
 	{
