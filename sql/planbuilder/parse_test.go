@@ -857,20 +857,6 @@ Project
      ├─ name: 
      └─ columns: []
 `,
-			//ExpectedPlan: "\n" +
-			//	"Project\n" +
-			//	" ├─ columns: [1 (tinyint) as foo, concat(Subquery\n" +
-			//	" │   ├─ cacheable: false\n" +
-			//	" │   └─ Project\n" +
-			//	" │       ├─ columns: [foo:0!null]\n" +
-			//	" │       └─ Table\n" +
-			//	" │           ├─ name: \n" +
-			//	" │           └─ columns: []\n" +
-			//	" │  ,abc (longtext)) as concat((select foo), 'abc')]\n" +
-			//	" └─ Table\n" +
-			//	"     ├─ name: \n" +
-			//	"     └─ columns: []\n" +
-			//	"",
 		},
 	}
 
