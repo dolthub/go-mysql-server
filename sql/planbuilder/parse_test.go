@@ -843,7 +843,7 @@ Project
 `,
 		},
 		{
-			Skip: true, // TODO: we don't correctly put aliases in the scope
+			Skip:  true, // TODO: we don't correctly put aliases in the scope
 			Query: "select 1 as foo, concat((select foo), 'abc');",
 			ExpectedPlan: `
 Project
