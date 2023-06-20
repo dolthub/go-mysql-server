@@ -268,6 +268,13 @@ func getIndexes(
 			if err != nil {
 				return nil, err
 			}
+			for name, idx := range indexes {
+				newRanges, err := sql.RemoveOverlappingRanges(idx.lookup.Ranges...)
+				if err != nil {
+					return nil, nil
+				}
+				indexes[name].lookup.Ranges = newRanges
+			}
 
 			// Merge this index if possible. If at any time we cannot merge the result, then we simply return nil. Returning
 			// an indexed lookup for only part of an expression leads to incorrect results, e.g. (col = 1 AND col = 2) can
