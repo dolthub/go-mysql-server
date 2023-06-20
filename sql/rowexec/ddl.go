@@ -660,7 +660,6 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 	// Unsets the current database. Database name is case-insensitive.
 	if strings.ToLower(ctx.GetCurrentDatabase()) == strings.ToLower(n.DbName) {
 		ctx.SetCurrentDatabase("")
-		ctx.Session.SetTransactionDatabase("")
 	}
 
 	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}

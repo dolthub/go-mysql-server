@@ -38,7 +38,6 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 	ts, transactionsSupported := ctx.Session.(sql.TransactionSession)
 
 	if transactionsSupported {
-		ctx.SetTransactionDatabase(db.Name())
 		tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
 		require.NoError(t, err)
 		ctx.SetTransaction(tx)
