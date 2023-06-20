@@ -64,7 +64,6 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 				outScope.addColumn(col)
 			} else {
 				outScope.newColumn(col)
-				inScope.addColumn(col)
 			}
 			exprs = append(exprs, e)
 		default:
