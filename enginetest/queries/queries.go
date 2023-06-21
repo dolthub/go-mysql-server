@@ -2657,6 +2657,18 @@ Select * from (
 		},
 	},
 	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) or s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE (i in (1, 1, 1, 1, 1) and s = 'first row') or s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s in ('first row', 'first row', 'first row');`,
 		Expected: []sql.Row{
 			{1, "first row"},
