@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -62,18 +63,36 @@ const (
 // Convert represent a CAST(x AS T) or CONVERT(x, T) operation that casts x expression to type T.
 type Convert struct {
 	UnaryExpression
-	// Type to cast
+	// castToType is a string representation of the base type to which we are casting (e.g. "char", "float", "decimal")
 	castToType string
+	// typeLength is the optional length parameter for types that support it (e.g. "char(10)")
+	typeLength int
+	// typeScale is the optional scale parameter for types that support it (e.g. "decimal(10, 2)")
+	typeScale int
 }
 
 var _ sql.Expression = (*Convert)(nil)
 var _ sql.CollationCoercible = (*Convert)(nil)
 
-// NewConvert creates a new Convert expression.
+// NewConvert creates a new Convert expression that will attempt to convert the specified expression |expr| into the
+// |castToType| type. All optional parameters (i.e. typeLength, typeScale, and charset) are omitted and initialized
+// to their zero values.
 func NewConvert(expr sql.Expression, castToType string) *Convert {
 	return &Convert{
 		UnaryExpression: UnaryExpression{Child: expr},
 		castToType:      strings.ToLower(castToType),
+	}
+}
+
+// NewConvertWithLengthAndScale creates a new Convert expression that will attempt to convert |expr| into the
+// |castToType| type, with |typeLength| specifying a length constraint of the converted type, and |typeScale| specifying
+// a scale constraint of the converted type.
+func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLength, typeScale int) *Convert {
+	return &Convert{
+		UnaryExpression: UnaryExpression{Child: expr},
+		castToType:      strings.ToLower(castToType),
+		typeLength:      typeLength,
+		typeScale:       typeScale,
 	}
 }
 
@@ -99,8 +118,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDatetime:
 		return types.Datetime
 	case ConvertToDecimal:
-		//TODO: these values are completely arbitrary, we need to get the given precision/scale and store it
-		return types.MustCreateDecimalType(65, 10)
+		return createConvertedDecimalType(c.typeLength, c.typeScale)
 	case ConvertToFloat:
 		return types.Float32
 	case ConvertToDouble, ConvertToReal:
@@ -148,7 +166,15 @@ func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // String implements the Stringer interface.
 func (c *Convert) String() string {
-	return fmt.Sprintf("convert(%v, %v)", c.Child, c.castToType)
+	extraTypeInfo := ""
+	if c.typeLength > 0 {
+		if c.typeScale > 0 {
+			extraTypeInfo = fmt.Sprintf("(%d,%d)", c.typeLength, c.typeScale)
+		} else {
+			extraTypeInfo = fmt.Sprintf("(%d)", c.typeLength)
+		}
+	}
+	return fmt.Sprintf("convert(%v, %v%s)", c.Child, c.castToType, extraTypeInfo)
 }
 
 // DebugString implements the Expression interface.
@@ -157,6 +183,8 @@ func (c *Convert) DebugString() string {
 	_ = pr.WriteNode("convert")
 	children := []string{
 		fmt.Sprintf("type: %v", c.castToType),
+		fmt.Sprintf("typeLength: %v", c.typeLength),
+		fmt.Sprintf("typeScale: %v", c.typeScale),
 		fmt.Sprintf(sql.DebugString(c.Child)),
 	}
 	_ = pr.WriteChildren(children...)
@@ -183,7 +211,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Should always return nil, and a warning instead
-	casted, err := convertValue(val, c.castToType, c.Child.Type())
+	casted, err := convertValue(val, c.castToType, c.Child.Type(), c.typeLength, c.typeScale)
 	if err != nil {
 		if c.castToType == ConvertToJSON {
 			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
@@ -196,9 +224,11 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // convertValue only returns an error if converting to JSON, Date, and Datetime;
-// the zero value is returned for float types.
-// Nil is returned in all other cases.
-func convertValue(val interface{}, castTo string, originType sql.Type) (interface{}, error) {
+// the zero value is returned for float types. Nil is returned in all other cases.
+// If |typeLength| and |typeScale| are 0, they are ignored, otherwise they are used as constraints on the
+// converted type where applicable (e.g. Char conversion supports only |typeLength|, Decimal conversion supports
+// |typeLength| and |typeScale|).
+func convertValue(val interface{}, castTo string, originType sql.Type, typeLength, typeScale int) (interface{}, error) {
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
 		b, _, err := types.LongBlob.Convert(val)
@@ -214,11 +244,17 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 			}
 			b = encodedBytes
 		}
+		if typeLength > 0 {
+			return b.([]byte)[:typeLength], nil
+		}
 		return b, nil
 	case ConvertToChar, ConvertToNChar:
 		s, _, err := types.LongText.Convert(val)
 		if err != nil {
 			return nil, nil
+		}
+		if typeLength > 0 {
+			return s.(string)[:typeLength], nil
 		}
 		return s, nil
 	case ConvertToDate:
@@ -250,7 +286,8 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		if err != nil {
 			return nil, err
 		}
-		d, _, err := types.InternalDecimalType.Convert(value)
+		dt := createConvertedDecimalType(typeLength, typeScale)
+		d, _, err := dt.Convert(value)
 		if err != nil {
 			return "0", nil
 		}
@@ -315,6 +352,22 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 	default:
 		return nil, nil
 	}
+}
+
+// createConvertedDecimalType creates a new Decimal type with the specified |precision| and |scale|. If a Decimal
+// type cannot be created from the values specified, an error is logged and an internal Decimal type is returned. This
+// function is intended to be used in places where an error cannot be returned (e.g. Node.Type() implementations),
+// hence why it logs an error instead of returning one.
+func createConvertedDecimalType(length, scale int) sql.DecimalType {
+	if length > 0 && scale > 0 {
+		dt, err := types.CreateColumnDecimalType(uint8(length), uint8(scale))
+		if err != nil {
+			logrus.StandardLogger().Errorf("unable to create decimal type with length %d and scale %d: %v", length, scale, err)
+			return types.InternalDecimalType
+		}
+		return dt
+	}
+	return types.MustCreateDecimalType(65, 10)
 }
 
 // convertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.

@@ -4100,7 +4100,23 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 
-		return expression.NewConvert(expr, v.Type.Type), nil
+		typeLength := 0
+		if v.Type.Length != nil {
+			typeLength, err = strconv.Atoi(v.Type.Length.String())
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		typeScale := 0
+		if v.Type.Scale != nil {
+			typeScale, err = strconv.Atoi(v.Type.Scale.String())
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return expression.NewConvertWithLengthAndScale(expr, v.Type.Type, typeLength, typeScale), nil
 	case *sqlparser.RangeCond:
 		val, err := ExprToExpression(ctx, v.Left)
 		if err != nil {

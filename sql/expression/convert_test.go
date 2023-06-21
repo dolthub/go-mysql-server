@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -31,6 +32,8 @@ func TestConvert(t *testing.T) {
 		row         sql.Row
 		expression  sql.Expression
 		castTo      string
+		typeLength  int
+		typeScale   int
 		expected    interface{}
 		expectedErr bool
 	}{
@@ -91,11 +94,30 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			name:        "convert string to decimal with precision/scale constraints",
+			row:         nil,
+			expression:  NewLiteral("10.123456", types.LongText),
+			typeLength:  4,
+			typeScale:   2,
+			castTo:      ConvertToDecimal,
+			expected:    "10.12",
+			expectedErr: false,
+		},
+		{
 			name:        "convert int to string",
 			row:         nil,
 			expression:  NewLiteral(-3, types.Int32),
 			castTo:      ConvertToChar,
 			expected:    "-3",
+			expectedErr: false,
+		},
+		{
+			name:        "convert int to string with length constraint",
+			row:         nil,
+			expression:  NewLiteral(-3, types.Int32),
+			castTo:      ConvertToChar,
+			typeLength:  1,
+			expected:    "-",
 			expectedErr: false,
 		},
 		{
@@ -163,6 +185,24 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			name:        "float to binary with length restriction",
+			row:         nil,
+			castTo:      ConvertToBinary,
+			typeLength:  3,
+			expression:  NewLiteral(float64(-2.3), types.Float64),
+			expected:    []byte("-2."),
+			expectedErr: false,
+		},
+		{
+			name:        "float to char with length restriction",
+			row:         nil,
+			castTo:      ConvertToChar,
+			typeLength:  4,
+			expression:  NewLiteral(10.56789, types.Float32),
+			expected:    "10.5",
+			expectedErr: false,
+		},
+		{
 			name:        "string to json",
 			row:         nil,
 			castTo:      ConvertToJSON,
@@ -207,12 +247,17 @@ func TestConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require := require.New(t)
-			convert := NewConvert(test.expression, test.castTo)
+			convert := NewConvertWithLengthAndScale(test.expression, test.castTo, test.typeLength, test.typeScale)
 			val, err := convert.Eval(sql.NewEmptyContext(), test.row)
 			if test.expectedErr {
 				require.Error(err)
 			} else {
 				require.NoError(err)
+			}
+
+			// Convert any Decimal values to strings for easier comparison (same as we do for engine tests)
+			if d, ok := val.(decimal.Decimal); ok {
+				val = d.String()
 			}
 
 			require.Equal(test.expected, val)
