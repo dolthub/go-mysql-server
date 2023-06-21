@@ -188,6 +188,28 @@ func TestHandlerOutput(t *testing.T) {
 		require.Equal(t, sqltypes.Float64, result.Rows[0][0].Type())
 		require.Equal(t, []byte("1"), result.Rows[0][0].ToBytes())
 	})
+
+	t.Run("if() type is correct", func(t *testing.T) {
+		handler.ComInitDB(dummyConn, "test")
+		var result *sqltypes.Result
+		err := handler.ComQuery(dummyConn, "select if(1, 123, 'def')", func(res *sqltypes.Result, more bool) error {
+			result = res
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(result.Rows))
+		require.Equal(t, sqltypes.Text, result.Rows[0][0].Type())
+		require.Equal(t, []byte("123"), result.Rows[0][0].ToBytes())
+
+		err = handler.ComQuery(dummyConn, "select if(0, 123, 456)", func(res *sqltypes.Result, more bool) error {
+			result = res
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 1, len(result.Rows))
+		require.Equal(t, sqltypes.Int64, result.Rows[0][0].Type())
+		require.Equal(t, []byte("456"), result.Rows[0][0].ToBytes())
+	})
 }
 
 func TestHandlerComPrepare(t *testing.T) {
