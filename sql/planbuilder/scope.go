@@ -78,6 +78,10 @@ func (s *scope) getExpr(name string) (columnId, bool) {
 			}
 		}
 	}
+	// TODO: possibly want to look in parent scopes
+	//if !ok && s.parent != nil {
+	//	return s.parent.getExpr(name)
+	//}
 	return id, ok
 }
 

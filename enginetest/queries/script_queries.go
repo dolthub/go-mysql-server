@@ -1408,7 +1408,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
-				Expected: []sql.Row{{int64(-1455)}},
+				Expected: []sql.Row{{float64(-1455)}},
 			},
 			{
 				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",

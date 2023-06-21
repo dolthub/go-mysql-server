@@ -2802,7 +2802,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version"),
-		Default:           "",
+		Default:           "8.0.11",
 	},
 	"version_comment": {
 		Name:              "version_comment",
@@ -2810,7 +2810,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version_comment"),
-		Default:           "",
+		Default:           "Dolt",
 	},
 	"version_compile_machine": {
 		Name:              "version_compile_machine",

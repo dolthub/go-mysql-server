@@ -2211,7 +2211,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t1 WHERE (v1<=99 AND v2<>86) AND (v1>=21 AND v2>36);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t1)\n" +
 			" ├─ index: [comp_index_t1.v1,comp_index_t1.v2,comp_index_t1.v3]\n" +
-			" ├─ static: [{[21, 99], (86, ∞), [NULL, ∞)}, {[21, 99], (36, 86), [NULL, ∞)}]\n" +
+			" ├─ static: [{[21, 99], (36, 86), [NULL, ∞)}, {[21, 99], (86, ∞), [NULL, ∞)}]\n" +
 			" └─ columns: [pk v1 v2 v3]\n" +
 			"",
 	},
@@ -6044,7 +6044,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1 BETWEEN 20 AND 93) AND (v1=66 AND v2<>21 AND v3 BETWEEN 43 AND 94);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ static: [{[66, 66], (21, ∞), [43, 94], [NULL, ∞)}, {[66, 66], (NULL, 21), [43, 94], [NULL, ∞)}]\n" +
+			" ├─ static: [{[66, 66], (NULL, 21), [43, 94], [NULL, ∞)}, {[66, 66], (21, ∞), [43, 94], [NULL, ∞)}]\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},
@@ -11927,7 +11927,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM comp_index_t2 WHERE (v1 BETWEEN 9 AND 35 AND v4<=69 AND v2 BETWEEN 34 AND 53 AND v3<>28) AND (v1 BETWEEN 12 AND 48);`,
 		ExpectedPlan: "IndexedTableAccess(comp_index_t2)\n" +
 			" ├─ index: [comp_index_t2.v1,comp_index_t2.v2,comp_index_t2.v3,comp_index_t2.v4]\n" +
-			" ├─ static: [{[12, 35], [34, 53], (28, ∞), (NULL, 69]}, {[12, 35], [34, 53], (NULL, 28), (NULL, 69]}]\n" +
+			" ├─ static: [{[12, 35], [34, 53], (NULL, 28), (NULL, 69]}, {[12, 35], [34, 53], (28, ∞), (NULL, 69]}]\n" +
 			" └─ columns: [pk v1 v2 v3 v4]\n" +
 			"",
 	},

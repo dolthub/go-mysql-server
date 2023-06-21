@@ -2183,7 +2183,7 @@ inner join pq on true
 			" │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
-			"     ├─ static: [{[2, 2], (NULL, 2]}, {[1, 1], (NULL, 2]}]\n" +
+			"     ├─ static: [{[1, 1], (NULL, 2]}, {[2, 2], (NULL, 2]}]\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
 	},
@@ -17654,7 +17654,7 @@ WHERE
 			"             │                       └─ TableAlias(umf)\n" +
 			"             │                           └─ IndexedTableAccess(NZKPM)\n" +
 			"             │                               ├─ index: [NZKPM.id]\n" +
-			"             │                               ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │                               ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │                               └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
 			"             └─ BEGIN .. END\n" +
 			"                 └─ IF BLOCK\n" +
@@ -17926,7 +17926,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"             │           │   │   │       │                   └─ columns: [fgg57]\n" +
 			"             │           │   │   │       └─ IndexedTableAccess(NZKPM)\n" +
 			"             │           │   │   │           ├─ index: [NZKPM.id]\n" +
-			"             │           │   │   │           ├─ static: [{[2, 2]}, {[3, 3]}, {[1, 1]}]\n" +
+			"             │           │   │   │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
 			"             │           │   │   │           └─ columns: [id t4ibq fgg57 sshpj nla6o sfj6l tjpt7 arn5p sypkf ivfmk ide43 az6sp fsdy2 xosd4 hmw4h s76om vaf zroh6 qcgts lnfm6 tvawl hdlcl bhhw6 fhcyt qz6vt]\n" +
 			"             │           │   │   └─ TableAlias(TJ5D2)\n" +
 			"             │           │   │       └─ Table\n" +

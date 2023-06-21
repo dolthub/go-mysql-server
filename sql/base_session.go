@@ -270,7 +270,7 @@ func (s *BaseSession) GetCollation() CollationID {
 }
 
 // ValidateSession provides integrators a chance to do any custom validation of this session before any query is executed in it.
-func (s *BaseSession) ValidateSession(ctx *Context, dbName string) error {
+func (s *BaseSession) ValidateSession(ctx *Context) error {
 	return nil
 }
 

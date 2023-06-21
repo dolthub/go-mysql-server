@@ -123,6 +123,21 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	})
 }
 
+// findDeferredColumns is a function that searches through a projection's expressions and checks if there are any
+// subqueries that reference the deferred column. Additionally, we have to check for subqueries in functions arguments
+func findDeferredColumns(exprs ...sql.Expression) []column {
+	var deferredColumns []column
+	for _, expr := range exprs {
+		transform.InspectExpr(expr, func(e sql.Expression) bool {
+			if sq, ok := e.(*plan.Subquery); ok {
+				deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(sq.Query)...)
+			}
+			return false
+		})
+	}
+	return deferredColumns
+}
+
 func addIntermediateProjections(
 	project *plan.Project,
 	projectedAliases map[string]sql.Expression,
@@ -194,19 +209,7 @@ func addIntermediateProjections(
 	// like a child node in this respect -- it draws its outer scope schema from the child of the node in which it's
 	// embedded. We identify any missing subquery columns by their being deferred or marked as an AliasReference
 	// from a previous analyzer step.
-	var deferredColumns []column
-	for _, e := range project.Projections {
-		if a, ok := e.(*expression.Alias); ok {
-			e = a.Child
-		}
-		s, ok := e.(*plan.Subquery)
-		if !ok {
-			continue
-		}
-
-		deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(s.Query)...)
-	}
-
+	deferredColumns := findDeferredColumns(project.Projections...)
 	if len(deferredColumns) > 0 {
 		schema := child.Schema()
 		var projections = make([]sql.Expression, 0, len(schema)+len(deferredColumns))

@@ -63,7 +63,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewArithmetic(
-						expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+						expression.NewGetField(0, types.Float64, "SUM(foo.a)", false),
 						expression.NewLiteral(int64(1), types.Int64),
 						"+",
 					),
@@ -103,7 +103,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewAlias("x",
 						expression.NewArithmetic(
-							expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+							expression.NewGetField(0, types.Float64, "SUM(foo.a)", false),
 							expression.NewLiteral(int64(1), types.Int64),
 							"+",
 						)),
@@ -144,7 +144,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewDiv(
-						expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+						expression.NewGetField(0, types.Float64, "SUM(foo.a)", false),
 						expression.NewGetField(1, types.Int64, "COUNT(foo.a)", false),
 					),
 					expression.NewGetFieldWithTable(2, types.Int64, "foo", "b", false),
@@ -188,7 +188,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewArithmetic(
-						expression.NewGetField(0, types.Int64, "SUM(foo.a)", false),
+						expression.NewGetField(0, types.Float64, "SUM(foo.a)", false),
 						expression.NewGetFieldWithTable(1, types.Int64, "bar", "a", false),
 						"+",
 					),

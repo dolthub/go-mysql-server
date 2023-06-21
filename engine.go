@@ -281,12 +281,8 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		}
 	}
 
-	// Before we begin a transaction, we need to know if the database being operated on is not the one
-	// currently selected
-	transactionDatabase := analyzer.GetTransactionDatabase(ctx, parsed)
-
 	// Give the integrator a chance to reject the session before proceeding
-	err = ctx.Session.ValidateSession(ctx, transactionDatabase)
+	err = ctx.Session.ValidateSession(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -296,7 +292,7 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		return nil, nil, err
 	}
 
-	err = e.beginTransaction(ctx, transactionDatabase)
+	err = e.beginTransaction(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -497,23 +493,10 @@ func (e *Engine) analyzePreparedQuery(ctx *sql.Context, query string, analyzed s
 	return analyzed, nil
 }
 
-func (e *Engine) beginTransaction(ctx *sql.Context, transactionDatabase string) error {
+func (e *Engine) beginTransaction(ctx *sql.Context) error {
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
-		if len(transactionDatabase) > 0 {
-			_, err := e.Analyzer.Catalog.Database(ctx, transactionDatabase)
-			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
-			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
-				ctx.GetLogger().Tracef("not starting transaction because of database not found for %s", transactionDatabase)
-				return nil
-			} else if err != nil {
-				return err
-			}
-
-			ctx.SetTransactionDatabase(transactionDatabase)
-		}
-
 		ts, ok := ctx.Session.(sql.TransactionSession)
 		if ok {
 			tx, err := ts.StartTransaction(ctx, sql.ReadWrite)

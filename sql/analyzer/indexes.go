@@ -282,6 +282,14 @@ func getIndexes(
 			}
 		}
 
+		for name, idx := range result {
+			newRanges, err := sql.RemoveOverlappingRanges(idx.lookup.Ranges...)
+			if err != nil {
+				return nil, nil
+			}
+			result[name].lookup.Ranges = newRanges
+		}
+
 		return result, nil
 	}
 
