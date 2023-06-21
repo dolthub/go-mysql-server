@@ -43,6 +43,8 @@ const (
 	ConvertToDatetime = "datetime"
 	// ConvertToDecimal is a conversion to decimal.
 	ConvertToDecimal = "decimal"
+	// ConvertToFloat is a conversion to float.
+	ConvertToFloat = "float"
 	// ConvertToDouble is a conversion to double.
 	ConvertToDouble = "double"
 	// ConvertToJSON is a conversion to json.
@@ -99,6 +101,8 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDecimal:
 		//TODO: these values are completely arbitrary, we need to get the given precision/scale and store it
 		return types.MustCreateDecimalType(65, 10)
+	case ConvertToFloat:
+		return types.Float32
 	case ConvertToDouble, ConvertToReal:
 		return types.Float64
 	case ConvertToJSON:
@@ -127,7 +131,7 @@ func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 		return sql.Collation_binary, 5
 	case ConvertToDecimal:
 		return sql.Collation_binary, 5
-	case ConvertToDouble, ConvertToReal:
+	case ConvertToDouble, ConvertToReal, ConvertToFloat:
 		return sql.Collation_binary, 5
 	case ConvertToJSON:
 		return ctx.GetCharacterSet().BinaryCollation(), 2
@@ -249,6 +253,16 @@ func convertValue(val interface{}, castTo string, originType sql.Type) (interfac
 		d, _, err := types.InternalDecimalType.Convert(value)
 		if err != nil {
 			return "0", nil
+		}
+		return d, nil
+	case ConvertToFloat:
+		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		if err != nil {
+			return nil, err
+		}
+		d, _, err := types.Float32.Convert(value)
+		if err != nil {
+			return types.Float32.Zero(), nil
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:

@@ -4425,6 +4425,14 @@ Select * from (
 		},
 	},
 	{
+		Query:    "SELECT CAST(-3 AS DOUBLE) FROM dual",
+		Expected: []sql.Row{{-3.0}},
+	},
+	{
+		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
+		Expected: []sql.Row{{float32(-3.9876)}},
+	},
+	{
 		Query: "SELECT CONVERT(-3, UNSIGNED) FROM mytable",
 		Expected: []sql.Row{
 			{uint64(18446744073709551613)},

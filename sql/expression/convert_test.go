@@ -51,6 +51,22 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			name:        "convert int32 to float",
+			row:         nil,
+			expression:  NewLiteral(int32(-5), types.Int32),
+			castTo:      ConvertToFloat,
+			expected:    float32(-5.0),
+			expectedErr: false,
+		},
+		{
+			name:        "convert int32 to double",
+			row:         nil,
+			expression:  NewLiteral(int32(-5), types.Int32),
+			castTo:      ConvertToDouble,
+			expected:    -5.0,
+			expectedErr: false,
+		},
+		{
 			name:        "convert string to signed",
 			row:         nil,
 			expression:  NewLiteral("-3", types.LongText),
@@ -61,9 +77,17 @@ func TestConvert(t *testing.T) {
 		{
 			name:        "convert string to unsigned",
 			row:         nil,
-			expression:  NewLiteral("-3", types.Int32),
+			expression:  NewLiteral("-3", types.LongText),
 			castTo:      ConvertToUnsigned,
 			expected:    uint64(18446744073709551613),
+			expectedErr: false,
+		},
+		{
+			name:        "convert string to double",
+			row:         nil,
+			expression:  NewLiteral("-3.123", types.LongText),
+			castTo:      ConvertToDouble,
+			expected:    -3.123,
 			expectedErr: false,
 		},
 		{
@@ -88,6 +112,14 @@ func TestConvert(t *testing.T) {
 			castTo:      ConvertToSigned,
 			expression:  NewLiteral("A", types.LongText),
 			expected:    int64(0),
+			expectedErr: false,
+		},
+		{
+			name:        "impossible conversion string to double",
+			row:         nil,
+			castTo:      ConvertToDouble,
+			expression:  NewLiteral("A", types.LongText),
+			expected:    0.0,
 			expectedErr: false,
 		},
 		{
