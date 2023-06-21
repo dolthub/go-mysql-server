@@ -2651,6 +2651,44 @@ Select * from (
 		Expected: []sql.Row{{1}, {1}, {1}},
 	},
 	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s = 'first row'`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) or s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE (i in (1, 1, 1, 1, 1) and s = 'first row') or s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s != 'first row';`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s NOT in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
 		Query:    "SELECT * from mytable WHERE 4 IN (i + 2)",
 		Expected: []sql.Row{{2, "second row"}},
 	},
