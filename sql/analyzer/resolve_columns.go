@@ -344,7 +344,7 @@ func identifyGroupingAliasReferences(groupBy *plan.GroupBy) (*plan.GroupBy, tran
 			return e, transform.SameTree, nil
 		}
 
-		if stringContains(projectedAliases, strings.ToLower(uc.Name())) {
+		if stringContains(projectedAliases, uc.Name()) {
 			return expression.NewAliasReference(uc.Name()), transform.NewTree, nil
 		}
 
