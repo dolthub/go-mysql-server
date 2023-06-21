@@ -2794,7 +2794,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version_comment"),
-		Default:           "MySQL Community Server - GPL",
+		Default:           "Dolt",
 	},
 	"version_compile_machine": {
 		Name:              "version_compile_machine",
