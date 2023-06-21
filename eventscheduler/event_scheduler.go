@@ -52,7 +52,7 @@ type EventScheduler struct {
 
 // InitEventScheduler is called at the start of the server. This function returns EventScheduler object
 // creating eventExecutor with empty events list. The enabled events will be loaded into the eventExecutor
-// if the EventScheduler status is 'ON' or undefined. The runQueryFunc is used to run the event definition during
+// if the EventScheduler status is 'ON'. The runQueryFunc is used to run an event definition during
 // event execution.
 func InitEventScheduler(
 	a *analyzer.Analyzer,
@@ -66,7 +66,7 @@ func InitEventScheduler(
 		executor: newEventExecutor(bgt, getSqlCtxFunc, runQueryFunc),
 	}
 
-	// If the EventSchedulerStatus is set to ON, then load enabled
+	// If the EventSchedulerStatus is ON, then load enabled
 	// events and start executing events on schedule.
 	if es.status == SchedulerOn {
 		ctx, commit, err := getSqlCtxFunc()
@@ -86,7 +86,7 @@ func InitEventScheduler(
 	return es, nil
 }
 
-// Close closes the EventScheduler.-
+// Close closes the EventScheduler.
 func (es *EventScheduler) Close() {
 	es.status = SchedulerOff
 	es.executor.shutdown()
@@ -121,7 +121,7 @@ func (es *EventScheduler) TurnOffEventScheduler() error {
 	return nil
 }
 
-// loadEventsAndStartEventExecutor evaluates all events of all databases and retrieves the enabled events
+// loadEventsAndStartEventExecutor evaluates all events in all databases and evaluates the enabled events
 // with valid schedule to load into the eventExecutor. Then, it starts the eventExecutor.
 func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *analyzer.Analyzer) error {
 	enabledEvents, err := es.evaluateAllEventsAndLoadEnabledEvents(ctx, a)
@@ -133,11 +133,10 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *a
 	return nil
 }
 
-// evaluateAllEventsAndLoadEnabledEvents is called only when sql server starts with --event-scheduler
-// configuration variable set to 'ON' or undefined, or it is set to 'ON' at runtime only when it was not
-// set to DISABLED when server started. This function retrieves all events evaluating them by dropping
-// events that are expired or updating the appropriate events metadata in the databases.
-// This function returns list of events that are enabled and have valid schedule.
+// evaluateAllEventsAndLoadEnabledEvents is called only when sql server starts with --event-scheduler configuration
+// variable set to 'ON' or undefined, or it is set to 'ON' at runtime. This function evaluates all events in all
+// databases dropping events that are expired or updating the events metadata if applicable. This function returns
+// a list of events that are enabled and have valid schedule that are not expired.
 func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context, a *analyzer.Analyzer) ([]*enabledEvent, error) {
 	dbs := a.Catalog.AllDatabases(ctx)
 	events := make([]*enabledEvent, 0)

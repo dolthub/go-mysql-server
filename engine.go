@@ -631,7 +631,8 @@ func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]s
 }
 
 // InitializeEventScheduler initializes the EventScheduler for the engine with given sql.Context
-// and the --event-scheduler status or --skip-grant-tables defined in the configuration.
+// getter function and the EventScheduler status defined in the configuration. It creates and
+// passes a function that runs the given query, database name, username and address as strings.
 // This function also initializes the EventSchedulerNotifier of the analyzer of this engine.
 func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, func() error, error), status eventscheduler.SchedulerStatus) error {
 	queryFunc := func(ctx *sql.Context, dbName, query, username, address string) error {

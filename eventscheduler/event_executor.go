@@ -23,18 +23,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// eventExecutor handles any action regarding events and executing each of events in the list.
-// This includes handling any events related queries including CREATE/ALTER/DROP EVENT and DROP DATABASE.
-// These queries notify the EventScheduler to update the enabled events list in the eventExecutor.
-// eventExecutor also handles updating the event metadata in the database or dropping them after
-// event execution.
+// eventExecutor handles execution of each enabled events and any events related queries
+// including CREATE/ALTER/DROP EVENT and DROP DATABASE. These queries notify the EventScheduler
+// to update the enabled events list in the eventExecutor. It also handles updating the event
+// metadata in the database or dropping it from the database after its execution.
 type eventExecutor struct {
 	bThreads            *sql.BackgroundThreads
-	ctxGetter           func() (*sql.Context, func() error, error)
 	list                *enabledEventsList
 	runningEventsStatus *runningEventsStatus
+	ctxGetterFunc       func() (*sql.Context, func() error, error)
+	queryRunFunc        func(ctx *sql.Context, dbName, query, username, address string) error
 	stop                atomic.Bool
-	runQueryFunc        func(ctx *sql.Context, dbName, query, username, address string) error
 }
 
 // newEventExecutor returns eventExecutor object with empty enabled events list.
@@ -42,20 +41,20 @@ type eventExecutor struct {
 func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, func() error, error), runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error) *eventExecutor {
 	return &eventExecutor{
 		bThreads:            bgt,
-		ctxGetter:           ctxFunc,
 		list:                newEnabledEventsList([]*enabledEvent{}),
 		runningEventsStatus: newRunningEventsStatus(),
+		ctxGetterFunc:       ctxFunc,
+		queryRunFunc:        runQueryFunc,
 		stop:                atomic.Bool{},
-		runQueryFunc:        runQueryFunc,
 	}
 }
 
-// loadEvents loads the events list for the eventExecutor.
+// loadEvents loads the enabled events list to the eventExecutor.
 func (ee *eventExecutor) loadEvents(l []*enabledEvent) {
 	ee.list = newEnabledEventsList(l)
 }
 
-// start starts the eventExecutor checking and executing
+// start starts the eventExecutor. It checks and executes
 // enabled events and updates necessary events' metadata.
 func (ee *eventExecutor) start() {
 	ee.stop.Store(false)
@@ -78,11 +77,11 @@ func (ee *eventExecutor) start() {
 				} else if diff <= 0.0000001 {
 					curEvent := ee.list.pop()
 					if curEvent != nil {
-						ctx, commit, err := ee.ctxGetter()
+						ctx, commit, err := ee.ctxGetterFunc()
 						if err != nil {
 							ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
 						}
-						err = ee.executeEventAndUpdateListIfApplicable(ctx, curEvent, timeNow)
+						err = ee.executeEventAndUpdateList(ctx, curEvent, timeNow)
 						if err != nil {
 							ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.eventDetails.Name)
 						}
@@ -104,10 +103,9 @@ func (ee *eventExecutor) shutdown() {
 	ee.runningEventsStatus.clear()
 }
 
-// executeEventAndUpdateListIfApplicable executes the given event and updates the event's last executed time
-// in the database. If the event is still valid (not ended), then it updates the enabled event and re-adds it back
-// to the list.
-func (ee *eventExecutor) executeEventAndUpdateListIfApplicable(ctx *sql.Context, event *enabledEvent, executionTime time.Time) error {
+// executeEventAndUpdateList executes the given event and updates the event's last executed time in the database.
+// If the event is not ended, then it updates the enabled event and re-adds it back to the list.
+func (ee *eventExecutor) executeEventAndUpdateList(ctx *sql.Context, event *enabledEvent, executionTime time.Time) error {
 	reAdd, qErr, tErr := ee.executeEvent(event)
 	if tErr != nil {
 		return fmt.Errorf("error from background thread: %s", tErr)
@@ -127,9 +125,9 @@ func (ee *eventExecutor) executeEventAndUpdateListIfApplicable(ctx *sql.Context,
 	return nil
 }
 
-// executeEvent adds another background thread to run the given event's definition query.
-// This function returns whether the event needs to be added back into the enabled events list,
-// error returned from executing the event definition and thread error.
+// executeEvent executes given event by adding a thread to background threads to run the given event's definition.
+// This function returns whether the event needs to be added back into the enabled events list, error returned from
+// executing the event definition and thread error.
 func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) {
 	ee.runningEventsStatus.update(event.name(), true, true)
 	defer ee.runningEventsStatus.remove(event.name())
@@ -151,19 +149,20 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 			ee.stop.Store(true)
 			return
 		default:
-			// get new session sql context for each event definition execution
-			sqlCtx, commit, err := ee.ctxGetter()
+			// get a new session sql.Context for each event definition execution
+			sqlCtx, commit, err := ee.ctxGetterFunc()
 			if err != nil {
 				queryErr = err
 				return
 			}
 
-			queryErr = ee.runQueryFunc(sqlCtx, event.edb.Name(), event.eventDetails.Definition, event.username, event.address)
+			queryErr = ee.queryRunFunc(sqlCtx, event.edb.Name(), event.eventDetails.Definition, event.username, event.address)
 			if queryErr != nil {
 				queryErr = err
 				return
 			}
 
+			// must commit after done using the sql.Context
 			err = commit()
 			if err != nil {
 				queryErr = err
@@ -175,16 +174,16 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error, error) 
 	return reAdd, queryErr, threadErr
 }
 
-// reevaluateEvent creates new enabledEvent only if the event being created is at ENABLE status
-// with valid schedule. This function is used when the event misses the check time of event execution
-// for some reason.
+// reevaluateEvent evaluates an event from enabled events list, but its execution time passed the current time.
+// It creates new enabledEvent if the event being created is at ENABLE status with valid schedule.
+// This function is used when the event misses the execution time check of the event.
 func (ee *eventExecutor) reevaluateEvent(edb sql.EventDatabase, details sql.EventDetails) {
 	// if the updated event status is not ENABLE, do not add it to the list.
 	if details.Status != sql.EventStatus_Enable.String() {
 		return
 	}
 
-	ctx, commit, err := ee.ctxGetter()
+	ctx, commit, err := ee.ctxGetterFunc()
 	if err != nil {
 		ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
 	}
@@ -203,9 +202,8 @@ func (ee *eventExecutor) reevaluateEvent(edb sql.EventDatabase, details sql.Even
 	return
 }
 
-// addEvent creates new enabledEvent only if the event being created is at ENABLE status
-// with valid schedule. If the updated event's schedule is starting at the same time
-// as created time, it executes immediately.
+// addEvent creates new enabledEvent if the event being created is at ENABLE status with valid schedule.
+// If the updated event's schedule is starting at the same time as created time, it executes immediately.
 func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDetails) {
 	// if the updated event status is not ENABLE, do not add it to the list.
 	if details.Status != sql.EventStatus_Enable.String() {
@@ -227,7 +225,7 @@ func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, detai
 		}
 		if firstExecutionTime.Sub(newDetails.Created).Abs().Seconds() <= 1 {
 			// after execution, the event is added to the list if applicable (if the event is not ended)
-			err = ee.executeEventAndUpdateListIfApplicable(ctx, newEvent, newDetails.Created)
+			err = ee.executeEventAndUpdateList(ctx, newEvent, newDetails.Created)
 			if err != nil {
 				ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, details.Name)
 				return
@@ -239,11 +237,9 @@ func (ee *eventExecutor) addEvent(ctx *sql.Context, edb sql.EventDatabase, detai
 	return
 }
 
-// updateEvent removes the event from enabled events list if it exists. If the updated event status
-// is ENABLE, then it creates new enabled event and adds to the enabled events list.
-// This function make sure the events that are disabled or expired do not get added to the
-// enabled events list. If the new event's schedule is starting at the same time as last altered
-// time, it executes immediately.
+// updateEvent removes the event from enabled events list if it exists and adds new enabledEvent if the event status
+// is ENABLE and event schedule is not expired. If the new event's schedule is starting at the same time as
+// last altered time, it executes immediately.
 func (ee *eventExecutor) updateEvent(ctx *sql.Context, edb sql.EventDatabase, origEventName string, details sql.EventDetails) {
 	var origEventKeyName = fmt.Sprintf("%s.%s", edb.Name(), origEventName)
 	// remove the original event if exists.
@@ -266,10 +262,8 @@ func (ee *eventExecutor) updateEvent(ctx *sql.Context, edb sql.EventDatabase, or
 			ee.runningEventsStatus.update(origEventKeyName, s, false)
 		}
 
-		// if STARTS is set to current_timestamp or not set,
-		// then executeEvent the event once and update lastExecuted.
 		if newDetails.Starts.Sub(newDetails.LastAltered).Abs().Seconds() <= 1 {
-			err = ee.executeEventAndUpdateListIfApplicable(ctx, newUpdatedEvent, newDetails.LastAltered)
+			err = ee.executeEventAndUpdateList(ctx, newUpdatedEvent, newDetails.LastAltered)
 			if err != nil {
 				ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, newDetails.Name)
 				return

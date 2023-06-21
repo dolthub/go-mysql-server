@@ -257,10 +257,9 @@ func (c *CreateEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNoti
 	return &nc
 }
 
-// GetEventDetails returns eventDetails based on CreateEvent object.
-// It expects all timestamp and interval values to be resolved.
-// This function gets called either from RowIter of CreateEvent plan,
-// or from analyzer getting EventDetails from EventDefinition retrieved from a database.
+// GetEventDetails returns eventDetails based on CreateEvent object. It expects all timestamp and interval values
+// to be resolved. This function gets called either from RowIter of CreateEvent plan, or from analyzer getting
+// EventDetails from EventDefinition retrieved from a database.
 func (c *CreateEvent) GetEventDetails(ctx *sql.Context, eventCreationTime, lastAltered, lastExecuted time.Time, tz string) (sql.EventDetails, error) {
 	// TODO: support DISABLE ON SLAVE event status
 	if c.Status == sql.EventStatus_DisableOnSlave {
@@ -497,9 +496,8 @@ func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}
 	panic("OnScheduleTimestamp.Eval is just a placeholder method and should not be called directly")
 }
 
-// EvalTime returns time.Time value converted to UTC evaluating given expressions
-// as expected to be time value and optional interval values. The value returned
-// is time.Time value from timestamp value plus all intervals given.
+// EvalTime returns time.Time value converted to UTC evaluating given expressions as expected to be time value
+// and optional interval values. The value returned is time.Time value from timestamp value plus all intervals given.
 func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time, error) {
 	value, err := ost.timestamp.Eval(ctx, nil)
 	if err != nil {

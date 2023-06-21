@@ -193,9 +193,6 @@ func InitSystemVariables() {
 
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
-//
-//	Also needs to have access to engine to allow some variable modification
-//	to notify engine to update some configuration such as Event Scheduler.
 func init() {
 	InitSystemVariables()
 }

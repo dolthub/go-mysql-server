@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// enabledEvent is used for the events list stored in EventScheduler
+// enabledEvent is used for storing a list of events that are enabled in EventScheduler.
 type enabledEvent struct {
 	edb             sql.EventDatabase
 	eventDetails    sql.EventDetails
@@ -33,13 +33,11 @@ type enabledEvent struct {
 	address         string
 }
 
-// newEnabledEventFromEventDetails returns new enabledEvent and whether it is created successfully.
-// An event with ENABLE status might NOT be created if the event SCHEDULE is ended/expired. If the
-// event is expired, then this function either updates its status in the database or drops it from
-// the database.
+// newEnabledEventFromEventDetails returns new enabledEvent object and whether it is created successfully. An event
+// with ENABLE status might NOT be created if the event SCHEDULE is ended/expired. If the event is expired,
+// then this function either updates its status in the database or drops it from the database.
 func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed sql.EventDetails, curTime time.Time) (*enabledEvent, bool, error) {
 	if ed.Status == sql.EventStatus_Enable.String() {
-		// evaluating each event schedules by updating/dropping events if applicable
 		nextExecution, eventEnded, err := ed.GetNextExecutionTime(curTime)
 		if err != nil {
 			return nil, false, err
@@ -57,7 +55,6 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 			}, true, nil
 		} else {
 			if ed.OnCompletionPreserve {
-				// update status to DISABLE
 				ed.Status = sql.EventStatus_Disable.String()
 				err = edb.UpdateEvent(ctx, ed.Name, ed)
 				if err != nil {
@@ -91,15 +88,14 @@ func getUsernameAndAddressFromDefiner(definer string) (string, string, error) {
 	return username, address, nil
 }
 
-// Name returns 'database_name.event_name' used as a key for mapping unique events.
+// name returns 'database_name.event_name' used as a key for mapping unique events.
 func (e *enabledEvent) name() string {
 	return fmt.Sprintf("%s.%s", e.edb.Name(), e.eventDetails.Name)
 }
 
-// updateEventAfterExecution updates the event's LastExecuted metadata with given execution time
-// and returns whether the event SCHEDULE is ended/expired. If the event SCHEDULE is not ended,
-// this function updates the enabledEvent with the next execution time. It also updates the event
-// metadata in the database.
+// updateEventAfterExecution updates the event's LastExecuted metadata with given execution time and returns whether
+// the event is expired. If the event is not expired, this function updates the given enabledEvent with the next
+// execution time. If expired, it updates the event's metadata in the database or drop the event from the database.
 func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.EventDatabase, executionTime time.Time) (bool, error) {
 	var nextExecutionAt time.Time
 	var ended bool
@@ -139,14 +135,14 @@ func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.Event
 }
 
 // enabledEventsList is a list of enabled events of all databases that the eventExecutor
-// uses to executeEvent them at the scheduled time.
+// uses to execute them at the scheduled time.
 type enabledEventsList struct {
 	mu         *sync.Mutex
 	eventsList []*enabledEvent
 }
 
-// newEnabledEventsList returns new enabledEventsList object
-// with the enabledEvent list sorted by the nextExecutionAt time.
+// newEnabledEventsList returns new enabledEventsList object with the given
+// enabledEvent list and sorts it by the nextExecutionAt time.
 func newEnabledEventsList(list []*enabledEvent) *enabledEventsList {
 	newList := &enabledEventsList{
 		mu:         &sync.Mutex{},
@@ -158,6 +154,7 @@ func newEnabledEventsList(list []*enabledEvent) *enabledEventsList {
 	return newList
 }
 
+// clear sets the current list to empty list.
 func (l *enabledEventsList) clear() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -165,12 +162,14 @@ func (l *enabledEventsList) clear() {
 	l.eventsList = []*enabledEvent{}
 }
 
+// len returns the length of the current list.
 func (l *enabledEventsList) len() int {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return len(l.eventsList)
 }
 
+// getNextExecutionTime returns the execution time of the first enabledEvent in the current list.
 func (l *enabledEventsList) getNextExecutionTime() (time.Time, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -237,6 +236,7 @@ type runningEventsStatus struct {
 	reAdd  map[string]bool
 }
 
+// newRunningEventsStatus returns new empty runningEventsStatus object.
 func newRunningEventsStatus() *runningEventsStatus {
 	return &runningEventsStatus{
 		mu:     &sync.Mutex{},
@@ -245,6 +245,7 @@ func newRunningEventsStatus() *runningEventsStatus {
 	}
 }
 
+// clear removes all entries from runningEventsStatus object maps.
 func (r *runningEventsStatus) clear() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -256,6 +257,7 @@ func (r *runningEventsStatus) clear() {
 	}
 }
 
+// update updates the runningEventsStatus object maps with given key and values.
 func (r *runningEventsStatus) update(key string, status, reAdd bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -263,12 +265,14 @@ func (r *runningEventsStatus) update(key string, status, reAdd bool) {
 	r.reAdd[key] = reAdd
 }
 
+// remove removes an entry from runningEventsStatus object maps with given key.
 func (r *runningEventsStatus) remove(key string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.status, key)
 }
 
+// getStatus returns the status of the event at given key.
 func (r *runningEventsStatus) getStatus(key string) (bool, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -276,6 +280,7 @@ func (r *runningEventsStatus) getStatus(key string) (bool, bool) {
 	return s, ok
 }
 
+// getAdd returns the whether to re-add the event at given key.
 func (r *runningEventsStatus) getReAdd(key string) (bool, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -283,6 +288,7 @@ func (r *runningEventsStatus) getReAdd(key string) (bool, bool) {
 	return ra, ok
 }
 
+// removeSchemaEvents removes all events of given database name.
 func (r *runningEventsStatus) removeSchemaEvents(dbName string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

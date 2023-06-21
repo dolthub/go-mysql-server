@@ -192,9 +192,8 @@ func (e *EventDetails) ConvertTimesFromUTCToTz(tz string) *EventDetails {
 	return &ne
 }
 
-// GetNextExecutionTime returns the next execution timestamp for the event,
-// which depends on AT or EVERY field of EventDetails. It also returns whether
-// the event is ended/expired.
+// GetNextExecutionTime returns the next execution time for the event, which depends on AT
+// or EVERY field of EventDetails. It also returns whether the event is expired.
 func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool, error) {
 	if e.HasExecuteAt {
 		return e.ExecuteAt, e.ExecuteAt.Sub(curTime).Seconds() <= -1, nil
@@ -204,27 +203,28 @@ func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool,
 			return time.Time{}, true, err
 		}
 		// check for last executed, if not set, get the next time by incrementing the start time by interval
+		// use 'last executed' time if the event was executed before; otherwise, use 'starts' time
 		startTime := e.Starts
 		if !e.LastExecuted.IsZero() && e.LastExecuted.Sub(e.Starts).Seconds() > 0 {
 			startTime = e.LastExecuted
 		}
 
-		// startTime > curTime, event hasn't executed yet, so execute at startTime
+		// if startTime > curTime, then event hasn't executed yet, so execute at startTime
 		if startTime.Sub(curTime).Seconds() > 0 {
 			return startTime, false, nil
 		}
-		// endTime is defined and endTime < curTime, event is ended
+		// if endTime is defined and endTime < curTime, then event is ended
 		if e.HasEnds && e.Ends.Sub(curTime).Seconds() < 0 {
 			return time.Time{}, true, nil
 		}
 
 		diffToNext := (int64(curTime.Sub(startTime).Seconds()/timeDur.Seconds()) + 1) * int64(timeDur.Seconds())
 		nextTime := startTime.Add(time.Duration(diffToNext) * time.Second)
-		// this shouldn't happen, but sanity check. TODO: remove
+		// sanity check
 		for nextTime.Sub(curTime).Seconds() < 0 {
 			nextTime = nextTime.Add(timeDur)
 		}
-		// if the next execution time is past end time, then the event is completed.
+		// if the next execution time is past the endTime, then the event is expired.
 		if e.HasEnds && e.Ends.Sub(nextTime).Seconds() < 0 {
 			return time.Time{}, true, nil
 		}
@@ -232,6 +232,7 @@ func (e *EventDetails) GetNextExecutionTime(curTime time.Time) (time.Time, bool,
 	}
 }
 
+// getTimeDurationFromEveryInterval returns time.Duration converting the given EVERY interval.
 func getTimeDurationFromEveryInterval(every string) (time.Duration, error) {
 	everyInterval, err := EventOnScheduleEveryIntervalFromString(every)
 	if err != nil {
@@ -304,10 +305,8 @@ func NewEveryInterval(y, mo, d, h, mi, s int64) *EventOnScheduleEveryInterval {
 	}
 }
 
-// GetIntervalValAndField returns ON SCHEDULE EVERY clause's
-// interval value and field type in string format
-// (e.g. returns "'1:2'" and "MONTH_DAY" for 1 month and 2 day
-// or returns "4" and "HOUR" for 4 hour intervals).
+// GetIntervalValAndField returns ON SCHEDULE EVERY clause's interval value and field type in string format
+// (e.g. returns "'1:2'" and "MONTH_DAY" for 1 month and 2 day or returns "4" and "HOUR" for 4 hour intervals).
 func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string) {
 	if e == nil {
 		return "", ""
@@ -348,9 +347,9 @@ func (e *EventOnScheduleEveryInterval) GetIntervalValAndField() (string, string)
 	return fmt.Sprintf("'%s'", strings.Join(val, ":")), strings.Join(field, "_")
 }
 
-// EventOnScheduleEveryIntervalFromString returns *EventOnScheduleEveryInterval parsing
-// given interval string such as `2 DAY` or `'1:2' MONTH_DAY`. This function is used in Dolt to construct
-// EventOnScheduleEveryInterval value for the EventDetails.
+// EventOnScheduleEveryIntervalFromString returns *EventOnScheduleEveryInterval parsing given interval string
+// such as `2 DAY` or `'1:2' MONTH_DAY`. This function is used in Dolt to construct EventOnScheduleEveryInterval value
+// for the EventDetails.
 func EventOnScheduleEveryIntervalFromString(every string) (*EventOnScheduleEveryInterval, error) {
 	errCannotParseEveryInterval := fmt.Errorf("cannot parse ON SCHEDULE EVERY interval: `%s`", every)
 	strs := strings.Split(every, " ")
@@ -395,7 +394,9 @@ func EventOnScheduleEveryIntervalFromString(every string) (*EventOnScheduleEvery
 	return interval, nil
 }
 
-// Events time parsing
+// -------------------------
+//  Events datetime parsing
+// -------------------------
 
 var ErrIncorrectValue = errors.NewKind("Incorrect %s value: '%s'")
 var dateRegex = regexp.MustCompile(`(?m)^(\d{1,4})-(\d{1,2})-(\d{1,2})(.*)$`)
