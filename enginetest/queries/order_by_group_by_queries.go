@@ -108,10 +108,8 @@ var OrderByGroupByScriptTests = []ScriptTest{
 					{2, []uint8("def")},
 				},
 			},
-			// These should work without the order by, but we don't implement functional dependencies correctly
 			{
 				Query:    "select binary s from t group by binary s order by s",
-				Skip: true,
 				Expected: []sql.Row{
 					{[]uint8("abc")},
 					{[]uint8("def")},

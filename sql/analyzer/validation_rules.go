@@ -296,7 +296,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 		var groupBys []string
 		for _, expr := range gb.GroupByExprs {
-			groupBys = append(groupBys, expr.String())
+			groupBys = append(groupBys, strings.ToLower(expr.String()))
 		}
 
 		for _, expr := range gb.SelectedExprs {
@@ -320,7 +320,7 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 		case nil, sql.Aggregation, *expression.Literal:
 			return false
 		case *expression.Alias, sql.FunctionExpression:
-			if stringContains(groupBys, expr.String()) {
+			if stringContains(groupBys, strings.ToLower(expr.String())) {
 				return false
 			}
 			return true
@@ -328,8 +328,8 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 		// Each part of the SelectExpr must refer to the aggregated columns in some way
 		// TODO: this isn't complete, it's overly restrictive. Dependant columns are fine to reference.
 		default:
-			if stringContains(groupBys, expr.String()) {
-				return true
+			if stringContains(groupBys, strings.ToLower(expr.String())) {
+				return false
 			}
 
 			if len(expr.Children()) == 0 {
