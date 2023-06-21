@@ -2651,26 +2651,26 @@ Select * from (
 		Expected: []sql.Row{{1}, {1}, {1}},
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s = 'first row'`,
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s = 'first row'`,
 		Expected: []sql.Row{
 			{1, "first row"},
 		},
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s in ('first row', 'first row', 'first row');`,
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s in ('first row', 'first row', 'first row');`,
 		Expected: []sql.Row{
 			{1, "first row"},
 		},
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s != 'first row';`,
+		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s != 'first row';`,
 		Expected: []sql.Row{
 			{2, "second row"},
 			{3, "third row"},
 		},
 	},
 	{
-		Query:    `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s NOT in ('first row', 'first row', 'first row');`,
+		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s NOT in ('first row', 'first row', 'first row');`,
 		Expected: []sql.Row{
 			{2, "second row"},
 			{3, "third row"},
