@@ -17,6 +17,7 @@ package rowexec
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
 
 	"github.com/cespare/xxhash"
@@ -248,7 +249,10 @@ func groupingKey(
 
 		t, isStringType := expr.Type().(sql.StringType)
 		if isStringType && v != nil {
-			err = t.Collation().WriteWeightString(hash, v.(string))
+			v, err = types.ConvertToString(v, t)
+			if err == nil {
+				err = t.Collation().WriteWeightString(hash, v.(string))
+			}
 		} else {
 			_, err = fmt.Fprintf(hash, "%v", v)
 		}

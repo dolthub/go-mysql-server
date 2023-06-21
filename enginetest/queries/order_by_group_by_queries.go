@@ -86,6 +86,40 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Group by BINARY: https://github.com/dolthub/dolt/issues/6179",
+		SetUpScript: []string{
+			"create table t (s varchar(100));",
+			"insert into t values ('abc'), ('def');",
+			"create table t1 (b binary(3));",
+			"insert into t1 values ('abc'), ('abc'), ('def'), ('abc'), ('def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select binary s from t group by binary s order by binary s",
+				Expected: []sql.Row{
+					{[]uint8("abc")},
+					{[]uint8("def")},
+				},
+			},
+			{
+				Query:    "select count(b), b from t1 group by b order by b",
+				Expected: []sql.Row{
+					{3, []uint8("abc")},
+					{2, []uint8("def")},
+				},
+			},
+			// These should work without the order by, but we don't implement functional dependencies correctly
+			{
+				Query:    "select binary s from t group by binary s order by s",
+				Skip: true,
+				Expected: []sql.Row{
+					{[]uint8("abc")},
+					{[]uint8("def")},
+				},
+			},
+		},
+	},
+	{
 		Name: "https://github.com/dolthub/dolt/issues/3016",
 		SetUpScript: []string{
 			"CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT,  `username` varchar(255) NOT NULL,  PRIMARY KEY (`id`));",
