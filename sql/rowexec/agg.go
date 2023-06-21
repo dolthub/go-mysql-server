@@ -17,13 +17,13 @@ package rowexec
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
 
 	"github.com/cespare/xxhash"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type groupByIter struct {

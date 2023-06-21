@@ -95,21 +95,21 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select binary s from t group by binary s order by binary s",
+				Query: "select binary s from t group by binary s order by binary s",
 				Expected: []sql.Row{
 					{[]uint8("abc")},
 					{[]uint8("def")},
 				},
 			},
 			{
-				Query:    "select count(b), b from t1 group by b order by b",
+				Query: "select count(b), b from t1 group by b order by b",
 				Expected: []sql.Row{
 					{3, []uint8("abc")},
 					{2, []uint8("def")},
 				},
 			},
 			{
-				Query:    "select binary s from t group by binary s order by s",
+				Query: "select binary s from t group by binary s order by s",
 				Expected: []sql.Row{
 					{[]uint8("abc")},
 					{[]uint8("def")},
