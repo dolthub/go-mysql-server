@@ -4963,13 +4963,13 @@ Select * from (
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", ""},
+			{"autocommit", 1}, {"version", "8.0.11"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name > 'version' and variable_name like '%_%'`,
 		Expected: []sql.Row{
-			{"version_comment", ""}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
+			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
 		},
 	},
 	{
