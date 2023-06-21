@@ -127,22 +127,13 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 // subqueries that reference the deferred column. Additionally, we have to check for subqueries in functions arguments
 func findDeferredColumns(exprs ...sql.Expression) []column {
 	var deferredColumns []column
-	for _, e := range exprs {
-		if a, ok := e.(*expression.Alias); ok {
-			e = a.Child
-		}
-
-		switch e := e.(type) {
-		case *plan.Subquery:
-			deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(e.Query)...)
-		case sql.FunctionExpression:
-			for _, arg := range e.Children() {
-				innerCols := findDeferredColumns(arg)
-				if len(innerCols) > 0 {
-					deferredColumns = append(deferredColumns, innerCols...)
-				}
+	for _, expr := range exprs {
+		transform.InspectExpr(expr, func(e sql.Expression) bool {
+			if sq, ok := e.(*plan.Subquery); ok {
+				deferredColumns = append(deferredColumns, findDeferredColumnsAndAliasReferences(sq.Query)...)
 			}
-		}
+			return false
+		})
 	}
 	return deferredColumns
 }
