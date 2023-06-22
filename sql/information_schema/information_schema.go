@@ -1073,7 +1073,7 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		for name, progress := range proc.Progress {
 			status = append(status, fmt.Sprintf("%s(%s)", name, progress))
 		}
-		if len(status) == 0 {
+		if len(status) == 0 && proc.Command == ProcessCommandQuery {
 			status = []string{"running"}
 		}
 		sort.Strings(status)
@@ -1082,7 +1082,7 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			proc.User,                    // user
 			ctx.Session.Client().Address, // host
 			db,                           // db
-			"Query",                      // command
+			string(proc.Command),         // command
 			int32(proc.Seconds()),        // time
 			strings.Join(status, ", "),   // state
 			proc.Query,                   // info
