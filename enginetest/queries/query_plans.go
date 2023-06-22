@@ -78,7 +78,7 @@ var PlanTests = []QueryPlanTest{
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (tinyint))\n" +
 			"     ├─ group: \n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: xy\n" +
 			"         │   └─ columns: []\n" +
@@ -1426,7 +1426,7 @@ Select * from (
 		Query: `select * from ab where exists (select * from uv where a = 1)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:0!null, ab.b:1]\n" +
-			" └─ CrossJoin\n" +
+			" └─ CrossHashJoin\n" +
 			"     ├─ IndexedTableAccess(ab)\n" +
 			"     │   ├─ index: [ab.a]\n" +
 			"     │   ├─ static: [{[1, 1]}]\n" +
@@ -1445,7 +1445,7 @@ Select * from (
 		Query: `select * from ab where exists (select * from ab where a = 1)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:0!null, ab.b:1]\n" +
-			" └─ CrossJoin\n" +
+			" └─ CrossHashJoin\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: ab\n" +
 			"     │   └─ columns: [a b]\n" +
@@ -1647,7 +1647,7 @@ Select * from (
 		Query: `SELECT i FROM mytable WHERE EXISTS (SELECT * FROM (SELECT count(*) as u, 123 as v FROM emptytable) uv);`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i:2!null]\n" +
-			" └─ CrossJoin\n" +
+			" └─ CrossHashJoin\n" +
 			"     ├─ Limit(1)\n" +
 			"     │   └─ SubqueryAlias\n" +
 			"     │       ├─ name: uv\n" +
@@ -1916,15 +1916,15 @@ select * from
 inner join uv on true
 inner join pq on true
 `,
-		ExpectedPlan: "CrossJoin\n" +
-			" ├─ CrossJoin\n" +
+		ExpectedPlan: "CrossHashJoin\n" +
+			" ├─ CrossHashJoin\n" +
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: alias1\n" +
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [ab.a:2!null, ab.b:3, xy.x:0!null, xy.y:1]\n" +
-			" │   │       └─ CrossJoin\n" +
+			" │   │       └─ CrossHashJoin\n" +
 			" │   │           ├─ Table\n" +
 			" │   │           │   ├─ name: xy\n" +
 			" │   │           │   └─ columns: [x y]\n" +
@@ -3548,7 +3548,7 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
-		ExpectedPlan: "CrossJoin\n" +
+		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: mytable\n" +
@@ -3569,7 +3569,7 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
-		ExpectedPlan: "CrossJoin\n" +
+		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: mytable\n" +
@@ -3691,7 +3691,7 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
-			" └─ CrossJoin\n" +
+			" └─ CrossHashJoin\n" +
 			"     ├─ TableAlias(d)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -3837,7 +3837,7 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.i`,
-		ExpectedPlan: "CrossJoin\n" +
+		ExpectedPlan: "CrossHashJoin\n" +
 			" ├─ TableAlias(b)\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: mytable\n" +
@@ -3958,7 +3958,7 @@ inner join pq on true
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:3!null, a.s:4!null]\n" +
-			" └─ CrossJoin\n" +
+			" └─ CrossHashJoin\n" +
 			"     ├─ TableAlias(d)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -4286,7 +4286,7 @@ inner join pq on true
 		Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [tabletest.i:0!null, tabletest.s:1!null, mt.i:4!null, mt.s:5!null, ot.s2:2!null, ot.i2:3!null]\n" +
-			" └─ CrossJoin\n" +
+			" └─ CrossHashJoin\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: tabletest\n" +
 			"     │   └─ columns: [i s]\n" +
@@ -5840,7 +5840,7 @@ inner join pq on true
 		ExpectedPlan: "Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:1!null ASC nullsFirst, two_pk.pk2:2!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [one_pk.pk:2!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: two_pk\n" +
 			"         │   └─ columns: [pk1 pk2]\n" +
@@ -6029,7 +6029,7 @@ inner join pq on true
 		ExpectedPlan: "Sort(t1.pk:0!null ASC nullsFirst, t2.pk2:1!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [t1.pk:1!null, t2.pk2:0!null]\n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ t2.pk2:0!null\n" +
@@ -6058,7 +6058,7 @@ inner join pq on true
 		ExpectedPlan: "Sort(t1.pk:0!null ASC nullsFirst, t2.pk1:1!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [t1.pk:2!null, t2.pk1:0!null, t2.pk2:1!null]\n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
@@ -6176,7 +6176,7 @@ inner join pq on true
 			"     │           ├─ static: [{[1, 1]}]\n" +
 			"     │           └─ columns: [pk]\n" +
 			"     │   as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ t2.pk2:1!null\n" +
@@ -6502,7 +6502,7 @@ inner join pq on true
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.pk:7!null\n" +
 			"     │       └─ a.pk:1!null\n" +
-			"     ├─ CrossJoin\n" +
+			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -6541,7 +6541,7 @@ inner join pq on true
 			"         ├─ left-key: TUPLE(b.pk:0!null, b.pk:0!null)\n" +
 			"         ├─ right-key: TUPLE(c.pk:0!null, a.pk:1!null)\n" +
 			"         └─ CachedResults\n" +
-			"             └─ CrossJoin\n" +
+			"             └─ CrossHashJoin\n" +
 			"                 ├─ TableAlias(c)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk\n" +
@@ -6594,7 +6594,7 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ c.pk:6!null\n" +
 			"     │   └─ d.pk:8!null\n" +
-			"     ├─ CrossJoin\n" +
+			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
@@ -6642,7 +6642,7 @@ inner join pq on true
 			"         ├─ left-key: TUPLE(b.pk:0!null)\n" +
 			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
 			"         └─ CachedResults\n" +
-			"             └─ CrossJoin\n" +
+			"             └─ CrossHashJoin\n" +
 			"                 ├─ TableAlias(c)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk\n" +
@@ -6666,7 +6666,7 @@ inner join pq on true
 			"         ├─ Eq\n" +
 			"         │   ├─ tabletest.i:2!null\n" +
 			"         │   └─ ot.i2:5!null\n" +
-			"         ├─ CrossJoin\n" +
+			"         ├─ CrossHashJoin\n" +
 			"         │   ├─ TableAlias(mt)\n" +
 			"         │   │   └─ Table\n" +
 			"         │   │       ├─ name: mytable\n" +
@@ -6712,7 +6712,7 @@ inner join pq on true
 			"             ├─ left-key: TUPLE(c.v1:0)\n" +
 			"             ├─ right-key: TUPLE(b.pk:0!null)\n" +
 			"             └─ CachedResults\n" +
-			"                 └─ CrossJoin\n" +
+			"                 └─ CrossHashJoin\n" +
 			"                     ├─ TableAlias(b)\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: one_pk_three_idx\n" +
@@ -6735,7 +6735,7 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ b.pk:0!null\n" +
 			"     │   └─ c.v1:3\n" +
-			"     ├─ CrossJoin\n" +
+			"     ├─ CrossHashJoin\n" +
 			"     │   ├─ Filter\n" +
 			"     │   │   ├─ Eq\n" +
 			"     │   │   │   ├─ b.pk:0!null\n" +
@@ -6783,7 +6783,7 @@ inner join pq on true
 			"                 ├─ name: a\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 └─ CrossJoin\n" +
+			"                 └─ CrossHashJoin\n" +
 			"                     ├─ TableAlias(b)\n" +
 			"                     │   └─ Table\n" +
 			"                     │       ├─ name: mytable\n" +
@@ -7363,7 +7363,7 @@ inner join pq on true
 		ExpectedPlan: "Sort(t1.pk:0!null ASC nullsFirst, t2.pk1:1!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [t1.pk:2!null, t2.pk1:0!null, t2.pk2:1!null]\n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
@@ -8354,7 +8354,7 @@ With c as (
 			"     │       └─ 0 (tinyint)\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ TopN(Limit: [1 (tinyint)]; a.pk:0!null ASC nullsFirst, b.i:1!null ASC nullsFirst)\n" +
-			"             └─ CrossJoin\n" +
+			"             └─ CrossHashJoin\n" +
 			"                 ├─ TableAlias(a)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk\n" +
@@ -8382,7 +8382,7 @@ With c as (
 			"     │       └─ 0 (tinyint)\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ TopN(Limit: [1 (tinyint)]; a.pk:0!null DESC nullsFirst, b.i:1!null DESC nullsFirst)\n" +
-			"             └─ CrossJoin\n" +
+			"             └─ CrossHashJoin\n" +
 			"                 ├─ TableAlias(a)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk\n" +
@@ -8401,7 +8401,7 @@ With c as (
 		Query: `SELECT * FROM (SELECT pk FROM one_pk WHERE pk < 2 LIMIT 1) a JOIN (SELECT i FROM mytable WHERE i > 1 LIMIT 1) b WHERE pk >= 2;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
-			" └─ CrossJoin\n" +
+			" └─ CrossHashJoin\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: b\n" +
 			"     │   ├─ outerVisibility: false\n" +
@@ -8470,7 +8470,7 @@ WHERE keyless.c0 IN (
 			"         │               ├─ Eq\n" +
 			"         │               │   ├─ cte.j:4\n" +
 			"         │               │   └─ keyless.c0:0\n" +
-			"         │               └─ CrossJoin\n" +
+			"         │               └─ CrossHashJoin\n" +
 			"         │                   ├─ SubqueryAlias\n" +
 			"         │                   │   ├─ name: cte\n" +
 			"         │                   │   ├─ outerVisibility: true\n" +
@@ -8552,7 +8552,7 @@ WHERE keyless.c0 IN (
 			"         │               ├─ Eq\n" +
 			"         │               │   ├─ cte.j:4\n" +
 			"         │               │   └─ keyless.c0:0\n" +
-			"         │               └─ CrossJoin\n" +
+			"         │               └─ CrossHashJoin\n" +
 			"         │                   ├─ SubqueryAlias\n" +
 			"         │                   │   ├─ name: cte\n" +
 			"         │                   │   ├─ outerVisibility: true\n" +
@@ -10996,7 +10996,7 @@ WHERE
 			" │                               └─ columns: [id nfryn ixuxu fhcyt]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [AOEV5.T4IBQ:0!null as T4IBQ, VUMUY.DL754:1!null, VUMUY.BDNYB:2!null, VUMUY.ADURZ:3!null, VUMUY.TPXBU:4, VUMUY.NO52D:5!null, VUMUY.IDPK7:6!null]\n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: AOEV5\n" +
 			"         │   ├─ outerVisibility: false\n" +
@@ -11357,7 +11357,7 @@ WHERE
 			" │                               └─ columns: [id nfryn ixuxu fhcyt]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [AOEV5.T4IBQ:0!null as T4IBQ, VUMUY.DL754:1!null, VUMUY.BDNYB:2!null, VUMUY.ADURZ:3!null, VUMUY.TPXBU:4, VUMUY.NO52D:5!null, VUMUY.IDPK7:6!null]\n" +
-			"     └─ CrossJoin\n" +
+			"     └─ CrossHashJoin\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: AOEV5\n" +
 			"         │   ├─ outerVisibility: false\n" +
@@ -11821,7 +11821,7 @@ WHERE
 			"         │       │                   ├─ index: [F35MI.id]\n" +
 			"         │       │                   └─ columns: [id dzlim]\n" +
 			"         │       │   as SJ5DU]\n" +
-			"         │       └─ CrossJoin\n" +
+			"         │       └─ CrossHashJoin\n" +
 			"         │           ├─ TableAlias(nd)\n" +
 			"         │           │   └─ Table\n" +
 			"         │           │       ├─ name: E2I7U\n" +
@@ -14317,7 +14317,7 @@ WHERE
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [RSA3Y.T4IBQ:0!null as T4IBQ, JMHIE.M6T2N:1 as M6T2N, JMHIE.BTXC5:2 as BTXC5, JMHIE.TUV25:3 as TUV25]\n" +
-			"     │       └─ CrossJoin\n" +
+			"     │       └─ CrossHashJoin\n" +
 			"     │           ├─ SubqueryAlias\n" +
 			"     │           │   ├─ name: RSA3Y\n" +
 			"     │           │   ├─ outerVisibility: false\n" +
@@ -15066,7 +15066,7 @@ WHERE
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [RSA3Y.T4IBQ:0!null as T4IBQ, JMHIE.M6T2N:1 as M6T2N, JMHIE.BTXC5:2 as BTXC5, JMHIE.TUV25:3 as TUV25]\n" +
-			"     │       └─ CrossJoin\n" +
+			"     │       └─ CrossHashJoin\n" +
 			"     │           ├─ SubqueryAlias\n" +
 			"     │           │   ├─ name: RSA3Y\n" +
 			"     │           │   ├─ outerVisibility: false\n" +

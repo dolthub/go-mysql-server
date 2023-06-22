@@ -10,33 +10,34 @@ func _() {
 	var x [1]struct{}
 	_ = x[JoinTypeUnknown-0]
 	_ = x[JoinTypeCross-1]
-	_ = x[JoinTypeInner-2]
-	_ = x[JoinTypeSemi-3]
-	_ = x[JoinTypeAnti-4]
-	_ = x[JoinTypeLeftOuter-5]
-	_ = x[JoinTypeLeftOuterExcludeNulls-6]
-	_ = x[JoinTypeFullOuter-7]
-	_ = x[JoinTypeGroupBy-8]
-	_ = x[JoinTypeRightOuter-9]
-	_ = x[JoinTypeLookup-10]
-	_ = x[JoinTypeLeftOuterLookup-11]
-	_ = x[JoinTypeHash-12]
-	_ = x[JoinTypeLeftOuterHash-13]
-	_ = x[JoinTypeLeftOuterHashExcludeNulls-14]
-	_ = x[JoinTypeMerge-15]
-	_ = x[JoinTypeLeftOuterMerge-16]
-	_ = x[JoinTypeSemiHash-17]
-	_ = x[JoinTypeAntiHash-18]
-	_ = x[JoinTypeSemiLookup-19]
-	_ = x[JoinTypeAntiLookup-20]
-	_ = x[JoinTypeSemiMerge-21]
-	_ = x[JoinTypeAntiMerge-22]
-	_ = x[JoinTypeNatural-23]
+	_ = x[JoinTypeCrossHash-2]
+	_ = x[JoinTypeInner-3]
+	_ = x[JoinTypeSemi-4]
+	_ = x[JoinTypeAnti-5]
+	_ = x[JoinTypeLeftOuter-6]
+	_ = x[JoinTypeLeftOuterExcludeNulls-7]
+	_ = x[JoinTypeFullOuter-8]
+	_ = x[JoinTypeGroupBy-9]
+	_ = x[JoinTypeRightOuter-10]
+	_ = x[JoinTypeLookup-11]
+	_ = x[JoinTypeLeftOuterLookup-12]
+	_ = x[JoinTypeHash-13]
+	_ = x[JoinTypeLeftOuterHash-14]
+	_ = x[JoinTypeLeftOuterHashExcludeNulls-15]
+	_ = x[JoinTypeMerge-16]
+	_ = x[JoinTypeLeftOuterMerge-17]
+	_ = x[JoinTypeSemiHash-18]
+	_ = x[JoinTypeAntiHash-19]
+	_ = x[JoinTypeSemiLookup-20]
+	_ = x[JoinTypeAntiLookup-21]
+	_ = x[JoinTypeSemiMerge-22]
+	_ = x[JoinTypeAntiMerge-23]
+	_ = x[JoinTypeNatural-24]
 }
 
-const _JoinType_name = "UnknownJoinCrossJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoin"
+const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoin"
 
-var _JoinType_index = [...]uint16{0, 11, 20, 29, 37, 45, 58, 85, 98, 109, 118, 128, 147, 155, 172, 201, 210, 228, 240, 252, 266, 280, 293, 306, 317}
+var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 71, 98, 111, 122, 131, 141, 160, 168, 185, 214, 223, 241, 253, 265, 279, 293, 306, 319, 330}
 
 func (i JoinType) String() string {
 	if i >= JoinType(len(_JoinType_index)-1) {

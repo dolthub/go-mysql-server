@@ -261,7 +261,7 @@ var JoinPlanningTests = []struct {
 			{
 				// anti join will be cross-join-right, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
 			{
@@ -276,7 +276,7 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCross, plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterHashExcludeNulls},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
@@ -305,7 +305,7 @@ order by 1;`,
 			{
 				// semi join will be right-side, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x = (select r from rs where r = 1) order by 1) sq order by 1,2",
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
 			},
 			//{
@@ -321,7 +321,7 @@ order by 1;`,
 			//  order by 1 limit 1
 			//)
 			//order by 1;`,
-			//types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeLookup},
+			//types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
 			//exp:   []sql.Row{{2, 2}, {3, 2}},
 			//},
 			{
@@ -459,7 +459,7 @@ WHERE EXISTS (
 			},
 			{
 				q:     `select * from xy where exists (select * from uv) and x = 0`,
-				types: []plan.JoinType{plan.JoinTypeCross},
+				types: []plan.JoinType{plan.JoinTypeCrossHash},
 				exp:   []sql.Row{{0, 2}},
 			},
 			{
@@ -503,7 +503,7 @@ FROM xy
 			},
 			{
 				q:     `select * from xy where exists (select * from uv join ab on u = a)`,
-				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}, {3, 3}},
 			},
 		},
