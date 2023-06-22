@@ -183,10 +183,18 @@ func (c *Convert) DebugString() string {
 	_ = pr.WriteNode("convert")
 	children := []string{
 		fmt.Sprintf("type: %v", c.castToType),
-		fmt.Sprintf("typeLength: %v", c.typeLength),
-		fmt.Sprintf("typeScale: %v", c.typeScale),
-		fmt.Sprintf(sql.DebugString(c.Child)),
 	}
+
+	if c.typeLength > 0 {
+		children = append(children, fmt.Sprintf("typeLength: %v", c.typeLength))
+	}
+
+	if c.typeScale > 0 {
+		children = append(children, fmt.Sprintf("typeScale: %v", c.typeScale))
+	}
+
+	children = append(children, fmt.Sprintf(sql.DebugString(c.Child)))
+
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
