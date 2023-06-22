@@ -1073,9 +1073,9 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 		sort.Strings(status)
 
-		db := proc.Database
-		if db == "" {
-			db = "NULL"
+		var db interface{}
+		if proc.Database != "" {
+			db = proc.Database
 		}
 
 		rows[i] = Row{

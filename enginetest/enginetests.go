@@ -284,7 +284,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		p.EndQuery(ctx2)
 
 		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist ORDER BY id", []sql.Row{
-			{uint64(1), "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"},
+			{uint64(1), "root", "localhost", nil, "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"},
 			{uint64(2), "root", "otherhost", "otherdb", "Sleep", 0, "", ""},
 		}, nil, nil)
 	})
