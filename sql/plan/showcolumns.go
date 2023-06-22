@@ -74,17 +74,7 @@ func (s *ShowColumns) Schema() sql.Schema {
 
 // Resolved implements the sql.Node interface.
 func (s *ShowColumns) Resolved() bool {
-	if !s.Child.Resolved() {
-		return false
-	}
-
-	for _, col := range s.targetSchema {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
+	return s.Child.Resolved() && s.targetSchema.Resolved()
 }
 
 func (s *ShowColumns) Expressions() []sql.Expression {

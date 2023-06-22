@@ -5683,6 +5683,36 @@ func TestAlterTable(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t40", []sql.Row{{1, 1}}, nil, nil)
 	})
+
+	TestScript(t, harness, queries.ScriptTest{
+		// https://github.com/dolthub/dolt/issues/6206
+		Name: "alter table containing column default value expressions",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 timestamp default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "alter table t alter column col2 DROP DEFAULT;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "alter table t drop index idx1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	})
 }
 
 func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {

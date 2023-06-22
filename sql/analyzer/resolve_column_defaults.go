@@ -173,19 +173,33 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Sc
 			col := sch[index]
 
 			eWrapper := expression.WrapExpression(node.Default)
-			newExpr, same, err := resolveColumnDefault(ctx, col, eWrapper)
+			newExpr, sameColumnDefault, err := resolveColumnDefault(ctx, col, eWrapper)
 			if err != nil {
 				return node, transform.SameTree, err
-			}
-			if same {
-				return node, transform.SameTree, nil
 			}
 
 			newNode, err := node.WithDefault(newExpr)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
-			return newNode, transform.NewTree, nil
+
+			// After resolving the new column default value, ensure all column defaults in the target schema are resolved
+			newNode, sameTargetSchema, err := transform.OneNodeExpressions(newNode, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, transform.SameTree, nil
+				}
+
+				col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				colIndex++
+
+				return resolveColumnDefault(ctx, col, eWrapper)
+			})
+
+			return newNode, sameColumnDefault && sameTargetSchema, err
 		case sql.SchemaTarget:
 			return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
@@ -338,7 +352,7 @@ func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex
 		if index == -1 {
 			return nil, sql.ErrTableColumnNotFound.New(n2.Table, n2.ColumnName)
 		}
-		return n2.Schema()[index], nil
+		return schema[index], nil
 	default:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
