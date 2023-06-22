@@ -275,16 +275,17 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 
 		p.AddConnection(2, "otherhost")
-		sess = sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 2)
-		p.ConnectionReady(sess)
-		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
+		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2.SetCurrentDatabase("otherdb")
+		p.ConnectionReady(sess2)
+		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
 		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
 
 		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist ORDER BY id", []sql.Row{
 			{uint64(1), "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"},
-			{uint64(2), "root", "localhost", "NULL", "Sleep", 0, "", ""},
+			{uint64(2), "root", "otherhost", "otherdb", "Sleep", 0, "", ""},
 		}, nil, nil)
 	})
 

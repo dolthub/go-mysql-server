@@ -80,6 +80,7 @@ func (pl *ProcessList) ConnectionReady(sess sql.Session) {
 		Host:       sess.Client().Address,
 		User:       sess.Client().User,
 		StartedAt:  time.Now(),
+		Database:   sess.GetCurrentDatabase(),
 	}
 }
 

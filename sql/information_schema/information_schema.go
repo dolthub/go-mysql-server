@@ -1063,11 +1063,6 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	processes := ctx.ProcessList.Processes()
 	var rows = make([]Row, len(processes))
 
-	db := ctx.GetCurrentDatabase()
-	if db == "" {
-		db = "NULL"
-	}
-
 	for i, proc := range processes {
 		var status []string
 		for name, progress := range proc.Progress {
@@ -1077,15 +1072,21 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			status = []string{"running"}
 		}
 		sort.Strings(status)
+
+		db := proc.Database
+		if db == "" {
+			db = "NULL"
+		}
+
 		rows[i] = Row{
-			uint64(proc.Connection),      // id
-			proc.User,                    // user
-			ctx.Session.Client().Address, // host
-			db,                           // db
-			string(proc.Command),         // command
-			int32(proc.Seconds()),        // time
-			strings.Join(status, ", "),   // state
-			proc.Query,                   // info
+			uint64(proc.Connection),        // id
+			proc.User,                      // user
+			proc.Host,                      // host
+			db,                             // db
+			string(proc.Command),           // command
+			int32(proc.Seconds()),          // time
+			strings.Join(status, ", "), // state
+			proc.Query,                     // info
 		}
 	}
 
