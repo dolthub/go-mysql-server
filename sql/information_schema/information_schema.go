@@ -1079,14 +1079,14 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		rows[i] = Row{
-			uint64(proc.Connection),        // id
-			proc.User,                      // user
-			proc.Host,                      // host
-			db,                             // db
-			string(proc.Command),           // command
-			int32(proc.Seconds()),          // time
+			uint64(proc.Connection),    // id
+			proc.User,                  // user
+			proc.Host,                  // host
+			db,                         // db
+			string(proc.Command),       // command
+			int32(proc.Seconds()),      // time
 			strings.Join(status, ", "), // state
-			proc.Query,                     // info
+			proc.Query,                 // info
 		}
 	}
 
