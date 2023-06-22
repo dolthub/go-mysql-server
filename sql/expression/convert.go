@@ -375,7 +375,7 @@ func createConvertedDecimalType(length, scale int) sql.DecimalType {
 		}
 		return dt
 	}
-	return types.MustCreateDecimalType(65, 10)
+	return types.InternalDecimalType
 }
 
 // convertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
