@@ -479,8 +479,6 @@ Select * from (
 			"     └─ Project\n" +
 			"         ├─ columns: [convert\n" +
 			"         │   ├─ type: signed\n" +
-			"         │   ├─ typeLength: 0\n" +
-			"         │   ├─ typeScale: 0\n" +
 			"         │   └─ xy.x:0!null\n" +
 			"         │   as x]\n" +
 			"         └─ Project\n" +
@@ -556,8 +554,6 @@ Select * from (
 			"     └─ Project\n" +
 			"         ├─ columns: [convert\n" +
 			"         │   ├─ type: signed\n" +
-			"         │   ├─ typeLength: 0\n" +
-			"         │   ├─ typeScale: 0\n" +
 			"         │   └─ xy.x:0!null\n" +
 			"         │   as x]\n" +
 			"         └─ Project\n" +
@@ -2638,8 +2634,6 @@ inner join pq on true
 			"                 │   │   └─ Eq\n" +
 			"                 │   │       ├─ convert\n" +
 			"                 │   │       │   ├─ type: signed\n" +
-			"                 │   │       │   ├─ typeLength: 0\n" +
-			"                 │   │       │   ├─ typeScale: 0\n" +
 			"                 │   │       │   └─ othertable.s2:0!null\n" +
 			"                 │   │       └─ 0 (tinyint)\n" +
 			"                 │   └─ IndexedTableAccess(othertable)\n" +
@@ -3269,8 +3263,6 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ convert\n" +
 			" │   │   ├─ type: char\n" +
-			" │   │   ├─ typeLength: 0\n" +
-			" │   │   ├─ typeScale: 0\n" +
 			" │   │   └─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(a (longtext), b (longtext))\n" +
 			" └─ Table\n" +
@@ -3284,8 +3276,6 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ convert\n" +
 			" │   │   ├─ type: char\n" +
-			" │   │   ├─ typeLength: 0\n" +
-			" │   │   ├─ typeScale: 0\n" +
 			" │   │   └─ mytable.i:0!null\n" +
 			" │   └─ TUPLE(1 (longtext), 2 (longtext))\n" +
 			" └─ Table\n" +
