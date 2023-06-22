@@ -196,7 +196,7 @@ func (c *Convert) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewConvert(children[0], c.castToType), nil
+	return NewConvertWithLengthAndScale(children[0], c.castToType, c.typeLength, c.typeScale), nil
 }
 
 // Eval implements the Expression interface.
