@@ -64,8 +64,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 
 			for _, n := range ns {
 				col := tableColFromNameable(n)
-				name := strings.ToLower(n.Name())
-				if col.Table() == "" && stringContains(childAliases, name) {
+				if col.Table() == "" && stringContains(childAliases, n.Name()) {
 					colsFromChild = append(colsFromChild, n.Name())
 				} else if !tableColsContains(schemaCols, col) {
 					missingCols = append(missingCols, col)

@@ -329,7 +329,7 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 		// TODO: this isn't complete, it's overly restrictive. Dependant columns are fine to reference.
 		default:
 			if stringContains(groupBys, expr.String()) {
-				return true
+				return false
 			}
 
 			if len(expr.Children()) == 0 {
@@ -659,8 +659,9 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 }
 
 func stringContains(strs []string, target string) bool {
+	lowerTarget := strings.ToLower(target)
 	for _, s := range strs {
-		if s == target {
+		if lowerTarget == strings.ToLower(s) {
 			return true
 		}
 	}
