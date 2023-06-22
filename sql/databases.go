@@ -234,14 +234,14 @@ type EventDatabase interface {
 	GetEvents(ctx *Context) ([]EventDefinition, error)
 	// SaveEvent stores the given EventDetails to the database. The integrator should verify that
 	// the name of the new event is unique amongst existing events. The time values are converted
-	// into UTC TZ for storage.
-	SaveEvent(ctx *Context, ed EventDetails) error
+	// into UTC TZ for storage. It returns whether the event status is enabled.
+	SaveEvent(ctx *Context, ed EventDetails) (bool, error)
 	// DropEvent removes the EventDetails with the matching name from the database.
 	DropEvent(ctx *Context, name string) error
 	// UpdateEvent updates existing event stored in the database with the given EventDetails
 	// with the updates. The original name event is required for renaming of an event.
-	// The time values are converted into UTC TZ for storage.
-	UpdateEvent(ctx *Context, originalName string, ed EventDetails) error
+	// The time values are converted into UTC TZ for storage. It returns whether the event status is enabled.
+	UpdateEvent(ctx *Context, originalName string, ed EventDetails) (bool, error)
 	// UpdateLastExecuted updated the lastExecuted metadata for the given event.
 	// The lastExecuted time is converted into UTC TZ for storage.
 	UpdateLastExecuted(ctx *Context, eventName string, lastExecuted time.Time) error

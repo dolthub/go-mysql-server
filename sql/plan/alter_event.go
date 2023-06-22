@@ -468,13 +468,13 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	err := a.eventDb.UpdateEvent(ctx, a.originalName, a.eventDetails)
+	enabled, err := a.eventDb.UpdateEvent(ctx, a.originalName, a.eventDetails)
 	if err != nil {
 		return nil, err
 	}
 
 	// make sure to notify the EventSchedulerStatus after updating the event in the database
-	if a.notifier != nil {
+	if a.notifier != nil && enabled {
 		a.notifier.UpdateEvent(ctx, a.eventDb, a.originalName, a.eventDetails)
 	}
 

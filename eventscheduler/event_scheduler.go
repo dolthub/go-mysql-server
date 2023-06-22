@@ -46,8 +46,9 @@ var _ sql.EventSchedulerNotifier = (*EventScheduler)(nil)
 
 // EventScheduler is responsible for SQL events execution.
 type EventScheduler struct {
-	status   SchedulerStatus
-	executor *eventExecutor
+	status        SchedulerStatus
+	executor      *eventExecutor
+	ctxGetterFunc func() (*sql.Context, func() error, error)
 }
 
 // InitEventScheduler is called at the start of the server. This function returns EventScheduler object
@@ -62,8 +63,9 @@ func InitEventScheduler(
 	runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error,
 ) (*EventScheduler, error) {
 	var es = &EventScheduler{
-		status:   status,
-		executor: newEventExecutor(bgt, getSqlCtxFunc, runQueryFunc),
+		status:        status,
+		executor:      newEventExecutor(bgt, getSqlCtxFunc, runQueryFunc),
+		ctxGetterFunc: getSqlCtxFunc,
 	}
 
 	// If the EventSchedulerStatus is ON, then load enabled
@@ -95,7 +97,7 @@ func (es *EventScheduler) Close() {
 // TurnOnEventScheduler is called when user sets --event-scheduler system variable to ON or 1.
 // This function requires valid analyzer and sql context to evaluate all events in all databases
 // to load enabled events to the EventScheduler.
-func (es *EventScheduler) TurnOnEventScheduler(ctx *sql.Context, a *analyzer.Analyzer) error {
+func (es *EventScheduler) TurnOnEventScheduler(a *analyzer.Analyzer) error {
 	if es.status == SchedulerDisabled {
 		return ErrEventSchedulerDisabled
 	} else if es.status == SchedulerOn {
@@ -103,8 +105,16 @@ func (es *EventScheduler) TurnOnEventScheduler(ctx *sql.Context, a *analyzer.Ana
 	}
 
 	es.status = SchedulerOn
-	// TODO: make sure to commit transaction of the given context
-	return es.loadEventsAndStartEventExecutor(ctx, a)
+
+	ctx, commit, err := es.ctxGetterFunc()
+	if err != nil {
+		return err
+	}
+	err = es.loadEventsAndStartEventExecutor(ctx, a)
+	if err != nil {
+		return err
+	}
+	return commit()
 }
 
 // TurnOffEventScheduler is called when user sets --event-scheduler system variable to OFF or 0.

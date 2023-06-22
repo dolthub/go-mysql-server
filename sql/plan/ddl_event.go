@@ -347,7 +347,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	err := c.eventDb.SaveEvent(ctx, c.eventDetails)
+	enabled, err := c.eventDb.SaveEvent(ctx, c.eventDetails)
 	if err != nil {
 		if sql.ErrEventAlreadyExists.Is(err) && c.ifNotExists {
 			ctx.Session.Warn(&sql.Warning{
@@ -366,7 +366,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if c.eventDetails.OnCompletionPreserve {
 				// If ON COMPLETION PRESERVE is defined, the event is disabled.
 				c.eventDetails.Status = sql.EventStatus_Disable.String()
-				err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, c.eventDetails)
+				_, err = c.eventDb.UpdateEvent(ctx, c.eventDetails.Name, c.eventDetails)
 				if err != nil {
 					return nil, err
 				}
@@ -392,7 +392,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	// make sure to notify the EventSchedulerStatus AFTER adding the event in the database
-	if c.notifier != nil {
+	if c.notifier != nil && enabled {
 		c.notifier.AddEvent(ctx, c.eventDb, c.eventDetails)
 	}
 

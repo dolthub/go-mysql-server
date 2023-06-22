@@ -56,7 +56,7 @@ func newEnabledEventFromEventDetails(ctx *sql.Context, edb sql.EventDatabase, ed
 		} else {
 			if ed.OnCompletionPreserve {
 				ed.Status = sql.EventStatus_Disable.String()
-				err = edb.UpdateEvent(ctx, ed.Name, ed)
+				_, err = edb.UpdateEvent(ctx, ed.Name, ed)
 				if err != nil {
 					return nil, false, err
 				}
@@ -126,7 +126,7 @@ func (e *enabledEvent) updateEventAfterExecution(ctx *sql.Context, edb sql.Event
 
 	e.eventDetails.LastExecuted = executionTime
 	// update the database stored event with LastExecuted and Status metadata update if applicable.
-	err = edb.UpdateEvent(ctx, e.eventDetails.Name, e.eventDetails)
+	_, err = edb.UpdateEvent(ctx, e.eventDetails.Name, e.eventDetails)
 	if err != nil {
 		return ended, err
 	}
