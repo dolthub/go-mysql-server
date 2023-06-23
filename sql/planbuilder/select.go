@@ -38,6 +38,10 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 		fromScope.node = cn.WithComment(string(s.Comments[0]))
 	}
 
+	// window defs
+	// unique names, definitions available
+	b.buildNamedWindows(fromScope, s.Window)
+
 	b.buildWhere(fromScope, s.Where)
 	projScope := fromScope.replace()
 
@@ -59,6 +63,9 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 		having := b.buildHaving(fromScope, projScope, s.Having)
 		// make PROJECT -> HAVING -> GROUP_BY
 		outScope = b.buildAggregation(fromScope, projScope, having, groupingCols)
+	} else if fromScope.windowFuncs != nil {
+		having := b.buildHaving(fromScope, projScope, s.Having)
+		outScope = b.buildWindow(fromScope, projScope, having)
 	} else {
 		outScope = fromScope
 	}

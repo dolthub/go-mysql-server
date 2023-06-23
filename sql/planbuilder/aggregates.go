@@ -68,7 +68,7 @@ type aggregateInfo struct {
 
 func (b *PlanBuilder) needsAggregation(fromScope *scope, sel *ast.Select) bool {
 	return len(sel.GroupBy) > 0 ||
-		sel.Having != nil ||
+		sel.Having != nil && len(fromScope.windowFuncs) == 0 ||
 		(fromScope.groupBy != nil && fromScope.groupBy.hasAggs())
 }
 
@@ -208,6 +208,18 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	return outScope
 }
 
+func isAggregateFunc(name string) bool {
+	switch name {
+	case "avg", "bit_and", "bit_or", "bit_xor", "count",
+		"group_concat", "json_arrayagg", "json_objectagg",
+		"max", "min", "std", "stddev_pop", "stddev_samp",
+		"stddev", "sum", "var_pop", "var_samp", "variance":
+		return true
+	default:
+		return false
+	}
+}
+
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
@@ -244,7 +256,6 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 		e := b.selectExprToExpression(inScope, arg)
 		switch e := e.(type) {
 		case *expression.GetField:
-			//gf := e.WithIndex(outerLen + e.Index())
 			args = append(args, e)
 			col := scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
@@ -287,32 +298,251 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	}
 
 	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-	gb.outScope.newColumn(col)
+	id := gb.outScope.newColumn(col)
 	gb.addAggStr(col)
+	col.id = id
 	return col.scalarGf()
-}
-
-func isAggregateFunc(name string) bool {
-	switch name {
-	case "avg", "bit_and", "bit_or", "bit_xor", "count",
-		"group_concat", "json_arrayagg", "json_objectagg",
-		"max", "min", "std", "stddev_pop", "stddev_samp",
-		"stddev", "sum", "var_pop", "var_samp", "variance":
-		return true
-	default:
-		return false
-	}
 }
 
 func isWindowFunc(name string) bool {
 	switch name {
 	case "first", "last", "count", "sum", "any_value",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
-		"row_number", "percent_rank", "lag", "first_value":
+		"row_number", "percent_rank", "lag", "first_value",
+		"rank", "dense_rank":
 		return true
 	default:
 		return false
 	}
+}
+
+func (b *PlanBuilder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
+	// couple with other expressions or alone?
+	// can these be referenced? aliased?
+	// internal expressions can be complex, but window can't be more than alias
+
+	var args []sql.Expression
+	for _, arg := range e.Exprs {
+		e := b.selectExprToExpression(inScope, arg)
+		args = append(args, e)
+	}
+
+	f, err := b.cat.Function(b.ctx, name)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	win, err := f.NewInstance(args)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	def := b.buildWindowDef(inScope, over)
+	switch w := win.(type) {
+	case sql.WindowAdaptableExpression:
+		win = w.WithWindow(def)
+	}
+
+	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(), nullable: win.IsNullable()}
+	id := inScope.newColumn(col)
+	col.id = id
+	inScope.windowFuncs = append(inScope.windowFuncs, col)
+	return col.scalarGf()
+}
+
+func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expression) *scope {
+	if len(fromScope.windowFuncs) == 0 {
+		return fromScope
+	}
+	// passthrough dependency cols plus window funcs
+	var selectExprs []sql.Expression
+	selectStr := make(map[string]bool)
+	for _, col := range fromScope.windowFuncs {
+		// aggregation functions
+		e := col.scalar
+		if !selectStr[strings.ToLower(e.String())] {
+			// window function referenced in output project
+			switch e.(type) {
+			case sql.Aggregation, sql.WindowAggregation:
+				selectStr[strings.ToLower(e.String())] = true
+				selectExprs = append(selectExprs, e)
+			default:
+				// error
+				err := fmt.Errorf("expected window function to be sql.WindowAggregation")
+				b.handleErr(err)
+			}
+		}
+	}
+	for _, e := range projScope.cols {
+		// projection dependencies -> table cols needed above
+		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.GetField:
+				colName := strings.ToLower(e.Name())
+				if !selectStr[colName] {
+					selectExprs = append(selectExprs, e)
+					selectStr[colName] = true
+				}
+			}
+			return false
+		})
+	}
+	for _, e := range fromScope.extraCols {
+		// accessory cols used by ORDER_BY, HAVING
+		if !selectStr[e.col] {
+			selectExprs = append(selectExprs, e.scalar)
+			selectStr[e.col] = true
+		}
+	}
+
+	outScope := fromScope
+	window := plan.NewWindow(selectExprs, fromScope.node)
+	fromScope.node = window
+	if having != nil {
+		outScope.node = plan.NewHaving(having, outScope.node)
+	}
+	return outScope
+}
+
+func (b *PlanBuilder) buildNamedWindows(fromScope *scope, window ast.Window) {
+	// topo sort first
+	adj := make(map[string]*ast.WindowDef)
+	for _, w := range window {
+		adj[w.Name.Lowered()] = w
+	}
+
+	var topo []*ast.WindowDef
+	seen := make(map[string]bool)
+	var dfs func(string2 string)
+	dfs = func(name string) {
+		if ok, _ := seen[name]; ok {
+			b.handleErr(sql.ErrCircularWindowInheritance.New())
+		}
+		seen[name] = true
+		cur := adj[name]
+		if ref := cur.NameRef.Lowered(); ref != "" {
+			dfs(ref)
+		}
+		topo = append(topo, cur)
+	}
+	for _, w := range topo {
+		dfs(w.Name.Lowered())
+	}
+
+	fromScope.windowDefs = make(map[string]*sql.WindowDefinition)
+	for _, w := range topo {
+		fromScope.windowDefs[w.Name.Lowered()] = b.buildWindowDef(fromScope, w)
+	}
+	return
+}
+
+func (b *PlanBuilder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.WindowDefinition {
+	if def == nil {
+		return nil
+	}
+
+	var sortFields sql.SortFields
+	for _, c := range def.OrderBy {
+		// resolve col in fromScope
+		e := b.buildScalar(fromScope, c.Expr)
+		so := sql.Ascending
+		if c.Direction == ast.DescScr {
+			so = sql.Descending
+		}
+		sf := sql.SortField{
+			Column: e,
+			Order:  so,
+		}
+		sortFields = append(sortFields, sf)
+	}
+
+	partitions := make([]sql.Expression, len(def.PartitionBy))
+	for i, expr := range def.PartitionBy {
+		partitions[i] = b.buildScalar(fromScope, expr)
+	}
+
+	frame := b.NewFrame(fromScope, def.Frame)
+
+	// According to MySQL documentation at https://dev.mysql.com/doc/refman/8.0/en/window-functions-usage.html
+	// "If OVER() is empty, the window consists of all query rows and the window function computes a result using all rows."
+	if def.OrderBy == nil && frame == nil {
+		frame = plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()
+	}
+
+	windowDef := sql.NewWindowDefinition(partitions, sortFields, frame, def.NameRef.Lowered(), def.Name.Lowered())
+	if ref, ok := fromScope.windowDefs[def.NameRef.Lowered()]; ok {
+		// this is only safe if windows are built in topo order
+		windowDef = b.mergeWindowDefs(windowDef, ref)
+		// collapse dependencies if any reference this window
+		fromScope.windowDefs[windowDef.Name] = windowDef
+	}
+	return windowDef
+}
+
+// mergeWindowDefs combines the attributes of two window definitions or returns
+// an error if the two are incompatible. [def] should have a reference to
+// [ref] through [def.Ref], and the return value drops the reference to indicate
+// the two were properly combined.
+func (b *PlanBuilder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDefinition {
+	if ref.Ref != "" {
+		panic("unreachable; cannot merge unresolved window definition")
+	}
+
+	var orderBy sql.SortFields
+	switch {
+	case len(def.OrderBy) > 0 && len(ref.OrderBy) > 0:
+		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain order by clause")
+		b.handleErr(err)
+	case len(def.OrderBy) > 0:
+		orderBy = def.OrderBy
+	case len(ref.OrderBy) > 0:
+		orderBy = ref.OrderBy
+	default:
+	}
+
+	var partitionBy []sql.Expression
+	switch {
+	case len(def.PartitionBy) > 0 && len(ref.PartitionBy) > 0:
+		err := sql.ErrInvalidWindowInheritance.New("", "", "both contain partition by clause")
+		b.handleErr(err)
+	case len(def.PartitionBy) > 0:
+		partitionBy = def.PartitionBy
+	case len(ref.PartitionBy) > 0:
+		partitionBy = ref.PartitionBy
+	default:
+		partitionBy = []sql.Expression{}
+	}
+
+	var frame sql.WindowFrame
+	switch {
+	case def.Frame != nil && ref.Frame != nil:
+		_, isDefDefaultFrame := def.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+		_, isRefDefaultFrame := ref.Frame.(*plan.RowsUnboundedPrecedingToUnboundedFollowingFrame)
+
+		// if both frames are set and one is RowsUnboundedPrecedingToUnboundedFollowingFrame (default),
+		// we should use the other frame
+		if isDefDefaultFrame {
+			frame = ref.Frame
+		} else if isRefDefaultFrame {
+			frame = def.Frame
+		} else {
+			// if both frames have identical string representations, use either one
+			df := def.Frame.String()
+			rf := ref.Frame.String()
+			if df != rf {
+				err := sql.ErrInvalidWindowInheritance.New("", "", "both contain different frame clauses")
+				b.handleErr(err)
+			}
+			frame = def.Frame
+		}
+	case def.Frame != nil:
+		frame = def.Frame
+	case ref.Frame != nil:
+		frame = ref.Frame
+	default:
+	}
+
+	return sql.NewWindowDefinition(partitionBy, orderBy, frame, "", def.Name)
 }
 
 func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) {

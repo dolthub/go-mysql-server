@@ -28,7 +28,7 @@ import (
 )
 
 func TestWindowPlanToIter(t *testing.T) {
-	n1, err := window.NewRowNumber().(sql.WindowAggregation).WithWindow(
+	n1 := window.NewRowNumber().(sql.WindowAggregation).WithWindow(
 		&sql.WindowDefinition{
 			PartitionBy: []sql.Expression{
 				expression.NewGetField(2, types.Int64, "c", false)},
@@ -36,7 +36,7 @@ func TestWindowPlanToIter(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	n2, err := aggregation.NewMax(
+	n2 := aggregation.NewMax(
 		expression.NewGetField(0, types.Int64, "a", false),
 	).WithWindow(
 		&sql.WindowDefinition{
@@ -46,7 +46,7 @@ func TestWindowPlanToIter(t *testing.T) {
 		})
 	require.NoError(t, err)
 	n3 := expression.NewGetField(0, types.Int64, "a", false)
-	n4, err := aggregation.NewMin(
+	n4 := aggregation.NewMin(
 		expression.NewGetField(0, types.Int64, "a", false),
 	).WithWindow(
 		&sql.WindowDefinition{

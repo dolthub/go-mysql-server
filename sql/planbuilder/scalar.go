@@ -71,12 +71,12 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
-		if isAggregateFunc(name) {
+		if isAggregateFunc(name) && v.Over == nil {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates
 			return b.buildAggregateFunc(inScope, name, v)
 		} else if isWindowFunc(name) {
-			b.handleErr(fmt.Errorf("todo window funcs"))
+			return b.buildWindowFunc(inScope, name, v, (*ast.WindowDef)(v.Over))
 		}
 
 		f, err := b.cat.Function(b.ctx, name)
@@ -102,9 +102,6 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 			}
 
 			args[0] = expression.NewDistinctExpression(args[0])
-		}
-		if v.Over != nil {
-			panic("todo preprocess window functions int windowInfo")
 		}
 
 		return rf

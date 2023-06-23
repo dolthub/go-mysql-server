@@ -59,9 +59,9 @@ func (a *AnyValue) DebugString() string {
 	return fmt.Sprintf("ANYVALUE(%s)", sql.DebugString(a.Child))
 }
 
-func (a *AnyValue) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &AnyValue{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *AnyValue) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &AnyValue{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *AnyValue) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -133,9 +133,9 @@ func (a *Avg) DebugString() string {
 	return fmt.Sprintf("AVG(%s)", sql.DebugString(a.Child))
 }
 
-func (a *Avg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &Avg{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *Avg) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &Avg{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -207,9 +207,9 @@ func (a *BitAnd) DebugString() string {
 	return fmt.Sprintf("BITAND(%s)", sql.DebugString(a.Child))
 }
 
-func (a *BitAnd) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &BitAnd{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *BitAnd) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &BitAnd{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *BitAnd) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -281,9 +281,9 @@ func (a *BitOr) DebugString() string {
 	return fmt.Sprintf("BITOR(%s)", sql.DebugString(a.Child))
 }
 
-func (a *BitOr) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &BitOr{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *BitOr) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &BitOr{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *BitOr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -355,9 +355,9 @@ func (a *BitXor) DebugString() string {
 	return fmt.Sprintf("BITXOR(%s)", sql.DebugString(a.Child))
 }
 
-func (a *BitXor) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &BitXor{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *BitXor) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &BitXor{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *BitXor) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -429,9 +429,9 @@ func (a *Count) DebugString() string {
 	return fmt.Sprintf("COUNT(%s)", sql.DebugString(a.Child))
 }
 
-func (a *Count) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &Count{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *Count) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &Count{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Count) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -503,9 +503,9 @@ func (a *First) DebugString() string {
 	return fmt.Sprintf("FIRST(%s)", sql.DebugString(a.Child))
 }
 
-func (a *First) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &First{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *First) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &First{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *First) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -577,9 +577,9 @@ func (a *JsonArray) DebugString() string {
 	return fmt.Sprintf("JSON_ARRAYAGG(%s)", sql.DebugString(a.Child))
 }
 
-func (a *JsonArray) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *JsonArray) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *JsonArray) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -651,9 +651,9 @@ func (a *Last) DebugString() string {
 	return fmt.Sprintf("LAST(%s)", sql.DebugString(a.Child))
 }
 
-func (a *Last) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &Last{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *Last) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &Last{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -725,9 +725,9 @@ func (a *Max) DebugString() string {
 	return fmt.Sprintf("MAX(%s)", sql.DebugString(a.Child))
 }
 
-func (a *Max) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &Max{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *Max) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &Max{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Max) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -799,9 +799,9 @@ func (a *Min) DebugString() string {
 	return fmt.Sprintf("MIN(%s)", sql.DebugString(a.Child))
 }
 
-func (a *Min) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &Min{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *Min) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &Min{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Min) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -873,9 +873,9 @@ func (a *Sum) DebugString() string {
 	return fmt.Sprintf("SUM(%s)", sql.DebugString(a.Child))
 }
 
-func (a *Sum) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-	res, err := a.unaryAggBase.WithWindow(window)
-	return &Sum{unaryAggBase: *res.(*unaryAggBase)}, err
+func (a *Sum) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &Sum{unaryAggBase: *res.(*unaryAggBase)}
 }
 
 func (a *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {

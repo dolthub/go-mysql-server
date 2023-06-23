@@ -844,9 +844,43 @@ Project
 		},
 		{
 			Query: "select (1+x) s from xy group by 1 having s = 1",
+			ExpectedPlan: `
+Project
+ ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
+ └─ Having
+     ├─ Eq
+     │   ├─ (1 (tinyint) + xy.x:1!null)
+     │   └─ 1 (tinyint)
+     └─ GroupBy
+         ├─ select: xy.x:1!null
+         ├─ group: (1 (tinyint) + xy.x:1!null) as s
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]`,
 		},
 		{
 			Query: "select (1+x) s from xy join uv on (1+x) = (1+u) group by 1 having s = 1",
+			ExpectedPlan: `
+Project
+ ├─ columns: [(1 (tinyint) + xy.x:1!null) as s]
+ └─ Having
+     ├─ Eq
+     │   ├─ (1 (tinyint) + xy.x:1!null)
+     │   └─ 1 (tinyint)
+     └─ GroupBy
+         ├─ select: xy.x:1!null
+         ├─ group: (1 (tinyint) + xy.x:1!null) as s
+         └─ InnerJoin
+             ├─ Eq
+             │   ├─ (1 (tinyint) + xy.x:1!null)
+             │   └─ (1 (tinyint) + uv.u:4!null)
+             ├─ Table
+             │   ├─ name: xy
+             │   └─ columns: [x y z]
+             └─ Table
+                 ├─ name: uv
+                 └─ columns: [u v w]
+`,
 		},
 		{
 			Skip:  true, // TODO: we don't correctly put aliases in the scope
@@ -863,7 +897,106 @@ Project
 │  ,abc (longtext)) as concat((select foo), 'abc')]
 └─ Table
     ├─ name: 
-    └─ columns: []
+    └─ columns: []`,
+		},
+		{
+			Query: `
+select
+  x,
+  x*y,
+  ROW_NUMBER() OVER(PARTITION BY x) AS row_num1,
+  sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
+from xy
+`,
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null) as x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null as row_num1, sum
+ │   ├─ over ( partition by xy.y order by xy.x asc)
+ │   └─ xy.x
+ │  :6!null as sum]
+ └─ Window
+     ├─ row_number() over ( partition by xy.x ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+     ├─ SUM
+     │   ├─ over ( partition by xy.y order by xy.x ASC)
+     │   └─ xy.x:1!null
+     ├─ xy.x:1!null
+     ├─ xy.y:2!null
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
+		},
+		{
+			// mysql doesn't support HAVING references to window func aliases
+			Query: `
+select
+  ROW_NUMBER() OVER(PARTITION BY x) AS row_num1,
+  sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
+from xy
+having sum > 2
+`,
+			Skip: true,
+		},
+		{
+			Query: `
+select
+  x+1 as x,
+  sum(x) OVER(PARTITION BY y ORDER BY x) AS sum
+from xy
+having x > 1;
+`,
+			ExpectedPlan: `
+Project
+ ├─ columns: [(xy.x:1!null + 1 (tinyint)) as x, sum
+ │   ├─ over ( partition by xy.y order by xy.x asc)
+ │   └─ xy.x
+ │  :5!null as sum]
+ └─ Having
+     ├─ GreaterThan
+     │   ├─ (xy.x:1!null + 1 (tinyint))
+     │   └─ 1 (tinyint)
+     └─ Window
+         ├─ SUM
+         │   ├─ over ( partition by xy.y order by xy.x ASC)
+         │   └─ xy.x:1!null
+         ├─ xy.x:1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]`,
+		},
+		{
+			Query: `
+SELECT
+  x,
+  ROW_NUMBER() OVER w AS 'row_number',
+  RANK()       OVER w AS 'rank',
+  DENSE_RANK() OVER w AS 'dense_rank'
+FROM xy
+WINDOW w AS (PARTITION BY y ORDER BY x);`,
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, row_number() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):4!null as row_number, rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):6!null as rank, dense_rank() over ( partition by xy.y order by xy.x asc rows between unbounded preceding and unbounded following):8!null as dense_rank]
+ └─ Window
+     ├─ row_number() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+     ├─ rank() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+     ├─ dense_rank() over ( partition by xy.y order by xy.x ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+     ├─ xy.x:1!null
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "select x, row_number() over (w3) from xy window w1 as (w2), w2 as (), w3 as (w1)",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, row_number() over ( rows between unbounded preceding and unbounded following):4!null as row_number() over (w3)]
+ └─ Window
+     ├─ row_number() over ( ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+     ├─ xy.x:1!null
+     └─ Table
+         ├─ name: xy
+         └─ columns: [x y z]
 `,
 		},
 	}

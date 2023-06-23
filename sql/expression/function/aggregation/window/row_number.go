@@ -109,14 +109,14 @@ func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, er
 		return nil, err
 	}
 
-	return r.WithWindow(window)
+	return r.WithWindow(window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (r *RowNumber) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (r *RowNumber) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *r
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (r *RowNumber) NewWindowFunction() (sql.WindowFunction, error) {

@@ -108,14 +108,14 @@ func (p *PercentRank) WithChildren(children ...sql.Expression) (sql.Expression, 
 		return nil, err
 	}
 
-	return p.WithWindow(window)
+	return p.WithWindow(window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *PercentRank) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (p *PercentRank) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *p
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (p *PercentRank) NewWindowFunction() (sql.WindowFunction, error) {

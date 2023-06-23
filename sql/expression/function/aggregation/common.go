@@ -47,10 +47,10 @@ func (a *unaryAggBase) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 // WithWindow returns a new unaryAggBase to be embedded in wrapping type
-func (a *unaryAggBase) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+func (a *unaryAggBase) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	na := *a
 	na.window = window
-	return &na, nil
+	return &na
 }
 
 func (a *unaryAggBase) Window() *sql.WindowDefinition {
@@ -107,7 +107,7 @@ func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression,
 		if err != nil {
 			return nil, err
 		}
-		return na.WithWindow(w)
+		return na.WithWindow(w), nil
 	}
 	return &na, nil
 }

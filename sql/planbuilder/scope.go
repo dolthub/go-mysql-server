@@ -37,6 +37,9 @@ type scope struct {
 	ctes map[string]*scope
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
+	// windowFuncs is a list of window functions in the current scope
+	windowFuncs []scopeColumn
+	windowDefs  map[string]*sql.WindowDefinition
 	// exprs collects unique expression ids for reference
 	exprs map[string]columnId
 }

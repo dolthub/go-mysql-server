@@ -141,12 +141,12 @@ func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) transform.ExprFunc {
 		// functions don't have a window expression.
 		switch a := rf.(type) {
 		case sql.WindowAggregation:
-			rf, err = a.WithWindow(uf.Window)
+			rf = a.WithWindow(uf.Window)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 		case sql.Aggregation:
-			rf, err = a.WithWindow(uf.Window)
+			rf = a.WithWindow(uf.Window)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

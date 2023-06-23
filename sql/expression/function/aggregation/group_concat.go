@@ -59,10 +59,10 @@ func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, s
 }
 
 // WithWindow implements sql.Aggregation
-func (g *GroupConcat) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+func (g *GroupConcat) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	ng := *g
 	ng.window = window
-	return &ng, nil
+	return &ng
 }
 
 // Window implements sql.Aggregation
