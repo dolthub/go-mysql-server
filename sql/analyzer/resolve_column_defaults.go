@@ -163,43 +163,6 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Sc
 				node.Source = newSource
 			}
 			return node, identity, err
-		case *plan.AlterDefaultSet:
-			table := getResolvedTable(node)
-			sch := table.Schema()
-			index := sch.IndexOfColName(node.ColumnName)
-			if index == -1 {
-				return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnName)
-			}
-			col := sch[index]
-
-			eWrapper := expression.WrapExpression(node.Default)
-			newExpr, sameColumnDefault, err := resolveColumnDefault(ctx, col, eWrapper)
-			if err != nil {
-				return node, transform.SameTree, err
-			}
-
-			newNode, err := node.WithDefault(newExpr)
-			if err != nil {
-				return node, transform.SameTree, err
-			}
-
-			// After resolving the new column default value, ensure all column defaults in the target schema are resolved
-			newNode, sameTargetSchema, err := transform.OneNodeExpressions(newNode, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper, ok := e.(*expression.Wrapper)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-
-				col, err := lookupColumnForTargetSchema(ctx, node, colIndex)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				colIndex++
-
-				return resolveColumnDefault(ctx, col, eWrapper)
-			})
-
-			return newNode, sameColumnDefault && sameTargetSchema, err
 		case sql.SchemaTarget:
 			return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
