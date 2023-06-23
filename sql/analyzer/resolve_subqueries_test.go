@@ -60,7 +60,7 @@ func TestResolveSubqueries(t *testing.T) {
 							[]sql.Expression{expression.NewUnresolvedFunction("max", true, nil, uc("a"))},
 							[]sql.Expression{},
 							plan.NewSubqueryAlias(
-								"sqa1", "select a from bar",
+								"sqa1", "select a from bar", false,
 								plan.NewProject(
 									[]sql.Expression{uc("a")},
 									plan.NewUnresolvedTable("bar", "")),
@@ -94,18 +94,18 @@ func TestResolveSubqueries(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewCrossJoin(
 						plan.NewSubqueryAlias(
-							"t1", "",
+							"t1", "", false,
 							plan.NewProject(
 								[]sql.Expression{uc("a")},
 								plan.NewUnresolvedTable("foo", ""),
 							),
 						),
 						plan.NewSubqueryAlias(
-							"t2", "",
+							"t2", "", false,
 							plan.NewProject(
 								[]sql.Expression{uc("b")},
 								plan.NewSubqueryAlias(
-									"t2alias", "",
+									"t2alias", "", false,
 									plan.NewProject(
 										[]sql.Expression{uc("b")},
 										plan.NewUnresolvedTable("bar", ""),
@@ -157,7 +157,7 @@ func TestResolveSubqueries(t *testing.T) {
 }
 
 func newSubqueryAlias(name, textDefinition string, hasOuterScopeVisibility, canCacheResults bool, child sql.Node) *plan.SubqueryAlias {
-	sqa := plan.NewSubqueryAlias(name, textDefinition, child)
+	sqa := plan.NewSubqueryAlias(name, textDefinition, false, child)
 	sqa.OuterScopeVisibility = hasOuterScopeVisibility
 	sqa.CanCacheResults = canCacheResults
 	return sqa

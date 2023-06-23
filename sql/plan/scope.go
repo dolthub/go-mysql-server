@@ -93,6 +93,7 @@ func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node) *Scope {
 // NewScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
 // node.
 func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
+	// TODO: check s == nil?
 	for {
 		var done bool
 		switch n := node.(type) {
@@ -104,6 +105,9 @@ func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 		if done {
 			break
 		}
+	}
+	if s == nil {
+		s = &Scope{}
 	}
 	subScope := &Scope{
 		nodes:          s.nodes,
@@ -139,7 +143,7 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 		// gives a derived table visibility to the OUTER scope where the subquery is defined.
 		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
-		if s.CurrentNodeIsFromSubqueryExpression {
+		if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
 			sqa.OuterScopeVisibility = true
 			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)

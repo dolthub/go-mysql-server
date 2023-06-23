@@ -321,7 +321,7 @@ func TestDeepCopyNode(t *testing.T) {
 					expression.NewLiteral(1, types.Int64),
 					expression.NewLiteral(1, types.Int64),
 				),
-				plan.NewSubqueryAlias("cte1", "select x from a",
+				plan.NewSubqueryAlias("cte1", "select x from a", false,
 					plan.NewProject(
 						[]sql.Expression{
 							expression.NewBindVar("v1"),

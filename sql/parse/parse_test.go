@@ -1658,6 +1658,7 @@ CREATE TABLE t2
 				plan.NewSubqueryAlias(
 					"a",
 					"select * from foo where bar = :v1",
+					false,
 					plan.NewProject(
 						[]sql.Expression{
 							expression.NewStar(),
@@ -2341,7 +2342,7 @@ CREATE TABLE t2
 			plan: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewSubqueryAlias(
-					"bar", "select * from foo",
+					"bar", "select * from foo", false,
 					plan.NewProject(
 						[]sql.Expression{expression.NewStar()},
 						plan.NewUnresolvedTable("foo", ""),
@@ -4357,7 +4358,7 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("cte1", "")),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewSubqueryAlias("cte1", "select a from b", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("a"),
@@ -4392,7 +4393,7 @@ CREATE TABLE t2
 				),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewSubqueryAlias("cte1", "select a from b", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("a"),
@@ -4422,7 +4423,7 @@ CREATE TABLE t2
 					), nil),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewSubqueryAlias("cte1", "select a from b", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("a"),
@@ -4450,7 +4451,7 @@ CREATE TABLE t2
 				),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewSubqueryAlias("cte1", "select a from b", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("a"),
@@ -4474,7 +4475,7 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("cte1", "")),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select 1 union select n + 1 from cte1 where n < 10",
+						plan.NewSubqueryAlias("cte1", "select 1 union select n + 1 from cte1 where n < 10", false,
 							plan.NewUnion(plan.NewProject(
 								[]sql.Expression{
 									expression.NewLiteral(int8(1), types.Int8),
@@ -4513,7 +4514,7 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("cte1", "")),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewSubqueryAlias("cte1", "select a from b", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("a"),
@@ -4524,7 +4525,7 @@ CREATE TABLE t2
 						[]string{},
 					),
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte2", "select c from d",
+						plan.NewSubqueryAlias("cte2", "select c from d", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("c"),
@@ -4548,7 +4549,7 @@ CREATE TABLE t2
 					plan.NewUnresolvedTable("cte1", "")),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewSubqueryAlias("cte1", "select a from b", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("a"),
@@ -4559,7 +4560,7 @@ CREATE TABLE t2
 						[]string{"x"},
 					),
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte2", "select c from d",
+						plan.NewSubqueryAlias("cte2", "select c from d", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("c"),
@@ -4589,7 +4590,7 @@ CREATE TABLE t2
 										plan.NewUnresolvedTable("cte2", "")),
 									[]*plan.CommonTableExpression{
 										plan.NewCommonTableExpression(
-											plan.NewSubqueryAlias("cte2", "select c from d",
+											plan.NewSubqueryAlias("cte2", "select c from d", false,
 												plan.NewProject(
 													[]sql.Expression{
 														expression.NewUnresolvedColumn("c"),
@@ -4610,7 +4611,7 @@ CREATE TABLE t2
 				),
 				[]*plan.CommonTableExpression{
 					plan.NewCommonTableExpression(
-						plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewSubqueryAlias("cte1", "select a from b", false,
 							plan.NewProject(
 								[]sql.Expression{
 									expression.NewUnresolvedColumn("a"),
@@ -4651,7 +4652,7 @@ CREATE TABLE t2
 				"v",
 				[]string{},
 				plan.NewSubqueryAlias(
-					"v", "SELECT * FROM foo",
+					"v", "SELECT * FROM foo", false,
 					plan.NewProject(
 						[]sql.Expression{expression.NewStar()},
 						plan.NewUnresolvedTable("foo", ""),
@@ -4668,7 +4669,7 @@ CREATE TABLE t2
 				"myview",
 				[]string{},
 				plan.NewSubqueryAlias(
-					"myview", "SELECT AVG(DISTINCT foo) FROM b",
+					"myview", "SELECT AVG(DISTINCT foo) FROM b", false,
 					plan.NewGroupBy(
 						[]sql.Expression{
 							expression.NewUnresolvedFunction("avg", true, nil, expression.NewDistinctExpression(expression.NewUnresolvedColumn("foo"))),
@@ -4688,7 +4689,7 @@ CREATE TABLE t2
 				"v",
 				[]string{},
 				plan.NewSubqueryAlias(
-					"v", "SELECT * FROM foo",
+					"v", "SELECT * FROM foo", false,
 					plan.NewProject(
 						[]sql.Expression{expression.NewStar()},
 						plan.NewUnresolvedTable("foo", ""),

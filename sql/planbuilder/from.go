@@ -184,7 +184,7 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 
 			sqScope := inScope.push()
 			outScope = b.buildSelectStmt(sqScope, e.Select)
-			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
+			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), false, outScope.node)
 
 			var renameCols []string
 			if len(e.Columns) > 0 {

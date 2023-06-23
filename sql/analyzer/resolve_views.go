@@ -60,7 +60,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 					if qerr != nil {
 						return nil, transform.SameTree, qerr
 					}
-					view = plan.NewSubqueryAlias(viewName, viewDef.TextDefinition, query).AsView(viewDef.CreateViewStatement)
+					view = plan.NewSubqueryAlias(viewName, viewDef.TextDefinition, false, query).AsView(viewDef.CreateViewStatement)
 				}
 			}
 		}

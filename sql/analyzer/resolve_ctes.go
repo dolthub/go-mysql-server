@@ -175,7 +175,7 @@ func stripWith(
 				ret = subquery
 			} else {
 				ret, err = resolveRecursiveCte(ctx, a, rCte, scope, sel)
-				ret = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, ret).WithColumns(rCte.Columns)
+				ret = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, false, ret).WithColumns(rCte.Columns)
 			}
 			if err != nil {
 				return nil, nil, err
@@ -291,7 +291,7 @@ func hoistRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		return plan.NewSubqueryAlias(ta.Name(), "", rCte), transform.NewTree, nil
+		return plan.NewSubqueryAlias(ta.Name(), "", false, rCte), transform.NewTree, nil
 	})
 }
 

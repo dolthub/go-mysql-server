@@ -51,6 +51,6 @@ func TestSubqueryAliasSchema(t *testing.T) {
 
 	require.Equal(
 		subquerySchema.Schema,
-		plan.NewSubqueryAlias("alias", "", subquery).Schema(),
+		plan.NewSubqueryAlias("alias", "", false, subquery).Schema(),
 	)
 }

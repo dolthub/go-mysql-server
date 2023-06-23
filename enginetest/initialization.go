@@ -57,6 +57,7 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
+			false,
 			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
 		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
@@ -85,6 +86,7 @@ func NewSession(harness Harness) *sql.Context {
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
+			false,
 			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
 		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 

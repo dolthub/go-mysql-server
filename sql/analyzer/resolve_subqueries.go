@@ -72,7 +72,15 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+					// TODO: check if sqa is lateral
+					if sqa.Lateral {
+						left := plan.NewProject(nil, joinParent.Left())
+						subScope := scope.NewScope(left)
+						subScope.CurrentNodeIsFromSubqueryExpression = true
+						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+					} else {
+						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+					}
 				}
 			} else {
 				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -128,6 +136,30 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 }
 
 func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		n := c.Node
+		if sqa, ok := n.(*plan.SubqueryAlias); ok {
+			if parent, ok := c.Parent.(*plan.JoinNode); ok {
+				left := plan.NewProject(nil, parent.Left())
+				subScope := scope.NewScope(left)
+				subScope.CurrentNodeIsFromSubqueryExpression = true
+				//subScope := scope.NewScopeInJoin(parent.Left())
+				return analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, finalize)
+			}
+			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
+		} else {
+			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if sq, ok := e.(*plan.Subquery); ok {
+					return analyzeSubqueryExpression(ctx, a, n, sq, scope, sel, finalize)
+				} else {
+					return e, transform.SameTree, nil
+				}
+			})
+		}
+	})
+}
+
+func resolveSubqueriesHelper2(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)

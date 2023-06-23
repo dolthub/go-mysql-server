@@ -229,7 +229,7 @@ func TestQualifyColumns(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewTableAlias("a", plan.NewResolvedTable(table, nil, nil)),
 					plan.NewSubqueryAlias(
-						"b", "",
+						"b", "", false,
 						plan.NewProject(
 							[]sql.Expression{
 								expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
@@ -246,7 +246,7 @@ func TestQualifyColumns(t *testing.T) {
 				plan.NewCrossJoin(
 					plan.NewTableAlias("a", plan.NewResolvedTable(table, nil, nil)),
 					plan.NewSubqueryAlias(
-						"b", "",
+						"b", "", false,
 						plan.NewProject(
 							[]sql.Expression{
 								expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),

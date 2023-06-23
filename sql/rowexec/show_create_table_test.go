@@ -273,7 +273,7 @@ func TestShowCreateView(t *testing.T) {
 	}), nil)
 
 	showCreateTable := NewShowCreateTable(
-		NewSubqueryAlias("myView", "select * from `test-table`", NewResolvedTable(table, nil, nil)),
+		NewSubqueryAlias("myView", "select * from `test-table`", false, NewResolvedTable(table, nil, nil)),
 		true,
 	)
 

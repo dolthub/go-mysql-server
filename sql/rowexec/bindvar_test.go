@@ -155,6 +155,7 @@ func TestApplyBindings(t *testing.T) {
 				plan.NewSubqueryAlias(
 					"a",
 					"select * from foo where bar = :v1",
+					false,
 					plan.NewProject(
 						[]sql.Expression{
 							expression.NewStar(),
@@ -179,6 +180,7 @@ func TestApplyBindings(t *testing.T) {
 				plan.NewSubqueryAlias(
 					"a",
 					"select * from foo where bar = :v1",
+					false,
 					plan.NewProject(
 						[]sql.Expression{
 							expression.NewStar(),

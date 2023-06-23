@@ -31,18 +31,19 @@ type SubqueryAlias struct {
 	OuterScopeVisibility bool
 	CanCacheResults      bool
 	CacheableCTESource   bool
+	Lateral              bool
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)
 var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
-func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
+func NewSubqueryAlias(name, textDefinition string, lateral bool, node sql.Node) *SubqueryAlias {
 	return &SubqueryAlias{
-		UnaryNode:            UnaryNode{Child: node},
-		name:                 name,
-		TextDefinition:       textDefinition,
-		OuterScopeVisibility: false,
+		UnaryNode:      UnaryNode{Child: node},
+		name:           name,
+		TextDefinition: textDefinition,
+		Lateral:        lateral,
 	}
 }
 

@@ -2640,7 +2640,7 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 	}
 
 	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
-	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryNode)
+	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, false, queryNode)
 	definer := getCurrentUserForDefiner(ctx, c.ViewSpec.Definer)
 
 	return plan.NewCreateView(
@@ -3451,7 +3451,7 @@ func tableExprToTable(
 				return nil, sql.ErrUnsupportedFeature.New("subquery without alias")
 			}
 
-			sq := plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node)
+			sq := plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), t.Lateral, node)
 
 			if len(e.Columns) > 0 {
 				columns := columnsToStrings(e.Columns)

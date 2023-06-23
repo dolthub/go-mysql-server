@@ -35,7 +35,7 @@ func newCreateView(db memory.MemoryDatabase, isReplace bool) *plan.CreateView {
 
 	db.AddTable("db", table)
 
-	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable",
+	subqueryAlias := plan.NewSubqueryAlias("myview", "select i from mytable", false,
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(1, types.Int32, table.Name(), "i", true),
@@ -97,7 +97,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	require.Equal(t, expectedViewTextDef, view.TextDefinition)
 
 	// This is kind of nonsensical, but we just want to see if it gets stored correctly
-	subqueryAlias := plan.NewSubqueryAlias("myview", "select i + 1 from mytable",
+	subqueryAlias := plan.NewSubqueryAlias("myview", "select i + 1 from mytable", false,
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewArithmetic(

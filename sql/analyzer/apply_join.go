@@ -146,7 +146,7 @@ func transformJoinApply(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 					return nil, transform.SameTree, err
 				}
 
-				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, q)
+				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, false, q)
 				newSubq, err = simplifySubqExpr(newSubq)
 				if err != nil {
 					return nil, transform.SameTree, err
