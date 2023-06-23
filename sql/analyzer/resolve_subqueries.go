@@ -72,7 +72,6 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
-					// TODO: check if sqa is lateral
 					if sqa.Lateral {
 						left := plan.NewProject(nil, joinParent.Left())
 						subScope := scope.NewScope(left)
@@ -139,7 +138,7 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	return transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		n := c.Node
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			if parent, ok := c.Parent.(*plan.JoinNode); ok {
+			if parent, ok := c.Parent.(*plan.JoinNode); ok && sqa.Lateral {
 				left := plan.NewProject(nil, parent.Left())
 				subScope := scope.NewScope(left)
 				subScope.CurrentNodeIsFromSubqueryExpression = true
