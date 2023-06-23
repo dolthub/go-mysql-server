@@ -29,7 +29,7 @@ import (
 )
 
 var viewDefinition = plan.NewSubqueryAlias(
-	"myview1", "select i from mytable",
+	"myview1", "select i from mytable", false,
 	plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
 		plan.NewUnresolvedTable("mytable", ""),
@@ -37,7 +37,7 @@ var viewDefinition = plan.NewSubqueryAlias(
 )
 
 var viewDefinitionWithUnion = plan.NewSubqueryAlias(
-	"myview2", "select i from mytable1 union select i from mytable2",
+	"myview2", "select i from mytable1 union select i from mytable2", false,
 	plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
 		plan.NewUnion(plan.NewUnresolvedTable("mytable1", ""), plan.NewUnresolvedTable("mytable2", ""), false, nil, nil, nil),
@@ -45,7 +45,7 @@ var viewDefinitionWithUnion = plan.NewSubqueryAlias(
 )
 
 var viewDefinitionWithAsOf = plan.NewSubqueryAlias(
-	"viewWithAsOf", "select i from mytable as of '2019-01-01'",
+	"viewWithAsOf", "select i from mytable as of '2019-01-01'", false,
 	plan.NewProject(
 		[]sql.Expression{expression.NewUnresolvedColumn("i")},
 		plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("2019-01-01", types.LongText)),
@@ -78,7 +78,7 @@ func TestResolveViews(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, viewDefinition, analyzed)
 	expectedViewDefinition := plan.NewSubqueryAlias(
-		"myview1", "select i from mytable",
+		"myview1", "select i from mytable", false,
 		plan.NewProject(
 			[]sql.Expression{expression.NewUnresolvedColumn("i")},
 			plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("2019-01-01", types.LongText)),
@@ -91,7 +91,7 @@ func TestResolveViews(t *testing.T) {
 
 	// Views using a union statement should have AsOf pushed to their unresolved tables, even though union is opaque
 	expectedViewDefinition = plan.NewSubqueryAlias(
-		"myview2", "select i from mytable1 union select i from mytable2",
+		"myview2", "select i from mytable1 union select i from mytable2", false,
 		plan.NewProject(
 			[]sql.Expression{expression.NewUnresolvedColumn("i")},
 			plan.NewUnion(plan.NewUnresolvedTableAsOf("mytable1", "", expression.NewLiteral("2019-01-01", types.LongText)), plan.NewUnresolvedTableAsOf("mytable2", "", expression.NewLiteral("2019-01-01", types.LongText)), false, nil, nil, nil),
