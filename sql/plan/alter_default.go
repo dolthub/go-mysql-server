@@ -64,6 +64,11 @@ func (d *AlterDefaultSet) String() string {
 	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s", d.Table.String(), d.ColumnName, d.Default.String())
 }
 
+// Resolved implements the sql.Node interface.
+func (d *AlterDefaultDrop) Resolved() bool {
+	return d.ddlNode.Resolved() && d.Table.Resolved() && d.targetSchema.Resolved()
+}
+
 // RowIter implements the sql.Node interface.
 func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Grab the table fresh from the database.
@@ -123,7 +128,7 @@ func (d *AlterDefaultSet) CollationCoercibility(ctx *sql.Context) (collation sql
 
 // Resolved implements the sql.Node interface.
 func (d *AlterDefaultSet) Resolved() bool {
-	return d.Table.Resolved() && d.ddlNode.Resolved() && d.Default.Resolved()
+	return d.ddlNode.Resolved() && d.Table.Resolved() && d.Default.Resolved() && d.targetSchema.Resolved()
 }
 
 func (d *AlterDefaultSet) Expressions() []sql.Expression {

@@ -163,29 +163,6 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Sc
 				node.Source = newSource
 			}
 			return node, identity, err
-		case *plan.AlterDefaultSet:
-			table := getResolvedTable(node)
-			sch := table.Schema()
-			index := sch.IndexOfColName(node.ColumnName)
-			if index == -1 {
-				return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnName)
-			}
-			col := sch[index]
-
-			eWrapper := expression.WrapExpression(node.Default)
-			newExpr, same, err := resolveColumnDefault(ctx, col, eWrapper)
-			if err != nil {
-				return node, transform.SameTree, err
-			}
-			if same {
-				return node, transform.SameTree, nil
-			}
-
-			newNode, err := node.WithDefault(newExpr)
-			if err != nil {
-				return node, transform.SameTree, err
-			}
-			return newNode, transform.NewTree, nil
 		case sql.SchemaTarget:
 			return transform.OneNodeExpressions(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
@@ -338,7 +315,7 @@ func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex
 		if index == -1 {
 			return nil, sql.ErrTableColumnNotFound.New(n2.Table, n2.ColumnName)
 		}
-		return n2.Schema()[index], nil
+		return schema[index], nil
 	default:
 		if colIndex < len(schema) {
 			return schema[colIndex], nil
