@@ -252,19 +252,13 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 			}
 			b = encodedBytes
 		}
-		if typeLength > 0 {
-			return b.([]byte)[:typeLength], nil
-		}
-		return b, nil
+		return truncateConvertedValue(b, typeLength)
 	case ConvertToChar, ConvertToNChar:
 		s, _, err := types.LongText.Convert(val)
 		if err != nil {
 			return nil, nil
 		}
-		if typeLength > 0 {
-			return s.(string)[:typeLength], nil
-		}
-		return s, nil
+		return truncateConvertedValue(s, typeLength)
 	case ConvertToDate:
 		_, isTime := val.(time.Time)
 		_, isString := val.(string)
@@ -359,6 +353,31 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		return num, nil
 	default:
 		return nil, nil
+	}
+}
+
+// truncateConvertedValue truncates |val| to the specified |typeLength| if |val|
+// is a string or byte slice. If the typeLength is 0, or if it is greater than
+// the length of |val|, then |val| is simply returned as is. If |val| is not a
+// string or []byte, then an error is returned.
+func truncateConvertedValue(val interface{}, typeLength int) (interface{}, error) {
+	if typeLength <= 0 {
+		return val, nil
+	}
+
+	switch v := val.(type) {
+	case []byte:
+		if len(v) <= typeLength {
+			typeLength = len(v)
+		}
+		return v[:typeLength], nil
+	case string:
+		if len(v) <= typeLength {
+			typeLength = len(v)
+		}
+		return v[:typeLength], nil
+	default:
+		return nil, fmt.Errorf("unsupported type for truncation: %T", val)
 	}
 }
 

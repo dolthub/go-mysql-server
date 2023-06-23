@@ -121,6 +121,15 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			name:        "convert int to string with length constraint larger than value",
+			row:         nil,
+			expression:  NewLiteral(-3, types.Int32),
+			castTo:      ConvertToChar,
+			typeLength:  10,
+			expected:    "-3",
+			expectedErr: false,
+		},
+		{
 			name:        "impossible conversion string to unsigned",
 			row:         nil,
 			expression:  NewLiteral("hello", types.LongText),
@@ -200,6 +209,15 @@ func TestConvert(t *testing.T) {
 			typeLength:  4,
 			expression:  NewLiteral(10.56789, types.Float32),
 			expected:    "10.5",
+			expectedErr: false,
+		},
+		{
+			name:        "float to char with length restriction larger than value",
+			row:         nil,
+			castTo:      ConvertToChar,
+			typeLength:  40,
+			expression:  NewLiteral(10.56789, types.Float32),
+			expected:    "10.56789",
 			expectedErr: false,
 		},
 		{

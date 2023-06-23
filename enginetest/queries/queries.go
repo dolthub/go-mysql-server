@@ -4437,6 +4437,14 @@ Select * from (
 		Expected: []sql.Row{{"10."}},
 	},
 	{
+		Query:    "SELECT CAST(10.56789 as CHAR(30));",
+		Expected: []sql.Row{{"10.56789"}},
+	},
+	{
+		Query:    "SELECT CAST('abcdef' as BINARY(30));",
+		Expected: []sql.Row{{[]byte("abcdef")}},
+	},
+	{
 		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,
 		Expected: []sql.Row{{"10.12"}},
 	},
