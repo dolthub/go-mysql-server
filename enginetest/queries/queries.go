@@ -4425,6 +4425,38 @@ Select * from (
 		},
 	},
 	{
+		Query:    "SELECT CAST(-3 AS DOUBLE) FROM dual",
+		Expected: []sql.Row{{-3.0}},
+	},
+	{
+		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
+		Expected: []sql.Row{{float32(-3.9876)}},
+	},
+	{
+		Query:    "SELECT CAST(10.56789 as CHAR(3));",
+		Expected: []sql.Row{{"10."}},
+	},
+	{
+		Query:    "SELECT CAST(10.56789 as CHAR(30));",
+		Expected: []sql.Row{{"10.56789"}},
+	},
+	{
+		Query:    "SELECT CAST('abcdef' as BINARY(30));",
+		Expected: []sql.Row{{[]byte("abcdef")}},
+	},
+	{
+		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,
+		Expected: []sql.Row{{"10.12"}},
+	},
+	{
+		// In enginetests, the SQL wire conversion logic isn't used, which is what expands the DECIMAL(4,2) value
+		// from "10" to "10.00" to exactly match MySQL's result. So, here we see just "10", but through sql-server
+		// we'll see the correct "10.00" value. Ideally, the enginetests (and dolt sql) would also execute the
+		// SQL wire conversion logic so that we don't have this inconsistency.
+		Query:    `SELECT CONVERT(10, DECIMAL(4,2))`,
+		Expected: []sql.Row{{"10"}},
+	},
+	{
 		Query: "SELECT CONVERT(-3, UNSIGNED) FROM mytable",
 		Expected: []sql.Row{
 			{uint64(18446744073709551613)},
