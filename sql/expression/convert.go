@@ -69,6 +69,10 @@ type Convert struct {
 	typeLength int
 	// typeScale is the optional scale parameter for types that support it (e.g. "decimal(10, 2)")
 	typeScale int
+	// cachedDecimalType is the cached Decimal type for this convert expression. Because new Decimal types
+	// must be created with their specific scale and precision values, unlike other types, we cache the created
+	// type to avoid re-creating it on every call to Type().
+	cachedDecimalType sql.DecimalType
 }
 
 var _ sql.Expression = (*Convert)(nil)
@@ -118,7 +122,10 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDatetime:
 		return types.Datetime
 	case ConvertToDecimal:
-		return createConvertedDecimalType(c.typeLength, c.typeScale)
+		if c.cachedDecimalType == nil {
+			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)
+		}
+		return c.cachedDecimalType
 	case ConvertToFloat:
 		return types.Float32
 	case ConvertToDouble, ConvertToReal:
@@ -288,7 +295,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if err != nil {
 			return nil, err
 		}
-		dt := createConvertedDecimalType(typeLength, typeScale)
+		dt := createConvertedDecimalType(typeLength, typeScale, false)
 		d, _, err := dt.Convert(value)
 		if err != nil {
 			return "0", nil
@@ -382,14 +389,18 @@ func truncateConvertedValue(val interface{}, typeLength int) (interface{}, error
 }
 
 // createConvertedDecimalType creates a new Decimal type with the specified |precision| and |scale|. If a Decimal
-// type cannot be created from the values specified, an error is logged and an internal Decimal type is returned. This
-// function is intended to be used in places where an error cannot be returned (e.g. Node.Type() implementations),
-// hence why it logs an error instead of returning one.
-func createConvertedDecimalType(length, scale int) sql.DecimalType {
+// type cannot be created from the values specified, the internal Decimal type is returned. If |logErrors| is true,
+// an error will also logged to the standard logger. (Setting |logErrors| to false, allows the caller to prevent
+// spurious error message from being logged multiple times for the same error.) This function is intended to be
+// used in places where an error cannot be returned (e.g. Node.Type() implementations), hence why it logs an error
+// instead of returning one.
+func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalType {
 	if length > 0 && scale > 0 {
 		dt, err := types.CreateColumnDecimalType(uint8(length), uint8(scale))
 		if err != nil {
-			logrus.StandardLogger().Errorf("unable to create decimal type with length %d and scale %d: %v", length, scale, err)
+			if logErrors {
+				logrus.StandardLogger().Errorf("unable to create decimal type with length %d and scale %d: %v", length, scale, err)
+			}
 			return types.InternalDecimalType
 		}
 		return dt
