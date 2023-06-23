@@ -797,6 +797,34 @@ func (b *PlanBuilder) tableSpecToSchema(inScope *scope, tableSpec *ast.TableSpec
 	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation
 }
 
+// jsonTableSpecToSchemaHelper creates a sql.Schema from a parsed TableSpec
+func (b *PlanBuilder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSpec, sch sql.Schema) {
+	for _, cd := range jsonTableSpec.Columns {
+		if cd.Spec != nil {
+			b.jsonTableSpecToSchemaHelper(cd.Spec, sch)
+			continue
+		}
+		typ, err := types.ColumnTypeToType(&cd.Type)
+		if err != nil {
+			b.handleErr(err)
+		}
+		col := &sql.Column{
+			Type:          typ,
+			Name:          cd.Name.String(),
+			AutoIncrement: bool(cd.Type.Autoincrement),
+		}
+		sch = append(sch, col)
+		continue
+	}
+}
+
+// jsonTableSpecToSchema creates a sql.Schema from a parsed TableSpec
+func (b *PlanBuilder) jsonTableSpecToSchema(tableSpec *ast.JSONTableSpec) sql.Schema {
+	var sch sql.Schema
+	b.jsonTableSpecToSchemaHelper(tableSpec, sch)
+	return sch
+}
+
 // These constants aren't exported from vitess for some reason. This could be removed if we changed this.
 const (
 	colKeyNone ast.ColumnKeyOption = iota

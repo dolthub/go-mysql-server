@@ -1881,7 +1881,7 @@ END;`,
 			{
 				Query: "CALL computeSummary('i am not used');",
 				Expected: []sql.Row{
-					{"0.5000", 4},
+					{float64(0.5), 4},
 				},
 			},
 		},

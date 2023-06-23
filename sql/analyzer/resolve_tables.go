@@ -272,6 +272,26 @@ func reresolveTables(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			}
 			new := transferProjections(ctx, from, to.(*plan.ResolvedTable))
 			return new, transform.NewTree, nil
+		case *plan.TableCountLookup:
+			new, err := resolveTable(ctx, plan.NewUnresolvedTableWithDatabase(n.Table().Name(), n.Db()), a)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			rt, ok := new.(*plan.ResolvedTable)
+			if !ok {
+				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup; expected *plan.ResolvedTable, found: %T", new)
+			}
+			statsTable, ok := rt.Table.(sql.StatisticsTable)
+			if !ok {
+				return n, transform.SameTree, fmt.Errorf("unable to re-resolve prepared *plan.TableCountLookup; expected sql.StatisticsTable, found: %T", new)
+			}
+
+			cnt, err := statsTable.RowCount(ctx)
+			if err != nil {
+				return n, transform.SameTree, err
+			}
+
+			return plan.NewTableCount(n.Name(), n.Db(), statsTable, cnt), transform.NewTree, nil
 		default:
 		}
 		if err != nil {

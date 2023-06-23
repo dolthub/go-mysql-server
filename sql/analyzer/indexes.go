@@ -282,6 +282,14 @@ func getIndexes(
 			}
 		}
 
+		for name, idx := range result {
+			newRanges, err := sql.RemoveOverlappingRanges(idx.lookup.Ranges...)
+			if err != nil {
+				return nil, nil
+			}
+			result[name].lookup.Ranges = newRanges
+		}
+
 		return result, nil
 	}
 
@@ -676,11 +684,21 @@ func getMultiColumnIndexes(
 			continue
 		}
 
-		exprList := ia.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), colExprs...)
+		exprList := ia.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, colExprs...)...)
 		if len(exprList) == 0 {
 			continue
 		}
 
+		firstGf, ok := colExprs[0].(*expression.GetField)
+		if ok {
+			for i, e := range exprList[0] {
+				gf, ok := e.(*expression.GetField)
+				if !ok {
+					continue
+				}
+				exprList[0][i] = gf.WithTable(firstGf.Table())
+			}
+		}
 		lookup, err := getMultiColumnIndexForExpressions(ctx, ia, table, exprList[0], exps, tableAliases)
 		if err != nil {
 			return nil, nil, err
@@ -742,11 +760,12 @@ func getMultiColumnIndexForExpressions(
 
 	var expressions []sql.Expression
 	var allMatches joinColExprs
-	for _, selectedExpr := range normalizedExpressions {
+	for _, selectedExpr := range selected {
 		matchedExprs := findColumns(exprs, selectedExpr.String())
 		allMatches = append(allMatches, matchedExprs...)
 
 		for _, expr := range matchedExprs {
+			col := normalizeExpression(tableAliases, expr.col)
 			switch expr.comparison.(type) {
 			case *expression.Equals,
 				*expression.NullSafeEquals,
@@ -766,20 +785,20 @@ func getMultiColumnIndexForExpressions(
 				switch expr.comparison.(type) {
 				case *expression.NullSafeEquals:
 					if val == nil {
-						indexBuilder = indexBuilder.IsNull(ctx, expr.col.String())
+						indexBuilder = indexBuilder.IsNull(ctx, col.String())
 					} else {
-						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), val)
+						indexBuilder = indexBuilder.Equals(ctx, col.String(), val)
 					}
 				case *expression.Equals:
-					indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), val)
+					indexBuilder = indexBuilder.Equals(ctx, col.String(), val)
 				case *expression.GreaterThan:
-					indexBuilder = indexBuilder.GreaterThan(ctx, expr.col.String(), val)
+					indexBuilder = indexBuilder.GreaterThan(ctx, col.String(), val)
 				case *expression.GreaterThanOrEqual:
-					indexBuilder = indexBuilder.GreaterOrEqual(ctx, expr.col.String(), val)
+					indexBuilder = indexBuilder.GreaterOrEqual(ctx, col.String(), val)
 				case *expression.LessThan:
-					indexBuilder = indexBuilder.LessThan(ctx, expr.col.String(), val)
+					indexBuilder = indexBuilder.LessThan(ctx, col.String(), val)
 				case *expression.LessThanOrEqual:
-					indexBuilder = indexBuilder.LessOrEqual(ctx, expr.col.String(), val)
+					indexBuilder = indexBuilder.LessOrEqual(ctx, col.String(), val)
 				default:
 					return nil, nil
 				}
@@ -797,8 +816,8 @@ func getMultiColumnIndexForExpressions(
 					return nil, err
 				}
 				expressions = append(expressions, expression.ExtractGetField(between))
-				indexBuilder = indexBuilder.GreaterOrEqual(ctx, expr.col.String(), lower)
-				indexBuilder = indexBuilder.LessOrEqual(ctx, expr.col.String(), upper)
+				indexBuilder = indexBuilder.GreaterOrEqual(ctx, col.String(), lower)
+				indexBuilder = indexBuilder.LessOrEqual(ctx, col.String(), upper)
 			case *expression.InTuple:
 				cmp := expr.comparison.(expression.Comparer)
 				if !isEvaluable(cmp.Left()) && isEvaluable(cmp.Right()) {
@@ -808,10 +827,10 @@ func getMultiColumnIndexForExpressions(
 					}
 					values, ok := value.([]interface{})
 					if ok {
-						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), values...)
+						indexBuilder = indexBuilder.Equals(ctx, col.String(), values...)
 					} else {
 						// For single length tuples, we don't return []interface{}, just the first element
-						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), value)
+						indexBuilder = indexBuilder.Equals(ctx, col.String(), value)
 					}
 				} else {
 					return nil, nil
@@ -827,9 +846,9 @@ func getMultiColumnIndexForExpressions(
 					_, nullsafe := expr.comparison.(*expression.Not).Child.(*expression.NullSafeEquals)
 					expressions = append(expressions, selectedExpr)
 					if val == nil && nullsafe {
-						indexBuilder = indexBuilder.IsNotNull(ctx, expr.col.String())
+						indexBuilder = indexBuilder.IsNotNull(ctx, col.String())
 					} else {
-						indexBuilder = indexBuilder.NotEquals(ctx, expr.col.String(), val)
+						indexBuilder = indexBuilder.NotEquals(ctx, col.String(), val)
 					}
 				default:
 					return nil, nil

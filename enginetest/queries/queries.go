@@ -742,6 +742,86 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query:    "select count(1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(100)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select sum(1)",
+		Expected: []sql.Row{{float64(1)}},
+	},
+	{
+		Query:    "select sum(100)",
+		Expected: []sql.Row{{float64(100)}},
+	},
+	{
+		Query:    "select count(*) from mytable",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    `select count(*) as cnt from mytable`,
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select count(*) from keyless",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select count(*) from xy",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select count(*) from xy alias",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select count(1) from mytable",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:    "select count(1) from xy",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select count(1) from xy, uv",
+		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select count('abc') from xy, uv",
+		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select sum('abc') from mytable",
+		Expected: []sql.Row{{float64(0)}},
+	},
+	{
+		Query:    "select sum(10) from mytable",
+		Expected: []sql.Row{{float64(30)}},
+	},
+	{
+		Query:    "select sum(1) from emptytable",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "select * from (select count(*) from xy) dt",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "select (select count(*) from xy), (select count(*) from uv)",
+		Expected: []sql.Row{{4, 4}},
+	},
+	{
+		Query:    "select (select count(*) from xy), (select count(*) from uv), count(*) from ab",
+		Expected: []sql.Row{{4, 4, 4}},
+	},
+	{
+		Query:    "select i from mytable alias where i = 1 and s = 'first row'",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query: `
 Select x
 from (select * from xy) sq1
@@ -975,15 +1055,15 @@ Select * from (
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + sum(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), int64(28)},
-			{int64(1), int64(108)},
+			{int64(0), float64(28)},
+			{int64(1), float64(108)},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + min(c3) as sum_and_min FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), int64(16)},
-			{int64(1), int64(76)},
+			{int64(0), float64(16)},
+			{int64(1), float64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -992,15 +1072,15 @@ Select * from (
 			},
 			{
 				Name: "sum_and_min",
-				Type: types.Int64,
+				Type: types.Float64,
 			},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(`c3`) +    min( c3 ) FROM one_pk GROUP BY 1 ORDER BY 1",
 		Expected: []sql.Row{
-			{int64(0), int64(16)},
-			{int64(1), int64(76)},
+			{int64(0), float64(16)},
+			{int64(1), float64(76)},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -1009,7 +1089,7 @@ Select * from (
 			},
 			{
 				Name: "SUM(`c3`) +    min( c3 )",
-				Type: types.Int64,
+				Type: types.Float64,
 			},
 		},
 	},
@@ -2569,6 +2649,44 @@ Select * from (
 	{
 		Query:    `SELECT * FROM (select a.i from mytable a cross join mytable b) sq WHERE sq.i in (1, 1)`,
 		Expected: []sql.Row{{1}, {1}, {1}},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s = 'first row'`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) or s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE (i in (1, 1, 1, 1, 1) and s = 'first row') or s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{1, "first row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s != 'first row';`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s NOT in ('first row', 'first row', 'first row');`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{3, "third row"},
+		},
 	},
 	{
 		Query:    "SELECT * from mytable WHERE 4 IN (i + 2)",
@@ -4620,9 +4738,9 @@ Select * from (
 	{
 		Query: "SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
 		Expected: []sql.Row{
-			{int64(2), int64(1)},
-			{int64(3), int64(2)},
-			{int64(4), int64(3)},
+			{float64(2), int64(1)},
+			{float64(3), int64(2)},
+			{float64(4), int64(3)},
 		},
 	},
 	{
@@ -4845,13 +4963,13 @@ Select * from (
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", ""},
+			{"autocommit", 1}, {"version", "8.0.11"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name > 'version' and variable_name like '%_%'`,
 		Expected: []sql.Row{
-			{"version_comment", ""}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
+			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
 		},
 	},
 	{
@@ -5060,6 +5178,42 @@ Select * from (
 		Query: `SELECT if(123 > 123, "a", "b")`,
 		Expected: []sql.Row{
 			{"b"},
+		},
+	},
+	{
+		Query: `SELECT if(1, 123, 456)`,
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Query: `SELECT if(0, 123, 456)`,
+		Expected: []sql.Row{
+			{456},
+		},
+	},
+	{
+		Query: `SELECT if(0, "abc", 456)`,
+		Expected: []sql.Row{
+			{456},
+		},
+	},
+	{
+		Query: `SELECT if(1, "abc", 456)`,
+		Expected: []sql.Row{
+			{"abc"},
+		},
+	},
+	{
+		Query: `SELECT 1 as foo, if((select foo), "a", "b")`,
+		Expected: []sql.Row{
+			{1, "a"},
+		},
+	},
+	{
+		Query: `SELECT 0 as foo, if((select foo), "a", "b")`,
+		Expected: []sql.Row{
+			{0, "b"},
 		},
 	},
 	{

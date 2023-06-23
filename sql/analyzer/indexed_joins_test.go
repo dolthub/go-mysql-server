@@ -45,15 +45,18 @@ func TestHashJoins(t *testing.T) {
 ├── G7: (tablescan: pq)
 ├── G8: (colref: 'pq.p')
 ├── G9: (equal 4 8)
-├── G10: (hashjoin 6 7) (hashjoin 1 16) (hashjoin 16 1) (hashjoin 7 6) (innerjoin 7 6) (innerjoin 16 1) (innerjoin 1 16) (innerjoin 6 7)
+├── G10: (hashjoin 6 7) (hashjoin 1 18) (hashjoin 18 1) (hashjoin 2 17) (hashjoin 17 2) (hashjoin 7 6) (innerjoin 7 6) (innerjoin 17 2) (innerjoin 2 17) (innerjoin 18 1) (innerjoin 1 18) (innerjoin 6 7)
 ├── G11: (tablescan: uv)
 ├── G12: (colref: 'pq.q')
 ├── G13: (colref: 'uv.u')
 ├── G14: (equal 12 13)
-├── G15: (hashjoin 10 11) (hashjoin 1 18) (hashjoin 18 1) (hashjoin 6 17) (hashjoin 17 6) (hashjoin 11 10) (innerjoin 11 10) (innerjoin 17 6) (innerjoin 6 17) (innerjoin 18 1) (innerjoin 1 18) (innerjoin 10 11)
-├── G16: (hashjoin 2 7) (hashjoin 7 2) (innerjoin 7 2) (innerjoin 2 7)
-├── G17: (hashjoin 7 11) (hashjoin 11 7) (innerjoin 11 7) (innerjoin 7 11)
-└── G18: (hashjoin 2 17) (hashjoin 17 2) (hashjoin 16 11) (hashjoin 11 16) (innerjoin 11 16) (innerjoin 16 11) (innerjoin 17 2) (innerjoin 2 17)
+├── G15: (hashjoin 10 11) (hashjoin 1 21) (hashjoin 21 1) (hashjoin 2 20) (hashjoin 20 2) (hashjoin 6 19) (hashjoin 19 6) (hashjoin 11 10) (innerjoin 11 10) (innerjoin 19 6) (innerjoin 6 19) (innerjoin 20 2) (innerjoin 2 20) (innerjoin 21 1) (innerjoin 1 21) (innerjoin 10 11)
+├── G16: (equal 3 8)
+├── G17: (hashjoin 1 7) (hashjoin 7 1) (innerjoin 7 1) (innerjoin 1 7)
+├── G18: (hashjoin 2 7) (hashjoin 7 2) (innerjoin 7 2) (innerjoin 2 7)
+├── G19: (hashjoin 7 11) (hashjoin 11 7) (innerjoin 11 7) (innerjoin 7 11)
+├── G20: (hashjoin 1 19) (hashjoin 19 1) (hashjoin 17 11) (hashjoin 11 17) (innerjoin 11 17) (innerjoin 17 11) (innerjoin 19 1) (innerjoin 1 19)
+└── G21: (hashjoin 2 19) (hashjoin 19 2) (hashjoin 18 11) (hashjoin 11 18) (innerjoin 11 18) (innerjoin 18 11) (innerjoin 19 2) (innerjoin 2 19)
 `,
 		},
 	}

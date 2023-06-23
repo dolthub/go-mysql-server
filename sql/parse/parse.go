@@ -84,9 +84,10 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 	defer span.End()
 
 	s := strings.TrimSpace(query)
-	if strings.HasSuffix(s, ";") {
-		s = s[:len(s)-1]
-	}
+	// trim spaces and empty statements
+	s = strings.TrimRightFunc(s, func(r rune) bool {
+		return r == ';' || unicode.IsSpace(r)
+	})
 
 	var stmt sqlparser.Statement
 	var err error
@@ -102,9 +103,10 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = strings.TrimSpace(parsed)
-			if strings.HasSuffix(parsed, ";") {
-				parsed = parsed[:len(parsed)-1]
-			}
+			// trim spaces and empty statements
+			parsed = strings.TrimRightFunc(parsed, func(r rune) bool {
+				return r == ';' || unicode.IsSpace(r)
+			})
 			remainder = s[ri:]
 		}
 	}
@@ -301,6 +303,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertExecute(ctx, n)
 	case *sqlparser.Deallocate:
 		return convertDeallocate(ctx, n)
+	case *sqlparser.CreateSpatialRefSys:
+		return convertCreateSpatialRefSys(ctx, n)
 	}
 }
 
@@ -3552,26 +3556,75 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 	}
 }
 
+func jsonTableCols(ctx *sql.Context, jtSpec *sqlparser.JSONTableSpec) ([]plan.JSONTableCol, error) {
+	var cols []plan.JSONTableCol
+	for _, jtColDef := range jtSpec.Columns {
+		if jtColDef.Spec != nil {
+			nestedCols, err := jsonTableCols(ctx, jtColDef.Spec)
+			if err != nil {
+				return nil, err
+			}
+			col := plan.JSONTableCol{
+				Path:       jtColDef.Spec.Path,
+				NestedCols: nestedCols,
+			}
+			cols = append(cols, col)
+			continue
+		}
+
+		typ, err := types.ColumnTypeToType(&jtColDef.Type)
+		if err != nil {
+			return nil, err
+		}
+
+		var defEmptyVal, defErrorVal sql.Expression
+		if jtColDef.Opts.ValOnEmpty == nil {
+			defEmptyVal = expression.NewLiteral(nil, types.Null)
+		} else {
+			defEmptyVal, err = ExprToExpression(ctx, jtColDef.Opts.ValOnEmpty)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		if jtColDef.Opts.ValOnError == nil {
+			defErrorVal = expression.NewLiteral(nil, types.Null)
+		} else {
+			defErrorVal, err = ExprToExpression(ctx, jtColDef.Opts.ValOnError)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		planCol := plan.JSONTableCol{
+			Path: jtColDef.Opts.Path,
+			Opts: &plan.JSONTableColOpts{
+				Name:         jtColDef.Name.String(),
+				Type:         typ,
+				ForOrd:       bool(jtColDef.Type.Autoincrement),
+				Exists:       jtColDef.Opts.Exists,
+				DefEmptyVal:  defEmptyVal,
+				DefErrorVal:  defErrorVal,
+				ErrorOnEmpty: jtColDef.Opts.ErrorOnEmpty,
+				ErrorOnError: jtColDef.Opts.ErrorOnError,
+			},
+		}
+		cols = append(cols, planCol)
+	}
+	return cols, nil
+}
+
 func jsonTableExpr(ctx *sql.Context, t *sqlparser.JSONTableExpr) (sql.Node, error) {
 	data, err := ExprToExpression(ctx, t.Data)
 	if err != nil {
 		return nil, err
 	}
-
-	paths := make([]string, len(t.Spec.Columns))
-	for i, col := range t.Spec.Columns {
-		paths[i] = col.Type.Path
-	}
-
-	sch, _, err := TableSpecToSchema(ctx, t.Spec, false)
-	for _, col := range sch.Schema {
-		col.Source = t.Alias.String()
-	}
+	alias := t.Alias.String()
+	cols, err := jsonTableCols(ctx, t.Spec)
 	if err != nil {
 		return nil, err
 	}
-
-	return plan.NewJSONTable(data, t.Path, paths, t.Alias.String(), sch)
+	return plan.NewJSONTable(data, t.Spec.Path, alias, cols)
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
@@ -4816,4 +4869,58 @@ func getUnresolvedDatabase(ctx *sql.Context, dbName string) (sql.UnresolvedDatab
 		return udb, sql.ErrNoDatabaseSelected.New()
 	}
 	return udb, nil
+}
+
+func convertCreateSpatialRefSys(ctx *sql.Context, n *sqlparser.CreateSpatialRefSys) (sql.Node, error) {
+	srid, err := strconv.ParseInt(string(n.SRID.Val), 10, 16)
+	if err != nil {
+		return nil, err
+	}
+
+	srsAttr, err := convertSrsAttribute(ctx, n.SrsAttr)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewCreateSpatialRefSys(uint32(srid), n.OrReplace, n.IfNotExists, srsAttr)
+}
+
+var ErrMissingMandatoryAttribute = errors.NewKind("missing mandatory attribute %s")
+var ErrInvalidName = errors.NewKind("the spatial reference system name can't be an empty string or start or end with whitespace")
+var ErrInvalidOrgName = errors.NewKind("the organization name can't be an empty string or start or end with whitespace")
+
+func convertSrsAttribute(ctx *sql.Context, attr *sqlparser.SrsAttribute) (plan.SrsAttribute, error) {
+	if attr == nil {
+		return plan.SrsAttribute{}, fmt.Errorf("missing attribute")
+	}
+	if attr.Name == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("NAME")
+	}
+	if unicode.IsSpace(rune(attr.Name[0])) || unicode.IsSpace(rune(attr.Name[len(attr.Name)-1])) {
+		return plan.SrsAttribute{}, ErrInvalidName.New()
+	}
+	// TODO: there are additional rules to validate the attribute definition
+	if attr.Definition == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("DEFINITION")
+	}
+	if attr.Organization == "" {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION NAME")
+	}
+	if unicode.IsSpace(rune(attr.Organization[0])) || unicode.IsSpace(rune(attr.Organization[len(attr.Organization)-1])) {
+		return plan.SrsAttribute{}, ErrInvalidOrgName.New()
+	}
+	if attr.OrgID == nil {
+		return plan.SrsAttribute{}, ErrMissingMandatoryAttribute.New("ORGANIZATION ID")
+	}
+	orgID, err := strconv.ParseInt(string(attr.OrgID.Val), 10, 16)
+	if err != nil {
+		return plan.SrsAttribute{}, err
+	}
+	return plan.SrsAttribute{
+		Name:         attr.Name,
+		Definition:   attr.Definition,
+		Organization: attr.Organization,
+		OrgID:        uint32(orgID),
+		Description:  attr.Description,
+	}, nil
 }

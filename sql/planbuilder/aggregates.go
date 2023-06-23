@@ -273,11 +273,16 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 		}
 	}
 
+	aggType := agg.Type()
+	if name == "avg" || name == "sum" {
+		aggType = types.Float64
+	}
+
 	aggName := strings.ToLower(agg.String())
 	if id, ok := gb.outScope.getExpr(aggName); ok {
 		// TODO check agg scope output, see if we've already computed
 		// if so use reference here
-		gf := expression.NewGetFieldWithTable(int(id), agg.Type(), "", agg.String(), agg.IsNullable())
+		gf := expression.NewGetFieldWithTable(int(id), aggType, "", agg.String(), agg.IsNullable())
 		return gf
 	}
 

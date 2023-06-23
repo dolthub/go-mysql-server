@@ -274,7 +274,19 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		ctx, err := p.BeginQuery(ctx, "SELECT foo")
 		require.NoError(t, err)
 
-		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{uint64(1), "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
+		p.AddConnection(2, "otherhost")
+		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2.SetCurrentDatabase("otherdb")
+		p.ConnectionReady(sess2)
+		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
+		require.NoError(t, err)
+		p.EndQuery(ctx2)
+
+		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist ORDER BY id", []sql.Row{
+			{uint64(1), "root", "localhost", nil, "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"},
+			{uint64(2), "root", "otherhost", "otherdb", "Sleep", 0, "", ""},
+		}, nil, nil)
 	})
 
 	for _, tt := range queries.SkippedInfoSchemaQueries {
@@ -3149,9 +3161,6 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE mydb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		// After dropping the selected database, the tx db field should be cleared out
-		require.Equal(t, "", ctx.GetTransactionDatabase())
-
 		_, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
 		require.Error(t, err)
 
@@ -3170,9 +3179,6 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		ctx.SetCurrentDatabase("testdb")
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
-
-		// After dropping the selected database, the tx db field should be cleared out
-		require.Equal(t, "", ctx.GetTransactionDatabase())
 
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
@@ -3224,8 +3230,8 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{types.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		// After dropping the selected database, the tx db field should be cleared out
-		require.Equal(t, "", ctx.GetTransactionDatabase())
+		// After dropping the selected database, the current db field should be cleared out
+		require.Equal(t, "", ctx.GetCurrentDatabase())
 
 		sch, iter, err := e.Query(ctx, "USE testdb")
 		if err == nil {

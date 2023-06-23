@@ -17,8 +17,10 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // flattenAggregationExpressions flattens any complex aggregate or window expressions in a GroupBy or Window node and
@@ -96,9 +98,14 @@ func replaceAggregatesWithGetFieldProjections(_ *sql.Context, scope *plan.Scope,
 			case sql.Aggregation, sql.WindowAggregation:
 				newAggregates = append(newAggregates, e)
 				aggPassthrough[e.String()] = struct{}{}
-				return expression.NewGetField(
-					scopeLen+len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
-				), transform.NewTree, nil
+				typ := e.Type()
+				switch e.(type) {
+				case *aggregation.Sum, *aggregation.Avg:
+					typ = types.Float64
+				case *aggregation.Count:
+					typ = types.Int64
+				}
+				return expression.NewGetField(scopeLen+len(newAggregates)-1, typ, e.String(), e.IsNullable()), transform.NewTree, nil
 			default:
 				return e, transform.SameTree, nil
 			}

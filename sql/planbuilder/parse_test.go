@@ -19,6 +19,7 @@ import (
 type planTest struct {
 	Query        string
 	ExpectedPlan string
+	Skip         bool
 }
 
 func TestPlanBuilder(t *testing.T) {
@@ -847,6 +848,24 @@ Project
 		{
 			Query: "select (1+x) s from xy join uv on (1+x) = (1+u) group by 1 having s = 1",
 		},
+		{
+			Skip:  true, // TODO: we don't correctly put aliases in the scope
+			Query: "select 1 as foo, concat((select foo), 'abc');",
+			ExpectedPlan: `
+Project
+├─ columns: [1 (tinyint) as foo, concat(Subquery
+│   ├─ cacheable: false
+│   └─ Project
+│       ├─ columns: [foo:1!null]
+│       └─ Table
+│           ├─ name: 
+│           └─ columns: []
+│  ,abc (longtext)) as concat((select foo), 'abc')]
+└─ Table
+    ├─ name: 
+    └─ columns: []
+`,
+		},
 	}
 
 	var verbose, rewrite bool
@@ -885,6 +904,9 @@ Project
 
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {
+			if tt.Skip {
+				t.Skip()
+			}
 			stmt, err := sqlparser.Parse(tt.Query)
 			require.NoError(t, err)
 

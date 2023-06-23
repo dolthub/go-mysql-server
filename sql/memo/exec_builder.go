@@ -95,9 +95,9 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	}
 	switch n := children[0].(type) {
 	case *plan.ResolvedTable:
-		ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.Index, keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForResolvedTable(n, plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 	case *plan.TableAlias:
-		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.Index, keyExprs, l.Nullmask))
+		ret, err = plan.NewIndexedAccessForResolvedTable(n.Child.(*plan.ResolvedTable), plan.NewLookupBuilder(l.Index.SqlIdx(), keyExprs, l.Nullmask))
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildLookup(l, input, n.Child)
@@ -108,6 +108,9 @@ func (b *ExecBuilder) buildLookup(l *Lookup, input sql.Schema, children ...sql.N
 	case *plan.Project:
 		ret, err = b.buildLookup(l, input, n.Child)
 		ret = plan.NewProject(n.Projections, ret)
+	case *plan.Limit:
+		ret, err = b.buildLookup(l, input, n.Child)
+		ret = plan.NewLimit(n.Limit, ret)
 	default:
 		panic(fmt.Sprintf("unexpected lookup child %T", n))
 	}
@@ -206,13 +209,7 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, input sql.Schema, children ...s
 
 func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	// need keyExprs for whole range for every dimension
-	cets := i.Idx.ColumnExpressionTypes()
-	ranges := make(sql.Range, len(cets))
-	for i, cet := range cets {
-		ranges[i] = sql.AllRangeColumnExpr(cet.Type)
-	}
-
-	l := sql.IndexLookup{Index: i.Idx, Ranges: sql.RangeCollection{ranges}}
+	l := sql.IndexLookup{Index: i.Idx.SqlIdx(), Ranges: sql.RangeCollection{i.Range}}
 
 	var ret sql.Node
 	var err error

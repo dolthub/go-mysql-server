@@ -70,9 +70,9 @@ func (s *InMemoryPersistedSession) GetPersistedValue(k string) (interface{}, err
 }
 
 // ValidateSession counts the number of times this method is called.
-func (s *InMemoryPersistedSession) ValidateSession(ctx *sql.Context, dbName string) error {
+func (s *InMemoryPersistedSession) ValidateSession(ctx *sql.Context) error {
 	if s.validateCallback != nil {
 		s.validateCallback()
 	}
-	return s.Session.ValidateSession(ctx, dbName)
+	return s.Session.ValidateSession(ctx)
 }

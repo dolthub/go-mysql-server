@@ -1408,7 +1408,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
-				Expected: []sql.Row{{int64(-1455)}},
+				Expected: []sql.Row{{float64(-1455)}},
 			},
 			{
 				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
@@ -4089,6 +4089,33 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 }
 
 var PreparedScriptTests = []ScriptTest{
+	{
+		Name: "table_count optimization refreshes result",
+		SetUpScript: []string{
+			"create table a (a int primary key);",
+			"insert into a values (0), (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "prepare cnt from 'select count(*) from a';",
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:    "execute cnt",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query: "insert into a values (3), (4)",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query:    "execute cnt",
+				Expected: []sql.Row{{5}},
+			},
+		},
+	},
 	{
 		Name:        "bad prepare",
 		SetUpScript: []string{},
