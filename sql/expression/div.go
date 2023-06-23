@@ -646,33 +646,14 @@ func (i *IntDiv) IsNullable() bool {
 
 // Type returns the greatest type for given operation.
 func (i *IntDiv) Type() sql.Type {
-	//TODO: what if both BindVars? should be constant folded
-	rTyp := i.Right.Type()
-	if types.IsDeferredType(rTyp) {
-		return rTyp
-	}
 	lTyp := i.Left.Type()
-	if types.IsDeferredType(lTyp) {
-		return lTyp
-	}
+	rTyp := i.Right.Type()
 
-	if types.IsTime(lTyp) && types.IsTime(rTyp) {
-		return types.Int64
-	}
-
-	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return types.Float64
-	}
-
-	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+	if types.IsUnsigned(lTyp) || types.IsUnsigned(rTyp) {
 		return types.Uint64
-	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-		return types.Int64
 	}
 
-	// using max precision which is 65.
-	defType := types.MustCreateDecimalType(65, 0)
-	return defType
+	return types.Int64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -729,19 +710,27 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
 func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
-	typ := i.Type()
-	lIsTimeType := types.IsTime(i.Left.Type())
-	rIsTimeType := types.IsTime(i.Right.Type())
+	var typ sql.Type
+	lTyp, rTyp := i.Left.Type(), i.Right.Type()
+	lIsTimeType := types.IsTime(lTyp)
+	rIsTimeType := types.IsTime(rTyp)
 
-	if types.IsInteger(typ) || types.IsFloat(typ) {
-		left = convertValueToType(ctx, typ, left, lIsTimeType)
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		typ = types.Float64
+	} else if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+		typ = types.Uint64
+	} else if (lIsTimeType && rIsTimeType) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)) {
+		typ = types.Int64
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
+		// using max precision which is 65.
+		typ = types.MustCreateDecimalType(65, 0)
 	}
 
 	if types.IsInteger(typ) || types.IsFloat(typ) {
+		left = convertValueToType(ctx, typ, left, lIsTimeType)
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
+		left = convertToDecimalValue(left, lIsTimeType)
 		right = convertToDecimalValue(right, rIsTimeType)
 	}
 
