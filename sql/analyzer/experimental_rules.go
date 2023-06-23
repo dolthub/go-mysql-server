@@ -139,7 +139,7 @@ func transformJoinApply_experimental(ctx *sql.Context, a *Analyzer, n sql.Node, 
 					return nil, transform.SameTree, err
 				}
 
-				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString,false, q).WithColumns(newCols)
+				var newSubq sql.Node = plan.NewSubqueryAlias(name, subq.QueryString, false, q).WithColumns(newCols)
 				newSubq, err = simplifySubqExpr(newSubq)
 				if err != nil {
 					return nil, transform.SameTree, err
