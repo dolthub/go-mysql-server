@@ -999,6 +999,91 @@ Project
          └─ columns: [x y z]
 `,
 		},
+		{
+			Query: "SELECT x, first_value(z) over (partition by y) FROM xy order by x*y,x",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4!null as first_value(z) over (partition by y)]
+ └─ Sort((xy.x:1!null * xy.y:2!null) ASC nullsFirst, xy.x:1!null ASC nullsFirst)
+     └─ Window
+         ├─ first_value(xy.z) over ( partition by xy.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+         ├─ xy.x:1!null
+         ├─ xy.y:2!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT x, avg(x) FROM xy group by x order by sum(x)",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, avg(xy.x):4 as avg(x)]
+ └─ Sort(sum(xy.x):5!null ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
+         ├─ group: xy.x:1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT x, avg(x) FROM xy group by x order by avg(x)",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, avg(xy.x):4 as avg(x)]
+ └─ Sort(AVG(xy.x):4 ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: AVG(xy.x:1!null), xy.x:1!null
+         ├─ group: xy.x:1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT x, avg(x) FROM xy group by x order by avg(y)",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, avg(xy.x):4 as avg(x)]
+ └─ Sort(avg(xy.y):5 ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: AVG(xy.x:1!null), AVG(xy.y:2!null), xy.x:1!null
+         ├─ group: xy.x:1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: "SELECT x, avg(x) FROM xy group by x order by avg(y)+y",
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, avg(xy.x):4 as avg(x)]
+ └─ Sort((avg(xy.y):5 + xy.y:2!null) ASC nullsFirst)
+     └─ GroupBy
+         ├─ select: AVG(xy.x:1!null), AVG(xy.y:2!null), xy.x:1!null, xy.y:2!null
+         ├─ group: xy.x:1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
+		{
+			Query: `SELECT x, lead(x) over (partition by y order by x) FROM xy order by x;`,
+			ExpectedPlan: `
+Project
+ ├─ columns: [xy.x:1!null, lead(xy.x, 1) over ( partition by xy.y order by xy.x asc):4 as lead(x) over (partition by y order by x)]
+ └─ Sort(xy.x:1!null ASC nullsFirst)
+     └─ Window
+         ├─ lead(xy.x, 1) over ( partition by xy.y order by xy.x ASC)
+         ├─ xy.x:1!null
+         └─ Table
+             ├─ name: xy
+             └─ columns: [x y z]
+`,
+		},
 	}
 
 	var verbose, rewrite bool

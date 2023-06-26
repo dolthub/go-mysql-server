@@ -195,7 +195,7 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
 		if !selectStr[e.col] {
-			selectExprs = append(selectExprs, e.scalar)
+			selectExprs = append(selectExprs, e.scalarGf())
 			selectStr[e.col] = true
 		}
 	}
@@ -297,7 +297,7 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: aggType, nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 	gb.addAggStr(col)
 	col.id = id
@@ -308,7 +308,8 @@ func isWindowFunc(name string) bool {
 	switch name {
 	case "first", "last", "count", "sum", "any_value",
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
-		"row_number", "percent_rank", "lag", "first_value",
+		"row_number", "percent_rank", "lead", "lag",
+		"first_value", "last_value",
 		"rank", "dense_rank":
 		return true
 	default:
@@ -390,7 +391,8 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
 		if !selectStr[e.col] {
-			selectExprs = append(selectExprs, e.scalar)
+
+			selectExprs = append(selectExprs, e.scalarGf())
 			selectStr[e.col] = true
 		}
 	}
