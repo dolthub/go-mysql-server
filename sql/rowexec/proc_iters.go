@@ -74,7 +74,7 @@ func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err := startTransaction(ctx); err != nil {
 		return nil, err
 	}
-	
+
 	row, err := b.rowIter.Next(ctx)
 	if err != nil {
 		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.Pref.CurrentHeight() == int(exitErr) {
@@ -408,7 +408,7 @@ func (i *iterateIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-// startTransaction begins a new transaction if necessary, e.g. if a statement in a stored procedure committed the 
+// startTransaction begins a new transaction if necessary, e.g. if a statement in a stored procedure committed the
 // current one
 func startTransaction(ctx *sql.Context) error {
 	if ctx.GetTransaction() == nil {
@@ -422,6 +422,6 @@ func startTransaction(ctx *sql.Context) error {
 			ctx.SetTransaction(tx)
 		}
 	}
-	
+
 	return nil
 }
