@@ -2,6 +2,7 @@ package memo
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
 
@@ -240,14 +241,30 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, input sql.Schema, children ..
 	return ret, nil
 }
 
+func checkIndexTypeMismatch(idx sql.Index, rang sql.Range) bool {
+	for i, typ := range idx.ColumnExpressionTypes() {
+		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	inner, err := b.buildIndexScan(j.InnerScan, input, children[0])
 	if err != nil {
 		return nil, err
 	}
+	if checkIndexTypeMismatch(j.InnerScan.Idx.SqlIdx(), j.InnerScan.Range) {
+		return nil, fmt.Errorf("index scan type mismatch")
+	}
+
 	outer, err := b.buildIndexScan(j.OuterScan, input, children[1])
 	if err != nil {
 		return nil, err
+	}
+	if checkIndexTypeMismatch(j.OuterScan.Idx.SqlIdx(), j.OuterScan.Range) {
+		return nil, fmt.Errorf("index scan type mismatch")
 	}
 	if j.SwapCmp {
 		cmp, ok := j.Filter[0].(*Equal)

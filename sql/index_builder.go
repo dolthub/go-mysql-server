@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -266,6 +267,14 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 		ranges := b.Ranges(ctx)
 		if len(ranges) == 0 {
 			return emptyLookup, nil
+		}
+		idxTypes := b.idx.ColumnExpressionTypes()
+		for _, rang := range ranges {
+			for i := range rang {
+				if !rang[i].Typ.Equals(idxTypes[i].Type) {
+					return emptyLookup, fmt.Errorf("aaaaaaaa")
+				}
+			}
 		}
 		return IndexLookup{Index: b.idx, Ranges: ranges}, nil
 	}
