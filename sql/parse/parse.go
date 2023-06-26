@@ -4349,6 +4349,11 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 			}
 		}
 
+		// TODO: maybe this?
+		//if val >= -math.MaxFloat32 && val <= math.MaxFloat32 {
+		//	return expression.NewLiteral(val, types.Float32), nil
+		//}
+
 		return expression.NewLiteral(val, types.Float64), nil
 	case sqlparser.HexNum:
 		//TODO: binary collation?

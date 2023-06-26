@@ -762,7 +762,7 @@ func sortedIndexScansForTableCol(indexes []*memo.Index, targetCol *memo.ColRef, 
 					}
 				}
 			}
-			rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, lit.Typ)
+			rang[j] = sql.ClosedRangeColumnExpr(lit.Val, lit.Val, idx.SqlIdx().ColumnExpressionTypes()[j].Type)
 		}
 		for j := matchedIdx; j < len(idx.Cols()); j++ {
 			// all range bound Compare() is type insensitive
