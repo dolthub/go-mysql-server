@@ -59,17 +59,7 @@ func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression
 
 // Resolved implements the Resolvable interface.
 func (sc *ShowCreateTable) Resolved() bool {
-	if !sc.Child.Resolved() {
-		return false
-	}
-
-	for _, col := range sc.targetSchema {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
+	return sc.Child.Resolved() && sc.targetSchema.Resolved()
 }
 
 func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {

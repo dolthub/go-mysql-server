@@ -257,7 +257,7 @@ func (p AlterIndex) String() string {
 }
 
 func (p *AlterIndex) Resolved() bool {
-	return p.Table.Resolved() && p.ddlNode.Resolved()
+	return p.Table.Resolved() && p.ddlNode.Resolved() && p.targetSchema.Resolved()
 }
 
 // Children implements the sql.Node interface.
