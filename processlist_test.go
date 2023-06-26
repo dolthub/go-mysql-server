@@ -32,6 +32,7 @@ func TestProcessList(t *testing.T) {
 	p := NewProcessList()
 	p.AddConnection(1, clientHostOne)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostOne, User: "foo"}, 1)
+	sess.SetCurrentDatabase("test_db")
 	p.ConnectionReady(sess)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.BeginQuery(ctx, "SELECT foo")
@@ -55,6 +56,7 @@ func TestProcessList(t *testing.T) {
 		Query:     "SELECT foo",
 		Command:   sql.ProcessCommandQuery,
 		StartedAt: p.procs[1].StartedAt,
+		Database:  "test_db",
 	}
 	require.NotNil(p.procs[1].Kill)
 	p.procs[1].Kill = nil

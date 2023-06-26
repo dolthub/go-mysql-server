@@ -297,7 +297,7 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	}
 
 	// decimal type value for valid table column should use scale defined by the column.
-	// if the value is not part of valid table column, the result value should used its
+	// if the value is not part of valid table column, the result value should use its
 	// own precision and scale.
 	var val []byte
 	if t.definesColumn {

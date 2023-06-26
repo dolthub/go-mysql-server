@@ -274,7 +274,19 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		ctx, err := p.BeginQuery(ctx, "SELECT foo")
 		require.NoError(t, err)
 
-		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist", []sql.Row{{uint64(1), "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}}, nil, nil)
+		p.AddConnection(2, "otherhost")
+		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2.SetCurrentDatabase("otherdb")
+		p.ConnectionReady(sess2)
+		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
+		require.NoError(t, err)
+		p.EndQuery(ctx2)
+
+		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist ORDER BY id", []sql.Row{
+			{uint64(1), "root", "localhost", nil, "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"},
+			{uint64(2), "root", "otherhost", "otherdb", "Sleep", 0, "", ""},
+		}, nil, nil)
 	})
 
 	for _, tt := range queries.SkippedInfoSchemaQueries {
@@ -5670,6 +5682,36 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT into t40 VALUES (NULL, 1)")
 
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t40", []sql.Row{{1, 1}}, nil, nil)
+	})
+
+	TestScript(t, harness, queries.ScriptTest{
+		// https://github.com/dolthub/dolt/issues/6206
+		Name: "alter table containing column default value expressions",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 timestamp default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query:    "alter table t alter column col2 DROP DEFAULT;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "alter table t drop index idx1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
 	})
 }
 

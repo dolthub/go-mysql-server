@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type groupByIter struct {
@@ -248,7 +249,10 @@ func groupingKey(
 
 		t, isStringType := expr.Type().(sql.StringType)
 		if isStringType && v != nil {
-			err = t.Collation().WriteWeightString(hash, v.(string))
+			v, err = types.ConvertToString(v, t)
+			if err == nil {
+				err = t.Collation().WriteWeightString(hash, v.(string))
+			}
 		} else {
 			_, err = fmt.Fprintf(hash, "%v", v)
 		}

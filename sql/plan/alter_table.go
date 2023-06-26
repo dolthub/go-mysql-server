@@ -303,17 +303,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 // Resolved implements the Resolvable interface.
 func (a *AddColumn) Resolved() bool {
-	if !(a.ddlNode.Resolved() && a.Table.Resolved() && a.column.Default.Resolved()) {
-		return false
-	}
-
-	for _, col := range a.targetSch {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
+	return a.ddlNode.Resolved() && a.Table.Resolved() && a.column.Default.Resolved() && a.targetSch.Resolved()
 }
 
 // WithTargetSchema implements sql.SchemaTarget
@@ -544,17 +534,7 @@ func (d *DropColumn) Schema() sql.Schema {
 }
 
 func (d *DropColumn) Resolved() bool {
-	if !d.Table.Resolved() && !d.ddlNode.Resolved() {
-		return false
-	}
-
-	for _, col := range d.targetSchema {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
+	return d.Table.Resolved() && d.ddlNode.Resolved() && d.targetSchema.Resolved()
 }
 
 func (d *DropColumn) Children() []sql.Node {
@@ -667,17 +647,7 @@ func (r *RenameColumn) DebugString() string {
 }
 
 func (r *RenameColumn) Resolved() bool {
-	if !r.Table.Resolved() && r.ddlNode.Resolved() {
-		return false
-	}
-
-	for _, col := range r.targetSchema {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
+	return r.Table.Resolved() && r.ddlNode.Resolved() && r.targetSchema.Resolved()
 }
 
 func (r *RenameColumn) Schema() sql.Schema {
@@ -838,17 +808,7 @@ func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 
 // Resolved implements the Resolvable interface.
 func (m *ModifyColumn) Resolved() bool {
-	if !(m.Table.Resolved() && m.column.Default.Resolved() && m.ddlNode.Resolved()) {
-		return false
-	}
-
-	for _, col := range m.targetSchema {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
-	return true
+	return m.Table.Resolved() && m.column.Default.Resolved() && m.ddlNode.Resolved() && m.targetSchema.Resolved()
 }
 
 func (m *ModifyColumn) ValidateDefaultPosition(tblSch sql.Schema) error {

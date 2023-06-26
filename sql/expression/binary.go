@@ -52,12 +52,12 @@ func (*Binary) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	expr, err := b.Child.Eval(ctx, row)
+	val, err := b.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return convertValue(expr, ConvertToBinary, b.Child.Type())
+	return convertValue(val, ConvertToBinary, b.Child.Type(), 0, 0)
 }
 
 func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {

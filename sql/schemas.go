@@ -118,6 +118,20 @@ func (s Schema) HasAutoIncrement() bool {
 	return false
 }
 
+// Resolved returns true if this schema is fully resolved. Currently, the only piece of a schema that needs
+// to be resolved are any column default value expressions.
+func (s Schema) Resolved() bool {
+	for _, c := range s {
+		if c.Default != nil {
+			if !c.Default.Resolved() {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
 func IsKeyless(s Schema) bool {
 	for _, c := range s {
 		if c.PrimaryKey {

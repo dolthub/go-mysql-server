@@ -29,6 +29,7 @@ type JoinType uint16
 const (
 	JoinTypeUnknown                   JoinType = iota // UnknownJoin
 	JoinTypeCross                                     // CrossJoin
+	JoinTypeCrossHash                                 // CrossHashJoin
 	JoinTypeInner                                     // InnerJoin
 	JoinTypeSemi                                      // SemiJoin
 	JoinTypeAnti                                      // AntiJoin
@@ -122,7 +123,7 @@ func (i JoinType) IsMerge() bool {
 
 func (i JoinType) IsHash() bool {
 	switch i {
-	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls:
+	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeCrossHash:
 		return true
 	default:
 		return false
@@ -172,7 +173,7 @@ func (i JoinType) IsLookup() bool {
 }
 
 func (i JoinType) IsCross() bool {
-	return i == JoinTypeCross
+	return i == JoinTypeCross || i == JoinTypeCrossHash
 }
 
 func (i JoinType) AsHash() JoinType {
@@ -187,6 +188,8 @@ func (i JoinType) AsHash() JoinType {
 		return JoinTypeSemiHash
 	case JoinTypeAnti:
 		return JoinTypeAntiHash
+	case JoinTypeCross:
+		return JoinTypeCrossHash
 	default:
 		return i
 	}
