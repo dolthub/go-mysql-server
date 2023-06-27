@@ -476,12 +476,12 @@ func getAvailableNamesByScope(n sql.Node, scope *plan.Scope) availableNames {
 			switch n := n.(type) {
 			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.RecursiveCte, *plan.IndexedTableAccess, *plan.JSONTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
-				symbols.indexTable(name, name, scopeLevel + currentScopeLevel)
+				symbols.indexTable(name, name, scopeLevel+currentScopeLevel)
 				return false
 			case sql.TableFunction:
 				name := strings.ToLower(n.Name())
 				alias := strings.ToLower(n.Name())
-				symbols.indexTable(alias, name, scopeLevel + currentScopeLevel)
+				symbols.indexTable(alias, name, scopeLevel+currentScopeLevel)
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
@@ -489,7 +489,7 @@ func getAvailableNamesByScope(n sql.Node, scope *plan.Scope) availableNames {
 					*plan.RecursiveTable, *plan.IndexedTableAccess, sql.TableFunction:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
-					symbols.indexTable(alias, name, scopeLevel + currentScopeLevel)
+					symbols.indexTable(alias, name, scopeLevel+currentScopeLevel)
 				}
 				return false
 			case sql.Projector:
@@ -497,7 +497,7 @@ func getAvailableNamesByScope(n sql.Node, scope *plan.Scope) availableNames {
 				// we do not terminate symbol generation.
 				for _, e := range n.ProjectedExprs() {
 					if a, ok := e.(*expression.Alias); ok {
-						symbols.indexAlias(a, scopeLevel + currentScopeLevel)
+						symbols.indexAlias(a, scopeLevel+currentScopeLevel)
 					}
 				}
 			}
