@@ -76,9 +76,10 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 						resTbls := getTablesByName(joinParent.Left())
 						subScope := scope
 						for _, tbl := range resTbls {
-							subScope = subScope.NewScope(plan.NewProject(nil, tbl))
+							subScope = subScope.NewScopeInJoin(tbl)
 						}
 						subScope.CurrentNodeIsFromSubqueryExpression = true
+						subScope.SetJoin(true)
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 					} else {
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -145,28 +146,12 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 				resTbls := getTablesByName(parent.Left())
 				subScope := scope
 				for _, tbl := range resTbls {
-					subScope = subScope.NewScope(plan.NewProject(nil, tbl))
+					subScope = subScope.NewScopeInJoin(tbl)
 				}
 				subScope.CurrentNodeIsFromSubqueryExpression = true
-				//subScope := scope.NewScopeInJoin(parent.Left())
+				subScope.SetJoin(true)
 				return analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, finalize)
 			}
-			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
-		} else {
-			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if sq, ok := e.(*plan.Subquery); ok {
-					return analyzeSubqueryExpression(ctx, a, n, sq, scope, sel, finalize)
-				} else {
-					return e, transform.SameTree, nil
-				}
-			})
-		}
-	})
-}
-
-func resolveSubqueriesHelper2(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
 		} else {
 			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {

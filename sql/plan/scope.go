@@ -93,7 +93,6 @@ func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node) *Scope {
 // NewScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
 // node.
 func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
-	// TODO: check s == nil?
 	for {
 		var done bool
 		switch n := node.(type) {
@@ -107,17 +106,19 @@ func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 		}
 	}
 	if s == nil {
-		s = &Scope{}
+		return &Scope{joinSiblings: []sql.Node{node}}
 	}
-	subScope := &Scope{
+
+	var newNodes []sql.Node
+	newNodes = append(newNodes, node)
+	newNodes = append(newNodes, s.joinSiblings...)
+	return &Scope{
 		nodes:          s.nodes,
 		Memos:          s.Memos,
 		recursionDepth: s.recursionDepth + 1,
 		Procedures:     s.Procedures,
-		joinSiblings:   s.joinSiblings,
+		joinSiblings:   newNodes,
 	}
-	subScope.joinSiblings = append(subScope.joinSiblings, node)
-	return subScope
 }
 
 // newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
@@ -137,22 +138,23 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 // expression, they may reference tables from the scopes outside the subquery expression's scope.
 func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 	subScope := newScopeWithDepth(s.RecursionDepth() + 1)
-	if s != nil && len(s.nodes) > 0 {
+	if s != nil {
 		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
 		// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
 		// gives a derived table visibility to the OUTER scope where the subquery is defined.
 		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
 		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
-		if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
+		if s.CurrentNodeIsFromSubqueryExpression { // TODO: do something similar for lateral
 			sqa.OuterScopeVisibility = true
-			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
-			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
-		} else if len(s.joinSiblings) > 0 {
-			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
+		}
+		if len(s.nodes) > 0 {
 			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 		}
+		if len(s.joinSiblings) > 0 {
+			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
+		}
+		subScope.inJoin = s.inJoin
 	}
-
 	return subScope
 }
 
@@ -232,7 +234,11 @@ func (s *Scope) InnerToOuter() []sql.Node {
 	if s == nil {
 		return nil
 	}
+	if !s.inJoin {
+		return s.nodes
+	}
 	return s.nodes
+	//return append(s.nodes, s.joinSiblings...)
 }
 
 // OuterToInner returns the scope nodes in order of outermost scope to innermost scope. When using these nodes for
@@ -284,6 +290,8 @@ func (s *Scope) Schema() sql.Schema {
 			}
 		}
 	}
+	// TODO: the schema resolution for this is slightly different than the above
+	// Example: we don't need to wrap with projection
 	if s != nil && s.inJoin {
 		for _, n := range s.joinSiblings {
 			schema = append(schema, n.Schema()...)
