@@ -1084,6 +1084,20 @@ Project
              └─ columns: [x y z]
 `,
 		},
+		{
+			Query: `SELECT CAST(10.56789 as CHAR(3));`,
+			ExpectedPlan: `
+Project
+ ├─ columns: [convert
+ │   ├─ type: char
+ │   ├─ typeLength: 3
+ │   └─ 10.567890 (double)
+ │   as CAST(10.56789 as CHAR(3))]
+ └─ Table
+     ├─ name: 
+     └─ columns: []
+`,
+		},
 	}
 
 	var verbose, rewrite bool

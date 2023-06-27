@@ -213,7 +213,8 @@ func isAggregateFunc(name string) bool {
 	case "avg", "bit_and", "bit_or", "bit_xor", "count",
 		"group_concat", "json_arrayagg", "json_objectagg",
 		"max", "min", "std", "stddev_pop", "stddev_samp",
-		"stddev", "sum", "var_pop", "var_samp", "variance":
+		"stddev", "sum", "var_pop", "var_samp", "variance",
+		"first", "last":
 		return true
 	default:
 		return false
@@ -440,6 +441,7 @@ func (b *PlanBuilder) buildNamedWindows(fromScope *scope, window ast.Window) {
 
 func (b *PlanBuilder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.WindowDefinition {
 	if def == nil {
+		//return &sql.WindowDefinition{Frame: plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()}
 		return nil
 	}
 

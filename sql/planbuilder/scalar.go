@@ -125,8 +125,24 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		rhs := b.buildScalar(inScope, v.Right)
 		return expression.NewXor(lhs, rhs)
 	case *ast.ConvertExpr:
+		var err error
+		typeLength := 0
+		if v.Type.Length != nil {
+			typeLength, err = strconv.Atoi(v.Type.Length.String())
+			if err != nil {
+				b.handleErr(err)
+			}
+		}
+
+		typeScale := 0
+		if v.Type.Scale != nil {
+			typeScale, err = strconv.Atoi(v.Type.Scale.String())
+			if err != nil {
+				b.handleErr(err)
+			}
+		}
 		expr := b.buildScalar(inScope, v.Expr)
-		return expression.NewConvert(expr, v.Type.Type)
+		return expression.NewConvertWithLengthAndScale(expr, v.Type.Type, typeLength, typeScale)
 	case *ast.RangeCond:
 		val := b.buildScalar(inScope, v.Left)
 		lower := b.buildScalar(inScope, v.From)

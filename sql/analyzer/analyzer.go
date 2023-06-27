@@ -463,6 +463,8 @@ func NewResolveSubqueryExprSelector(sel RuleSelector) RuleSelector {
 		case
 			// skip recursive finalize rules
 			hoistOutOfScopeFiltersId,
+			hoistSelectExistsId,
+			transformJoinApplyId,
 			finalizeSubqueriesId:
 			return false
 		}
