@@ -468,6 +468,43 @@ func getAvailableNamesByScope(n sql.Node, scope *plan.Scope) availableNames {
 		})
 	}
 
+	joinScopeNodes := scope.JoinSiblings()
+	currentScopeLevel = len(scopeNodes)
+	getColumnsInNodes(joinScopeNodes, symbols, currentScopeLevel)
+	for scopeLevel, n := range joinScopeNodes {
+		transform.Inspect(n, func(n sql.Node) bool {
+			switch n := n.(type) {
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.RecursiveCte, *plan.IndexedTableAccess, *plan.JSONTable:
+				name := strings.ToLower(n.(sql.Nameable).Name())
+				symbols.indexTable(name, name, scopeLevel + currentScopeLevel)
+				return false
+			case sql.TableFunction:
+				name := strings.ToLower(n.Name())
+				alias := strings.ToLower(n.Name())
+				symbols.indexTable(alias, name, scopeLevel + currentScopeLevel)
+				return false
+			case *plan.TableAlias:
+				switch t := n.Child.(type) {
+				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias,
+					*plan.RecursiveTable, *plan.IndexedTableAccess, sql.TableFunction:
+					name := strings.ToLower(t.(sql.Nameable).Name())
+					alias := strings.ToLower(n.Name())
+					symbols.indexTable(alias, name, scopeLevel + currentScopeLevel)
+				}
+				return false
+			case sql.Projector:
+				// projected aliases overwrite lower namespaces, but importantly,
+				// we do not terminate symbol generation.
+				for _, e := range n.ProjectedExprs() {
+					if a, ok := e.(*expression.Alias); ok {
+						symbols.indexAlias(a, scopeLevel + currentScopeLevel)
+					}
+				}
+			}
+			return true
+		})
+	}
+
 	return symbols
 }
 

@@ -86,7 +86,18 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					}
 				}
 			} else {
-				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+				if joinParent != nil && sqa.Lateral {
+					resTbls := getTablesByName(joinParent.Left())
+					subScope := scope
+					for _, tbl := range resTbls {
+						subScope = subScope.NewScopeInJoin(tbl)
+					}
+					subScope.CurrentNodeIsFromSubqueryExpression = true
+					subScope.SetJoin(true)
+					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+				} else {
+					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+				}
 			}
 
 			if err != nil {

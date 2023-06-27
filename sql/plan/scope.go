@@ -139,22 +139,25 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 	subScope := newScopeWithDepth(s.RecursionDepth() + 1)
 	if s != nil {
-		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
-		// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
-		// gives a derived table visibility to the OUTER scope where the subquery is defined.
-		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
-		if s.CurrentNodeIsFromSubqueryExpression { // TODO: do something similar for lateral
-			sqa.OuterScopeVisibility = true
-		}
 		if len(s.nodes) > 0 {
-			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+			// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
+			// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
+			// gives a derived table visibility to the OUTER scope where the subquery is defined.
+			// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
+			// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
+			if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
+				sqa.OuterScopeVisibility = true
+				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+			} else if len(s.joinSiblings) > 0 {
+				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+			}
 		}
 		if len(s.joinSiblings) > 0 {
 			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
 		}
 		subScope.inJoin = s.inJoin
 	}
+
 	return subScope
 }
 
@@ -234,11 +237,15 @@ func (s *Scope) InnerToOuter() []sql.Node {
 	if s == nil {
 		return nil
 	}
-	if !s.inJoin {
-		return s.nodes
-	}
 	return s.nodes
-	//return append(s.nodes, s.joinSiblings...)
+}
+
+// JoinSiblings returns the join siblings of the scope,
+func (s *Scope) JoinSiblings() []sql.Node {
+	if s == nil || !s.inJoin {
+		return nil
+	}
+	return s.joinSiblings
 }
 
 // OuterToInner returns the scope nodes in order of outermost scope to innermost scope. When using these nodes for
