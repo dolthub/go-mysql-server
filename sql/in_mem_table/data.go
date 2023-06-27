@@ -272,9 +272,7 @@ func (data *Data) ToSlice(ctx *sql.Context) []Entry {
 	var entries []Entry
 	for _, indexedData := range data.data {
 		for _, ourEntries := range indexedData {
-			for _, entry := range ourEntries {
-				entries = append(entries, entry)
-			}
+			entries = append(entries, ourEntries...)
 		}
 		break
 	}
