@@ -73,8 +73,11 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
 					if sqa.Lateral {
-						left := plan.NewProject(nil, joinParent.Left())
-						subScope := scope.NewScope(left)
+						resTbls := getTablesByName(joinParent.Left())
+						subScope := scope
+						for _, tbl := range resTbls {
+							subScope = subScope.NewScope(plan.NewProject(nil, tbl))
+						}
 						subScope.CurrentNodeIsFromSubqueryExpression = true
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 					} else {
@@ -139,8 +142,11 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		n := c.Node
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			if parent, ok := c.Parent.(*plan.JoinNode); ok && sqa.Lateral {
-				left := plan.NewProject(nil, parent.Left())
-				subScope := scope.NewScope(left)
+				resTbls := getTablesByName(parent.Left())
+				subScope := scope
+				for _, tbl := range resTbls {
+					subScope = subScope.NewScope(plan.NewProject(nil, tbl))
+				}
 				subScope.CurrentNodeIsFromSubqueryExpression = true
 				//subScope := scope.NewScopeInJoin(parent.Left())
 				return analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, finalize)
