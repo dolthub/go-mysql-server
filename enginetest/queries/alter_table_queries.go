@@ -92,4 +92,73 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "drop column drops all relevant check constraints",
+		SetUpScript: []string{
+			"create table t42 (i bigint primary key, s varchar(20))",
+			"ALTER TABLE t42 ADD COLUMN j int",
+			"ALTER TABLE t42 ADD CONSTRAINT check1 CHECK (j < 12345)",
+			"ALTER TABLE t42 ADD CONSTRAINT check2 CHECK (j > 0)",
+			"ALTER TABLE t42 DROP COLUMN j",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t42",
+				Expected: []sql.Row{{"t42", "CREATE TABLE `t42` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "drop column drops correct check constraint",
+		SetUpScript: []string{
+			"create table t41 (i bigint primary key, s varchar(20))",
+			"ALTER TABLE t41 ADD COLUMN j int",
+			"ALTER TABLE t41 ADD COLUMN k int",
+			"ALTER TABLE t41 ADD CONSTRAINT j_check CHECK (j < 12345)",
+			"ALTER TABLE t41 ADD CONSTRAINT k_check CHECK (k < 123)",
+			"ALTER TABLE t41 DROP COLUMN j",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t41",
+				Expected: []sql.Row{{"t41", "CREATE TABLE `t41` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `k` int,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  CONSTRAINT `k_check` CHECK ((`k` < 123))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "drop column does not drop when referenced in constraint with other column",
+		SetUpScript: []string{
+			"create table t43 (i bigint primary key, s varchar(20))",
+			"ALTER TABLE t43 ADD COLUMN j int",
+			"ALTER TABLE t43 ADD COLUMN k int",
+			"ALTER TABLE t43 ADD CONSTRAINT test_check CHECK (j < k)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table t43 drop column j",
+				ExpectedErr: sql.ErrCheckConstraintInvalidatedByColumnAlter,
+			},
+			{
+				Query: "show create table t43",
+				Expected: []sql.Row{{"t43", "CREATE TABLE `t43` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  `j` int,\n" +
+						"  `k` int,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  CONSTRAINT `test_check` CHECK ((`j` < `k`))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
