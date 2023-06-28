@@ -283,12 +283,19 @@ END`,
 				Expected: []sql.Row{},
 			},
 			{
+				// TODO: MySQL won't return any result set here, but we still do
 				Query:    "CALL p1(1)",
-				Expected: []sql.Row{{}, {}}, // Next calls return an empty row, but progress the loop
+				Expected: []sql.Row{{}},
 			},
 			{
+				// TODO: MySQL won't return any result set here, but we still do
 				Query:    "CALL p1(2)",
-				Expected: []sql.Row{{}, {}, {}},
+				Expected: []sql.Row{{}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/6230
+				Query:    "CALL p1(200)",
+				Expected: []sql.Row{{}},
 			},
 		},
 	},
@@ -305,16 +312,19 @@ END`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// TODO: MySQL won't return any result set here, but we still do
 				Query:    "CALL p1(0)",
 				Expected: []sql.Row{{}},
 			},
 			{
+				// TODO: MySQL won't return any result set here, but we still do
 				Query:    "CALL p1(1)",
-				Expected: []sql.Row{{}, {}},
+				Expected: []sql.Row{{}},
 			},
 			{
+				// TODO: MySQL won't return any result set here, but we still do
 				Query:    "CALL p1(2)",
-				Expected: []sql.Row{{}, {}, {}},
+				Expected: []sql.Row{{}},
 			},
 		},
 	},

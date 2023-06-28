@@ -281,7 +281,7 @@ func (b *BaseBuilder) buildOrderedDistinct(ctx *sql.Context, n *plan.OrderedDist
 }
 
 func (b *BaseBuilder) buildWith(ctx *sql.Context, n *plan.With, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("*plan.With has not execution iterator")
+	return nil, fmt.Errorf("*plan.With has no execution iterator")
 }
 
 func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Row) (sql.RowIter, error) {
