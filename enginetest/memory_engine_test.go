@@ -236,7 +236,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "trigger with signal and user var",
@@ -245,7 +244,26 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select data from auctions order by ai desc limit 1;`,
+					Query:    `WITH RECURSIVE
+rt (foo) AS (
+ SELECT 1 as foo
+ UNION ALL
+ SELECT foo + 1 as foo FROM rt WHERE foo < 5
+),
+ladder (depth, foo) AS (
+ SELECT 1 as depth, NULL as foo from rt
+ UNION ALL
+ SELECT ladder.depth + 1 as depth, rt.foo
+ FROM ladder JOIN rt WHERE ladder.foo = rt.foo
+)
+SELECT * FROM ladder;`,
+//					Query:    `WITH RECURSIVE
+// rt (foo) AS (
+//  SELECT 1 as foo
+//  UNION ALL
+//  SELECT foo + 1 as foo FROM rt WHERE foo < 5
+// )
+//SELECT * FROM rt;`,
 					Expected: []sql.Row{},
 				},
 			},
@@ -258,11 +276,36 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
+	//t.Skip()
+	//var scripts = []queries.ScriptTest{
+	//	{
+	//		Name: "trigger with signal and user var",
+	//		SetUpScript: []string{
+	//			"create table auctions (ai int auto_increment, id varchar(32), data json, primary key (ai));",
+	//		},
+	//		Assertions: []queries.ScriptTestAssertion{
+	//			{
+	//				Query:    `select data from auctions order by ai desc limit 1;`,
+	//				Expected: []sql.Row{},
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//for _, test := range scripts {
+	//	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	//	engine, err := harness.NewEngine(t)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	engine.Analyzer.Debug = true
+	//	engine.Analyzer.Verbose = true
+	//
+	//	enginetest.TestScriptWithEngine(t, engine, harness, test)
+	//}
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.

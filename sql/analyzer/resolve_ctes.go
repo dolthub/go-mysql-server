@@ -64,7 +64,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan
 			return e, transform.SameTree, nil
 		}
 
-		query, same, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes, depth, sel)
+		query, same, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes, depth+1, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -80,6 +80,9 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan
 	switch n := n.(type) {
 	case *plan.UnresolvedTable:
 		lowerName := strings.ToLower(n.Name())
+		if lowerName == "ladder" {
+			print()
+		}
 		cte := ctes[lowerName]
 		if cte != nil {
 			delete(ctes, lowerName) // temporarily remove from cte to prevent infinite recursion
@@ -89,14 +92,14 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan
 		}
 		return n, transform.SameTree, nil
 	case *plan.InsertInto:
-		insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, depth, sel)
+		insertRowSource, _, err := resolveCtesInNode(ctx, a, n.Source, scope, ctes, depth+1, sel)
 		if err != nil {
 			return nil, false, err
 		}
 		newNode := n.WithSource(insertRowSource)
 		return newNode, transform.NewTree, nil
 	case *plan.SubqueryAlias:
-		newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, depth, sel)
+		newChild, same, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes, depth+1, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -113,7 +116,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan
 	children := n.Children()
 	var newChildren []sql.Node
 	for i, child := range children {
-		newChild, same, err := resolveCtesInNode(ctx, a, child, scope, ctes, depth, sel)
+		newChild, same, err := resolveCtesInNode(ctx, a, child, scope, ctes, depth+1, sel)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -174,7 +177,27 @@ func stripWith(
 				// not recursive, back out into regular query
 				ret = subquery
 			} else {
+				// TODO: need to have previous CTEs here to replace the unresolved tables
+				newRCTE, same, err := transform.NodeWithOpaque(rCte, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+					switch nn := node.(type) {
+					case *plan.UnresolvedTable:
+						lowerName := strings.ToLower(nn.Name())
+						if cte, ok := ctes[lowerName]; ok {
+							return cte, transform.NewTree, nil
+						}
+					}
+					return node, transform.SameTree, nil
+				})
+				if err != nil {
+					return nil, nil, err
+				}
+				if !same {
+					rCte = newRCTE.(*plan.RecursiveCte)
+				}
 				ret, err = resolveRecursiveCte(ctx, a, rCte, scope, sel)
+				if err != nil {
+					return nil, nil, err
+				}
 				ret = plan.NewSubqueryAlias(subquery.Name(), subquery.TextDefinition, ret).WithColumns(rCte.Columns)
 			}
 			if err != nil {
