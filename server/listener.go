@@ -18,11 +18,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 
 	"golang.org/x/sync/errgroup"
+
+	"github.com/sirupsen/logrus"
 )
 
 var UnixSocketInUseError = errors.New("bind address at given unix socket path is already in use")
@@ -90,6 +94,29 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 			// connection can be closed already from the other goroutine
 			if errors.Is(err, net.ErrClosed) {
 				return nil
+			}
+
+			// TODO: We're still seeing errors about address already in use, e.g:
+			//       https://github.com/dolthub/dolt/actions/runs/5395898150/jobs/9798898619?pr=6245#step:18:2240
+			if err != nil {
+				if strings.Contains(strings.ToLower(err.Error()), "address already in use") {
+					split := strings.Split(address, ":")
+					if len(split) == 2 {
+						port := split[1]
+						// if we're on unix, we should attempt to run lsof to see what is using the port and how
+						// and output that information in the error to the user:
+						//    lsof -i:<port>
+						if runtime.GOOS != "windows" {
+							cmd := exec.Command("losf", fmt.Sprintf("-i:%d", port))
+							output, err := cmd.CombinedOutput()
+							if err != nil {
+								logrus.StandardLogger().Warnf("Unable to run lsof to detect what is using port %s: %w", port, err)
+							} else {
+								logrus.StandardLogger().Warnf("lsof output: %s", string(output))
+							}
+						}
+					}
+				}
 			}
 
 			select {
