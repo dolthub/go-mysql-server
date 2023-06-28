@@ -236,7 +236,11 @@ func FixFieldIndexesForNode(logFn func(string, ...any), scope *plan.Scope, n sql
 		}
 		ret, sameE, err := transform.NodeExprs(ret, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if sq, ok := e.(*plan.Subquery); ok {
-				return FixFieldIndexes(scope, logFn, ret.Schema(), sq)
+				newQ, same, err := FixFieldIndexesForNode(logFn, scope.NewScopeFromSubqueryExpression(ret), sq.Query)
+				if err != nil || same {
+					return sq, transform.SameTree, err
+				}
+				return sq.WithQuery(newQ), transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
 		})

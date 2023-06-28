@@ -19,6 +19,7 @@ package analyzer
 var OnceBeforeDefault_Exp = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
+	{replaceCountStarId, replaceCountStar},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
