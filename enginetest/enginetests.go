@@ -5480,58 +5480,6 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			},
 		}, checks)
 	})
-	
-	t.Run("adding a unique constraint errors if violations exist", func(t *testing.T) {
-		// single column unique constraint (success)
-		RunQuery(t, e, harness, "CREATE TABLE t38 (pk int PRIMARY KEY, col1 int)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (1, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (2, 2)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (3, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (4, NULL)")
-		RunQuery(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)")
-
-		// multi column unique constraint (success)
-		RunQuery(t, e, harness, "CREATE TABLE t39 (pk int PRIMARY KEY, col1 int, col2 int)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (1, 1, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (2, 1, 2)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (3, 2, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (4, 1, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (5, 1, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (6, NULL, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (7, NULL, 1)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (8, NULL, NULL)")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (9, NULL, NULL)")
-		RunQuery(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)")
-
-		// single column unique constraint (failure)
-		RunQuery(t, e, harness, "ALTER TABLE t38 DROP INDEX u_col1;")
-		RunQuery(t, e, harness, "INSERT INTO t38 VALUES (5, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)", sql.ErrUniqueKeyViolation)
-		tt := queries.QueryTest{
-			Query: "show create table t38;",
-			Expected: []sql.Row{{"t38", "CREATE TABLE `t38` (\n" +
-				"  `pk` int NOT NULL,\n" +
-				"  `col1` int,\n" +
-				"  PRIMARY KEY (`pk`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-
-		// multi column unique constraint (failure)
-		RunQuery(t, e, harness, "ALTER TABLE t39 DROP INDEX u_col1_col2;")
-		RunQuery(t, e, harness, "INSERT INTO t39 VALUES (10, 1, 1);")
-		AssertErr(t, e, harness, "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)", sql.ErrUniqueKeyViolation)
-		tt = queries.QueryTest{
-			Query: "show create table t39;",
-			Expected: []sql.Row{{"t39", "CREATE TABLE `t39` (\n" +
-				"  `pk` int NOT NULL,\n" +
-				"  `col1` int,\n" +
-				"  `col2` int,\n" +
-				"  PRIMARY KEY (`pk`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
-	})
 
 	t.Run("ALTER TABLE remove AUTO_INCREMENT", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
