@@ -59,6 +59,34 @@ type Listener struct {
 func NewListener(protocol, address string, unixSocketPath string) (*Listener, error) {
 	netl, err := newNetListener(protocol, address)
 	if err != nil {
+		// TODO: We're still seeing errors about address already in use, e.g:
+		//       https://github.com/dolthub/dolt/actions/runs/5395898150/jobs/9798898619?pr=6245#step:18:2240
+		// More examples:
+		//      https://github.com/dolthub/dolt/actions/runs/5395439523/jobs/9797921148#step:18:2249
+		//      https://github.com/dolthub/dolt/actions/runs/5404900318/jobs/9819723916?pr=6245#step:18:2216
+		if err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "address already in use") {
+				split := strings.Split(address, ":")
+				if len(split) == 2 {
+					port := split[1]
+					// if we're on unix, we should attempt to run lsof to see what is using the port and how
+					// and output that information in the error to the user:
+					//    lsof -i:<port>
+					if runtime.GOOS != "windows" {
+						cmd := exec.Command("losf", fmt.Sprintf("-i:%s", port))
+						output, err := cmd.CombinedOutput()
+						if err != nil {
+							logrus.StandardLogger().Warnf("Unable to run lsof to detect what is using port %s: %s", port, err.Error())
+						} else {
+							logrus.StandardLogger().Warnf("lsof output: %s", string(output))
+						}
+					}
+				} else {
+					logrus.StandardLogger().Warnf("Unable to parse address into `host:port`: %s", address)
+				}
+			}
+		}
+
 		return nil, err
 	}
 
@@ -94,29 +122,6 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 			// connection can be closed already from the other goroutine
 			if errors.Is(err, net.ErrClosed) {
 				return nil
-			}
-
-			// TODO: We're still seeing errors about address already in use, e.g:
-			//       https://github.com/dolthub/dolt/actions/runs/5395898150/jobs/9798898619?pr=6245#step:18:2240
-			if err != nil {
-				if strings.Contains(strings.ToLower(err.Error()), "address already in use") {
-					split := strings.Split(address, ":")
-					if len(split) == 2 {
-						port := split[1]
-						// if we're on unix, we should attempt to run lsof to see what is using the port and how
-						// and output that information in the error to the user:
-						//    lsof -i:<port>
-						if runtime.GOOS != "windows" {
-							cmd := exec.Command("losf", fmt.Sprintf("-i:%s", port))
-							output, err := cmd.CombinedOutput()
-							if err != nil {
-								logrus.StandardLogger().Warnf("Unable to run lsof to detect what is using port %s: %s", port, err.Error())
-							} else {
-								logrus.StandardLogger().Warnf("lsof output: %s", string(output))
-							}
-						}
-					}
-				}
 			}
 
 			select {
