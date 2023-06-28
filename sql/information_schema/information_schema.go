@@ -2806,9 +2806,7 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 			return nil, err
 		}
 
-		for _, view := range dbViews {
-			views = append(views, view)
-		}
+		views = append(views, dbViews...)
 	}
 
 	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
