@@ -232,12 +232,12 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 }
 
 func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	l, err := convertValue(left, convertTo, nil)
+	l, err := convertValue(left, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := convertValue(right, convertTo, nil)
+	r, err := convertValue(right, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}

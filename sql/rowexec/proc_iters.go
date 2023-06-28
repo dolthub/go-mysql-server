@@ -37,6 +37,10 @@ var _ plan.BlockRowIter = (*ifElseIter)(nil)
 
 // Next implements the sql.RowIter interface.
 func (i *ifElseIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if err := startTransaction(ctx); err != nil {
+		return nil, err
+	}
+
 	return i.branchIter.Next(ctx)
 }
 
@@ -65,6 +69,10 @@ var _ sql.RowIter = (*beginEndIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if err := startTransaction(ctx); err != nil {
+		return nil, err
+	}
+
 	row, err := b.rowIter.Next(ctx)
 	if err != nil {
 		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.Pref.CurrentHeight() == int(exitErr) {
@@ -311,5 +319,23 @@ func (i *iterateIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Close implements the interface sql.RowIter.
 func (i *iterateIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+// startTransaction begins a new transaction if necessary, e.g. if a statement in a stored procedure committed the
+// current one
+func startTransaction(ctx *sql.Context) error {
+	if ctx.GetTransaction() == nil {
+		ts, ok := ctx.Session.(sql.TransactionSession)
+		if ok {
+			tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
+			if err != nil {
+				return err
+			}
+
+			ctx.SetTransaction(tx)
+		}
+	}
+
 	return nil
 }

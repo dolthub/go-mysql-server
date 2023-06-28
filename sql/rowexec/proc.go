@@ -89,6 +89,12 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 			continue
 		}
 
+		// TODO: this should happen at iteration time, but this call is where the actual iteration happens
+		err = startTransaction(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		branchIter, err = b.buildNodeExec(ctx, ifConditional, row)
 		if err != nil {
 			return nil, err
@@ -103,6 +109,12 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 			sch:        ifConditional.Body.Schema(),
 			branchNode: ifConditional.Body,
 		}, nil
+	}
+
+	// TODO: this should happen at iteration time, but this call is where the actual iteration happens
+	err = startTransaction(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	// All conditions failed so we run the else
