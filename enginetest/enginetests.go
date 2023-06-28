@@ -5401,31 +5401,9 @@ func TestJsonScripts(t *testing.T, harness Harness) {
 }
 
 func TestAlterTable(t *testing.T, harness Harness) {
-	errorTests := []queries.QueryErrorTest{
-		{
-			Query:       "ALTER TABLE one_pk_two_idx MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v4 BIGINT DEFAULT (pk) AFTER v3",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v4",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-		{
-			Query:       "ALTER TABLE one_pk_two_idx ADD COLUMN v3 BIGINT DEFAULT 5, modify column v3 bigint default null",
-			ExpectedErr: sql.ErrTableColumnNotFound,
-		},
-	}
-
 	harness.Setup(setup.MydbData, setup.Pk_tablesData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	for _, tt := range errorTests {
-		runQueryErrorTest(t, harness, tt)
-	}
 
 	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int default (v1), toRename int)")
@@ -5501,22 +5479,6 @@ func TestAlterTable(t *testing.T, harness Harness) {
 				Enforced:        true,
 			},
 		}, checks)
-	})
-
-	t.Run("drop column drops check constraint", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t34 (i bigint primary key, s varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t34 ADD COLUMN j int")
-		RunQuery(t, e, harness, "ALTER TABLE t34 ADD CONSTRAINT test_check CHECK (j < 12345)")
-		RunQuery(t, e, harness, "ALTER TABLE t34 DROP COLUMN j")
-		tt := queries.QueryTest{
-			Query: "show create table t34",
-			Expected: []sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` varchar(20),\n" +
-				"  PRIMARY KEY (`i`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-		}
-		TestQueryWithEngine(t, harness, e, tt)
 	})
 
 	t.Run("drop column drops all relevant check constraints", func(t *testing.T) {
@@ -5684,34 +5646,24 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t40", []sql.Row{{1, 1}}, nil, nil)
 	})
 
-	TestScript(t, harness, queries.ScriptTest{
-		// https://github.com/dolthub/dolt/issues/6206
-		Name: "alter table containing column default value expressions",
-		SetUpScript: []string{
-			"create table t (pk int primary key, col1 timestamp default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
-		},
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query:    "alter table t alter column col2 DROP DEFAULT;",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT (CURRENT_TIMESTAMP()),\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query:    "alter table t drop index idx1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
+	t.Run("ALTER TABLE modify with AUTO_INCREMENT", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
+		RunQuery(t, e, harness, "INSERT into t40 VALUES (1, 1), (NULL, 2), (NULL, 3)")
+
+		RunQuery(t, e, harness, "ALTER TABLE t40 MODIFY COLUMN pk int")
+		ctx := harness.NewContext()
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE t40", []sql.Row{
+			{"pk", "int", "NO", "PRI", "NULL", ""},
+			{"val", "int", "YES", "", "NULL", ""}},
+			nil, nil)
+
+		AssertErr(t, e, harness, "INSERT INTO t40 VALUES (NULL, 4)", sql.ErrInsertIntoNonNullableProvidedNull)
+		RunQuery(t, e, harness, "DROP TABLE t40")
+
+		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
+		RunQuery(t, e, harness, "INSERT into t40 VALUES (NULL, 1)")
+
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t40", []sql.Row{{1, 1}}, nil, nil)
 	})
 }
 
