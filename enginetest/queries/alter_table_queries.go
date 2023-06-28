@@ -17,6 +17,7 @@ package queries
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 var AlterTableScripts = []ScriptTest{
@@ -161,4 +162,61 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "drop column preserves indexes",
+		SetUpScript: []string{
+			"create table t35 (i bigint primary key, s varchar(20), s2 varchar(20))",
+			"ALTER TABLE t35 ADD unique key test_key (s)",
+			"ALTER TABLE t35 DROP COLUMN s2",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t35",
+				Expected: []sql.Row{{"t35", "CREATE TABLE `t35` (\n" +
+						"  `i` bigint NOT NULL,\n" +
+						"  `s` varchar(20),\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  UNIQUE KEY `test_key` (`s`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "drop column prevents foreign key violations",
+		SetUpScript: []string{
+			"create table t36 (i bigint primary key, j varchar(20))",
+			"create table t37 (i bigint primary key, j varchar(20))",
+			"ALTER TABLE t36 ADD key (j)",
+			"ALTER TABLE t37 ADD constraint fk_36 foreign key (j) references t36(j)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table t37 drop column j",
+				ExpectedErr: sql.ErrForeignKeyDropColumn,
+			},
+		},
+	},
+	{
+		Name: "disable keys / enable keys",
+		SetUpScript: []string{
+			"CREATE TABLE t33(pk BIGINT PRIMARY KEY, v1 int, v2 int)",
+			`alter table t33 add column v4 int after pk,
+			drop column v2, add constraint v1gt0 check (v1 > 0)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "ALTER TABLE t33 DISABLE KEYS",
+				SkipResultsCheck: true,
+				ExpectedWarning: mysql.ERNotSupportedYet,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query: "ALTER TABLE t33 ENABLE KEYS",
+				SkipResultsCheck: true,
+				ExpectedWarning: mysql.ERNotSupportedYet,
+				ExpectedWarningsCount: 1,
+			},
+		},
+	},
+	
 }

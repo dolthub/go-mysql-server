@@ -5480,43 +5480,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			},
 		}, checks)
 	})
-
-	t.Run("drop column preserves indexes", func(t *testing.T) {
-		ctx := NewContext(harness)
-		RunQuery(t, e, harness, "create table t35 (i bigint primary key, s varchar(20), s2 varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t35 ADD unique key test_key (s)")
-
-		RunQuery(t, e, harness, "ALTER TABLE t35 DROP COLUMN s2")
-		TestQueryWithContext(t, ctx, e, harness, "show create table t35",
-			[]sql.Row{{"t35", "CREATE TABLE `t35` (\n" +
-				"  `i` bigint NOT NULL,\n" +
-				"  `s` varchar(20),\n" +
-				"  PRIMARY KEY (`i`),\n" +
-				"  UNIQUE KEY `test_key` (`s`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			nil, nil)
-	})
-
-	t.Run("drop column prevents foreign key violations", func(t *testing.T) {
-		RunQuery(t, e, harness, "create table t36 (i bigint primary key, j varchar(20))")
-		RunQuery(t, e, harness, "create table t37 (i bigint primary key, j varchar(20))")
-		RunQuery(t, e, harness, "ALTER TABLE t36 ADD key (j)")
-		RunQuery(t, e, harness, "ALTER TABLE t37 ADD constraint fk_36 foreign key (j) references t36(j)")
-
-		AssertErr(t, e, harness, "ALTER TABLE t37 DROP COLUMN j", sql.ErrForeignKeyDropColumn)
-	})
-
-	t.Run("disable keys / enable keys", func(t *testing.T) {
-		ctx := NewContext(harness)
-		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 DISABLE KEYS",
-			[]sql.Row{{types.NewOkResult(0)}},
-			nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 ENABLE KEYS",
-			[]sql.Row{{types.NewOkResult(0)}}, nil, mysql.ERNotSupportedYet, 1,
-			"", false)
-	})
-
+	
 	t.Run("adding a unique constraint errors if violations exist", func(t *testing.T) {
 		// single column unique constraint (success)
 		RunQuery(t, e, harness, "CREATE TABLE t38 (pk int PRIMARY KEY, col1 int)")
