@@ -244,7 +244,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `WITH RECURSIVE
+					Query: `WITH RECURSIVE
 rt (foo) AS (
  SELECT 1 as foo
  UNION ALL
@@ -257,13 +257,13 @@ ladder (depth, foo) AS (
  FROM ladder JOIN rt WHERE ladder.foo = rt.foo
 )
 SELECT * FROM ladder;`,
-//					Query:    `WITH RECURSIVE
-// rt (foo) AS (
-//  SELECT 1 as foo
-//  UNION ALL
-//  SELECT foo + 1 as foo FROM rt WHERE foo < 5
-// )
-//SELECT * FROM rt;`,
+					//					Query:    `WITH RECURSIVE
+					// rt (foo) AS (
+					//  SELECT 1 as foo
+					//  UNION ALL
+					//  SELECT foo + 1 as foo FROM rt WHERE foo < 5
+					// )
+					//SELECT * FROM rt;`,
 					Expected: []sql.Row{},
 				},
 			},
