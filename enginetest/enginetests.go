@@ -5480,26 +5480,12 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			},
 		}, checks)
 	})
-	
-	t.Run("ALTER TABLE modify with AUTO_INCREMENT", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
-		RunQuery(t, e, harness, "INSERT into t40 VALUES (1, 1), (NULL, 2), (NULL, 3)")
+}
 
-		RunQuery(t, e, harness, "ALTER TABLE t40 MODIFY COLUMN pk int")
-		ctx := harness.NewContext()
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE t40", []sql.Row{
-			{"pk", "int", "NO", "PRI", "NULL", ""},
-			{"val", "int", "YES", "", "NULL", ""}},
-			nil, nil)
-
-		AssertErr(t, e, harness, "INSERT INTO t40 VALUES (NULL, 4)", sql.ErrInsertIntoNonNullableProvidedNull)
-		RunQuery(t, e, harness, "DROP TABLE t40")
-
-		RunQuery(t, e, harness, "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)")
-		RunQuery(t, e, harness, "INSERT into t40 VALUES (NULL, 1)")
-
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t40", []sql.Row{{1, 1}}, nil, nil)
-	})
+func TestAlterTableScripts(t *testing.T, harness Harness) {
+	for _, script := range queries.AlterTableScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral, isParenthesized, mayReturnNil bool) *sql.ColumnDefaultValue {
