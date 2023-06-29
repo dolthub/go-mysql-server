@@ -97,6 +97,8 @@ func simplifyPartialJoinParents(n sql.Node) sql.Node {
 	ret := n
 	for {
 		switch n := ret.(type) {
+		case *plan.Having:
+			return nil
 		case *plan.Project, *plan.GroupBy, *plan.Limit, *plan.Sort, *plan.Distinct, *plan.TopN:
 			ret = n.Children()[0]
 		default:
@@ -348,6 +350,9 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 	}
 
 	n = simplifyPartialJoinParents(n)
+	if n == nil {
+		return nil, nil
+	}
 	if len(filtersToKeep) > 0 {
 		n = plan.NewFilter(expression.JoinAnd(filtersToKeep...), n)
 	}

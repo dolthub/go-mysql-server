@@ -398,6 +398,17 @@ order by 1;`,
 		},
 		tests: []JoinPlanTest{
 			{
+				q: `
+SELECT x
+FROM xy 
+WHERE EXISTS (SELECT count(v) AS count_1 
+FROM uv 
+WHERE y = v and v = 1 GROUP BY v
+HAVING count(v) >= 1)`,
+				types: []plan.JoinType{},
+				exp:   []sql.Row{{2, 1}},
+			},
+			{
 				q:     "select * from xy where y-1 = (select u from uv where v = 2 order by 1 limit 1);",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{3, 3}},
@@ -934,7 +945,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e *sqle.Engine, tt JoinPlan
 
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(tt.q)
-
+		
 		a, err := e.AnalyzeQuery(ctx, tt.q)
 		require.NoError(t, err)
 
