@@ -288,12 +288,8 @@ func (t *tableEditor) IndexedAccess(i sql.IndexLookup) sql.IndexedTable {
 		}
 		adds := make([]sql.Row, len(nonPkTea.adds))
 		deletes := make([]sql.Row, len(nonPkTea.deletes))
-		for i, val := range nonPkTea.adds {
-			adds[i] = val
-		}
-		for i, val := range nonPkTea.deletes {
-			deletes[i] = val
-		}
+		copy(adds, nonPkTea.adds)
+		copy(deletes, nonPkTea.deletes)
 		err = (&keylessTableEditAccumulator{
 			table:   newTable,
 			adds:    adds,
