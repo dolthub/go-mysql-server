@@ -5480,9 +5480,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 			},
 		}, checks)
 	})
-}
 
-func TestAlterTableScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.AlterTableScripts {
 		TestScript(t, harness, script)
 	}

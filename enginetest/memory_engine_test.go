@@ -838,10 +838,6 @@ func TestAlterTable(t *testing.T) {
 	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestAlterTableScripts(t *testing.T) {
-	enginetest.TestAlterTableScripts(t, enginetest.NewDefaultMemoryHarness())
-}
-
 func TestDateParse(t *testing.T) {
 	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
 }

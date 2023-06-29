@@ -23,10 +23,8 @@ import (
 
 var AlterTableScripts = []ScriptTest{
 	{
+		// This script relies on setup.Pk_tablesData
 		Name: "Error queries",
-		SetUpScript: []string{
-			"create table one_pk_two_idx (pk bigint primary key, v1 bigint, v2 bigint, index idx1 (v1), index idx2 (v2));",
-		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE one_pk_two_idx MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3",
