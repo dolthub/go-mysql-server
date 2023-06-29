@@ -217,7 +217,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 	extra := col.Extra
 	// If extra is not defined, fill it here.
 	if extra == "" && !col.Default.IsLiteral() {
-		extra = fmt.Sprintf("DEFAULT_GENERATED")
+		extra = "DEFAULT_GENERATED"
 	}
 
 	var curColPrivStr []string
