@@ -190,7 +190,7 @@ func (u *Update) String() string {
 
 func (u *Update) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode(fmt.Sprintf("Update"))
+	_ = pr.WriteNode("Update")
 	_ = pr.WriteChildren(sql.DebugString(u.Child))
 	return pr.String()
 }

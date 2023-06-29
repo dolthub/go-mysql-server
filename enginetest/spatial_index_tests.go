@@ -15,7 +15,6 @@
 package enginetest
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -399,12 +398,12 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, que
 			return true
 		})
 
-		require.True(t, hasFilter, fmt.Sprintf("filter node was missing from plan"))
+		require.True(t, hasFilter, "filter node was missing from plan")
 		if noIdx {
-			require.False(t, hasIndex, fmt.Sprintf("indextableaccess should not be in plan"))
+			require.False(t, hasIndex, "indextableaccess should not be in plan")
 		} else {
-			require.True(t, hasIndex, fmt.Sprintf("indextableaccess node was missing from plan"))
-			require.True(t, hasRightOrder, fmt.Sprintf("filter node was not above indextableaccess"))
+			require.True(t, hasIndex, "indextableaccess node was missing from plan")
+			require.True(t, hasRightOrder, "filter node was not above indextableaccess")
 		}
 	})
 }
@@ -523,12 +522,12 @@ func evalSpatialIndexPlanTestPrepared(t *testing.T, harness Harness, e *sqle.Eng
 			return true
 		})
 
-		require.True(t, hasFilter, fmt.Sprintf("filter node was missing from plan"))
+		require.True(t, hasFilter, "filter node was missing from plan")
 		if noIdx {
-			require.False(t, hasIndex, fmt.Sprintf("indextableaccess should not be in plan"))
+			require.False(t, hasIndex, "indextableaccess should not be in plan")
 		} else {
-			require.True(t, hasIndex, fmt.Sprintf("indextableaccess node was missing from plan"))
-			require.True(t, hasRightOrder, fmt.Sprintf("filter node was not above indextableaccess"))
+			require.True(t, hasIndex, "indextableaccess node was missing from plan")
+			require.True(t, hasRightOrder, "filter node was not above indextableaccess")
 		}
 	})
 }
