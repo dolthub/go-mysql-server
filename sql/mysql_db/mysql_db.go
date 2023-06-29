@@ -263,7 +263,7 @@ func (db *MySQLDb) AddSuperUser(username string, host string, password string) {
 // roles, roleSearch changes whether the search matches against user or role rules.
 func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 	//TODO: Determine what the localhost is on the machine, then handle the conversion between IP and localhost.
-	// For now, this just treats localhost and 127.0.0.1 as the same.
+	// For now, loopback addresses are treated as localhost.
 	//TODO: Determine how to match anonymous roles (roles with an empty user string), which differs from users
 	//TODO: Treat '%' as a proper wildcard for hostnames, allowing for regex-like matches.
 	// Hostnames representing an IP address that have a wildcard have additional restrictions on what may match
@@ -274,6 +274,11 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 	//TODO: Hostnames representing IPs can use masks, such as 'abc'@'54.244.85.0/255.255.255.0'
 	//TODO: Allow for CIDR notation in hostnames
 	//TODO: Which user do we choose when multiple host names match (e.g. host name with most characters matched, etc.)
+
+	if "127.0.0.1" == host || "::1" == host {
+		host = "localhost"
+	}
+
 	userEntries := db.user.data.Get(UserPrimaryKey{
 		Host: host,
 		User: user,
@@ -292,7 +297,7 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 			readUserEntry := readUserEntry.(*User)
 			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
 			if host == readUserEntry.Host ||
-				(host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+				(host == "localhost" && readUserEntry.Host == "::1") ||
 				(host == "localhost" && readUserEntry.Host == "127.0.0.1") ||
 				(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
 				return readUserEntry
