@@ -64,6 +64,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		// More examples:
 		//      https://github.com/dolthub/dolt/actions/runs/5395439523/jobs/9797921148#step:18:2249
 		//      https://github.com/dolthub/dolt/actions/runs/5404900318/jobs/9819723916?pr=6245#step:18:2216
+		//      https://github.com/dolthub/dolt/actions/runs/5406531989/jobs/9823511686?pr=6245#step:18:2216
 		if err != nil {
 			if strings.Contains(strings.ToLower(err.Error()), "address already in use") {
 				split := strings.Split(address, ":")
