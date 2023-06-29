@@ -15,9 +15,10 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 var AlterTableScripts = []ScriptTest{
@@ -309,26 +310,26 @@ var AlterTableScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:    "INSERT INTO t40 VALUES (NULL, 4)",
+				Query:       "INSERT INTO t40 VALUES (NULL, 4)",
 				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 			},
 			{
 				Query:    "drop table t40",
-				Expected:  []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)",
-				Expected:  []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: 	"INSERT INTO t40 VALUES (NULL, 1)",
-				Expected:  []sql.Row{{types.OkResult{
+				Query: "INSERT INTO t40 VALUES (NULL, 1)",
+				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     1,
 				}}},
 			},
 			{
-				Query: 	"SELECT * FROM t40",
+				Query:    "SELECT * FROM t40",
 				Expected: []sql.Row{{1, 1}},
 			},
 		},
