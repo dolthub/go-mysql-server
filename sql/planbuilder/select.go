@@ -67,7 +67,8 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 		having := b.buildHaving(fromScope, projScope, s.Having)
 		outScope = b.buildWindow(fromScope, projScope, having)
 	} else {
-		outScope = fromScope
+		having := b.buildHaving(fromScope, projScope, s.Having)
+		outScope = b.buildInnerProj(fromScope, projScope, having)
 	}
 
 	b.buildOrderBy(outScope, orderByScope)

@@ -1098,6 +1098,18 @@ Project
      └─ columns: []
 `,
 		},
+		{
+			Query: `select x+y as X from xy where x < 1 having x > 1`,
+		},
+		{
+			Query: "select x, count(*) over (order by y) from xy order by x",
+		},
+		{
+			Query: "select x+y as s from xy having exists (select * from xy where y = s)",
+		},
+		{
+			Query: "select x, count(x) as cnt from xy group by x having x > 1",
+		},
 	}
 
 	var verbose, rewrite bool

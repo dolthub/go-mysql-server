@@ -45,10 +45,20 @@ type scope struct {
 }
 
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
+	var found scopeColumn
+	var ok bool
 	for _, c := range s.cols {
 		if c.col == col && (c.table == table || table == "") {
-			return c, true
+			if ok {
+				err := sql.ErrAmbiguousColumnName.New("col")
+				s.handleErr(err)
+			}
+			found = c
+			ok = true
 		}
+	}
+	if ok {
+		return found, true
 	}
 	if c, ok := s.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
 		return c, true
@@ -342,6 +352,10 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 	}
 }
 
+func (s *scope) handleErr(err error) {
+	panic(parseErr{err})
+}
+
 // tableId and columnId are temporary ways to track expression
 // and name uniqueness.
 // todo: the plan format should track these
@@ -366,9 +380,6 @@ func (c scopeColumn) empty() bool {
 
 // scalarGf returns a getField reference to this column's expression.
 func (c scopeColumn) scalarGf() sql.Expression {
-	if a, ok := c.scalar.(*expression.Alias); ok {
-		return a.Child
-	}
 	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }
 

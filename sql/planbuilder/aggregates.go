@@ -36,13 +36,13 @@ func (g *groupBy) hasAggs() bool {
 	return len(g.aggs) > 0
 }
 
-func (g *groupBy) aggregations() []sql.Expression {
-	aggregations := make([]sql.Expression, 0, len(g.aggs))
+func (g *groupBy) aggregations() []scopeColumn {
+	aggregations := make([]scopeColumn, 0, len(g.aggs))
 	for _, agg := range g.aggs {
-		aggregations = append(aggregations, agg.scalar)
+		aggregations = append(aggregations, agg)
 	}
 	sort.Slice(aggregations, func(i, j int) bool {
-		return aggregations[i].String() < aggregations[j].String()
+		return aggregations[i].scalar.String() < aggregations[j].scalar.String()
 	})
 	return aggregations
 }
@@ -68,7 +68,6 @@ type aggregateInfo struct {
 
 func (b *PlanBuilder) needsAggregation(fromScope *scope, sel *ast.Select) bool {
 	return len(sel.GroupBy) > 0 ||
-		sel.Having != nil && len(fromScope.windowFuncs) == 0 ||
 		(fromScope.groupBy != nil && fromScope.groupBy.hasAggs())
 }
 
@@ -170,14 +169,17 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	//  - aggs
 	//  - extra columns needed by having, order by, select
 	var selectExprs []sql.Expression
+	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	for _, e := range group.aggregations() {
 		// aggregation functions
 		if !selectStr[strings.ToLower(e.String())] {
-			selectExprs = append(selectExprs, e)
+			selectExprs = append(selectExprs, e.scalar)
+			selectGfs = append(selectGfs, e.scalarGf())
 			selectStr[strings.ToLower(e.String())] = true
 		}
 	}
+	var aliases []sql.Expression
 	for _, e := range projScope.cols {
 		// projection dependencies -> table cols needed above
 		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
@@ -186,7 +188,13 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 				colName := strings.ToLower(e.Name())
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
+					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
+				}
+			case *expression.Alias:
+				// todo: aliases
+				if !e.Unreferencable() {
+					aliases = append(aliases, e)
 				}
 			}
 			return false
@@ -196,12 +204,17 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 		// accessory cols used by ORDER_BY, HAVING
 		if !selectStr[e.col] {
 			selectExprs = append(selectExprs, e.scalarGf())
+			selectGfs = append(selectGfs, e.scalarGf())
+
 			selectStr[e.col] = true
 		}
 	}
 	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
 	outScope.node = gb
 
+	if len(aliases) > 0 {
+		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
+	}
 	if having != nil {
 		outScope.node = plan.NewHaving(having, outScope.node)
 	}
@@ -329,14 +342,22 @@ func (b *PlanBuilder) buildWindowFunc(inScope *scope, name string, e *ast.FuncEx
 		args = append(args, e)
 	}
 
-	f, err := b.cat.Function(b.ctx, name)
-	if err != nil {
-		b.handleErr(err)
+	var win sql.Expression
+	if name == "count" {
+		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
+			win = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
+		}
 	}
+	if win == nil {
+		f, err := b.cat.Function(b.ctx, name)
+		if err != nil {
+			b.handleErr(err)
+		}
 
-	win, err := f.NewInstance(args)
-	if err != nil {
-		b.handleErr(err)
+		win, err = f.NewInstance(args)
+		if err != nil {
+			b.handleErr(err)
+		}
 	}
 
 	def := b.buildWindowDef(inScope, over)
@@ -358,6 +379,7 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 	}
 	// passthrough dependency cols plus window funcs
 	var selectExprs []sql.Expression
+	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	for _, col := range fromScope.windowFuncs {
 		// aggregation functions
@@ -368,6 +390,7 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 			case sql.Aggregation, sql.WindowAggregation:
 				selectStr[strings.ToLower(e.String())] = true
 				selectExprs = append(selectExprs, e)
+				selectGfs = append(selectGfs, col.scalarGf())
 			default:
 				// error
 				err := fmt.Errorf("expected window function to be sql.WindowAggregation")
@@ -375,6 +398,7 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 			}
 		}
 	}
+	var aliases []sql.Expression
 	for _, e := range projScope.cols {
 		// projection dependencies -> table cols needed above
 		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
@@ -384,6 +408,11 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
 					selectStr[colName] = true
+					selectGfs = append(selectGfs, e)
+				}
+			case *expression.Alias:
+				if !e.Unreferencable() {
+					aliases = append(aliases, e)
 				}
 			}
 			return false
@@ -392,8 +421,8 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
 		if !selectStr[e.col] {
-
 			selectExprs = append(selectExprs, e.scalarGf())
+			selectGfs = append(selectGfs, e.scalarGf())
 			selectStr[e.col] = true
 		}
 	}
@@ -401,6 +430,11 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 	outScope := fromScope
 	window := plan.NewWindow(selectExprs, fromScope.node)
 	fromScope.node = window
+
+	if len(aliases) > 0 {
+		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
+	}
+
 	if having != nil {
 		outScope.node = plan.NewHaving(having, outScope.node)
 	}
@@ -588,6 +622,39 @@ func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Whe
 		}
 		return true, nil
 	}, having)
+}
+
+func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope, having sql.Expression) *scope {
+	outScope := fromScope
+	proj := make([]sql.Expression, len(fromScope.cols))
+	for i, c := range fromScope.cols {
+		proj[i] = c.scalarGf()
+	}
+	// eval aliases in project scope
+	for _, e := range projScope.cols {
+		// projection dependencies -> table cols needed above
+		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.Alias:
+				// todo: aliases
+				if !e.Unreferencable() {
+					proj = append(proj, e)
+				}
+			}
+			return false
+		})
+	}
+
+	if len(proj) > 0 {
+		outScope.node = plan.NewProject(proj, outScope.node)
+	}
+
+	// wrap having if exists
+	if having != nil {
+		outScope.node = plan.NewHaving(having, outScope.node)
+	}
+
+	return outScope
 }
 
 func (b *PlanBuilder) buildHaving(fromScope, projScope *scope, having *ast.Where) sql.Expression {

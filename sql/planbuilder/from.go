@@ -521,7 +521,7 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 			}
 		}
 	}
-	tab, database, err := b.cat.Table(b.ctx, db, name)
+	tab, database, err := b.cat.TableAsOf(b.ctx, db, name, asOfLit)
 	if err != nil {
 		if sql.ErrDatabaseNotFound.Is(err) {
 			if db == "" {
