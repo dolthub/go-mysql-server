@@ -227,7 +227,7 @@ func TestPushdownSortWindow(t *testing.T) {
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
-						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						window.NewRowNumber().(*window.RowNumber).WithWindow(
 							sql.NewWindowDefinition([]sql.Expression{
 								expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 							}, sql.SortFields{
@@ -235,7 +235,7 @@ func TestPushdownSortWindow(t *testing.T) {
 									Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 								},
 							}, nil, "", ""),
-						)),
+						),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -250,7 +250,7 @@ func TestPushdownSortWindow(t *testing.T) {
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
-						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						window.NewRowNumber().(*window.RowNumber).WithWindow(
 							sql.NewWindowDefinition([]sql.Expression{
 								expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 							}, sql.SortFields{
@@ -258,7 +258,7 @@ func TestPushdownSortWindow(t *testing.T) {
 									Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 								},
 							}, nil, "", ""),
-						)),
+						),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -266,7 +266,7 @@ func TestPushdownSortWindow(t *testing.T) {
 			expected: plan.NewWindow(
 				[]sql.Expression{
 					expression.NewAlias("x", expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false)),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+					window.NewRowNumber().(*window.RowNumber).WithWindow(
 						sql.NewWindowDefinition([]sql.Expression{
 							expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 						}, sql.SortFields{
@@ -274,7 +274,7 @@ func TestPushdownSortWindow(t *testing.T) {
 								Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 							},
 						}, nil, "", ""),
-					)),
+					),
 				},
 				plan.NewSort(
 					[]sql.SortField{
@@ -293,7 +293,7 @@ func TestPushdownSortWindow(t *testing.T) {
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
-						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						window.NewRowNumber().(*window.RowNumber).WithWindow(
 							sql.NewWindowDefinition([]sql.Expression{
 								expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 							}, sql.SortFields{
@@ -301,7 +301,7 @@ func TestPushdownSortWindow(t *testing.T) {
 									Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 								},
 							}, nil, "", ""),
-						)),
+						),
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),
@@ -309,7 +309,7 @@ func TestPushdownSortWindow(t *testing.T) {
 			expected: plan.NewWindow(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+					window.NewRowNumber().(*window.RowNumber).WithWindow(
 						sql.NewWindowDefinition([]sql.Expression{
 							expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
 						}, sql.SortFields{
@@ -317,7 +317,7 @@ func TestPushdownSortWindow(t *testing.T) {
 								Column: expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
 							},
 						}, nil, "", ""),
-					)),
+					),
 				},
 				plan.NewSort(
 					[]sql.SortField{

@@ -281,6 +281,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, harnes
 		_, err := e.PrepareQuery(ctx, q)
 		require.NoError(err)
 	}
+
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 

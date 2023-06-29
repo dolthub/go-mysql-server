@@ -34,8 +34,6 @@ func TestWindowPlanToIter(t *testing.T) {
 				expression.NewGetField(2, types.Int64, "c", false)},
 			OrderBy: nil,
 		})
-	require.NoError(t, err)
-
 	n2 := aggregation.NewMax(
 		expression.NewGetField(0, types.Int64, "a", false),
 	).WithWindow(
@@ -44,7 +42,6 @@ func TestWindowPlanToIter(t *testing.T) {
 				expression.NewGetField(1, types.Int64, "b", false)},
 			OrderBy: nil,
 		})
-	require.NoError(t, err)
 	n3 := expression.NewGetField(0, types.Int64, "a", false)
 	n4 := aggregation.NewMin(
 		expression.NewGetField(0, types.Int64, "a", false),
@@ -54,7 +51,6 @@ func TestWindowPlanToIter(t *testing.T) {
 				expression.NewGetField(1, types.Int64, "b", false)},
 			OrderBy: nil,
 		})
-	require.NoError(t, err)
 
 	fn1, err := n1.NewWindowFunction()
 	require.NoError(t, err)

@@ -113,7 +113,6 @@ func TestQueriesSimple(t *testing.T) {
 
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple_Experimental(t *testing.T) {
-	t.Skip()
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
 }
 
@@ -126,6 +125,11 @@ func TestQueryPlans_Experimental(t *testing.T) {
 // TestJoinPlanning runs join-specific tests for merge
 func TestJoinPlanning_Experimental(t *testing.T) {
 	enginetest.TestJoinPlanning(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
+// TestJoinOps runs join-specific tests for merge
+func TestJoinOps_Experimental(t *testing.T) {
+	enginetest.TestJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
 }
 
 // TestJoinQueries runs the canonical test queries against a single threaded index enabled harness.
@@ -406,6 +410,20 @@ func TestIntegrationQueryPlans(t *testing.T) {
 	}
 }
 
+func TestIntegrationQueryPlans_Experimental(t *testing.T) {
+	t.Skip("missing DDL and triggers")
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer).WithVersion(sql.VersionExperimental)
+			enginetest.TestIntegrationPlans(t, harness)
+		})
+	}
+}
+
 func TestIndexQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
@@ -440,12 +458,24 @@ func TestReadOnlyVersionedQueries(t *testing.T) {
 	enginetest.TestReadOnlyVersionedQueries(t, enginetest.NewReadOnlyMemoryHarness())
 }
 
+func TestReadOnlyVersionedQueries_Experimental(t *testing.T) {
+	enginetest.TestReadOnlyVersionedQueries(t, enginetest.NewReadOnlyMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestColumnAliases(t *testing.T) {
 	enginetest.TestColumnAliases(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestColumnAliases_Experimental(t *testing.T) {
+	enginetest.TestColumnAliases(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestDerivedTableOuterScopeVisibility(t *testing.T) {
 	enginetest.TestDerivedTableOuterScopeVisibility(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestDerivedTableOuterScopeVisibility_Experimental(t *testing.T) {
+	enginetest.TestDerivedTableOuterScopeVisibility(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestOrderByGroupBy(t *testing.T) {

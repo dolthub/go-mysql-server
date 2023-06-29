@@ -78,7 +78,7 @@ var OnceAfterDefault_Experimental = []Rule{
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
 	{generateIndexScansId, generateIndexScans},
-	{pruneColumnsId, pruneColumns},
+	//{pruneColumnsId, pruneColumns},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{replaceSortPkId, replacePkSort},

@@ -48,7 +48,6 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 				}
 			}
 		case *expression.Alias:
-			aliasName := strings.ToLower(e.Name())
 			var col scopeColumn
 			if gf, ok := e.Child.(*expression.GetField); ok {
 				id, ok := inScope.getExpr(gf.String())
@@ -56,11 +55,11 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
 				}
-				col = scopeColumn{id: id, table: "", col: aliasName, scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				col = scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
-				col = scopeColumn{col: aliasName, scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
 			} else {
-				col = scopeColumn{col: aliasName, scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			}
 			if e.Unreferencable() {
 				outScope.addColumn(col)

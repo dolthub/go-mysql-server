@@ -59,6 +59,9 @@ func (g *groupBy) getAggRef(name string) sql.Expression {
 		return nil
 	}
 	ret, _ := g.aggs[name]
+	if ret.empty() {
+		return nil
+	}
 	return ret.scalarGf()
 }
 

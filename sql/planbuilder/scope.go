@@ -48,7 +48,7 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	var found scopeColumn
 	var ok bool
 	for _, c := range s.cols {
-		if c.col == col && (c.table == table || table == "") {
+		if strings.EqualFold(c.col, col) && (c.table == table || table == "") {
 			if ok {
 				err := sql.ErrAmbiguousColumnName.New("col")
 				s.handleErr(err)

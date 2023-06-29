@@ -252,8 +252,9 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 			break
 		}
 	}
-	if op == nil {
+	if op == nil || op.joinType.IsPartial() {
 		// columns are common to one table, not a join edge
+		// or, we are trying to semi join after columns have maybe been projected away
 		return
 	}
 
