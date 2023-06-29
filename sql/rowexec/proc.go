@@ -194,7 +194,16 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 	}, nil
 }
 
-// TODO: godoc to explain why this function does this...
+// buildLoop builds and returns an iterator that can be used to iterate over the result set returned from the
+// specified loop, |n|, for the specified row, |row|. Note that because of how we execute stored procedures and cache
+// the results in order to only send back the LAST result set (instead of supporting multiple results sets from
+// stored procedures, like MySQL does), building the iterator here also implicitly means that we're executing the
+// loop logic and caching the result set in memory. This will obviously be an issue for very large result sets.
+// Unfortunately, we can't know at analysis time what the last result set returned will be, since conditional logic
+// in stored procedures can't be known until execution time, hence why we end up caching result sets when we
+// see them and just playing back the last one. Adding support for MySQL's multiple result set behavior and better
+// matching MySQL on which statements are allowed to return result sets from a stored procedure seems like it could
+// potentially allow us to get rid of that caching.
 func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sql.RowIter, error) {
 	// Acquiring the RowIter will actually execute the loop body once (because of how we cache/scan for the right
 	// SELECT result set to return), so we grab the iter ONLY if we're supposed to run through the loop body once
@@ -231,15 +240,14 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 			return nil, err
 		}
 		if !conditionBool {
+			// loopBodyIter should only be set if this is the first time through the loop and the loop has a
+			// OnceBeforeEval condition. This ensures we return a result set, without us having to drain the iterator,
+			// recache rows, and return a new iterator.
 			if loopBodyIter != nil {
-				// TODO: is this correct? If loopBodyIter is set, then we should be returning those results, right?
-				// TODO: Load the loopBodyIter results into the rowsToReturn?
-				// TODO: Write a test to trigger this
-				// TODO: Looks like an existing test already triggers this... but why was it passing then?
-				//       test: REPEAT loop over user variable
-				//panic("loopBodyIter is not nil, but conditionBool is false")
+				return loopBodyIter, nil
+			} else {
+				break
 			}
-			break
 		}
 
 		if loopBodyIter == nil {
