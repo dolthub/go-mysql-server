@@ -73,7 +73,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 					// and output that information in the error to the user:
 					//    lsof -i:<port>
 					if runtime.GOOS != "windows" {
-						cmd := exec.Command("losf", fmt.Sprintf("-i:%s", port))
+						cmd := exec.Command("lsof", fmt.Sprintf("-i:%s", port))
 						output, err := cmd.CombinedOutput()
 						if err != nil {
 							logrus.StandardLogger().Warnf("Unable to run lsof to detect what is using port %s: %s", port, err.Error())
