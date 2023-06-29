@@ -152,9 +152,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
-				for i := 0; i < len(ue.Existing); i++ {
-					toReturn[i] = ue.Existing[i]
-				}
+				copy(toReturn, ue.Existing)
 			} else {
 				break
 			}

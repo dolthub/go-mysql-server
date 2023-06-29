@@ -649,9 +649,7 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	// Number of children can be smaller than original as the non-existent
 	// tables get filtered out in some cases
 	var newChildren = make([]sql.Node, len(children))
-	for i, child := range children {
-		newChildren[i] = child
-	}
+	copy(newChildren, children)
 	nd := *d
 	nd.Tables = newChildren
 	return &nd, nil

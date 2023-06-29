@@ -525,9 +525,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 
 	var rowValues = make([]interface{}, len(rows[0]))
 
-	for j, val := range rows[0] {
-		rowValues[j] = val
-	}
+	copy(rowValues, rows[0])
 
 	for j, v := range n.IntoVars {
 		switch variable := v.(type) {
