@@ -227,7 +227,12 @@ func FixFieldIndexesForNode(logFn func(string, ...any), scope *plan.Scope, n sql
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			scope := scope.NewScopeFromSubqueryAlias(n)
-			ret, sameN, err = FixFieldIndexesForExpressions(logFn, n, scope)
+			newQ, sameN, err := FixFieldIndexesForNode(logFn, scope, n.Child)
+			if err != nil || sameN {
+				return n, transform.SameTree, err
+			}
+			return n.WithChild(newQ), transform.NewTree, nil
+
 		default:
 			ret, sameN, err = FixFieldIndexesForExpressions(logFn, n, scope)
 		}
