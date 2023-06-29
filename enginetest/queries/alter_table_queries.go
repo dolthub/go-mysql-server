@@ -290,4 +290,47 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "ALTER TABLE remove AUTO_INCREMENT",
+		SetUpScript: []string{
+			"CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)",
+			"INSERT into t40 VALUES (1, 1), (NULL, 2), (NULL, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t40 MODIFY COLUMN pk int",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t40",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"val", "int", "YES", "", "NULL", ""},
+				},
+			},
+			{
+				Query:    "INSERT INTO t40 VALUES (NULL, 4)",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query:    "drop table t40",
+				Expected:  []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)",
+				Expected:  []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: 	"INSERT INTO t40 VALUES (NULL, 1)",
+				Expected:  []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     1,
+				}}},
+			},
+			{
+				Query: 	"SELECT * FROM t40",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
 }
