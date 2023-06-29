@@ -278,9 +278,6 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 				returnNode = subIterNode
 				returnSch = subIterSch
 			}
-		} else {
-			// TODO: When does this happen? Seems like it's being handled correctly, but need to double check
-			fmt.Printf("Found a RowIter that isn't a BlockRowIter: %T\n", loopBodyIter)
 		}
 
 		// Wrap the caching code in an inline function so that we can use defer to safely dispose of the cache
