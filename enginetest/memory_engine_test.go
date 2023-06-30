@@ -269,6 +269,38 @@ func TestSingleScript(t *testing.T) {
 	}
 }
 
+func TestSingleScriptExperimental(t *testing.T) {
+	//t.Skip()
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "trigger with signal and user var",
+			SetUpScript: []string{
+				"create table t (i int primary key)",
+				"create table t1 (j int primary key)",
+				"insert into t values (1), (2), (3)",
+				"insert into t1 values (1), (4), (5)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "select * from t, lateral (select * from t1 where t.i = t1.j) as tt",
+					Expected: []sql.Row{},
+				},
+			},
+		},
+	}
+
+	for _, test := range scripts {
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+		engine, err := harness.NewEngine(t)
+		if err != nil {
+			panic(err)
+		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScriptPrepared(t *testing.T) {
 	t.Skip()

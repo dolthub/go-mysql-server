@@ -52,6 +52,9 @@ const (
 	JoinTypeSemiMerge                                 // SemiMergeJoin
 	JoinTypeAntiMerge                                 // AntiMergeJoin
 	JoinTypeNatural                                   // NaturalJoin
+	// TODO: might be able to merge these with their respective join types
+	// TODO: apply join?
+	JoinTypeLateralCross							  // LateralCrossJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {
@@ -448,6 +451,12 @@ func NewAntiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 
 func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeSemi, cond)
+}
+
+// NewLateralCrossJoin returns a JoinNode where we expect the rhs to be a subquery that references the lhs.
+// The rhs will be executed once for each row in the lhs.
+func NewLateralCrossJoin(left, right sql.Node) *JoinNode {
+	return NewJoin(left, right, JoinTypeLateralCross, nil)
 }
 
 // IsNullRejecting returns whether the expression always returns false for

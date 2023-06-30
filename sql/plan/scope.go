@@ -105,15 +105,20 @@ func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 			break
 		}
 	}
-	subScope := &Scope{
+	if s == nil {
+		return &Scope{joinSiblings: []sql.Node{node}}
+	}
+
+	var newNodes []sql.Node
+	newNodes = append(newNodes, node)
+	newNodes = append(newNodes, s.joinSiblings...)
+	return &Scope{
 		nodes:          s.nodes,
 		Memos:          s.Memos,
 		recursionDepth: s.recursionDepth + 1,
 		Procedures:     s.Procedures,
-		joinSiblings:   s.joinSiblings,
+		joinSiblings:   newNodes,
 	}
-	subScope.joinSiblings = append(subScope.joinSiblings, node)
-	return subScope
 }
 
 // newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
@@ -133,20 +138,24 @@ func (s *Scope) NewScopeNoJoin() *Scope {
 // expression, they may reference tables from the scopes outside the subquery expression's scope.
 func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 	subScope := newScopeWithDepth(s.RecursionDepth() + 1)
-	if s != nil && len(s.nodes) > 0 {
-		// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
-		// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
-		// gives a derived table visibility to the OUTER scope where the subquery is defined.
-		// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-		// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
-		if s.CurrentNodeIsFromSubqueryExpression {
-			sqa.OuterScopeVisibility = true
-			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
-			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
-		} else if len(s.joinSiblings) > 0 {
-			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
-			subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+	if s != nil {
+		if len(s.nodes) > 0 {
+			// As of MySQL 8.0.14, MySQL provides OUTER scope visibility to derived tables. Unlike LATERAL scope visibility, which
+			// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
+			// gives a derived table visibility to the OUTER scope where the subquery is defined.
+			// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
+			// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
+			if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
+				sqa.OuterScopeVisibility = true
+				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+			} else if len(s.joinSiblings) > 0 {
+				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
+			}
 		}
+		if len(s.joinSiblings) > 0 {
+			subScope.joinSiblings = append(subScope.joinSiblings, s.joinSiblings...)
+		}
+		subScope.inJoin = s.inJoin
 	}
 
 	return subScope

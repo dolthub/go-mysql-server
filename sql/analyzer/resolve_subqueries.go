@@ -72,10 +72,32 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+					if sqa.OuterScopeVisibility {
+						resTbls := getTablesByName(joinParent.Left())
+						subScope := scope
+						for _, tbl := range resTbls {
+							subScope = subScope.NewScopeInJoin(tbl)
+						}
+						subScope.CurrentNodeIsFromSubqueryExpression = true
+						subScope.SetJoin(true)
+						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+					} else {
+						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+					}
 				}
 			} else {
-				newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+				if joinParent != nil && sqa.OuterScopeVisibility {
+					resTbls := getTablesByName(joinParent.Left())
+					subScope := scope
+					for _, tbl := range resTbls {
+						subScope = subScope.NewScopeInJoin(tbl)
+					}
+					subScope.CurrentNodeIsFromSubqueryExpression = true
+					subScope.SetJoin(true)
+					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
+				} else {
+					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
+				}
 			}
 
 			if err != nil {
@@ -128,8 +150,19 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 }
 
 func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, finalize bool) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		n := c.Node
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
+			if parent, ok := c.Parent.(*plan.JoinNode); ok && sqa.OuterScopeVisibility {
+				resTbls := getTablesByName(parent.Left())
+				subScope := scope
+				for _, tbl := range resTbls {
+					subScope = subScope.NewScopeInJoin(tbl)
+				}
+				subScope.CurrentNodeIsFromSubqueryExpression = true
+				subScope.SetJoin(true)
+				return analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, finalize)
+			}
 			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
 		} else {
 			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {

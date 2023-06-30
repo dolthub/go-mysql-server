@@ -54,8 +54,13 @@ func (b *PlanBuilder) validateJoinTableNames(leftScope, rightScope *scope) {
 }
 
 func (b *PlanBuilder) isLateral(te ast.TableExpr) bool {
-	_, ok := te.(*ast.JSONTableExpr)
-	return ok
+	if _, ok := te.(*ast.JSONTableExpr); ok {
+		return true
+	}
+	if ate, ok := te.(*ast.AliasedTableExpr); ok {
+		return ate.Lateral
+	}
+	return false
 }
 
 func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
@@ -83,7 +88,11 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 
 	// cross join
 	if te.Condition.On == nil || te.Condition.On == ast.BoolVal(true) {
-		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
+			outScope.node = plan.NewLateralCrossJoin(leftScope.node, rightScope.node)
+		} else {
+			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
+		}
 		return
 	}
 
@@ -185,6 +194,9 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			sqScope := inScope.push()
 			outScope = b.buildSelectStmt(sqScope, e.Select)
 			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
+			if t.Lateral {
+				sq.OuterScopeVisibility = true
+			}
 
 			var renameCols []string
 			if len(e.Columns) > 0 {
