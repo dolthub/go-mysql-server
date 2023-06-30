@@ -290,7 +290,6 @@ func (r *runningEventsStatus) removeSchemaEvents(dbName string) {
 	// if there are any running events of given database, then set reAdd to false
 	for evId := range r.status {
 		if strings.HasPrefix(evId, fmt.Sprintf("%s.", dbName)) {
-			r.status[evId] = r.status[evId]
 			r.reAdd[evId] = false
 		}
 	}
