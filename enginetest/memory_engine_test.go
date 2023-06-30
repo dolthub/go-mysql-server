@@ -486,6 +486,10 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 	enginetest.TestAmbiguousColumnResolution(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestAmbiguousColumnResolution_Experimental(t *testing.T) {
+	enginetest.TestAmbiguousColumnResolution(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestInsertInto(t *testing.T) {
 	enginetest.TestInsertInto(t, enginetest.NewDefaultMemoryHarness())
 }
