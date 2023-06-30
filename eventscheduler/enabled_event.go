@@ -248,12 +248,8 @@ func newRunningEventsStatus() *runningEventsStatus {
 func (r *runningEventsStatus) clear() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for k := range r.status {
-		delete(r.status, k)
-	}
-	for k := range r.reAdd {
-		delete(r.status, k)
-	}
+        r.status = make(map[string]bool)
+        r.reAdd = make(map[string]bool)
 }
 
 // update updates the runningEventsStatus object maps with given key and values.
