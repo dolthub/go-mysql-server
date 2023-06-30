@@ -137,7 +137,6 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 }
 
 func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
-	// TODO build Sort node over input
 	if len(orderByScope.cols) == 0 {
 		return
 	}

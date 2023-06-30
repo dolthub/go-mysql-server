@@ -155,7 +155,7 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 	return groupings
 }
 
-func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.Expression, groupingCols []sql.Expression) *scope {
+func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
 	// GROUP_BY consists of:
 	// - input arguments projection
 	// - grouping cols projection
@@ -175,7 +175,6 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	for _, e := range group.aggregations() {
-		// aggregation functions
 		if !selectStr[strings.ToLower(e.String())] {
 			selectExprs = append(selectExprs, e.scalar)
 			selectGfs = append(selectGfs, e.scalarGf())
@@ -195,7 +194,6 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 					selectStr[colName] = true
 				}
 			case *expression.Alias:
-				// todo: aliases
 				if !e.Unreferencable() {
 					aliases = append(aliases, e)
 				}
@@ -217,9 +215,6 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, having sql.E
 
 	if len(aliases) > 0 {
 		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
-	}
-	if having != nil {
-		outScope.node = plan.NewHaving(having, outScope.node)
 	}
 	return outScope
 }
@@ -256,8 +251,7 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 			aggName := strings.ToLower(agg.String())
 			gf := gb.getAggRef(aggName)
 			if gf != nil {
-				// TODO check agg scope output, see if we've already computed
-				// if so use reference here
+				// if we've already computed use reference here
 				return gf
 			}
 
@@ -286,7 +280,6 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	}
 
 	var agg sql.Expression
-	//// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
 	if e.Distinct && name == "count" {
 		agg = aggregation.NewCountDistinct(args...)
 	} else {
@@ -308,8 +301,7 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 
 	aggName := strings.ToLower(agg.String())
 	if id, ok := gb.outScope.getExpr(aggName); ok {
-		// TODO check agg scope output, see if we've already computed
-		// if so use reference here
+		// if we've already computed use reference here
 		gf := expression.NewGetFieldWithTable(int(id), aggType, "", agg.String(), agg.IsNullable())
 		return gf
 	}
@@ -376,7 +368,7 @@ func (b *PlanBuilder) buildWindowFunc(inScope *scope, name string, e *ast.FuncEx
 	return col.scalarGf()
 }
 
-func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expression) *scope {
+func (b *PlanBuilder) buildWindow(fromScope, projScope *scope) *scope {
 	if len(fromScope.windowFuncs) == 0 {
 		return fromScope
 	}
@@ -385,17 +377,14 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	for _, col := range fromScope.windowFuncs {
-		// aggregation functions
 		e := col.scalar
 		if !selectStr[strings.ToLower(e.String())] {
-			// window function referenced in output project
 			switch e.(type) {
-			case sql.Aggregation, sql.WindowAggregation:
+			case sql.WindowAdaptableExpression:
 				selectStr[strings.ToLower(e.String())] = true
 				selectExprs = append(selectExprs, e)
 				selectGfs = append(selectGfs, col.scalarGf())
 			default:
-				// error
 				err := fmt.Errorf("expected window function to be sql.WindowAggregation")
 				b.handleErr(err)
 			}
@@ -414,6 +403,7 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 					selectGfs = append(selectGfs, e)
 				}
 			case *expression.Alias:
+				// selection aliases need to be projected
 				if !e.Unreferencable() {
 					aliases = append(aliases, e)
 				}
@@ -438,9 +428,6 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope, having sql.Expres
 		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
 	}
 
-	if having != nil {
-		outScope.node = plan.NewHaving(having, outScope.node)
-	}
 	return outScope
 }
 
@@ -627,7 +614,7 @@ func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Whe
 	}, having)
 }
 
-func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope, having sql.Expression) *scope {
+func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope) *scope {
 	outScope := fromScope
 	proj := make([]sql.Expression, len(fromScope.cols))
 	for i, c := range fromScope.cols {
@@ -635,11 +622,10 @@ func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope, having sql.Exp
 	}
 	// eval aliases in project scope
 	for _, e := range projScope.cols {
-		// projection dependencies -> table cols needed above
+		// selection aliases need to be projected
 		transform.InspectExpr(e.scalar, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.Alias:
-				// todo: aliases
 				if !e.Unreferencable() {
 					proj = append(proj, e)
 				}
@@ -652,18 +638,13 @@ func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope, having sql.Exp
 		outScope.node = plan.NewProject(proj, outScope.node)
 	}
 
-	// wrap having if exists
-	if having != nil {
-		outScope.node = plan.NewHaving(having, outScope.node)
-	}
-
 	return outScope
 }
 
-func (b *PlanBuilder) buildHaving(fromScope, projScope *scope, having *ast.Where) sql.Expression {
+func (b *PlanBuilder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
 	// expressions in having can be from aggOut or projScop
 	if having == nil {
-		return nil
+		return
 	}
 	if fromScope.groupBy == nil {
 		fromScope.initGroupBy()
@@ -675,5 +656,7 @@ func (b *PlanBuilder) buildHaving(fromScope, projScope *scope, having *ast.Where
 		}
 	}
 	havingScope.groupBy = fromScope.groupBy
-	return b.buildScalar(havingScope, having.Expr)
+	h := b.buildScalar(havingScope, having.Expr)
+	outScope.node = plan.NewHaving(h, outScope.node)
+	return
 }
