@@ -272,8 +272,7 @@ func (r *runningEventsStatus) remove(key string) {
 func (r *runningEventsStatus) getStatus(key string) (bool, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	s, ok := r.status[key]
-	return s, ok
+	return r.status[key]
 }
 
 // getAdd returns the whether to re-add the event at given key.
