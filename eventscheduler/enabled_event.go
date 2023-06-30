@@ -158,8 +158,7 @@ func newEnabledEventsList(list []*enabledEvent) *enabledEventsList {
 func (l *enabledEventsList) clear() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	// TODO: do I need to set it to an empty list?
-	l.eventsList = []*enabledEvent{}
+	l.eventsList = nil
 }
 
 // len returns the length of the current list.
