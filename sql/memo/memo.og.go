@@ -168,6 +168,21 @@ func (r *FullOuterJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
+type LateralCrossJoin struct {
+	*JoinBase
+}
+
+var _ RelExpr = (*LateralCrossJoin)(nil)
+var _ JoinRel = (*LateralCrossJoin)(nil)
+
+func (r *LateralCrossJoin) String() string {
+	return FormatExpr(r)
+}
+
+func (r *LateralCrossJoin) JoinPrivate() *JoinBase {
+	return r.JoinBase
+}
+
 type TableScan struct {
 	*sourceBase
 	Table *plan.ResolvedTable
@@ -873,6 +888,8 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id)
 	case *FullOuterJoin:
 		return fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LateralCrossJoin:
+		return fmt.Sprintf("lateralcrossjoin %d %d", r.Left.Id, r.Right.Id)
 	case *TableScan:
 		return fmt.Sprintf("tablescan: %s", r.Name())
 	case *Values:
@@ -967,6 +984,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildMergeJoin(r, input, children...)
 	case *FullOuterJoin:
 		result, err = b.buildFullOuterJoin(r, input, children...)
+	case *LateralCrossJoin:
+		result, err = b.buildLateralCrossJoin(r, input, children...)
 	case *TableScan:
 		result, err = b.buildTableScan(r, input, children...)
 	case *Values:

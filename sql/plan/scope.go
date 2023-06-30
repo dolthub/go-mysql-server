@@ -296,3 +296,10 @@ func (s *Scope) Schema() sql.Schema {
 	}
 	return schema
 }
+
+func (s *Scope) InJoin() bool {
+	if s == nil {
+		return false
+	}
+	return s.inJoin
+}

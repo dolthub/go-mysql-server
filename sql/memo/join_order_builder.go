@@ -590,7 +590,7 @@ func (j *joinOrderBuilder) constructJoin(
 	case plan.JoinTypeAnti:
 		rel = &AntiJoin{b}
 	case plan.JoinTypeLateralCross:
-		rel = &CrossJoin{b}
+		rel = &LateralCrossJoin{b}
 	default:
 		panic(fmt.Sprintf("unexpected join type: %s", op))
 	}

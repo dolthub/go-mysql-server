@@ -56,6 +56,10 @@ func (b *ExecBuilder) buildFullOuterJoin(j *FullOuterJoin, input sql.Schema, chi
 	return plan.NewFullOuterJoin(children[0], children[1], filters), nil
 }
 
+func (b *ExecBuilder) buildLateralCrossJoin(j *LateralCrossJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	return plan.NewLateralCrossJoin(children[0], children[1]), nil
+}
+
 func (b *ExecBuilder) buildSemiJoin(j *SemiJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
 	if err != nil {

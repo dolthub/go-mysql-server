@@ -179,6 +179,10 @@ func (i JoinType) IsCross() bool {
 	return i == JoinTypeCross || i == JoinTypeCrossHash
 }
 
+func (i JoinType) IsLateralCrossJoin() bool {
+	return i == JoinTypeLateralCross
+}
+
 func (i JoinType) AsHash() JoinType {
 	switch i {
 	case JoinTypeInner:

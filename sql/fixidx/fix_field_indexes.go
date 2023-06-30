@@ -152,6 +152,29 @@ func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, sc
 		return node, transform.SameTree, nil
 	}
 
+	var sameF transform.TreeIdentity
+	if scope.InJoin() {
+		scopeSch := scope.Schema()
+		var newN sql.Node
+		var err error
+		newN, sameF, err = transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			fixed, same, err := FixFieldIndexes(nil, logFn, scopeSch, e)
+			if ErrFieldMissing.Is(err) {
+				return e, transform.SameTree, nil
+			}
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return fixed, same, nil
+		})
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if !sameF {
+			node = newN
+		}
+	}
+
 	var schemas []sql.Schema
 	for _, child := range node.Children() {
 		schemas = append(schemas, child.Schema())
