@@ -257,6 +257,7 @@ func (d Database) UpdateEvent(ctx *sql.Context, originalName string, ed sql.Even
 	return ed.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, ed.CreateEventStatement())
 }
 
+// UpdateLastExecuted implements sql.EventDatabase
 func (d Database) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
 	return nil
 }
