@@ -265,6 +265,7 @@ func (r *runningEventsStatus) remove(key string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.status, key)
+	delete(r.reAdd, key)
 }
 
 // getStatus returns the status of the event at given key.
