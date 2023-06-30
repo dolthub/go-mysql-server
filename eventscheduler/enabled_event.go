@@ -280,8 +280,7 @@ func (r *runningEventsStatus) getStatus(key string) (bool, bool) {
 func (r *runningEventsStatus) getReAdd(key string) (bool, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	ra, ok := r.reAdd[key]
-	return ra, ok
+	return r.reAdd[key]
 }
 
 // removeSchemaEvents removes all events of given database name.
