@@ -34,7 +34,7 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 
 func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// General order of binding:
-	// 1) Get definitions in FROM..
+	// 1) Get definitions in FROM.
 	// 2) Build WHERE, which can only reference FROM columns.
 	// 3) Bookkeep aggregation/window function usage in higher-scopes
 	//    (GROUP BY, WINDOW, HAVING, SELECT, ORDER BY).

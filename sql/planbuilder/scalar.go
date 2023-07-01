@@ -128,6 +128,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		var err error
 		typeLength := 0
 		if v.Type.Length != nil {
+			// TODO move to vitess
 			typeLength, err = strconv.Atoi(v.Type.Length.String())
 			if err != nil {
 				b.handleErr(err)
@@ -136,6 +137,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 
 		typeScale := 0
 		if v.Type.Scale != nil {
+			// TODO move to vitess
 			typeScale, err = strconv.Atoi(v.Type.Scale.String())
 			if err != nil {
 				b.handleErr(err)

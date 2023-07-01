@@ -161,7 +161,6 @@ func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, groupingCols
 	// - grouping cols projection
 	// - aggregate expressions
 	// - output projection
-	// - HAVING filter
 	if fromScope.groupBy == nil {
 		fromScope.initGroupBy()
 	}
@@ -440,7 +439,7 @@ func (b *PlanBuilder) buildNamedWindows(fromScope *scope, window ast.Window) {
 
 	var topo []*ast.WindowDef
 	seen := make(map[string]bool)
-	var dfs func(string2 string)
+	var dfs func(string)
 	dfs = func(name string) {
 		if ok, _ := seen[name]; ok {
 			b.handleErr(sql.ErrCircularWindowInheritance.New())
@@ -465,7 +464,6 @@ func (b *PlanBuilder) buildNamedWindows(fromScope *scope, window ast.Window) {
 
 func (b *PlanBuilder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.WindowDefinition {
 	if def == nil {
-		//return &sql.WindowDefinition{Frame: plan.NewRowsUnboundedPrecedingToUnboundedFollowingFrame()}
 		return nil
 	}
 
