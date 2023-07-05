@@ -236,7 +236,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 		switch r := rval.(type) {
 		case float32:
 			if r == 0 {
-				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 			return l / r, nil
@@ -245,7 +245,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 		switch r := rval.(type) {
 		case float64:
 			if r == 0 {
-				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 			return l / r, nil
@@ -254,7 +254,7 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 		switch r := rval.(type) {
 		case decimal.Decimal:
 			if r.Equal(decimal.NewFromInt(0)) {
-				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 
@@ -743,7 +743,7 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case uint64:
 			if r == 0 {
-				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 			return l / r, nil
@@ -752,7 +752,7 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case int64:
 			if r == 0 {
-				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 			return l / r, nil
@@ -761,7 +761,7 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case float64:
 			if r == 0 {
-				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 			res := l / r
@@ -771,7 +771,7 @@ func intDiv(ctx *sql.Context, lval, rval interface{}) (interface{}, error) {
 		switch r := rval.(type) {
 		case decimal.Decimal:
 			if r.Equal(decimal.NewFromInt(0)) {
-				arithmeticWarning(ctx, ERDivisionByZero, fmt.Sprintf("Division by 0"))
+				arithmeticWarning(ctx, ERDivisionByZero, "Division by 0")
 				return nil, nil
 			}
 

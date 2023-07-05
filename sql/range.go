@@ -123,9 +123,7 @@ func (rang Range) IsEmpty() (bool, error) {
 // Copy returns a duplicate of this Range.
 func (rang Range) Copy() Range {
 	newRange := make(Range, len(rang))
-	for i, colExpr := range rang {
-		newRange[i] = colExpr // RangeColumnExpr and all of its members are non-pointer types, so they're copied
-	}
+	copy(newRange, rang)
 	return newRange
 }
 

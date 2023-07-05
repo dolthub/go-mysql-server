@@ -73,9 +73,7 @@ func TestWindowPlanToIter(t *testing.T) {
 	require.Equal(t, len(outputOrdinals), 3)
 	accOrdinals := make([]int, 0)
 	for _, p := range outputOrdinals {
-		for _, v := range p {
-			accOrdinals = append(accOrdinals, v)
-		}
+		accOrdinals = append(accOrdinals, p...)
 	}
 	require.ElementsMatch(t, accOrdinals, []int{0, 1, 2, 3})
 

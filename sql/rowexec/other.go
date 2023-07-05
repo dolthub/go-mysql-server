@@ -250,7 +250,13 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 
 	selectSeen := false
 	for _, s := range n.Children() {
-		err := func() error {
+		// TODO: this should happen at iteration time, but this call is where the actual iteration happens
+		err := startTransaction(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		err = func() error {
 			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
 			defer disposeFunc()
 

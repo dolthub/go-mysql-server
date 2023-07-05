@@ -18,14 +18,12 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ifElseIter is the row iterator for *IfElseBlock.
@@ -39,6 +37,10 @@ var _ plan.BlockRowIter = (*ifElseIter)(nil)
 
 // Next implements the sql.RowIter interface.
 func (i *ifElseIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if err := startTransaction(ctx); err != nil {
+		return nil, err
+	}
+
 	return i.branchIter.Next(ctx)
 }
 
@@ -67,6 +69,10 @@ var _ sql.RowIter = (*beginEndIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if err := startTransaction(ctx); err != nil {
+		return nil, err
+	}
+
 	row, err := b.rowIter.Next(ctx)
 	if err != nil {
 		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.Pref.CurrentHeight() == int(exitErr) {
@@ -237,86 +243,6 @@ func (c *closeIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-// loopIter is the sql.RowIter of *Loop.
-type loopIter struct {
-	block         *plan.Block
-	label         string
-	condition     sql.Expression
-	once          sync.Once
-	blockIter     sql.RowIter
-	row           sql.Row
-	loopIteration uint64
-}
-
-var _ sql.RowIter = (*loopIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (l *loopIter) Next(ctx *sql.Context) (sql.Row, error) {
-	// It's technically valid to make an infinite loop, but we don't want to actually allow that
-	const maxIterationCount = 10_000_000_000
-	l.loopIteration++
-	for ; l.loopIteration < maxIterationCount; l.loopIteration++ {
-		// If the condition is false, then we stop evaluation
-		condition, err := l.condition.Eval(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		conditionBool, err := types.ConvertToBool(condition)
-		if err != nil {
-			return nil, err
-		}
-		if !conditionBool {
-			return nil, io.EOF
-		}
-
-		if l.blockIter == nil {
-			var err error
-			b := &BaseBuilder{}
-			l.blockIter, err = b.loopAcquireRowIter(ctx, nil, l.label, l.block, false)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		nextRow, err := l.blockIter.Next(ctx)
-		if err != nil {
-			restart := false
-			if err == io.EOF {
-				restart = true
-			} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == l.label {
-				if controlFlow.IsExit {
-					return nil, io.EOF
-				} else {
-					restart = true
-				}
-			}
-
-			if restart {
-				err = l.blockIter.Close(ctx)
-				if err != nil {
-					return nil, err
-				}
-				l.blockIter = nil
-				continue
-			}
-			return nil, err
-		}
-		return nextRow, nil
-	}
-	if l.loopIteration >= maxIterationCount {
-		return nil, fmt.Errorf("infinite LOOP detected")
-	}
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (l *loopIter) Close(ctx *sql.Context) error {
-	if l.blockIter != nil {
-		return l.blockIter.Close(ctx)
-	}
-	return nil
-}
-
 // loopError is an error used to control a loop's flow.
 type loopError struct {
 	Label  string
@@ -393,5 +319,23 @@ func (i *iterateIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Close implements the interface sql.RowIter.
 func (i *iterateIter) Close(ctx *sql.Context) error {
+	return nil
+}
+
+// startTransaction begins a new transaction if necessary, e.g. if a statement in a stored procedure committed the
+// current one
+func startTransaction(ctx *sql.Context) error {
+	if ctx.GetTransaction() == nil {
+		ts, ok := ctx.Session.(sql.TransactionSession)
+		if ok {
+			tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
+			if err != nil {
+				return err
+			}
+
+			ctx.SetTransaction(tx)
+		}
+	}
+
 	return nil
 }

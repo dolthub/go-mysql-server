@@ -538,7 +538,7 @@ func (b *PlanBuilder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope
 func (b *PlanBuilder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	if s.CountStar {
-		unsupportedShow := fmt.Sprintf("SHOW COUNT(*) WARNINGS")
+		unsupportedShow := "SHOW COUNT(*) WARNINGS"
 		b.handleErr(sql.ErrUnsupportedFeature.New(unsupportedShow))
 	}
 	var node sql.Node
