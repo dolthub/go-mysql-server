@@ -533,7 +533,14 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 			}
 		}
 	}
-	tab, database, err := b.cat.TableAsOf(b.ctx, db, name, asOfLit)
+	var tab sql.Table
+	var database sql.Database
+	var err error
+	if asOfExpr != nil {
+		tab, database, err = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
+	} else {
+		tab, database, err = b.cat.Table(b.ctx, db, name)
+	}
 	if err != nil {
 		if sql.ErrDatabaseNotFound.Is(err) {
 			if db == "" {

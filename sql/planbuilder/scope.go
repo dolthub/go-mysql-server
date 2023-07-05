@@ -46,18 +46,18 @@ type scope struct {
 
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
 	var found scopeColumn
-	var ok bool
+	var foundCand bool
 	for _, c := range s.cols {
 		if strings.EqualFold(c.col, col) && (c.table == table || table == "") {
-			if ok {
-				err := sql.ErrAmbiguousColumnName.New("col")
+			if foundCand {
+				err := sql.ErrAmbiguousColumnName.New(col)
 				s.handleErr(err)
 			}
 			found = c
-			ok = true
+			foundCand = true
 		}
 	}
-	if ok {
+	if foundCand {
 		return found, true
 	}
 	if c, ok := s.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
@@ -74,8 +74,8 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 		return scopeColumn{}, false
 	}
 
-	c, ok := s.parent.resolveColumn(table, col, true)
-	if !ok {
+	c, foundCand := s.parent.resolveColumn(table, col, true)
+	if !foundCand {
 		return scopeColumn{}, false
 	}
 

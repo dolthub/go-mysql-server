@@ -1414,7 +1414,7 @@ Project
 
 	var verbose, rewrite bool
 	//verbose = true
-	rewrite = true
+	//rewrite = true
 
 	var w *bufio.Writer
 	var outputPath string

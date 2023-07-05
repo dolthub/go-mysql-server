@@ -869,7 +869,7 @@ func checkForNonAggregatedColumnReferences(w *plan.Window) error {
 				index, gf := findFirstWindowAggregationColumnReference(w)
 
 				if index >= 0 {
-					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index+1, gf.String())
+					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index, gf.String())
 				} else {
 					// We should always have an index and GetField value to use, but just in case
 					// something changes that, return a similar error message without those details.
