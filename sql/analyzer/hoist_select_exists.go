@@ -93,14 +93,16 @@ func hoistSelectExistsHelper(scope *plan.Scope, a *Analyzer, n sql.Node, aliasDi
 }
 
 // simplifyPartialJoinParents discards nodes that will not affect an existence check.
-func simplifyPartialJoinParents(n sql.Node) sql.Node {
+func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 	ret := n
 	for {
 		switch n := ret.(type) {
+		case *plan.Having:
+			return nil, false
 		case *plan.Project, *plan.GroupBy, *plan.Limit, *plan.Sort, *plan.Distinct, *plan.TopN:
 			ret = n.Children()[0]
 		default:
-			return ret
+			return ret, true
 		}
 	}
 }
@@ -347,7 +349,10 @@ func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDi
 		}
 	}
 
-	n = simplifyPartialJoinParents(n)
+	n, ok := simplifyPartialJoinParents(n)
+	if !ok {
+		return nil, nil
+	}
 	if len(filtersToKeep) > 0 {
 		n = plan.NewFilter(expression.JoinAnd(filtersToKeep...), n)
 	}

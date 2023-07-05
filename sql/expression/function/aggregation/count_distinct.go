@@ -95,10 +95,10 @@ func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 // WithWindow implements the Aggregation interface.
-func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	na := *a
 	na.window = window
-	return &na, nil
+	return &na
 }
 
 // Window implements the Aggregation interface.

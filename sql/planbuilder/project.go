@@ -24,7 +24,7 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 		pe := b.selectExprToExpression(inScope, se)
 		switch e := pe.(type) {
 		case *expression.GetField:
-			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), e.Table(), e.Name(), e.IsNullable())
+			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), strings.ToLower(e.Table()), strings.ToLower(e.Name()), e.IsNullable())
 			exprs = append(exprs, gf)
 			id, ok := inScope.getExpr(gf.String())
 			if !ok {
@@ -34,8 +34,9 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 			gf = gf.WithIndex(int(id)).(*expression.GetField)
 			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 		case *expression.Star:
+			tableName := strings.ToLower(e.Table)
 			for _, c := range inScope.cols {
-				if c.table == e.Table || e.Table == "" {
+				if c.table == tableName || tableName == "" {
 					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 					exprs = append(exprs, gf)
 					id, ok := inScope.getExpr(gf.String())
@@ -56,7 +57,7 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 				}
 				col = scopeColumn{id: id, table: "", col: e.Name(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
-				col = scopeColumn{col: sq.QueryString, scalar: sq, typ: sq.Type(), nullable: sq.IsNullable()}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
 			} else {
 				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			}
@@ -102,7 +103,12 @@ func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) 
 func (b *PlanBuilder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
-		projections[i] = sc.scalar
+		scalar := sc.scalar
+		if a, ok := sc.scalar.(*expression.Alias); ok && !a.Unreferencable() {
+			// replace alias with its reference
+			scalar = sc.scalarGf()
+		}
+		projections[i] = scalar
 	}
 	proj := plan.NewProject(projections, inScope.node)
 	if _, ok := inScope.node.(*plan.SubqueryAlias); ok && proj.Schema().Equals(proj.Child.Schema()) {
@@ -111,8 +117,6 @@ func (b *PlanBuilder) buildProjection(inScope, outScope *scope) {
 	} else {
 		outScope.node = proj
 	}
-	//outScope.node = proj
-
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {

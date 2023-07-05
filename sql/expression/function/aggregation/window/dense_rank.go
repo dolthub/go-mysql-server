@@ -108,14 +108,14 @@ func (p *DenseRank) WithChildren(children ...sql.Expression) (sql.Expression, er
 		return nil, err
 	}
 
-	return p.WithWindow(window)
+	return p.WithWindow(window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *DenseRank) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (p *DenseRank) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *p
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (p *DenseRank) NewWindowFunction() (sql.WindowFunction, error) {

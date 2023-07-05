@@ -373,8 +373,8 @@ func (b *PlanBuilder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDe
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
 			// TODO: We do not support FULLTEXT indexes or keys
-			err := sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
-			b.handleErr(err)
+			b.ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 
 		columns := b.gatherIndexColumns(idxDef.Columns)
@@ -396,8 +396,9 @@ func (b *PlanBuilder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDe
 
 	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
-			err := sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
-			b.handleErr(err)
+			// TODO: We do not support FULLTEXT indexes or keys
+			b.ctx.Warn(1214, "ignoring fulltext index as they have not yet been implemented")
+			continue
 		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
 			idxDefs = append(idxDefs, &plan.IndexDefinition{

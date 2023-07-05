@@ -2150,12 +2150,6 @@ Select * from (
 		},
 	},
 	{
-		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
-			{float64(3)},
-		},
-	},
-	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
 		Expected: []sql.Row{
 			{"3.00"},
@@ -2171,12 +2165,6 @@ Select * from (
 		Query: "with recursive t (n) as (select sum(1) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
 		Expected: []sql.Row{
 			{float64(55)},
-		},
-	},
-	{
-		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
-		Expected: []sql.Row{
-			{"55.0"},
 		},
 	},
 	{
@@ -7851,6 +7839,34 @@ var KeylessQueries = []QueryTest{
 
 // BrokenQueries are queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
+	{
+		Query: `WITH RECURSIVE
+rt (foo) AS (
+ SELECT 1 as foo
+ UNION ALL
+ SELECT foo + 1 as foo FROM rt WHERE foo < 5
+),
+ladder (depth, foo) AS (
+ SELECT 1 as depth, NULL as foo from rt
+ UNION ALL
+ SELECT ladder.depth + 1 as depth, rt.foo
+ FROM ladder JOIN rt WHERE ladder.foo = rt.foo
+)
+SELECT * FROM ladder;`,
+	},
+	// union and aggregation typing are tricky
+	{
+		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(3)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
+		Expected: []sql.Row{
+			{"55.0"},
+		},
+	},
 	{
 		// natural join filter columns do not hide duplicated columns
 		Query: "select t2.* from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",

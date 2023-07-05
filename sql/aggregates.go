@@ -25,10 +25,6 @@ type Aggregation interface {
 	WindowAdaptableExpression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() (AggregationBuffer, error)
-	// WithWindow returns a version of this aggregation with the WindowDefinition given
-	WithWindow(window *WindowDefinition) (Aggregation, error)
-	// Window returns this expression's window
-	Window() *WindowDefinition
 }
 
 // WindowBuffer is a type alias for a window materialization
@@ -44,8 +40,6 @@ type WindowInterval struct {
 type WindowFunction interface {
 	Disposable
 
-	// WithWindow passes fields from the parent WindowDefinition, deferring partial construction of a WindowFunction
-	WithWindow(w *WindowDefinition) (WindowFunction, error)
 	// StartPartition discards any previous state and initializes the aggregation for a new partition
 	StartPartition(*Context, WindowInterval, WindowBuffer) error
 	// DefaultFramer returns a new instance of the default WindowFramer for a particular aggregation
@@ -64,6 +58,10 @@ type WindowAdaptableExpression interface {
 
 	// NewEvalable constructs an executable aggregation WindowFunction
 	NewWindowFunction() (WindowFunction, error)
+	// WithWindow returns a version of this aggregation with the WindowDefinition given
+	WithWindow(window *WindowDefinition) WindowAdaptableExpression
+	// Window returns this expression's window
+	Window() *WindowDefinition
 }
 
 // WindowFramer is responsible for tracking window frame indices for partition rows.
@@ -129,8 +127,4 @@ type AggregationBuffer interface {
 // index given on demand.
 type WindowAggregation interface {
 	WindowAdaptableExpression
-	// Window returns this expression's window
-	Window() *WindowDefinition
-	// WithWindow returns a version of this window aggregation with the window given
-	WithWindow(window *WindowDefinition) (WindowAggregation, error)
 }

@@ -12,57 +12,36 @@ func TestFrameFactoryGen(t *testing.T) {
 		expected string
 	}{
 		expected: `
-		import (
-		  "fmt"
-		  "github.com/dolthub/go-mysql-server/sql"
-		  "github.com/dolthub/go-mysql-server/sql/plan"
-		  ast "github.com/dolthub/vitess/go/vt/sqlparser"
-		)
-		
-		func NewFrame(ctx *sql.Context, f *ast.Frame) (sql.WindowFrame, error) {
-		  if f == nil {
-			return nil, nil
-		  }
-		  isRange := f.Unit == ast.RangeUnit
-		  isRows := f.Unit == ast.RowsUnit
-		  unboundedPreceding, err := getFrameUnboundedPreceding(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  startNPreceding, err := getFrameStartNPreceding(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  startCurrentRow, err := getFrameStartCurrentRow(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  startNFollowing, err := getFrameStartNFollowing(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  endNPreceding, err := getFrameEndNPreceding(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  endCurrentRow, err := getFrameEndCurrentRow(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  endNFollowing, err := getFrameEndNFollowing(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  unboundedFollowing, err := getFrameUnboundedFollowing(ctx, f)
-		  if err != nil {
-			return nil, err
-		  }
-		  switch {
-		  case isRows && unboundedPreceding && endNPreceding != nil:
-			return plan.NewRowsUnboundedPrecedingToNPrecedingFrame(endNPreceding), nil
-		  }
-		  return nil, fmt.Errorf("no matching constructor found for frame: %v", f)
-		}
+import (
+  "fmt"
+  "github.com/dolthub/go-mysql-server/sql"
+  "github.com/dolthub/go-mysql-server/sql/plan"
+  ast "github.com/dolthub/vitess/go/vt/sqlparser"
+)
+
+func (b *PlanBuilder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {
+  if f == nil {
+    return nil
+  }
+  isRange := f.Unit == ast.RangeUnit
+  isRows := f.Unit == ast.RowsUnit
+  unboundedPreceding := b.getFrameUnboundedPreceding(inScope, f)
+  startNPreceding := b.getFrameStartNPreceding(inScope, f)
+  startCurrentRow := b.getFrameStartCurrentRow(inScope, f)
+  startNFollowing := b.getFrameStartNFollowing(inScope, f)
+  endNPreceding := b.getFrameEndNPreceding(inScope, f)
+  endCurrentRow := b.getFrameEndCurrentRow(inScope, f)
+  endNFollowing := b.getFrameEndNFollowing(inScope, f)
+  unboundedFollowing := b.getFrameUnboundedFollowing(inScope, f)
+  switch {
+  case isRows && unboundedPreceding && endNPreceding != nil:
+    return plan.NewRowsUnboundedPrecedingToNPrecedingFrame(endNPreceding)
+  default:
+    err := fmt.Errorf("no matching constructor found for frame: %v", f)
+    b.handleErr(err)
+    return nil
+  }
+}
 		`,
 	}
 

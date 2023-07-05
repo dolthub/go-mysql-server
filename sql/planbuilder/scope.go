@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -36,26 +37,45 @@ type scope struct {
 	ctes map[string]*scope
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
+	// windowFuncs is a list of window functions in the current scope
+	windowFuncs []scopeColumn
+	windowDefs  map[string]*sql.WindowDefinition
 	// exprs collects unique expression ids for reference
 	exprs map[string]columnId
 }
 
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {
+	var found scopeColumn
+	var foundCand bool
 	for _, c := range s.cols {
-		if c.col == col && (c.table == table || table == "") {
-			return c, true
+		if strings.EqualFold(c.col, col) && (c.table == table || table == "") {
+			if foundCand {
+				err := sql.ErrAmbiguousColumnName.New(col)
+				s.handleErr(err)
+			}
+			found = c
+			foundCand = true
 		}
 	}
+	if foundCand {
+		return found, true
+	}
 	if c, ok := s.redirectCol[fmt.Sprintf("%s.%s", table, col)]; ok {
-		return c, ok
+		return c, true
+	}
+
+	if s.groupBy != nil {
+		if c, ok := s.groupBy.outScope.resolveColumn(table, col, false); ok {
+			return c, true
+		}
 	}
 
 	if !checkParent || s.parent == nil {
 		return scopeColumn{}, false
 	}
 
-	c, ok := s.parent.resolveColumn(table, col, true)
-	if !ok {
+	c, foundCand := s.parent.resolveColumn(table, col, true)
+	if !foundCand {
 		return scopeColumn{}, false
 	}
 
@@ -108,7 +128,7 @@ func (s *scope) setTableAlias(t string) {
 			s.b.handleErr(err)
 		}
 		delete(s.exprs, beforeColStr)
-		s.exprs[s.cols[i].String()] = id
+		s.exprs[strings.ToLower(s.cols[i].String())] = id
 	}
 	id, ok := s.tables[oldTable]
 	if !ok {
@@ -132,6 +152,7 @@ func (s *scope) setColAlias(cols []string) {
 		beforeColStr := s.cols[i].String()
 		id, ok := s.getExpr(beforeColStr)
 		if !ok {
+			log.Println(s.exprs)
 			err := sql.ErrColumnNotFound.New(beforeColStr)
 			s.b.handleErr(err)
 		}
@@ -262,7 +283,7 @@ func (s *scope) addColumn(col scopeColumn) {
 	if col.table != "" {
 		s.exprs[fmt.Sprintf("%s.%s", strings.ToLower(col.table), strings.ToLower(col.col))] = col.id
 	} else {
-		s.exprs[col.col] = col.id
+		s.exprs[strings.ToLower(col.col)] = col.id
 	}
 	return
 }
@@ -329,6 +350,10 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 	for i := len(src.cols); i < len(s.cols); i++ {
 		s.cols[i].scalar = nil
 	}
+}
+
+func (s *scope) handleErr(err error) {
+	panic(parseErr{err})
 }
 
 // tableId and columnId are temporary ways to track expression

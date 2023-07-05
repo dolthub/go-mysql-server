@@ -127,30 +127,38 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if agg, ok := n.(*plan.GroupBy); ok {
 			if len(agg.SelectedExprs) == 1 && len(agg.GroupByExprs) == 0 {
-				if alias, ok := agg.SelectedExprs[0].(*expression.Alias); ok {
-					if cnt, ok := alias.Child.(*aggregation.Count); ok {
-						switch cnt.Child.(type) {
-						case *expression.Star, *expression.Literal:
-							var rt *plan.ResolvedTable
-							switch c := agg.Child.(type) {
-							case *plan.ResolvedTable:
-								rt = c
-							case *plan.TableAlias:
-								if t, ok := c.Child.(*plan.ResolvedTable); ok {
-									rt = t
-								}
+				child := agg.SelectedExprs[0]
+				var cnt *aggregation.Count
+				name := ""
+				if alias, ok := child.(*expression.Alias); ok {
+					cnt, _ = alias.Child.(*aggregation.Count)
+					name = alias.Name()
+				} else {
+					cnt, _ = child.(*aggregation.Count)
+					name = child.String()
+				}
+				if cnt != nil {
+					switch cnt.Child.(type) {
+					case *expression.Star, *expression.Literal:
+						var rt *plan.ResolvedTable
+						switch c := agg.Child.(type) {
+						case *plan.ResolvedTable:
+							rt = c
+						case *plan.TableAlias:
+							if t, ok := c.Child.(*plan.ResolvedTable); ok {
+								rt = t
 							}
-							if rt != nil && !sql.IsKeyless(rt.Table.Schema()) {
-								if statsTable, ok := rt.Table.(sql.StatisticsTable); ok {
-									cnt, err := statsTable.RowCount(ctx)
-									if err == nil {
-										return plan.NewProject(
-											[]sql.Expression{
-												expression.NewAlias(alias.Name(), expression.NewGetFieldWithTable(0, types.Int64, statsTable.Name(), alias.Name(), false)),
-											},
-											plan.NewTableCount(alias.Name(), rt.Database, statsTable, cnt),
-										), transform.SameTree, nil
-									}
+						}
+						if rt != nil && !sql.IsKeyless(rt.Table.Schema()) {
+							if statsTable, ok := rt.Table.(sql.StatisticsTable); ok {
+								cnt, err := statsTable.RowCount(ctx)
+								if err == nil {
+									return plan.NewProject(
+										[]sql.Expression{
+											expression.NewAlias(name, expression.NewGetFieldWithTable(0, types.Int64, statsTable.Name(), name, false)),
+										},
+										plan.NewTableCount(name, rt.Database, statsTable, cnt),
+									), transform.NewTree, nil
 								}
 							}
 						}

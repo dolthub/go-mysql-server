@@ -19,6 +19,7 @@ package analyzer
 var OnceBeforeDefault_Exp = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
+	{replaceCountStarId, replaceCountStar},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},
@@ -58,7 +59,7 @@ var DefaultRules_Exp = []Rule{
 	{validateCheckConstraintId, validateCheckConstraints},
 	{transposeRightJoinsId, transposeRightJoins}, //TODO
 	{mergeUnionSchemasId, mergeUnionSchemas},     //TODO
-	{transformJoinApplyId, transformJoinApply_experimental},
+	{transformJoinApplyId, transformJoinApply},
 	{resolveSubqueriesId, resolveSubqueries},
 	{resolveBarewordSetVariablesId, resolveBarewordSetVariables}, //TODO
 	{replaceCrossJoinsId, replaceCrossJoins},
@@ -77,7 +78,7 @@ var OnceAfterDefault_Experimental = []Rule{
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
 	{generateIndexScansId, generateIndexScans},
-	{pruneColumnsId, pruneColumns},
+	//{pruneColumnsId, pruneColumns},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{replaceSortPkId, replacePkSort},

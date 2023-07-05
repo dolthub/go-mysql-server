@@ -110,7 +110,10 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 
 		children := n.Children()
 		var newChildren []sql.Node
-		for i, c := range children {
+		for i := len(children) - 1; i >= 0; i-- {
+			// TODO don't push filters too low in join?
+			// join tables scoped left -> right, prune right -> left
+			c := children[i]
 			child, same, _ := pruneWalk(c)
 			if !same {
 				if newChildren == nil {

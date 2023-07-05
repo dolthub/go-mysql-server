@@ -22,7 +22,7 @@ func TestAggGen(t *testing.T) {
 			},
 		},
 		expected: `
-        import (
+         import (
             "fmt"
             "github.com/dolthub/go-mysql-server/sql/types"
             "github.com/dolthub/go-mysql-server/sql"
@@ -78,9 +78,9 @@ func TestAggGen(t *testing.T) {
           return fmt.Sprintf("TEST(%s)", sql.DebugString(a.Child))
         }
 
-        func (a *Test) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-            res, err := a.unaryAggBase.WithWindow(window)
-            return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
+        func (a *Test) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+            res := a.unaryAggBase.WithWindow(window)
+            return &Test{unaryAggBase: *res.(*unaryAggBase)}
         }
 
         func (a *Test) WithChildren(children ...sql.Expression) (sql.Expression, error) {

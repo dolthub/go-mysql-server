@@ -128,10 +128,10 @@ func (f *LastValue) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 // WithWindow implements sql.WindowAggregation
-func (f *LastValue) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (f *LastValue) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *f
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (f *LastValue) NewWindowFunction() (sql.WindowFunction, error) {

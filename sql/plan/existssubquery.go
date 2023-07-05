@@ -81,6 +81,11 @@ func (e *ExistsSubquery) String() string {
 	return fmt.Sprintf("EXISTS %s", e.Query)
 }
 
+// DebugString implements the Expression interface.
+func (e *ExistsSubquery) DebugString() string {
+	return fmt.Sprintf("EXISTS %s", sql.DebugString(e.Query))
+}
+
 // Type implements the Expression interface.
 func (e *ExistsSubquery) Type() sql.Type {
 	return types.Boolean

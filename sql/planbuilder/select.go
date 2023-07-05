@@ -33,36 +33,54 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 }
 
 func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
+	// General order of binding:
+	// 1) Get definitions in FROM.
+	// 2) Build WHERE, which can only reference FROM columns.
+	// 3) Bookkeep aggregation/window function usage in higher-scopes
+	//    (GROUP BY, WINDOW, HAVING, SELECT, ORDER BY).
+	// 4) Construct either i) aggregation, ii) window, or iii) projection over
+	//    FROM clause providing expressions used in (2) (including aliases).
+	// 5) Build top-level scopes, replacing aggregation and aliases with
+	//    projections from (4).
+	// 6) Finish with final target projections.
 	fromScope := b.buildFrom(inScope, s.From)
 	if cn, ok := fromScope.node.(sql.CommentedNode); ok && len(s.Comments) > 0 {
 		fromScope.node = cn.WithComment(string(s.Comments[0]))
 	}
 
+	// Resolve and fold named window definitions
+	b.buildNamedWindows(fromScope, s.Window)
+
 	b.buildWhere(fromScope, s.Where)
 	projScope := fromScope.replace()
 
-	// create SELECT list
-	// aggregates in select list added to fromScope.groupBy.outCols
-	// args to aggregates added to fromScope.groupBy.inCols
-	// select gets ref of agg output
+	// Aggregates in select list added to fromScope.groupBy.outCols.
+	// Args to aggregates added to fromScope.groupBy.inCols.
 	b.analyzeProjectionList(fromScope, projScope, s.SelectExprs)
 
-	// find aggregations in order by
+	// Find aggregations in order by
 	orderByScope := b.analyzeOrderBy(fromScope, projScope, s.OrderBy)
 
-	// find aggregations in having
-	b.analyzeHaving(fromScope, s.Having)
+	// Find aggregations in having
+	b.analyzeHaving(fromScope, projScope, s.Having)
 
-	needsAgg := b.needsAggregation(fromScope, s)
-	if needsAgg {
+	// At this point we've recorded dependencies for higher-level scopes,
+	// so we can build the FROM clause
+	if b.needsAggregation(fromScope, s) {
 		groupingCols := b.buildGroupingCols(fromScope, projScope, s.GroupBy, s.SelectExprs)
-		having := b.buildHaving(fromScope, projScope, s.Having)
-		// make PROJECT -> HAVING -> GROUP_BY
-		outScope = b.buildAggregation(fromScope, projScope, having, groupingCols)
+		outScope = b.buildAggregation(fromScope, projScope, groupingCols)
+	} else if fromScope.windowFuncs != nil {
+		outScope = b.buildWindow(fromScope, projScope)
 	} else {
-		outScope = fromScope
+		outScope = b.buildInnerProj(fromScope, projScope)
 	}
 
+	// At this point, we've combined table relations, performed aggregations,
+	// and projected aliases used in higher-level clauses. Aliases and agg
+	// expressions in higher level scopes will be replaced with GetField
+	// references.
+
+	b.buildHaving(fromScope, projScope, outScope, s.Having)
 	b.buildOrderBy(outScope, orderByScope)
 
 	offset := b.buildOffset(outScope, s.Limit)
@@ -73,6 +91,8 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	if limit != nil {
 		outScope.node = plan.NewLimit(limit, outScope.node)
 	}
+
+	// Last level projection restricts outputs to target projections.
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
 	b.buildDistinct(outScope, s.Distinct)
@@ -120,5 +140,9 @@ func (b *PlanBuilder) renameSource(scope *scope, table string, cols []string) {
 	}
 	if len(cols) > 0 {
 		scope.setColAlias(cols)
+	}
+	for i, c := range scope.cols {
+		c.scalar = nil
+		scope.cols[i] = c
 	}
 }

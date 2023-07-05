@@ -7,7 +7,9 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -88,8 +90,38 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				})
 			}
 		default:
-			// we could add to aggregates here, ref GF in aggOut
+			// track order by col
+			// replace aggregations with refs
+			// pick up auxiliary cols
 			expr := b.buildScalar(fromScope, e)
+			_, ok := outScope.getExpr(expr.String())
+			if ok {
+				continue
+			}
+			// aggregate ref -> expr.String() in
+			// or compound expression
+			expr, _, _ = transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				//  get fields outside of aggs need to be in extra cols
+				switch e := e.(type) {
+				case *expression.GetField:
+					c, ok := fromScope.resolveColumn(strings.ToLower(e.Table()), strings.ToLower(e.Name()), true)
+					if !ok {
+						err := sql.ErrColumnNotFound.New(e.Name)
+						b.handleErr(err)
+					}
+					fromScope.addExtraColumn(c)
+				case sql.WindowAdaptableExpression:
+					// has to have been ref'd already
+					id, ok := fromScope.getExpr(e.String())
+					if !ok {
+						err := fmt.Errorf("faild to ref aggregate expression: %s", e.String())
+						b.handleErr(err)
+					}
+					return expression.NewGetField(int(id), e.Type(), e.String(), e.IsNullable()), transform.NewTree, nil
+				default:
+				}
+				return e, transform.SameTree, nil
+			})
 			col := scopeColumn{
 				table:      "",
 				col:        expr.String(),
@@ -98,17 +130,13 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				nullable:   expr.IsNullable(),
 				descending: descending,
 			}
-			_, ok := outScope.getExpr(expr.String())
-			if !ok {
-				outScope.newColumn(col)
-			}
+			outScope.newColumn(col)
 		}
 	}
 	return
 }
 
 func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
-	// TODO build Sort node over input
 	if len(orderByScope.cols) == 0 {
 		return
 	}

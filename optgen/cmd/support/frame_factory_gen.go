@@ -37,18 +37,15 @@ func (g *FrameFactoryGen) genImports() {
 }
 
 func (g *FrameFactoryGen) genNewFrameFactory() {
-	fmt.Fprintf(g.w, "func NewFrame(ctx *sql.Context, f *ast.Frame) (sql.WindowFrame, error) {\n")
+	fmt.Fprintf(g.w, "func (b *PlanBuilder) NewFrame(inScope *scope, f *ast.Frame) sql.WindowFrame {\n")
 	fmt.Fprintf(g.w, "  if f == nil {\n")
-	fmt.Fprintf(g.w, "    return nil, nil\n")
+	fmt.Fprintf(g.w, "    return nil\n")
 	fmt.Fprintf(g.w, "  }\n")
 	// use manual accessors to init input args
 	fmt.Fprintf(g.w, "  isRange := f.Unit == ast.RangeUnit\n")
 	fmt.Fprintf(g.w, "  isRows := f.Unit == ast.RowsUnit\n")
 	for _, arg := range frameExtents {
-		fmt.Fprintf(g.w, "  %s, err := getFrame%s(ctx, f)\n", arg.String(), strings.Title(arg.String()))
-		fmt.Fprintf(g.w, "  if err != nil {\n")
-		fmt.Fprintf(g.w, "    return nil, err\n")
-		fmt.Fprintf(g.w, "  }\n")
+		fmt.Fprintf(g.w, "  %s := b.getFrame%s(inScope, f)\n", arg.String(), strings.Title(arg.String()))
 	}
 
 	// switch on frame conditionals to select appropriate constructor
@@ -67,10 +64,12 @@ func (g *FrameFactoryGen) genNewFrameFactory() {
 			constructArgs.WriteString(a.String())
 			i++
 		}
-		fmt.Fprintf(g.w, "    return plan.New%sFrame(%s), nil\n", def.Name(), constructArgs.String())
+		fmt.Fprintf(g.w, "    return plan.New%sFrame(%s)\n", def.Name(), constructArgs.String())
 	}
-
+	fmt.Fprintf(g.w, "  default:\n")
+	fmt.Fprintf(g.w, "    err := fmt.Errorf(\"no matching constructor found for frame: %%v\", f)\n")
+	fmt.Fprintf(g.w, "    b.handleErr(err)\n")
+	fmt.Fprintf(g.w, "    return nil\n")
 	fmt.Fprintf(g.w, "  }\n")
-	fmt.Fprintf(g.w, "  return nil, fmt.Errorf(\"no matching constructor found for frame: %%v\", f)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
