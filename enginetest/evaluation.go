@@ -446,6 +446,7 @@ func runQueryPreparedWithCtx(
 
 // DoltCommitType is a special equality type when we expect to see a commit hash in the results
 type DoltCommitType string
+
 var DoltCommit DoltCommitType = "DOLT_COMMIT"
 var hashRegex = regexp.MustCompile(`^[0-9a-v]{32}$`)
 
@@ -492,7 +493,7 @@ func checkResults(
 		for j, field := range row {
 			if _, ok := field.(DoltCommitType); ok {
 				actual := widenedRows[i][j] // shouldn't panic, but fine if it does
-				hash := actual.(string) // might panic, but also fine if it does
+				hash := actual.(string)     // might panic, but also fine if it does
 				if !hashRegex.MatchString(hash) {
 					t.Errorf("Expected commit hash, got %v", actual)
 				}
