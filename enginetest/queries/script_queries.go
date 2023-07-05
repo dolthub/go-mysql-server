@@ -3332,6 +3332,24 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "test index scan over floats",
+		SetUpScript: []string{
+			"CREATE TABLE tab2(pk INTEGER PRIMARY KEY, col0 INTEGER, col1 FLOAT, col2 TEXT, col3 INTEGER, col4 FLOAT, col5 TEXT);",
+			"CREATE UNIQUE INDEX idx_tab2_0 ON tab2 (col1 DESC,col4 DESC);",
+			"CREATE INDEX idx_tab2_1 ON tab2 (col1,col0);",
+			"CREATE INDEX idx_tab2_2 ON tab2 (col4,col0);",
+			"CREATE INDEX idx_tab2_3 ON tab2 (col3 DESC);",
+			"INSERT INTO tab2 VALUES(0,344,171.98,'nwowg',833,149.54,'wjiif');",
+			"INSERT INTO tab2 VALUES(1,353,589.18,'femmh',44,621.85,'qedct');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM tab2 WHERE ((((((col0 IN (SELECT col3 FROM tab2 WHERE ((col1 = 672.71)) AND col4 IN (SELECT col1 FROM tab2 WHERE ((col4 > 169.88 OR col0 > 939 AND ((col3 > 578))))) AND col0 >= 377) AND col4 >= 817.87 AND (col4 > 597.59)) OR col4 >= 434.59 AND ((col4 < 158.43)))))) AND col0 < 303) OR ((col0 > 549)) AND (col4 BETWEEN 816.92 AND 983.96) OR (col3 BETWEEN 421 AND 96);",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

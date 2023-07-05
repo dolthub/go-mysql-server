@@ -3,7 +3,6 @@ package enginetest
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,12 +96,7 @@ func writePlans(t *testing.T, s [][]setup.SetupScript, original []queries.QueryP
 
 func TestWriteComplexIndexQueries(t *testing.T) {
 	t.Skip()
-	tmp, err := ioutil.TempDir("", "*")
-	if err != nil {
-		return
-	}
-
-	outputPath := filepath.Join(tmp, "complex_index_queries.txt")
+	outputPath := filepath.Join(t.TempDir(), "complex_index_queries.txt")
 	f, err := os.Create(outputPath)
 	require.NoError(t, err)
 
@@ -121,12 +115,7 @@ func TestWriteComplexIndexQueries(t *testing.T) {
 
 func TestWriteCreateTableQueries(t *testing.T) {
 	t.Skip()
-	tmp, err := ioutil.TempDir("", "*")
-	if err != nil {
-		return
-	}
-
-	outputPath := filepath.Join(tmp, "create_table_queries.txt")
+	outputPath := filepath.Join(t.TempDir(), "create_table_queries.txt")
 	f, err := os.Create(outputPath)
 	require.NoError(t, err)
 

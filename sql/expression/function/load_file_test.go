@@ -1,7 +1,6 @@
 package function
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -16,7 +15,7 @@ import (
 func createTempDirAndFile(fileName string) (string, *os.File, error) {
 	dir := os.TempDir()
 
-	file, err := ioutil.TempFile(dir, fileName)
+	file, err := os.CreateTemp(dir, fileName)
 	if err != nil {
 		return "", nil, err
 	}
@@ -107,7 +106,7 @@ func TestLoadFile(t *testing.T) {
 // runLoadFileTest takes in a loadFileTestCase and its relevant directory and validates whether LOAD_FILE is reading
 // the file accordingly.
 func runLoadFileTest(t *testing.T, tt loadFileTestCase, dir string) {
-	file, err := ioutil.TempFile(dir, tt.fileName)
+	file, err := os.CreateTemp(dir, tt.fileName)
 	assert.NoError(t, err)
 
 	defer file.Close()

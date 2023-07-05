@@ -61,7 +61,7 @@ type EventDetails struct {
 
 // CreateEventStatement returns a CREATE EVENT statement for this event.
 func (e *EventDetails) CreateEventStatement() string {
-	stmt := fmt.Sprintf("CREATE")
+	stmt := "CREATE"
 	if e.Definer != "" {
 		stmt = fmt.Sprintf("%s DEFINER = %s", stmt, e.Definer)
 	}

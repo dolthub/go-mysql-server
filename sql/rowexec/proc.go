@@ -16,8 +16,8 @@ package rowexec
 
 import (
 	"fmt"
+	"io"
 	"strings"
-	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -89,6 +89,12 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 			continue
 		}
 
+		// TODO: this should happen at iteration time, but this call is where the actual iteration happens
+		err = startTransaction(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		branchIter, err = b.buildNodeExec(ctx, ifConditional, row)
 		if err != nil {
 			return nil, err
@@ -103,6 +109,12 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 			sch:        ifConditional.Body.Schema(),
 			branchNode: ifConditional.Body,
 		}, nil
+	}
+
+	// TODO: this should happen at iteration time, but this call is where the actual iteration happens
+	err = startTransaction(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	// All conditions failed so we run the else
@@ -182,27 +194,137 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 	}, nil
 }
 
+// buildLoop builds and returns an iterator that can be used to iterate over the result set returned from the
+// specified loop, |n|, for the specified row, |row|. Note that because of how we execute stored procedures and cache
+// the results in order to only send back the LAST result set (instead of supporting multiple results sets from
+// stored procedures, like MySQL does), building the iterator here also implicitly means that we're executing the
+// loop logic and caching the result set in memory. This will obviously be an issue for very large result sets.
+// Unfortunately, we can't know at analysis time what the last result set returned will be, since conditional logic
+// in stored procedures can't be known until execution time, hence why we end up caching result sets when we
+// see them and just playing back the last one. Adding support for MySQL's multiple result set behavior and better
+// matching MySQL on which statements are allowed to return result sets from a stored procedure seems like it could
+// potentially allow us to get rid of that caching.
 func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sql.RowIter, error) {
-	var blockIter sql.RowIter
-	// Currently, acquiring the RowIter will actually run through the loop once, so we abuse this by grabbing the iter
-	// only if we're supposed to run through the iter once before evaluating the condition
+	// Acquiring the RowIter will actually execute the loop body once (because of how we cache/scan for the right
+	// SELECT result set to return), so we grab the iter ONLY if we're supposed to run through the loop body once
+	// before evaluating the condition
+	var loopBodyIter sql.RowIter
 	if n.OnceBeforeEval {
 		var err error
-		blockIter, err = b.loopAcquireRowIter(ctx, row, n.Label, n.Block, true)
+		loopBodyIter, err = b.loopAcquireRowIter(ctx, row, n.Label, n.Block, true)
 		if err != nil {
 			return nil, err
 		}
 	}
-	iter := &loopIter{
-		block:         n.Block,
-		label:         strings.ToLower(n.Label),
-		condition:     n.Condition,
-		once:          sync.Once{},
-		blockIter:     blockIter,
-		row:           row,
-		loopIteration: 0,
+
+	var returnRows []sql.Row
+	var returnNode sql.Node
+	var returnSch sql.Schema
+	selectSeen := false
+
+	// It's technically valid to make an infinite loop, but we don't want to actually allow that
+	const maxIterationCount = 10_000_000_000
+
+	for loopIteration := 0; loopIteration <= maxIterationCount; loopIteration++ {
+		if loopIteration >= maxIterationCount {
+			return nil, fmt.Errorf("infinite LOOP detected")
+		}
+
+		// If the condition is false, then we stop evaluation
+		condition, err := n.Condition.Eval(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		conditionBool, err := types.ConvertToBool(condition)
+		if err != nil {
+			return nil, err
+		}
+		if !conditionBool {
+			// loopBodyIter should only be set if this is the first time through the loop and the loop has a
+			// OnceBeforeEval condition. This ensures we return a result set, without us having to drain the iterator,
+			// recache rows, and return a new iterator.
+			if loopBodyIter != nil {
+				return loopBodyIter, nil
+			} else {
+				break
+			}
+		}
+
+		if loopBodyIter == nil {
+			var err error
+			loopBodyIter, err = b.loopAcquireRowIter(ctx, nil, strings.ToLower(n.Label), n.Block, false)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return nil, err
+			}
+		}
+
+		includeResultSet := false
+
+		var subIterNode sql.Node = n.Block
+		subIterSch := n.Block.Schema()
+		if blockRowIter, ok := loopBodyIter.(plan.BlockRowIter); ok {
+			subIterNode = blockRowIter.RepresentingNode()
+			subIterSch = blockRowIter.Schema()
+
+			if plan.NodeRepresentsSelect(subIterNode) {
+				selectSeen = true
+				includeResultSet = true
+				returnNode = subIterNode
+				returnSch = subIterSch
+			} else if !selectSeen {
+				includeResultSet = true
+				returnNode = subIterNode
+				returnSch = subIterSch
+			}
+		}
+
+		// Wrap the caching code in an inline function so that we can use defer to safely dispose of the cache
+		err = func() error {
+			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
+			defer disposeFunc()
+
+			nextRow, err := loopBodyIter.Next(ctx)
+			for ; err == nil; nextRow, err = loopBodyIter.Next(ctx) {
+				rowCache.Add(nextRow)
+			}
+			if err != io.EOF {
+				return err
+			}
+
+			err = loopBodyIter.Close(ctx)
+			if err != nil {
+				return err
+			}
+			loopBodyIter = nil
+
+			if includeResultSet {
+				returnRows = rowCache.Get()
+			}
+			return nil
+		}()
+
+		if err != nil {
+			if err == io.EOF {
+				// no-op for an EOF, just execute the next loop iteration
+			} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == n.Label {
+				if controlFlow.IsExit {
+					break
+				}
+			} else {
+				// If the error wasn't a control flow error signaling to start the next loop iteration or to
+				// exit the loop, then it must be a real error, so just return it.
+				return nil, err
+			}
+		}
 	}
-	return iter, nil
+
+	return &blockIter{
+		internalIter: sql.RowsToRowIter(returnRows...),
+		repNode:      returnNode,
+		sch:          returnSch,
+	}, nil
 }
 
 func (b *BaseBuilder) buildElseCaseError(ctx *sql.Context, n plan.ElseCaseError, row sql.Row) (sql.RowIter, error) {

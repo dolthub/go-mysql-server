@@ -245,9 +245,7 @@ func (i *IndexedTableAccess) String() string {
 
 func formatIndexDecoratorString(idx sql.Index) string {
 	var expStrs []string
-	for _, e := range idx.Expressions() {
-		expStrs = append(expStrs, e)
-	}
+	expStrs = append(expStrs, idx.Expressions()...)
 	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
 }
 

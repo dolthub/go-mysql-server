@@ -251,9 +251,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 
 func (d *BaseDatabase) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
 	var triggers []sql.TriggerDefinition
-	for _, def := range d.triggers {
-		triggers = append(triggers, def)
-	}
+	triggers = append(triggers, d.triggers...)
 	return triggers, nil
 }
 
@@ -291,9 +289,7 @@ func (d *BaseDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.St
 // GetStoredProcedures implements sql.StoredProcedureDatabase
 func (d *BaseDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
 	var spds []sql.StoredProcedureDetails
-	for _, spd := range d.storedProcedures {
-		spds = append(spds, spd)
-	}
+	spds = append(spds, d.storedProcedures...)
 	return spds, nil
 }
 
@@ -340,9 +336,7 @@ func (d *BaseDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinit
 // GetEvents implements sql.EventDatabase
 func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, error) {
 	var eds []sql.EventDefinition
-	for _, ed := range d.events {
-		eds = append(eds, ed)
-	}
+	eds = append(eds, d.events...)
 	return eds, nil
 }
 

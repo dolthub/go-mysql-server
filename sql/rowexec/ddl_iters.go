@@ -1846,7 +1846,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		ctx.Session.Warn(&sql.Warning{
 			Level:   "Warning",
 			Code:    mysql.ERNotSupportedYet,
-			Message: fmt.Sprintf("'disable/enable keys' feature is not supported yet"),
+			Message: "'disable/enable keys' feature is not supported yet",
 		})
 		return nil
 	default:

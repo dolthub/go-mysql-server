@@ -914,7 +914,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return node, nil
 	case sqlparser.KeywordString(sqlparser.WARNINGS):
 		if s.CountStar {
-			unsupportedShow := fmt.Sprintf("SHOW COUNT(*) WARNINGS")
+			unsupportedShow := "SHOW COUNT(*) WARNINGS"
 			return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
 		}
 		var node sql.Node
@@ -1420,7 +1420,7 @@ func convertDBDDL(ctx *sql.Context, c *sqlparser.DBDDL) (sql.Node, error) {
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Warning",
 					Code:    mysql.ERNotSupportedYet,
-					Message: fmt.Sprintf("Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"),
+					Message: "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet",
 				})
 			}
 		}

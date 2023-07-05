@@ -148,7 +148,7 @@ func (c *CreateEvent) String() string {
 
 	onCompletion := ""
 	if !c.OnCompPreserve {
-		onCompletion = fmt.Sprintf(" ON COMPLETION NOT PRESERVE")
+		onCompletion = " ON COMPLETION NOT PRESERVE"
 	}
 
 	comment := ""
@@ -355,7 +355,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    1544,
-					Message: fmt.Sprintf("Event execution time is in the past. Event has been disabled"),
+					Message: "Event execution time is in the past. Event has been disabled",
 				})
 			} else {
 				// If ON COMPLETION NOT PRESERVE is defined, the event is dropped immediately after creation.
@@ -366,7 +366,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    1588,
-					Message: fmt.Sprintf("Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation."),
+					Message: "Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation.",
 				})
 			}
 			return sql.Row{types.NewOkResult(0)}, nil
