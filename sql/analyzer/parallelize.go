@@ -72,8 +72,11 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope
 		return node, transform.SameTree, nil
 	}
 
-	node, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if !isParallelizable(c.Node) {
+	foundOrderedDistinct := false
+	newNode, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		if _, ok := c.Node.(*plan.OrderedDistinct); ok {
+			foundOrderedDistinct = true
+		} else if !isParallelizable(c.Node) {
 			return c.Node, transform.SameTree, nil
 		} else if _, ok := c.Parent.(*plan.Max1Row); ok {
 			return c.Node, transform.SameTree, nil
@@ -82,14 +85,11 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope
 
 		return plan.NewExchange(a.Parallelism, c.Node), transform.NewTree, nil
 	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	if same {
-		return node, transform.SameTree, nil
+	if err != nil || bool(same) || foundOrderedDistinct {
+		return node, transform.SameTree, err
 	}
 
-	return transform.Node(node, removeRedundantExchanges)
+	return transform.Node(newNode, removeRedundantExchanges)
 }
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
