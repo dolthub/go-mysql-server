@@ -54,7 +54,7 @@ const (
 	JoinTypeNatural                                   // NaturalJoin
 	// TODO: might be able to merge these with their respective join types
 	// TODO: apply join?
-	JoinTypeLateralCross							  // LateralCrossJoin
+	JoinTypeLateralCross // LateralCrossJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {
