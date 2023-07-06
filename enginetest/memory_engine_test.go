@@ -282,7 +282,7 @@ func TestSingleScriptExperimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select * from t, lateral (select * from t1 where t.i = t1.j) as tt",
+					Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt",
 					Expected: []sql.Row{
 						{1, 1},
 					},
