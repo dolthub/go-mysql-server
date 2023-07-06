@@ -7320,6 +7320,10 @@ Select * from (
 		},
 	},
 	{
+		Query: `select instr(REPLACE(CONVERT(UUID() USING utf8mb4), '-', ''), '-')`,
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query:    `select * from mytable where 1 = 0 order by i asc`,
 		Expected: []sql.Row{},
 	},
