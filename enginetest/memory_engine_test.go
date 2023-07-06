@@ -283,7 +283,9 @@ func TestSingleScriptExperimental(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query:    "select * from t, lateral (select * from t1 where t.i = t1.j) as tt",
-					Expected: []sql.Row{},
+					Expected: []sql.Row{
+						{1, 1},
+					},
 				},
 			},
 		},
@@ -295,8 +297,8 @@ func TestSingleScriptExperimental(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
+		//engine.Analyzer.Debug = true
+		//engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
