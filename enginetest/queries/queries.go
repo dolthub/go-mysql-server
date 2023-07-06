@@ -7320,7 +7320,7 @@ Select * from (
 		},
 	},
 	{
-		Query: `select instr(REPLACE(CONVERT(UUID() USING utf8mb4), '-', ''), '-')`,
+		Query:    `select instr(REPLACE(CONVERT(UUID() USING utf8mb4), '-', ''), '-')`,
 		Expected: []sql.Row{{0}},
 	},
 	{
