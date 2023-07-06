@@ -195,7 +195,7 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			outScope = b.buildSelectStmt(sqScope, e.Select)
 			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
 			if t.Lateral {
-				sq.OuterScopeVisibility = true
+				sq.IsLateral = true
 			}
 
 			var renameCols []string

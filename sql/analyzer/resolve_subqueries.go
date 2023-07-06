@@ -72,7 +72,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
-					if sqa.OuterScopeVisibility {
+					if sqa.IsLateral {
 						resTbls := getTablesByName(joinParent.Left())
 						subScope := scope
 						for _, tbl := range resTbls {
@@ -86,7 +86,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					}
 				}
 			} else {
-				if joinParent != nil && sqa.OuterScopeVisibility {
+				if joinParent != nil && sqa.IsLateral {
 					resTbls := getTablesByName(joinParent.Left())
 					subScope := scope
 					for _, tbl := range resTbls {
@@ -153,7 +153,7 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	return transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		n := c.Node
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
-			if parent, ok := c.Parent.(*plan.JoinNode); ok && sqa.OuterScopeVisibility {
+			if parent, ok := c.Parent.(*plan.JoinNode); ok && sqa.IsLateral {
 				resTbls := getTablesByName(parent.Left())
 				subScope := scope
 				for _, tbl := range resTbls {
