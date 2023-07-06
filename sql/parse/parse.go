@@ -4094,6 +4094,18 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		return expression.NewXor(lhs, rhs), nil
+	case *sqlparser.ConvertUsingExpr:
+		expr, err := ExprToExpression(ctx, v.Expr)
+		if err != nil {
+			return nil, err
+		}
+
+		collation, err := sql.ParseCollation(&v.Type, nil, false)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewCollatedExpression(expr, collation), nil
 	case *sqlparser.ConvertExpr:
 		expr, err := ExprToExpression(ctx, v.Expr)
 		if err != nil {
