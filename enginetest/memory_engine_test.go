@@ -438,6 +438,15 @@ func TestIndexQueryPlans(t *testing.T) {
 	}
 }
 
+func TestParallelismQueries(t *testing.T) {
+	enginetest.TestParallelismQueries(t, enginetest.NewMemoryHarness("default", 2, testNumPartitions, true, nil))
+}
+
+func TestParallelismQueries_Experimental(t *testing.T) {
+	t.Skip("parallelism + experimental harness hard to construct")
+	enginetest.TestParallelismQueries(t, enginetest.NewMemoryHarness("default", 2, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
 func TestQueryErrors(t *testing.T) {
 	enginetest.TestQueryErrors(t, enginetest.NewDefaultMemoryHarness())
 }
