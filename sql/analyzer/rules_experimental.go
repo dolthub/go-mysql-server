@@ -86,6 +86,7 @@ var OnceAfterDefault_Experimental = []Rule{
 	{eraseProjectionId, eraseProjection},
 	{insertTopNId, insertTopNNodes},
 	{applyHashInId, applyHashIn},
+	{resolveInsertRowsId, resolveInsertRows},
 	{resolvePreparedInsertId, resolvePreparedInsert},
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},

@@ -93,18 +93,18 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 			name := strings.ToLower(e.Name.String())
 			for _, c := range fromScope.cols {
 				// match in-scope only
-				if c.col == name {
+				if strings.EqualFold(c.col, name) {
 					col = c
 					break
 				}
 			}
-			if col.table == "" {
+			if col.table != "" {
 				break
 			}
 			// fallback to alias in targets
 			for _, c := range projScope.cols {
 				// match alias in projection scope
-				if c.col == name {
+				if strings.EqualFold(c.col, name) {
 					col = c
 					break
 				}

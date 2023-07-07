@@ -33,12 +33,36 @@ func (b *PlanBuilder) buildCreateTrigger(inScope *scope, query string, c *ast.DD
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
+
 	tableScope := b.buildTablescan(inScope, dbName, c.Table.Name.String(), nil)
-	db := b.resolveDb(dbName)
+
+	// todo scope with new and old columns provided
+	// insert/update have "new"
+	// update/delete have "old"
+	newScope := tableScope.replace()
+	oldScope := tableScope.replace()
+	for _, col := range tableScope.cols {
+		switch c.TriggerSpec.Event {
+		case ast.InsertStr:
+			newScope.newColumn(col)
+		case ast.UpdateStr:
+			newScope.newColumn(col)
+			oldScope.newColumn(col)
+		case ast.DeleteStr:
+			oldScope.newColumn(col)
+		}
+	}
+	newScope.setTableAlias("new")
+	oldScope.setTableAlias("old")
+	triggerScope := tableScope.replace()
+
+	triggerScope.addColumns(newScope.cols)
+	triggerScope.addColumns(oldScope.cols)
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	bodyScope := b.build(tableScope, c.TriggerSpec.Body, bodyStr)
+	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
+	db := b.resolveDb(dbName)
 
 	outScope.node = plan.NewCreateTrigger(
 		db,

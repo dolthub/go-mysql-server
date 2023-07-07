@@ -210,8 +210,10 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 
 			outScope = inScope.push()
 			vdt := plan.NewValueDerivedTable(plan.NewValues(exprTuples), t.As.String())
+			for _, c := range vdt.Schema() {
+				outScope.newColumn(scopeColumn{col: c.Name, table: c.Source, typ: c.Type, nullable: c.Nullable})
+			}
 			var renameCols []string
-
 			if len(e.Columns) > 0 {
 				renameCols = columnsToStrings(e.Columns)
 				vdt = vdt.WithColumns(renameCols)
