@@ -2,12 +2,14 @@ package planbuilder
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"strconv"
-	"strings"
 )
 
 func (b *PlanBuilder) buildBeginEndBlock(inScope *scope, n *sqlparser.BeginEndBlock) (outScope *scope) {
