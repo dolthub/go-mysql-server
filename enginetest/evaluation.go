@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -444,11 +443,10 @@ func runQueryPreparedWithCtx(
 	return rows, sch, err
 }
 
-// DoltCommitType is a special equality type when we expect to see a commit hash in the results
-type DoltCommitType string
-
-var DoltCommit DoltCommitType = "DOLT_COMMIT"
-var hashRegex = regexp.MustCompile(`^[0-9a-v]{32}$`)
+// CustomValueValidator is an interface for custom validation of values in the result set
+type CustomValueValidator interface {
+	Validate(interface{}) (bool, error)
+}
 
 func checkResults(
 	t *testing.T,
@@ -491,13 +489,16 @@ func checkResults(
 	// Special case for DOLT COMMIT HASHES
 	for i, row := range widenedExpected {
 		for j, field := range row {
-			if _, ok := field.(DoltCommitType); ok {
+			if cvv, isCustom := field.(CustomValueValidator); isCustom {
 				actual := widenedRows[i][j] // shouldn't panic, but fine if it does
-				hash := actual.(string)     // might panic, but also fine if it does
-				if !hashRegex.MatchString(hash) {
-					t.Errorf("Expected commit hash, got %v", actual)
+				ok, err := cvv.Validate(actual)
+				if err != nil {
+					t.Error(err.Error())
 				}
-				widenedExpected[i][j] = actual
+				if !ok {
+					t.Errorf("Custom value validation, got %v", actual)
+				}
+				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 		}
 	}
