@@ -420,7 +420,7 @@ func sortedInputs(rel RelExpr) bool {
 			// j -> input idx
 			// want to find matches for all i where j_i <= j_i+1
 			if strings.EqualFold(outputs[i].Name, inputs[j].Name) &&
-				strings.EqualFold(outputs[i].Name, inputs[j].Name) {
+				strings.EqualFold(outputs[i].Source, inputs[j].Source) {
 				i++
 			} else {
 				// identical projections satisfied by same input

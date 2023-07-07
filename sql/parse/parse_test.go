@@ -5006,6 +5006,25 @@ END`,
 				false,
 			),
 		},
+		{
+			input: "INSERT INTO instance(id, setup_complete)\n  VALUES (CONVERT(UUID() USING utf8mb4), FALSE)",
+			plan: plan.NewInsertInto(
+				sql.UnresolvedDatabase(""),
+				plan.NewUnresolvedTable("instance", ""),
+				plan.NewValues([][]sql.Expression{
+					{
+						expression.NewCollatedExpression(
+							expression.NewUnresolvedFunction("uuid", false, nil),
+							sql.CharacterSet_utf8mb4.DefaultCollation()),
+						expression.NewLiteral(false, types.Boolean),
+					},
+				}),
+				false,
+				[]string{"id", "setup_complete"},
+				[]sql.Expression{},
+				false,
+			),
+		},
 	}
 
 	for _, tt := range fixtures {

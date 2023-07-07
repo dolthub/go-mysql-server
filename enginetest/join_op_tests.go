@@ -168,6 +168,28 @@ var joinOpTests = []struct {
 		},
 	},
 	{
+		name: "ordered distinct",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `select /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct v from uv);`,
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    `SELECT /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct u from uv);`,
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
 		name: "4-way join tests",
 		setup: [][]string{
 			setup.MydbData[0],

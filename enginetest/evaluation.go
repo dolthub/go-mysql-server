@@ -443,6 +443,11 @@ func runQueryPreparedWithCtx(
 	return rows, sch, err
 }
 
+// CustomValueValidator is an interface for custom validation of values in the result set
+type CustomValueValidator interface {
+	Validate(interface{}) (bool, error)
+}
+
 func checkResults(
 	t *testing.T,
 	expected []sql.Row,
@@ -477,6 +482,23 @@ func checkResults(
 				if d, ok := val.(decimal.Decimal); ok {
 					widenedRow[i] = d.StringFixed(d.Exponent() * -1)
 				}
+			}
+		}
+	}
+
+	// Special case for custom values
+	for i, row := range widenedExpected {
+		for j, field := range row {
+			if cvv, isCustom := field.(CustomValueValidator); isCustom {
+				actual := widenedRows[i][j] // shouldn't panic, but fine if it does
+				ok, err := cvv.Validate(actual)
+				if err != nil {
+					t.Error(err.Error())
+				}
+				if !ok {
+					t.Errorf("Custom value validation, got %v", actual)
+				}
+				widenedExpected[i][j] = actual // ensure it passes equality check later
 			}
 		}
 	}
