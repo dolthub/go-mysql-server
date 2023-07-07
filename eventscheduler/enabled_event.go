@@ -272,14 +272,16 @@ func (r *runningEventsStatus) remove(key string) {
 func (r *runningEventsStatus) getStatus(key string) (bool, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.status[key]
+	b, ok := r.status[key]
+	return b, ok
 }
 
 // getAdd returns the whether to re-add the event at given key.
 func (r *runningEventsStatus) getReAdd(key string) (bool, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.reAdd[key]
+	b, ok := r.reAdd[key]
+	return b, ok
 }
 
 // removeSchemaEvents removes all events of given database name.
