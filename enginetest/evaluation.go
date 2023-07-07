@@ -486,7 +486,7 @@ func checkResults(
 		}
 	}
 
-	// Special case for DOLT COMMIT HASHES
+	// Special case for custom values
 	for i, row := range widenedExpected {
 		for j, field := range row {
 			if cvv, isCustom := field.(CustomValueValidator); isCustom {
