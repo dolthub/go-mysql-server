@@ -25,6 +25,56 @@ type QueryPlanTest struct {
 // in testgen_test.go.
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `select /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct v from uv);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as count(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [xy.x:1!null, xy.y:2]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ xy.y:2\n" +
+			"             │   └─ scalarSubq0.v:0\n" +
+			"             ├─ Distinct\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [scalarSubq0.v:1]\n" +
+			"             │       └─ TableAlias(scalarSubq0)\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: uv\n" +
+			"             │               └─ columns: [u v]\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 ├─ index: [xy.y]\n" +
+			"                 └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: `SELECT /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct u from uv);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [COUNT(1):0!null as count(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [xy.x:1!null, xy.y:2]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ xy.y:2\n" +
+			"             │   └─ scalarSubq0.u:0!null\n" +
+			"             ├─ OrderedDistinct\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [scalarSubq0.u:0!null]\n" +
+			"             │       └─ TableAlias(scalarSubq0)\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: uv\n" +
+			"             │               └─ columns: [u v]\n" +
+			"             └─ IndexedTableAccess(xy)\n" +
+			"                 ├─ index: [xy.y]\n" +
+			"                 └─ columns: [x y]\n" +
+			"",
+	},
+	{
 		Query: `select count(*) from mytable`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.count(*):0!null as count(*)]\n" +
@@ -15943,7 +15993,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 │               │       │       ├─ index: [THNTS.id]\n" +
 			"                 │               │       │       ├─ static: [{[NULL, ∞)}]\n" +
 			"                 │               │       │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
-			"                 │               │       └─ OrderedDistinct\n" +
+			"                 │               │       └─ Distinct\n" +
 			"                 │               │           └─ TableAlias(scalarSubq1)\n" +
 			"                 │               │               └─ IndexedTableAccess(HGMQ6)\n" +
 			"                 │               │                   ├─ index: [HGMQ6.GXLUB]\n" +
@@ -15953,7 +16003,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 │                   ├─ left-key: TUPLE(scalarSubq0.id:0!null)\n" +
 			"                 │                   ├─ right-key: TUPLE(scalarSubq2.GXLUB:0!null)\n" +
 			"                 │                   └─ CachedResults\n" +
-			"                 │                       └─ OrderedDistinct\n" +
+			"                 │                       └─ Distinct\n" +
 			"                 │                           └─ TableAlias(scalarSubq2)\n" +
 			"                 │                               └─ Table\n" +
 			"                 │                                   ├─ name: AMYXQ\n" +
@@ -16043,7 +16093,7 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 │               │       ├─ index: [THNTS.id]\n" +
 			"                 │               │       ├─ static: [{[NULL, ∞)}]\n" +
 			"                 │               │       └─ columns: [id nfryn ixuxu fhcyt]\n" +
-			"                 │               └─ OrderedDistinct\n" +
+			"                 │               └─ Distinct\n" +
 			"                 │                   └─ TableAlias(scalarSubq1)\n" +
 			"                 │                       └─ IndexedTableAccess(AMYXQ)\n" +
 			"                 │                           ├─ index: [AMYXQ.GXLUB]\n" +
