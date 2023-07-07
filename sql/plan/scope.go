@@ -148,8 +148,6 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 			if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
 				sqa.OuterScopeVisibility = true
 				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
-			} else if len(s.joinSiblings) > 0 {
-				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
 			}
 		}
 		if len(s.joinSiblings) > 0 {
