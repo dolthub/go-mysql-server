@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"strconv"
 	"strings"
 
@@ -49,20 +50,16 @@ func (b *PlanBuilder) buildDDL(inScope *scope, query string, c *ast.DDL) (outSco
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
 		if c.TriggerSpec != nil {
-			//return buildCreateTrigger(ctx, query, c)
-			panic("todo")
+			return b.buildCreateTrigger(inScope, query, c)
 		}
 		if c.ProcedureSpec != nil {
-			//return buildCreateProcedure(ctx, query, c)
-			panic("todo")
+			return b.buildCreateProcedure(inScope, query, c)
 		}
 		if c.EventSpec != nil {
-			//return buildCreateEvent(ctx, query, c)
-			panic("todo")
+			return b.buildCreateEvent(inScope, query, c)
 		}
 		if c.ViewSpec != nil {
-			//return buildCreateView(ctx, query, c)
-			panic("todo")
+			return b.buildCreateView(inScope, query, c)
 		}
 		return b.buildCreateTable(inScope, c)
 	case ast.DropStr:
@@ -966,4 +963,68 @@ func (b *PlanBuilder) convertDefaultExpression(inScope *scope, defaultExpr ast.E
 		ReturnNil:     true,
 		Parenthesized: isParenthesized,
 	}
+}
+
+func (b *PlanBuilder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
+	outScope = inScope.push()
+	switch strings.ToLower(c.Action) {
+	case ast.CreateStr:
+		var charsetStr *string
+		var collationStr *string
+		for _, cc := range c.CharsetCollate {
+			ccType := strings.ToLower(cc.Type)
+			if ccType == "character set" {
+				val := cc.Value
+				charsetStr = &val
+			} else if ccType == "collate" {
+				val := cc.Value
+				collationStr = &val
+			} else {
+				b.ctx.Session.Warn(&sql.Warning{
+					Level:   "Warning",
+					Code:    mysql.ERNotSupportedYet,
+					Message: "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet",
+				})
+			}
+		}
+		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
+	case ast.DropStr:
+		outScope.node = plan.NewDropDatabase(c.DBName, c.IfExists)
+	case ast.AlterStr:
+		if len(c.CharsetCollate) == 0 {
+			if len(c.DBName) > 0 {
+				err := sql.ErrSyntaxError.New(fmt.Sprintf("alter database %s", c.DBName))
+				b.handleErr(err)
+			} else {
+				err := sql.ErrSyntaxError.New("alter database")
+				b.handleErr(err)
+			}
+		}
+
+		var charsetStr *string
+		var collationStr *string
+		for _, cc := range c.CharsetCollate {
+			ccType := strings.ToLower(cc.Type)
+			if ccType == "character set" {
+				val := cc.Value
+				charsetStr = &val
+			} else if ccType == "collate" {
+				val := cc.Value
+				collationStr = &val
+			}
+		}
+		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
+		if err != nil {
+			b.handleErr(err)
+		}
+		outScope.node = plan.NewAlterDatabase(c.DBName, collation)
+	default:
+		err := sql.ErrUnsupportedSyntax.New(ast.String(c))
+		b.handleErr(err)
+	}
+	return outScope
 }

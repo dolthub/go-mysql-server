@@ -6,7 +6,6 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	oldparse "github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -63,33 +62,17 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.MultiAlterDDL:
 		return b.buildMultiAlterDDL(inScope, query, n)
 	case *ast.DBDDL:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildDBDDL(inScope, n)
 	case *ast.Explain:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildExplain(inScope, n)
 	case *ast.Insert:
 		return b.buildInsert(inScope, n)
 	case *ast.Delete:
 		return b.buildDelete(inScope, n)
 	case *ast.Update:
 		return b.buildUpdate(inScope, n)
-
 	case *ast.Load:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildLoad(inScope, n)
 	case *ast.Set:
 		return b.buildSet(inScope, n)
 	case *ast.Use:
@@ -118,19 +101,9 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope = inScope.push()
 		outScope.node = plan.NewReleaseSavepoint(n.Identifier)
 	case *ast.ChangeReplicationSource:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildChangeReplicationSource(inScope, n)
 	case *ast.ChangeReplicationFilter:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildChangeReplicationFilter(inScope, n)
 	case *ast.StartReplica:
 		outScope = inScope.push()
 		outScope.node = plan.NewStartReplica()
@@ -142,138 +115,43 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 		outScope = inScope.push()
 		outScope.node = plan.NewResetReplica(n.All)
 	case *ast.BeginEndBlock:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildBeginEndBlock(inScope, n)
 	case *ast.IfStatement:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildIfBlock(inScope, n)
 	case *ast.CaseStatement:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCaseStatement(inScope, n)
 	case *ast.Call:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCall(inScope, n)
 	case *ast.Declare:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildDeclare(inScope, n, query)
 	case *ast.FetchCursor:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildFetchCursor(inScope, n)
 	case *ast.OpenCursor:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildOpenCursor(inScope, n)
 	case *ast.CloseCursor:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCloseCursor(inScope, n)
 	case *ast.Loop:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildLoop(inScope, n)
 	case *ast.Repeat:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildRepeat(inScope, n)
 	case *ast.While:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildWhile(inScope, n)
 	case *ast.Leave:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildLeave(inScope, n)
 	case *ast.Iterate:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildIterate(inScope, n)
 	case *ast.Kill:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildKill(inScope, n)
 	case *ast.Signal:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildSignal(inScope, n)
 	case *ast.LockTables:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildLockTables(inScope, n)
 	case *ast.UnlockTables:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildUnlockTables(inScope, n)
 	case *ast.CreateUser:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildCreateUser(inScope, n)
 	case *ast.RenameUser:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildRenameUser(inScope, n)
 	case *ast.DropUser:
 		outScope.node = plan.NewDropUser(n.IfExists, convertAccountName(n.AccountNames...))
 	case *ast.CreateRole:
@@ -281,12 +159,7 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.DropRole:
 		outScope.node = plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...))
 	case *ast.GrantPrivilege:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildGrantPrivilege(inScope, n)
 	case *ast.GrantRole:
 		outScope.node = plan.NewGrantRole(
 			convertAccountName(n.Roles...),
@@ -322,42 +195,17 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	case *ast.RevokeProxy:
 		outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
 	case *ast.ShowGrants:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildShowGrants(inScope, n)
 	case *ast.ShowPrivileges:
 		outScope.node = plan.NewShowPrivileges()
 	case *ast.Flush:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildFlush(inScope, n)
 	case *ast.Prepare:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildPrepare(inScope, n)
 	case *ast.Execute:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildExecute(inScope, n)
 	case *ast.Deallocate:
-		outScope = inScope.push()
-		node, err := oldparse.Parse(b.ctx, query)
-		if err != nil {
-			b.handleErr(err)
-		}
-		outScope.node = node
+		return b.buildDeallocate(inScope, n)
 	}
 	return
 }

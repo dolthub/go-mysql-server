@@ -2,16 +2,16 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"strconv"
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func convertAccountName(names ...sqlparser.AccountName) []plan.UserName {
+func convertAccountName(names ...ast.AccountName) []plan.UserName {
 	userNames := make([]plan.UserName, len(names))
 	for i, name := range names {
 		userNames[i] = plan.UserName{
@@ -23,79 +23,79 @@ func convertAccountName(names ...sqlparser.AccountName) []plan.UserName {
 	return userNames
 }
 
-func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
+func convertPrivilege(privileges ...ast.Privilege) []plan.Privilege {
 	planPrivs := make([]plan.Privilege, len(privileges))
 	for i, privilege := range privileges {
 		var privType plan.PrivilegeType
 		var dynamicString string
 		switch privilege.Type {
-		case sqlparser.PrivilegeType_All:
+		case ast.PrivilegeType_All:
 			privType = plan.PrivilegeType_All
-		case sqlparser.PrivilegeType_Alter:
+		case ast.PrivilegeType_Alter:
 			privType = plan.PrivilegeType_Alter
-		case sqlparser.PrivilegeType_AlterRoutine:
+		case ast.PrivilegeType_AlterRoutine:
 			privType = plan.PrivilegeType_AlterRoutine
-		case sqlparser.PrivilegeType_Create:
+		case ast.PrivilegeType_Create:
 			privType = plan.PrivilegeType_Create
-		case sqlparser.PrivilegeType_CreateRole:
+		case ast.PrivilegeType_CreateRole:
 			privType = plan.PrivilegeType_CreateRole
-		case sqlparser.PrivilegeType_CreateRoutine:
+		case ast.PrivilegeType_CreateRoutine:
 			privType = plan.PrivilegeType_CreateRoutine
-		case sqlparser.PrivilegeType_CreateTablespace:
+		case ast.PrivilegeType_CreateTablespace:
 			privType = plan.PrivilegeType_CreateTablespace
-		case sqlparser.PrivilegeType_CreateTemporaryTables:
+		case ast.PrivilegeType_CreateTemporaryTables:
 			privType = plan.PrivilegeType_CreateTemporaryTables
-		case sqlparser.PrivilegeType_CreateUser:
+		case ast.PrivilegeType_CreateUser:
 			privType = plan.PrivilegeType_CreateUser
-		case sqlparser.PrivilegeType_CreateView:
+		case ast.PrivilegeType_CreateView:
 			privType = plan.PrivilegeType_CreateView
-		case sqlparser.PrivilegeType_Delete:
+		case ast.PrivilegeType_Delete:
 			privType = plan.PrivilegeType_Delete
-		case sqlparser.PrivilegeType_Drop:
+		case ast.PrivilegeType_Drop:
 			privType = plan.PrivilegeType_Drop
-		case sqlparser.PrivilegeType_DropRole:
+		case ast.PrivilegeType_DropRole:
 			privType = plan.PrivilegeType_DropRole
-		case sqlparser.PrivilegeType_Event:
+		case ast.PrivilegeType_Event:
 			privType = plan.PrivilegeType_Event
-		case sqlparser.PrivilegeType_Execute:
+		case ast.PrivilegeType_Execute:
 			privType = plan.PrivilegeType_Execute
-		case sqlparser.PrivilegeType_File:
+		case ast.PrivilegeType_File:
 			privType = plan.PrivilegeType_File
-		case sqlparser.PrivilegeType_GrantOption:
+		case ast.PrivilegeType_GrantOption:
 			privType = plan.PrivilegeType_GrantOption
-		case sqlparser.PrivilegeType_Index:
+		case ast.PrivilegeType_Index:
 			privType = plan.PrivilegeType_Index
-		case sqlparser.PrivilegeType_Insert:
+		case ast.PrivilegeType_Insert:
 			privType = plan.PrivilegeType_Insert
-		case sqlparser.PrivilegeType_LockTables:
+		case ast.PrivilegeType_LockTables:
 			privType = plan.PrivilegeType_LockTables
-		case sqlparser.PrivilegeType_Process:
+		case ast.PrivilegeType_Process:
 			privType = plan.PrivilegeType_Process
-		case sqlparser.PrivilegeType_References:
+		case ast.PrivilegeType_References:
 			privType = plan.PrivilegeType_References
-		case sqlparser.PrivilegeType_Reload:
+		case ast.PrivilegeType_Reload:
 			privType = plan.PrivilegeType_Reload
-		case sqlparser.PrivilegeType_ReplicationClient:
+		case ast.PrivilegeType_ReplicationClient:
 			privType = plan.PrivilegeType_ReplicationClient
-		case sqlparser.PrivilegeType_ReplicationSlave:
+		case ast.PrivilegeType_ReplicationSlave:
 			privType = plan.PrivilegeType_ReplicationSlave
-		case sqlparser.PrivilegeType_Select:
+		case ast.PrivilegeType_Select:
 			privType = plan.PrivilegeType_Select
-		case sqlparser.PrivilegeType_ShowDatabases:
+		case ast.PrivilegeType_ShowDatabases:
 			privType = plan.PrivilegeType_ShowDatabases
-		case sqlparser.PrivilegeType_ShowView:
+		case ast.PrivilegeType_ShowView:
 			privType = plan.PrivilegeType_ShowView
-		case sqlparser.PrivilegeType_Shutdown:
+		case ast.PrivilegeType_Shutdown:
 			privType = plan.PrivilegeType_Shutdown
-		case sqlparser.PrivilegeType_Super:
+		case ast.PrivilegeType_Super:
 			privType = plan.PrivilegeType_Super
-		case sqlparser.PrivilegeType_Trigger:
+		case ast.PrivilegeType_Trigger:
 			privType = plan.PrivilegeType_Trigger
-		case sqlparser.PrivilegeType_Update:
+		case ast.PrivilegeType_Update:
 			privType = plan.PrivilegeType_Update
-		case sqlparser.PrivilegeType_Usage:
+		case ast.PrivilegeType_Usage:
 			privType = plan.PrivilegeType_Usage
-		case sqlparser.PrivilegeType_Dynamic:
+		case ast.PrivilegeType_Dynamic:
 			privType = plan.PrivilegeType_Dynamic
 			dynamicString = privilege.DynamicName
 		default:
@@ -111,29 +111,30 @@ func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
 	return planPrivs
 }
 
-func convertObjectType(objType sqlparser.GrantObjectType) plan.ObjectType {
+func convertObjectType(objType ast.GrantObjectType) plan.ObjectType {
 	switch objType {
-	case sqlparser.GrantObjectType_Any:
+	case ast.GrantObjectType_Any:
 		return plan.ObjectType_Any
-	case sqlparser.GrantObjectType_Table:
+	case ast.GrantObjectType_Table:
 		return plan.ObjectType_Table
-	case sqlparser.GrantObjectType_Function:
+	case ast.GrantObjectType_Function:
 		return plan.ObjectType_Function
-	case sqlparser.GrantObjectType_Procedure:
+	case ast.GrantObjectType_Procedure:
 		return plan.ObjectType_Procedure
 	default:
 		panic("no other grant object types exist")
 	}
 }
 
-func convertPrivilegeLevel(privLevel sqlparser.PrivilegeLevel) plan.PrivilegeLevel {
+func convertPrivilegeLevel(privLevel ast.PrivilegeLevel) plan.PrivilegeLevel {
 	return plan.PrivilegeLevel{
 		Database:     privLevel.Database,
 		TableRoutine: privLevel.TableRoutine,
 	}
 }
 
-func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (*plan.CreateUser, error) {
+func (b *PlanBuilder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *scope) {
+	outScope = inScope.push()
 	authUsers := make([]plan.AuthenticatedUser, len(n.Users))
 	for i, user := range n.Users {
 		authUser := plan.AuthenticatedUser{
@@ -151,7 +152,8 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 			}
 		}
 		if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
-			return nil, fmt.Errorf(`multi-factor authentication is not yet supported`)
+			err := fmt.Errorf(`multi-factor authentication is not yet supported`)
+			b.handleErr(err)
 		}
 		//TODO: figure out how to represent the remaining authentication methods and multi-factor auth
 		authUsers[i] = authUser
@@ -171,7 +173,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var maxQueries *int64
 		if n.AccountLimits.MaxQueriesPerHour != nil {
 			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxQueriesPerHour.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				maxQueries = &val
 			}
@@ -179,7 +181,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var maxUpdates *int64
 		if n.AccountLimits.MaxUpdatesPerHour != nil {
 			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxUpdatesPerHour.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				maxUpdates = &val
 			}
@@ -187,7 +189,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var maxConnections *int64
 		if n.AccountLimits.MaxConnectionsPerHour != nil {
 			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxConnectionsPerHour.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				maxConnections = &val
 			}
@@ -195,7 +197,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var maxUserConnections *int64
 		if n.AccountLimits.MaxUserConnections != nil {
 			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxUserConnections.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				maxUserConnections = &val
 			}
@@ -212,7 +214,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var expirationTime *int64
 		if n.PasswordOptions.ExpirationTime != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.ExpirationTime.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				expirationTime = &val
 			}
@@ -220,7 +222,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var history *int64
 		if n.PasswordOptions.History != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.History.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				history = &val
 			}
@@ -228,7 +230,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var reuseInterval *int64
 		if n.PasswordOptions.ReuseInterval != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.ReuseInterval.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				reuseInterval = &val
 			}
@@ -236,7 +238,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var failedAttempts *int64
 		if n.PasswordOptions.FailedAttempts != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.FailedAttempts.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				failedAttempts = &val
 			}
@@ -244,7 +246,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		var lockTime *int64
 		if n.PasswordOptions.LockTime != nil {
 			if val, err := strconv.ParseInt(string(n.PasswordOptions.LockTime.Val), 10, 64); err != nil {
-				return nil, err
+				b.handleErr(err)
 			} else {
 				lockTime = &val
 			}
@@ -258,7 +260,9 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 			LockTime:               lockTime,
 		}
 	}
-	return &plan.CreateUser{
+	database := b.resolveDb("mysql")
+
+	outScope.node = &plan.CreateUser{
 		IfNotExists:     n.IfNotExists,
 		Users:           authUsers,
 		DefaultRoles:    convertAccountName(n.DefaultRoles...),
@@ -267,32 +271,36 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *sqlparser.CreateUser) (
 		PasswordOptions: passwordOptions,
 		Locked:          n.Locked,
 		Attribute:       n.Attribute,
-		MySQLDb:         sql.UnresolvedDatabase("mysql"),
-	}, nil
+		MySQLDb:         database,
+	}
+	return outScope
 }
 
-func (b *PlanBuilder) buildRenameUser(inScope *scope, n *sqlparser.RenameUser) (*plan.RenameUser, error) {
+func (b *PlanBuilder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outScope *scope) {
 	oldNames := make([]plan.UserName, len(n.Accounts))
 	newNames := make([]plan.UserName, len(n.Accounts))
 	for i, account := range n.Accounts {
 		oldNames[i] = convertAccountName(account.From)[0]
 		newNames[i] = convertAccountName(account.To)[0]
 	}
-	return plan.NewRenameUser(oldNames, newNames), nil
+	outScope = inScope.push()
+	outScope.node = plan.NewRenameUser(oldNames, newNames)
+	return outScope
 }
 
-func (b *PlanBuilder) buildGrantPrivilege(inScope *scope, n *sqlparser.GrantPrivilege) (*plan.Grant, error) {
+func (b *PlanBuilder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (outScope *scope) {
+	outScope = inScope.push()
 	var gau *plan.GrantUserAssumption
 	if n.As != nil {
 		gauType := plan.GrantUserAssumptionType_Default
 		switch n.As.Type {
-		case sqlparser.GrantUserAssumptionType_None:
+		case ast.GrantUserAssumptionType_None:
 			gauType = plan.GrantUserAssumptionType_None
-		case sqlparser.GrantUserAssumptionType_All:
+		case ast.GrantUserAssumptionType_All:
 			gauType = plan.GrantUserAssumptionType_All
-		case sqlparser.GrantUserAssumptionType_AllExcept:
+		case ast.GrantUserAssumptionType_AllExcept:
 			gauType = plan.GrantUserAssumptionType_AllExcept
-		case sqlparser.GrantUserAssumptionType_Roles:
+		case ast.GrantUserAssumptionType_Roles:
 			gauType = plan.GrantUserAssumptionType_Roles
 		}
 		gau = &plan.GrantUserAssumption{
@@ -301,19 +309,27 @@ func (b *PlanBuilder) buildGrantPrivilege(inScope *scope, n *sqlparser.GrantPriv
 			Roles: convertAccountName(n.As.Roles...),
 		}
 	}
-	return plan.NewGrant(
-		sql.UnresolvedDatabase("mysql"),
-		convertPrivilege(n.Privileges...),
-		convertObjectType(n.ObjectType),
-		convertPrivilegeLevel(n.PrivilegeLevel),
-		convertAccountName(n.To...),
-		n.WithGrantOption,
-		gau,
-		b.ctx.Session.Client().User,
-	)
+	granter := b.ctx.Session.Client().User
+	level := convertPrivilegeLevel(n.PrivilegeLevel)
+	if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
+		err := sql.ErrDatabaseAccessDeniedForUser.New(granter, level.Database)
+		b.handleErr(err)
+	}
+
+	outScope.node = &plan.Grant{
+		Privileges:      convertPrivilege(n.Privileges...),
+		ObjectType:      convertObjectType(n.ObjectType),
+		PrivilegeLevel:  level,
+		Users:           convertAccountName(n.To...),
+		WithGrantOption: n.WithGrantOption,
+		As:              gau,
+		MySQLDb:         b.resolveDb("mysql"),
+	}
+
+	return outScope
 }
 
-func (b *PlanBuilder) buildShowGrants(inScope *scope, n *sqlparser.ShowGrants) (*plan.ShowGrants, error) {
+func (b *PlanBuilder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *scope) {
 	var currentUser bool
 	var user *plan.UserName
 	if n.For != nil {
@@ -328,21 +344,27 @@ func (b *PlanBuilder) buildShowGrants(inScope *scope, n *sqlparser.ShowGrants) (
 			AnyHost: client.Address == "%",
 		}
 	}
-	return plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...)), nil
+	outScope = inScope.push()
+	outScope.node = plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...))
+	return
 }
 
-func (b *PlanBuilder) buildFlush(inScope *scope, f *sqlparser.Flush) (sql.Node, error) {
+func (b *PlanBuilder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
+	outScope = inScope.push()
 	var writesToBinlog = true
 	switch strings.ToLower(f.Type) {
 	case "no_write_to_binlog", "local":
 		//writesToBinlog = false
-		return nil, fmt.Errorf("%s not supported", f.Type)
+		err := fmt.Errorf("%s not supported", f.Type)
+		b.handleErr(err)
 	}
 
 	switch strings.ToLower(f.Option.Name) {
 	case "privileges":
-		return plan.NewFlushPrivileges(writesToBinlog), nil
+		outScope.node = plan.NewFlushPrivileges(writesToBinlog)
 	default:
-		return nil, fmt.Errorf("%s not supported", f.Option.Name)
+		err := fmt.Errorf("%s not supported", f.Option.Name)
+		b.handleErr(err)
 	}
+	return outScope
 }

@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -172,7 +173,7 @@ func getIndexes(
 					return result, nil
 				}
 
-				result[getField.Table()] = &indexLookup{
+				result[strings.ToLower(getField.Table())] = &indexLookup{
 					fields:  []sql.Expression{e},
 					indexes: []sql.Index{idx},
 					lookup:  newLookup,
@@ -196,7 +197,7 @@ func getIndexes(
 			return result, nil
 		}
 
-		result[getField.Table()] = lookup
+		result[strings.ToLower(getField.Table())] = lookup
 	case *expression.IsNull:
 		return getIndexes(ctx, ia, expression.NewNullSafeEquals(e.Child, expression.NewLiteral(nil, types.Null)), tableAliases)
 	case *expression.Not:
@@ -240,7 +241,7 @@ func getIndexes(
 					return result, nil
 				}
 
-				result[getField.Table()] = &indexLookup{
+				result[strings.ToLower(getField.Table())] = &indexLookup{
 					fields:  []sql.Expression{getField},
 					indexes: []sql.Index{idx},
 					lookup:  lookup,
@@ -351,7 +352,7 @@ func getIndexes(
 			return nil, err
 		}
 
-		result[getField.Table()] = &indexLookup{
+		result[strings.ToLower(getField.Table())] = &indexLookup{
 			fields:  []sql.Expression{getField},
 			indexes: []sql.Index{idx},
 			lookup:  lookup,
@@ -516,7 +517,7 @@ func getNegatedIndexes(
 		}
 
 		result := indexLookupsByTable{
-			getField.Table(): {
+			strings.ToLower(getField.Table()): {
 				fields:  []sql.Expression{left},
 				indexes: []sql.Index{idx},
 				lookup:  lookup,

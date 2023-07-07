@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -34,7 +35,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node
-			loadedTriggers, err := loadTriggersFromDb(ctx, newShowTriggers.Database())
+			loadedTriggers, err := loadTriggersFromDb(ctx, newShowTriggers.Database(), a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -45,7 +46,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			}
 			return &newShowTriggers, transform.NewTree, nil
 		case *plan.DropTrigger:
-			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database())
+			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database(), a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -71,7 +72,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				dropTableDb = t.Database
 			}
 
-			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb)
+			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb, a)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -96,7 +97,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 	})
 }
 
-func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigger, error) {
+func loadTriggersFromDb(ctx *sql.Context, db sql.Database, a *Analyzer) ([]*plan.CreateTrigger, error) {
 	var loadedTriggers []*plan.CreateTrigger
 	if triggerDb, ok := db.(sql.TriggerDatabase); ok {
 		triggers, err := triggerDb.GetTriggers(ctx)
@@ -104,7 +105,12 @@ func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigge
 			return nil, err
 		}
 		for _, trigger := range triggers {
-			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+			var parsedTrigger sql.Node
+			if ctx.Version == sql.VersionExperimental {
+				parsedTrigger, err = planbuilder.Parse(ctx, a.Catalog, trigger.CreateStatement)
+			} else {
+				parsedTrigger, err = parse.Parse(ctx, trigger.CreateStatement)
+			}
 			if err != nil {
 				return nil, err
 			}

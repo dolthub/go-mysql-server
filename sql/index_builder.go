@@ -16,6 +16,7 @@ package sql
 
 import (
 	"gopkg.in/src-d/go-errors.v1"
+	"strings"
 )
 
 var (
@@ -40,8 +41,8 @@ func NewIndexBuilder(idx Index) *IndexBuilder {
 	colExprTypes := make(map[string]Type)
 	ranges := make(map[string][]RangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes() {
-		colExprTypes[cet.Expression] = cet.Type
-		ranges[cet.Expression] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
+		colExprTypes[strings.ToLower(cet.Expression)] = cet.Type
+		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
 	}
 	return &IndexBuilder{
 		idx:          idx,
@@ -207,7 +208,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	}
 	var allColumns [][]RangeColumnExpr
 	for _, colExpr := range b.idx.Expressions() {
-		ranges, ok := b.ranges[colExpr]
+		ranges, ok := b.ranges[strings.ToLower(colExpr)]
 		if !ok {
 			// An index builder is guaranteed to cover the first n expressions, so if we hit an expression that we do
 			// not have an entry for then we've hit all the ranges.

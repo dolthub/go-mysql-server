@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -184,7 +185,12 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		}
 
 		for _, trigger := range triggers {
-			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+			var parsedTrigger sql.Node
+			if ctx.Version == sql.VersionExperimental {
+				parsedTrigger, err = planbuilder.Parse(ctx, a.Catalog, trigger.CreateStatement)
+			} else {
+				parsedTrigger, err = parse.Parse(ctx, trigger.CreateStatement)
+			}
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

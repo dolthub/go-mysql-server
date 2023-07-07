@@ -6,6 +6,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"strings"
 )
 
 // generateIndexScans generates indexscan alternatives for sql.IndexAddressableTable
@@ -162,7 +163,7 @@ func pushdownIndexesToTable(scope *plan.Scope, a *Analyzer, tableNode sql.Nameab
 				table = tw.Underlying()
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
-				indexLookup, ok := indexes[tableNode.Name()]
+				indexLookup, ok := indexes[strings.ToLower(tableNode.Name())]
 				if ok && indexLookup.lookup.Index.CanSupport(indexLookup.lookup.Ranges...) {
 					a.Log("table %q transformed with pushdown of index", tableNode.Name())
 					ita, err := plan.NewStaticIndexedAccessForResolvedTable(n, indexLookup.lookup)

@@ -28,6 +28,7 @@ import (
 type SignalConditionItemName string
 
 const (
+	SignalConditionItemName_Unknown           SignalConditionItemName = ""
 	SignalConditionItemName_ClassOrigin       SignalConditionItemName = "class_origin"
 	SignalConditionItemName_SubclassOrigin    SignalConditionItemName = "subclass_origin"
 	SignalConditionItemName_MessageText       SignalConditionItemName = "message_text"

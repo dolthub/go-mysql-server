@@ -653,10 +653,9 @@ func (b *PlanBuilder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql
 	return expression.NewCase(expr, branches, elseExpr), nil
 }
 
-func (b *PlanBuilder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) (sql.Expression, error) {
+func (b *PlanBuilder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) sql.Expression {
 	expr := b.buildScalar(inScope, e.Expr)
-
-	return expression.NewInterval(expr, e.Unit), nil
+	return expression.NewInterval(expr, e.Unit)
 }
 
 // Convert an integer, represented by the specified string in the specified
