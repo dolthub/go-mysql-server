@@ -87,14 +87,14 @@ type DropDB struct {
 	Catalog  sql.Catalog
 	DbName   string
 	IfExists bool
-	// Notifier is used to notify EventSchedulerStatus of database deletion,
+	// EventScheduler is used to notify EventSchedulerStatus of database deletion,
 	// so the events of this database in the scheduler will be removed.
-	Notifier sql.EventSchedulerNotifier
+	EventScheduler sql.EventScheduler
 }
 
 var _ sql.Node = (*DropDB)(nil)
 var _ sql.CollationCoercible = (*DropDB)(nil)
-var _ sql.EventSchedulerNotifierStatement = (*DropDB)(nil)
+var _ sql.EventSchedulerStatement = (*DropDB)(nil)
 
 func (d *DropDB) Resolved() bool {
 	return true
@@ -120,10 +120,10 @@ func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 
-// WithEventSchedulerNotifier is used to drop all events from EventSchedulerStatus for DROP DATABASE.
-func (d *DropDB) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
+// WithEventScheduler is used to drop all events from EventSchedulerStatus for DROP DATABASE.
+func (d *DropDB) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
 	na := *d
-	na.Notifier = notifier
+	na.EventScheduler = scheduler
 	return &na
 }
 

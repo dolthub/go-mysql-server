@@ -653,8 +653,8 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 	}
 
 	// make sure to notify the EventSchedulerStatus before dropping the database
-	if n.Notifier != nil {
-		n.Notifier.RemoveSchemaEvents(n.DbName)
+	if n.EventScheduler != nil {
+		n.EventScheduler.RemoveSchemaEvents(n.DbName)
 	}
 
 	err := n.Catalog.RemoveDatabase(ctx, n.DbName)

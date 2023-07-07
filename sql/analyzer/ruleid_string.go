@@ -55,7 +55,7 @@ func _() {
 	_ = x[setInsertColumnsId-44]
 	_ = x[validateJoinComplexityId-45]
 	_ = x[applyBinlogReplicaControllerId-46]
-	_ = x[applyEventSchedulerNotifierId-47]
+	_ = x[applyEventSchedulerId-47]
 	_ = x[resolveNaturalJoinsId-48]
 	_ = x[resolveOrderbyLiteralsId-49]
 	_ = x[resolveFunctionsId-50]

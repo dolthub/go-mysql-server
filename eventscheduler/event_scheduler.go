@@ -42,7 +42,7 @@ const (
 	SchedulerDisabled SchedulerStatus = "DISABLED"
 )
 
-var _ sql.EventSchedulerNotifier = (*EventScheduler)(nil)
+var _ sql.EventScheduler = (*EventScheduler)(nil)
 
 // EventScheduler is responsible for SQL events execution.
 type EventScheduler struct {
@@ -175,7 +175,7 @@ func (es *EventScheduler) evaluateAllEventsAndLoadEnabledEvents(ctx *sql.Context
 	return events, nil
 }
 
-// AddEvent implements sql.EventSchedulerNotifier interface.
+// AddEvent implements sql.EventScheduler interface.
 // This function is called when there is an event created at runtime.
 func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDetails) {
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
@@ -184,7 +184,7 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 	es.executor.addEvent(ctx, edb, details)
 }
 
-// UpdateEvent implements sql.EventSchedulerNotifier interface.
+// UpdateEvent implements sql.EventScheduler interface.
 // This function is called when there is an event altered at runtime.
 func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, orgEventName string, details sql.EventDetails) {
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
@@ -193,7 +193,7 @@ func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, o
 	es.executor.updateEvent(ctx, edb, orgEventName, details)
 }
 
-// RemoveEvent implements sql.EventSchedulerNotifier interface.
+// RemoveEvent implements sql.EventScheduler interface.
 // This function is called when there is an event dropped at runtime. This function
 // removes the given event if it exists in the enabled events list of the EventScheduler.
 func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
@@ -203,7 +203,7 @@ func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
 	es.executor.removeEvent(fmt.Sprintf("%s.%s", dbName, eventName))
 }
 
-// RemoveSchemaEvents implements sql.EventSchedulerNotifier interface.
+// RemoveSchemaEvents implements sql.EventScheduler interface.
 // This function is called when there is a database dropped at runtime. This function
 // removes all events of given database that exist in the enabled events list of the EventScheduler.
 func (es *EventScheduler) RemoveSchemaEvents(dbName string) {

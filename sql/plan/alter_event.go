@@ -31,7 +31,7 @@ import (
 var _ sql.Node = (*AlterEvent)(nil)
 var _ sql.Expressioner = (*AlterEvent)(nil)
 var _ sql.Databaser = (*AlterEvent)(nil)
-var _ sql.EventSchedulerNotifierStatement = (*AlterEvent)(nil)
+var _ sql.EventSchedulerStatement = (*AlterEvent)(nil)
 
 type AlterEvent struct {
 	ddlNode
@@ -63,8 +63,8 @@ type AlterEvent struct {
 
 	// Event will be defined during analyzing
 	Event sql.EventDetails
-	// notifier is used to notify EventSchedulerStatus of the event update
-	notifier sql.EventSchedulerNotifier
+	// scheduler is used to notify EventSchedulerStatus of the event update
+	scheduler sql.EventScheduler
 }
 
 // NewAlterEvent returns a *AlterEvent node.
@@ -325,7 +325,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		alterStatus:   a.AlterStatus,
 		eventDetails:  ed,
 		eventDb:       eventDb,
-		notifier:      a.notifier,
+		scheduler:     a.scheduler,
 	}, nil
 }
 
@@ -398,10 +398,10 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	return &na, nil
 }
 
-// WithEventSchedulerNotifier is used to notify EventSchedulerStatus to update the events list for ALTER EVENT.
-func (a *AlterEvent) WithEventSchedulerNotifier(notifier sql.EventSchedulerNotifier) sql.Node {
+// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for ALTER EVENT.
+func (a *AlterEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
 	na := *a
-	na.notifier = notifier
+	na.scheduler = scheduler
 	return &na
 }
 
@@ -413,7 +413,7 @@ type alterEventIter struct {
 	alterStatus   bool
 	eventDetails  sql.EventDetails
 	eventDb       sql.EventDatabase
-	notifier      sql.EventSchedulerNotifier
+	scheduler     sql.EventScheduler
 }
 
 // Next implements the sql.RowIter interface.
@@ -456,8 +456,8 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			} else {
 				// If event status was set to ENABLE and ON COMPLETION NOT PRESERVE, it gets dropped.
 				// make sure to notify the EventSchedulerStatus before dropping the event in the database
-				if a.notifier != nil {
-					a.notifier.RemoveEvent(a.eventDb.Name(), a.originalName)
+				if a.scheduler != nil {
+					a.scheduler.RemoveEvent(a.eventDb.Name(), a.originalName)
 				}
 				err := a.eventDb.DropEvent(ctx, a.originalName)
 				if err != nil {
@@ -474,8 +474,8 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	// make sure to notify the EventSchedulerStatus after updating the event in the database
-	if a.notifier != nil && enabled {
-		a.notifier.UpdateEvent(ctx, a.eventDb, a.originalName, a.eventDetails)
+	if a.scheduler != nil && enabled {
+		a.scheduler.UpdateEvent(ctx, a.eventDb, a.originalName, a.eventDetails)
 	}
 
 	return sql.Row{types.NewOkResult(0)}, nil

@@ -23,7 +23,7 @@ import (
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{applyBinlogReplicaControllerId, applyBinlogReplicaController},
-	{applyEventSchedulerNotifierId, applyEventSchedulerNotifier},
+	{applyEventSchedulerId, applyEventScheduler},
 	{validateOffsetAndLimitId, validateLimitAndOffset},
 	{validateCreateTableId, validateCreateTable},
 	{validateExprSemId, validateExprSem},

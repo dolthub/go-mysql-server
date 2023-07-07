@@ -28,19 +28,19 @@ import (
 
 const EventDateSpaceTimeFormat = "2006-01-02 15:04:05"
 
-// EventSchedulerNotifierStatement represents a SQL statement that requires a EventSchedulerNotifier
+// EventSchedulerStatement represents a SQL statement that requires a EventScheduler
 // (e.g. CREATE / ALTER / DROP EVENT and DROP DATABASE).
-type EventSchedulerNotifierStatement interface {
+type EventSchedulerStatement interface {
 	Node
-	// WithEventSchedulerNotifier returns a new instance of this EventSchedulerNotifierStatement,
+	// WithEventScheduler returns a new instance of this EventSchedulerStatement,
 	// with the event scheduler notifier configured.
-	WithEventSchedulerNotifier(controller EventSchedulerNotifier) Node
+	WithEventScheduler(controller EventScheduler) Node
 }
 
-// EventSchedulerNotifier is an interface used for notifying the EventSchedulerStatus
+// EventScheduler is an interface used for notifying the EventSchedulerStatus
 // for querying any events related statements. This allows plan Nodes to communicate
 // to the EventSchedulerStatus.
-type EventSchedulerNotifier interface {
+type EventScheduler interface {
 	// AddEvent is called when there is an event created at runtime.
 	AddEvent(ctx *Context, edb EventDatabase, details EventDetails)
 	// UpdateEvent is called when there is an event altered at runtime.

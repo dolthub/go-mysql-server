@@ -20,13 +20,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// applyBinlogReplicaController configures AddEvent, UpdateEvent and RemoveEvent nodes with the
-// EventSchedulerNotifier that the Analyzer holds.
-func applyEventSchedulerNotifier(_ *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// applyEventScheduler configures AddEvent, UpdateEvent and RemoveEvent nodes with the
+// EventScheduler that the Analyzer holds.
+func applyEventScheduler(_ *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
-		case sql.EventSchedulerNotifierStatement:
-			return nn.WithEventSchedulerNotifier(a.EventSchedulerNotifier), transform.NewTree, nil
+		case sql.EventSchedulerStatement:
+			return nn.WithEventScheduler(a.EventScheduler), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
