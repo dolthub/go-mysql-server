@@ -32,6 +32,16 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	return resolveSubqueriesHelper(ctx, a, n, scope, sel, false)
 }
 
+func addLeftTablesToScope(outerScope *plan.Scope, leftNode sql.Node) *plan.Scope {
+	resTbls := getTablesByName(leftNode)
+	subScope := outerScope
+	for _, tbl := range resTbls {
+		subScope = subScope.NewScopeInJoin(tbl)
+	}
+	subScope.SetJoin(true)
+	return subScope
+}
+
 // finalizeSubqueries runs the final analysis pass on subquery expressions and subquery aliases in the node tree to ensure
 // they are fully resolved and that the plan is ready to be executed. The logic is similar to when subqueries are initially
 // resolved with resolveSubqueries, but with a few important differences:
@@ -73,13 +83,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
 					if sqa.IsLateral {
-						resTbls := getTablesByName(joinParent.Left())
-						subScope := scope
-						for _, tbl := range resTbls {
-							subScope = subScope.NewScopeInJoin(tbl)
-						}
-						subScope.CurrentNodeIsFromSubqueryExpression = true
-						subScope.SetJoin(true)
+						subScope := addLeftTablesToScope(scope, joinParent.Left())
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 					} else {
 						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -87,13 +91,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				}
 			} else {
 				if joinParent != nil && sqa.IsLateral {
-					resTbls := getTablesByName(joinParent.Left())
-					subScope := scope
-					for _, tbl := range resTbls {
-						subScope = subScope.NewScopeInJoin(tbl)
-					}
-					subScope.CurrentNodeIsFromSubqueryExpression = true
-					subScope.SetJoin(true)
+					subScope := addLeftTablesToScope(scope, joinParent.Left())
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true)
@@ -154,13 +152,7 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		n := c.Node
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			if parent, ok := c.Parent.(*plan.JoinNode); ok && sqa.IsLateral {
-				resTbls := getTablesByName(parent.Left())
-				subScope := scope
-				for _, tbl := range resTbls {
-					subScope = subScope.NewScopeInJoin(tbl)
-				}
-				subScope.CurrentNodeIsFromSubqueryExpression = true
-				subScope.SetJoin(true)
+				subScope := addLeftTablesToScope(scope, parent.Left())
 				return analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, finalize)
 			}
 			return analyzeSubqueryAlias(ctx, a, sqa, scope, sel, finalize)
