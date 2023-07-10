@@ -762,7 +762,7 @@ func newLateralCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.Jo
 		right = reflect.TypeOf(j.Right()).String()
 	}
 
-	span, ctx := ctx.Span("plan.CrossJoin", trace.WithAttributes(
+	span, ctx := ctx.Span("plan.LateralCrossJoin", trace.WithAttributes(
 		attribute.String("left", left),
 		attribute.String("right", right),
 	))

@@ -301,8 +301,8 @@ func TestSingleScriptExperimental(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		//engine.Analyzer.Debug = true
-		//engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }

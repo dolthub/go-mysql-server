@@ -93,7 +93,6 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 		} else {
 			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		}
-		outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		return
 	}
 
@@ -197,6 +196,7 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
 			if t.Lateral {
 				sq.IsLateral = true
+				//sq.OuterScopeVisibility = true
 			}
 
 			var renameCols []string
