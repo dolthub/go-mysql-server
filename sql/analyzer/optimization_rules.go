@@ -386,7 +386,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope,
 				newRightUpper := expression.NewLiteral(valStr, e.Right.Type())
 				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.Left, newRightLower), expression.NewLessThanOrEqual(e.Left, newRightUpper))
 				return newExpr, transform.NewTree, nil
-			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression:
+			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
 				return e, transform.SameTree, nil
 			default:
 				if !isEvaluable(e) {

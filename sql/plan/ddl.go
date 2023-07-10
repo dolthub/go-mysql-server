@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type IfNotExistsOption bool
@@ -265,14 +266,20 @@ func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) 
 	return &nc, nil
 }
 
-func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
+func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) (err error) {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return ErrNotIndexable.New()
 	}
 
 	indexMap := make(map[string]struct{})
+	fulltextIndexes := make([]*IndexDefinition, 0, len(idxes))
 	for _, idxDef := range idxes {
+		// We evaluate fulltext indexes after all others, as we may need to reference an index created later
+		if idxDef.Constraint == sql.IndexConstraint_Fulltext {
+			fulltextIndexes = append(fulltextIndexes, idxDef)
+			continue
+		}
 		indexName := idxDef.IndexName
 		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
 		// until we get a non-colliding name if the original name (or each preceding name) already exists.
@@ -301,6 +308,149 @@ func (c *CreateTable) CreateIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 			return err
 		}
 		indexMap[strings.ToLower(indexName)] = struct{}{}
+	}
+
+	// If we have fulltext indexes, then we create our additional column, along with a unique index on top of it
+	//TODO: abstract this out so that we can use it with CREATE INDEX and ALTER TABLE
+	if len(fulltextIndexes) > 0 {
+		fulltextAlterable, ok := idxAlterable.(fulltext.IndexAlterableFulltextTable)
+		if !ok {
+			return sql.ErrFullTextNotSupported.New()
+		}
+		database, ok := c.Db.(sql.TableCreator)
+		if !ok {
+			if privDb, ok := database.(mysql_db.PrivilegedDatabase); ok {
+				if database, ok = privDb.Unwrap().(sql.TableCreator); !ok {
+					return sql.ErrCreateTableNotSupported.New(c.Db.Name())
+				}
+			} else {
+				return sql.ErrCreateTableNotSupported.New(c.Db.Name())
+			}
+		}
+
+		columnFound := false
+		for _, col := range tableNode.Schema() {
+			columnFound, err = fulltext.FullTextVerifyFtsDocIdCol(col)
+			if err != nil {
+				return err
+			}
+			if columnFound {
+				break
+			}
+		}
+		// If the column does not exist, then we create it
+		if !columnFound {
+			alterableTable, ok := tableNode.(sql.AlterableTable)
+			if !ok {
+				return sql.ErrAlterTableNotSupported.New(alterableTable)
+			}
+			ftsDocIDCol := &sql.Column{
+				Name:           fulltext.IDColumnName,
+				Type:           types.Uint64,
+				AutoIncrement:  true,
+				Nullable:       false,
+				Source:         alterableTable.Schema()[0].Source,
+				DatabaseSource: alterableTable.Schema()[0].DatabaseSource,
+			}
+			if err := alterableTable.AddColumn(ctx, ftsDocIDCol, nil); err != nil {
+				return err
+			}
+		}
+
+		// Grab the unique index, or create one if it doesn't exist.
+		columnIndexFound := false
+		for _, index := range idxes {
+			if strings.ToLower(index.IndexName) == fulltext.IDIndexNameLowercase {
+				// The index name must be all uppercase.
+				// The index must be UNIQUE.
+				if index.IndexName != fulltext.IDIndexName || index.Constraint != sql.IndexConstraint_Unique {
+					return sql.ErrInvalidFullTextDocIDIndex.New(index.IndexName)
+				}
+				//TODO: this is not a MySQL limitation, but makes things to easier to work with for now
+				if len(index.Columns) > 1 {
+					return fmt.Errorf("'%s' must be the only column in '%s'", fulltext.IDColumnName, index.IndexName)
+				}
+				columnIndexFound = true
+			}
+		}
+		if !columnIndexFound {
+			if err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
+				Name:       fulltext.IDIndexName,
+				Columns:    []sql.IndexColumn{{Name: fulltext.IDColumnName}},
+				Constraint: sql.IndexConstraint_Unique,
+				Storage:    sql.IndexUsing_BTree,
+			}); err != nil {
+				return err
+			}
+		}
+
+		//TODO: add a special interface to get names to use when creating the tables
+		configTblName := fulltextAlterable.Name() + "_FTS_CONFIG"
+
+		// We create the config table first since it will be shared between all Full-Text indexes for this table
+		configSch, err := fulltext.MakeCopyOfSchema(fulltext.FulltextSchemaConfig, configTblName, sql.Collation_Default)
+		if err != nil {
+			return err
+		}
+		err = database.CreateTable(ctx, configTblName, sql.NewPrimaryKeySchema(configSch), sql.Collation_Default)
+		if err != nil {
+			return err
+		}
+
+		// Create unique tables for each index
+		for _, fulltextIndex := range idxes {
+			wordToPosTblName := fmt.Sprintf("%s_%s_FTS_MAP", fulltextAlterable.Name(), fulltextIndex.IndexName)
+			countTblName := fmt.Sprintf("%s_%s_FTS_COUNT", fulltextAlterable.Name(), fulltextIndex.IndexName)
+			//TODO: verify that there are no duplicate columns
+			collation := sql.Collation_Unspecified
+			for _, indexCol := range fulltextIndex.Columns {
+				indexColNameLower := strings.ToLower(indexCol.Name)
+				found := false
+				for _, tblCol := range c.CreateSchema.Schema {
+					if indexColNameLower == strings.ToLower(tblCol.Name) {
+						colCollation, _ := tblCol.Type.CollationCoercibility(ctx)
+						if collation == sql.Collation_Unspecified {
+							collation = colCollation
+						} else if collation != colCollation {
+							//TODO: put this with the rest of the errors
+							return fmt.Errorf("Full-Text index columns must have the same collation")
+						}
+						found = true
+						break
+					}
+				}
+				if !found {
+					//TODO: put this with the rest of the errors
+					return fmt.Errorf("Full-Text index could not find the column `%s`", indexCol.Name)
+				}
+			}
+			wordToPosSch, err := fulltext.MakeCopyOfSchema(fulltext.FulltextSchemaWordToPosMap, wordToPosTblName, collation)
+			if err != nil {
+				return err
+			}
+			err = database.CreateTable(ctx, wordToPosTblName, sql.NewPrimaryKeySchema(wordToPosSch), sql.Collation_Default)
+			if err != nil {
+				return err
+			}
+			countSch, err := fulltext.MakeCopyOfSchema(fulltext.FulltextSchemaCount, countTblName, collation)
+			if err != nil {
+				return err
+			}
+			err = database.CreateTable(ctx, countTblName, sql.NewPrimaryKeySchema(countSch), sql.Collation_Default)
+			if err != nil {
+				return err
+			}
+			err = fulltextAlterable.CreateFulltextIndex(ctx, sql.IndexDef{
+				Name:       fulltextIndex.IndexName,
+				Columns:    fulltextIndex.Columns,
+				Constraint: fulltextIndex.Constraint,
+				Storage:    fulltextIndex.Using,
+				Comment:    fulltextIndex.Comment,
+			}, configTblName, wordToPosTblName, countTblName)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

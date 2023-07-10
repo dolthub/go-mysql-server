@@ -37,6 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -2510,8 +2511,7 @@ func ConvertIndexDefs(ctx *sql.Context, spec *sqlparser.TableSpec) (idxDefs []*p
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
-			// TODO: We do not support FULLTEXT indexes or keys
-			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+			constraint = sql.IndexConstraint_Fulltext
 		}
 
 		columns, err := gatherIndexColumns(idxDef.Columns)
@@ -4143,6 +4143,48 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 		return function.NewExtract(unit, expr), err
+	case *sqlparser.MatchExpr:
+		colTableName := ""
+		cols := make([]sql.Expression, len(v.Columns))
+		for i, selectExpr := range v.Columns {
+			expr, err := selectExprToExpression(ctx, selectExpr)
+			if err != nil {
+				return nil, err
+			}
+			unresolvedCol, ok := expr.(*expression.UnresolvedColumn)
+			if !ok {
+				return nil, fmt.Errorf("match columns must be column names") //TODO: extract to error file
+			}
+			if len(unresolvedCol.Table()) > 0 {
+				if len(colTableName) == 0 {
+					colTableName = strings.ToLower(unresolvedCol.Table())
+				} else if colTableName != strings.ToLower(unresolvedCol.Table()) {
+					return nil, fmt.Errorf("match columns must refer to the same table")
+				}
+			}
+			cols[i] = unresolvedCol
+		}
+		expr, err := ExprToExpression(ctx, v.Expr)
+		if err != nil {
+			return nil, err
+		}
+		var searchModifier fulltext.FullTextSearchModifier
+		switch v.Option {
+		case sqlparser.NaturalLanguageModeStr, "":
+			searchModifier = fulltext.FullTextSearchModifier_NaturalLanguage
+		case sqlparser.NaturalLanguageModeWithQueryExpansionStr:
+			searchModifier = fulltext.FullTextSearchModifier_NaturalLangaugeQueryExpansion
+			return nil, fmt.Errorf(`"IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION" is not supported yet`)
+		case sqlparser.BooleanModeStr:
+			searchModifier = fulltext.FullTextSearchModifier_Boolean
+			return nil, fmt.Errorf(`"IN BOOLEAN MODE" is not supported yet`)
+		case sqlparser.QueryExpansionStr:
+			searchModifier = fulltext.FullTextSearchModifier_QueryExpansion
+			return nil, fmt.Errorf(`"WITH QUERY EXPANSION" is not supported yet`)
+		default:
+			return nil, sql.ErrUnsupportedFeature.New(v.Option)
+		}
+		return expression.NewMatchAgainst(cols, expr, searchModifier), nil
 	}
 }
 

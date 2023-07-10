@@ -792,6 +792,16 @@ var (
 
 	// ErrDroppedJoinFilters is returned when we removed filters from a join, but failed to re-insert them
 	ErrDroppedJoinFilters = errors.NewKind("dropped filters from join, but failed to re-insert them")
+
+	// ErrInvalidFullTextDocIDColumn is returned when an FTS_DOC_ID column is explicitly defined, but cannot be used for
+	// a Full-Text index.
+	ErrInvalidFullTextDocIDColumn = errors.NewKind("Column '%s' is of wrong type for an InnoDB FULLTEXT index")
+
+	// ErrInvalidFullTextDocIDIndex is returned when an index named FTS_DOC_ID_INDEX is invalid for a Full-Text index.
+	ErrInvalidFullTextDocIDIndex = errors.NewKind("Index '%s' is of wrong type for an InnoDB FULLTEXT index")
+
+	// ErrFullTextNotSupported is returned when a table does not support the creation of Full-Text indexes.
+	ErrFullTextNotSupported = errors.NewKind("table does not support FULLTEXT indexes")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

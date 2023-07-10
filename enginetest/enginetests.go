@@ -3452,6 +3452,13 @@ func TestForeignKeys(t *testing.T, harness Harness) {
 	}
 }
 
+func TestFulltextIndexes(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.FulltextTests {
+		TestScript(t, harness, script)
+	}
+}
+
 // todo(max): rewrite this using info schema and []QueryTest
 func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)

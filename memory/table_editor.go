@@ -40,6 +40,7 @@ var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
+var _ sql.AutoIncrementSetter = (*tableEditor)(nil)
 var _ sql.ForeignKeyEditor = (*tableEditor)(nil)
 
 func (t *tableEditor) Name() string {

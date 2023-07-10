@@ -753,6 +753,10 @@ func TestForeignKeys(t *testing.T) {
 	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestFulltextIndexes(t *testing.T) {
+	enginetest.TestFulltextIndexes(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestCreateCheckConstraints(t *testing.T) {
 	enginetest.TestCreateCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }

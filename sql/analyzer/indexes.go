@@ -17,6 +17,8 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
@@ -281,13 +283,10 @@ func getIndexes(
 				return nil, err
 			}
 		}
-
 		return result, nil
-	}
 
 	// TODO (james): add all other spatial index supported functions here
 	// TODO: make generalizable to all functions?
-	switch e := e.(type) {
 	case *spatial.Intersects, *spatial.Within, *spatial.STEquals:
 		// don't pushdown functions with bindvars
 		if exprHasBindVar(e) {
@@ -348,6 +347,35 @@ func getIndexes(
 			indexes: []sql.Index{idx},
 			lookup:  lookup,
 			expr:    e,
+		}
+	case *expression.MatchAgainst:
+		// AFAICT, it looks like Full-Text index searches actually do a full table scan, and will return different
+		// results depending on the values contained in all rows. This means that we don't need to handle the filter
+		// ourselves, but we still want to take advantage of the ease of grabbing the correct index here, so that's all
+		// we do.
+		getFields := e.ColumnsAsGetFields()
+		if len(getFields) == 0 {
+			return nil, nil
+		}
+		// We'll grab the UNIQUE index first since it's quicker and easier
+		docIdIndex := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), getFields[0].Table(),
+			expression.NewGetFieldWithTable(0, fulltext.IDColumnType, getFields[0].Table(), fulltext.IDColumnName, false))
+		// We only look for the Full-Text index if we've found the UNIQUE index, as we'll require both.
+		if docIdIndex != nil && docIdIndex.IsUnique() {
+			ftIndexes := ia.MatchingIndexes(ctx, ctx.GetCurrentDatabase(), getFields[0].Table(), e.Columns...)
+			for _, idx := range ftIndexes {
+				// Full-Text does not support partial matches, so we filter for the exact match
+				if idx.IsFullText() && len(getFields) == len(idx.Expressions()) {
+					// Ensure that it implements the interface
+					if ftIndex, ok := idx.(fulltext.FulltextIndex); ok {
+						// Make sure that the tables have been created
+						if _, _, _, ok = ftIndex.FullTextTableNames(ctx); ok {
+							e.SetIndexes(docIdIndex, ftIndex)
+							break
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1079,7 +1107,9 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 func containsColumns(e sql.Expression) bool {
 	var result bool
 	sql.Inspect(e, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.GetField); ok {
+		_, ok1 := e.(*expression.GetField)
+		_, ok2 := e.(*expression.UnresolvedColumn)
+		if ok1 || ok2 {
 			result = true
 			return false
 		}

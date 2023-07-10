@@ -31,6 +31,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -67,7 +68,9 @@ type Table struct {
 	autoIncVal uint64
 	autoColIdx int
 
-	tableStats *sql.TableStatistics
+	db                      *BaseDatabase
+	tableStats              *sql.TableStatistics
+	fullTextConfigTableName string
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -80,6 +83,7 @@ var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.CollationAlterableTable = (*Table)(nil)
+var _ fulltext.IndexAlterableFulltextTable = (*Table)(nil)
 
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
@@ -567,27 +571,27 @@ func EncodeIndexValue(value *IndexValue) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (t *Table) Inserter(*sql.Context) sql.RowInserter {
-	return t.getTableEditor()
+func (t *Table) Inserter(ctx *sql.Context) sql.RowInserter {
+	return t.getTableEditor(ctx)
 }
 
-func (t *Table) Updater(*sql.Context) sql.RowUpdater {
-	return t.getTableEditor()
+func (t *Table) Updater(ctx *sql.Context) sql.RowUpdater {
+	return t.getTableEditor(ctx)
 }
 
-func (t *Table) Replacer(*sql.Context) sql.RowReplacer {
-	return t.getTableEditor()
+func (t *Table) Replacer(ctx *sql.Context) sql.RowReplacer {
+	return t.getTableEditor(ctx)
 }
 
-func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
-	return t.getTableEditor()
+func (t *Table) Deleter(ctx *sql.Context) sql.RowDeleter {
+	return t.getTableEditor(ctx)
 }
 
-func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
-	return t.getTableEditor()
+func (t *Table) AutoIncrementSetter(ctx *sql.Context) sql.AutoIncrementSetter {
+	return t.getTableEditor(ctx).(sql.AutoIncrementSetter)
 }
 
-func (t *Table) getTableEditor() *tableEditor {
+func (t *Table) getTableEditor(ctx *sql.Context) sql.TableEditor {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
 	for _, idx := range t.indexes {
@@ -611,7 +615,46 @@ func (t *Table) getTableEditor() *tableEditor {
 		t.ed = NewTableEditAccumulator(t)
 	}
 
-	return &tableEditor{
+	var pairs []fulltext.FulltextTablePair
+	for _, idx := range t.indexes {
+		if !idx.IsFullText() {
+			continue
+		}
+		if t.db == nil { // Rewrite your test if you run into this
+			panic("database is nil, which can only happen when adding a table outside of the SQL path, such as during harness creation")
+		}
+		ftIdx, ok := idx.(fulltext.FulltextIndex)
+		if !ok { // This should never happen
+			panic("index returns true for FULLTEXT, but does not implement interface")
+		}
+		_, wordIdName, countName, ok := ftIdx.FullTextTableNames(ctx)
+		if !ok { // This should never happen
+			panic("index returns true for FULLTEXT and implements interface, but returns false when fetching name")
+		}
+
+		wordToPosTbl, ok, err := t.db.GetTableInsensitive(ctx, wordIdName)
+		if err != nil {
+			panic(err)
+		}
+		if !ok { // This should never happen
+			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT wordId table, but it could not be found", idx.ID(), wordIdName))
+		}
+		countTbl, ok, err := t.db.GetTableInsensitive(ctx, countName)
+		if err != nil {
+			panic(err)
+		}
+		if !ok { // This should never happen
+			panic(fmt.Sprintf("index `%s` declares the table `%s` as a FULLTEXT count table, but it could not be found", idx.ID(), countName))
+		}
+
+		pairs = append(pairs, fulltext.FulltextTablePair{
+			Index:        ftIdx,
+			WordToPosMap: wordToPosTbl.(fulltext.EditableTable),
+			Count:        countTbl.(fulltext.EditableTable),
+		})
+	}
+
+	var editor sql.TableEditor = &tableEditor{
 		table:             t,
 		initialAutoIncVal: 1,
 		initialPartitions: nil,
@@ -620,6 +663,26 @@ func (t *Table) getTableEditor() *tableEditor {
 		uniqueIdxCols:     uniqIdxCols,
 		prefixLengths:     prefixLengths,
 	}
+
+	if len(pairs) > 0 {
+		configTbl, ok, err := t.db.GetTableInsensitive(ctx, t.fullTextConfigTableName)
+		if err != nil {
+			panic(err)
+		}
+		if !ok { // This should never happen
+			panic(fmt.Sprintf("table `%s` declares the table `%s` as a FULLTEXT config table, but it could not be found", t.name, configTbl))
+		}
+		ftEditor, err := fulltext.CreateFulltextEditor(ctx, t, configTbl.(fulltext.EditableTable), pairs...)
+		if err != nil {
+			panic(err)
+		}
+		editor, err = fulltext.CreateMultiTableEditor(ctx, editor, ftEditor)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return editor
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
@@ -1320,7 +1383,7 @@ func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 
 // GetForeignKeyEditor implements sql.ForeignKeyTable.
 func (t *Table) GetForeignKeyEditor(ctx *sql.Context) sql.ForeignKeyEditor {
-	return t.getTableEditor()
+	return t.getTableEditor(ctx).(sql.ForeignKeyEditor)
 }
 
 // GetChecks implements sql.CheckTable
@@ -1410,6 +1473,7 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		Name:       name,
 		Unique:     constraint == sql.IndexConstraint_Unique,
 		Spatial:    constraint == sql.IndexConstraint_Spatial,
+		Fulltext:   constraint == sql.IndexConstraint_Fulltext,
 		CommentStr: comment,
 		PrefixLens: prefixLengths,
 	}, nil
@@ -1503,6 +1567,33 @@ func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName 
 		delete(t.indexes, fromIndexName)
 		t.indexes[toIndexName] = idx
 	}
+	return nil
+}
+
+// CreateFulltextIndex implements sql.IndexAlterableFulltextTable
+func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, configTableName, wordToPosTableName, countTableName string) error {
+	if len(t.fullTextConfigTableName) > 0 {
+		if t.fullTextConfigTableName != configTableName {
+			return fmt.Errorf("Full-Text config table name has been changed from `%s` to `%s`", t.fullTextConfigTableName, configTableName)
+		}
+	} else {
+		t.fullTextConfigTableName = configTableName
+	}
+
+	if t.indexes == nil {
+		t.indexes = make(map[string]sql.Index)
+	}
+
+	index, err := t.createIndex(indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment)
+	if err != nil {
+		return err
+	}
+	index.(*Index).fulltextInfo = fulltextInfo{
+		WordToPosTableName: wordToPosTableName,
+		CountTableName:     countTableName,
+	}
+
+	t.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
 	return nil
 }
 
