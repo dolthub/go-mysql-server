@@ -753,3 +753,81 @@ var SkippedJoinQueryTests = []QueryTest{
 		Expected: []sql.Row{{}},
 	},
 }
+
+var LateralJoinScriptTests = []ScriptTest{
+	{
+		Name: "basic lateral join test",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"create table t1 (j int primary key)",
+			"insert into t values (1), (2), (3)",
+			"insert into t1 values (1), (4), (5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j;",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Query: "select * from t, lateral (select * from t1 where t.i != t1.j) as tt order by tt.j, t.i;",
+				Expected: []sql.Row{
+					{2, 1},
+					{3, 1},
+					{1, 4},
+					{2, 4},
+					{3, 4},
+					{1, 5},
+					{2, 5},
+					{3, 5},
+				},
+			},
+			{
+				Query: "select * from t, t1, lateral (select * from t1 where t.i != t1.j) as tt where t.i > t1.j and t1.j = tt.j order by t.i, t1.j, tt.j;",
+				Expected: []sql.Row{
+					{2, 1, 1},
+					{3, 1, 1},
+				},
+			},
+			{
+				Query: "select * from (select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j) ttt;",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t inner join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
+				Expected: []sql.Row{
+					{2, 1},
+					{3, 1},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t left join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, 1},
+					{3, 1},
+				},
+			},
+			{
+				// THIS IS SUPPOSED TO FAIL
+				Skip: true,
+				Query: "select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
+				ExpectedErr: sql.ErrUnknownColumn,
+			},
+			{
+				Skip: true,
+				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, 1},
+					{3, 1},
+				},
+			},
+		},
+	},
+}

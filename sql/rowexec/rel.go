@@ -265,6 +265,10 @@ func (b *BaseBuilder) buildJoinNode(ctx *sql.Context, n *plan.JoinNode, row sql.
 		return newMergeJoinIter(ctx, b, n, row)
 	case n.Op.IsLateralCrossJoin():
 		return newLateralCrossJoinIter(ctx, b, n, row)
+	case n.Op.IsLateralInnerJoin():
+		return newLateralCrossJoinIter(ctx, b, n, row)
+	case n.Op.IsLateralLeftJoin():
+		return newLateralCrossJoinIter(ctx, b, n, row)
 	default:
 		return newJoinIter(ctx, b, n, row)
 	}

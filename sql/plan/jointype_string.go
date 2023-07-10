@@ -34,11 +34,13 @@ func _() {
 	_ = x[JoinTypeAntiMerge-23]
 	_ = x[JoinTypeNatural-24]
 	_ = x[JoinTypeLateralCross-25]
+	_ = x[JoinTypeLateralInner-26]
+	_ = x[JoinTypeLateralLeft-27]
 }
 
-const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoinLateralCrossJoin"
+const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoinLateralCrossJoinLateralInnerJoinLateralLeftJoin"
 
-var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 71, 98, 111, 122, 131, 141, 160, 168, 185, 214, 223, 241, 253, 265, 279, 293, 306, 319, 330, 346}
+var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 71, 98, 111, 122, 131, 141, 160, 168, 185, 214, 223, 241, 253, 265, 279, 293, 306, 319, 330, 346, 362, 377}
 
 func (i JoinType) String() string {
 	if i >= JoinType(len(_JoinType_index)-1) {

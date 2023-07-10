@@ -65,9 +65,8 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				// is not ideal but not the end of the world.
 				reorder = false
 			}
-			// TODO: necessary?
 			if sqa, ok := n.Right().(*plan.SubqueryAlias); ok && sqa.IsLateral {
-				//reorder = false
+				reorder = false
 			}
 		default:
 		}

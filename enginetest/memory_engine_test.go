@@ -137,6 +137,14 @@ func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+func TestJoinQueries_Experimental(t *testing.T) {
+	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
+func TestLateralJoin_Experimental(t *testing.T) {
+	enginetest.TestLateralJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
 // TestJoinQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueriesPrepared(t *testing.T) {
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
@@ -177,7 +185,7 @@ func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestJSONTableScripts_Experiemental runs the canonical test queries against new name resolution engine
+// TestJSONTableScripts_Experimental runs the canonical test queries against new name resolution engine
 func TestJSONTableScripts_Experimental(t *testing.T) {
 	t.Skip("getfield indexing is incorrect")
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
@@ -269,11 +277,12 @@ func TestSingleScript(t *testing.T) {
 	}
 }
 
-func TestSingleScriptExperimental(t *testing.T) {
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleScript_Experimental(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger with signal and user var",
+			Name: "lateral join basic",
 			SetUpScript: []string{
 				"create table t (i int primary key)",
 				"create table t1 (j int primary key)",
@@ -282,14 +291,11 @@ func TestSingleScriptExperimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt",
+					Query: "select * from t inner join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
 					Expected: []sql.Row{
-						{1, 1},
+						{2, 1},
+						{3, 1},
 					},
-					//Query: "select 1 as a, (select a) as a",
-					//Expected: []sql.Row{
-					//	{1, 1},
-					//},
 				},
 			},
 		},
@@ -301,8 +307,8 @@ func TestSingleScriptExperimental(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
+		//engine.Analyzer.Debug = true
+		//engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }

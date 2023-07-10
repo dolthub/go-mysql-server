@@ -53,8 +53,9 @@ const (
 	JoinTypeAntiMerge                                 // AntiMergeJoin
 	JoinTypeNatural                                   // NaturalJoin
 	// TODO: might be able to merge these with their respective join types
-	// TODO: apply join?
-	JoinTypeLateralCross // LateralCrossJoin
+	JoinTypeLateralCross// LateralCrossJoin
+	JoinTypeLateralInner// LateralInnerJoin
+	JoinTypeLateralLeft // LateralLeftJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {
@@ -181,6 +182,14 @@ func (i JoinType) IsCross() bool {
 
 func (i JoinType) IsLateralCrossJoin() bool {
 	return i == JoinTypeLateralCross
+}
+
+func (i JoinType) IsLateralInnerJoin() bool {
+	return i == JoinTypeLateralInner
+}
+
+func (i JoinType) IsLateralLeftJoin() bool {
+	return i == JoinTypeLateralLeft
 }
 
 func (i JoinType) AsHash() JoinType {
@@ -461,6 +470,14 @@ func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 // The rhs will be executed once for each row in the lhs.
 func NewLateralCrossJoin(left, right sql.Node) *JoinNode {
 	return NewJoin(left, right, JoinTypeLateralCross, nil)
+}
+
+func NewLateralInnerJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(left, right, JoinTypeLateralInner, cond)
+}
+
+func NewLateralLeftJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(left, right, JoinTypeLateralLeft, cond)
 }
 
 // IsNullRejecting returns whether the expression always returns false for

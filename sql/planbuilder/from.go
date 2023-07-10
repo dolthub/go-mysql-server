@@ -101,9 +101,17 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	var op plan.JoinType
 	switch strings.ToLower(te.Join) {
 	case ast.JoinStr:
-		op = plan.JoinTypeInner
+		if b.isLateral(te.RightExpr) {
+			op = plan.JoinTypeLateralInner
+		} else {
+			op = plan.JoinTypeInner
+		}
 	case ast.LeftJoinStr:
-		op = plan.JoinTypeLeftOuter
+		if b.isLateral(te.RightExpr) {
+			op = plan.JoinTypeLateralLeft
+		} else {
+			op = plan.JoinTypeLeftOuter
+		}
 	case ast.RightJoinStr:
 		op = plan.JoinTypeRightOuter
 	case ast.FullOuterJoinStr:

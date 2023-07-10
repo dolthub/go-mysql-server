@@ -782,3 +782,116 @@ func newLateralCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.Jo
 		scopeLen:  j.ScopeLen,
 	}), nil
 }
+
+type lateralInnerJoinIterator struct {
+	l  sql.RowIter
+	r  sql.RowIter
+	rp sql.Node
+	b  sql.NodeExecBuilder
+
+	parentRow sql.Row
+
+	rowSize  int
+	scopeLen int
+
+	leftRow sql.Row
+}
+
+func (i *lateralInnerJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
+	for {
+		if i.leftRow == nil {
+			r, err := i.l.Next(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			i.leftRow = i.parentRow.Append(r)
+		}
+
+		if i.r == nil {
+			iter, err := i.b.Build(ctx, i.rp, i.leftRow)
+			if err != nil {
+				return nil, err
+			}
+
+			i.r = iter
+			if _, ok := i.r.(*plan.FilterIter); ok {
+				i.r.(*plan.FilterIter).ParentRow = i.leftRow
+			}
+		}
+
+		rightRow, err := i.r.Next(ctx)
+		if err == io.EOF {
+			i.r = nil
+			i.leftRow = nil
+			continue
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		var row sql.Row
+		row = append(row, i.leftRow...)
+		row = append(row, rightRow...)
+
+		return i.removeParentRow(row), nil
+	}
+}
+
+func (i *lateralInnerJoinIterator) removeParentRow(r sql.Row) sql.Row {
+	copy(r[i.scopeLen:], r[len(i.parentRow):])
+	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
+	return r
+}
+
+func (i *lateralInnerJoinIterator) Close(ctx *sql.Context) (err error) {
+	if i.l != nil {
+		err = i.l.Close(ctx)
+	}
+
+	if i.r != nil {
+		if err == nil {
+			err = i.r.Close(ctx)
+		} else {
+			i.r.Close(ctx)
+		}
+	}
+
+	return err
+}
+
+func newLateralInnerJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
+	var left, right string
+	if leftTable, ok := j.Left().(sql.Nameable); ok {
+		left = leftTable.Name()
+	} else {
+		left = reflect.TypeOf(j.Left()).String()
+	}
+
+	if rightTable, ok := j.Right().(sql.Nameable); ok {
+		right = rightTable.Name()
+	} else {
+		right = reflect.TypeOf(j.Right()).String()
+	}
+
+	span, ctx := ctx.Span("plan.LateralCrossJoin", trace.WithAttributes(
+		attribute.String("left", left),
+		attribute.String("right", right),
+	))
+
+	l, err := b.Build(ctx, j.Left(), row)
+	if err != nil {
+		span.End()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, &lateralInnerJoinIterator{
+		b:         b,
+		parentRow: row,
+		l:         l,
+		rp:        j.Right(),
+		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		scopeLen:  j.ScopeLen,
+	}), nil
+}
