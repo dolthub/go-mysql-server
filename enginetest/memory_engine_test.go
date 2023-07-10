@@ -275,21 +275,21 @@ func TestSingleScriptExperimental(t *testing.T) {
 		{
 			Name: "trigger with signal and user var",
 			SetUpScript: []string{
-				//"create table t (i int primary key)",
-				//"create table t1 (j int primary key)",
-				//"insert into t values (1), (2), (3)",
-				//"insert into t1 values (1), (4), (5)",
+				"create table t (i int primary key)",
+				"create table t1 (j int primary key)",
+				"insert into t values (1), (2), (3)",
+				"insert into t1 values (1), (4), (5)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					//Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt",
-					//Expected: []sql.Row{
-					//	{1, 1},
-					//},
-					Query: "select 1 as a, (select a) as a",
+					Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt",
 					Expected: []sql.Row{
 						{1, 1},
 					},
+					//Query: "select 1 as a, (select a) as a",
+					//Expected: []sql.Row{
+					//	{1, 1},
+					//},
 				},
 			},
 		},

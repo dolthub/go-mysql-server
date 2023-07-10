@@ -154,7 +154,6 @@ func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, sc
 
 	var sameF transform.TreeIdentity
 	if scope.InJoin() {
-		panic("asdfasdfasdfsda")
 		scopeSch := scope.Schema()
 		var newN sql.Node
 		var err error
