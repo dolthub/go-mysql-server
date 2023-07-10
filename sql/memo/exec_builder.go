@@ -57,7 +57,6 @@ func (b *ExecBuilder) buildFullOuterJoin(j *FullOuterJoin, input sql.Schema, chi
 }
 
 func (b *ExecBuilder) buildLateralCrossJoin(j *LateralCrossJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	panic("buildLateralCrossJoin")
 	return plan.NewLateralCrossJoin(children[0], children[1]), nil
 }
 

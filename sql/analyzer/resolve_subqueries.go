@@ -87,7 +87,6 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				}
 			} else {
 				if joinParent != nil && sqa.IsLateral {
-					panic("asdfasdfasdfasdfasdfasdf")
 					resTbls := getTablesByName(joinParent.Left())
 					subScope := scope
 					for _, tbl := range resTbls {
@@ -155,7 +154,6 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		n := c.Node
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			if parent, ok := c.Parent.(*plan.JoinNode); ok && sqa.IsLateral {
-				panic("asdfasfasdf")
 				resTbls := getTablesByName(parent.Left())
 				subScope := scope
 				for _, tbl := range resTbls {
