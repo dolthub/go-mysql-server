@@ -31,26 +31,27 @@ var helpCategorySchema sql.Schema
 var helpRelationSchema sql.Schema
 
 func init() {
-	char64_utf8mb3_bin := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_bin)
+	char64_utf8mb3_general_ci := types.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8mb3_general_ci)
+	text_utf8mb3_general_ci := types.MustCreateString(sqltypes.Text, types.TextBlobMax, sql.Collation_utf8mb3_general_ci)
 
 	helpTopicSchema = sql.Schema{
 		columnTemplate("help_topic_id", helpTopicTableName, true, &sql.Column{
 			Type: types.Uint64,
 		}),
 		columnTemplate("name", helpTopicTableName, false, &sql.Column{
-			Type: char64_utf8mb3_bin,
+			Type: char64_utf8mb3_general_ci,
 		}),
 		columnTemplate("help_category_id", helpTopicTableName, false, &sql.Column{
 			Type: types.Uint8,
 		}),
 		columnTemplate("description", helpTopicTableName, false, &sql.Column{
-			Type: types.Text,
+			Type: text_utf8mb3_general_ci,
 		}),
 		columnTemplate("example", helpTopicTableName, false, &sql.Column{
-			Type: types.Text,
+			Type: text_utf8mb3_general_ci,
 		}),
 		columnTemplate("url", helpTopicTableName, false, &sql.Column{
-			Type: types.Text,
+			Type: text_utf8mb3_general_ci,
 		}),
 	}
 
@@ -59,7 +60,7 @@ func init() {
 			Type: types.Uint64,
 		}),
 		columnTemplate("name", helpKeywordTableName, false, &sql.Column{
-			Type: char64_utf8mb3_bin,
+			Type: char64_utf8mb3_general_ci,
 		}),
 	}
 
@@ -68,13 +69,13 @@ func init() {
 			Type: types.Uint8,
 		}),
 		columnTemplate("name", helpCategoryTableName, false, &sql.Column{
-			Type: char64_utf8mb3_bin,
+			Type: char64_utf8mb3_general_ci,
 		}),
 		columnTemplate("parent_category_id", helpCategoryTableName, false, &sql.Column{
 			Type: types.Uint8,
 		}),
 		columnTemplate("url", helpCategoryTableName, false, &sql.Column{
-			Type: types.Text,
+			Type: text_utf8mb3_general_ci,
 		}),
 	}
 
