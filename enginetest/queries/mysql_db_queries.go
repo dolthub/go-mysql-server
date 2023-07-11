@@ -21,17 +21,16 @@ var MySqlDbTests = []ScriptTest{
 		Name: "test mysql database help_ tables ",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "show create table mysql.help_topic;",
-				Expected:        []sql.Row{{"help_topic", "CREATE TABLE `help_topic` (\n  `help_topic_id` bigint unsigned NOT NULL,\n  `name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,\n  `help_category_id` tinyint unsigned NOT NULL,\n  `description` text NOT NULL,\n  `example` text NOT NULL,\n  `url` text NOT NULL,\n  PRIMARY KEY (`help_topic_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"}},
-				ExpectedColumns: nil,
+				Query:    "show create table mysql.help_topic;",
+				Expected: []sql.Row{{"help_topic", "CREATE TABLE `help_topic` (\n  `help_topic_id` bigint unsigned NOT NULL,\n  `name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  `help_category_id` tinyint unsigned NOT NULL,\n  `description` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  `example` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  `url` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  PRIMARY KEY (`help_topic_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"}},
 			},
 			{
 				Query:    "show create table mysql.help_category;",
-				Expected: []sql.Row{{"help_category", "CREATE TABLE `help_category` (\n  `help_category_id` tinyint unsigned NOT NULL,\n  `name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,\n  `parent_category_id` tinyint unsigned NOT NULL,\n  `url` text NOT NULL,\n  PRIMARY KEY (`help_category_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"}},
+				Expected: []sql.Row{{"help_category", "CREATE TABLE `help_category` (\n  `help_category_id` tinyint unsigned NOT NULL,\n  `name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  `parent_category_id` tinyint unsigned NOT NULL,\n  `url` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  PRIMARY KEY (`help_category_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"}},
 			},
 			{
 				Query:    "show create table mysql.help_keyword;",
-				Expected: []sql.Row{{"help_keyword", "CREATE TABLE `help_keyword` (\n  `help_keyword_id` bigint unsigned NOT NULL,\n  `name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,\n  PRIMARY KEY (`help_keyword_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"}},
+				Expected: []sql.Row{{"help_keyword", "CREATE TABLE `help_keyword` (\n  `help_keyword_id` bigint unsigned NOT NULL,\n  `name` char(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  PRIMARY KEY (`help_keyword_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"}},
 			},
 			{
 				Query:    "show create table mysql.help_relation;",

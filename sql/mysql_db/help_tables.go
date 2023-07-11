@@ -15,9 +15,10 @@
 package mysql_db
 
 import (
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 const helpTopicTableName = "help_topic"
