@@ -790,6 +790,7 @@ type lateralInnerJoinIterator struct {
 	b  sql.NodeExecBuilder
 
 	parentRow sql.Row
+	cond      sql.Expression
 
 	rowSize  int
 	scopeLen int
@@ -834,6 +835,15 @@ func (i *lateralInnerJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		var row sql.Row
 		row = append(row, i.leftRow...)
 		row = append(row, rightRow...)
+
+		// TOOD: build row, evaluate condition, return
+		res, err := i.cond.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if res != true {
+			continue
+		}
 
 		return i.removeParentRow(row), nil
 	}
@@ -889,6 +899,7 @@ func newLateralInnerJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.Jo
 	return sql.NewSpanIter(span, &lateralInnerJoinIterator{
 		b:         b,
 		parentRow: row,
+		cond:      j.Filter,
 		l:         l,
 		rp:        j.Right(),
 		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
