@@ -459,6 +459,14 @@ func TestInfoSchemaPrepared(t *testing.T) {
 	enginetest.TestInfoSchemaPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestMySqlDb(t *testing.T) {
+	enginetest.TestMySqlDb(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestMySqlDbPrepared(t *testing.T) {
+	enginetest.TestMySqlDbPrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestReadOnlyDatabases(t *testing.T) {
 	enginetest.TestReadOnlyDatabases(t, enginetest.NewReadOnlyMemoryHarness())
 }

@@ -304,6 +304,20 @@ func TestInfoSchema(t *testing.T, h Harness) {
 	}
 }
 
+func TestMySqlDb(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, tt := range queries.MySqlDbTests {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestMySqlDbPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, tt := range queries.MySqlDbTests {
+		TestScriptPrepared(t, harness, tt)
+	}
+}
+
 func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	// Data setup for a read only database looks like normal setup, then creating a new read-only version of the engine
 	// and provider with the data inserted
