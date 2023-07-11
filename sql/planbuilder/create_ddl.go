@@ -244,6 +244,7 @@ func (b *PlanBuilder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.Event
 }
 
 func (b *PlanBuilder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+	outScope = inScope.push()
 	selectStatement, ok := c.ViewSpec.ViewExpr.(ast.SelectStatement)
 	if !ok {
 		err := sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
@@ -256,8 +257,13 @@ func (b *PlanBuilder) buildCreateView(inScope *scope, query string, c *ast.DDL) 
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
 
+	dbName := c.Table.Qualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	db := b.resolveDb(dbName)
 	outScope.node = plan.NewCreateView(
-		sql.UnresolvedDatabase(""),
+		db,
 		c.ViewSpec.ViewName.Name.String(),
 		[]string{},
 		queryAlias,

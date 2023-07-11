@@ -253,6 +253,9 @@ func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Exp
 	case ast.BangStr:
 		c := b.buildScalar(inScope, e.Expr)
 		return expression.NewNot(c)
+	case ast.BinaryStr:
+		c := b.buildScalar(inScope, e.Expr)
+		return expression.NewBinary(c)
 	default:
 		lowerOperator := strings.TrimSpace(strings.ToLower(e.Operator))
 		if strings.HasPrefix(lowerOperator, "_") {

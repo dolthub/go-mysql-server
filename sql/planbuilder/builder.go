@@ -16,6 +16,8 @@ type PlanBuilder struct {
 	colId           columnId
 	tabId           tableId
 	multiDDL        bool
+	viewAsOf        interface{}
+	viewDatabase    string
 }
 
 func (b *PlanBuilder) newScope() *scope {

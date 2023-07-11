@@ -52,7 +52,7 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	b.buildNamedWindows(fromScope, s.Window)
 
 	b.buildWhere(fromScope, s.Where)
-	projScope := fromScope.replace()
+	projScope := fromScope.push()
 
 	// Aggregates in select list added to fromScope.groupBy.outCols.
 	// Args to aggregates added to fromScope.groupBy.inCols.

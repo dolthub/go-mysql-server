@@ -153,6 +153,17 @@ func (b *PlanBuilder) buildShowTable(inScope *scope, s *ast.Show, showType strin
 	}
 
 	rt := b.resolveTable(s.Table.Name.String(), db, asOfLit)
+	for _, c := range rt.Schema() {
+		outScope.newColumn(scopeColumn{
+			db:       strings.ToLower(db),
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+
+	checks := b.loadChecksFromTable(outScope, rt.Table)
 
 	database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 	if err != nil {
@@ -162,6 +173,8 @@ func (b *PlanBuilder) buildShowTable(inScope *scope, s *ast.Show, showType strin
 	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
 	}
+	showCreate := plan.NewShowCreateTableWithAsOf(rt, showType == "create view", asOfExpr)
+	showCreate.Checks = checks
 	outScope.node = plan.NewShowCreateTableWithAsOf(rt, showType == "create view", asOfExpr)
 	return
 }
@@ -338,20 +351,6 @@ func (b *PlanBuilder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outS
 }
 
 func (b *PlanBuilder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *scope) {
-	outScope = inScope.push()
-	var filter sql.Expression
-	if s.Filter != nil {
-		if s.Filter.Filter != nil {
-			filter = b.buildScalar(inScope, s.Filter.Filter)
-		} else if s.Filter.Like != "" {
-			filter = expression.NewLike(
-				expression.NewGetField(0, types.LongText, "Name", false),
-				expression.NewLiteral(s.Filter.Like, types.LongText),
-				nil,
-			)
-		}
-	}
-
 	dbName := b.ctx.GetCurrentDatabase()
 	if s.Database != "" {
 		dbName = s.Database
@@ -363,6 +362,31 @@ func (b *PlanBuilder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScop
 	db := b.resolveDb(dbName)
 
 	var node sql.Node = plan.NewShowTableStatus(db)
+
+	outScope = inScope.push()
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{
+			db:       strings.ToLower(db.Name()),
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+
+	var filter sql.Expression
+	if s.Filter != nil {
+		if s.Filter.Filter != nil {
+			filter = b.buildScalar(outScope, s.Filter.Filter)
+		} else if s.Filter.Like != "" {
+			filter = expression.NewLike(
+				expression.NewGetField(0, types.LongText, "Name", false),
+				expression.NewLiteral(s.Filter.Like, types.LongText),
+				nil,
+			)
+		}
+	}
+
 	if filter != nil {
 		node = plan.NewFilter(filter, node)
 	}

@@ -17,8 +17,9 @@ func (b *PlanBuilder) analyzeProjectionList(inScope, outScope *scope, selectExpr
 func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
 	// todo ideally we would not create new expressions here.
 	// we want to in-place identify aggregations, expand stars.
-
 	// use inScope to construct projections for projScope
+
+	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)

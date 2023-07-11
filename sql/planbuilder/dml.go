@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -12,20 +13,32 @@ import (
 )
 
 func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
+	if i.With != nil {
+		inScope = b.buildWith(inScope, i.With)
+	}
 	dbName := i.Table.Qualifier.String()
 	tabName := i.Table.Name.String()
-	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
-	table, ok := outScope.node.(*plan.ResolvedTable)
+	tableScope := b.buildTablescan(inScope, dbName, tabName, nil)
+	table, ok := tableScope.node.(*plan.ResolvedTable)
 	if !ok {
 		err := fmt.Errorf("expected resolved table: %s", tabName)
 		b.handleErr(err)
 	}
 
-	onDupExprs := b.assignmentExprsToExpressions(outScope, ast.AssignmentExprs(i.OnDup))
+	checks := b.loadChecksFromTable(tableScope, table.Table)
 
 	isReplace := i.Action == ast.ReplaceStr
 
-	src := b.insertRowsToNode(inScope, i.Rows)
+	srcScope := b.insertRowsToNode(inScope, i.Rows)
+
+	combinedScope := inScope.replace()
+	for _, c := range tableScope.cols {
+		combinedScope.newColumn(c)
+	}
+	for _, c := range srcScope.cols {
+		combinedScope.newColumn(c)
+	}
+	onDupExprs := b.assignmentExprsToExpressions(combinedScope, ast.AssignmentExprs(i.OnDup))
 
 	ignore := false
 	// TODO: make this a bool in vitess
@@ -48,8 +61,10 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 		}
 	}
 
-	ins := plan.NewInsertInto(table.Database, table, src.node, isReplace, columns, onDupExprs, ignore)
+	ins := plan.NewInsertInto(table.Database, table, srcScope.node, isReplace, columns, onDupExprs, ignore)
+	ins.Checks = checks
 
+	outScope = tableScope
 	outScope.node = ins
 
 	return
@@ -118,6 +133,7 @@ func (b *PlanBuilder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scop
 		}
 	}
 
+	outScope = b.buildFrom(inScope, d.TableExprs)
 	del := plan.NewDeleteFrom(outScope.node, targets)
 	outScope.node = del
 	return
@@ -125,6 +141,16 @@ func (b *PlanBuilder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scop
 
 func (b *PlanBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	outScope = b.buildFrom(inScope, u.TableExprs)
+
+	var checks []*sql.CheckConstraint
+	transform.Inspect(outScope.node, func(n sql.Node) bool {
+		// todo maybe this should be later stage
+		if rt, ok := n.(*plan.ResolvedTable); ok {
+			checks = append(checks, b.loadChecksFromTable(inScope, rt.Table)...)
+		}
+		return true
+	})
+
 	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
 
 	b.buildWhere(outScope, u.Where)
@@ -146,6 +172,7 @@ func (b *PlanBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scop
 	ignore := u.Ignore != ""
 
 	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
+	update.Checks = checks
 	outScope.node = update
 	return
 }
@@ -164,4 +191,48 @@ func (b *PlanBuilder) buildInto(inScope *scope, into *ast.Into, node sql.Node) (
 		}
 	}
 	return plan.NewInto(node, vars), nil
+}
+
+func (b *PlanBuilder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
+	var loadedChecks []*sql.CheckConstraint
+	if checkTable, ok := table.(sql.CheckTable); ok {
+		checks, err := checkTable.GetChecks(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+		for _, ch := range checks {
+			constraint := b.buildCheckConstraint(inScope, &ch)
+			loadedChecks = append(loadedChecks, constraint)
+		}
+	}
+	return loadedChecks
+}
+
+func (b *PlanBuilder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinition) *sql.CheckConstraint {
+	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
+	parsed, err := ast.Parse(parseStr)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	selectStmt, ok := parsed.(*ast.Select)
+	if !ok || len(selectStmt.SelectExprs) != 1 {
+		err := sql.ErrInvalidCheckConstraint.New(check.CheckExpression)
+		b.handleErr(err)
+	}
+
+	expr := selectStmt.SelectExprs[0]
+	ae, ok := expr.(*ast.AliasedExpr)
+	if !ok {
+		err := sql.ErrInvalidCheckConstraint.New(check.CheckExpression)
+		b.handleErr(err)
+	}
+
+	c := b.buildScalar(inScope, ae.Expr)
+
+	return &sql.CheckConstraint{
+		Name:     check.Name,
+		Expr:     c,
+		Enforced: check.Enforced,
+	}
 }

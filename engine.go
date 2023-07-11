@@ -266,10 +266,6 @@ func (e *Engine) QueryNodeWithBindings(ctx *sql.Context, query string, parsed sq
 		switch ctx.Version {
 		case sql.VersionExperimental:
 			parsed, err = planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
-			if err != nil {
-				ctx.Version = sql.VersionStable
-				parsed, err = parse.Parse(ctx, query)
-			}
 		default:
 			parsed, err = parse.Parse(ctx, query)
 		}

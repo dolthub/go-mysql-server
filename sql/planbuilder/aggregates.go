@@ -90,26 +90,28 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 		switch e := e.(type) {
 		case *ast.ColName:
 			// col in fromScope first
-			name := strings.ToLower(e.Name.String())
-			for _, c := range fromScope.cols {
-				// match in-scope only
-				if strings.EqualFold(c.col, name) {
-					col = c
-					break
-				}
-			}
-			if col.table != "" {
-				break
-			}
-			// fallback to alias in targets
-			for _, c := range projScope.cols {
-				// match alias in projection scope
-				if strings.EqualFold(c.col, name) {
-					col = c
-					break
-				}
-			}
-			if col.col == "" {
+			//name := strings.ToLower(e.Name.String())
+			//for _, c := range fromScope.cols {
+			//	// match in-scope only
+			//	if strings.EqualFold(c.col, name) {
+			//		col = c
+			//		break
+			//	}
+			//}
+			//if col.table != "" {
+			//	break
+			//}
+			//// try alias in targets
+			//for _, c := range projScope.cols {
+			//	// match alias in projection scope
+			//	if strings.EqualFold(c.col, name) {
+			//		col = c
+			//		break
+			//	}
+			//}
+			var ok bool
+			col, ok = projScope.resolveColumn(strings.ToLower(e.Qualifier.Name.String()), strings.ToLower(e.Name.String()), true)
+			if !ok {
 				b.handleErr(sql.ErrColumnNotFound.New(e.Name.String()))
 			}
 		case *ast.SQLVal:

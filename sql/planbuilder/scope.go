@@ -2,7 +2,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -123,11 +122,12 @@ func (s *scope) setTableAlias(t string) {
 		}
 		s.cols[i].table = t
 		id, ok := s.getExpr(beforeColStr)
-		if !ok {
-			err := sql.ErrColumnNotFound.New(beforeColStr)
-			s.b.handleErr(err)
+		if ok {
+			//err := sql.ErrColumnNotFound.New(beforeColStr)
+			//s.b.handleErr(err)
+			// todo better way to do projections
+			delete(s.exprs, beforeColStr)
 		}
-		delete(s.exprs, beforeColStr)
 		s.exprs[strings.ToLower(s.cols[i].String())] = id
 	}
 	id, ok := s.tables[oldTable]
@@ -151,10 +151,11 @@ func (s *scope) setColAlias(cols []string) {
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
 		id, ok := s.getExpr(beforeColStr)
-		if !ok {
-			log.Println(s.exprs)
-			err := sql.ErrColumnNotFound.New(beforeColStr)
-			s.b.handleErr(err)
+		if ok {
+			//err := sql.ErrColumnNotFound.New(beforeColStr)
+			//s.b.handleErr(err)
+			// todo better way to do projections
+			delete(s.exprs, beforeColStr)
 		}
 		ids[i] = id
 		delete(s.exprs, beforeColStr)

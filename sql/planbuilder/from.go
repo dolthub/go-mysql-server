@@ -137,6 +137,7 @@ func (b *PlanBuilder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (o
 		} else {
 			proj = append(proj, rCol.scalarGf())
 			outScope.addColumn(rCol)
+			continue
 		}
 
 		f := expression.NewEquals(matched.scalarGf(), rCol.scalarGf())
@@ -522,14 +523,37 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 				b.handleErr(err)
 			}
 		}
+	} else if b.viewAsOf != nil {
+		asOfLit = b.viewAsOf
 	}
+
 	var tab sql.Table
 	var database sql.Database
 	var err error
-	if asOfExpr != nil {
+	// views first
+	database, err = b.cat.Database(b.ctx, db)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	if view := b.resolveView(name, database, asOfLit); view != nil {
+		outScope.node = view
+		for _, c := range view.Schema() {
+			outScope.newColumn(scopeColumn{
+				db:       strings.ToLower(db),
+				table:    strings.ToLower(name),
+				col:      strings.ToLower(c.Name),
+				typ:      c.Type,
+				nullable: c.Nullable,
+			})
+		}
+		return outScope
+	}
+
+	if asOfLit != nil {
 		tab, database, err = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
 	} else {
-		tab, database, err = b.cat.Table(b.ctx, db, name)
+		tab, _, err = database.GetTableInsensitive(b.ctx, name)
 	}
 	if err != nil {
 		if sql.ErrDatabaseNotFound.Is(err) {
@@ -558,4 +582,74 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 		})
 	}
 	return outScope
+}
+
+func (b *PlanBuilder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {
+	var view *sql.View
+
+	if vdb, vok := database.(sql.ViewDatabase); vok {
+		viewDef, vdok, err := vdb.GetViewDefinition(b.ctx, name)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if vdok {
+			outerAsOf := b.viewAsOf
+			outerDb := b.currentDatabase
+			b.viewAsOf = asOf
+			b.currentDatabase = database
+			defer func() {
+				b.viewAsOf = outerAsOf
+				b.currentDatabase = outerDb
+			}()
+			node, _, _, qerr := b.Parse(b.ctx, b.cat, viewDef.TextDefinition, false)
+			if qerr != nil {
+				b.handleErr(err)
+			}
+			view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, node).AsView(viewDef.CreateViewStatement)
+
+		}
+	}
+	// If we didn't find the view from the database directly, use the in-session registry
+	if view == nil {
+		view, _ = b.ctx.GetViewRegistry().View(database.Name(), name)
+		if view != nil {
+			def, _, _ := transform.NodeWithOpaque(view.Definition(), func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+				// TODO this is a hack because the test registry setup is busted, these should always be resolved
+				if urt, ok := n.(*plan.UnresolvedTable); ok {
+					return b.resolveTable(urt.Name(), urt.Database().Name(), urt.AsOf()), transform.NewTree, nil
+				}
+				return n, transform.SameTree, nil
+			})
+			view = view.WithDefinition(def)
+		}
+	}
+
+	if view == nil {
+		return nil
+	}
+
+	query := view.Definition().Children()[0]
+
+	// If this view is being asked for with an AS OF clause, then attempt to apply it to every table in the view.
+	//if asOf != nil {
+	//	var err error
+	//	query, _, err = applyAsOfToView(query, a, urt.AsOf())
+	//	if err != nil {
+	//		return nil, transform.SameTree, err
+	//	}
+	//}
+
+	// If the view name was qualified with a database name, apply that same qualifier to any tables in it
+	//if urt.Database().Name() != "" {
+	//	query, _, err = applyDatabaseQualifierToView(query, a, urt.Database().Name())
+	//	if err != nil {
+	//		return nil, transform.SameTree, err
+	//	}
+	//}
+
+	n, err := view.Definition().WithChildren(query)
+	if err != nil {
+		b.handleErr(err)
+	}
+	return n
 }

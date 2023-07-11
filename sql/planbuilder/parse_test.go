@@ -1410,11 +1410,17 @@ Project
          └─ columns: [x y z]
 `,
 		},
+		//{
+		//	Query: "insert into xy values (x,y) on duplicate key update y = 0",
+		//},
+		{
+			Query: "SELECT x as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM xy where x > 1;",
+		},
 	}
 
 	var verbose, rewrite bool
 	//verbose = true
-	//rewrite = true
+	rewrite = true
 
 	var w *bufio.Writer
 	var outputPath string

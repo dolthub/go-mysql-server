@@ -106,15 +106,32 @@ func (b *PlanBuilder) buildDDL(inScope *scope, query string, c *ast.DDL) (outSco
 
 func (b *PlanBuilder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-	dropTables := make([]sql.Node, len(c.FromTables))
+	var dropTables []sql.Node
 	dbName := c.FromTables[0].Qualifier.String()
-	for i, t := range c.FromTables {
-		if t.Qualifier.String() != dbName {
+	if dbName == "" {
+		dbName = b.currentDb().Name()
+	}
+	for _, t := range c.FromTables {
+		if t.Qualifier.String() != "" && t.Qualifier.String() != dbName {
 			err := sql.ErrUnsupportedFeature.New("dropping tables on multiple databases in the same statement")
 			b.handleErr(err)
 		}
+		if c.IfExists {
+			_, _, err := b.cat.Table(b.ctx, dbName, t.Name.String())
+			if sql.ErrTableNotFound.Is(err) {
+				b.ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    mysql.ERDbDropExists,
+					Message: fmt.Sprintf("Can't drop table %s; table doesn't exist ", t.Name.String()),
+				})
+				continue
+			} else {
+				b.handleErr(err)
+			}
+		}
+
 		tableScope := b.buildTablescan(inScope, dbName, t.Name.String(), nil)
-		dropTables[i] = tableScope.node
+		dropTables = append(dropTables, tableScope.node)
 	}
 
 	outScope.node = plan.NewDropTable(dropTables, c.IfExists)
@@ -165,7 +182,6 @@ func (b *PlanBuilder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *sc
 		return outScope
 	}
 
-	fkDefs, chDefs := b.buildConstraintsDefs(inScope, c.Table, c.TableSpec)
 	idxDefs := b.buildIndexDefs(inScope, c.TableSpec)
 
 	qualifier := c.Table.Qualifier.String()
@@ -173,7 +189,18 @@ func (b *PlanBuilder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *sc
 		qualifier = b.ctx.GetCurrentDatabase()
 	}
 	database := b.resolveDb(qualifier)
+
 	schema, collation := b.tableSpecToSchema(inScope, c.TableSpec, false)
+	for _, c := range schema.Schema {
+		outScope.newColumn(scopeColumn{
+			db:       strings.ToLower(database.Name()),
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
 	tableSpec := &plan.TableSpec{
 		Schema:    schema,
@@ -281,14 +308,29 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 			err := fmt.Errorf("expected resolved table: %s", tabName)
 			b.handleErr(err)
 		}
+
+		for _, c := range table.Schema() {
+			outScope.newColumn(scopeColumn{
+				db:       strings.ToLower(table.Database.Name()),
+				table:    strings.ToLower(c.Source),
+				col:      strings.ToLower(c.Name),
+				typ:      c.Type,
+				nullable: c.Nullable,
+			})
+		}
+
 		switch strings.ToLower(ddl.ColumnAction) {
 		case ast.AddStr:
 			sch, _ := b.tableSpecToSchema(inScope, ddl.TableSpec, true)
 			outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 		case ast.DropStr:
-			outScope.node = plan.NewDropColumnResolved(table, ddl.Column.String())
+			drop := plan.NewDropColumnResolved(table, ddl.Column.String())
+			drop.Checks = b.loadChecksFromTable(outScope, table.Table)
+			outScope.node = drop
 		case ast.RenameStr:
-			outScope.node = plan.NewRenameColumnResolved(table, ddl.Column.String(), ddl.ToColumn.String())
+			rename := plan.NewRenameColumnResolved(table, ddl.Column.String(), ddl.ToColumn.String())
+			rename.Checks = b.loadChecksFromTable(outScope, table.Table)
+			outScope.node = rename
 		case ast.ModifyStr, ast.ChangeStr:
 			sch, _ := b.tableSpecToSchema(inScope, ddl.TableSpec, true)
 			outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
@@ -478,6 +520,7 @@ func (b *PlanBuilder) buildReferentialAction(action ast.ReferenceAction) sql.For
 	}
 }
 
+// todo drop column, rename column
 func (b *PlanBuilder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	dbName := ddl.Table.Qualifier.String()
 	tabName := ddl.Table.Name.String()
@@ -536,9 +579,13 @@ func (b *PlanBuilder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *s
 			return
 		}
 		outScope.node = plan.NewAlterDropIndex(table.Database, table, ddl.IndexSpec.ToName.String())
+
+		//todo checks
+
 		return
 	case ast.RenameStr:
 		outScope.node = plan.NewAlterRenameIndex(table.Database, table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String())
+		//todo checks
 		return
 	case "disable":
 		outScope.node = plan.NewAlterDisableEnableKeys(table.Database, table, true)
