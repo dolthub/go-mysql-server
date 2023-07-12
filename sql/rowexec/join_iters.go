@@ -923,6 +923,41 @@ type lateralJoinIterator struct {
 	b sql.NodeExecBuilder
 }
 
+func newLateralJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
+	var left, right string
+	if leftTable, ok := j.Left().(sql.Nameable); ok {
+		left = leftTable.Name()
+	} else {
+		left = reflect.TypeOf(j.Left()).String()
+	}
+	if rightTable, ok := j.Right().(sql.Nameable); ok {
+		right = rightTable.Name()
+	} else {
+		right = reflect.TypeOf(j.Right()).String()
+	}
+
+	span, ctx := ctx.Span("plan.LateralJoin", trace.WithAttributes(
+		attribute.String("left", left),
+		attribute.String("right", right),
+	))
+
+	l, err := b.Build(ctx, j.Left(), row)
+	if err != nil {
+		span.End()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, &lateralJoinIterator{
+		pRow:     row,
+		lIter:    l,
+		rNode:    j.Right(),
+		cond:     j.Filter,
+		jType:    j.Op,
+		scopeLen: j.ScopeLen,
+		b:        b,
+	}), nil
+}
+
 func (i *lateralJoinIterator) loadLeft(ctx *sql.Context) error {
 	if i.lRow == nil {
 		lRow, err := i.lIter.Next(ctx)
@@ -1005,7 +1040,23 @@ func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		}
 
-		return row, nil
+		return i.removeParentRow(row), nil
 	}
-	return nil, nil
+}
+
+func (i *lateralJoinIterator) Close(ctx *sql.Context) error {
+	var lerr, rerr error
+	if i.lIter != nil {
+		lerr = i.lIter.Close(ctx)
+	}
+	if i.rIter != nil {
+		rerr = i.rIter.Close(ctx)
+	}
+	if lerr != nil {
+		return lerr
+	}
+	if rerr != nil {
+		return rerr
+	}
+	return nil
 }
