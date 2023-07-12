@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -30,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func NewContext(harness Harness) *sql.Context {

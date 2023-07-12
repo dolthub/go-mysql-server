@@ -2,7 +2,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -10,6 +9,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
