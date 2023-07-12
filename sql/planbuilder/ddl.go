@@ -47,6 +47,7 @@ func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.Mu
 }
 
 func (b *PlanBuilder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
 		if c.TriggerSpec != nil {
@@ -284,7 +285,9 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
 				database := table.Database.Name()
-				outScope.node = plan.NewAlterDropForeignKey(database, table.Name(), c.Name)
+				dropFk := plan.NewAlterDropForeignKey(database, table.Name(), c.Name)
+				dropFk.DbProvider = b.cat
+				outScope.node = dropFk
 			case *sql.CheckConstraint:
 				outScope.node = plan.NewAlterDropCheck(table, c.Name)
 			case namedConstraint:

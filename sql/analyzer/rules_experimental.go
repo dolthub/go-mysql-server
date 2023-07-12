@@ -26,6 +26,7 @@ var OnceBeforeDefault_Exp = []Rule{
 	{validateCreateProcedureId, validateCreateProcedure},
 	{setTargetSchemasId, setTargetSchemas}, //TODO
 	//{loadCheckConstraintsId, loadChecks},   //TODO
+	{resolveDropConstraintId, resolveDropConstraint},
 	{validateDropTablesId, validateDropTables},
 	{pruneDropTablesId, pruneDropTables}, //TODO
 	{assignCatalogId, assignCatalog},     //TODO
