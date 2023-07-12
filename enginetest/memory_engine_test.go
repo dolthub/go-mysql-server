@@ -491,12 +491,21 @@ func TestOrderByGroupBy(t *testing.T) {
 	enginetest.TestOrderByGroupBy(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestOrderByGroupBy_Experimental(t *testing.T) {
+	enginetest.TestOrderByGroupBy(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestAmbiguousColumnResolution(t *testing.T) {
 	enginetest.TestAmbiguousColumnResolution(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestAmbiguousColumnResolution_Experimental(t *testing.T) {
 	enginetest.TestAmbiguousColumnResolution(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
+func TestInsertInto_Experimental(t *testing.T) {
+	t.Skip("todo rewrite onUplicateUpdate exprs")
+	enginetest.TestInsertInto(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestInsertInto(t *testing.T) {
@@ -786,6 +795,14 @@ func TestDropForeignKeys(t *testing.T) {
 	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestCreateForeignKeys_Exp(t *testing.T) {
+	enginetest.TestCreateForeignKeys(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
+func TestDropForeignKeys_Exp(t *testing.T) {
+	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestForeignKeys(t *testing.T) {
 	for i := len(queries.ForeignKeyTests) - 1; i >= 0; i-- {
 		//TODO: memory tables don't quite handle keyless foreign keys properly
@@ -796,8 +813,24 @@ func TestForeignKeys(t *testing.T) {
 	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestForeignKeys_Exp(t *testing.T) {
+	t.Skip("need DML to do FKs")
+	for i := len(queries.ForeignKeyTests) - 1; i >= 0; i-- {
+		//TODO: memory tables don't quite handle keyless foreign keys properly
+		if queries.ForeignKeyTests[i].Name == "Keyless CASCADE over three tables" {
+			queries.ForeignKeyTests = append(queries.ForeignKeyTests[:i], queries.ForeignKeyTests[i+1:]...)
+		}
+	}
+	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestCreateCheckConstraints(t *testing.T) {
 	enginetest.TestCreateCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestCreateCheckConstraints_Exp(t *testing.T) {
+	t.Skip("different error")
+	enginetest.TestCreateCheckConstraints(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestChecksOnInsert(t *testing.T) {
@@ -812,20 +845,40 @@ func TestDisallowedCheckConstraints(t *testing.T) {
 	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDisallowedCheckConstraints_Exp(t *testing.T) {
+	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestDropCheckConstraints(t *testing.T) {
 	enginetest.TestDropCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestDropCheckConstraints_Exp(t *testing.T) {
+	enginetest.TestDropCheckConstraints(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestDropConstraints(t *testing.T) {
 	enginetest.TestDropConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDropConstraints_Exp(t *testing.T) {
+	enginetest.TestDropConstraints(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestReadOnly(t *testing.T) {
 	enginetest.TestReadOnly(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestReadOnly_Exp(t *testing.T) {
+	enginetest.TestReadOnly(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestViews(t *testing.T) {
 	enginetest.TestViews(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestViews_Exp(t *testing.T) {
+	enginetest.TestViews(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestViewsPrepared(t *testing.T) {
@@ -834,6 +887,10 @@ func TestViewsPrepared(t *testing.T) {
 
 func TestVersionedViews(t *testing.T) {
 	enginetest.TestVersionedViews(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestVersionedViews_Exp(t *testing.T) {
+	enginetest.TestVersionedViews(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestVersionedViewsPrepared(t *testing.T) {
@@ -845,52 +902,103 @@ func TestNaturalJoin(t *testing.T) {
 	enginetest.TestNaturalJoin(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestNaturalJoin_Exp(t *testing.T) {
+	enginetest.TestNaturalJoin(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestWindowFunctions(t *testing.T) {
 	enginetest.TestWindowFunctions(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestWindowRowFrames(t *testing.T) {
-	enginetest.TestWindowRowFrames(t, enginetest.NewDefaultMemoryHarness())
+func TestWindowFunctions_Exp(t *testing.T) {
+	enginetest.TestWindowFunctions(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
+func TestWindowRowFrames_Exp(t *testing.T) {
+	enginetest.TestWindowRowFrames(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestWindowRangeFrames(t *testing.T) {
 	enginetest.TestWindowRangeFrames(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestWindowRangeFrames_Exp(t *testing.T) {
+	enginetest.TestWindowRangeFrames(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestNamedWindows(t *testing.T) {
 	enginetest.TestNamedWindows(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestNamedWindows_Exp(t *testing.T) {
+	enginetest.TestNamedWindows(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestNaturalJoinEqual(t *testing.T) {
 	enginetest.TestNaturalJoinEqual(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestNaturalJoinEqual_Exp(t *testing.T) {
+	enginetest.TestNaturalJoinEqual(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestNaturalJoinDisjoint(t *testing.T) {
 	enginetest.TestNaturalJoinDisjoint(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestNaturalJoinDisjoint_Exp(t *testing.T) {
+	enginetest.TestNaturalJoinDisjoint(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestInnerNestedInNaturalJoins(t *testing.T) {
 	enginetest.TestInnerNestedInNaturalJoins(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestInnerNestedInNaturalJoins_Exp(t *testing.T) {
+	enginetest.TestInnerNestedInNaturalJoins(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestColumnDefaults(t *testing.T) {
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestColumnDefaults_Exp(t *testing.T) {
+	t.Skip("todo column defaults")
+	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestAlterTable(t *testing.T) {
 	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestAlterTable_Exp(t *testing.T) {
+	t.Skip("todo alters")
+	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestDateParse(t *testing.T) {
 	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestDateParse_Exp(t *testing.T) {
+	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestJsonScripts(t *testing.T) {
 	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestJsonScripts_Exp(t *testing.T) {
+	// different error
+	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestShowTableStatus(t *testing.T) {
 	enginetest.TestShowTableStatus(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestShowTableStatus_Exp(t *testing.T) {
+	enginetest.TestShowTableStatus(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestShowTableStatusPrepared(t *testing.T) {
@@ -899,6 +1007,11 @@ func TestShowTableStatusPrepared(t *testing.T) {
 
 func TestAddDropPks(t *testing.T) {
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAddDropPks_Exp(t *testing.T) {
+	t.Skip("column defaults")
+	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestAddAutoIncrementColumn(t *testing.T) {
@@ -910,16 +1023,33 @@ func TestNullRanges(t *testing.T) {
 	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestNullRanges_Exp(t *testing.T) {
+	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestBlobs(t *testing.T) {
 	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestBlobs_Exp(t *testing.T) {
+	t.Skip("inserts, deletes, default expressions, expecting alter table errors")
+	enginetest.TestBlobs(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestIndexes(t *testing.T) {
 	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestIndexes_Exp(t *testing.T) {
+	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestIndexPrefix_Exp(t *testing.T) {
+	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestPersist(t *testing.T) {
@@ -929,6 +1059,15 @@ func TestPersist(t *testing.T) {
 		return persistedSess
 	}
 	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
+}
+
+func TestPersist_Exp(t *testing.T) {
+	newSess := func(ctx *sql.Context) sql.PersistableSession {
+		persistedGlobals := memory.GlobalsMap{}
+		persistedSess := memory.NewInMemoryPersistedSession(ctx.Session, persistedGlobals)
+		return persistedSess
+	}
+	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental), newSess)
 }
 
 func TestValidateSession(t *testing.T) {

@@ -20,6 +20,18 @@ type PlanBuilder struct {
 	viewDatabase    string
 }
 
+func New(ctx *sql.Context, cat sql.Catalog) *PlanBuilder {
+	return &PlanBuilder{ctx: ctx, cat: cat}
+}
+
+func (b *PlanBuilder) SetAsOf(asof interface{}) {
+	b.viewAsOf = asof
+}
+
+func (b *PlanBuilder) AsOf() interface{} {
+	return b.viewAsOf
+}
+
 func (b *PlanBuilder) newScope() *scope {
 	return &scope{b: b}
 }

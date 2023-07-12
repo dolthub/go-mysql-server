@@ -201,7 +201,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		if _, isLiteral := innerExpr.(*expression.Literal); isLiteral && collation.CharacterSet() != charSet {
 			b.handleErr(sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name()))
 		}
-		expression.NewCollatedExpression(innerExpr, collation)
+		return expression.NewCollatedExpression(innerExpr, collation)
 	case *ast.ValuesFuncExpr:
 		col := b.buildScalar(inScope, v.Name)
 		fn, err := b.cat.Function(b.ctx, "values")

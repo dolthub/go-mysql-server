@@ -620,7 +620,7 @@ func (b *PlanBuilder) resolveView(name string, database sql.Database, asOf inter
 				b.viewAsOf = outerAsOf
 				b.currentDatabase = outerDb
 			}()
-			node, _, _, qerr := b.Parse(b.ctx, b.cat, viewDef.TextDefinition, false)
+			node, _, _, qerr := b.Parse(b.ctx, viewDef.TextDefinition, false)
 			if qerr != nil {
 				b.handleErr(err)
 			}

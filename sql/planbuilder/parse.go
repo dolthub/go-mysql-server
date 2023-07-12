@@ -79,7 +79,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 	return outScope.node, parsed, remainder, err
 }
 
-func (b *PlanBuilder) Parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
+func (b *PlanBuilder) Parse(ctx *sql.Context, query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {

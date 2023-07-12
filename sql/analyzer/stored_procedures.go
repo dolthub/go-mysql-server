@@ -16,13 +16,13 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -51,7 +51,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			}
 
 			for _, procedure := range procedures {
-				parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+				parsedProcedure, err := planbuilder.Parse(ctx, a.Catalog, procedure.CreateStatement)
 				if err != nil {
 					return nil, err
 				}
@@ -312,7 +312,15 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 				return nil, transform.SameTree, err
 			}
-			parsedProcedure, err := parse.Parse(ctx, procedure.CreateStatement)
+			b := planbuilder.New(ctx, a.Catalog)
+			if call.AsOf() != nil {
+				asOf, err := call.AsOf().Eval(ctx, nil)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				b.SetAsOf(asOf)
+			}
+			parsedProcedure, _, _, err := b.Parse(ctx, procedure.CreateStatement, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
