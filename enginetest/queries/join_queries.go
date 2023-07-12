@@ -764,6 +764,7 @@ var LateralJoinScriptTests = []ScriptTest{
 			"insert into t1 values (1), (4), (5)",
 		},
 		Assertions: []ScriptTestAssertion{
+			// Lateral Cross Join
 			{
 				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j;",
 				Expected: []sql.Row{
@@ -796,14 +797,27 @@ var LateralJoinScriptTests = []ScriptTest{
 					{1, 1},
 				},
 			},
+
+			// Lateral Inner Join
 			{
-				Skip:  true,
 				Query: "select * from t inner join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
 				Expected: []sql.Row{
 					{2, 1},
 					{3, 1},
 				},
 			},
+			{
+				Query: "select * from t inner join lateral (select * from t1 where t.i = t1.j) as tt on t.i = tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Query: "select * from t inner join lateral (select * from t1 where t.i = t1.j) as tt on t.i != tt.j",
+				Expected: []sql.Row{},
+			},
+
+			// Lateral Left Join
 			{
 				Skip:  true,
 				Query: "select * from t left join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
@@ -813,6 +827,8 @@ var LateralJoinScriptTests = []ScriptTest{
 					{3, 1},
 				},
 			},
+
+			// Lateral Right Join
 			{
 				// THIS IS SUPPOSED TO FAIL
 				Skip:        true,

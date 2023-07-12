@@ -762,7 +762,7 @@ func newLateralCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.Jo
 		right = reflect.TypeOf(j.Right()).String()
 	}
 
-	span, ctx := ctx.Span("plan.LateralCrossJoin", trace.WithAttributes(
+	span, ctx := ctx.Span("plan.LateralInnerJoin", trace.WithAttributes(
 		attribute.String("left", left),
 		attribute.String("right", right),
 	))
@@ -836,13 +836,15 @@ func (i *lateralInnerJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		row = append(row, i.leftRow...)
 		row = append(row, rightRow...)
 
-		// TOOD: build row, evaluate condition, return
-		res, err := i.cond.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if res != true {
-			continue
+		// TODO: build row, evaluate condition, return
+		if i.cond != nil {
+			res, err := i.cond.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			if res == false {
+				continue
+			}
 		}
 
 		return i.removeParentRow(row), nil

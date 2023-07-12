@@ -291,12 +291,20 @@ func TestSingleScript_Experimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t inner join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
+					Query: "select * from t left join t1 on t.i = t1.j",
 					Expected: []sql.Row{
-						{2, 1},
-						{3, 1},
+						{1, 1},
+						{2, nil},
+						{3, nil},
 					},
 				},
+				//{
+				//	Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on t.i = tt.j",
+				//	Expected: []sql.Row{
+				//		{2, 1},
+				//		{3, 1},
+				//	},
+				//},
 			},
 		},
 	}

@@ -54,13 +54,14 @@ func (b *PlanBuilder) validateJoinTableNames(leftScope, rightScope *scope) {
 }
 
 func (b *PlanBuilder) isLateral(te ast.TableExpr) bool {
-	if _, ok := te.(*ast.JSONTableExpr); ok {
+	switch t := te.(type) {
+	case *ast.JSONTableExpr:
 		return true
+	case *ast.AliasedTableExpr:
+		return t.Lateral
+	default:
+		return false
 	}
-	if ate, ok := te.(*ast.AliasedTableExpr); ok {
-		return ate.Lateral
-	}
-	return false
 }
 
 func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
