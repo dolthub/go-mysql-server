@@ -2,14 +2,16 @@ package planbuilder
 
 import (
 	"fmt"
+	"strings"
+	"time"
+	"unicode"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"strings"
-	"time"
-	"unicode"
 )
 
 func (b *PlanBuilder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (outScope *scope) {

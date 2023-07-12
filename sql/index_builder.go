@@ -15,8 +15,9 @@
 package sql
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
+
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 var (

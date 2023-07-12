@@ -2,10 +2,10 @@ package planbuilder
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"

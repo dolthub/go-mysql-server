@@ -1,9 +1,11 @@
 package planbuilder
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"strings"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 func (b *PlanBuilder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *scope) {
