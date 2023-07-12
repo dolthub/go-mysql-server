@@ -16,6 +16,10 @@ import (
 )
 
 func (b *PlanBuilder) resolveDb(name string) sql.Database {
+	if name == "" {
+		err := sql.ErrNoDatabaseSelected.New()
+		b.handleErr(err)
+	}
 	database, err := b.cat.Database(b.ctx, name)
 	if err != nil {
 		b.handleErr(err)

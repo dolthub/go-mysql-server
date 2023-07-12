@@ -148,11 +148,26 @@ func (b *PlanBuilder) buildCreateProcedure(inScope *scope, query string, c *ast.
 		}
 	}
 
+	procName := strings.ToLower(c.ProcedureSpec.ProcName.Name.String())
+	//todo populate inScope with the procedure parameters
+	for _, p := range params {
+		inScope.newColumn(scopeColumn{table: "", col: strings.ToLower(p.Name), typ: p.Type})
+	}
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 	bodyScope := b.build(inScope, c.ProcedureSpec.Body, bodyStr)
+
+	var db sql.Database = nil
+	dbName := c.ProcedureSpec.ProcName.Qualifier.String()
+	if dbName != "" {
+		db = b.resolveDb(dbName)
+	} else {
+		db = b.currentDb()
+	}
+
+	outScope = inScope.push()
 	outScope.node = plan.NewCreateProcedure(
-		sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
-		c.ProcedureSpec.ProcName.Name.String(),
+		db,
+		procName,
 		c.ProcedureSpec.Definer,
 		params,
 		time.Now(),

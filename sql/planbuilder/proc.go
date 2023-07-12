@@ -72,8 +72,11 @@ func (b *PlanBuilder) buildCall(inScope *scope, c *sqlparser.Call) (outScope *sc
 	}
 
 	var db sql.Database = nil
-	if !c.ProcName.Qualifier.IsEmpty() {
-		db = sql.UnresolvedDatabase(c.ProcName.Qualifier.String())
+	dbName := c.ProcName.Qualifier.String()
+	if dbName != "" {
+		db = b.resolveDb(dbName)
+	} else {
+		db = b.currentDb()
 	}
 
 	var asOf sql.Expression = nil

@@ -280,9 +280,12 @@ func (b *PlanBuilder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope 
 
 func (b *PlanBuilder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	db, err := b.cat.Database(b.ctx, s.Table.Qualifier.String())
-	if err != nil {
-		b.handleErr(err)
+	var db sql.Database
+	dbName := s.Table.Qualifier.String()
+	if dbName != "" {
+		db = b.resolveDb(dbName)
+	} else {
+		db = b.currentDb()
 	}
 	outScope.node = plan.NewShowCreateProcedure(db, s.Table.Name.String())
 	return

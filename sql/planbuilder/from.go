@@ -184,16 +184,35 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			}
 
 			sqScope := inScope.push()
-			outScope = b.buildSelectStmt(sqScope, e.Select)
-			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
+			fromScope := b.buildSelectStmt(sqScope, e.Select)
+			alias := strings.ToLower(t.As.String())
+			sq := plan.NewSubqueryAlias(alias, ast.String(e.Select), fromScope.node)
 
 			var renameCols []string
 			if len(e.Columns) > 0 {
 				renameCols = columnsToStrings(e.Columns)
 				sq = sq.WithColumns(renameCols)
 			}
-			b.renameSource(outScope, t.As.String(), renameCols)
+
+			// outscope will skip
+			outScope = inScope.push()
 			outScope.node = sq
+
+			for i, c := range fromScope.cols {
+				col := c.col
+				if len(renameCols) > 0 {
+					col = renameCols[i]
+				}
+				outScope.newColumn(scopeColumn{
+					db:       c.db,
+					table:    alias,
+					col:      col,
+					id:       0,
+					typ:      c.typ,
+					nullable: c.nullable,
+				})
+			}
+			//b.renameSource(outScope, t.As.String(), renameCols)
 			return
 		case *ast.ValuesStatement:
 			if t.As.IsEmpty() {
@@ -408,7 +427,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	for _, c := range newAlias.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:    database.Name(),
-			table: "",
+			table: newAlias.Name(),
 			col:   c.Name,
 			typ:   c.Type,
 		})

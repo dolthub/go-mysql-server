@@ -66,6 +66,10 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.ColName:
 		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.String()), strings.ToLower(v.Name.String()), true)
 		if !ok {
+			sysVar, ok := b.buildSysVar(v, ast.SetScope_None)
+			if ok {
+				return sysVar
+			}
 			b.handleErr(sql.ErrColumnNotFound.New(v))
 		}
 		return c.scalarGf()
