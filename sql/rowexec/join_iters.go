@@ -836,7 +836,6 @@ func (i *lateralInnerJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		row = append(row, i.leftRow...)
 		row = append(row, rightRow...)
 
-		// TODO: build row, evaluate condition, return
 		if i.cond != nil {
 			res, err := i.cond.Eval(ctx, row)
 			if err != nil {
@@ -907,4 +906,106 @@ func newLateralInnerJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.Jo
 		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
 		scopeLen:  j.ScopeLen,
 	}), nil
+}
+
+type lateralJoinIterator struct {
+	pRow  sql.Row
+	lRow  sql.Row
+	rRow  sql.Row
+	lIter sql.RowIter
+	rIter sql.RowIter
+	rNode sql.Node
+	cond  sql.Expression
+	jType plan.JoinType
+
+	scopeLen int
+
+	b sql.NodeExecBuilder
+}
+
+func (i *lateralJoinIterator) loadLeft(ctx *sql.Context) error {
+	if i.lRow == nil {
+		lRow, err := i.lIter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		i.lRow = lRow
+	}
+	return nil
+}
+
+func (i *lateralJoinIterator) buildRight(ctx *sql.Context) error {
+	if i.rIter == nil {
+		iter, err := i.b.Build(ctx, i.rNode, i.lRow)
+		if err != nil {
+			return err
+		}
+
+		// Prepend node doesn't work over filter, because it calls filter.Next(), then prepends the row
+		if _, ok := iter.(*plan.FilterIter); ok {
+			iter.(*plan.FilterIter).ParentRow = i.lRow
+		}
+		i.rIter = iter
+	}
+	return nil
+}
+
+func (i *lateralJoinIterator) loadRight(ctx *sql.Context) error {
+	if i.rRow == nil {
+		rRow, err := i.rIter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		i.rRow = rRow
+	}
+	return nil
+}
+
+func (i *lateralJoinIterator) buildRow(lRow, rRow sql.Row) sql.Row {
+	var row sql.Row
+	row = append(row, lRow...)
+	row = append(row, rRow...)
+	return row
+}
+
+func (i *lateralJoinIterator) removeParentRow(r sql.Row) sql.Row {
+	copy(r[i.scopeLen:], r[len(i.pRow):])
+	r = r[:len(r)-len(i.pRow)+i.scopeLen]
+	return r
+}
+
+func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
+	for {
+		if err := i.loadLeft(ctx); err != nil {
+			return nil, err
+		}
+		if err := i.buildRight(ctx); err != nil {
+			return nil, err
+		}
+		if err := i.loadRight(ctx); err != nil {
+			if err == io.EOF && i.jType == plan.JoinTypeLateralLeft {
+				res := i.buildRow(i.lRow, nil)
+				// TODO: make reset function
+				if cerr := i.rIter.Close(ctx); cerr != nil {
+					return nil, cerr
+				}
+				i.rIter = nil
+				i.lRow = nil // tell it to load the next left row
+				return i.removeParentRow(res), nil
+			}
+			return nil, err
+		}
+
+		row := i.buildRow(i.lRow, i.rRow)
+		if i.cond != nil {
+			if res, err := i.cond.Eval(ctx, row); err != nil {
+				return nil, err
+			} else if res == false {
+				continue
+			}
+		}
+
+		return row, nil
+	}
+	return nil, nil
 }
