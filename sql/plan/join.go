@@ -56,7 +56,7 @@ const (
 	JoinTypeLateralCross // LateralCrossJoin
 	JoinTypeLateralInner // LateralInnerJoin
 	JoinTypeLateralLeft  // LateralLeftJoin
-	JoinTypeLateralRight  // LateralLeftJoin
+	JoinTypeLateralRight // LateralLeftJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {

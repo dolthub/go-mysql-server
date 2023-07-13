@@ -90,7 +90,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 					}
 				}
 			} else {
-				if joinParent != nil && sqa.IsLateral && joinParent.Op != plan.JoinTypeLateralRight{
+				if joinParent != nil && sqa.IsLateral && joinParent.Op != plan.JoinTypeLateralRight {
 					subScope := addLeftTablesToScope(scope, joinParent.Left())
 					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true)
 				} else {

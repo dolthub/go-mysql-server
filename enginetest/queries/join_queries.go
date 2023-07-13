@@ -846,8 +846,8 @@ var LateralJoinScriptTests = []ScriptTest{
 			{
 				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",
 				Expected: []sql.Row{
-					{2,   1},
-					{3,   1},
+					{2, 1},
+					{3, 1},
 					{nil, 4},
 					{nil, 5},
 				},
