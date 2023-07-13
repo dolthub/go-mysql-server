@@ -19,15 +19,16 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 	// we want to in-place identify aggregations, expand stars.
 	// use inScope to construct projections for projScope
 
+	tempScope := inScope.push()
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
 	for _, se := range selectExprs {
-		pe := b.selectExprToExpression(inScope, se)
+		pe := b.selectExprToExpression(tempScope, se)
 		switch e := pe.(type) {
 		case *expression.GetField:
 			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), strings.ToLower(e.Table()), strings.ToLower(e.Name()), e.IsNullable())
 			exprs = append(exprs, gf)
-			id, ok := inScope.getExpr(gf.String())
+			id, ok := tempScope.getExpr(gf.String())
 			if !ok {
 				err := sql.ErrColumnNotFound.New(gf.String())
 				b.handleErr(err)
@@ -51,7 +52,7 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 		case *expression.Alias:
 			var col scopeColumn
 			if gf, ok := e.Child.(*expression.GetField); ok {
-				id, ok := inScope.getExpr(gf.String())
+				id, ok := tempScope.getExpr(gf.String())
 				if !ok {
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
@@ -65,7 +66,9 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 			if e.Unreferencable() {
 				outScope.addColumn(col)
 			} else {
-				outScope.newColumn(col)
+				id := outScope.newColumn(col)
+				col.id = id
+				tempScope.addColumn(col)
 			}
 			exprs = append(exprs, e)
 		default:
@@ -74,6 +77,20 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 			outScope.newColumn(col)
 		}
 	}
+
+	// move aggregates, windows from tempScope->inScope
+	if tempScope.groupBy != nil {
+		if inScope.groupBy == nil {
+			inScope.initGroupBy()
+		}
+		for _, col := range tempScope.groupBy.aggregations() {
+			inScope.groupBy.addAggStr(col)
+		}
+		for _, col := range tempScope.groupBy.inCols {
+			inScope.groupBy.addInCol(col)
+		}
+	}
+	inScope.windowFuncs = append(inScope.windowFuncs, tempScope.windowFuncs...)
 }
 
 func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {

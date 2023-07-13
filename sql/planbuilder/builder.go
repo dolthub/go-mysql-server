@@ -18,6 +18,7 @@ type PlanBuilder struct {
 	multiDDL        bool
 	viewAsOf        interface{}
 	viewDatabase    string
+	nesting         int
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) *PlanBuilder {

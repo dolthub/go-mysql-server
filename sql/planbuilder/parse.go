@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	goerrors "errors"
+	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 	"unicode"
 
@@ -12,6 +13,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
+
+const maxAnalysisIterations = 8
+
+// ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
+var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
@@ -80,6 +86,10 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 }
 
 func (b *PlanBuilder) Parse(ctx *sql.Context, query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
+	b.nesting++
+	if b.nesting > maxAnalysisIterations {
+		return nil, "", "", ErrMaxAnalysisIters.New(maxAnalysisIterations)
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {

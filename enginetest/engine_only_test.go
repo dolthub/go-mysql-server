@@ -567,7 +567,12 @@ func TestRecursiveViewDefinition(t *testing.T) {
 	enginetest.TestRecursiveViewDefinition(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestShowCharset(t *testing.T) {
+func TestRecursiveViewDefinition_Exp(t *testing.T) {
+	t.Skip("different error message (OK)")
+	enginetest.TestRecursiveViewDefinition(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
+func TestShowCharset_Exp(t *testing.T) {
 	iterForAllImplemented := func(t *testing.T) []sql.Row {
 		var rows []sql.Row
 		iter := sql.NewCharacterSetsIterator()
@@ -652,7 +657,7 @@ func TestShowCharset(t *testing.T) {
 		},
 	}
 
-	harness := enginetest.NewMemoryHarness("", 1, 1, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, 1, false, nil).WithVersion(sql.VersionExperimental)
 	for _, test := range tests {
 		enginetest.TestQuery(t, harness, test.Query, test.RowGen(t), nil, nil)
 	}

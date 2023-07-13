@@ -657,11 +657,16 @@ func (b *PlanBuilder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *sc
 
 func (b *PlanBuilder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	var filter sql.Expression
 
+	var node sql.Node = plan.NewShowCharset()
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
+	}
+
+	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(inScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), "Charset", false),
@@ -671,7 +676,6 @@ func (b *PlanBuilder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *s
 		}
 	}
 
-	var node sql.Node = plan.NewShowCharset()
 	if filter != nil {
 		node = plan.NewFilter(filter, node)
 	}

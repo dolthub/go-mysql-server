@@ -519,69 +519,71 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		TestScript(t, harness, tt)
 	}
 
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	ctx := NewContext(harness)
-	RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
-	RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
+	t.Run("non-deterministic group by", func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		ctx := NewContext(harness)
+		RunQueryWithContext(t, e, harness, ctx, "create table members (id int primary key, team text);")
+		RunQueryWithContext(t, e, harness, ctx, "insert into members values (3,'red'), (4,'red'),(5,'orange'),(6,'orange'),(7,'orange'),(8,'purple');")
 
-	var rowIter sql.RowIter
-	var row sql.Row
-	var err error
-	var rowCount int
+		var rowIter sql.RowIter
+		var row sql.Row
+		var err error
+		var rowCount int
 
-	// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
-	// group by with any_value()
-	_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
-	require.NoError(t, err)
-	rowCount = 0
-	for {
-		row, err = rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		rowCount++
+		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
+		// group by with any_value()
+		_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
 		require.NoError(t, err)
-		val := row[0].(int32)
-		team := row[1].(string)
-		switch team {
-		case "red":
-			require.True(t, val == 3 || val == 4)
-		case "orange":
-			require.True(t, val == 5 || val == 6 || val == 7)
-		case "purple":
-			require.True(t, val == 8)
-		default:
-			panic("received non-existent team")
+		rowCount = 0
+		for {
+			row, err = rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowCount++
+			require.NoError(t, err)
+			val := row[0].(int32)
+			team := row[1].(string)
+			switch team {
+			case "red":
+				require.True(t, val == 3 || val == 4)
+			case "orange":
+				require.True(t, val == 5 || val == 6 || val == 7)
+			case "purple":
+				require.True(t, val == 8)
+			default:
+				panic("received non-existent team")
+			}
 		}
-	}
-	require.Equal(t, rowCount, 3)
+		require.Equal(t, rowCount, 3)
 
-	// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
-	_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
-	require.NoError(t, err)
-	rowCount = 0
-	for {
-		row, err = rowIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		rowCount++
+		// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
+		_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
 		require.NoError(t, err)
-		val := row[0].(int32)
-		team := row[1].(string)
-		switch team {
-		case "red":
-			require.True(t, val == 3 || val == 4)
-		case "orange":
-			require.True(t, val == 5 || val == 6 || val == 7)
-		case "purple":
-			require.True(t, val == 8)
-		default:
-			panic("received non-existent team")
+		rowCount = 0
+		for {
+			row, err = rowIter.Next(ctx)
+			if err == io.EOF {
+				break
+			}
+			rowCount++
+			require.NoError(t, err)
+			val := row[0].(int32)
+			team := row[1].(string)
+			switch team {
+			case "red":
+				require.True(t, val == 3 || val == 4)
+			case "orange":
+				require.True(t, val == 5 || val == 6 || val == 7)
+			case "purple":
+				require.True(t, val == 8)
+			default:
+				panic("received non-existent team")
+			}
 		}
-	}
-	require.Equal(t, rowCount, 3)
+		require.Equal(t, rowCount, 3)
+	})
 }
 
 func TestReadOnly(t *testing.T, harness Harness) {

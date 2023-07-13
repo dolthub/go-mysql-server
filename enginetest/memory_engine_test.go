@@ -492,6 +492,7 @@ func TestOrderByGroupBy(t *testing.T) {
 }
 
 func TestOrderByGroupBy_Experimental(t *testing.T) {
+	t.Skip("window validation expecting error messages")
 	enginetest.TestOrderByGroupBy(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 

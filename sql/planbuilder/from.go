@@ -620,8 +620,8 @@ func (b *PlanBuilder) resolveView(name string, database sql.Database, asOf inter
 				b.viewAsOf = outerAsOf
 				b.currentDatabase = outerDb
 			}()
-			node, _, _, qerr := b.Parse(b.ctx, viewDef.TextDefinition, false)
-			if qerr != nil {
+			node, _, _, err := b.Parse(b.ctx, viewDef.TextDefinition, false)
+			if err != nil {
 				b.handleErr(err)
 			}
 			view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, node).AsView(viewDef.CreateViewStatement)

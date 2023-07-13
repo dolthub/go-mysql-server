@@ -10,7 +10,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -25,9 +24,10 @@ func (b *PlanBuilder) resolveDb(name string) sql.Database {
 		b.handleErr(err)
 	}
 
-	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
-		database = privilegedDatabase.Unwrap()
-	}
+	// todo show tables as of expects privileged
+	//if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+	//	database = privilegedDatabase.Unwrap()
+	//}
 	return database
 }
 
