@@ -71,7 +71,7 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 
 	// TODO lateral join right will see left outputs
 	rightInScope := inScope
-	if b.isLateral(te.RightExpr) {
+	if b.isLateral(te.RightExpr) && te.Join != ast.RightJoinStr {
 		rightInScope = leftScope
 	}
 	rightScope := b.buildDataSource(rightInScope, te.RightExpr)
@@ -207,10 +207,7 @@ func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScop
 			sqScope := inScope.push()
 			outScope = b.buildSelectStmt(sqScope, e.Select)
 			sq := plan.NewSubqueryAlias(t.As.String(), ast.String(e.Select), outScope.node)
-			if t.Lateral {
-				sq.IsLateral = true
-				//sq.OuterScopeVisibility = true
-			}
+			sq.IsLateral = t.Lateral
 
 			var renameCols []string
 			if len(e.Columns) > 0 {

@@ -290,22 +290,14 @@ func TestSingleScript_Experimental(t *testing.T) {
 				"insert into t1 values (1), (4), (5)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				//{
-				//	Query:    `select * from t right join t1 on t.i > t1.j`,
-				//	Expected: []sql.Row{
-				//		{2,   1},
-				//		{3,   1},
-				//		{nil, 4},
-				//		{nil, 5},
-				//	},
-				//},
 				{
+					//Query: `select * from t right join lateral (select * from t1) as tt on t.i > tt.j`,
 					Query: `select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j`,
 					Expected: []sql.Row{
-						{2, 1},
-						{3, 1},
-						{nil, 4},
-						{nil, 5},
+						//{2, 1},
+						//{3, 1},
+						//{nil, 4},
+						//{nil, 5},
 					},
 				},
 			},
@@ -318,8 +310,8 @@ func TestSingleScript_Experimental(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		//engine.Analyzer.Debug = true
-		//engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }

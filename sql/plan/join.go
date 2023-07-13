@@ -183,7 +183,7 @@ func (i JoinType) IsCross() bool {
 
 func (i JoinType) IsLateral() bool {
 	switch i {
-	case JoinTypeLateralCross, JoinTypeLateralInner, JoinTypeLateralLeft, JoinTypeLateralRight:
+	case JoinTypeLateralCross, JoinTypeLateralInner, JoinTypeLateralLeft:
 		return true
 	default:
 		return false
