@@ -819,12 +819,20 @@ var LateralJoinScriptTests = []ScriptTest{
 
 			// Lateral Left Join
 			{
-				Skip:  true,
-				Query: "select * from t left join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
+				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on t.i = tt.j order by t.i, tt.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, nil},
+					{3, nil},
+				},
+			},
+			{
+				Query: "select * from t left join lateral (select * from t1 where t.i != t1.j) as tt on t.i + 1 = tt.j or t.i + 2 = tt.j order by t.i, tt.j",
 				Expected: []sql.Row{
 					{1, nil},
-					{2, 1},
-					{3, 1},
+					{2, 4},
+					{3, 4},
+					{3, 5},
 				},
 			},
 
@@ -836,12 +844,12 @@ var LateralJoinScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrUnknownColumn,
 			},
 			{
-				Skip:  true,
-				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j",
+				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",
 				Expected: []sql.Row{
-					{1, nil},
-					{2, 1},
-					{3, 1},
+					{2,   1},
+					{3,   1},
+					{nil, 4},
+					{nil, 5},
 				},
 			},
 		},

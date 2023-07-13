@@ -1018,12 +1018,12 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildMergeJoin(r, input, children...)
 	case *FullOuterJoin:
 		result, err = b.buildFullOuterJoin(r, input, children...)
-	case *LateralCrossJoin:
-		result, err = b.buildLateralCrossJoin(r, input, children...)
-	case *LateralInnerJoin:
-		result, err = b.buildLateralInnerJoin(r, input, children...)
-	case *LateralLeftJoin:
-		result, err = b.buildLateralLeftJoin(r, input, children...)
+	//case *LateralCrossJoin:
+	//	result, err = b.buildLateralCrossJoin(r, input, children...)
+	//case *LateralInnerJoin:
+	//	result, err = b.buildLateralInnerJoin(r, input, children...)
+	//case *LateralLeftJoin:
+	//	result, err = b.buildLateralLeftJoin(r, input, children...)
 	case *TableScan:
 		result, err = b.buildTableScan(r, input, children...)
 	case *Values:

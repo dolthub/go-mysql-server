@@ -90,7 +90,7 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	// cross join
 	if te.Condition.On == nil || te.Condition.On == ast.BoolVal(true) {
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
-			outScope.node = plan.NewLateralCrossJoin(leftScope.node, rightScope.node)
+			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
 			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		}
@@ -114,7 +114,11 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 			op = plan.JoinTypeLeftOuter
 		}
 	case ast.RightJoinStr:
-		op = plan.JoinTypeRightOuter
+		if b.isLateral(te.RightExpr) {
+			op = plan.JoinTypeLateralRight
+		} else {
+			op = plan.JoinTypeRightOuter
+		}
 	case ast.FullOuterJoinStr:
 		op = plan.JoinTypeFullOuter
 	default:

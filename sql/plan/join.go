@@ -56,6 +56,7 @@ const (
 	JoinTypeLateralCross // LateralCrossJoin
 	JoinTypeLateralInner // LateralInnerJoin
 	JoinTypeLateralLeft  // LateralLeftJoin
+	JoinTypeLateralRight  // LateralLeftJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {
@@ -180,16 +181,13 @@ func (i JoinType) IsCross() bool {
 	return i == JoinTypeCross || i == JoinTypeCrossHash
 }
 
-func (i JoinType) IsLateralCrossJoin() bool {
-	return i == JoinTypeLateralCross
-}
-
-func (i JoinType) IsLateralInnerJoin() bool {
-	return i == JoinTypeLateralInner
-}
-
-func (i JoinType) IsLateralLeftJoin() bool {
-	return i == JoinTypeLateralLeft
+func (i JoinType) IsLateral() bool {
+	switch i {
+	case JoinTypeLateralCross, JoinTypeLateralInner, JoinTypeLateralLeft, JoinTypeLateralRight:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) AsHash() JoinType {
@@ -468,17 +466,21 @@ func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 
 // NewLateralCrossJoin returns a JoinNode where we expect the rhs to be a subquery that references the lhs.
 // The rhs will be executed once for each row in the lhs.
-func NewLateralCrossJoin(left, right sql.Node) *JoinNode {
-	return NewJoin(left, right, JoinTypeLateralCross, nil)
-}
-
-func NewLateralInnerJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeLateralInner, cond)
-}
-
-func NewLateralLeftJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeLateralLeft, cond)
-}
+//func NewLateralCrossJoin(left, right sql.Node) *JoinNode {
+//	return NewJoin(left, right, JoinTypeLateralCross, nil)
+//}
+//
+//func NewLateralInnerJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
+//	return NewJoin(left, right, JoinTypeLateralInner, cond)
+//}
+//
+//func NewLateralLeftJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
+//	return NewJoin(left, right, JoinTypeLateralLeft, cond)
+//}
+//
+//func NewLateralRightJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
+//	return NewJoin(left, right, JoinTypeLateralRight, cond)
+//}
 
 // IsNullRejecting returns whether the expression always returns false for
 // nil inputs.

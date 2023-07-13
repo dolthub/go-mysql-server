@@ -670,244 +670,6 @@ func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-type lateralCrossJoinIterator struct {
-	l  sql.RowIter
-	r  sql.RowIter
-	rp sql.Node
-	b  sql.NodeExecBuilder
-
-	parentRow sql.Row
-
-	rowSize  int
-	scopeLen int
-
-	leftRow sql.Row
-}
-
-func (i *lateralCrossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
-	for {
-		if i.leftRow == nil {
-			r, err := i.l.Next(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			i.leftRow = i.parentRow.Append(r)
-		}
-
-		if i.r == nil {
-			iter, err := i.b.Build(ctx, i.rp, i.leftRow)
-			if err != nil {
-				return nil, err
-			}
-
-			i.r = iter
-			if _, ok := i.r.(*plan.FilterIter); ok {
-				i.r.(*plan.FilterIter).ParentRow = i.leftRow
-			}
-		}
-
-		rightRow, err := i.r.Next(ctx)
-		if err == io.EOF {
-			i.r = nil
-			i.leftRow = nil
-			continue
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		var row sql.Row
-		row = append(row, i.leftRow...)
-		row = append(row, rightRow...)
-
-		return i.removeParentRow(row), nil
-	}
-}
-
-func (i *lateralCrossJoinIterator) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[len(i.parentRow):])
-	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
-	return r
-}
-
-func (i *lateralCrossJoinIterator) Close(ctx *sql.Context) (err error) {
-	if i.l != nil {
-		err = i.l.Close(ctx)
-	}
-
-	if i.r != nil {
-		if err == nil {
-			err = i.r.Close(ctx)
-		} else {
-			i.r.Close(ctx)
-		}
-	}
-
-	return err
-}
-
-func newLateralCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
-	var left, right string
-	if leftTable, ok := j.Left().(sql.Nameable); ok {
-		left = leftTable.Name()
-	} else {
-		left = reflect.TypeOf(j.Left()).String()
-	}
-
-	if rightTable, ok := j.Right().(sql.Nameable); ok {
-		right = rightTable.Name()
-	} else {
-		right = reflect.TypeOf(j.Right()).String()
-	}
-
-	span, ctx := ctx.Span("plan.LateralInnerJoin", trace.WithAttributes(
-		attribute.String("left", left),
-		attribute.String("right", right),
-	))
-
-	l, err := b.Build(ctx, j.Left(), row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, &lateralCrossJoinIterator{
-		b:         b,
-		parentRow: row,
-		l:         l,
-		rp:        j.Right(),
-		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
-		scopeLen:  j.ScopeLen,
-	}), nil
-}
-
-type lateralInnerJoinIterator struct {
-	l  sql.RowIter
-	r  sql.RowIter
-	rp sql.Node
-	b  sql.NodeExecBuilder
-
-	parentRow sql.Row
-	cond      sql.Expression
-
-	rowSize  int
-	scopeLen int
-
-	leftRow sql.Row
-}
-
-func (i *lateralInnerJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
-	for {
-		if i.leftRow == nil {
-			r, err := i.l.Next(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			i.leftRow = i.parentRow.Append(r)
-		}
-
-		if i.r == nil {
-			iter, err := i.b.Build(ctx, i.rp, i.leftRow)
-			if err != nil {
-				return nil, err
-			}
-
-			i.r = iter
-			if _, ok := i.r.(*plan.FilterIter); ok {
-				i.r.(*plan.FilterIter).ParentRow = i.leftRow
-			}
-		}
-
-		rightRow, err := i.r.Next(ctx)
-		if err == io.EOF {
-			i.r = nil
-			i.leftRow = nil
-			continue
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		var row sql.Row
-		row = append(row, i.leftRow...)
-		row = append(row, rightRow...)
-
-		if i.cond != nil {
-			res, err := i.cond.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-			if res == false {
-				continue
-			}
-		}
-
-		return i.removeParentRow(row), nil
-	}
-}
-
-func (i *lateralInnerJoinIterator) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[len(i.parentRow):])
-	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
-	return r
-}
-
-func (i *lateralInnerJoinIterator) Close(ctx *sql.Context) (err error) {
-	if i.l != nil {
-		err = i.l.Close(ctx)
-	}
-
-	if i.r != nil {
-		if err == nil {
-			err = i.r.Close(ctx)
-		} else {
-			i.r.Close(ctx)
-		}
-	}
-
-	return err
-}
-
-func newLateralInnerJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
-	var left, right string
-	if leftTable, ok := j.Left().(sql.Nameable); ok {
-		left = leftTable.Name()
-	} else {
-		left = reflect.TypeOf(j.Left()).String()
-	}
-
-	if rightTable, ok := j.Right().(sql.Nameable); ok {
-		right = rightTable.Name()
-	} else {
-		right = reflect.TypeOf(j.Right()).String()
-	}
-
-	span, ctx := ctx.Span("plan.LateralCrossJoin", trace.WithAttributes(
-		attribute.String("left", left),
-		attribute.String("right", right),
-	))
-
-	l, err := b.Build(ctx, j.Left(), row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, &lateralInnerJoinIterator{
-		b:         b,
-		parentRow: row,
-		cond:      j.Filter,
-		l:         l,
-		rp:        j.Right(),
-		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
-		scopeLen:  j.ScopeLen,
-	}), nil
-}
-
 type lateralJoinIterator struct {
 	pRow  sql.Row
 	lRow  sql.Row
@@ -918,7 +680,10 @@ type lateralJoinIterator struct {
 	cond  sql.Expression
 	jType plan.JoinType
 
+	rowSize  int
 	scopeLen int
+
+	foundMatch bool
 
 	b sql.NodeExecBuilder
 }
@@ -953,6 +718,7 @@ func newLateralJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNod
 		rNode:    j.Right(),
 		cond:     j.Filter,
 		jType:    j.Op,
+		rowSize:  len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
 		scopeLen: j.ScopeLen,
 		b:        b,
 	}), nil
@@ -965,6 +731,7 @@ func (i *lateralJoinIterator) loadLeft(ctx *sql.Context) error {
 			return err
 		}
 		i.lRow = lRow
+		i.foundMatch = false
 	}
 	return nil
 }
@@ -997,9 +764,9 @@ func (i *lateralJoinIterator) loadRight(ctx *sql.Context) error {
 }
 
 func (i *lateralJoinIterator) buildRow(lRow, rRow sql.Row) sql.Row {
-	var row sql.Row
-	row = append(row, lRow...)
-	row = append(row, rRow...)
+	row := make(sql.Row, i.rowSize)
+	copy(row, lRow)
+	copy(row[len(lRow):], rRow)
 	return row
 }
 
@@ -1007,6 +774,16 @@ func (i *lateralJoinIterator) removeParentRow(r sql.Row) sql.Row {
 	copy(r[i.scopeLen:], r[len(i.pRow):])
 	r = r[:len(r)-len(i.pRow)+i.scopeLen]
 	return r
+}
+
+func (i *lateralJoinIterator) reset(ctx *sql.Context) (err error) {
+	if i.rIter != nil {
+		err = i.rIter.Close(ctx)
+		i.rIter = nil
+	}
+	i.lRow = nil
+	i.rRow = nil
+	return
 }
 
 func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
@@ -1018,20 +795,24 @@ func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if err := i.loadRight(ctx); err != nil {
-			if err == io.EOF && i.jType == plan.JoinTypeLateralLeft {
-				res := i.buildRow(i.lRow, nil)
-				// TODO: make reset function
-				if cerr := i.rIter.Close(ctx); cerr != nil {
-					return nil, cerr
+			if errors.Is(err, io.EOF) {
+				if !i.foundMatch && i.jType == plan.JoinTypeLateralLeft {
+					res := i.buildRow(i.lRow, nil)
+					if rerr := i.reset(ctx); rerr != nil {
+						return nil, rerr
+					}
+					return i.removeParentRow(res), nil
 				}
-				i.rIter = nil
-				i.lRow = nil // tell it to load the next left row
-				return i.removeParentRow(res), nil
+				if rerr := i.reset(ctx); rerr != nil {
+					return nil, rerr
+				}
+				continue
 			}
 			return nil, err
 		}
 
 		row := i.buildRow(i.lRow, i.rRow)
+		i.rRow = nil
 		if i.cond != nil {
 			if res, err := i.cond.Eval(ctx, row); err != nil {
 				return nil, err
@@ -1040,6 +821,7 @@ func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		}
 
+		i.foundMatch = true
 		return i.removeParentRow(row), nil
 	}
 }
