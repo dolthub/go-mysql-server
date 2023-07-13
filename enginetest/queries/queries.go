@@ -4437,6 +4437,10 @@ Select * from (
 		Expected: []sql.Row{{"10.12"}},
 	},
 	{
+		Query:    `SELECT CONVERT(1234567893.1234567893, DECIMAL(20,10))`,
+		Expected: []sql.Row{{"1234567893.1234567893"}},
+	},
+	{
 		// In enginetests, the SQL wire conversion logic isn't used, which is what expands the DECIMAL(4,2) value
 		// from "10" to "10.00" to exactly match MySQL's result. So, here we see just "10", but through sql-server
 		// we'll see the correct "10.00" value. Ideally, the enginetests (and dolt sql) would also execute the
