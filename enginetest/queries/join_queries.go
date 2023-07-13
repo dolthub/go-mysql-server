@@ -838,9 +838,8 @@ var LateralJoinScriptTests = []ScriptTest{
 
 			// Lateral Right Join
 			{
-				// THIS IS SUPPOSED TO FAIL
 				Query:       "select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
-				ExpectedErr: sql.ErrTableNotFound,
+				ExpectedErr: sql.ErrTableNotFound, // supposed to me missing column error
 			},
 			{
 				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",

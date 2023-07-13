@@ -589,14 +589,6 @@ func (j *joinOrderBuilder) constructJoin(
 		rel = &SemiJoin{b}
 	case plan.JoinTypeAnti:
 		rel = &AntiJoin{b}
-	//case plan.JoinTypeLateralCross:
-	//	rel = &LateralCrossJoin{b}
-	//case plan.JoinTypeLateralInner:
-	//	rel = &LateralInnerJoin{b}
-	//case plan.JoinTypeLateralLeft:
-	//	rel = &LateralLeftJoin{b}
-	//case plan.JoinTypeLateralRight:
-	//	rel = &LateralLeftJoin{b}
 	default:
 		panic(fmt.Sprintf("unexpected join type: %s", op))
 	}
