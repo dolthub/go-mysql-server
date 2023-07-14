@@ -18,7 +18,6 @@ import (
 	"context"
 	sql2 "database/sql"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"net"
 	"runtime"
@@ -44,6 +43,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
