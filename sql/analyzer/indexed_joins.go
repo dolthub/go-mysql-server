@@ -652,6 +652,18 @@ func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 	return e.Group().ScalarProps().Tables.Difference(grp.RelProps.OutputTables()).Len() == 0
 }
 
+func getColumnRefFromScalar(s memo.ScalarExpr) *memo.ColRef {
+	var result *memo.ColRef
+	memo.DfsScalar(s, func(e memo.ScalarExpr) (err error) {
+		if c, ok := e.(*memo.ColRef); ok {
+			result = c
+			return memo.HaltErr
+		}
+		return
+	})
+	return result
+}
+
 // addMergeJoins will add merge join operators to join relations
 // with native indexes providing sort enforcement on an equality
 // filter.
@@ -707,22 +719,8 @@ func addMergeJoins(m *memo.Memo) error {
 				continue
 			}
 
-			var lRef *memo.ColRef
-			memo.DfsScalar(l.Scalar, func(e memo.ScalarExpr) (err error) {
-				if c, ok := e.(*memo.ColRef); ok {
-					lRef = c
-					return memo.HaltErr
-				}
-				return
-			})
-			var rRef *memo.ColRef
-			memo.DfsScalar(r.Scalar, func(e memo.ScalarExpr) (err error) {
-				if c, ok := e.(*memo.ColRef); ok {
-					rRef = c
-					return memo.HaltErr
-				}
-				return
-			})
+			lRef := getColumnRefFromScalar(l.Scalar)
+			rRef := getColumnRefFromScalar(r.Scalar)
 
 			// check that comparer is not non-decreasing
 			if !isWeaklyMonotonic(l.Scalar) || !isWeaklyMonotonic(r.Scalar) {
