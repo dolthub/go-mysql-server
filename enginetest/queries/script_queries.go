@@ -2811,7 +2811,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t values (5.2443381514267e+18);",
+				Query:    "insert into t values (5.2443381514267e+18);",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 		},
