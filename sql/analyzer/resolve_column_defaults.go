@@ -107,7 +107,7 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 	})
 }
 
-func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolveColumnDefaults")
 	defer span.End()
 
@@ -132,7 +132,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Sc
 
 				col := sch[colIndex]
 				colIndex++
-				return resolveColumnDefault(ctx, col, eWrapper)
+				return resolveColumnDefault(ctx, scope, a.LogFn(), node.Sch, col, eWrapper)
 			})
 		case *plan.InsertInto:
 			// node.Source needs to be explicitly handled here because it's not a
@@ -156,7 +156,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Sc
 				}
 				col := sch[schemaIndex]
 				colIndex++
-				return resolveColumnDefault(ctx, col, eWrapper)
+				return resolveColumnDefault(ctx, scope, a.LogFn(), node.Destination.Schema(), col, eWrapper)
 			})
 
 			if identity == transform.NewTree {
@@ -176,7 +176,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Sc
 				}
 				colIndex++
 
-				return resolveColumnDefault(ctx, col, eWrapper)
+				return resolveColumnDefault(ctx, scope, a.LogFn(), node.TargetSchema(), col, eWrapper)
 			})
 		case *plan.ResolvedTable:
 			ct, ok := node.Table.(*information_schema.ColumnsTable)
@@ -197,7 +197,7 @@ func resolveColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Sc
 
 				colIdx := colIndex
 				colIndex++
-				return resolveColumnDefault(ctx, allColumns[colIdx], eWrapper)
+				return resolveColumnDefault(ctx, scope, a.LogFn(), node.Schema(), allColumns[colIdx], eWrapper)
 			})
 
 			if err != nil {
@@ -496,7 +496,7 @@ func parseColumnDefault(ctx *sql.Context, e *expression.Wrapper) (sql.Expression
 	return expression.WrapExpression(newDefault), transform.NewTree, nil
 }
 
-func resolveColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+func resolveColumnDefault(ctx *sql.Context, scope *plan.Scope, logFn func(string, ...any), schema sql.Schema, col *sql.Column, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
 		return e, transform.SameTree, nil
@@ -520,6 +520,22 @@ func resolveColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapp
 			}
 		}
 	}
+
+	//if ctx.Version == sql.VersionExperimental {
+	//	newDefExpr, same, err := transform.Expr(newDefault.Expression, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	//		if expr, ok := expr.(*expression.GetField); ok {
+	//			return fixidx.FixFieldIndexes(scope, logFn, schema, expr)
+	//			//return expr.WithIndex(expr.Index() - 1), transform.NewTree, nil
+	//		}
+	//		return expr, transform.SameTree, nil
+	//	})
+	//	if err != nil {
+	//		return nil, transform.SameTree, err
+	//	}
+	//	if !same {
+	//		newDefault.Expression = newDefExpr
+	//	}
+	//}
 
 	var err error
 	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, newDefault.IsParenthesized(), col.Nullable)

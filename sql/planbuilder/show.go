@@ -164,6 +164,15 @@ func (b *PlanBuilder) buildShowTable(inScope *scope, s *ast.Show, showType strin
 	}
 
 	checks := b.loadChecksFromTable(outScope, rt.Table)
+	// To match MySQL output format, transform the column names and wrap with backticks
+	for i, check := range checks {
+		checks[i].Expr, _, _ = transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if t, ok := e.(*expression.GetField); ok {
+				return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
+		})
+	}
 
 	database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 	if err != nil {
@@ -175,7 +184,7 @@ func (b *PlanBuilder) buildShowTable(inScope *scope, s *ast.Show, showType strin
 	}
 	showCreate := plan.NewShowCreateTableWithAsOf(rt, showType == "create view", asOfExpr)
 	showCreate.Checks = checks
-	outScope.node = plan.NewShowCreateTableWithAsOf(rt, showType == "create view", asOfExpr)
+	outScope.node = showCreate
 	return
 }
 

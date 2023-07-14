@@ -2,6 +2,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"strconv"
 	"strings"
 
@@ -195,16 +196,7 @@ func (b *PlanBuilder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *sc
 	}
 	database := b.resolveDb(qualifier)
 
-	schema, collation := b.tableSpecToSchema(inScope, c.TableSpec, false)
-	for _, c := range schema.Schema {
-		outScope.newColumn(scopeColumn{
-			db:       strings.ToLower(database.Name()),
-			table:    strings.ToLower(c.Source),
-			col:      strings.ToLower(c.Name),
-			typ:      c.Type,
-			nullable: c.Nullable,
-		})
-	}
+	schema, collation := b.tableSpecToSchema(inScope, outScope, strings.ToLower(database.Name()), strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
 	tableSpec := &plan.TableSpec{
@@ -316,30 +308,29 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 			b.handleErr(err)
 		}
 
-		for _, c := range table.Schema() {
-			outScope.newColumn(scopeColumn{
-				db:       strings.ToLower(table.Database.Name()),
-				table:    strings.ToLower(c.Source),
-				col:      strings.ToLower(c.Name),
-				typ:      c.Type,
-				nullable: c.Nullable,
-			})
-		}
-
 		switch strings.ToLower(ddl.ColumnAction) {
 		case ast.AddStr:
-			sch, _ := b.tableSpecToSchema(inScope, ddl.TableSpec, true)
+			sch, _ := b.tableSpecToSchema(inScope, outScope, dbName, ddl.Table.Name.String(), ddl.TableSpec, true)
 			outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 		case ast.DropStr:
 			drop := plan.NewDropColumnResolved(table, ddl.Column.String())
 			drop.Checks = b.loadChecksFromTable(outScope, table.Table)
 			outScope.node = drop
 		case ast.RenameStr:
+			for _, c := range table.Schema() {
+				outScope.newColumn(scopeColumn{
+					db:       strings.ToLower(table.Database.Name()),
+					table:    strings.ToLower(c.Source),
+					col:      strings.ToLower(c.Name),
+					typ:      c.Type,
+					nullable: c.Nullable,
+				})
+			}
 			rename := plan.NewRenameColumnResolved(table, ddl.Column.String(), ddl.ToColumn.String())
 			rename.Checks = b.loadChecksFromTable(outScope, table.Table)
 			outScope.node = rename
 		case ast.ModifyStr, ast.ChangeStr:
-			sch, _ := b.tableSpecToSchema(inScope, ddl.TableSpec, true)
+			sch, _ := b.tableSpecToSchema(inScope, outScope, dbName, ddl.Table.Name.String(), ddl.TableSpec, true)
 			outScope.node = plan.NewModifyColumnResolved(table, ddl.Column.String(), *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
 		default:
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
@@ -683,6 +674,7 @@ func (b *PlanBuilder) buildAlterDefault(inScope *scope, ddl *ast.DDL) (outScope 
 		return
 	case ast.DropStr:
 		outScope.node = plan.NewAlterDefaultDrop(table.Database, table, ddl.DefaultSpec.Column.String())
+
 		return
 	default:
 		err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
@@ -800,7 +792,7 @@ func (b *PlanBuilder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (ou
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func (b *PlanBuilder) tableSpecToSchema(inScope *scope, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
+func (b *PlanBuilder) tableSpecToSchema(inScope, outScope *scope, dbName, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
 	tableCollation := sql.Collation_Unspecified
 	if !forceInvalidCollation {
 		if len(tableSpec.Options) > 0 {
@@ -828,14 +820,17 @@ func (b *PlanBuilder) tableSpecToSchema(inScope *scope, tableSpec *ast.TableSpec
 		}
 	}
 
+	defaults := make([]ast.Expr, len(tableSpec.Columns))
 	var schema sql.Schema
-	for _, cd := range tableSpec.Columns {
+	for i, cd := range tableSpec.Columns {
 		// Use the table's collation if no character or collation was specified for the table
 		if len(cd.Type.Charset) == 0 && len(cd.Type.Collate) == 0 {
 			if tableCollation != sql.Collation_Unspecified {
 				cd.Type.Collate = tableCollation.Name()
 			}
 		}
+		defaults[i] = cd.Type.Default
+		cd.Type.Default = nil
 		column := b.columnDefinitionToColumn(inScope, cd, tableSpec.Indexes)
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
@@ -843,6 +838,17 @@ func (b *PlanBuilder) tableSpecToSchema(inScope *scope, tableSpec *ast.TableSpec
 		}
 
 		schema = append(schema, column)
+		outScope.newColumn(scopeColumn{
+			db:       dbName,
+			table:    tableName,
+			col:      strings.ToLower(column.Name),
+			typ:      column.Type,
+			nullable: column.Nullable,
+		})
+	}
+
+	for i, def := range defaults {
+		schema[i].Default = b.convertDefaultExpression(outScope, def)
 	}
 
 	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation
@@ -997,12 +1003,13 @@ func (b *PlanBuilder) convertDefaultExpression(inScope *scope, defaultExpr ast.E
 			isLiteral = true
 		}
 	} else if !isParenthesized {
-		if f, ok := parsedExpr.(*expression.UnresolvedFunction); ok {
-			// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
-			// but they still need to be treated as function expressions
-			if f.Name() == "now" || f.Name() == "current_timestamp" {
+		if _, ok := parsedExpr.(sql.FunctionExpression); ok {
+			switch parsedExpr.(type) {
+			case *function.Now, *function.CurrTimestamp:
+				// Datetime and Timestamp columns allow now and current_timestamp to not be enclosed in parens,
+				// but they still need to be treated as function expressions
 				isLiteral = false
-			} else {
+			default:
 				// All other functions must *always* be enclosed in parens
 				err := sql.ErrSyntaxError.New("column default function expressions must be enclosed in parentheses")
 				b.handleErr(err)

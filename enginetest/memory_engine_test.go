@@ -964,7 +964,6 @@ func TestColumnDefaults(t *testing.T) {
 }
 
 func TestColumnDefaults_Exp(t *testing.T) {
-	t.Skip("todo column defaults")
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -973,7 +972,6 @@ func TestAlterTable(t *testing.T) {
 }
 
 func TestAlterTable_Exp(t *testing.T) {
-	t.Skip("todo alters")
 	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -991,6 +989,7 @@ func TestJsonScripts(t *testing.T) {
 
 func TestJsonScripts_Exp(t *testing.T) {
 	// different error
+	t.Skip("different error")
 	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 

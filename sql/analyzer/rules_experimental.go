@@ -27,10 +27,11 @@ var OnceBeforeDefault_Exp = []Rule{
 	{setTargetSchemasId, setTargetSchemas}, //TODO
 	//{loadCheckConstraintsId, loadChecks},   //TODO
 	{resolveDropConstraintId, resolveDropConstraint},
+	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
 	{pruneDropTablesId, pruneDropTables}, //TODO
 	{assignCatalogId, assignCatalog},     //TODO
-	{parseColumnDefaultsId, parseColumnDefaults},
+	//{parseColumnDefaultsId, parseColumnDefaults},
 	{validateDropConstraintId, validateDropConstraint},
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},

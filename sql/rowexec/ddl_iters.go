@@ -1601,11 +1601,16 @@ func dropConstraints(ctx *sql.Context, cat sql.CheckAlterableTable, checks sql.C
 	var err error
 	for _, check := range checks {
 		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
-			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				if column == unresolvedColumn.Name() {
-					err = cat.DropCheck(ctx, check.Name)
-					return true
-				}
+			var name string
+			switch e := e.(type) {
+			case *expression.UnresolvedColumn:
+				name = e.Name()
+			case *expression.GetField:
+				name = e.Name()
+			}
+			if strings.EqualFold(column, name) {
+				err = cat.DropCheck(ctx, check.Name)
+				return true
 			}
 			return false
 		})

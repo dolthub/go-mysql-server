@@ -49,7 +49,7 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 	for _, c := range s.cols {
 		if strings.EqualFold(c.col, col) && (c.table == table || table == "") {
 			if foundCand {
-				err := sql.ErrAmbiguousColumnName.New(col)
+				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
 				s.handleErr(err)
 			}
 			found = c
