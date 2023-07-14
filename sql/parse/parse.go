@@ -4346,19 +4346,21 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
 			ogVal := string(v.Val)
-			floatVal := strconv.FormatFloat(val, 'f', -1, 64)
+			var fmtStr byte = 'f'
+			if strings.Contains(ogVal, "e") {
+				fmtStr = 'e'
+			}
+			floatVal := strconv.FormatFloat(val, fmtStr, -1, 64)
 			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := types.CreateDecimalType(p, s)
 				if err != nil {
 					// THIS IS THE PROBLEM
-					return nil, err
 					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}
 				dVal, _, err := dt.Convert(ogVal)
 				if err != nil {
 					// THIS IS THE PROBLEM
-					return nil, err
 					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}
 				return expression.NewLiteral(dVal, dt), nil
