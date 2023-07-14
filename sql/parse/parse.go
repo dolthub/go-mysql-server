@@ -4351,10 +4351,14 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := types.CreateDecimalType(p, s)
 				if err != nil {
+					// THIS IS THE PROBLEM
+					return nil, err
 					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}
 				dVal, _, err := dt.Convert(ogVal)
 				if err != nil {
+					// THIS IS THE PROBLEM
+					return nil, err
 					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
 				}
 				return expression.NewLiteral(dVal, dt), nil
