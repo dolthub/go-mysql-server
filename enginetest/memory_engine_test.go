@@ -240,18 +240,22 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger with signal and user var",
+			Name: "scientific notation for floats",
 			SetUpScript: []string{
-				"create table auctions (ai int auto_increment, id varchar(32), data json, primary key (ai));",
+				"create table t (b bigint unsigned);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select data from auctions order by ai desc limit 1;`,
-					Expected: []sql.Row{},
+					Query:    "select avg(23.2220000);",
+					Expected: []sql.Row{{"23.2220000"}},
 				},
+				//{
+				//	Query:    "insert into t values (5.2443381514267e+18);",
+				//	Expected: []sql.Row{{types.NewOkResult(1)}},
+				//},
 			},
 		},
 	}
@@ -262,8 +266,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
+		//engine.Analyzer.Debug = true
+		//engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

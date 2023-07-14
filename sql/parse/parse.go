@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
+	"math/big"
 	"regexp"
 	"sort"
 	"strconv"
@@ -4338,34 +4339,31 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 	case sqlparser.IntVal:
 		return convertInt(string(v.Val), 10)
 	case sqlparser.FloatVal:
-		val, err := strconv.ParseFloat(string(v.Val), 64)
+		// determine if the floatVal can fit in a float64 without losing precision
+		f, err := strconv.ParseFloat(string(v.Val), 64)
 		if err != nil {
 			return nil, err
 		}
-
-		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
-		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
-			ogVal := string(v.Val)
-			var fmtStr byte = 'f'
-			if strings.Contains(ogVal, "e") {
-				fmtStr = 'e'
-			}
-			floatVal := strconv.FormatFloat(val, fmtStr, -1, 64)
-			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
-				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
-				dt, err := types.CreateDecimalType(p, s)
-				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
-				}
-				dVal, _, err := dt.Convert(ogVal)
-				if err != nil {
-					return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
-				}
-				return expression.NewLiteral(dVal, dt), nil
-			}
+		bf, _, err := new(big.Float).SetPrec(217).Parse(string(v.Val), 10)
+		if err != nil {
+			return nil, err
 		}
-
-		return expression.NewLiteral(val, types.Float64), nil
+		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
+		fStr := strconv.FormatFloat(f, 'f', -1, 64)
+		bfStr := bf.Text('f', -1)
+		if fStr != bfStr {
+			p, s := expression.GetDecimalPrecisionAndScale(bfStr)
+			dt, err := types.CreateDecimalType(p, s)
+			if err != nil {
+				return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+			}
+			dVal, _, err := dt.Convert(bfStr)
+			if err != nil {
+				return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation())), nil
+			}
+			return expression.NewLiteral(dVal, dt), nil
+		}
+		return expression.NewLiteral(f, types.Float64), nil
 	case sqlparser.HexNum:
 		//TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
