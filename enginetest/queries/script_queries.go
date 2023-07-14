@@ -2805,6 +2805,18 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "scientific notation for floats",
+		SetUpScript: []string{
+			"create table t (b bigint unsigned);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (5.2443381514267e+18);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+		},
+	},
+	{
 		Name: "INSERT IGNORE throws an error when json is badly formatted",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int primary key, col1 json);",
