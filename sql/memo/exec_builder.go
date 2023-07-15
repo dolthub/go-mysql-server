@@ -549,6 +549,22 @@ func (b *ExecBuilder) buildTuple(e *Tuple, sch sql.Schema) (sql.Expression, erro
 	return expression.NewTuple(values...), nil
 }
 
+func (b *ExecBuilder) buildBetween(e *Between, sch sql.Schema) (sql.Expression, error) {
+	value, err := b.buildScalar(e.Value.Scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	min, err := b.buildScalar(e.Min.Scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	max, err := b.buildScalar(e.Max.Scalar, sch)
+	if err != nil {
+		return nil, err
+	}
+	return expression.NewBetween(value, min, max), nil
+}
+
 func (b *ExecBuilder) buildHidden(e *Hidden, sch sql.Schema) (sql.Expression, error) {
 	ret, _, err := fixidx.FixFieldIndexes(e.g.m.scope, nil, sch, e.E)
 	return ret, err

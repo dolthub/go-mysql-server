@@ -875,6 +875,27 @@ func (r *Tuple) Children() []*ExprGroup {
 	return nil
 }
 
+type Between struct {
+	*scalarBase
+	Value *ExprGroup
+	Min   *ExprGroup
+	Max   *ExprGroup
+}
+
+var _ ScalarExpr = (*Between)(nil)
+
+func (r *Between) ExprId() ScalarExprId {
+	return ScalarExprBetween
+}
+
+func (r *Between) String() string {
+	return FormatExpr(r)
+}
+
+func (r *Between) Children() []*ExprGroup {
+	return nil
+}
+
 type Hidden struct {
 	*scalarBase
 	E      sql.Expression
@@ -986,6 +1007,8 @@ func FormatExpr(r exprType) string {
 			vals[i] = fmt.Sprintf("%d", v.Id)
 		}
 		return fmt.Sprintf("tuple: %s", strings.Join(vals, " "))
+	case *Between:
+		return fmt.Sprintf("between: %d, %d, %d", r.Value.Id, r.Min.Id, r.Max.Id)
 	case *Hidden:
 		return fmt.Sprintf("hidden: %s", r.E)
 	default:
@@ -1091,6 +1114,8 @@ func buildScalarExpr(b *ExecBuilder, r ScalarExpr, sch sql.Schema) (sql.Expressi
 		return b.buildIsNull(r, sch)
 	case *Tuple:
 		return b.buildTuple(r, sch)
+	case *Between:
+		return b.buildBetween(r, sch)
 	case *Hidden:
 		return b.buildHidden(r, sch)
 	default:
