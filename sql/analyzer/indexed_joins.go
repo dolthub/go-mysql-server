@@ -201,6 +201,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
+	err = addSlidingRangeJoin(m)
+	if err != nil {
+		return nil, err
+	}
 
 	hints := memo.ExtractJoinHint(n)
 	for _, h := range hints {
@@ -648,6 +652,57 @@ func addHashJoins(m *memo.Memo) error {
 		rel.Op = rel.Op.AsHash()
 		e.Group().Prepend(rel)
 		return nil
+	})
+}
+
+func addSlidingRangeJoin(m *memo.Memo) error {
+	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		switch e.(type) {
+		case *memo.InnerJoin, *memo.LeftJoin:
+		default:
+			return nil
+		}
+
+		join := e.(memo.JoinRel).JoinPrivate()
+		if len(join.Filter) != 1 {
+			return nil
+		}
+
+		filter := join.Filter[0]
+
+		switch f := filter.(type) {
+		case *memo.Between:
+			if !(satisfiesScalarRefs(f.Value.Scalar, join.Left) &&
+				satisfiesScalarRefs(f.Min.Scalar, join.Right) &&
+				satisfiesScalarRefs(f.Max.Scalar, join.Right)) {
+				return nil
+			}
+			// TODO: Is this safe? If the expression references multiple columns, does this reference one
+			// arbitrarily?
+			valueColRef := getColumnRefFromScalar(f.Value.Scalar)
+			minColRef := getColumnRefFromScalar(f.Min.Scalar)
+			maxColRef := getColumnRefFromScalar(f.Max.Scalar)
+			if valueColRef == nil || minColRef == nil || maxColRef == nil {
+				return nil
+			}
+
+			rel := &memo.SlidingRangeJoin{
+				JoinBase: join.Copy(),
+			}
+			rel.SlidingRange = &memo.SlidingRange{
+				ValueCol:  valueColRef,
+				MinColRef: minColRef,
+				MaxColRef: maxColRef,
+				Parent:    rel.JoinBase,
+			}
+			rel.Op = rel.Op.AsSlidingRange()
+			e.Group().Prepend(rel)
+
+			return nil
+		default:
+			return nil
+		}
+
 	})
 }
 
