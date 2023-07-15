@@ -45,6 +45,8 @@ const (
 	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludeNulls
 	JoinTypeMerge                                     // MergeJoin
 	JoinTypeLeftOuterMerge                            // LeftOuterMergeJoin
+	JoinTypeSlidingRange                              // SlidingRangeJoin
+	JoinTypeLeftOuterSlidingRange                     // LeftOuterSlidingRangeJoin
 	JoinTypeSemiHash                                  // SemiHashJoin
 	JoinTypeAntiHash                                  // AntiHashJoin
 	JoinTypeSemiLookup                                // SemiLookupJoin
@@ -56,7 +58,7 @@ const (
 
 func (i JoinType) IsLeftOuter() bool {
 	switch i {
-	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge:
+	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge, JoinTypeLeftOuterSlidingRange:
 		return true
 	default:
 		return false
@@ -88,7 +90,7 @@ func (i JoinType) IsPhysical() bool {
 		JoinTypeSemiLookup, JoinTypeSemiMerge, JoinTypeSemiHash,
 		JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls,
 		JoinTypeMerge, JoinTypeLeftOuterMerge,
-		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash:
+		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash, JoinTypeSlidingRange, JoinTypeLeftOuterSlidingRange:
 		return true
 	default:
 		return false
@@ -190,6 +192,17 @@ func (i JoinType) AsHash() JoinType {
 		return JoinTypeAntiHash
 	case JoinTypeCross:
 		return JoinTypeCrossHash
+	default:
+		return i
+	}
+}
+
+func (i JoinType) AsSlidingRange() JoinType {
+	switch i {
+	case JoinTypeInner:
+		return JoinTypeSlidingRange
+	case JoinTypeLeftOuter:
+		return JoinTypeLeftOuterSlidingRange
 	default:
 		return i
 	}
