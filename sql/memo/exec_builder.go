@@ -133,6 +133,53 @@ func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, input sql.Schema, children 
 	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
+func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	var ret sql.Node
+	var err error
+
+	leftSch := input[:len(input)-len(sr.Parent.Right.RelProps.OutputCols())]
+	rightSch := input[len(sr.Parent.Left.RelProps.OutputCols()):]
+
+	switch n := children[0].(type) {
+	case *plan.ResolvedTable:
+		ret, err = plan.NewSlidingRange(n, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
+	case *plan.TableAlias:
+		ret, err = plan.NewSlidingRange(n.Child.(*plan.ResolvedTable), leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
+		ret = plan.NewTableAlias(n.Name(), ret)
+	case *plan.Distinct:
+		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret = plan.NewDistinct(ret)
+	case *plan.Filter:
+		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret = plan.NewFilter(n.Expression, ret)
+	case *plan.Project:
+		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret = plan.NewProject(n.Projections, ret)
+	case *plan.Limit:
+		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret = plan.NewLimit(n.Limit, ret)
+	default:
+		panic(fmt.Sprintf("unexpected lookup child %T", n))
+	}
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func (b *ExecBuilder) buildSlidingRangeJoin(j *SlidingRangeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+	left := children[0]
+	right, err := b.buildSlidingRange(j.SlidingRange, input, children[1])
+	if err != nil {
+		return nil, err
+	}
+	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+}
+
 func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var alias string
 	var name string
