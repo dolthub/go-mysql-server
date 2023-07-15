@@ -397,6 +397,27 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	return grp
 }
 
+func (m *Memo) MemoizeSlidingRangeJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr, slidingRange *SlidingRange) *ExprGroup {
+	newJoin := &SlidingRangeJoin{
+		JoinBase: &JoinBase{
+			relBase: &relBase{},
+			Left:    left,
+			Right:   right,
+			Op:      op,
+			Filter:  filter,
+		},
+		SlidingRange: slidingRange,
+	}
+	newJoin.SlidingRange.Parent = newJoin.JoinBase
+
+	if grp == nil {
+		return m.NewExprGroup(newJoin)
+	}
+	newJoin.g = grp
+	grp.Prepend(newJoin)
+	return grp
+}
+
 func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexScan, op plan.JoinType, filter []ScalarExpr, swapCmp bool) *ExprGroup {
 	rel := &MergeJoin{
 		JoinBase: &JoinBase{
@@ -927,6 +948,13 @@ type IndexScan struct {
 	Idx    *Index
 	Range  sql.Range
 	Parent *JoinBase
+}
+
+type SlidingRange struct {
+	ValueCol  *ColRef
+	MinColRef *ColRef
+	MaxColRef *ColRef
+	Parent    *JoinBase
 }
 
 // splitConjunction_memo breaks AND expressions into their left and right parts, recursively

@@ -13,6 +13,10 @@ exprs:
   join: true
   attrs:
   - [lookup, "*Lookup"]
+- name: "SlidingRangeJoin"
+  join: true
+  attrs:
+    - [slidingRange, "*SlidingRange"]
 - name: "ConcatJoin"
   join: true
   attrs:
