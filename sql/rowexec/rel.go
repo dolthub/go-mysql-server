@@ -732,3 +732,20 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{int64(n.Count())}), nil
 }
+
+func (b *BaseBuilder) buildSlidingRange(ctx *sql.Context, n *plan.SlidingRange, row sql.Row) (sql.RowIter, error) {
+	// The first time, initialize the child rowIter and the heap
+	span, ctx := ctx.Span("plan.SlidingRange")
+	if !n.IsInitialized() {
+		i, err := b.buildNodeExec(ctx, n.Child, row)
+		if err != nil {
+			span.End()
+			return nil, err
+		}
+		err = n.Initialize(ctx, i)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return n.AcceptRow(ctx, row)
+}
