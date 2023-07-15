@@ -1416,11 +1416,14 @@ Project
 		{
 			Query: "SELECT x as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM xy where x > 1;",
 		},
+		{
+			Query: "select count(*) from xy group by x having count(*) < x",
+		},
 	}
 
 	var verbose, rewrite bool
-	//verbose = true
-	rewrite = true
+	verbose = true
+	//rewrite = true
 
 	var w *bufio.Writer
 	var outputPath string

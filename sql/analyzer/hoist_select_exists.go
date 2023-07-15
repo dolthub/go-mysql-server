@@ -121,15 +121,22 @@ func hoistExistSubqueries(scope *plan.Scope, a *Analyzer, filter *plan.Filter, s
 		switch e := f.(type) {
 		case *plan.ExistsSubquery:
 			joinType = plan.JoinTypeSemi
-			s, err = decorrelateOuterCols(e.Query, scopeLen, aliasDisambig)
+			sqChild, _, err := fixidx.FixFieldIndexesForNode(a.LogFn(), scope.NewScopeFromSubqueryExpression(filter), e.Query.Query)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-
+			s, err = decorrelateOuterCols(sqChild, scopeLen, aliasDisambig)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 		case *expression.Not:
 			if esq, ok := e.Child.(*plan.ExistsSubquery); ok {
 				joinType = plan.JoinTypeAnti
-				s, err = decorrelateOuterCols(esq.Query, scopeLen, aliasDisambig)
+				sqChild, _, err := fixidx.FixFieldIndexesForNode(a.LogFn(), scope.NewScopeFromSubqueryExpression(filter), esq.Query.Query)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				s, err = decorrelateOuterCols(sqChild, scopeLen, aliasDisambig)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -225,11 +232,11 @@ func (f fakeNameable) Name() string { return f.name }
 // decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
 // If the subquery has aliases that conflict with outside aliases, the internal aliases will be renamed to avoid
 // name collisions.
-func decorrelateOuterCols(e *plan.Subquery, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
+func decorrelateOuterCols(sqChild sql.Node, scopeLen int, aliasDisambig *aliasDisambiguator) (*hoistSubquery, error) {
 	var joinFilters []sql.Expression
 	var filtersToKeep []sql.Expression
 	var emptyScope bool
-	n, _, _ := transform.Node(e.Query, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, _, _ := transform.Node(sqChild, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if emptyScope {
 			return n, transform.SameTree, nil
 		}

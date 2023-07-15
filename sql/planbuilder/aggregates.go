@@ -571,11 +571,11 @@ func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Whe
 				// record aggregate
 				_ = b.buildAggregateFunc(fromScope, name, n)
 			} else if isWindowFunc(name) {
-				panic("todo window funcs")
+				_ = b.buildWindowFunc(fromScope, name, n, (*ast.WindowDef)(n.Over))
 			}
 		case *ast.ColName:
 			// add to extra cols
-			c, ok := projScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), true)
+			c, ok := projScope.resolveColumn(strings.ToLower(n.Qualifier.String()), strings.ToLower(n.Name.String()), false)
 			if ok {
 				// references projection alias
 				break
@@ -591,7 +591,7 @@ func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Whe
 			fromScope.addExtraColumn(c)
 		}
 		return true, nil
-	}, having)
+	}, having.Expr)
 }
 
 func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope) *scope {

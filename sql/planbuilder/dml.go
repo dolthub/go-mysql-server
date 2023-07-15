@@ -133,7 +133,6 @@ func (b *PlanBuilder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scop
 		}
 	}
 
-	outScope = b.buildFrom(inScope, d.TableExprs)
 	del := plan.NewDeleteFrom(outScope.node, targets)
 	outScope.node = del
 	return
@@ -155,7 +154,7 @@ func (b *PlanBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scop
 
 	b.buildWhere(outScope, u.Where)
 
-	orderByScope := b.analyzeOrderBy(outScope, nil, u.OrderBy)
+	orderByScope := b.analyzeOrderBy(outScope, b.newScope(), u.OrderBy)
 
 	b.buildOrderBy(outScope, orderByScope)
 	limit := b.buildLimit(outScope, u.Limit)
@@ -177,9 +176,10 @@ func (b *PlanBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scop
 	return
 }
 
-func (b *PlanBuilder) buildInto(inScope *scope, into *ast.Into, node sql.Node) (sql.Node, error) {
+func (b *PlanBuilder) buildInto(inScope *scope, into *ast.Into) {
 	if into.Outfile != "" || into.Dumpfile != "" {
-		return nil, sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
+		err := sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
+		b.handleErr(err)
 	}
 
 	vars := make([]sql.Expression, len(into.Variables))
@@ -190,7 +190,7 @@ func (b *PlanBuilder) buildInto(inScope *scope, into *ast.Into, node sql.Node) (
 			vars[i] = expression.NewUnresolvedProcedureParam(val.String())
 		}
 	}
-	return plan.NewInto(node, vars), nil
+	inScope.node = plan.NewInto(inScope.node, vars)
 }
 
 func (b *PlanBuilder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {

@@ -57,11 +57,11 @@ func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (o
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(n)))
 	case ast.SelectStatement:
-		return b.buildSelectStmt(inScope, n)
-		// todo: SELECT INTO
-		//if into := n.GetInto(); into != nil {
-		outScope = inScope.push()
-
+		outScope = b.buildSelectStmt(inScope, n)
+		if into := n.GetInto(); into != nil {
+			b.buildInto(outScope, into)
+		}
+		return outScope
 	case *ast.Analyze:
 		return b.buildAnalyze(inScope, n, query)
 	case *ast.Show:
