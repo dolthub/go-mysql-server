@@ -146,6 +146,8 @@ func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
 		scalar = m.memoizeOr(e)
 	case *expression.BindVar:
 		scalar = m.memoizeBindvar(e)
+	case *expression.Between:
+		scalar = m.memoizeBetween(e)
 	default:
 		scalar = m.memoizeHidden(e)
 	}
@@ -296,6 +298,20 @@ func (m *Memo) MemoizeIsNull(child sql.Expression) *ExprGroup {
 
 func (m *Memo) memoizeBindvar(e *expression.BindVar) *ExprGroup {
 	scalar := &Bindvar{scalarBase: &scalarBase{}, Name: e.Name, Typ: e.Typ}
+	grp := m.PreexistingScalar(scalar)
+	if grp != nil {
+		return grp
+	}
+	grp = m.NewExprGroup(scalar)
+	// TODO scalar props
+	return grp
+}
+
+func (m *Memo) memoizeBetween(e *expression.Between) *ExprGroup {
+	valueGrp := m.MemoizeScalar(e.Val)
+	minGrp := m.MemoizeScalar(e.Lower)
+	maxGrp := m.MemoizeScalar(e.Upper)
+	scalar := &Between{scalarBase: &scalarBase{}, Value: valueGrp, Min: minGrp, Max: maxGrp}
 	grp := m.PreexistingScalar(scalar)
 	if grp != nil {
 		return grp

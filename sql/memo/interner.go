@@ -41,6 +41,7 @@ const (
 	ScalarExprBindvar
 	ScalarExprIsNull
 	ScalarExprTuple
+	ScalarExprBetween
 	ScalarExprHidden
 )
 
@@ -84,6 +85,8 @@ func internExpr(e ScalarExpr) uint64 {
 		for _, c := range e.Values {
 			h.Write([]byte(fmt.Sprintf("%d", internExpr(c.Scalar))))
 		}
+	case *Between:
+		h.Write([]byte(fmt.Sprintf("%d%d%d%d", e.ExprId(), internExpr(e.Value.Scalar), internExpr(e.Min.Scalar), internExpr(e.Max.Scalar))))
 	case *Regexp:
 		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
 	case *Not:
