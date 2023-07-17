@@ -522,3 +522,20 @@ func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.St
 		return c.costRel(ctx, r, s)
 	}
 }
+
+type slidingRangeBiasedCoster struct {
+	*coster
+}
+
+func NewSlidingRangeBiasedCoster() Coster {
+	return &slidingRangeBiasedCoster{coster: &coster{}}
+}
+
+func (c *slidingRangeBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+	switch r.(type) {
+	case *SlidingRangeJoin:
+		return -biasFactor, nil
+	default:
+		return c.costRel(ctx, r, s)
+	}
+}
