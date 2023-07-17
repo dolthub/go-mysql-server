@@ -18,8 +18,9 @@ import (
 	"container/heap"
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // SlidingRange is a Node that wraps a table with min and max range columns. When used as a secondary provider in Join
