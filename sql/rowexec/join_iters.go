@@ -670,7 +670,6 @@ func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-
 // lateralJoinIter is an iterator that performs a lateral join.
 // A LateralJoin is a join where the right side is a subquery that can reference the left side, like through a filter.
 // Example:
