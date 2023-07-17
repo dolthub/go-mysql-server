@@ -464,24 +464,6 @@ func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeSemi, cond)
 }
 
-// NewLateralCrossJoin returns a JoinNode where we expect the rhs to be a subquery that references the lhs.
-// The rhs will be executed once for each row in the lhs.
-//func NewLateralCrossJoin(left, right sql.Node) *JoinNode {
-//	return NewJoin(left, right, JoinTypeLateralCross, nil)
-//}
-//
-//func NewLateralInnerJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-//	return NewJoin(left, right, JoinTypeLateralInner, cond)
-//}
-//
-//func NewLateralLeftJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-//	return NewJoin(left, right, JoinTypeLateralLeft, cond)
-//}
-//
-//func NewLateralRightJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-//	return NewJoin(left, right, JoinTypeLateralRight, cond)
-//}
-
 // IsNullRejecting returns whether the expression always returns false for
 // nil inputs.
 func IsNullRejecting(e sql.Expression) bool {

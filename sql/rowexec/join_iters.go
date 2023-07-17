@@ -670,6 +670,33 @@ func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
+
+// lateralJoinIter is an iterator that performs a lateral join.
+// A LateralJoin is a join where the right side is a subquery that can reference the left side, like through a filter.
+// Example:
+// select * from t;
+// +---+
+// | i |
+// +---+
+// | 1 |
+// | 2 |
+// | 3 |
+// +---+
+// select * from t1;
+// +---+
+// | i |
+// +---+
+// | 1 |
+// | 4 |
+// | 5 |
+// +---+
+// select * from t, lateral (select * from t1 where t.i = t1.j) tt;
+// +---+---+
+// | i | j |
+// +---+---+
+// | 1 | 1 |
+// +---+---+
+// cond is passed to the filter iter to be evaluated.
 type lateralJoinIterator struct {
 	pRow  sql.Row
 	lRow  sql.Row
