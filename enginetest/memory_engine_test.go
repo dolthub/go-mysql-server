@@ -162,6 +162,16 @@ func TestJoinOpsPrepared(t *testing.T) {
 	enginetest.TestJoinOpsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestJoinOps runs range-join-specific tests for merge
+func TestRangeJoinOps(t *testing.T) {
+	enginetest.TestRangeJoinOps(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
+// TestJoinOpsPrepared runs prepared range-join-specific tests for merge
+func TestRangeJoinOpsPrepared(t *testing.T) {
+	enginetest.TestRangeJoinOpsPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
