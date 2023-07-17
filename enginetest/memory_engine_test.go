@@ -291,8 +291,12 @@ func TestSingleScript_Experimental(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select * from t right join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j`,
-					Expected: []sql.Row{},
+					Query:    `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
+					Expected: []sql.Row{
+						{1, 1},
+						{2, 2},
+						{3, 3},
+					},
 				},
 			},
 		},
