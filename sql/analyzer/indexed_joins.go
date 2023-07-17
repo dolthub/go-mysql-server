@@ -668,6 +668,8 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 			return nil
 		}
 
+		_, rIndexes, rFilters := lookupCandidates(join.Right.First)
+
 		filter := join.Filter[0]
 
 		switch f := filter.(type) {
@@ -686,17 +688,20 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 				return nil
 			}
 
-			rel := &memo.SlidingRangeJoin{
-				JoinBase: join.Copy(),
+			for _, rIdx := range sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters) {
+				rel := &memo.SlidingRangeJoin{
+					JoinBase: join.Copy(),
+				}
+				rel.SlidingRange = &memo.SlidingRange{
+					IndexScan: *rIdx,
+					ValueCol:  valueColRef,
+					MinColRef: minColRef,
+					MaxColRef: maxColRef,
+					Parent:    rel.JoinBase,
+				}
+				rel.Op = rel.Op.AsSlidingRange()
+				e.Group().Prepend(rel)
 			}
-			rel.SlidingRange = &memo.SlidingRange{
-				ValueCol:  valueColRef,
-				MinColRef: minColRef,
-				MaxColRef: maxColRef,
-				Parent:    rel.JoinBase,
-			}
-			rel.Op = rel.Op.AsSlidingRange()
-			e.Group().Prepend(rel)
 
 			return nil
 		default:

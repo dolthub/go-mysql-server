@@ -142,9 +142,17 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, input sql.Schema, chil
 
 	switch n := children[0].(type) {
 	case *plan.ResolvedTable:
-		ret, err = plan.NewSlidingRange(n, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
+		scan, err := b.buildIndexScan(&sr.IndexScan, input, n)
+		if err != nil {
+			return nil, err
+		}
+		ret, err = plan.NewSlidingRange(scan, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
 	case *plan.TableAlias:
-		ret, err = plan.NewSlidingRange(n.Child.(*plan.ResolvedTable), leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
+		scan, err := b.buildIndexScan(&sr.IndexScan, input, n.Child.(*plan.ResolvedTable))
+		if err != nil {
+			return nil, err
+		}
+		ret, err = plan.NewSlidingRange(scan, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildSlidingRange(sr, input, n.Child)

@@ -951,6 +951,7 @@ type IndexScan struct {
 }
 
 type SlidingRange struct {
+	IndexScan IndexScan
 	ValueCol  *ColRef
 	MinColRef *ColRef
 	MaxColRef *ColRef
