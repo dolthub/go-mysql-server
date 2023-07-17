@@ -792,6 +792,14 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
+				Skip:  true,
+				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) tt, lateral (select * from t1 where t.i != t1.j) as ttt order by t.i, tt.j, ttt.j;",
+				Expected: []sql.Row{
+					{1, 1, 4},
+					{1, 1, 5},
+				},
+			},
+			{
 				Query: "select * from (select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j) ttt;",
 				Expected: []sql.Row{
 					{1, 1},
