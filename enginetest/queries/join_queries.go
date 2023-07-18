@@ -800,7 +800,7 @@ var LateralJoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
 				Expected: []sql.Row{
 					{1, 1},
