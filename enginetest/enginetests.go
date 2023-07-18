@@ -140,6 +140,12 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	}
 }
 
+func TestLateralJoinQueries(t *testing.T, harness Harness) {
+	for _, ts := range queries.LateralJoinScriptTests {
+		TestScript(t, harness, ts)
+	}
+}
+
 func TestJSONTableQueries(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.Pk_tablesData)
 	e, err := harness.NewEngine(t)

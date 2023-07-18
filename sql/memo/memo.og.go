@@ -168,6 +168,51 @@ func (r *FullOuterJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
+type LateralCrossJoin struct {
+	*JoinBase
+}
+
+var _ RelExpr = (*LateralCrossJoin)(nil)
+var _ JoinRel = (*LateralCrossJoin)(nil)
+
+func (r *LateralCrossJoin) String() string {
+	return FormatExpr(r)
+}
+
+func (r *LateralCrossJoin) JoinPrivate() *JoinBase {
+	return r.JoinBase
+}
+
+type LateralInnerJoin struct {
+	*JoinBase
+}
+
+var _ RelExpr = (*LateralInnerJoin)(nil)
+var _ JoinRel = (*LateralInnerJoin)(nil)
+
+func (r *LateralInnerJoin) String() string {
+	return FormatExpr(r)
+}
+
+func (r *LateralInnerJoin) JoinPrivate() *JoinBase {
+	return r.JoinBase
+}
+
+type LateralLeftJoin struct {
+	*JoinBase
+}
+
+var _ RelExpr = (*LateralLeftJoin)(nil)
+var _ JoinRel = (*LateralLeftJoin)(nil)
+
+func (r *LateralLeftJoin) String() string {
+	return FormatExpr(r)
+}
+
+func (r *LateralLeftJoin) JoinPrivate() *JoinBase {
+	return r.JoinBase
+}
+
 type TableScan struct {
 	*sourceBase
 	Table *plan.ResolvedTable
@@ -873,6 +918,12 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id)
 	case *FullOuterJoin:
 		return fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LateralCrossJoin:
+		return fmt.Sprintf("lateralcrossjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LateralInnerJoin:
+		return fmt.Sprintf("lateralinnerjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LateralLeftJoin:
+		return fmt.Sprintf("lateralleftjoin %d %d", r.Left.Id, r.Right.Id)
 	case *TableScan:
 		return fmt.Sprintf("tablescan: %s", r.Name())
 	case *Values:

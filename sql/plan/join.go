@@ -52,6 +52,11 @@ const (
 	JoinTypeSemiMerge                                 // SemiMergeJoin
 	JoinTypeAntiMerge                                 // AntiMergeJoin
 	JoinTypeNatural                                   // NaturalJoin
+	// TODO: might be able to merge these with their respective join types
+	JoinTypeLateralCross // LateralCrossJoin
+	JoinTypeLateralInner // LateralInnerJoin
+	JoinTypeLateralLeft  // LateralLeftJoin
+	JoinTypeLateralRight // LateralLeftJoin
 )
 
 func (i JoinType) IsLeftOuter() bool {
@@ -174,6 +179,15 @@ func (i JoinType) IsLookup() bool {
 
 func (i JoinType) IsCross() bool {
 	return i == JoinTypeCross || i == JoinTypeCrossHash
+}
+
+func (i JoinType) IsLateral() bool {
+	switch i {
+	case JoinTypeLateralCross, JoinTypeLateralInner, JoinTypeLateralLeft:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) AsHash() JoinType {

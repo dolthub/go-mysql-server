@@ -71,6 +71,12 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costMergeJoin(ctx, n, s)
 	case *LookupJoin:
 		return c.costLookupJoin(ctx, n, s)
+	case *LateralCrossJoin:
+		return c.costLateralCrossJoin(ctx, n, s)
+	case *LateralInnerJoin:
+		return c.costLateralInnerJoin(ctx, n, s)
+	case *LateralLeftJoin:
+		return c.costLateralLeftJoin(ctx, n, s)
 	case *SemiJoin:
 		return c.costSemiJoin(ctx, n, s)
 	case *AntiJoin:
@@ -181,6 +187,24 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 		return l*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 	}
 	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
+}
+
+func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+	return ((l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor) * degeneratePenalty, nil
+}
+
+func (c *coster) costLateralInnerJoin(ctx *sql.Context, n *LateralInnerJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
+}
+
+func (c *coster) costLateralLeftJoin(ctx *sql.Context, n *LateralLeftJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+	return (l*r-1)*seqIOCostFactor + (l*r)*cpuCostFactor, nil
 }
 
 func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsReader) (float64, error) {

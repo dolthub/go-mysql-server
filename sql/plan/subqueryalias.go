@@ -31,6 +31,7 @@ type SubqueryAlias struct {
 	OuterScopeVisibility bool
 	CanCacheResults      bool
 	CacheableCTESource   bool
+	IsLateral            bool
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)
