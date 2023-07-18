@@ -672,6 +672,7 @@ func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
 
 // lateralJoinIter is an iterator that performs a lateral join.
 // A LateralJoin is a join where the right side is a subquery that can reference the left side, like through a filter.
+// MySQL Docs: https://dev.mysql.com/doc/refman/8.0/en/lateral-derived-tables.html
 // Example:
 // select * from t;
 // +---+
