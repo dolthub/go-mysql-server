@@ -142,13 +142,13 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, input sql.Schema, chil
 
 	switch n := children[0].(type) {
 	case *plan.ResolvedTable:
-		scan, err := b.buildIndexScan(&sr.IndexScan, input, n)
+		scan, err := b.buildIndexScan(&sr.RightIndex, input, n)
 		if err != nil {
 			return nil, err
 		}
 		ret, err = plan.NewSlidingRange(scan, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
 	case *plan.TableAlias:
-		scan, err := b.buildIndexScan(&sr.IndexScan, input, n.Child.(*plan.ResolvedTable))
+		scan, err := b.buildIndexScan(&sr.RightIndex, input, n.Child.(*plan.ResolvedTable))
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +176,10 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, input sql.Schema, chil
 }
 
 func (b *ExecBuilder) buildSlidingRangeJoin(j *SlidingRangeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	left := children[0]
+	left, err := b.buildIndexScan(&j.SlidingRange.LeftIndex, input, children[0])
+	if err != nil {
+		return nil, err
+	}
 	right, err := b.buildSlidingRange(j.SlidingRange, input, children[1])
 	if err != nil {
 		return nil, err

@@ -951,11 +951,12 @@ type IndexScan struct {
 }
 
 type SlidingRange struct {
-	IndexScan IndexScan
-	ValueCol  *ColRef
-	MinColRef *ColRef
-	MaxColRef *ColRef
-	Parent    *JoinBase
+	LeftIndex  IndexScan
+	RightIndex IndexScan
+	ValueCol   *ColRef
+	MinColRef  *ColRef
+	MaxColRef  *ColRef
+	Parent     *JoinBase
 }
 
 // splitConjunction_memo breaks AND expressions into their left and right parts, recursively
