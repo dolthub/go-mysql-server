@@ -694,6 +694,10 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 					rel := &memo.SlidingRangeJoin{
 						JoinBase: join.Copy(),
 					}
+					// TODO: Remove the filter that was used to create the sliding range because it's no longer
+					// necessary to evaluate. However, removing this can cause issues if it's the only filter because
+					// iterjoin assumes that there's a filter condition.
+					// rel.Filter = rel.Filter[1:]
 					rel.SlidingRange = &memo.SlidingRange{
 						LeftIndex:  *lIdx,
 						RightIndex: *rIdx,
