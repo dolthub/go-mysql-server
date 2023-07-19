@@ -16,6 +16,7 @@ package mysql_db
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -34,45 +35,18 @@ var (
 	dbTblSchema sql.Schema
 )
 
-// DbConverter handles the conversion between a stored *User entry and the faux "db" Grant Table.
-type DbConverter struct{}
-
-var _ in_mem_table.DataEditorConverter = DbConverter{}
-
-// RowToKey implements the interface in_mem_table.DataEditorConverter.
-func (conv DbConverter) RowToKey(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
+func UserAddDBRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
 	if len(row) != len(dbTblSchema) {
 		return nil, errDbRow
 	}
-	host, ok := row[dbTblColIndex_Host].(string)
-	if !ok {
-		return nil, errDbRow
-	}
-	user, ok := row[dbTblColIndex_User].(string)
-	if !ok {
-		return nil, errDbRow
-	}
-	return UserPrimaryKey{
-		Host: host,
-		User: user,
-	}, nil
-}
-
-// AddRowToEntry implements the interface in_mem_table.DataEditorConverter.
-func (conv DbConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_mem_table.Entry) (in_mem_table.Entry, error) {
-	if len(row) != len(dbTblSchema) {
-		return nil, errDbRow
-	}
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errDbEntry
-	}
-	user = user.Copy(ctx).(*User)
 
 	db, ok := row[dbTblColIndex_Db].(string)
 	if !ok {
 		return nil, errDbRow
 	}
+
+	user = UserCopy(user)
+
 	var privs []sql.PrivilegeType
 	for i, val := range row {
 		if uintVal, ok := val.(uint16); ok && uintVal == 2 {
@@ -118,41 +92,49 @@ func (conv DbConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_me
 			}
 		}
 	}
+
 	user.PrivilegeSet.AddDatabase(db, privs...)
+
 	return user, nil
 }
 
-// RemoveRowFromEntry implements the interface in_mem_table.DataEditorConverter.
-func (conv DbConverter) RemoveRowFromEntry(ctx *sql.Context, row sql.Row, entry in_mem_table.Entry) (in_mem_table.Entry, error) {
+func UserRemoveDBRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
 	if len(row) != len(dbTblSchema) {
 		return nil, errDbRow
 	}
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errDbEntry
-	}
-	user = user.Copy(ctx).(*User)
 
 	db, ok := row[dbTblColIndex_Db].(string)
 	if !ok {
 		return nil, errDbRow
 	}
+
+	user = UserCopy(user)
 	user.PrivilegeSet.ClearDatabase(db)
 	return user, nil
 }
 
-// EntryToRows implements the interface in_mem_table.DataEditorConverter.
-func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) ([]sql.Row, error) {
-	user, ok := entry.(*User)
-	if !ok {
-		return nil, errDbEntry
+func UserFromDBRow(ctx *sql.Context, row sql.Row) (*User, error) {
+	if len(row) != len(dbTblSchema) {
+		return nil, errDbRow
 	}
+	host, ok := row[dbTblColIndex_Host].(string)
+	if !ok {
+		return nil, errDbRow
+	}
+	user, ok := row[dbTblColIndex_User].(string)
+	if !ok {
+		return nil, errDbRow
+	}
+	return &User{
+		Host: host,
+		User: user,
+	}, nil
+}
 
+func UserToDBRows(ctx *sql.Context, u *User) ([]sql.Row, error) {
 	var rows []sql.Row
-	for _, dbSet := range user.PrivilegeSet.GetDatabases() {
-		if dbSet.Count() == 0 {
-			continue
-		}
+
+	newRow := func() (sql.Row, error) {
 		row := make(sql.Row, len(dbTblSchema))
 		var err error
 		for i, col := range dbTblSchema {
@@ -161,10 +143,21 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 				return nil, err // Should never happen, schema is static
 			}
 		}
-		row[dbTblColIndex_User] = user.User
-		row[dbTblColIndex_Host] = user.Host
-		row[dbTblColIndex_Db] = dbSet.Name()
+		return row, nil
+	}
 
+	for _, dbSet := range u.PrivilegeSet.GetDatabases() {
+		if dbSet.Count() == 0 {
+			continue
+		}
+		row, err := newRow()
+		if err != nil {
+			return nil, err
+		}
+
+		row[dbTblColIndex_User] = u.User
+		row[dbTblColIndex_Host] = u.Host
+		row[dbTblColIndex_Db] = dbSet.Name()
 		for _, priv := range dbSet.ToSlice() {
 			switch priv {
 			case sql.PrivilegeType_Select:
@@ -207,10 +200,29 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 				row[dbTblColIndex_Trigger_priv] = uint16(2)
 			}
 		}
+
 		rows = append(rows, row)
 	}
 
 	return rows, nil
+}
+
+func NewUserDBIndexedSetTable(set in_mem_table.IndexedSet[*User], lock, rlock sync.Locker) *in_mem_table.MultiIndexedSetTable[*User] {
+	table := in_mem_table.NewMultiIndexedSetTable[*User](
+		dbTblName,
+		dbTblSchema,
+		sql.Collation_utf8mb3_bin,
+		set,
+		in_mem_table.MultiValueOps[*User]{
+			ToRows:    UserToDBRows,
+			FromRow:   UserFromDBRow,
+			AddRow:    UserAddDBRow,
+			DeleteRow: UserRemoveDBRow,
+		},
+		lock,
+		rlock,
+	)
+	return table
 }
 
 // init creates the schema for the "db" Grant Table.

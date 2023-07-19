@@ -211,6 +211,8 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
+	editor := mysqlDb.Editor()
+	defer editor.Close()
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.ObjectType != ObjectType_Any {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -219,7 +221,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -245,7 +247,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -272,7 +274,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(editor, grantUser.Name, grantUser.Host, false)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -284,7 +286,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 
@@ -664,33 +666,30 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 	//TODO: only active roles may be assigned if the SUPER privilege is not held
 	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(client.User, client.Address, false)
+
+	// TODO: Locking
+	reader := mysqlDb.Reader()
+	defer reader.Close()
+	user := mysqlDb.GetUser(reader, client.User, client.Address, false)
 	if user == nil {
 		return false
 	}
-	roleEntries := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+	roleEdges := reader.GetToUserRoleEdges(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
+ROLES:
 	for _, roleName := range n.Roles {
-		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(reader, roleName.Name, roleName.Host, true)
 		if role == nil {
 			return false
 		}
-		foundMatch := false
-		for _, roleEntry := range roleEntries {
-			roleEdge := roleEntry.(*mysql_db.RoleEdge)
-			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host {
-				if roleEdge.WithAdminOption {
-					foundMatch = true
-				} else {
-					return false
-				}
+		for _, roleEdge := range roleEdges {
+			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host && roleEdge.WithAdminOption {
+				continue ROLES
 			}
 		}
-		if !foundMatch {
-			return false
-		}
+		return false
 	}
 	return true
 }
@@ -706,30 +705,30 @@ func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(editor, targetUser.Name, targetUser.Host, false)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(editor, targetRole.Name, targetRole.Host, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
-			err := roleEdgesData.Put(ctx, &mysql_db.RoleEdge{
+			editor.PutRoleEdge(&mysql_db.RoleEdge{
 				FromHost:        role.Host,
 				FromUser:        role.User,
 				ToHost:          user.Host,
 				ToUser:          user.User,
 				WithAdminOption: n.WithAdminOption,
 			})
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil

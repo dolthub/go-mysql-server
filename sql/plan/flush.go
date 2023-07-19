@@ -44,11 +44,12 @@ func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, err
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	err := gts.Persist(ctx)
+	editor := gts.Editor()
+	defer editor.Close()
+	err := gts.Persist(ctx, editor)
 	if err != nil {
 		return nil, err
 	}
-
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 

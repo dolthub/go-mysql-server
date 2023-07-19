@@ -28,17 +28,25 @@ import (
 // TODO: add the remaining statements that interact with the grant tables
 func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	mysqlDb := a.Catalog.MySQLDb
+
+	// TODO: The management around closing this editor is sad. If you add
+	// an early exit before the Close after the GetUser below, make sure to
+	// close this editor.
+	ed := mysqlDb.Editor()
+
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
 		mysqlDb.Enabled = true
 	}
 	if !mysqlDb.Enabled {
+		ed.Close()
 		return n, transform.SameTree, nil
 	}
 
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(ed, client.User, client.Address, false)
+	ed.Close()
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
