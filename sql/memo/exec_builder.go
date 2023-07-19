@@ -133,38 +133,49 @@ func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, input sql.Schema, children 
 	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
-func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, leftSch, rightSch sql.Schema, children ...sql.Node) (sql.Node, error) {
 	var ret sql.Node
 	var err error
 
-	leftSch := input[:len(input)-len(sr.Parent.Right.RelProps.OutputCols())]
-	rightSch := input[len(sr.Parent.Left.RelProps.OutputCols()):]
-
 	switch n := children[0].(type) {
 	case *plan.ResolvedTable:
-		scan, err := b.buildIndexScan(&sr.RightIndex, input, n)
+		// scan, err := b.buildIndexScan(&sr.RightIndex, input, n)
+		sortExpr, err := b.buildScalar(*sr.MinExpr, rightSch)
 		if err != nil {
 			return nil, err
 		}
-		ret, err = plan.NewSlidingRange(scan, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
+		sf := []sql.SortField{{
+			Column:       sortExpr,
+			Order:        sql.Ascending,
+			NullOrdering: sql.NullsFirst,
+		}}
+		sort := plan.NewSort(sf, n)
+		ret, err = plan.NewSlidingRange(sort, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
 	case *plan.TableAlias:
-		scan, err := b.buildIndexScan(&sr.RightIndex, input, n.Child.(*plan.ResolvedTable))
+		// scan, err := b.buildIndexScan(&sr.RightIndex, input, n.Child.(*plan.ResolvedTable))
+		sortExpr, err := b.buildScalar(*sr.MinExpr, rightSch)
 		if err != nil {
 			return nil, err
 		}
-		ret, err = plan.NewSlidingRange(scan, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
+		sf := []sql.SortField{{
+			Column:       sortExpr,
+			Order:        sql.Ascending,
+			NullOrdering: sql.NullsFirst,
+		}}
+		sort := plan.NewSort(sf, n)
+		ret, err = plan.NewSlidingRange(sort, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewDistinct(ret)
 	case *plan.Filter:
-		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
 	case *plan.Project:
-		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewProject(n.Projections, ret)
 	case *plan.Limit:
-		ret, err = b.buildSlidingRange(sr, input, n.Child)
+		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
 	default:
 		panic(fmt.Sprintf("unexpected lookup child %T", n))
@@ -176,11 +187,25 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, input sql.Schema, chil
 }
 
 func (b *ExecBuilder) buildSlidingRangeJoin(j *SlidingRangeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	left, err := b.buildIndexScan(&j.SlidingRange.LeftIndex, input, children[0])
+	// left, err := b.buildIndexScan(j.SlidingRange.LeftIndex, input, children[0])
+	//if err != nil {
+	//	return nil, err
+	//}
+	leftSch := input[:len(input)-len(j.Right.RelProps.OutputCols())]
+	rightSch := input[len(j.Left.RelProps.OutputCols()):]
+
+	sortExpr, err := b.buildScalar(*j.SlidingRange.ValueExpr, leftSch)
 	if err != nil {
 		return nil, err
 	}
-	right, err := b.buildSlidingRange(j.SlidingRange, input, children[1])
+	sf := []sql.SortField{{
+		Column:       sortExpr,
+		Order:        sql.Ascending,
+		NullOrdering: sql.NullsFirst,
+	}}
+	left := plan.NewSort(sf, children[0])
+
+	right, err := b.buildSlidingRange(j.SlidingRange, leftSch, rightSch, children[1])
 	if err != nil {
 		return nil, err
 	}
