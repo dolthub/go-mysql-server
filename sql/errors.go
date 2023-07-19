@@ -795,6 +795,9 @@ var (
 
 	// ErrDroppedJoinFilters is returned when we removed filters from a join, but failed to re-insert them
 	ErrDroppedJoinFilters = errors.NewKind("dropped filters from join, but failed to re-insert them")
+
+	// ErrInvalidIndexName is called when we try to create an index with an unusable name.
+	ErrInvalidIndexName = errors.NewKind("invalid index name '%s'")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

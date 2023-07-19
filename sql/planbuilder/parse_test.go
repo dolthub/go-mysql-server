@@ -1419,6 +1419,12 @@ Project
 		{
 			Query: "select count(*) from xy group by x having count(*) < x",
 		},
+		{
+			Query: "SELECT group_concat(x ORDER_BY x) FROM xy;",
+		},
+		{
+			Query: "select - SUM(DISTINCT - - 71) as col2 from xy cor0",
+		},
 	}
 
 	var verbose, rewrite bool

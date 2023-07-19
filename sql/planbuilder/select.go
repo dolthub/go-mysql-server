@@ -89,7 +89,9 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	}
 	limit := b.buildLimit(outScope, s.Limit)
 	if limit != nil {
-		outScope.node = plan.NewLimit(limit, outScope.node)
+		l := plan.NewLimit(limit, outScope.node)
+		l.CalcFoundRows = s.CalcFoundRows
+		outScope.node = l
 	}
 
 	// Last level projection restricts outputs to target projections.

@@ -264,6 +264,18 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	if e.Distinct && name == "count" {
 		agg = aggregation.NewCountDistinct(args...)
 	} else {
+
+		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
+		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
+		if e.Distinct {
+			if len(e.Exprs) != 1 {
+				err := sql.ErrUnsupportedSyntax.New("more than one expression with distinct")
+				b.handleErr(err)
+			}
+
+			args[0] = expression.NewDistinctExpression(args[0])
+		}
+
 		f, err := b.cat.Function(b.ctx, name)
 		if err != nil {
 			b.handleErr(err)
@@ -288,6 +300,53 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	}
 
 	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: aggType, nullable: agg.IsNullable()}
+	id := gb.outScope.newColumn(col)
+	gb.addAggStr(col)
+	col.id = id
+	return col.scalarGf()
+}
+
+func (b *PlanBuilder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
+	if inScope.groupBy == nil {
+		inScope.initGroupBy()
+	}
+	gb := inScope.groupBy
+
+	args := make([]sql.Expression, len(e.Exprs))
+	for i, a := range e.Exprs {
+		args[i] = b.selectExprToExpression(inScope, a)
+	}
+
+	separatorS := ","
+	if !e.Separator.DefaultSeparator {
+		separatorS = e.Separator.SeparatorString
+	}
+
+	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
+	var sortFields sql.SortFields
+	for _, c := range orderByScope.cols {
+		so := sql.Ascending
+		if c.descending {
+			so = sql.Descending
+		}
+		sf := sql.SortField{
+			Column: c.scalar,
+			Order:  so,
+		}
+		sortFields = append(sortFields, sf)
+	}
+
+	//TODO: this should be acquired at runtime, not at parse time, so fix this
+	gcml, err := b.ctx.GetSessionVariable(b.ctx, "group_concat_max_len")
+	if err != nil {
+		b.handleErr(err)
+	}
+	groupConcatMaxLen := gcml.(uint64)
+
+	// todo store ref to aggregate
+	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+
 	id := gb.outScope.newColumn(col)
 	gb.addAggStr(col)
 	col.id = id

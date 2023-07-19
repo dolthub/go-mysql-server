@@ -112,8 +112,8 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
-		//return b.buildAggregateFunc(inScope, "group_concat", v)
-		b.handleErr(fmt.Errorf("todo group concat"))
+		return b.buildGroupConcat(inScope, v)
+		//b.handleErr(fmt.Errorf("todo group concat"))
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
 	case *ast.AndExpr:

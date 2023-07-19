@@ -243,13 +243,11 @@ func pushdownFiltersToAboveTable(
 	// Move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
 	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
-		filters.markFiltersHandled(tableFilters...)
-
 		handled, _, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), tableNode.Schema(), tableFilters...)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
+		filters.markFiltersHandled(handled...)
 		pushedDownFilterExpression = expression.JoinAnd(handled...)
 
 		a.Log(

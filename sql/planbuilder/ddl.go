@@ -3,6 +3,7 @@ package planbuilder
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -46,6 +47,30 @@ func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.Mu
 		alterScope := b.buildDDL(inScope, query, c.Statements[i])
 		statements[i] = alterScope.node
 	}
+	// certain alter statements need to happen before others
+	sort.Slice(statements, func(i, j int) bool {
+		switch statements[i].(type) {
+		case *plan.RenameColumn:
+			switch statements[j].(type) {
+			case *plan.DropColumn,
+				*plan.AddColumn,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.DropColumn:
+			switch statements[j].(type) {
+			case *plan.AddColumn,
+				*plan.AlterIndex:
+				return true
+			}
+		case *plan.AddColumn:
+			switch statements[j].(type) {
+			case *plan.AlterIndex:
+				return true
+			}
+		}
+		return false
+	})
 	outScope = inScope.push()
 	outScope.node = plan.NewBlock(statements)
 	return
@@ -127,7 +152,7 @@ func (b *PlanBuilder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scop
 			if sql.ErrTableNotFound.Is(err) {
 				b.ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
-					Code:    mysql.ERDbDropExists,
+					Code:    mysql.ERBadTable,
 					Message: fmt.Sprintf("Can't drop table %s; table doesn't exist ", t.Name.String()),
 				})
 				continue
@@ -569,6 +594,12 @@ func (b *PlanBuilder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *s
 			return
 		}
 
+		indexName := ddl.IndexSpec.ToName.String()
+		if strings.ToLower(indexName) == ast.PrimaryStr {
+			err := sql.ErrInvalidIndexName.New(indexName)
+			b.handleErr(err)
+		}
+
 		outScope.node = plan.NewAlterCreateIndex(table.Database, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
 		return
 	case ast.DropStr:
@@ -781,13 +812,14 @@ func (b *PlanBuilder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (ou
 		cols[i] = expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 	}
 
-	outScope.node = plan.NewCreateIndex(
+	createIndex := plan.NewCreateIndex(
 		ddl.IndexSpec.ToName.String(),
 		table,
 		cols,
 		ddl.IndexSpec.Using.Lowered(),
 		config,
 	)
+	createIndex.Catalog = b.cat
 	return
 }
 
@@ -1052,9 +1084,13 @@ func (b *PlanBuilder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope)
 		if err != nil {
 			b.handleErr(err)
 		}
-		outScope.node = plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
+		createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
+		createDb.Catalog = b.cat
+		outScope.node = createDb
 	case ast.DropStr:
-		outScope.node = plan.NewDropDatabase(c.DBName, c.IfExists)
+		dropDb := plan.NewDropDatabase(c.DBName, c.IfExists)
+		dropDb.Catalog = b.cat
+		outScope.node = dropDb
 	case ast.AlterStr:
 		if len(c.CharsetCollate) == 0 {
 			if len(c.DBName) > 0 {
@@ -1082,7 +1118,9 @@ func (b *PlanBuilder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope)
 		if err != nil {
 			b.handleErr(err)
 		}
-		outScope.node = plan.NewAlterDatabase(c.DBName, collation)
+		alterDb := plan.NewAlterDatabase(c.DBName, collation)
+		alterDb.Catalog = b.cat
+		outScope.node = alterDb
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(c))
 		b.handleErr(err)

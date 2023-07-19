@@ -521,22 +521,6 @@ func resolveColumnDefault(ctx *sql.Context, scope *plan.Scope, logFn func(string
 		}
 	}
 
-	//if ctx.Version == sql.VersionExperimental {
-	//	newDefExpr, same, err := transform.Expr(newDefault.Expression, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-	//		if expr, ok := expr.(*expression.GetField); ok {
-	//			return fixidx.FixFieldIndexes(scope, logFn, schema, expr)
-	//			//return expr.WithIndex(expr.Index() - 1), transform.NewTree, nil
-	//		}
-	//		return expr, transform.SameTree, nil
-	//	})
-	//	if err != nil {
-	//		return nil, transform.SameTree, err
-	//	}
-	//	if !same {
-	//		newDefault.Expression = newDefExpr
-	//	}
-	//}
-
 	var err error
 	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, newDefault.IsParenthesized(), col.Nullable)
 	if err != nil {

@@ -43,8 +43,6 @@ import (
 )
 
 var (
-	errIncorrectIndexName = errors.NewKind("incorrect index name '%s'")
-
 	errInvalidDescribeFormat = errors.NewKind("invalid format %q for DESCRIBE, supported formats: %s")
 
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
@@ -2265,7 +2263,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 		indexName := ddl.IndexSpec.ToName.String()
 		if strings.ToLower(indexName) == sqlparser.PrimaryStr {
-			return nil, errIncorrectIndexName.New(indexName)
+			return nil, sql.ErrInvalidIndexName.New(indexName)
 		}
 
 		return plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, indexName, using, constraint, columns, comment), nil

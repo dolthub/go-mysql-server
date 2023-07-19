@@ -37,6 +37,10 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 		case *expression.Star:
 			tableName := strings.ToLower(e.Table)
+			if tableName == "" && len(inScope.cols) == 0 {
+				err := sql.ErrNoTablesUsed.New()
+				b.handleErr(err)
+			}
 			for _, c := range inScope.cols {
 				if c.table == tableName || tableName == "" {
 					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)

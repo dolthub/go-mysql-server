@@ -11,7 +11,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildbuildUse(inScope *scope, n *ast.Use) (outScope *scope) {
+func (b *PlanBuilder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
 	name := n.DBName.String()
 	ret := plan.NewUse(b.resolveDb(name))
 	ret.Catalog = b.cat
@@ -71,13 +71,6 @@ func (b *PlanBuilder) buildDeallocate(inScope *scope, n *ast.Deallocate) (outSco
 	return outScope
 }
 
-func (b *PlanBuilder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
-	outScope = inScope.push()
-	name := n.DBName.String()
-	outScope.node = plan.NewUse(b.resolveDb(name))
-	return outScope
-}
-
 func (b *PlanBuilder) buildLockTables(inScope *scope, s *ast.LockTables) (outScope *scope) {
 	outScope = inScope.push()
 	tables := make([]*plan.TableLock, len(s.Tables))
@@ -90,12 +83,16 @@ func (b *PlanBuilder) buildLockTables(inScope *scope, s *ast.LockTables) (outSco
 		tables[i] = &plan.TableLock{Table: tableScope.node, Write: write}
 	}
 
-	outScope.node = plan.NewLockTables(tables)
+	lockTables := plan.NewLockTables(tables)
+	lockTables.Catalog = b.cat
+	outScope.node = lockTables
 	return outScope
 }
 
 func (b *PlanBuilder) buildUnlockTables(inScope *scope, s *ast.UnlockTables) (outScope *scope) {
 	outScope = inScope.push()
-	outScope.node = plan.NewUnlockTables()
+	unlockTables := plan.NewUnlockTables()
+	unlockTables.Catalog = b.cat
+	outScope.node = unlockTables
 	return outScope
 }

@@ -45,7 +45,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 			}
 
 			// fromScope col
-			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), false)
+			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)

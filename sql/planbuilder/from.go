@@ -586,6 +586,10 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 	}
 
 	rt := plan.NewResolvedTable(tab, database, asOfLit)
+	ct, ok := rt.Table.(sql.CatalogTable)
+	if ok {
+		rt.Table = ct.AssignCatalog(b.cat)
+	}
 	outScope.node = rt
 	if asofBindVar {
 		outScope.node = plan.NewDeferredAsOfTable(rt, asOfExpr)
