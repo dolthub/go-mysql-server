@@ -3374,7 +3374,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
 			},
 			{
-				Query:    "select * from t",
+				Query: "select * from t",
 				Expected: []sql.Row{
 					{1},
 					{2},

@@ -82,7 +82,8 @@ func (e *EmptyTable) PartitionRows(_ *sql.Context, _ sql.Partition) (sql.RowIter
 	return &emptyTableIter{}, nil
 }
 
-type emptyTableUpdater struct {}
+type emptyTableUpdater struct{}
+
 var _ sql.RowUpdater = (*emptyTableUpdater)(nil)
 
 // StatementBegin implements the sql.EditOpenerCloser interface
@@ -108,7 +109,8 @@ func (e emptyTableUpdater) Close(_ *sql.Context) error {
 	return nil
 }
 
-type emptyTableIter struct {}
+type emptyTableIter struct{}
+
 var _ sql.RowIter = (*emptyTableIter)(nil)
 
 // Next implements the sql.RowIter interface.
@@ -121,7 +123,8 @@ func (e *emptyTableIter) Close(_ *sql.Context) error {
 	return nil
 }
 
-type emptyTablePartition struct {}
+type emptyTablePartition struct{}
+
 var _ sql.Partition = (*emptyTablePartition)(nil)
 
 // Key implements the sql.Partition interface.
@@ -129,7 +132,8 @@ func (e emptyTablePartition) Key() []byte {
 	return nil
 }
 
-type emptyTablePartitionIter struct {}
+type emptyTablePartitionIter struct{}
+
 var _ sql.PartitionIter = (*emptyTablePartitionIter)(nil)
 
 // Close implements the sql.PartitionIter interface.
