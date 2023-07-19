@@ -52,8 +52,8 @@ func (pl *ProcessList) Processes() []sql.Process {
 		p := *proc
 		var progMap = make(map[string]sql.TableProgress, len(p.Progress))
 		for progName, prog := range p.Progress {
-			newProg := sql.TableProgress {
-				Progress: prog.Progress,
+			newProg := sql.TableProgress{
+				Progress:           prog.Progress,
 				PartitionsProgress: make(map[string]sql.PartitionProgress, len(prog.PartitionsProgress)),
 			}
 			for partName, partProg := range prog.PartitionsProgress {

@@ -4972,10 +4972,13 @@ func TestConcurrentProcessList(t *testing.T, harness Harness) {
 			procs := pl.Processes()
 			for _, proc := range procs {
 				for prog, part := range proc.Progress {
-					if prog == "" {}
+					if prog == "" {
+					}
 					for p, pp := range part.PartitionsProgress {
-						if p == "" {}
-						if pp.Name == "" {}
+						if p == "" {
+						}
+						if pp.Name == "" {
+						}
 					}
 				}
 			}
@@ -4999,7 +5002,7 @@ func TestConcurrentProcessList(t *testing.T, harness Harness) {
 		}(i)
 		go func(x int) {
 			defer wg.Done()
-			pl.UpdatePartitionProgress(uint64(x), "foo", "bar",100)
+			pl.UpdatePartitionProgress(uint64(x), "foo", "bar", 100)
 		}(i)
 	}
 
