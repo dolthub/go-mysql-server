@@ -23,6 +23,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	flatbuffers "github.com/dolthub/flatbuffers/v23/go"
 	"github.com/dolthub/vitess/go/mysql"
@@ -77,7 +78,7 @@ type MySQLDb struct {
 	persister MySQLDbPersistence
 	plugins   map[string]PlaintextAuthPlugin
 
-	updateCounter uint64
+	updateCounter atomic.Uint64
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -136,7 +137,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	mysqlDb.global_grants = newMySQLTableShim(globalGrantsTblName, globalGrantsTblSchema, mysqlDb.user, GlobalGrantsConverter{})
 
 	// Start the counter at 1, all new sessions will start at zero so this forces an update for any new session
-	mysqlDb.updateCounter = 1
+	mysqlDb.updateCounter.Add(1)
 
 	return mysqlDb
 }
@@ -162,7 +163,7 @@ func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnec
 		}
 	}
 
-	db.updateCounter++
+	db.updateCounter.Add(1)
 
 	return nil
 }
@@ -235,7 +236,7 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 		}
 	}
 
-	db.updateCounter++
+	db.updateCounter.Add(1)
 
 	// TODO: fill in other tables when they exist
 	return
@@ -262,7 +263,7 @@ func (db *MySQLDb) VerifyPlugin(plugin string) error {
 func (db *MySQLDb) AddRootAccount() {
 	db.Enabled = true
 	addSuperUser(db.user, "root", "localhost", "")
-	db.updateCounter++
+	db.updateCounter.Add(1)
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
@@ -280,7 +281,7 @@ func (db *MySQLDb) AddSuperUser(username string, host string, password string) {
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
 	addSuperUser(db.user, username, host, password)
-	db.updateCounter++
+	db.updateCounter.Add(1)
 }
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
@@ -334,7 +335,7 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
 // active roles, which are set in the context, therefore the user is also pulled from the context.
 func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
-	if privSet, counter := ctx.Session.GetPrivilegeSet(); db.updateCounter == counter {
+	if privSet, counter := ctx.Session.GetPrivilegeSet(); db.updateCounter.Load() == counter {
 		// If the counters are equal, we can guarantee that the privilege set exists and is valid
 		return privSet.(PrivilegeSet)
 	}
@@ -360,7 +361,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 		}
 	}
 
-	ctx.Session.SetPrivilegeSet(privSet, db.updateCounter)
+	ctx.Session.SetPrivilegeSet(privSet, db.updateCounter.Load())
 	return privSet
 }
 
@@ -569,7 +570,7 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 
 // Persist passes along all changes to the integrator.
 func (db *MySQLDb) Persist(ctx *sql.Context) error {
-	db.updateCounter++
+	db.updateCounter.Add(1)
 	// Extract all user entries from table, and sort
 	userEntries := db.user.data.ToSlice(ctx)
 	users := make([]*User, 0)
