@@ -92,7 +92,7 @@ type Process struct {
 
 	QueryPid uint64
 	Query    string
-	Progress map[string]TableProgress
+	Progress map[string]TableProgress // TODO: this needs to be mutex protected
 	Kill     context.CancelFunc
 }
 

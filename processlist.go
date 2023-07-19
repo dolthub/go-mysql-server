@@ -47,12 +47,21 @@ func (pl *ProcessList) Processes() []sql.Process {
 	defer pl.mu.RUnlock()
 	var result = make([]sql.Process, 0, len(pl.procs))
 
+	// Make a deep copy of all maps to avoid concurrency issues
 	for _, proc := range pl.procs {
 		p := *proc
-		var progress = make(map[string]sql.TableProgress, len(p.Progress))
-		for n, p := range p.Progress {
-			progress[n] = p
+		var progMap = make(map[string]sql.TableProgress, len(p.Progress))
+		for progName, prog := range p.Progress {
+			newProg := sql.TableProgress {
+				Progress: prog.Progress,
+				PartitionsProgress: make(map[string]sql.PartitionProgress, len(prog.PartitionsProgress)),
+			}
+			for partName, partProg := range prog.PartitionsProgress {
+				newProg.PartitionsProgress[partName] = partProg
+			}
+			progMap[progName] = newProg
 		}
+		p.Progress = progMap
 		result = append(result, p)
 	}
 
