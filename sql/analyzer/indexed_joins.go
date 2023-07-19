@@ -689,8 +689,16 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 				return nil
 			}
 
-			for _, lIdx := range sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters) {
-				for _, rIdx := range sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters) {
+			leftIndexScans := sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+			if leftIndexScans == nil {
+				leftIndexScans = []*memo.IndexScan{nil}
+			}
+			for _, lIdx := range leftIndexScans {
+				rightIndexScans := sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+				if rightIndexScans == nil {
+					rightIndexScans = []*memo.IndexScan{nil}
+				}
+				for _, rIdx := range rightIndexScans {
 					rel := &memo.SlidingRangeJoin{
 						JoinBase: join.Copy(),
 					}
@@ -712,25 +720,6 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 					e.Group().Prepend(rel)
 				}
 			}
-			rel := &memo.SlidingRangeJoin{
-				JoinBase: join.Copy(),
-			}
-			// TODO: Remove the filter that was used to create the sliding range because it's no longer
-			// necessary to evaluate. However, removing this can cause issues if it's the only filter because
-			// iterjoin assumes that there's a filter condition.
-			// rel.Filter = rel.Filter[1:]
-			rel.SlidingRange = &memo.SlidingRange{
-				LeftIndex:  nil,
-				RightIndex: nil,
-				ValueExpr:  &f.Value.Scalar,
-				MinExpr:    &f.Min.Scalar,
-				ValueCol:   valueColRef,
-				MinColRef:  minColRef,
-				MaxColRef:  maxColRef,
-				Parent:     rel.JoinBase,
-			}
-			rel.Op = rel.Op.AsSlidingRange()
-			e.Group().Prepend(rel)
 
 			return nil
 		default:
