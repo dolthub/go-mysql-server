@@ -664,68 +664,62 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 		}
 
 		join := e.(memo.JoinRel).JoinPrivate()
-		if len(join.Filter) != 1 {
-			return nil
-		}
 
 		_, lIndexes, lFilters := lookupCandidates(join.Left.First)
 		_, rIndexes, rFilters := lookupCandidates(join.Right.First)
 
-		filter := join.Filter[0]
+		for _, filter := range join.Filter {
 
-		switch f := filter.(type) {
-		case *memo.Between:
-			if !(satisfiesScalarRefs(f.Value.Scalar, join.Left) &&
-				satisfiesScalarRefs(f.Min.Scalar, join.Right) &&
-				satisfiesScalarRefs(f.Max.Scalar, join.Right)) {
-				return nil
-			}
-			// TODO: Is this safe? If the expression references multiple columns, does this reference one
-			// arbitrarily?
-			valueColRef := getColumnRefFromScalar(f.Value.Scalar)
-			minColRef := getColumnRefFromScalar(f.Min.Scalar)
-			maxColRef := getColumnRefFromScalar(f.Max.Scalar)
-			if valueColRef == nil || minColRef == nil || maxColRef == nil {
-				return nil
-			}
-
-			leftIndexScans := sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
-			if leftIndexScans == nil {
-				leftIndexScans = []*memo.IndexScan{nil}
-			}
-			for _, lIdx := range leftIndexScans {
-				rightIndexScans := sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
-				if rightIndexScans == nil {
-					rightIndexScans = []*memo.IndexScan{nil}
+			switch f := filter.(type) {
+			case *memo.Between:
+				if !(satisfiesScalarRefs(f.Value.Scalar, join.Left) &&
+					satisfiesScalarRefs(f.Min.Scalar, join.Right) &&
+					satisfiesScalarRefs(f.Max.Scalar, join.Right)) {
+					return nil
 				}
-				for _, rIdx := range rightIndexScans {
-					rel := &memo.SlidingRangeJoin{
-						JoinBase: join.Copy(),
+				// TODO: Is this safe? If the expression references multiple columns, does this reference one
+				// arbitrarily?
+				valueColRef := getColumnRefFromScalar(f.Value.Scalar)
+				minColRef := getColumnRefFromScalar(f.Min.Scalar)
+				maxColRef := getColumnRefFromScalar(f.Max.Scalar)
+				if valueColRef == nil || minColRef == nil || maxColRef == nil {
+					return nil
+				}
+
+				leftIndexScans := sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+				if leftIndexScans == nil {
+					leftIndexScans = []*memo.IndexScan{nil}
+				}
+				for _, lIdx := range leftIndexScans {
+					rightIndexScans := sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+					if rightIndexScans == nil {
+						rightIndexScans = []*memo.IndexScan{nil}
 					}
-					// TODO: Remove the filter that was used to create the sliding range because it's no longer
-					// necessary to evaluate. However, removing this can cause issues if it's the only filter because
-					// iterjoin assumes that there's a filter condition.
-					// rel.Filter = rel.Filter[1:]
-					rel.SlidingRange = &memo.SlidingRange{
-						LeftIndex:  lIdx,
-						RightIndex: rIdx,
-						ValueExpr:  &f.Value.Scalar,
-						MinExpr:    &f.Min.Scalar,
-						ValueCol:   valueColRef,
-						MinColRef:  minColRef,
-						MaxColRef:  maxColRef,
-						Parent:     rel.JoinBase,
+					for _, rIdx := range rightIndexScans {
+						rel := &memo.SlidingRangeJoin{
+							JoinBase: join.Copy(),
+						}
+						// TODO: Remove the filter that was used to create the sliding range because it's no longer
+						// necessary to evaluate. However, removing this can cause issues if it's the only filter because
+						// iterjoin assumes that there's a filter condition.
+						// rel.Filter = rel.Filter[1:]
+						rel.SlidingRange = &memo.SlidingRange{
+							LeftIndex:  lIdx,
+							RightIndex: rIdx,
+							ValueExpr:  &f.Value.Scalar,
+							MinExpr:    &f.Min.Scalar,
+							ValueCol:   valueColRef,
+							MinColRef:  minColRef,
+							MaxColRef:  maxColRef,
+							Parent:     rel.JoinBase,
+						}
+						rel.Op = rel.Op.AsSlidingRange()
+						e.Group().Prepend(rel)
 					}
-					rel.Op = rel.Op.AsSlidingRange()
-					e.Group().Prepend(rel)
 				}
 			}
-
-			return nil
-		default:
-			return nil
 		}
-
+		return nil
 	})
 }
 
