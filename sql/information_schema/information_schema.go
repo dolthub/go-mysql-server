@@ -1065,8 +1065,6 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 	for i, proc := range processes {
 		var status []string
-		// TODO: this is an unprotected read, should use mutex
-		// TESTING: try to get something to update process while something else reads from it
 		for name, progress := range proc.Progress {
 			status = append(status, fmt.Sprintf("%s(%s)", name, progress))
 		}
