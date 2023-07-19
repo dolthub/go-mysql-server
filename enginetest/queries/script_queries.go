@@ -3362,6 +3362,19 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "empty table update",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"insert into t values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t set i = 0 where false",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 10}}}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
