@@ -46,7 +46,7 @@ type priorityQueue struct {
 var _ sql.Node = (*SlidingRange)(nil)
 
 func NewSlidingRange(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max string) (*SlidingRange, error) {
-	// TODO: This doesn't appear to actually use the passed in indexes.
+	// TODO: IndexOfColName is Only safe for schemas corresponding to a single table, where the source of the column is irrelevant.
 	maxColumnIndex := rhsSchema.IndexOfColName(max)
 	newSr := &SlidingRange{
 		activeRanges:     priorityQueue{},
