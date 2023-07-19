@@ -951,11 +951,13 @@ type IndexScan struct {
 }
 
 type SlidingRange struct {
-	LeftIndex  IndexScan
-	RightIndex IndexScan
+	LeftIndex  *IndexScan
+	RightIndex *IndexScan
 	ValueCol   *ColRef
 	MinColRef  *ColRef
 	MaxColRef  *ColRef
+	MinExpr    *ScalarExpr
+	ValueExpr  *ScalarExpr
 	Parent     *JoinBase
 }
 
