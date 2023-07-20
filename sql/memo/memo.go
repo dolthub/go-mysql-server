@@ -122,7 +122,7 @@ func (m *Memo) getColumnId(table, name string) (sql.ColumnId, bool) {
 }
 
 func (m *Memo) PreexistingScalar(e ScalarExpr) *ExprGroup {
-	hash := internExpr(e)
+	hash := InternExpr(e)
 	group, _ := m.exprs[hash]
 	return group
 }
@@ -151,7 +151,7 @@ func (m *Memo) MemoizeScalar(e sql.Expression) *ExprGroup {
 	default:
 		scalar = m.memoizeHidden(e)
 	}
-	hash := internExpr(scalar.Scalar)
+	hash := InternExpr(scalar.Scalar)
 	if hash != 0 {
 		m.exprs[hash] = scalar
 	}

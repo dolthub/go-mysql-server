@@ -655,6 +655,79 @@ func addHashJoins(m *memo.Memo) error {
 	})
 }
 
+type rangeFilter struct {
+	value, min, max                        *memo.ExprGroup
+	closedOnLowerBound, closedOnUpperBound bool
+}
+
+func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
+	type candidateMap struct {
+		group    *memo.ExprGroup
+		isClosed bool
+	}
+	lowerToUpper := make(map[uint64][]candidateMap)
+	upperToLower := make(map[uint64][]candidateMap)
+
+	findUpperBounds := func(value, min *memo.ExprGroup, closedOnLowerBound bool) {
+		for _, max := range lowerToUpper[memo.InternExpr(value.Scalar)] {
+			ranges = append(ranges, rangeFilter{
+				value:              value,
+				min:                min,
+				max:                max.group,
+				closedOnLowerBound: closedOnLowerBound,
+				closedOnUpperBound: max.isClosed})
+		}
+	}
+
+	findLowerBounds := func(value, max *memo.ExprGroup, closedOnUpperBound bool) {
+		for _, min := range upperToLower[memo.InternExpr(value.Scalar)] {
+			ranges = append(ranges, rangeFilter{
+				value:              value,
+				min:                min.group,
+				max:                max,
+				closedOnLowerBound: min.isClosed,
+				closedOnUpperBound: closedOnUpperBound})
+		}
+	}
+
+	addBounds := func(lower, upper *memo.ExprGroup, isClosed bool) {
+		lowerIntern := memo.InternExpr(lower.Scalar)
+		lowerToUpper[lowerIntern] = append(lowerToUpper[lowerIntern], candidateMap{
+			group:    upper,
+			isClosed: isClosed,
+		})
+		upperIntern := memo.InternExpr(upper.Scalar)
+		upperToLower[upperIntern] = append(upperToLower[upperIntern], candidateMap{
+			group:    lower,
+			isClosed: isClosed,
+		})
+	}
+
+	for _, filter := range filters {
+		switch f := filter.(type) {
+		case *memo.Between:
+			ranges = append(ranges, rangeFilter{f.Value, f.Min, f.Max, true, true})
+		case *memo.Gt:
+			findUpperBounds(f.Left, f.Right, false)
+			findLowerBounds(f.Right, f.Left, false)
+			addBounds(f.Right, f.Left, false)
+		case *memo.Geq:
+			findUpperBounds(f.Left, f.Right, true)
+			findLowerBounds(f.Right, f.Left, true)
+			addBounds(f.Right, f.Left, true)
+		case *memo.Lt:
+			findLowerBounds(f.Left, f.Right, false)
+			findUpperBounds(f.Right, f.Left, false)
+			addBounds(f.Left, f.Right, false)
+		case *memo.Leq:
+			findLowerBounds(f.Left, f.Right, true)
+			findUpperBounds(f.Right, f.Left, true)
+			addBounds(f.Left, f.Right, false)
+		}
+	}
+	return ranges
+}
+
 func addSlidingRangeJoin(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
@@ -668,54 +741,51 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 		_, lIndexes, lFilters := lookupCandidates(join.Left.First)
 		_, rIndexes, rFilters := lookupCandidates(join.Right.First)
 
-		for _, filter := range join.Filter {
+		for _, filter := range getRangeFilters(join.Filter) {
 
-			switch f := filter.(type) {
-			case *memo.Between:
-				if !(satisfiesScalarRefs(f.Value.Scalar, join.Left) &&
-					satisfiesScalarRefs(f.Min.Scalar, join.Right) &&
-					satisfiesScalarRefs(f.Max.Scalar, join.Right)) {
-					return nil
-				}
-				// TODO: Is this safe? If the expression references multiple columns, does this reference one
-				// arbitrarily?
-				valueColRef := getColumnRefFromScalar(f.Value.Scalar)
-				minColRef := getColumnRefFromScalar(f.Min.Scalar)
-				maxColRef := getColumnRefFromScalar(f.Max.Scalar)
-				if valueColRef == nil || minColRef == nil || maxColRef == nil {
-					return nil
-				}
+			if !(satisfiesScalarRefs(filter.value.Scalar, join.Left) &&
+				satisfiesScalarRefs(filter.min.Scalar, join.Right) &&
+				satisfiesScalarRefs(filter.max.Scalar, join.Right)) {
+				return nil
+			}
+			// TODO: Is this safe? If the expression references multiple columns, does this reference one
+			// arbitrarily?
+			valueColRef := getColumnRefFromScalar(filter.value.Scalar)
+			minColRef := getColumnRefFromScalar(filter.min.Scalar)
+			maxColRef := getColumnRefFromScalar(filter.max.Scalar)
+			if valueColRef == nil || minColRef == nil || maxColRef == nil {
+				return nil
+			}
 
-				leftIndexScans := sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
-				if leftIndexScans == nil {
-					leftIndexScans = []*memo.IndexScan{nil}
+			leftIndexScans := sortedIndexScansForTableCol(lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
+			if leftIndexScans == nil {
+				leftIndexScans = []*memo.IndexScan{nil}
+			}
+			for _, lIdx := range leftIndexScans {
+				rightIndexScans := sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
+				if rightIndexScans == nil {
+					rightIndexScans = []*memo.IndexScan{nil}
 				}
-				for _, lIdx := range leftIndexScans {
-					rightIndexScans := sortedIndexScansForTableCol(rIndexes, minColRef, join.Right.RelProps.FuncDeps().Constants(), rFilters)
-					if rightIndexScans == nil {
-						rightIndexScans = []*memo.IndexScan{nil}
+				for _, rIdx := range rightIndexScans {
+					rel := &memo.SlidingRangeJoin{
+						JoinBase: join.Copy(),
 					}
-					for _, rIdx := range rightIndexScans {
-						rel := &memo.SlidingRangeJoin{
-							JoinBase: join.Copy(),
-						}
-						// TODO: Remove the filter that was used to create the sliding range because it's no longer
-						// necessary to evaluate. However, removing this can cause issues if it's the only filter because
-						// iterjoin assumes that there's a filter condition.
-						// rel.Filter = rel.Filter[1:]
-						rel.SlidingRange = &memo.SlidingRange{
-							LeftIndex:  lIdx,
-							RightIndex: rIdx,
-							ValueExpr:  &f.Value.Scalar,
-							MinExpr:    &f.Min.Scalar,
-							ValueCol:   valueColRef,
-							MinColRef:  minColRef,
-							MaxColRef:  maxColRef,
-							Parent:     rel.JoinBase,
-						}
-						rel.Op = rel.Op.AsSlidingRange()
-						e.Group().Prepend(rel)
+					// TODO: Remove the filter that was used to create the sliding range because it's no longer
+					// necessary to evaluate. However, removing this can cause issues if it's the only filter because
+					// iterjoin assumes that there's a filter condition.
+					// rel.Filter = rel.Filter[1:]
+					rel.SlidingRange = &memo.SlidingRange{
+						LeftIndex:  lIdx,
+						RightIndex: rIdx,
+						ValueExpr:  &filter.value.Scalar,
+						MinExpr:    &filter.min.Scalar,
+						ValueCol:   valueColRef,
+						MinColRef:  minColRef,
+						MaxColRef:  maxColRef,
+						Parent:     rel.JoinBase,
 					}
+					rel.Op = rel.Op.AsSlidingRange()
+					e.Group().Prepend(rel)
 				}
 			}
 		}

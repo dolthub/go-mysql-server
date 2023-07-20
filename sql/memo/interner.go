@@ -46,7 +46,7 @@ const (
 )
 
 // TODO code gen to make sure we are not missing
-func internExpr(e ScalarExpr) uint64 {
+func InternExpr(e ScalarExpr) uint64 {
 	h := xxhash.New()
 	switch e := e.(type) {
 	case *Literal:
@@ -54,43 +54,43 @@ func internExpr(e ScalarExpr) uint64 {
 	case *ColRef:
 		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), e.Col)))
 	case *Equal:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *NullSafeEq:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *Gt:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *Lt:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *Geq:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *Leq:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *IsNull:
-		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), internExpr(e.Child.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), InternExpr(e.Child.Scalar))))
 	case *Bindvar:
 		h.Write([]byte(fmt.Sprintf("%d%s", e.ExprId(), e.Name)))
 	case *Hidden:
 		h.Write([]byte(fmt.Sprintf("%d%s", e.ExprId(), e.String())))
 	case *Arithmetic:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *Or:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *And:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *InTuple:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *Tuple:
 
 		h.Write([]byte(fmt.Sprintf("%d", e.ExprId())))
 		for _, c := range e.Values {
-			h.Write([]byte(fmt.Sprintf("%d", internExpr(c.Scalar))))
+			h.Write([]byte(fmt.Sprintf("%d", InternExpr(c.Scalar))))
 		}
 	case *Between:
-		h.Write([]byte(fmt.Sprintf("%d%d%d%d", e.ExprId(), internExpr(e.Value.Scalar), internExpr(e.Min.Scalar), internExpr(e.Max.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d%d", e.ExprId(), InternExpr(e.Value.Scalar), InternExpr(e.Min.Scalar), InternExpr(e.Max.Scalar))))
 	case *Regexp:
-		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), internExpr(e.Left.Scalar), internExpr(e.Right.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d%d", e.ExprId(), InternExpr(e.Left.Scalar), InternExpr(e.Right.Scalar))))
 	case *Not:
-		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), internExpr(e.Child.Scalar))))
+		h.Write([]byte(fmt.Sprintf("%d%d", e.ExprId(), InternExpr(e.Child.Scalar))))
 	default:
 		return 0
 	}
