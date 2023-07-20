@@ -85,7 +85,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			}
 			var triggersForTable []string
 			for _, trigger := range loadedTriggers {
-				if _, ok := lowercasedNames[strings.ToLower(trigger.Table.(*plan.UnresolvedTable).Name())]; ok {
+				if _, ok := lowercasedNames[strings.ToLower(trigger.Table.(sql.Nameable).Name())]; ok {
 					triggersForTable = append(triggersForTable, trigger.TriggerName)
 				}
 			}

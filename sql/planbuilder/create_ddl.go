@@ -62,7 +62,9 @@ func (b *PlanBuilder) buildCreateTrigger(inScope *scope, query string, c *ast.DD
 	triggerScope.addColumns(oldScope.cols)
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+	b.buildingTrigger = true
 	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
+	b.buildingTrigger = false
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
 	db := b.resolveDb(dbName)
 

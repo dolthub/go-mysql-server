@@ -109,8 +109,9 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 			}
 			return false
 		case *plan.InsertInto:
-			rt := getResolvedTable(node.Destination)
-			analysisErr = passAliases.add(rt, rt)
+			if rt := getResolvedTable(node.Destination); rt != nil {
+				analysisErr = passAliases.add(rt, rt)
+			}
 			return false
 		case *plan.IndexedTableAccess:
 			rt := getResolvedTable(node.ResolvedTable)

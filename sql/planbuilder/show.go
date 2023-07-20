@@ -204,7 +204,11 @@ func (b *PlanBuilder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *
 
 func (b *PlanBuilder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	db, err := b.cat.Database(b.ctx, s.Table.Qualifier.String())
+	dbName := s.Table.Qualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	db, err := b.cat.Database(b.ctx, dbName)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -213,15 +217,30 @@ func (b *PlanBuilder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *s
 }
 
 func (b *PlanBuilder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *scope) {
-	outScope = inScope.push()
-	var dbName string
-	var filter sql.Expression
+	dbName := s.Table.Qualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	db := b.resolveDb(dbName)
 
-	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+	var node sql.Node = plan.NewShowTriggers(db)
+
+	outScope = inScope.push()
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{
+			db:       strings.ToLower(db.Name()),
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+	var filter sql.Expression
+	if s.ShowTablesOpt != nil {
 		dbName = s.ShowTablesOpt.DbName
 		if s.ShowTablesOpt.Filter != nil {
 			if s.ShowTablesOpt.Filter.Filter != nil {
-				filter = b.buildScalar(inScope, s.ShowTablesOpt.Filter.Filter)
+				filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
 			} else if s.ShowTablesOpt.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewGetField(2, types.LongText, "Table", false),
@@ -232,11 +251,6 @@ func (b *PlanBuilder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScop
 		}
 	}
 
-	if dbName == "" {
-		dbName = b.ctx.GetCurrentDatabase()
-	}
-	db := b.resolveDb(dbName)
-	var node sql.Node = plan.NewShowTriggers(db)
 	if filter != nil {
 		node = plan.NewFilter(filter, node)
 	}
@@ -247,11 +261,11 @@ func (b *PlanBuilder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScop
 
 func (b *PlanBuilder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	db, err := b.cat.Database(b.ctx, s.Table.Qualifier.String())
-	if err != nil {
-		b.handleErr(err)
+	dbName := strings.ToLower(s.Table.Qualifier.String())
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
 	}
-	outScope.node = plan.NewShowCreateEvent(db, s.Table.Name.String())
+	outScope.node = plan.NewShowCreateEvent(b.resolveDb(dbName), s.Table.Name.String())
 	return
 }
 

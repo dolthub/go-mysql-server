@@ -112,17 +112,28 @@ func (b *PlanBuilder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) [
 
 		// left => convert to user var or system var expression, validate system var
 		// right => getSetExpr, not adapted for defaults yet, special keywords need to be converted, variables replaced
-		sysVar, ok := b.buildSysVar(setExpr.Name, setExpr.Scope)
-		if !ok {
-			err := sql.ErrUnknownSystemVariable.New(setExpr.Name.String())
-			b.handleErr(err)
+		c, ok := inScope.resolveColumn(strings.ToLower(setExpr.Name.Qualifier.String()), strings.ToLower(setExpr.Name.Name.String()), true)
+		var setVar sql.Expression
+		if ok {
+			setVar = c.scalarGf()
+		} else {
+			setVar, ok = b.buildSysVar(setExpr.Name, setExpr.Scope)
+			if !ok {
+				b.handleErr(sql.ErrColumnNotFound.New(setExpr.Name.String()))
+			}
 		}
+		//sysVar, ok := b.buildSysVar(setExpr.Name, setExpr.Scope)
+		//sysVar, ok := b.buildScalar(inScope, setExpr.Name)
+		//if !ok {
+		//	err := sql.ErrUnknownSystemVariable.New(setExpr.Name.String())
+		//	b.handleErr(err)
+		//}
 		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setExpr.Expr)
 		if !ok {
 			innerExpr = b.buildScalar(inScope, setExpr.Expr)
 		}
 
-		res[i] = expression.NewSetField(sysVar, innerExpr)
+		res[i] = expression.NewSetField(setVar, innerExpr)
 	}
 	return res
 }
@@ -216,7 +227,7 @@ func (b *PlanBuilder) simplifySetExpr(name *ast.ColName, val ast.Expr) (sql.Expr
 		case ast.KeywordString(ast.FALSE):
 			return expression.NewLiteral(false, types.Boolean), true
 		default:
-			return e, true
+			return nil, false
 		}
 	case *ast.BoolVal:
 		// conv

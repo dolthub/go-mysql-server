@@ -19,6 +19,7 @@ type PlanBuilder struct {
 	viewAsOf        interface{}
 	viewDatabase    string
 	nesting         int
+	buildingTrigger bool
 }
 
 func New(ctx *sql.Context, cat sql.Catalog) *PlanBuilder {

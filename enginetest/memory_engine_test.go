@@ -245,11 +245,14 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "trigger with signal and user var",
 			SetUpScript: []string{
-				"",
+				"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+				"create table sequence_table (max_id integer PRIMARY KEY);",
+				"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
+				"insert into sequence_table values (1);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `create table c select coalesce(NULL, 1);`,
+					Query:    "insert into mytable () values ();",
 					Expected: []sql.Row{},
 				},
 			},
@@ -257,7 +260,7 @@ func TestSingleScript(t *testing.T) {
 	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)

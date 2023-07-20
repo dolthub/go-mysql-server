@@ -97,18 +97,27 @@ func (b *PlanBuilder) buildDDL(inScope *scope, query string, c *ast.DDL) (outSco
 		// get database
 		if c.TriggerSpec != nil {
 			dbName := c.TriggerSpec.TrigName.Qualifier.String()
+			if dbName == "" {
+				dbName = b.ctx.GetCurrentDatabase()
+			}
 			trigName := c.TriggerSpec.TrigName.Name.String()
 			outScope.node = plan.NewDropTrigger(b.resolveDb(dbName), trigName, c.IfExists)
 			return
 		}
 		if c.ProcedureSpec != nil {
 			dbName := c.ProcedureSpec.ProcName.Qualifier.String()
+			if dbName == "" {
+				dbName = b.ctx.GetCurrentDatabase()
+			}
 			procName := c.ProcedureSpec.ProcName.Name.String()
 			outScope.node = plan.NewDropProcedure(b.resolveDb(dbName), procName, c.IfExists)
 			return
 		}
 		if c.EventSpec != nil {
 			dbName := c.EventSpec.EventName.Qualifier.String()
+			if dbName == "" {
+				dbName = b.ctx.GetCurrentDatabase()
+			}
 			eventName := c.EventSpec.EventName.Name.String()
 			outScope.node = plan.NewDropEvent(b.resolveDb(dbName), eventName, c.IfExists)
 			return
@@ -156,7 +165,7 @@ func (b *PlanBuilder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scop
 					Message: fmt.Sprintf("Can't drop table %s; table doesn't exist ", t.Name.String()),
 				})
 				continue
-			} else {
+			} else if err != nil {
 				b.handleErr(err)
 			}
 		}

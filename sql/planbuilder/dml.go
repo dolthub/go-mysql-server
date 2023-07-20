@@ -18,21 +18,33 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 	}
 	dbName := i.Table.Qualifier.String()
 	tabName := i.Table.Name.String()
-	tableScope := b.buildTablescan(inScope, dbName, tabName, nil)
-	table, ok := tableScope.node.(*plan.ResolvedTable)
-	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tabName)
-		b.handleErr(err)
+	destScope := b.buildTablescan(inScope, dbName, tabName, nil)
+	var db sql.Database
+	var rt *plan.ResolvedTable
+	switch n := destScope.node.(type) {
+	case *plan.ResolvedTable:
+		rt = n
+		db = rt.Database
+	case *plan.UnresolvedTable:
+		db = n.Database()
+	default:
+		b.handleErr(fmt.Errorf("expected insert destination to be resolved or unresolved table"))
 	}
-
-	checks := b.loadChecksFromTable(tableScope, table.Table)
-
+	var triggerRefsUnknownTable bool
+	if rt == nil {
+		if b.buildingTrigger {
+			triggerRefsUnknownTable = true
+		} else {
+			err := fmt.Errorf("expected resolved table: %s", tabName)
+			b.handleErr(err)
+		}
+	}
 	isReplace := i.Action == ast.ReplaceStr
 
 	srcScope := b.insertRowsToNode(inScope, i.Rows)
 
 	combinedScope := inScope.replace()
-	for _, c := range tableScope.cols {
+	for _, c := range destScope.cols {
 		combinedScope.newColumn(c)
 	}
 	for _, c := range srcScope.cols {
@@ -52,8 +64,8 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 		// If no column names were specified in the query, go ahead and fill
 		// them all in now that the destination is resolved.
 		// TODO: setting the plan field directly is not great
-		if len(columns) == 0 {
-			schema := table.Schema()
+		if len(columns) == 0 && len(srcScope.cols) > 0 && !triggerRefsUnknownTable {
+			schema := rt.Schema()
 			columns = make([]string, len(schema))
 			for i, col := range schema {
 				columns[i] = col.Name
@@ -61,10 +73,14 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 		}
 	}
 
-	ins := plan.NewInsertInto(table.Database, table, srcScope.node, isReplace, columns, onDupExprs, ignore)
-	ins.Checks = checks
+	ins := plan.NewInsertInto(db, destScope.node, srcScope.node, isReplace, columns, onDupExprs, ignore)
 
-	outScope = tableScope
+	if !triggerRefsUnknownTable {
+		checks := b.loadChecksFromTable(destScope, rt.Table)
+		ins.Checks = checks
+	}
+
+	outScope = destScope
 	outScope.node = ins
 
 	return

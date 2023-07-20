@@ -104,7 +104,17 @@ func (b *PlanBuilder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scop
 				}
 				si.StrValue = val
 			case *ast.ColName:
-				si.ExprVal = expression.NewUnresolvedColumn(v.Name.String())
+				var ref sql.Expression
+				c, ok := inScope.resolveColumn("", v.Name.Lowered(), true)
+				if ok {
+					ref = c.scalarGf()
+				} else {
+					ref, ok = b.buildSysVar(&ast.ColName{Name: v.Name}, ast.SetScope_None)
+					if !ok {
+						b.handleErr(fmt.Errorf("signal column not found: %s", v.Name.String()))
+					}
+				}
+				si.ExprVal = ref
 			default:
 				err := fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", info.Value)
 				b.handleErr(err)

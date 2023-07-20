@@ -582,6 +582,10 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 		}
 		b.handleErr(err)
 	} else if tab == nil {
+		if b.buildingTrigger {
+			outScope.node = plan.NewUnresolvedTable(name, db)
+			return
+		}
 		b.handleErr(sql.ErrTableNotFound.New(name))
 	}
 

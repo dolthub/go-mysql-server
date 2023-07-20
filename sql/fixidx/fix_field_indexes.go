@@ -148,7 +148,8 @@ func Schemas(nodes []sql.Node) sql.Schema {
 
 // FixFieldIndexesForExpressions transforms the expressions in the Node given, fixing the field indexes.
 func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
-	if _, ok := node.(sql.Expressioner); !ok {
+	ne, ok := node.(sql.Expressioner)
+	if !ok {
 		return node, transform.SameTree, nil
 	}
 
@@ -158,7 +159,16 @@ func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, sc
 	}
 
 	if len(schemas) < 1 {
-		return node, transform.SameTree, nil
+		newExprs, same, err := FixFieldIndexesOnExpressions(scope, logFn, nil, ne.Expressions()...)
+		if same || err != nil {
+			return node, transform.SameTree, nil
+		}
+		newNode, err := ne.WithExpressions(newExprs...)
+		if err != nil {
+			return node, transform.SameTree, nil
+		}
+		return newNode, transform.NewTree, err
+
 	}
 
 	n, sameC, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
