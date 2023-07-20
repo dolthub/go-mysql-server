@@ -192,8 +192,9 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 }
 
 func (c *coster) costSlidingRangeJoin(_ *sql.Context, n *SlidingRangeJoin, _ sql.StatsReader) (float64, error) {
-	// For now always favor sliding range.
-	return 0, nil
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+	return l*(cpuCostFactor+randIOCostFactor) + r*seqIOCostFactor, nil
 }
 
 func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
