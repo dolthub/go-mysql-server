@@ -4733,20 +4733,21 @@ inner join pq on true
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1 limit 3 offset 0`,
 		ExpectedPlan: "Limit(3)\n" +
-			" └─ Offset(0)\n" +
-			"     └─ TopN(Limit: [(3 + 0)]; dt1.i ASC)\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [dt1.i]\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"                 ├─ TableAlias(dt2)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: datetime_table\n" +
-			"                 │       └─ columns: [timestamp_col]\n" +
-			"                 └─ TableAlias(dt1)\n" +
-			"                     └─ IndexedTableAccess(datetime_table)\n" +
-			"                         ├─ index: [datetime_table.date_col]\n" +
-			"                         └─ columns: [i date_col]\n" +
+			" └─ TopN(Limit: [3 (tinyint)]; dt1.i:0!null ASC nullsFirst)\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [dt1.i:1!null]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ dt1.date_col:2\n" +
+			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ IndexedTableAccess(datetime_table)\n" +
+			"                     ├─ index: [datetime_table.date_col]\n" +
+			"                     └─ columns: [i date_col]\n" +
 			"",
 	},
 	{
