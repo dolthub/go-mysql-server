@@ -108,7 +108,15 @@ func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expressio
 
 func (b *PlanBuilder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
-		return b.buildScalar(inScope, limit.Offset)
+		rowCount := b.buildScalar(inScope, limit.Offset)
+		// Check if offset starts at 0, if so, we can just remove the offset node.
+		// Only cast to int8, as a larger int type just means a non-zero offset.
+		if val, err := rowCount.Eval(b.ctx, nil); err == nil {
+			if v, ok := val.(int8); ok && v == 0 {
+				return nil
+			}
+		}
+		return rowCount
 	}
 	return nil
 }
