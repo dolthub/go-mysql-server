@@ -14,7 +14,11 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"io"
+
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 func IsEmptyTable(n sql.Node) bool {
 	_, ok := n.(*EmptyTable)
@@ -26,6 +30,7 @@ func NewEmptyTableWithSchema(schema sql.Schema) sql.Node {
 
 var _ sql.Node = (*EmptyTable)(nil)
 var _ sql.CollationCoercible = (*EmptyTable)(nil)
+var _ sql.UpdatableTable = (*EmptyTable)(nil)
 
 type EmptyTable struct {
 	schema sql.Schema
@@ -37,11 +42,12 @@ func (*EmptyTable) Children() []sql.Node { return nil }
 func (*EmptyTable) Resolved() bool       { return true }
 func (e *EmptyTable) String() string     { return "EmptyTable" }
 
+// RowIter implements the sql.Node interface.
 func (*EmptyTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
 }
 
-// WithChildren implements the Node interface.
+// WithChildren implements the sql.Node interface.
 func (e *EmptyTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 0)
@@ -58,4 +64,79 @@ func (e *EmptyTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*EmptyTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
+}
+
+// Updater implements the sql.UpdatableTable interface.
+func (e *EmptyTable) Updater(ctx *sql.Context) sql.RowUpdater {
+	return &emptyTableUpdater{}
+}
+
+// Collation implements the sql.UpdatableTable interface.
+func (e *EmptyTable) Collation() sql.CollationID {
+	return sql.Collation_Default
+}
+
+// Partitions implements the sql.UpdatableTable interface.
+func (e *EmptyTable) Partitions(_ *sql.Context) (sql.PartitionIter, error) {
+	return &emptyTablePartitionIter{}, nil
+}
+
+// PartitionRows implements the sql.UpdatableTable interface.
+func (e *EmptyTable) PartitionRows(_ *sql.Context, _ sql.Partition) (sql.RowIter, error) {
+	return &emptyTableIter{}, nil
+}
+
+type emptyTableUpdater struct{}
+
+var _ sql.RowUpdater = (*emptyTableUpdater)(nil)
+
+// StatementBegin implements the sql.EditOpenerCloser interface
+func (e *emptyTableUpdater) StatementBegin(_ *sql.Context) {}
+
+// DiscardChanges implements the sql.EditOpenerCloser interface
+func (e *emptyTableUpdater) DiscardChanges(_ *sql.Context, _ error) error {
+	return nil
+}
+
+// StatementComplete implements the sql.EditOpenerCloser interface
+func (e *emptyTableUpdater) StatementComplete(_ *sql.Context) error {
+	return nil
+}
+
+// Update implements the sql.RowUpdater interface
+func (e *emptyTableUpdater) Update(_ *sql.Context, _ sql.Row, _ sql.Row) error {
+	return nil
+}
+
+// Close implements the sql.Closer interface
+func (e *emptyTableUpdater) Close(_ *sql.Context) error {
+	return nil
+}
+
+type emptyTableIter struct{}
+
+var _ sql.RowIter = (*emptyTableIter)(nil)
+
+// Next implements the sql.RowIter interface.
+func (e *emptyTableIter) Next(_ *sql.Context) (sql.Row, error) {
+	return nil, io.EOF
+}
+
+// Close implements the sql.RowIter interface.
+func (e *emptyTableIter) Close(_ *sql.Context) error {
+	return nil
+}
+
+type emptyTablePartitionIter struct{}
+
+var _ sql.PartitionIter = (*emptyTablePartitionIter)(nil)
+
+// Close implements the sql.PartitionIter interface.
+func (e *emptyTablePartitionIter) Close(_ *sql.Context) error {
+	return nil
+}
+
+// Next implements the sql.PartitionIter interface.
+func (e *emptyTablePartitionIter) Next(_ *sql.Context) (sql.Partition, error) {
+	return nil, io.EOF
 }

@@ -1696,6 +1696,14 @@ var ScriptTests = []ScriptTest{
 					{12, 3},
 				},
 			},
+			{
+				Query: `update test2 inner join (select * from test3 order by val) as t3 on false SET test2.val=t3.val`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{
+					Matched:  0,
+					Updated:  0,
+					Warnings: 0,
+				}}}},
+			},
 		},
 	},
 	{
@@ -3359,6 +3367,27 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT pk FROM tab2 WHERE ((((((col0 IN (SELECT col3 FROM tab2 WHERE ((col1 = 672.71)) AND col4 IN (SELECT col1 FROM tab2 WHERE ((col4 > 169.88 OR col0 > 939 AND ((col3 > 578))))) AND col0 >= 377) AND col4 >= 817.87 AND (col4 > 597.59)) OR col4 >= 434.59 AND ((col4 < 158.43)))))) AND col0 < 303) OR ((col0 > 549)) AND (col4 BETWEEN 816.92 AND 983.96) OR (col3 BETWEEN 421 AND 96);",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "empty table update",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"insert into t values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t set i = 0 where false",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
 			},
 		},
 	},
