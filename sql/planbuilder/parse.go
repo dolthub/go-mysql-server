@@ -2,13 +2,13 @@ package planbuilder
 
 import (
 	goerrors "errors"
-	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 	"unicode"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
