@@ -47,7 +47,7 @@ func (pl *ProcessList) Processes() []sql.Process {
 	defer pl.mu.RUnlock()
 	var result = make([]sql.Process, 0, len(pl.procs))
 
-	// Make a deep copy of all maps to avoid concurrency issues
+	// Make a deep copy of all maps to avoid race
 	for _, proc := range pl.procs {
 		p := *proc
 		var progMap = make(map[string]sql.TableProgress, len(p.Progress))
