@@ -179,23 +179,28 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, leftSch, rightSch sql.
 }
 
 func (b *ExecBuilder) buildSlidingRangeJoin(j *SlidingRangeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
-	// left, err := b.buildIndexScan(j.SlidingRange.LeftIndex, input, children[0])
-	//if err != nil {
-	//	return nil, err
-	//}
 	leftSch := input[:len(input)-len(j.Right.RelProps.OutputCols())]
 	rightSch := input[len(j.Left.RelProps.OutputCols()):]
 
-	sortExpr, err := b.buildScalar(*j.SlidingRange.ValueExpr, leftSch)
-	if err != nil {
-		return nil, err
+	var left sql.Node
+	var err error
+	if j.SlidingRange.LeftIndex != nil {
+		left, err = b.buildIndexScan(j.SlidingRange.LeftIndex, input, children[0])
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sortExpr, err := b.buildScalar(*j.SlidingRange.ValueExpr, leftSch)
+		if err != nil {
+			return nil, err
+		}
+		sf := []sql.SortField{{
+			Column:       sortExpr,
+			Order:        sql.Ascending,
+			NullOrdering: sql.NullsFirst,
+		}}
+		left = plan.NewSort(sf, children[0])
 	}
-	sf := []sql.SortField{{
-		Column:       sortExpr,
-		Order:        sql.Ascending,
-		NullOrdering: sql.NullsFirst,
-	}}
-	left := plan.NewSort(sf, children[0])
 
 	right, err := b.buildSlidingRange(j.SlidingRange, leftSch, rightSch, children[1])
 	if err != nil {
