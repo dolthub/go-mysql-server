@@ -333,6 +333,10 @@ func TestTrackProcess(t *testing.T) {
 	require.Error(ctx.Err())
 }
 
+func TestConcurrentProcessList(t *testing.T) {
+	enginetest.TestConcurrentProcessList(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func getRuleFrom(rules []analyzer.Rule, id analyzer.RuleId) *analyzer.Rule {
 	for _, rule := range rules {
 		if rule.Id == id {
