@@ -28,13 +28,15 @@ import (
 // don't overlap, the amortized complexity is O(1) for each result row.
 type SlidingRange struct {
 	UnaryNode
-	childRowIter     sql.RowIter
-	activeRanges     priorityQueue
-	pendingRow       sql.Row
-	valueColumnIndex int
-	minColumnIndex   int
-	maxColumnIndex   int
-	comparisonType   sql.Type
+	childRowIter       sql.RowIter
+	activeRanges       priorityQueue
+	pendingRow         sql.Row
+	valueColumnIndex   int
+	minColumnIndex     int
+	maxColumnIndex     int
+	comparisonType     sql.Type
+	rangeIsClosedBelow bool
+	rangeIsClosedAbove bool
 }
 
 type priorityQueue struct {
@@ -45,16 +47,18 @@ type priorityQueue struct {
 
 var _ sql.Node = (*SlidingRange)(nil)
 
-func NewSlidingRange(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max string) (*SlidingRange, error) {
+func NewSlidingRange(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max string, rangeIsClosedBelow, rangeIsClosedAbove bool) (*SlidingRange, error) {
 	// TODO: IndexOfColName is Only safe for schemas corresponding to a single table, where the source of the column is irrelevant.
 	maxColumnIndex := rhsSchema.IndexOfColName(max)
 	newSr := &SlidingRange{
-		activeRanges:     priorityQueue{},
-		pendingRow:       nil,
-		valueColumnIndex: lhsSchema.IndexOfColName(value),
-		minColumnIndex:   rhsSchema.IndexOfColName(min),
-		maxColumnIndex:   maxColumnIndex,
-		comparisonType:   rhsSchema[maxColumnIndex].Type,
+		activeRanges:       priorityQueue{},
+		pendingRow:         nil,
+		valueColumnIndex:   lhsSchema.IndexOfColName(value),
+		minColumnIndex:     rhsSchema.IndexOfColName(min),
+		maxColumnIndex:     maxColumnIndex,
+		comparisonType:     rhsSchema[maxColumnIndex].Type,
+		rangeIsClosedBelow: rangeIsClosedBelow,
+		rangeIsClosedAbove: rangeIsClosedAbove,
 	}
 	newSr.Child = child
 	newSr.activeRanges.slidingRange = newSr
@@ -104,7 +108,7 @@ func (s *SlidingRange) AcceptRow(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		if err != nil {
 			return nil, err
 		}
-		if compareResult > 0 {
+		if (s.rangeIsClosedAbove && compareResult > 0) || (!s.rangeIsClosedAbove && compareResult >= 0) {
 			heap.Pop(&s.activeRanges)
 		} else {
 			break
@@ -119,7 +123,7 @@ func (s *SlidingRange) AcceptRow(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 			return nil, err
 		}
 
-		if compareResult < 0 {
+		if (s.rangeIsClosedBelow && compareResult < 0) && (!s.rangeIsClosedBelow && compareResult <= 0) {
 			break
 		} else {
 			heap.Push(&s.activeRanges, s.pendingRow)

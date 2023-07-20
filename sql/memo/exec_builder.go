@@ -170,7 +170,15 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, leftSch, rightSch sql.
 		if err != nil {
 			return nil, err
 		}
-		ret, err = plan.NewSlidingRange(childNode, leftSch, rightSch, sr.ValueCol.Gf.Name(), sr.MinColRef.Gf.Name(), sr.MaxColRef.Gf.Name())
+		ret, err = plan.NewSlidingRange(
+			childNode,
+			leftSch,
+			rightSch,
+			sr.ValueCol.Gf.Name(),
+			sr.MinColRef.Gf.Name(),
+			sr.MaxColRef.Gf.Name(),
+			sr.RangeClosedOnLowerBound,
+			sr.RangeClosedOnUpperBound)
 	}
 	if err != nil {
 		return nil, err

@@ -775,14 +775,16 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 					// iterjoin assumes that there's a filter condition.
 					// rel.Filter = rel.Filter[1:]
 					rel.SlidingRange = &memo.SlidingRange{
-						LeftIndex:  lIdx,
-						RightIndex: rIdx,
-						ValueExpr:  &filter.value.Scalar,
-						MinExpr:    &filter.min.Scalar,
-						ValueCol:   valueColRef,
-						MinColRef:  minColRef,
-						MaxColRef:  maxColRef,
-						Parent:     rel.JoinBase,
+						LeftIndex:               lIdx,
+						RightIndex:              rIdx,
+						ValueExpr:               &filter.value.Scalar,
+						MinExpr:                 &filter.min.Scalar,
+						ValueCol:                valueColRef,
+						MinColRef:               minColRef,
+						MaxColRef:               maxColRef,
+						Parent:                  rel.JoinBase,
+						RangeClosedOnLowerBound: filter.closedOnLowerBound,
+						RangeClosedOnUpperBound: filter.closedOnUpperBound,
 					}
 					rel.Op = rel.Op.AsSlidingRange()
 					e.Group().Prepend(rel)
