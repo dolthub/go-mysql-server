@@ -1696,6 +1696,14 @@ var ScriptTests = []ScriptTest{
 					{12, 3},
 				},
 			},
+			{
+				Query: `update test2 inner join (select * from test3 order by val) as t3 on false SET test2.val=t3.val`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{
+					Matched:  0,
+					Updated:  0,
+					Warnings: 0,
+				}}}},
+			},
 		},
 	},
 	{
