@@ -14,7 +14,10 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"io"
+)
 
 func IsEmptyTable(n sql.Node) bool {
 	_, ok := n.(*EmptyTable)
@@ -87,25 +90,25 @@ type emptyTableUpdater struct{}
 var _ sql.RowUpdater = (*emptyTableUpdater)(nil)
 
 // StatementBegin implements the sql.EditOpenerCloser interface
-func (e emptyTableUpdater) StatementBegin(_ *sql.Context) {}
+func (e *emptyTableUpdater) StatementBegin(_ *sql.Context) {}
 
 // DiscardChanges implements the sql.EditOpenerCloser interface
-func (e emptyTableUpdater) DiscardChanges(_ *sql.Context, _ error) error {
+func (e *emptyTableUpdater) DiscardChanges(_ *sql.Context, _ error) error {
 	return nil
 }
 
 // StatementComplete implements the sql.EditOpenerCloser interface
-func (e emptyTableUpdater) StatementComplete(_ *sql.Context) error {
+func (e *emptyTableUpdater) StatementComplete(_ *sql.Context) error {
 	return nil
 }
 
 // Update implements the sql.RowUpdater interface
-func (e emptyTableUpdater) Update(_ *sql.Context, _ sql.Row, _ sql.Row) error {
+func (e *emptyTableUpdater) Update(_ *sql.Context, _ sql.Row, _ sql.Row) error {
 	return nil
 }
 
 // Close implements the sql.Closer interface
-func (e emptyTableUpdater) Close(_ *sql.Context) error {
+func (e *emptyTableUpdater) Close(_ *sql.Context) error {
 	return nil
 }
 
@@ -115,20 +118,11 @@ var _ sql.RowIter = (*emptyTableIter)(nil)
 
 // Next implements the sql.RowIter interface.
 func (e *emptyTableIter) Next(_ *sql.Context) (sql.Row, error) {
-	return nil, nil
+	return nil, io.EOF
 }
 
 // Close implements the sql.RowIter interface.
 func (e *emptyTableIter) Close(_ *sql.Context) error {
-	return nil
-}
-
-type emptyTablePartition struct{}
-
-var _ sql.Partition = (*emptyTablePartition)(nil)
-
-// Key implements the sql.Partition interface.
-func (e emptyTablePartition) Key() []byte {
 	return nil
 }
 
@@ -137,11 +131,11 @@ type emptyTablePartitionIter struct{}
 var _ sql.PartitionIter = (*emptyTablePartitionIter)(nil)
 
 // Close implements the sql.PartitionIter interface.
-func (e emptyTablePartitionIter) Close(_ *sql.Context) error {
+func (e *emptyTablePartitionIter) Close(_ *sql.Context) error {
 	return nil
 }
 
 // Next implements the sql.PartitionIter interface.
-func (e emptyTablePartitionIter) Next(_ *sql.Context) (sql.Partition, error) {
-	return &emptyTablePartition{}, nil
+func (e *emptyTablePartitionIter) Next(_ *sql.Context) (sql.Partition, error) {
+	return nil, io.EOF
 }
