@@ -8728,6 +8728,25 @@ WHERE keyless.c0 IN (
 			"             └─ columns: [pk1 pk2 c1]\n" +
 			"",
 	},
+	{
+		Query: `SELECT * FROM one_pk ORDER BY pk LIMIT 0, 10;`,
+		ExpectedPlan: "Limit(10)\n" +
+			" └─ IndexedTableAccess(one_pk)\n" +
+			"     ├─ index: [one_pk.pk]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk ORDER BY pk LIMIT 5, 10;`,
+		ExpectedPlan: "Limit(10)\n" +
+			" └─ Offset(5)\n" +
+			"     └─ IndexedTableAccess(one_pk)\n" +
+			"         ├─ index: [one_pk.pk]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"",
+	},
 }
 
 // QueryPlanTODOs are queries where the query planner produces a correct (results) but suboptimal plan.
