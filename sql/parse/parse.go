@@ -3713,10 +3713,18 @@ func offsetToOffset(
 	ctx *sql.Context,
 	offset sqlparser.Expr,
 	child sql.Node,
-) (*plan.Offset, error) {
+) (sql.Node, error) {
 	rowCount, err := ExprToExpression(ctx, offset)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if offset starts at 0, if so, we can just remove the offset node.
+	// Only cast to int8, as a larger int type just means a non-zero offset.
+	if val, err := rowCount.Eval(ctx, nil); err == nil {
+		if v, ok := val.(int8); ok && v == 0 {
+			return child, nil
+		}
 	}
 
 	return plan.NewOffset(rowCount, child), nil
