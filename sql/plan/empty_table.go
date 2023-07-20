@@ -15,8 +15,9 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func IsEmptyTable(n sql.Node) bool {
