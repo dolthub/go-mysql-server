@@ -153,6 +153,7 @@ func (e *emptyTablePartitionIter) Next(_ *sql.Context) (sql.Partition, error) {
 }
 
 type emptyTableDeleter struct{}
+
 var _ sql.RowDeleter = (*emptyTableDeleter)(nil)
 
 func (e *emptyTableDeleter) StatementBegin(_ *sql.Context) {}
@@ -172,4 +173,3 @@ func (e *emptyTableDeleter) Delete(_ *sql.Context, _ sql.Row) error {
 func (e *emptyTableDeleter) Close(_ *sql.Context) error {
 	return nil
 }
-
