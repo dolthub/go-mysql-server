@@ -31,12 +31,18 @@ func NewEmptyTableWithSchema(schema sql.Schema) sql.Node {
 var _ sql.Node = (*EmptyTable)(nil)
 var _ sql.CollationCoercible = (*EmptyTable)(nil)
 var _ sql.UpdatableTable = (*EmptyTable)(nil)
+var _ sql.DeletableTable = (*EmptyTable)(nil)
 
 type EmptyTable struct {
 	schema sql.Schema
 }
 
-func (e *EmptyTable) Name() string       { return "__emptytable" }
+func (e *EmptyTable) Name() string {
+	if len(e.schema) == 0 {
+		return "__emptytable"
+	}
+	return e.schema[0].Source
+}
 func (e *EmptyTable) Schema() sql.Schema { return e.schema }
 func (*EmptyTable) Children() []sql.Node { return nil }
 func (*EmptyTable) Resolved() bool       { return true }
@@ -84,6 +90,11 @@ func (e *EmptyTable) Partitions(_ *sql.Context) (sql.PartitionIter, error) {
 // PartitionRows implements the sql.UpdatableTable interface.
 func (e *EmptyTable) PartitionRows(_ *sql.Context, _ sql.Partition) (sql.RowIter, error) {
 	return &emptyTableIter{}, nil
+}
+
+// Deleter implements the sql.DeletableTable interface.
+func (e *EmptyTable) Deleter(context *sql.Context) sql.RowDeleter {
+	return &emptyTableDeleter{}
 }
 
 type emptyTableUpdater struct{}
@@ -139,4 +150,26 @@ func (e *emptyTablePartitionIter) Close(_ *sql.Context) error {
 // Next implements the sql.PartitionIter interface.
 func (e *emptyTablePartitionIter) Next(_ *sql.Context) (sql.Partition, error) {
 	return nil, io.EOF
+}
+
+type emptyTableDeleter struct{}
+
+var _ sql.RowDeleter = (*emptyTableDeleter)(nil)
+
+func (e *emptyTableDeleter) StatementBegin(_ *sql.Context) {}
+
+func (e *emptyTableDeleter) DiscardChanges(_ *sql.Context, _ error) error {
+	return nil
+}
+
+func (e *emptyTableDeleter) StatementComplete(_ *sql.Context) error {
+	return nil
+}
+
+func (e *emptyTableDeleter) Delete(_ *sql.Context, _ sql.Row) error {
+	return nil
+}
+
+func (e *emptyTableDeleter) Close(_ *sql.Context) error {
+	return nil
 }
