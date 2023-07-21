@@ -79,13 +79,13 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool) (sql.Nod
 		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}
 
-	b := &PlanBuilder{ctx: ctx, cat: cat}
+	b := &Builder{ctx: ctx, cat: cat}
 	outScope := b.build(nil, stmt, s)
 
 	return outScope.node, parsed, remainder, err
 }
 
-func (b *PlanBuilder) Parse(ctx *sql.Context, query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
+func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
 	b.nesting++
 	if b.nesting > maxAnalysisIterations {
 		return nil, "", "", ErrMaxAnalysisIters.New(maxAnalysisIterations)
@@ -100,7 +100,7 @@ func (b *PlanBuilder) Parse(ctx *sql.Context, query string, multi bool) (ret sql
 			}
 		}
 	}()
-	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
+	span, ctx := b.ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
 	s := strings.TrimSpace(query)

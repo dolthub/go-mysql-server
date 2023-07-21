@@ -11,7 +11,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
+func (b *Builder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
 	name := n.DBName.String()
 	ret := plan.NewUse(b.resolveDb(name))
 	ret.Catalog = b.cat
@@ -20,7 +20,7 @@ func (b *PlanBuilder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
 	return
 }
 
-func (b *PlanBuilder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope) {
+func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope) {
 	outScope = inScope.push()
 	expr := n.Expr
 	if strings.HasPrefix(n.Expr, "@") {
@@ -51,7 +51,7 @@ func (b *PlanBuilder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *sc
 	return outScope
 }
 
-func (b *PlanBuilder) buildExecute(inScope *scope, n *ast.Execute) (outScope *scope) {
+func (b *Builder) buildExecute(inScope *scope, n *ast.Execute) (outScope *scope) {
 	outScope = inScope.push()
 	exprs := make([]sql.Expression, len(n.VarList))
 	for i, e := range n.VarList {
@@ -65,13 +65,13 @@ func (b *PlanBuilder) buildExecute(inScope *scope, n *ast.Execute) (outScope *sc
 	return outScope
 }
 
-func (b *PlanBuilder) buildDeallocate(inScope *scope, n *ast.Deallocate) (outScope *scope) {
+func (b *Builder) buildDeallocate(inScope *scope, n *ast.Deallocate) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewDeallocateQuery(n.Name)
 	return outScope
 }
 
-func (b *PlanBuilder) buildLockTables(inScope *scope, s *ast.LockTables) (outScope *scope) {
+func (b *Builder) buildLockTables(inScope *scope, s *ast.LockTables) (outScope *scope) {
 	outScope = inScope.push()
 	tables := make([]*plan.TableLock, len(s.Tables))
 
@@ -89,7 +89,7 @@ func (b *PlanBuilder) buildLockTables(inScope *scope, s *ast.LockTables) (outSco
 	return outScope
 }
 
-func (b *PlanBuilder) buildUnlockTables(inScope *scope, s *ast.UnlockTables) (outScope *scope) {
+func (b *Builder) buildUnlockTables(inScope *scope, s *ast.UnlockTables) (outScope *scope) {
 	outScope = inScope.push()
 	unlockTables := plan.NewUnlockTables()
 	unlockTables.Catalog = b.cat

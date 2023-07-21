@@ -12,7 +12,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildSet(inScope *scope, n *ast.Set) (outScope *scope) {
+func (b *Builder) buildSet(inScope *scope, n *ast.Set) (outScope *scope) {
 	var setVarExprs []*ast.SetVarExpr
 	for _, setExpr := range n.Exprs {
 		switch strings.ToLower(setExpr.Name.String()) {
@@ -73,7 +73,7 @@ func getSetVarExprsFromSetCharsetExpr(expr *ast.SetVarExpr, csd []byte) []*ast.S
 	}
 }
 
-func (b *PlanBuilder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql.Expression {
+func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql.Expression {
 	res := make([]sql.Expression, len(e))
 	for i, setExpr := range e {
 		if expr, ok := setExpr.Expr.(*ast.SQLVal); ok && strings.ToLower(setExpr.Name.String()) == "transaction" &&
@@ -138,7 +138,7 @@ func (b *PlanBuilder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) [
 	return res
 }
 
-func (b *PlanBuilder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql.Expression, bool) {
+func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql.Expression, bool) {
 	// convert to system or user var, validate system var
 	table := colName.Qualifier.String()
 	col := colName.Name.String()
@@ -197,7 +197,7 @@ func (b *PlanBuilder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) 
 	return nil, false
 }
 
-func (b *PlanBuilder) simplifySetExpr(name *ast.ColName, val ast.Expr) (sql.Expression, bool) {
+func (b *Builder) simplifySetExpr(name *ast.ColName, val ast.Expr) (sql.Expression, bool) {
 	// can |val| be nested?
 	switch val := val.(type) {
 	case *ast.ColName:

@@ -13,7 +13,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
+func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
 	// Order by resolves to
 	// 1) alias in projScope
 	// 2) column name in fromScope
@@ -136,7 +136,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 	return
 }
 
-func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
+func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	if len(orderByScope.cols) == 0 {
 		return
 	}

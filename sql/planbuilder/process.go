@@ -13,7 +13,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
+func (b *Builder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope) {
 	connID64 := b.getInt64Value(inScope, kill.ConnID, "Error parsing KILL, expected int literal")
 	connID32 := uint32(connID64)
 	if int64(connID32) != connID64 {
@@ -29,7 +29,7 @@ func (b *PlanBuilder) buildKill(inScope *scope, kill *ast.Kill) (outScope *scope
 
 // getInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
 // cannot.
-func (b *PlanBuilder) getInt64Value(inScope *scope, expr ast.Expr, errStr string) int64 {
+func (b *Builder) getInt64Value(inScope *scope, expr ast.Expr, errStr string) int64 {
 	ie := b.getInt64Literal(inScope, expr, errStr)
 
 	i, err := ie.Eval(b.ctx, nil)
@@ -42,7 +42,7 @@ func (b *PlanBuilder) getInt64Value(inScope *scope, expr ast.Expr, errStr string
 
 // getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
 // given if the expression doesn't represent an integer literal.
-func (b *PlanBuilder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) *expression.Literal {
+func (b *Builder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) *expression.Literal {
 	e := b.buildScalar(inScope, expr)
 
 	switch e := e.(type) {
@@ -68,7 +68,7 @@ func (b *PlanBuilder) getInt64Literal(inScope *scope, expr ast.Expr, errStr stri
 	return nl
 }
 
-func (b *PlanBuilder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
+func (b *Builder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
 	outScope = inScope.push()
 	// https://dev.mysql.com/doc/refman/8.0/en/signal.html#signal-condition-information-items
 	signalInfo := make(map[plan.SignalConditionItemName]plan.SignalInfo)
@@ -152,7 +152,7 @@ func (b *PlanBuilder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scop
 	return outScope
 }
 
-func (b *PlanBuilder) buildSignalConditionItemName(name ast.SignalConditionItemName) plan.SignalConditionItemName {
+func (b *Builder) buildSignalConditionItemName(name ast.SignalConditionItemName) plan.SignalConditionItemName {
 	// We convert to our own plan equivalents to keep a separation between the parser and implementation
 	switch name {
 	case ast.SignalConditionItemName_ClassOrigin:

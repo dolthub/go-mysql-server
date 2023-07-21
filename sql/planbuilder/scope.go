@@ -14,7 +14,7 @@ import (
 // scope tracks relational dependencies necessary to type check expressions,
 // resolve name definitions, and build relational nodes.
 type scope struct {
-	b      *PlanBuilder
+	b      *Builder
 	parent *scope
 	ast    ast.SQLNode
 	node   sql.Node
@@ -381,6 +381,11 @@ func (c scopeColumn) empty() bool {
 
 // scalarGf returns a getField reference to this column's expression.
 func (c scopeColumn) scalarGf() sql.Expression {
+	if c.scalar != nil {
+		if p, ok := c.scalar.(*expression.ProcedureParam); ok {
+			return p
+		}
+	}
 	return expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 }
 

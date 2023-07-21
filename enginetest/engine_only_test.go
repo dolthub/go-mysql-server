@@ -523,7 +523,7 @@ func TestAnalyzer_Exp(t *testing.T) {
 
 			ctx := enginetest.NewContext(harness)
 			b := planbuilder.New(ctx, e.Analyzer.Catalog)
-			parsed, _, _, err := b.Parse(ctx, tt.query, false)
+			parsed, _, _, err := b.Parse(tt.query, false)
 			require.NoError(t, err)
 
 			analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)

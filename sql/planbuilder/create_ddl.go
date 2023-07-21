@@ -14,7 +14,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	var triggerOrder *plan.TriggerOrder
 	if c.TriggerSpec.Order != nil {
@@ -62,9 +62,9 @@ func (b *PlanBuilder) buildCreateTrigger(inScope *scope, query string, c *ast.DD
 	triggerScope.addColumns(oldScope.cols)
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	b.buildingTrigger = true
+	b.TriggerCtx().Active = true
 	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
-	b.buildingTrigger = false
+	b.TriggerCtx().Active = false
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
 	db := b.resolveDb(dbName)
 
@@ -92,7 +92,7 @@ func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
 	return definer
 }
 
-func (b *PlanBuilder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	var params []plan.ProcedureParam
 	for _, param := range c.ProcedureSpec.Params {
 		var direction plan.ProcedureParamDirection
@@ -151,9 +151,11 @@ func (b *PlanBuilder) buildCreateProcedure(inScope *scope, query string, c *ast.
 	}
 
 	procName := strings.ToLower(c.ProcedureSpec.ProcName.Name.String())
-	//todo populate inScope with the procedure parameters
 	for _, p := range params {
-		inScope.newColumn(scopeColumn{table: "", col: strings.ToLower(p.Name), typ: p.Type})
+		// populate inScope with the procedure parameters. this will be
+		// subject maybe a bug where an inner procedure has access to
+		// outer procedure parameters.
+		inScope.newColumn(scopeColumn{table: "", col: strings.ToLower(p.Name), typ: p.Type, scalar: expression.NewProcedureParam(strings.ToLower(p.Name))})
 	}
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 	bodyScope := b.build(inScope, c.ProcedureSpec.Body, bodyStr)
@@ -184,7 +186,7 @@ func (b *PlanBuilder) buildCreateProcedure(inScope *scope, query string, c *ast.
 	return outScope
 }
 
-func (b *PlanBuilder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	eventSpec := c.EventSpec
 	database := b.resolveDb(eventSpec.EventName.Qualifier.String())
 	definer := getCurrentUserForDefiner(b.ctx, c.EventSpec.Definer)
@@ -249,7 +251,7 @@ func (b *PlanBuilder) buildCreateEvent(inScope *scope, query string, c *ast.DDL)
 	return outScope
 }
 
-func (b *PlanBuilder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventScheduleTimeSpec) (sql.Expression, []sql.Expression) {
+func (b *Builder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventScheduleTimeSpec) (sql.Expression, []sql.Expression) {
 	ts := b.buildScalar(inScope, spec.EventTimestamp)
 	if len(spec.EventIntervals) == 0 {
 		return ts, nil
@@ -262,7 +264,7 @@ func (b *PlanBuilder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.Event
 	return ts, intervals
 }
 
-func (b *PlanBuilder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	selectStatement, ok := c.ViewSpec.ViewExpr.(ast.SelectStatement)
 	if !ok {

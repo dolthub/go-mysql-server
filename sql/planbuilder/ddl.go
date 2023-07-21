@@ -16,7 +16,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) resolveDb(name string) sql.Database {
+func (b *Builder) resolveDb(name string) sql.Database {
 	if name == "" {
 		err := sql.ErrNoDatabaseSelected.New()
 		b.handleErr(err)
@@ -33,7 +33,7 @@ func (b *PlanBuilder) resolveDb(name string) sql.Database {
 	return database
 }
 
-func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.MultiAlterDDL) (outScope *scope) {
+func (b *Builder) buildMultiAlterDDL(inScope *scope, query string, c *ast.MultiAlterDDL) (outScope *scope) {
 	b.multiDDL = true
 	defer func() {
 		b.multiDDL = false
@@ -76,7 +76,7 @@ func (b *PlanBuilder) buildMultiAlterDDL(inScope *scope, query string, c *ast.Mu
 	return
 }
 
-func (b *PlanBuilder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
@@ -144,7 +144,7 @@ func (b *PlanBuilder) buildDDL(inScope *scope, query string, c *ast.DDL) (outSco
 	return
 }
 
-func (b *PlanBuilder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	var dropTables []sql.Node
 	dbName := c.FromTables[0].Qualifier.String()
@@ -178,7 +178,7 @@ func (b *PlanBuilder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scop
 	return
 }
 
-func (b *PlanBuilder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := c.Table.Qualifier.String()
 	tabName := c.Table.Name.String()
@@ -190,7 +190,7 @@ func (b *PlanBuilder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *
 	return
 }
 
-func (b *PlanBuilder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	if c.OptLike != nil {
 		tableName := c.OptLike.LikeTable.Name.String()
@@ -251,7 +251,7 @@ func (b *PlanBuilder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *sc
 	return
 }
 
-func (b *PlanBuilder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	if len(ddl.FromTables) != len(ddl.ToTables) {
 		panic("Expected from tables and to tables of equal length")
@@ -269,7 +269,7 @@ func (b *PlanBuilder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *
 	return
 }
 
-func (b *PlanBuilder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bool {
+func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bool {
 	for _, column := range tableSpec.Columns {
 		if column.Name.String() == columnName {
 			return column.Type.KeyOpt == colKeyUnique ||
@@ -282,7 +282,7 @@ func (b *PlanBuilder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string
 
 }
 
-func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	if ddl.IndexSpec != nil {
 		return b.buildAlterIndex(inScope, ddl)
 	}
@@ -401,7 +401,7 @@ func (b *PlanBuilder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *s
 	return
 }
 
-func (b *PlanBuilder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec *ast.TableSpec) (fks []*sql.ForeignKeyConstraint, checks []*sql.CheckConstraint) {
+func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec *ast.TableSpec) (fks []*sql.ForeignKeyConstraint, checks []*sql.CheckConstraint) {
 	for _, unknownConstraint := range spec.Constraints {
 		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
@@ -433,7 +433,7 @@ func columnOrderToColumnOrder(order *ast.ColumnOrder) *sql.ColumnOrder {
 	}
 }
 
-func (b *PlanBuilder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs []*plan.IndexDefinition) {
+func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs []*plan.IndexDefinition) {
 	for _, idxDef := range spec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
@@ -491,7 +491,7 @@ type namedConstraint struct {
 	name string
 }
 
-func (b *PlanBuilder) convertConstraintDefinition(inScope *scope, cd *ast.ConstraintDefinition) interface{} {
+func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.ConstraintDefinition) interface{} {
 	if fkConstraint, ok := cd.Details.(*ast.ForeignKeyDefinition); ok {
 		columns := make([]string, len(fkConstraint.Source))
 		for i, col := range fkConstraint.Source {
@@ -535,7 +535,7 @@ func (b *PlanBuilder) convertConstraintDefinition(inScope *scope, cd *ast.Constr
 	return nil
 }
 
-func (b *PlanBuilder) buildReferentialAction(action ast.ReferenceAction) sql.ForeignKeyReferentialAction {
+func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.ForeignKeyReferentialAction {
 	switch action {
 	case ast.Restrict:
 		return sql.ForeignKeyReferentialAction_Restrict
@@ -553,7 +553,7 @@ func (b *PlanBuilder) buildReferentialAction(action ast.ReferenceAction) sql.For
 }
 
 // todo drop column, rename column
-func (b *PlanBuilder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	dbName := ddl.Table.Qualifier.String()
 	tabName := ddl.Table.Name.String()
 	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
@@ -638,7 +638,7 @@ func (b *PlanBuilder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *s
 	return
 }
 
-func (b *PlanBuilder) gatherIndexColumns(cols []*ast.IndexColumn) []sql.IndexColumn {
+func (b *Builder) gatherIndexColumns(cols []*ast.IndexColumn) []sql.IndexColumn {
 	out := make([]sql.IndexColumn, len(cols))
 	for i, col := range cols {
 		var length int64
@@ -661,7 +661,7 @@ func (b *PlanBuilder) gatherIndexColumns(cols []*ast.IndexColumn) []sql.IndexCol
 	return out
 }
 
-func (b *PlanBuilder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	val, ok := ddl.AutoIncSpec.Value.(*ast.SQLVal)
 	if !ok {
 		err := sql.ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
@@ -698,7 +698,7 @@ func (b *PlanBuilder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL) (out
 	return
 }
 
-func (b *PlanBuilder) buildAlterDefault(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	dbName := ddl.Table.Qualifier.String()
 	tabName := ddl.Table.Name.String()
 	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
@@ -723,7 +723,7 @@ func (b *PlanBuilder) buildAlterDefault(inScope *scope, ddl *ast.DDL) (outScope 
 	return
 }
 
-func (b *PlanBuilder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	dbName := ddl.Table.Qualifier.String()
 	tabName := ddl.Table.Name.String()
 	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
@@ -748,7 +748,7 @@ func (b *PlanBuilder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL) (out
 	return
 }
 
-func (b *PlanBuilder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *sql.ColumnDefaultValue {
+func (b *Builder) buildDefaultExpression(inScope *scope, defaultExpr ast.Expr) *sql.ColumnDefaultValue {
 	if defaultExpr == nil {
 		return nil
 	}
@@ -793,7 +793,7 @@ func ExpressionToColumnDefaultValue(inputExpr sql.Expression, isLiteral, isParen
 	}
 }
 
-func (b *PlanBuilder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
+func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	config := make(map[string]string)
 	for _, option := range ddl.IndexSpec.Options {
 		if option.Using != "" {
@@ -833,7 +833,7 @@ func (b *PlanBuilder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (ou
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func (b *PlanBuilder) tableSpecToSchema(inScope, outScope *scope, dbName, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
+func (b *Builder) tableSpecToSchema(inScope, outScope *scope, dbName, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID) {
 	tableCollation := sql.Collation_Unspecified
 	if !forceInvalidCollation {
 		if len(tableSpec.Options) > 0 {
@@ -896,7 +896,7 @@ func (b *PlanBuilder) tableSpecToSchema(inScope, outScope *scope, dbName, tableN
 }
 
 // jsonTableSpecToSchemaHelper creates a sql.Schema from a parsed TableSpec
-func (b *PlanBuilder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSpec, sch sql.Schema) {
+func (b *Builder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSpec, sch sql.Schema) {
 	for _, cd := range jsonTableSpec.Columns {
 		if cd.Spec != nil {
 			b.jsonTableSpecToSchemaHelper(cd.Spec, sch)
@@ -917,7 +917,7 @@ func (b *PlanBuilder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSp
 }
 
 // jsonTableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func (b *PlanBuilder) jsonTableSpecToSchema(tableSpec *ast.JSONTableSpec) sql.Schema {
+func (b *Builder) jsonTableSpecToSchema(tableSpec *ast.JSONTableSpec) sql.Schema {
 	var sch sql.Schema
 	b.jsonTableSpecToSchemaHelper(tableSpec, sch)
 	return sch
@@ -963,7 +963,7 @@ func getPkOrdinals(ts *ast.TableSpec) []int {
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
-func (b *PlanBuilder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinition, indexes []*ast.IndexDefinition) *sql.Column {
+func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinition, indexes []*ast.IndexDefinition) *sql.Column {
 	internalTyp, err := types.ColumnTypeToType(&cd.Type)
 	if err != nil {
 		b.handleErr(err)
@@ -1028,7 +1028,7 @@ func (b *PlanBuilder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDef
 	}
 }
 
-func (b *PlanBuilder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr) *sql.ColumnDefaultValue {
+func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr) *sql.ColumnDefaultValue {
 	if defaultExpr == nil {
 		return nil
 	}
@@ -1067,7 +1067,7 @@ func (b *PlanBuilder) convertDefaultExpression(inScope *scope, defaultExpr ast.E
 	}
 }
 
-func (b *PlanBuilder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
+func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:

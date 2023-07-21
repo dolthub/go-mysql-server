@@ -12,14 +12,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildBeginEndBlock(inScope *scope, n *sqlparser.BeginEndBlock) (outScope *scope) {
+func (b *Builder) buildBeginEndBlock(inScope *scope, n *sqlparser.BeginEndBlock) (outScope *scope) {
 	outScope = inScope.push()
 	block := b.buildBlock(inScope, n.Statements)
 	outScope.node = plan.NewBeginEndBlock(n.Label, block)
 	return outScope
 }
 
-func (b *PlanBuilder) buildIfBlock(inScope *scope, n *sqlparser.IfStatement) (outScope *scope) {
+func (b *Builder) buildIfBlock(inScope *scope, n *sqlparser.IfStatement) (outScope *scope) {
 	outScope = inScope.push()
 	ifConditionals := make([]*plan.IfConditional, len(n.Conditions))
 	for i, ic := range n.Conditions {
@@ -31,7 +31,7 @@ func (b *PlanBuilder) buildIfBlock(inScope *scope, n *sqlparser.IfStatement) (ou
 	return outScope
 }
 
-func (b *PlanBuilder) buildCaseStatement(inScope *scope, n *sqlparser.CaseStatement) (outScope *scope) {
+func (b *Builder) buildCaseStatement(inScope *scope, n *sqlparser.CaseStatement) (outScope *scope) {
 	outScope = inScope.push()
 	ifConditionals := make([]*plan.IfConditional, len(n.Cases))
 	for i, c := range n.Cases {
@@ -55,7 +55,7 @@ func (b *PlanBuilder) buildCaseStatement(inScope *scope, n *sqlparser.CaseStatem
 	}
 }
 
-func (b *PlanBuilder) buildIfConditional(inScope *scope, n sqlparser.IfStatementCondition) (outScope *scope) {
+func (b *Builder) buildIfConditional(inScope *scope, n sqlparser.IfStatementCondition) (outScope *scope) {
 	outScope = inScope.push()
 	block := b.buildBlock(inScope, n.Statements)
 	condition := b.buildScalar(inScope, n.Expr)
@@ -63,7 +63,7 @@ func (b *PlanBuilder) buildIfConditional(inScope *scope, n sqlparser.IfStatement
 	return outScope
 }
 
-func (b *PlanBuilder) buildCall(inScope *scope, c *sqlparser.Call) (outScope *scope) {
+func (b *Builder) buildCall(inScope *scope, c *sqlparser.Call) (outScope *scope) {
 	outScope = inScope.push()
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {
@@ -92,7 +92,7 @@ func (b *PlanBuilder) buildCall(inScope *scope, c *sqlparser.Call) (outScope *sc
 	return outScope
 }
 
-func (b *PlanBuilder) buildDeclare(inScope *scope, d *sqlparser.Declare, query string) (outScope *scope) {
+func (b *Builder) buildDeclare(inScope *scope, d *sqlparser.Declare, query string) (outScope *scope) {
 	outScope = inScope.push()
 	if d.Condition != nil {
 		return b.buildDeclareCondition(inScope, d)
@@ -108,7 +108,7 @@ func (b *PlanBuilder) buildDeclare(inScope *scope, d *sqlparser.Declare, query s
 	return
 }
 
-func (b *PlanBuilder) buildDeclareCondition(inScope *scope, d *sqlparser.Declare) (outScope *scope) {
+func (b *Builder) buildDeclareCondition(inScope *scope, d *sqlparser.Declare) (outScope *scope) {
 	outScope = inScope.push()
 	dc := d.Condition
 	if dc.SqlStateValue != "" {
@@ -135,7 +135,7 @@ func (b *PlanBuilder) buildDeclareCondition(inScope *scope, d *sqlparser.Declare
 	return outScope
 }
 
-func (b *PlanBuilder) buildDeclareVariables(inScope *scope, d *sqlparser.Declare) (outScope *scope) {
+func (b *Builder) buildDeclareVariables(inScope *scope, d *sqlparser.Declare) (outScope *scope) {
 	outScope = inScope.push()
 	dVars := d.Variables
 	names := make([]string, len(dVars.Names))
@@ -152,7 +152,7 @@ func (b *PlanBuilder) buildDeclareVariables(inScope *scope, d *sqlparser.Declare
 	return outScope
 }
 
-func (b *PlanBuilder) buildDeclareCursor(inScope *scope, d *sqlparser.Declare) (outScope *scope) {
+func (b *Builder) buildDeclareCursor(inScope *scope, d *sqlparser.Declare) (outScope *scope) {
 	outScope = inScope.push()
 	dCursor := d.Cursor
 	selectScope := b.buildSelectStmt(inScope, dCursor.SelectStmt)
@@ -160,7 +160,7 @@ func (b *PlanBuilder) buildDeclareCursor(inScope *scope, d *sqlparser.Declare) (
 	return outScope
 }
 
-func (b *PlanBuilder) buildDeclareHandler(inScope *scope, d *sqlparser.Declare, query string) (outScope *scope) {
+func (b *Builder) buildDeclareHandler(inScope *scope, d *sqlparser.Declare, query string) (outScope *scope) {
 	outScope = inScope.push()
 	dHandler := d.Handler
 	//TODO: support other condition values besides NOT FOUND
@@ -194,7 +194,7 @@ func (b *PlanBuilder) buildDeclareHandler(inScope *scope, d *sqlparser.Declare, 
 	return outScope
 }
 
-func (b *PlanBuilder) buildBlock(inScope *scope, parserStatements sqlparser.Statements) *plan.Block {
+func (b *Builder) buildBlock(inScope *scope, parserStatements sqlparser.Statements) *plan.Block {
 	var statements []sql.Node
 	for _, s := range parserStatements {
 		stmtScope := b.build(inScope, s, sqlparser.String(s))
@@ -203,32 +203,32 @@ func (b *PlanBuilder) buildBlock(inScope *scope, parserStatements sqlparser.Stat
 	return plan.NewBlock(statements)
 }
 
-func (b *PlanBuilder) buildFetchCursor(inScope *scope, fetchCursor *sqlparser.FetchCursor) (outScope *scope) {
+func (b *Builder) buildFetchCursor(inScope *scope, fetchCursor *sqlparser.FetchCursor) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewFetch(fetchCursor.Name, fetchCursor.Variables)
 	return outScope
 }
 
-func (b *PlanBuilder) buildOpenCursor(inScope *scope, openCursor *sqlparser.OpenCursor) (outScope *scope) {
+func (b *Builder) buildOpenCursor(inScope *scope, openCursor *sqlparser.OpenCursor) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewOpen(openCursor.Name)
 	return outScope
 }
 
-func (b *PlanBuilder) buildCloseCursor(inScope *scope, closeCursor *sqlparser.CloseCursor) (outScope *scope) {
+func (b *Builder) buildCloseCursor(inScope *scope, closeCursor *sqlparser.CloseCursor) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewClose(closeCursor.Name)
 	return outScope
 }
 
-func (b *PlanBuilder) buildLoop(inScope *scope, loop *sqlparser.Loop) (outScope *scope) {
+func (b *Builder) buildLoop(inScope *scope, loop *sqlparser.Loop) (outScope *scope) {
 	outScope = inScope.push()
 	block := b.buildBlock(inScope, loop.Statements)
 	outScope.node = plan.NewLoop(loop.Label, block)
 	return outScope
 }
 
-func (b *PlanBuilder) buildRepeat(inScope *scope, repeat *sqlparser.Repeat) (outScope *scope) {
+func (b *Builder) buildRepeat(inScope *scope, repeat *sqlparser.Repeat) (outScope *scope) {
 	outScope = inScope.push()
 	block := b.buildBlock(inScope, repeat.Statements)
 	expr := b.buildScalar(inScope, repeat.Condition)
@@ -236,7 +236,7 @@ func (b *PlanBuilder) buildRepeat(inScope *scope, repeat *sqlparser.Repeat) (out
 	return outScope
 }
 
-func (b *PlanBuilder) buildWhile(inScope *scope, while *sqlparser.While) (outScope *scope) {
+func (b *Builder) buildWhile(inScope *scope, while *sqlparser.While) (outScope *scope) {
 	outScope = inScope.push()
 	block := b.buildBlock(inScope, while.Statements)
 	expr := b.buildScalar(inScope, while.Condition)
@@ -244,13 +244,13 @@ func (b *PlanBuilder) buildWhile(inScope *scope, while *sqlparser.While) (outSco
 	return outScope
 }
 
-func (b *PlanBuilder) buildLeave(inScope *scope, leave *sqlparser.Leave) (outScope *scope) {
+func (b *Builder) buildLeave(inScope *scope, leave *sqlparser.Leave) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewLeave(leave.Label)
 	return outScope
 }
 
-func (b *PlanBuilder) buildIterate(inScope *scope, iterate *sqlparser.Iterate) (outScope *scope) {
+func (b *Builder) buildIterate(inScope *scope, iterate *sqlparser.Iterate) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewIterate(iterate.Label)
 	return outScope

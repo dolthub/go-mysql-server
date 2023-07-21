@@ -9,36 +9,50 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-type PlanBuilder struct {
+type Builder struct {
 	ctx             *sql.Context
 	cat             sql.Catalog
 	currentDatabase sql.Database
 	colId           columnId
 	tabId           tableId
 	multiDDL        bool
-	viewAsOf        interface{}
-	viewDatabase    string
+	viewCtx         *ViewContext
+	triggerCtx      *TriggerContext
 	nesting         int
-	buildingTrigger bool
 }
 
-func New(ctx *sql.Context, cat sql.Catalog) *PlanBuilder {
-	return &PlanBuilder{ctx: ctx, cat: cat}
+type ViewContext struct {
+	AsOf interface{}
 }
 
-func (b *PlanBuilder) SetAsOf(asof interface{}) {
-	b.viewAsOf = asof
+type TriggerContext struct {
+	Active     bool
+	ResolveErr error
 }
 
-func (b *PlanBuilder) AsOf() interface{} {
-	return b.viewAsOf
+func New(ctx *sql.Context, cat sql.Catalog) *Builder {
+	return &Builder{ctx: ctx, cat: cat}
 }
 
-func (b *PlanBuilder) newScope() *scope {
+func (b *Builder) ViewCtx() *ViewContext {
+	if b.viewCtx == nil {
+		b.viewCtx = &ViewContext{}
+	}
+	return b.viewCtx
+}
+
+func (b *Builder) TriggerCtx() *TriggerContext {
+	if b.triggerCtx == nil {
+		b.triggerCtx = &TriggerContext{}
+	}
+	return b.triggerCtx
+}
+
+func (b *Builder) newScope() *scope {
 	return &scope{b: b}
 }
 
-func (b *PlanBuilder) reset() {
+func (b *Builder) reset() {
 	b.colId = 0
 }
 
@@ -46,11 +60,11 @@ type parseErr struct {
 	err error
 }
 
-func (b *PlanBuilder) handleErr(err error) {
+func (b *Builder) handleErr(err error) {
 	panic(parseErr{err})
 }
 
-func (b *PlanBuilder) build(inScope *scope, stmt ast.Statement, query string) (outScope *scope) {
+func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outScope *scope) {
 	if inScope == nil {
 		inScope = b.newScope()
 	}

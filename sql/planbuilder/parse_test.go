@@ -1456,7 +1456,7 @@ Project
 	ctx := sql.NewEmptyContext()
 	ctx.SetCurrentDatabase("mydb")
 	cat := newTestCatalog()
-	b := &PlanBuilder{
+	b := &Builder{
 		ctx: ctx,
 		cat: cat,
 	}

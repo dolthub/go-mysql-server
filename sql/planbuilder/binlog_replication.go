@@ -10,7 +10,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeReplicationSource) (outScope *scope) {
+func (b *Builder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeReplicationSource) (outScope *scope) {
 	outScope = inScope.push()
 	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
 	for _, option := range n.Options {
@@ -21,7 +21,7 @@ func (b *PlanBuilder) buildChangeReplicationSource(inScope *scope, n *ast.Change
 	return outScope
 }
 
-func (b *PlanBuilder) buildReplicationOption(inScope *scope, option *ast.ReplicationOption) *binlogreplication.ReplicationOption {
+func (b *Builder) buildReplicationOption(inScope *scope, option *ast.ReplicationOption) *binlogreplication.ReplicationOption {
 	if option.Value == nil {
 		err := fmt.Errorf("nil replication option specified for option %q", option.Name)
 		b.handleErr(err)
@@ -49,7 +49,7 @@ func (b *PlanBuilder) buildReplicationOption(inScope *scope, option *ast.Replica
 	return nil
 }
 
-func (b *PlanBuilder) buildChangeReplicationFilter(inScope *scope, n *ast.ChangeReplicationFilter) (outScope *scope) {
+func (b *Builder) buildChangeReplicationFilter(inScope *scope, n *ast.ChangeReplicationFilter) (outScope *scope) {
 	outScope = inScope.push()
 	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
 	for _, option := range n.Options {

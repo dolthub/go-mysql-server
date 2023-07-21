@@ -8,7 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *scope) {
+func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *scope) {
 	outScope = inScope.push()
 	childScope := b.build(inScope, n.Statement, "")
 	explainFmt := sqlparser.TreeStr

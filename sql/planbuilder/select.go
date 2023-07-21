@@ -10,7 +10,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
+func (b *Builder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (outScope *scope) {
 	switch s := s.(type) {
 	case *ast.Select:
 		if s.With != nil {
@@ -32,7 +32,7 @@ func (b *PlanBuilder) buildSelectStmt(inScope *scope, s ast.SelectStatement) (ou
 	return
 }
 
-func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
+func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	// General order of binding:
 	// 1) Get definitions in FROM.
 	// 2) Build WHERE, which can only reference FROM columns.
@@ -101,27 +101,27 @@ func (b *PlanBuilder) buildSelect(inScope *scope, s *ast.Select) (outScope *scop
 	return
 }
 
-func (b *PlanBuilder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
+func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil {
 		return b.buildScalar(inScope, limit.Rowcount)
 	}
 	return nil
 }
 
-func (b *PlanBuilder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
+func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
 		return b.buildScalar(inScope, limit.Offset)
 	}
 	return nil
 }
 
-func (b *PlanBuilder) buildDistinct(inScope *scope, distinct string) {
+func (b *Builder) buildDistinct(inScope *scope, distinct string) {
 	if distinct != "" {
 		inScope.node = plan.NewDistinct(inScope.node)
 	}
 }
 
-func (b *PlanBuilder) currentDb() sql.Database {
+func (b *Builder) currentDb() sql.Database {
 	if b.currentDatabase == nil {
 		database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 		if err != nil {
@@ -136,7 +136,7 @@ func (b *PlanBuilder) currentDb() sql.Database {
 	return b.currentDatabase
 }
 
-func (b *PlanBuilder) renameSource(scope *scope, table string, cols []string) {
+func (b *Builder) renameSource(scope *scope, table string, cols []string) {
 	if table != "" {
 		scope.setTableAlias(table)
 	}

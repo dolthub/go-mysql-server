@@ -15,7 +15,7 @@ import (
 )
 
 // TODO outScope will be populated with a source node and column sets
-func (b *PlanBuilder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope) {
+func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope) {
 	if len(te) == 0 {
 		outScope = inScope.push()
 		outScope.ast = te
@@ -43,7 +43,7 @@ func (b *PlanBuilder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *sc
 	return b.buildDataSource(inScope, te[0])
 }
 
-func (b *PlanBuilder) validateJoinTableNames(leftScope, rightScope *scope) {
+func (b *Builder) validateJoinTableNames(leftScope, rightScope *scope) {
 	// TODO validateUniqueTableNames is redundant
 	for t, _ := range leftScope.tables {
 		if _, ok := rightScope.tables[t]; ok {
@@ -53,12 +53,12 @@ func (b *PlanBuilder) validateJoinTableNames(leftScope, rightScope *scope) {
 	}
 }
 
-func (b *PlanBuilder) isLateral(te ast.TableExpr) bool {
+func (b *Builder) isLateral(te ast.TableExpr) bool {
 	_, ok := te.(*ast.JSONTableExpr)
 	return ok
 }
 
-func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
+func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	//TODO build individual table expressions
 	// collect column  definitions
 	leftScope := b.buildDataSource(inScope, te.LeftExpr)
@@ -115,7 +115,7 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 // NATURAL_JOIN(t1, t2)
 // =>
 // PROJ(t1.a1, ...,t1.aN) -> INNER_JOIN(t1, t2, [t1.a1=t2.a1,..., t1.aN=t2.aN])
-func (b *PlanBuilder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (outScope *scope) {
+func (b *Builder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (outScope *scope) {
 	outScope = inScope.push()
 	var proj []sql.Expression
 	for _, lCol := range leftScope.cols {
@@ -157,7 +157,7 @@ func (b *PlanBuilder) buildNaturalJoin(inScope, leftScope, rightScope *scope) (o
 	return
 }
 
-func (b *PlanBuilder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {
+func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.ast = te
 
@@ -283,7 +283,7 @@ func columnsToStrings(cols ast.Columns) []string {
 	return res
 }
 
-func (b *PlanBuilder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
+func (b *Builder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
 	var err error
 	asOfExpr := b.buildScalar(inScope, asOf)
 	asOfLit, err := asOfExpr.Eval(b.ctx, nil)
@@ -293,7 +293,7 @@ func (b *PlanBuilder) buildAsOf(inScope *scope, asOf ast.Expr) interface{} {
 	return asOfLit
 }
 
-func (b *PlanBuilder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
+func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedTable {
 	table, _, err := b.cat.TableAsOf(b.ctx, db, tab, asOf)
 	if err != nil {
 		b.handleErr(err)
@@ -309,7 +309,7 @@ func (b *PlanBuilder) resolveTable(tab, db string, asOf interface{}) *plan.Resol
 	return plan.NewResolvedTable(table, database, asOf)
 }
 
-func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
+func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 	leftScope := b.buildSelectStmt(inScope, u.Left)
 	rightScope := b.buildSelectStmt(inScope, u.Right)
 
@@ -365,7 +365,7 @@ func (b *PlanBuilder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope)
 	return
 }
 
-func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
+func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
 	//TODO what are valid mysql table arguments
 	args := make([]sql.Expression, 0, len(t.Exprs))
 	for _, e := range t.Exprs {
@@ -435,7 +435,7 @@ func (b *PlanBuilder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outS
 	return
 }
 
-func (b *PlanBuilder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) []plan.JSONTableCol {
+func (b *Builder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) []plan.JSONTableCol {
 	var cols []plan.JSONTableCol
 	for _, jtColDef := range jtSpec.Columns {
 		// nested col defs need to be flattened into multiple colOpts with all paths appended
@@ -485,7 +485,7 @@ func (b *PlanBuilder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSp
 	return cols
 }
 
-func (b *PlanBuilder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
+func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope *scope) {
 	data := b.buildScalar(inScope, t.Data)
 	if _, ok := data.(*plan.Subquery); ok {
 		b.handleErr(sql.ErrInvalidArgument.New("JSON_TABLE"))
@@ -511,7 +511,7 @@ func (b *PlanBuilder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outS
 	return outScope
 }
 
-func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope) {
+func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope) {
 	outScope = inScope.push()
 
 	// lookup table in catalog
@@ -542,8 +542,8 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 				b.handleErr(err)
 			}
 		}
-	} else if b.viewAsOf != nil {
-		asOfLit = b.viewAsOf
+	} else if asof := b.ViewCtx().AsOf; asof != nil {
+		asOfLit = asof
 	}
 
 	var tab sql.Table
@@ -582,7 +582,7 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 		}
 		b.handleErr(err)
 	} else if tab == nil {
-		if b.buildingTrigger {
+		if b.TriggerCtx().Active {
 			outScope.node = plan.NewUnresolvedTable(name, db)
 			return
 		}
@@ -611,7 +611,7 @@ func (b *PlanBuilder) buildTablescan(inScope *scope, db, name string, asof *ast.
 	return outScope
 }
 
-func (b *PlanBuilder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {
+func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {
 	var view *sql.View
 
 	if vdb, vok := database.(sql.ViewDatabase); vok {
@@ -620,15 +620,15 @@ func (b *PlanBuilder) resolveView(name string, database sql.Database, asOf inter
 			b.handleErr(err)
 		}
 		if vdok {
-			outerAsOf := b.viewAsOf
+			outerAsOf := b.ViewCtx().AsOf
 			outerDb := b.currentDatabase
-			b.viewAsOf = asOf
+			b.ViewCtx().AsOf = asOf
 			b.currentDatabase = database
 			defer func() {
-				b.viewAsOf = outerAsOf
+				b.ViewCtx().AsOf = outerAsOf
 				b.currentDatabase = outerDb
 			}()
-			node, _, _, err := b.Parse(b.ctx, viewDef.TextDefinition, false)
+			node, _, _, err := b.Parse(viewDef.TextDefinition, false)
 			if err != nil {
 				b.handleErr(err)
 			}

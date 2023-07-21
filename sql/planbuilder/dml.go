@@ -12,7 +12,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
+func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
@@ -30,10 +30,9 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 	default:
 		b.handleErr(fmt.Errorf("expected insert destination to be resolved or unresolved table"))
 	}
-	var triggerRefsUnknownTable bool
 	if rt == nil {
-		if b.buildingTrigger {
-			triggerRefsUnknownTable = true
+		if b.TriggerCtx().Active {
+			b.TriggerCtx().ResolveErr = sql.ErrTableNotFound.New(tabName)
 		} else {
 			err := fmt.Errorf("expected resolved table: %s", tabName)
 			b.handleErr(err)
@@ -64,7 +63,7 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 		// If no column names were specified in the query, go ahead and fill
 		// them all in now that the destination is resolved.
 		// TODO: setting the plan field directly is not great
-		if len(columns) == 0 && len(srcScope.cols) > 0 && !triggerRefsUnknownTable {
+		if len(columns) == 0 && len(srcScope.cols) > 0 && rt != nil {
 			schema := rt.Schema()
 			columns = make([]string, len(schema))
 			for i, col := range schema {
@@ -75,7 +74,7 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 
 	ins := plan.NewInsertInto(db, destScope.node, srcScope.node, isReplace, columns, onDupExprs, ignore)
 
-	if !triggerRefsUnknownTable {
+	if rt != nil {
 		checks := b.loadChecksFromTable(destScope, rt.Table)
 		ins.Checks = checks
 	}
@@ -86,7 +85,7 @@ func (b *PlanBuilder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scop
 	return
 }
 
-func (b *PlanBuilder) insertRowsToNode(inScope *scope, ir ast.InsertRows) (outScope *scope) {
+func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows) (outScope *scope) {
 	switch v := ir.(type) {
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, v)
@@ -99,7 +98,7 @@ func (b *PlanBuilder) insertRowsToNode(inScope *scope, ir ast.InsertRows) (outSc
 	return
 }
 
-func (b *PlanBuilder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
+func (b *Builder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
 	// TODO add literals to outScope?
 	exprTuples := make([][]sql.Expression, len(v))
 	for i, vt := range v {
@@ -115,7 +114,7 @@ func (b *PlanBuilder) buildValues(inScope *scope, v ast.Values) (outScope *scope
 	return
 }
 
-func (b *PlanBuilder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
+func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
@@ -125,7 +124,7 @@ func (b *PlanBuilder) assignmentExprsToExpressions(inScope *scope, e ast.Assignm
 	return res
 }
 
-func (b *PlanBuilder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
+func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	outScope = b.buildFrom(inScope, d.TableExprs)
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, nil, d.OrderBy)
@@ -154,7 +153,7 @@ func (b *PlanBuilder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scop
 	return
 }
 
-func (b *PlanBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
+func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	outScope = b.buildFrom(inScope, u.TableExprs)
 
 	var checks []*sql.CheckConstraint
@@ -192,7 +191,7 @@ func (b *PlanBuilder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scop
 	return
 }
 
-func (b *PlanBuilder) buildInto(inScope *scope, into *ast.Into) {
+func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 	if into.Outfile != "" || into.Dumpfile != "" {
 		err := sql.ErrUnsupportedSyntax.New("select into files is not supported yet")
 		b.handleErr(err)
@@ -209,7 +208,7 @@ func (b *PlanBuilder) buildInto(inScope *scope, into *ast.Into) {
 	inScope.node = plan.NewInto(inScope.node, vars)
 }
 
-func (b *PlanBuilder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
+func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.CheckConstraint {
 	var loadedChecks []*sql.CheckConstraint
 	if checkTable, ok := table.(sql.CheckTable); ok {
 		checks, err := checkTable.GetChecks(b.ctx)
@@ -224,7 +223,7 @@ func (b *PlanBuilder) loadChecksFromTable(inScope *scope, table sql.Table) []*sq
 	return loadedChecks
 }
 
-func (b *PlanBuilder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinition) *sql.CheckConstraint {
+func (b *Builder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinition) *sql.CheckConstraint {
 	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
 	parsed, err := ast.Parse(parseStr)
 	if err != nil {

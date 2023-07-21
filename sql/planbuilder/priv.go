@@ -133,7 +133,7 @@ func convertPrivilegeLevel(privLevel ast.PrivilegeLevel) plan.PrivilegeLevel {
 	}
 }
 
-func (b *PlanBuilder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *scope) {
+func (b *Builder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *scope) {
 	outScope = inScope.push()
 	authUsers := make([]plan.AuthenticatedUser, len(n.Users))
 	for i, user := range n.Users {
@@ -276,7 +276,7 @@ func (b *PlanBuilder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outSco
 	return outScope
 }
 
-func (b *PlanBuilder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outScope *scope) {
+func (b *Builder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outScope *scope) {
 	oldNames := make([]plan.UserName, len(n.Accounts))
 	newNames := make([]plan.UserName, len(n.Accounts))
 	for i, account := range n.Accounts {
@@ -288,7 +288,7 @@ func (b *PlanBuilder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outSco
 	return outScope
 }
 
-func (b *PlanBuilder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (outScope *scope) {
+func (b *Builder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (outScope *scope) {
 	outScope = inScope.push()
 	var gau *plan.GrantUserAssumption
 	if n.As != nil {
@@ -329,7 +329,7 @@ func (b *PlanBuilder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege)
 	return outScope
 }
 
-func (b *PlanBuilder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *scope) {
+func (b *Builder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *scope) {
 	var currentUser bool
 	var user *plan.UserName
 	if n.For != nil {
@@ -349,7 +349,7 @@ func (b *PlanBuilder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outSco
 	return
 }
 
-func (b *PlanBuilder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
+func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 	outScope = inScope.push()
 	var writesToBinlog = true
 	switch strings.ToLower(f.Type) {

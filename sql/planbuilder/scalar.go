@@ -16,7 +16,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
+func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 	if where == nil {
 		return
 	}
@@ -25,7 +25,7 @@ func (b *PlanBuilder) buildWhere(inScope *scope, where *ast.Where) {
 	inScope.node = filterNode
 }
 
-func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
+func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	switch v := e.(type) {
 	case *ast.Default:
 		return expression.NewDefaultColumn(v.ColName)
@@ -246,7 +246,7 @@ func (b *PlanBuilder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	return nil
 }
 
-func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
+func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Expression {
 	switch strings.ToLower(e.Operator) {
 	case ast.MinusStr:
 		expr := b.buildScalar(inScope, e.Expr)
@@ -325,7 +325,7 @@ func (b *PlanBuilder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Exp
 	return nil
 }
 
-func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
+func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expression {
 	l := b.buildScalar(inScope, be.Left)
 	r := b.buildScalar(inScope, be.Right)
 
@@ -388,7 +388,7 @@ func (b *PlanBuilder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.
 	return nil
 }
 
-func (b *PlanBuilder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression {
+func (b *Builder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression {
 	switch v.Type {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
@@ -461,7 +461,7 @@ func (b *PlanBuilder) buildLiteral(inScope *scope, v *ast.SQLVal) sql.Expression
 	return nil
 }
 
-func (b *PlanBuilder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
+func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
 
@@ -522,7 +522,7 @@ func (b *PlanBuilder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql
 	return nil
 }
 
-func (b *PlanBuilder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression {
+func (b *Builder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Expression {
 	var expr sql.Expression
 
 	if e.Expr != nil {
@@ -551,7 +551,7 @@ func (b *PlanBuilder) buildCaseExpr(inScope *scope, e *ast.CaseExpr) sql.Express
 	return expression.NewCase(expr, branches, elseExpr)
 }
 
-func (b *PlanBuilder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Expression {
+func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Expression {
 	e := b.buildScalar(inScope, c.Expr)
 	switch strings.ToLower(c.Operator) {
 	case ast.IsNullStr:
@@ -573,7 +573,7 @@ func (b *PlanBuilder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql
 	return nil
 }
 
-func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sql.Expression, error) {
+func (b *Builder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sql.Expression, error) {
 	l := b.buildScalar(inScope, be.Left)
 	r := b.buildScalar(inScope, be.Right)
 
@@ -631,7 +631,7 @@ func (b *PlanBuilder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr)
 	}
 }
 
-func (b *PlanBuilder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Expression, error) {
+func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Expression, error) {
 	var expr sql.Expression
 
 	if e.Expr != nil {
@@ -660,7 +660,7 @@ func (b *PlanBuilder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql
 	return expression.NewCase(expr, branches, elseExpr), nil
 }
 
-func (b *PlanBuilder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) sql.Expression {
+func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) sql.Expression {
 	expr := b.buildScalar(inScope, e.Expr)
 	return expression.NewInterval(expr, e.Unit)
 }
@@ -668,7 +668,7 @@ func (b *PlanBuilder) intervalExprToExpression(inScope *scope, e *ast.IntervalEx
 // Convert an integer, represented by the specified string in the specified
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
-func (b *PlanBuilder) convertInt(value string, base int) *expression.Literal {
+func (b *Builder) convertInt(value string, base int) *expression.Literal {
 	if i8, err := strconv.ParseInt(value, base, 8); err == nil {
 		return expression.NewLiteral(int8(i8), types.Int8)
 	}
@@ -701,7 +701,7 @@ func (b *PlanBuilder) convertInt(value string, base int) *expression.Literal {
 	return nil
 }
 
-func (b *PlanBuilder) convertVal(ctx *sql.Context, v *ast.SQLVal) sql.Expression {
+func (b *Builder) convertVal(ctx *sql.Context, v *ast.SQLVal) sql.Expression {
 	switch v.Type {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(ctx.GetCollation()))

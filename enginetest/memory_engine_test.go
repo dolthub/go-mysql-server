@@ -245,14 +245,19 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "trigger with signal and user var",
 			SetUpScript: []string{
-				"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
-				"create table sequence_table (max_id integer PRIMARY KEY);",
-				"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
-				"insert into sequence_table values (1);",
+				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
+				`CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
+INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
+				"CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
+				"CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "insert into mytable () values ();",
+					Query: "CALL add_entry(4, 'aaa');",
+
 					Expected: []sql.Row{},
 				},
 			},
@@ -760,6 +765,10 @@ func TestShowTriggers(t *testing.T) {
 	enginetest.TestShowTriggers(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestShowTriggers_Exp(t *testing.T) {
+	enginetest.TestShowTriggers(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestBrokenTriggers(t *testing.T) {
 	h := enginetest.NewSkippingMemoryHarness()
 	for _, script := range queries.BrokenTriggerQueries {
@@ -776,6 +785,18 @@ func TestStoredProcedures(t *testing.T) {
 		}
 	}
 	enginetest.TestStoredProcedures(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestStoredProcedures_Exp(t *testing.T) {
+	t.Skip("panic")
+	for i, test := range queries.ProcedureLogicTests {
+		//TODO: the RowIter returned from a SELECT should not take future changes into account
+		if test.Name == "FETCH captures state at OPEN" {
+			queries.ProcedureLogicTests[0], queries.ProcedureLogicTests[i] = queries.ProcedureLogicTests[i], queries.ProcedureLogicTests[0]
+			queries.ProcedureLogicTests = queries.ProcedureLogicTests[1:]
+		}
+	}
+	enginetest.TestStoredProcedures(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestEvents(t *testing.T) {

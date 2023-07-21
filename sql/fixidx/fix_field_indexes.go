@@ -161,7 +161,7 @@ func FixFieldIndexesForExpressions(logFn func(string, ...any), node sql.Node, sc
 	if len(schemas) < 1 {
 		newExprs, same, err := FixFieldIndexesOnExpressions(scope, logFn, nil, ne.Expressions()...)
 		if same || err != nil {
-			return node, transform.SameTree, nil
+			return node, transform.SameTree, err
 		}
 		newNode, err := ne.WithExpressions(newExprs...)
 		if err != nil {

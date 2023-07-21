@@ -187,7 +187,11 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
 			if ctx.Version == sql.VersionExperimental {
-				parsedTrigger, err = planbuilder.Parse(ctx, a.Catalog, trigger.CreateStatement)
+				b := planbuilder.New(ctx, a.Catalog)
+				parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
+				if err := b.TriggerCtx().ResolveErr; err != nil {
+					return n, transform.SameTree, err
+				}
 			} else {
 				parsedTrigger, err = parse.Parse(ctx, trigger.CreateStatement)
 			}

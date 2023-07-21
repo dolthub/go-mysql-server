@@ -69,12 +69,12 @@ type aggregateInfo struct {
 	ast.Expr
 }
 
-func (b *PlanBuilder) needsAggregation(fromScope *scope, sel *ast.Select) bool {
+func (b *Builder) needsAggregation(fromScope *scope, sel *ast.Select) bool {
 	return len(sel.GroupBy) > 0 ||
 		(fromScope.groupBy != nil && fromScope.groupBy.hasAggs())
 }
 
-func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast.GroupBy, selects ast.SelectExprs) []sql.Expression {
+func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.GroupBy, selects ast.SelectExprs) []sql.Expression {
 	// grouping col will either be:
 	// 1) alias into targets
 	// 2) a column reference
@@ -137,7 +137,7 @@ func (b *PlanBuilder) buildGroupingCols(fromScope, projScope *scope, groupby ast
 	return groupings
 }
 
-func (b *PlanBuilder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
+func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
 	// GROUP_BY consists of:
 	// - input arguments projection
 	// - grouping cols projection
@@ -215,7 +215,7 @@ func isAggregateFunc(name string) bool {
 
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
-func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
 	if inScope.groupBy == nil {
 		inScope.initGroupBy()
 	}
@@ -306,7 +306,7 @@ func (b *PlanBuilder) buildAggregateFunc(inScope *scope, name string, e *ast.Fun
 	return col.scalarGf()
 }
 
-func (b *PlanBuilder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
+func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
 	if inScope.groupBy == nil {
 		inScope.initGroupBy()
 	}
@@ -366,7 +366,7 @@ func isWindowFunc(name string) bool {
 	}
 }
 
-func (b *PlanBuilder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
+func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
 	// couple with other expressions or alone?
 	// can these be referenced? aliased?
 	// internal expressions can be complex, but window can't be more than alias
@@ -408,7 +408,7 @@ func (b *PlanBuilder) buildWindowFunc(inScope *scope, name string, e *ast.FuncEx
 	return col.scalarGf()
 }
 
-func (b *PlanBuilder) buildWindow(fromScope, projScope *scope) *scope {
+func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	if len(fromScope.windowFuncs) == 0 {
 		return fromScope
 	}
@@ -471,7 +471,7 @@ func (b *PlanBuilder) buildWindow(fromScope, projScope *scope) *scope {
 	return outScope
 }
 
-func (b *PlanBuilder) buildNamedWindows(fromScope *scope, window ast.Window) {
+func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
 	// topo sort first
 	adj := make(map[string]*ast.WindowDef)
 	for _, w := range window {
@@ -503,7 +503,7 @@ func (b *PlanBuilder) buildNamedWindows(fromScope *scope, window ast.Window) {
 	return
 }
 
-func (b *PlanBuilder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.WindowDefinition {
+func (b *Builder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.WindowDefinition {
 	if def == nil {
 		return nil
 	}
@@ -550,7 +550,7 @@ func (b *PlanBuilder) buildWindowDef(fromScope *scope, def *ast.WindowDef) *sql.
 // an error if the two are incompatible. [def] should have a reference to
 // [ref] through [def.Ref], and the return value drops the reference to indicate
 // the two were properly combined.
-func (b *PlanBuilder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDefinition {
+func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDefinition {
 	if ref.Ref != "" {
 		panic("unreachable; cannot merge unresolved window definition")
 	}
@@ -612,7 +612,7 @@ func (b *PlanBuilder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.Windo
 	return sql.NewWindowDefinition(partitionBy, orderBy, frame, "", def.Name)
 }
 
-func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) {
+func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) {
 	// build having filter expr
 	// aggregates added to fromScope.groupBy
 	// can see projScope outputs
@@ -653,7 +653,7 @@ func (b *PlanBuilder) analyzeHaving(fromScope, projScope *scope, having *ast.Whe
 	}, having.Expr)
 }
 
-func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope) *scope {
+func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	outScope := fromScope
 	proj := make([]sql.Expression, len(fromScope.cols))
 	for i, c := range fromScope.cols {
@@ -680,7 +680,7 @@ func (b *PlanBuilder) buildInnerProj(fromScope, projScope *scope) *scope {
 	return outScope
 }
 
-func (b *PlanBuilder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
+func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {
 	// expressions in having can be from aggOut or projScop
 	if having == nil {
 		return

@@ -17,7 +17,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
+func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
 	outScope = inScope.push()
 	names := make([]sql.DbTable, len(n.Tables))
 	for i, table := range n.Tables {
@@ -27,7 +27,7 @@ func (b *PlanBuilder) buildAnalyze(inScope *scope, n *ast.Analyze, query string)
 	return
 }
 
-func (b *PlanBuilder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpatialRefSys, query string) (outScope *scope) {
+func (b *Builder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpatialRefSys, query string) (outScope *scope) {
 	outScope = inScope.push()
 	srid, err := strconv.ParseInt(string(n.SRID.Val), 10, 16)
 	if err != nil {
@@ -77,7 +77,7 @@ func (b *PlanBuilder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpat
 	return outScope
 }
 
-func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outScope *scope) {
+func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope *scope) {
 	showType := strings.ToLower(s.Type)
 	switch showType {
 	case "processlist":
@@ -131,7 +131,7 @@ func (b *PlanBuilder) buildShow(inScope *scope, s *ast.Show, query string) (outS
 	return
 }
 
-func (b *PlanBuilder) buildShowTable(inScope *scope, s *ast.Show, showType string) (outScope *scope) {
+func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (outScope *scope) {
 	outScope = inScope.push()
 	var asOfLit interface{}
 	var asOfExpr sql.Expression
@@ -188,7 +188,7 @@ func (b *PlanBuilder) buildShowTable(inScope *scope, s *ast.Show, showType strin
 	return
 }
 
-func (b *PlanBuilder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := s.Database
 	if dbName == "" {
@@ -202,7 +202,7 @@ func (b *PlanBuilder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *
 	return
 }
 
-func (b *PlanBuilder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := s.Table.Qualifier.String()
 	if dbName == "" {
@@ -216,10 +216,13 @@ func (b *PlanBuilder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *s
 	return
 }
 
-func (b *PlanBuilder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *scope) {
 	dbName := s.Table.Qualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
+	}
+	if dbName == "" && &s.ShowTablesOpt != nil {
+		dbName = s.ShowTablesOpt.DbName
 	}
 	db := b.resolveDb(dbName)
 
@@ -259,7 +262,7 @@ func (b *PlanBuilder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScop
 	return
 }
 
-func (b *PlanBuilder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := strings.ToLower(s.Table.Qualifier.String())
 	if dbName == "" {
@@ -269,7 +272,7 @@ func (b *PlanBuilder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *PlanBuilder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var dbName string
 	var filter sql.Expression
@@ -301,7 +304,7 @@ func (b *PlanBuilder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope 
 	return
 }
 
-func (b *PlanBuilder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var db sql.Database
 	dbName := s.Table.Qualifier.String()
@@ -314,7 +317,7 @@ func (b *PlanBuilder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope 
 	return
 }
 
-func (b *PlanBuilder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var filter sql.Expression
 
@@ -345,7 +348,7 @@ func (b *PlanBuilder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (out
 	return
 }
 
-func (b *PlanBuilder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var filter sql.Expression
 	var node sql.Node
@@ -376,7 +379,7 @@ func (b *PlanBuilder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outS
 	return
 }
 
-func (b *PlanBuilder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	dbName := b.ctx.GetCurrentDatabase()
 	if s.Database != "" {
 		dbName = s.Database
@@ -420,7 +423,7 @@ func (b *PlanBuilder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScop
 	outScope.node = node
 	return
 }
-func (b *PlanBuilder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := s.Table.Qualifier.String()
 	tableName := s.Table.Name.String()
@@ -429,7 +432,7 @@ func (b *PlanBuilder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *sco
 	return
 }
 
-func (b *PlanBuilder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var filter sql.Expression
 	var like sql.Expression
@@ -467,7 +470,7 @@ func (b *PlanBuilder) buildShowVariables(inScope *scope, s *ast.Show) (outScope 
 	return
 }
 
-func (b *PlanBuilder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var dbName string
 	var filter sql.Expression
@@ -511,7 +514,7 @@ func (b *PlanBuilder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope 
 	return
 }
 
-func (b *PlanBuilder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var node sql.Node = plan.NewShowDatabases()
 	var filter sql.Expression
@@ -533,7 +536,7 @@ func (b *PlanBuilder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outSco
 	return
 }
 
-func (b *PlanBuilder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	full := s.Full
 	var table sql.Node
@@ -585,7 +588,7 @@ func (b *PlanBuilder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope
 	return
 }
 
-func (b *PlanBuilder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	if s.CountStar {
 		unsupportedShow := "SHOW COUNT(*) WARNINGS"
@@ -606,7 +609,7 @@ func (b *PlanBuilder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *
 	return
 }
 
-func (b *PlanBuilder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	// show collation statements are functionally identical to selecting from the collations table in
 	// information_schema, with slightly different syntax and with some columns aliased.
@@ -636,7 +639,7 @@ func (b *PlanBuilder) buildShowCollation(inScope *scope, s *ast.Show) (outScope 
 	return
 }
 
-func (b *PlanBuilder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	infoSchemaSelect, err := Parse(b.ctx, b.cat, "select * from information_schema.engines")
 	if err != nil {
@@ -647,7 +650,7 @@ func (b *PlanBuilder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *s
 	return
 }
 
-func (b *PlanBuilder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var node sql.Node
 	if s.Scope == ast.GlobalStr {
@@ -678,7 +681,7 @@ func (b *PlanBuilder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *sc
 	return
 }
 
-func (b *PlanBuilder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
+func (b *Builder) buildShowCharset(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 
 	var node sql.Node = plan.NewShowCharset()

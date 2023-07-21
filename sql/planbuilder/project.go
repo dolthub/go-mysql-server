@@ -10,11 +10,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
+func (b *Builder) analyzeProjectionList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
 	b.analyzeSelectList(inScope, outScope, selectExprs)
 }
 
-func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
+func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
 	// todo ideally we would not create new expressions here.
 	// we want to in-place identify aggregations, expand stars.
 	// use inScope to construct projections for projScope
@@ -97,7 +97,7 @@ func (b *PlanBuilder) analyzeSelectList(inScope, outScope *scope, selectExprs as
 	inScope.windowFuncs = append(inScope.windowFuncs, tempScope.windowFuncs...)
 }
 
-func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
+func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
 	switch e := se.(type) {
 	case *ast.StarExpr:
 		if e.TableName.IsEmpty() {
@@ -122,7 +122,7 @@ func (b *PlanBuilder) selectExprToExpression(inScope *scope, se ast.SelectExpr) 
 	return nil
 }
 
-func (b *PlanBuilder) buildProjection(inScope, outScope *scope) {
+func (b *Builder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
 		scalar := sc.scalar

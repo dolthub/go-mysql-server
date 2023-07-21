@@ -7,7 +7,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func (b *PlanBuilder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
+func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	db := b.currentDatabase.Name()
 	if d.Table.Qualifier.String() != "" {
 		db = d.Table.Qualifier.String()

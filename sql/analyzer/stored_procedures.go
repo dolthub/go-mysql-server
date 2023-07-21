@@ -318,9 +318,9 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				if err != nil {
 					return n, transform.SameTree, err
 				}
-				b.SetAsOf(asOf)
+				b.ViewCtx().AsOf = asOf
 			}
-			parsedProcedure, _, _, err := b.Parse(ctx, procedure.CreateStatement, false)
+			parsedProcedure, _, _, err := b.Parse(procedure.CreateStatement, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
