@@ -266,14 +266,14 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 	var filter sql.Expression
-	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+	if s.ShowTablesOpt != nil {
 		dbName = s.ShowTablesOpt.DbName
 		if s.ShowTablesOpt.Filter != nil {
 			if s.ShowTablesOpt.Filter.Filter != nil {
 				filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
 			} else if s.ShowTablesOpt.Filter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewGetField(1, types.LongText, "Name", false),
+					expression.NewGetField(1, types.LongText, "name", false),
 					expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
 					nil,
 				)

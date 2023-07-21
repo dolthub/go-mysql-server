@@ -158,7 +158,14 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 		inScope.newColumn(scopeColumn{table: "", col: strings.ToLower(p.Name), typ: p.Type, scalar: expression.NewProcedureParam(strings.ToLower(p.Name))})
 	}
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	bodyScope := b.build(inScope, c.ProcedureSpec.Body, bodyStr)
+
+	var bodyScope *scope
+	if b.ProcCtx().Active {
+		bodyScope = b.build(inScope, c.ProcedureSpec.Body, bodyStr)
+	} else {
+		bodyScope = inScope.push()
+		bodyScope.node = plan.NewValues(nil)
+	}
 
 	var db sql.Database = nil
 	dbName := c.ProcedureSpec.ProcName.Qualifier.String()
@@ -187,8 +194,13 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 }
 
 func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+	outScope = inScope.push()
 	eventSpec := c.EventSpec
-	database := b.resolveDb(eventSpec.EventName.Qualifier.String())
+	dbName := strings.ToLower(eventSpec.EventName.Qualifier.String())
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	database := b.resolveDb(dbName)
 	definer := getCurrentUserForDefiner(b.ctx, c.EventSpec.Definer)
 
 	// both 'undefined' and 'not preserve' are considered 'not preserve'
@@ -218,14 +230,7 @@ func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (ou
 		ts, intervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.At)
 		at = plan.NewOnScheduleTimestamp(ts, intervals)
 	} else {
-		every := b.intervalExprToExpression(inScope, &eventSpec.OnSchedule.EveryInterval)
-		var ok bool
-		everyInterval, ok = every.(*expression.Interval)
-		if !ok {
-			err := fmt.Errorf("expected everyInterval but got: %s", every)
-			b.handleErr(err)
-		}
-
+		everyInterval = b.intervalExprToExpression(inScope, &eventSpec.OnSchedule.EveryInterval)
 		if eventSpec.OnSchedule.Starts != nil {
 			startsTs, startsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Starts)
 			starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
@@ -262,6 +267,101 @@ func (b *Builder) buildEventScheduleTimeSpec(inScope *scope, spec *ast.EventSche
 		intervals[i] = e
 	}
 	return ts, intervals
+}
+
+func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+	eventSpec := c.EventSpec
+
+	var database sql.Database
+	if dbName := eventSpec.EventName.Qualifier.String(); dbName != "" {
+		database = b.resolveDb(dbName)
+	} else {
+		database = b.currentDb()
+	}
+
+	definer := getCurrentUserForDefiner(b.ctx, c.EventSpec.Definer)
+
+	var (
+		alterSchedule    = eventSpec.OnSchedule != nil
+		at, starts, ends *plan.OnScheduleTimestamp
+		everyInterval    *expression.Interval
+
+		alterOnComp       = eventSpec.OnCompletionPreserve != ast.EventOnCompletion_Undefined
+		newOnCompPreserve = eventSpec.OnCompletionPreserve == ast.EventOnCompletion_Preserve
+
+		alterEventName = !eventSpec.RenameName.IsEmpty()
+		newName        string
+
+		alterStatus = eventSpec.Status != ast.EventStatus_Undefined
+		newStatus   plan.EventStatus
+
+		alterComment = eventSpec.Comment != nil
+		newComment   string
+
+		alterDefinition  = eventSpec.Body != nil
+		newDefinitionStr string
+		newDefinition    sql.Node
+	)
+
+	if alterSchedule {
+		if eventSpec.OnSchedule.At != nil {
+			ts, intervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.At)
+			at = plan.NewOnScheduleTimestamp(ts, intervals)
+		} else {
+			everyInterval = b.intervalExprToExpression(inScope, &eventSpec.OnSchedule.EveryInterval)
+			if eventSpec.OnSchedule.Starts != nil {
+				startsTs, startsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Starts)
+				starts = plan.NewOnScheduleTimestamp(startsTs, startsIntervals)
+			}
+			if eventSpec.OnSchedule.Ends != nil {
+				endsTs, endsIntervals := b.buildEventScheduleTimeSpec(inScope, eventSpec.OnSchedule.Ends)
+				ends = plan.NewOnScheduleTimestamp(endsTs, endsIntervals)
+			}
+		}
+	}
+	if alterEventName {
+		// events can be moved to different database using RENAME TO clause option
+		// TODO: we do not support moving events to different database yet
+		renameEventDb := eventSpec.RenameName.Qualifier.String()
+		if renameEventDb != "" && database.Name() != renameEventDb {
+			err := fmt.Errorf("moving events to different database using ALTER EVENT is not supported yet")
+			b.handleErr(err)
+		}
+		newName = eventSpec.RenameName.Name.String()
+	}
+	if alterStatus {
+		switch eventSpec.Status {
+		case ast.EventStatus_Undefined:
+			// this should not happen but sanity check
+			newStatus = plan.EventStatus_Enable
+		case ast.EventStatus_Enable:
+			newStatus = plan.EventStatus_Enable
+		case ast.EventStatus_Disable:
+			newStatus = plan.EventStatus_Disable
+		case ast.EventStatus_DisableOnSlave:
+			newStatus = plan.EventStatus_DisableOnSlave
+		}
+	}
+	if alterComment {
+		newComment = string(eventSpec.Comment.Val)
+	}
+	if alterDefinition {
+		newDefinitionStr = strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+		defScope := b.build(inScope, c.EventSpec.Body, newDefinitionStr)
+		newDefinition = defScope.node
+	}
+
+	outScope = inScope.push()
+	outScope.node = plan.NewAlterEvent(
+		database, eventSpec.EventName.Name.String(), definer,
+		alterSchedule, at, starts, ends, everyInterval,
+		alterOnComp, newOnCompPreserve,
+		alterEventName, newName,
+		alterStatus, newStatus,
+		alterComment, newComment,
+		alterDefinition, newDefinitionStr, newDefinition,
+	)
+	return
 }
 
 func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {

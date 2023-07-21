@@ -22,6 +22,19 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		//		return n, transform.SameTree, err
 		//	}
 		//	return plan.NewSet(exprs), transform.NewTree, nil
+		case *plan.CreateTable:
+			allSame := transform.SameTree
+			if len(n.ChDefs) > 0 {
+				for i, ch := range n.ChDefs {
+					newExpr, same, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.CreateSchema.Schema, ch.Expr)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					allSame = allSame && same
+					n.ChDefs[i].Expr = newExpr
+				}
+			}
+			return n, allSame, nil
 		case *plan.InsertInto:
 			newN, same1, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
 			if err != nil {

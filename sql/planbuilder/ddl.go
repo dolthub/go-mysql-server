@@ -132,6 +132,9 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 		}
 		return b.buildDropTable(inScope, c)
 	case ast.AlterStr:
+		if c.EventSpec != nil {
+			return b.buildAlterEvent(inScope, query, c)
+		}
 		return b.buildAlterTable(inScope, c)
 	case ast.RenameStr:
 		return b.buildRenameTable(inScope, c)
@@ -193,22 +196,7 @@ func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scop
 func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	if c.OptLike != nil {
-		tableName := c.OptLike.LikeTable.Name.String()
-		dbName := c.OptLike.LikeTable.Qualifier.String()
-		outScope = b.buildTablescan(inScope, dbName, tableName, nil)
-		table, ok := outScope.node.(*plan.ResolvedTable)
-		if !ok {
-			err := fmt.Errorf("expected resolved table: %s", tableName)
-			b.handleErr(err)
-		}
-		outScope.node = plan.NewCreateTableLike(
-			table.Database,
-			table.Database.Name(),
-			table,
-			plan.IfNotExistsOption(c.IfNotExists),
-			plan.TempTableOption(c.Temporary),
-		)
-		return outScope
+		return b.buildCreateTableLike(inScope, c)
 	}
 
 	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE node.
@@ -249,6 +237,109 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	outScope.node = plan.NewCreateTable(
 		database, c.Table.Name.String(), plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary), tableSpec)
 	return
+}
+
+func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
+	tableName := ct.OptLike.LikeTable.Name.String()
+	likeDbName := ct.OptLike.LikeTable.Qualifier.String()
+	if likeDbName == "" {
+		likeDbName = b.ctx.GetCurrentDatabase()
+	}
+	outScope := b.buildTablescan(inScope, likeDbName, tableName, nil)
+	likeTable, ok := outScope.node.(*plan.ResolvedTable)
+	if !ok {
+		err := fmt.Errorf("expected resolved table: %s", tableName)
+		b.handleErr(err)
+	}
+
+	newTableName := strings.ToLower(ct.Table.Name.String())
+	outScope.setTableAlias(newTableName)
+
+	var idxDefs []*plan.IndexDefinition
+	if indexableTable, ok := likeTable.Table.(sql.IndexAddressableTable); ok {
+		indexes, err := indexableTable.GetIndexes(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+		for _, index := range indexes {
+			if index.IsGenerated() {
+				continue
+			}
+			constraint := sql.IndexConstraint_None
+			if index.IsUnique() {
+				if index.ID() == "PRIMARY" {
+					constraint = sql.IndexConstraint_Primary
+				} else {
+					constraint = sql.IndexConstraint_Unique
+				}
+			}
+
+			columns := make([]sql.IndexColumn, len(index.Expressions()))
+			for i, col := range index.Expressions() {
+				//TODO: find a better way to get only the column name if the table is present
+				col = strings.TrimPrefix(col, indexableTable.Name()+".")
+				columns[i] = sql.IndexColumn{
+					Name:   col,
+					Length: 0,
+				}
+			}
+			idxDefs = append(idxDefs, &plan.IndexDefinition{
+				IndexName:  index.ID(),
+				Using:      sql.IndexUsing_Default,
+				Constraint: constraint,
+				Columns:    columns,
+				Comment:    index.Comment(),
+			})
+		}
+	}
+	origSch := likeTable.Schema()
+	newSch := make(sql.Schema, len(origSch))
+	for i, col := range origSch {
+		tempCol := *col
+		tempCol.Source = newTableName
+		newSch[i] = &tempCol
+	}
+
+	var pkOrdinals []int
+	if pkTable, ok := likeTable.Table.(sql.PrimaryKeyTable); ok {
+		pkOrdinals = pkTable.PrimaryKeySchema().PkOrdinals
+	}
+
+	var checkDefs []*sql.CheckConstraint
+	if checksTable, ok := likeTable.Table.(sql.CheckTable); ok {
+		checks, err := checksTable.GetChecks(b.ctx)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		for _, check := range checks {
+			checkConstraint := b.buildCheckConstraint(outScope, &check)
+			if err != nil {
+				b.handleErr(err)
+			}
+
+			// Prevent a name collision between old and new checks.
+			// New check will be assigned a name during building.
+			checkConstraint.Name = ""
+			checkDefs = append(checkDefs, checkConstraint)
+		}
+	}
+
+	tableSpec := &plan.TableSpec{
+		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		IdxDefs:   idxDefs,
+		ChDefs:    checkDefs,
+		Collation: likeTable.Collation(),
+	}
+
+	qualifier := ct.Table.Qualifier.String()
+	if qualifier == "" {
+		qualifier = b.ctx.GetCurrentDatabase()
+	}
+	database := b.resolveDb(qualifier)
+
+	outScope.node = plan.NewCreateTable(database, newTableName, plan.IfNotExistsOption(ct.IfNotExists), plan.TempTableOption(ct.Temporary), tableSpec)
+	return outScope
 }
 
 func (b *Builder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {

@@ -18,6 +18,7 @@ type Builder struct {
 	multiDDL        bool
 	viewCtx         *ViewContext
 	triggerCtx      *TriggerContext
+	procCtx         *ProcContext
 	nesting         int
 }
 
@@ -26,6 +27,11 @@ type ViewContext struct {
 }
 
 type TriggerContext struct {
+	Active     bool
+	ResolveErr error
+}
+
+type ProcContext struct {
 	Active     bool
 	ResolveErr error
 }
@@ -46,6 +52,13 @@ func (b *Builder) TriggerCtx() *TriggerContext {
 		b.triggerCtx = &TriggerContext{}
 	}
 	return b.triggerCtx
+}
+
+func (b *Builder) ProcCtx() *ProcContext {
+	if b.procCtx == nil {
+		b.procCtx = &ProcContext{}
+	}
+	return b.procCtx
 }
 
 func (b *Builder) newScope() *scope {

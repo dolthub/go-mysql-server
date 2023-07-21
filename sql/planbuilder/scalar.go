@@ -660,7 +660,7 @@ func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Exp
 	return expression.NewCase(expr, branches, elseExpr), nil
 }
 
-func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) sql.Expression {
+func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) *expression.Interval {
 	expr := b.buildScalar(inScope, e.Expr)
 	return expression.NewInterval(expr, e.Unit)
 }

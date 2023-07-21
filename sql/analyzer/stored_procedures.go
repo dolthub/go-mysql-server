@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -51,7 +52,15 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			}
 
 			for _, procedure := range procedures {
-				parsedProcedure, err := planbuilder.Parse(ctx, a.Catalog, procedure.CreateStatement)
+				var parsedProcedure sql.Node
+				if ctx.Version == sql.VersionExperimental {
+					b := planbuilder.New(ctx, a.Catalog)
+					b.ProcCtx().Active = true
+					parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
+					b.ProcCtx().Active = false
+				} else {
+					parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
+				}
 				if err != nil {
 					return nil, err
 				}
@@ -320,7 +329,10 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 				b.ViewCtx().AsOf = asOf
 			}
+			b.ProcCtx().Active = true
 			parsedProcedure, _, _, err := b.Parse(procedure.CreateStatement, false)
+			b.ProcCtx().Active = false
+
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

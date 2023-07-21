@@ -1798,22 +1798,31 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 }
 
 func TestStoredProcedures(t *testing.T, harness Harness) {
-	for _, script := range queries.ProcedureLogicTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureCallTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureDropTests {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureShowStatus {
-		TestScript(t, harness, script)
-	}
-	for _, script := range queries.ProcedureShowCreate {
-		TestScript(t, harness, script)
-	}
-
+	t.Run("logic tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureLogicTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("call tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureCallTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("drop tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureDropTests {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("show status tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureShowStatus {
+			TestScript(t, harness, script)
+		}
+	})
+	t.Run("show create tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureShowCreate {
+			TestScript(t, harness, script)
+		}
+	})
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
