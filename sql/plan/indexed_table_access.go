@@ -493,7 +493,8 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
 
 			} else {
-				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
+				lb.rang[i].LowerBound = sql.Below{Key: key[i]}
+				lb.rang[i].UpperBound = sql.Above{Key: key[i]}
 			}
 		} else {
 			lb.rang[i].LowerBound = sql.Below{Key: key[i]}
