@@ -194,6 +194,7 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 func (c *coster) costSlidingRangeJoin(_ *sql.Context, n *SlidingRangeJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
+
 	return l*(cpuCostFactor+randIOCostFactor) + r*seqIOCostFactor, nil
 }
 
@@ -236,10 +237,9 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
-// lookupJoinSelectivity estimates the selectivity of a join condition.
-// A join with no selectivity will return n x m rows. A join with a selectivity
-// of 1 will return n rows. It is possible for join selectivity to be below 1
-// if source table filters limit the number of rows returned by the left table.
+// lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
+// A join with a selectivity of k will return k*(n*m) rows.
+// Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
 	var sel float64 = 1
 	if len(l.Index.SqlIdx().Expressions()) == len(l.KeyExprs) {
