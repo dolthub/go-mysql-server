@@ -85,10 +85,6 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row sql.Row) (sql.RowIter, error) {
 	// If an empty table is passed in (potentially from a bad filter) return an empty row iter.
 	// Note: emptyTable could also implement sql.DetetableTable
-	// TODO: this doesn't always work because of exchange
-	//if _, ok := n.Child.(*plan.EmptyTable); ok {
-	//	return sql.RowsToRowIter(), nil
-	//}
 
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
