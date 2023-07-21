@@ -11,21 +11,10 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
-	outScope = inScope.push()
-	names := make([]sql.DbTable, len(n.Tables))
-	for i, table := range n.Tables {
-		names[i] = sql.DbTable{Db: table.Qualifier.String(), Table: table.Name.String()}
-	}
-	outScope.node = plan.NewAnalyze(names)
-	return
-}
 
 func (b *Builder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpatialRefSys, query string) (outScope *scope) {
 	outScope = inScope.push()
@@ -174,14 +163,6 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		})
 	}
 
-	database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
-	if err != nil {
-		b.handleErr(err)
-	}
-
-	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
-		database = privilegedDatabase.Unwrap()
-	}
 	showCreate := plan.NewShowCreateTableWithAsOf(rt, showType == "create view", asOfExpr)
 	showCreate.Checks = checks
 	outScope.node = showCreate
@@ -275,12 +256,21 @@ func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) 
 func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var dbName string
+
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	db := b.resolveDb(dbName)
+	var node sql.Node = plan.NewShowEvents(db)
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
+	}
 	var filter sql.Expression
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 		dbName = s.ShowTablesOpt.DbName
 		if s.ShowTablesOpt.Filter != nil {
 			if s.ShowTablesOpt.Filter.Filter != nil {
-				filter = b.buildScalar(inScope, s.ShowTablesOpt.Filter.Filter)
+				filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
 			} else if s.ShowTablesOpt.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewGetField(1, types.LongText, "Name", false),
@@ -290,12 +280,6 @@ func (b *Builder) buildShowAllEvents(inScope *scope, s *ast.Show) (outScope *sco
 			}
 		}
 	}
-
-	if dbName == "" {
-		dbName = b.ctx.GetCurrentDatabase()
-	}
-	db := b.resolveDb(dbName)
-	var node sql.Node = plan.NewShowEvents(db)
 	if filter != nil {
 		node = plan.NewFilter(filter, node)
 	}
@@ -318,7 +302,6 @@ func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *sco
 }
 
 func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScope *scope) {
-	outScope = inScope.push()
 	var filter sql.Expression
 
 	node, err := Parse(b.ctx, b.cat, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
@@ -329,9 +312,13 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 		b.handleErr(err)
 	}
 
+	outScope = inScope.push()
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
+	}
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(inScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(1, types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default), "Name", false),
@@ -349,12 +336,23 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 }
 
 func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
-	outScope = inScope.push()
 	var filter sql.Expression
-	var node sql.Node
+	node, err := Parse(b.ctx, b.cat, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
+		"routine_comment as `Comment`, character_set_client, collation_connection,"+
+		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'")
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	outScope = inScope.push()
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
+	}
+
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(inScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(1, types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default), "Name", false),
@@ -362,14 +360,6 @@ func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope
 				nil,
 			)
 		}
-	}
-
-	node, err := Parse(b.ctx, b.cat, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
-		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
-		"routine_comment as `Comment`, character_set_client, collation_connection,"+
-		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'")
-	if err != nil {
-		b.handleErr(err)
 	}
 
 	if filter != nil {
@@ -423,6 +413,7 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 	outScope.node = node
 	return
 }
+
 func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := s.Table.Qualifier.String()
@@ -434,23 +425,33 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 
 func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
+	dummy := &plan.ShowVariables{}
+	for _, c := range dummy.Schema() {
+		outScope.newColumn(scopeColumn{
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+
 	var filter sql.Expression
 	var like sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(inScope, s.Filter.Filter)
-			filter, _, _ = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				// TODO this isn't gonna work, will need to inject column
-				switch e.(type) {
-				case *expression.UnresolvedColumn:
-					if strings.ToLower(e.String()) != "variable_name" {
-						return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
-					}
-					return expression.NewGetField(0, types.Text, "variable_name", true), transform.NewTree, nil
-				default:
-					return e, transform.SameTree, nil
-				}
-			})
+			filter = b.buildScalar(outScope, s.Filter.Filter)
+			//filter, _, _ = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			//	// TODO this isn't gonna work, will need to inject column
+			//	switch e.(type) {
+			//	case *expression.UnresolvedColumn:
+			//		if strings.ToLower(e.String()) != "variable_name" {
+			//			return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
+			//		}
+			//		return expression.NewGetField(0, types.Text, "variable_name", true), transform.NewTree, nil
+			//	default:
+			//		return e, transform.SameTree, nil
+			//	}
+			//})
 		}
 		if s.Filter.Like != "" {
 			like = expression.NewLike(
@@ -467,35 +468,20 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	}
 
 	outScope.node = plan.NewShowVariables(filter, strings.ToLower(s.Scope) == "global")
+
 	return
 }
 
 func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
+
 	var dbName string
 	var filter sql.Expression
 	var asOf sql.Expression
 	var full bool
-
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 		dbName = s.ShowTablesOpt.DbName
-		if dbName == "" {
-			dbName = b.ctx.GetCurrentDatabase()
-		}
 		full = s.Full
-
-		if s.ShowTablesOpt.Filter != nil {
-			if s.ShowTablesOpt.Filter.Filter != nil {
-				filter = b.buildScalar(inScope, s.ShowTablesOpt.Filter.Filter)
-			} else if s.ShowTablesOpt.Filter.Like != "" {
-				filter = expression.NewLike(
-					expression.NewGetField(0, types.LongText, fmt.Sprintf("Tables_in_%s", dbName), false),
-					expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
-					nil,
-				)
-			}
-		}
-
 		if s.ShowTablesOpt.AsOf != nil {
 			asOf = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
 		}
@@ -505,22 +491,44 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
-	var node sql.Node = plan.NewShowTables(db, full, asOf)
-	if filter != nil {
-		node = plan.NewFilter(filter, node)
+
+	showTabs := plan.NewShowTables(db, full, asOf)
+	for _, c := range showTabs.Schema() {
+		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}
 
-	outScope.node = node
+	if s.ShowTablesOpt.Filter != nil {
+		if s.ShowTablesOpt.Filter.Filter != nil {
+			filter = b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
+		} else if s.ShowTablesOpt.Filter.Like != "" {
+			filter = expression.NewLike(
+				expression.NewGetField(0, types.LongText, fmt.Sprintf("Tables_in_%s", dbName), false),
+				expression.NewLiteral(s.ShowTablesOpt.Filter.Like, types.LongText),
+				nil,
+			)
+		}
+	}
+
+	outScope.node = showTabs
+
+	if filter != nil {
+		outScope.node = plan.NewFilter(filter, outScope.node)
+	}
+
 	return
 }
 
 func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *scope) {
+	showDbs := plan.NewShowDatabases()
+	showDbs.Catalog = b.cat
 	outScope = inScope.push()
-	var node sql.Node = plan.NewShowDatabases()
+	for _, c := range showDbs.Schema() {
+		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
+	}
 	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
-			filter = b.buildScalar(inScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter)
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, types.LongText, "Database", false),
@@ -529,10 +537,10 @@ func (b *Builder) buildShowAllDatabases(inScope *scope, s *ast.Show) (outScope *
 			)
 		}
 	}
+	outScope.node = showDbs
 	if filter != nil {
-		node = plan.NewFilter(filter, node)
+		outScope.node = plan.NewFilter(filter, outScope.node)
 	}
-	outScope.node = node
 	return
 }
 
@@ -578,8 +586,17 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 			)
 		}
 
+		for _, c := range node.Schema() {
+			outScope.newColumn(scopeColumn{
+				table:    strings.ToLower(c.Source),
+				col:      strings.ToLower(c.Name),
+				typ:      c.Type,
+				nullable: c.Nullable,
+			})
+		}
+
 		if s.ShowTablesOpt.Filter.Filter != nil {
-			filter := b.buildScalar(inScope, s.ShowTablesOpt.Filter.Filter)
+			filter := b.buildScalar(outScope, s.ShowTablesOpt.Filter.Filter)
 			node = plan.NewFilter(filter, node)
 		}
 	}
@@ -614,10 +631,19 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	// show collation statements are functionally identical to selecting from the collations table in
 	// information_schema, with slightly different syntax and with some columns aliased.
 	// TODO: install information_schema automatically for all catalogs
-	infoSchemaSelect, err := Parse(b.ctx, b.cat, "select collation_name as `collation`, character_set_name as charset, id,"+
+	node, err := Parse(b.ctx, b.cat, "select collation_name as `collation`, character_set_name as charset, id,"+
 		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations")
 	if err != nil {
 		b.handleErr(err)
+	}
+
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
 	}
 
 	if s.ShowCollationFilterOpt != nil {
@@ -632,10 +658,10 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 			}
 			return expr, transform.SameTree, nil
 		})
-		outScope.node = plan.NewHaving(filterExpr, infoSchemaSelect)
+		node = plan.NewHaving(filterExpr, node)
 	}
 
-	outScope.node = infoSchemaSelect
+	outScope.node = node
 	return
 }
 
@@ -659,6 +685,15 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 		node = plan.NewShowStatus(plan.ShowStatusModifier_Session)
 	}
 
+	for _, c := range node.Schema() {
+		outScope.newColumn(scopeColumn{
+			table:    strings.ToLower(c.Source),
+			col:      strings.ToLower(c.Name),
+			typ:      c.Type,
+			nullable: c.Nullable,
+		})
+	}
+
 	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Like != "" {
@@ -668,7 +703,7 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 				nil,
 			)
 		} else if s.Filter.Filter != nil {
-			filter = b.buildScalar(inScope, s.Filter.Filter)
+			filter = b.buildScalar(outScope, s.Filter.Filter)
 		}
 	}
 

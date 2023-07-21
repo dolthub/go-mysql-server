@@ -123,6 +123,10 @@ func (b *Builder) buildDistinct(inScope *scope, distinct string) {
 
 func (b *Builder) currentDb() sql.Database {
 	if b.currentDatabase == nil {
+		if b.ctx.GetCurrentDatabase() == "" {
+			err := sql.ErrNoDatabaseSelected.New()
+			b.handleErr(err)
+		}
 		database, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase())
 		if err != nil {
 			b.handleErr(err)

@@ -28,7 +28,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		case *expression.GetField:
 			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), strings.ToLower(e.Table()), strings.ToLower(e.Name()), e.IsNullable())
 			exprs = append(exprs, gf)
-			id, ok := tempScope.getExpr(gf.String())
+			id, ok := tempScope.getExpr(gf.String(), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(gf.String())
 				b.handleErr(err)
@@ -45,7 +45,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				if c.table == tableName || tableName == "" {
 					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
 					exprs = append(exprs, gf)
-					id, ok := inScope.getExpr(gf.String())
+					id, ok := inScope.getExpr(gf.String(), true)
 					if !ok {
 						err := sql.ErrColumnNotFound.New(gf.String())
 						b.handleErr(err)
@@ -56,7 +56,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		case *expression.Alias:
 			var col scopeColumn
 			if gf, ok := e.Child.(*expression.GetField); ok {
-				id, ok := tempScope.getExpr(gf.String())
+				id, ok := tempScope.getExpr(gf.String(), true)
 				if !ok {
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)

@@ -1822,15 +1822,17 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("")
 
 		for _, script := range queries.NoDbProcedureTests {
-			if script.Expected != nil || script.SkipResultsCheck {
-				expectedResult := script.Expected
-				if script.SkipResultsCheck {
-					expectedResult = nil
+			t.Run(script.Query, func(t *testing.T) {
+				if script.Expected != nil || script.SkipResultsCheck {
+					expectedResult := script.Expected
+					if script.SkipResultsCheck {
+						expectedResult = nil
+					}
+					TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
+				} else if script.ExpectedErr != nil {
+					AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
 				}
-				TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
-			} else if script.ExpectedErr != nil {
-				AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
-			}
+			})
 		}
 
 		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.Row{{types.OkResult{}}}, nil, nil)

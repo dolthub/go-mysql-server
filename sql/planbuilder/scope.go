@@ -83,15 +83,15 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 
 // getExpr returns a columnId if the given expression has
 // been built.
-func (s *scope) getExpr(name string) (columnId, bool) {
+func (s *scope) getExpr(name string, checkCte bool) (columnId, bool) {
 	n := strings.ToLower(name)
 	id, ok := s.exprs[n]
 	if !ok && s.groupBy != nil {
-		id, ok = s.groupBy.outScope.getExpr(n)
+		id, ok = s.groupBy.outScope.getExpr(n, checkCte)
 	}
-	if !ok && s.ctes != nil {
+	if !ok && checkCte && s.ctes != nil {
 		for _, cte := range s.ctes {
-			id, ok = cte.getExpr(n)
+			id, ok = cte.getExpr(n, false)
 			if ok {
 				break
 			}
@@ -99,7 +99,7 @@ func (s *scope) getExpr(name string) (columnId, bool) {
 	}
 	// TODO: possibly want to look in parent scopes
 	if !ok && s.parent != nil {
-		return s.parent.getExpr(name)
+		return s.parent.getExpr(name, checkCte)
 	}
 	return id, ok
 }
@@ -121,7 +121,7 @@ func (s *scope) setTableAlias(t string) {
 			oldTable = s.cols[i].table
 		}
 		s.cols[i].table = t
-		id, ok := s.getExpr(beforeColStr)
+		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
 			//err := sql.ErrColumnNotFound.New(beforeColStr)
 			//s.b.handleErr(err)
@@ -150,7 +150,7 @@ func (s *scope) setColAlias(cols []string) {
 	ids := make([]columnId, len(cols))
 	for i := range s.cols {
 		beforeColStr := s.cols[i].String()
-		id, ok := s.getExpr(beforeColStr)
+		id, ok := s.getExpr(beforeColStr, true)
 		if ok {
 			//err := sql.ErrColumnNotFound.New(beforeColStr)
 			//s.b.handleErr(err)

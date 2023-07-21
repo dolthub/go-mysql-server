@@ -20,6 +20,16 @@ func (b *Builder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
 	return
 }
 
+func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
+	outScope = inScope.push()
+	names := make([]sql.DbTable, len(n.Tables))
+	for i, table := range n.Tables {
+		names[i] = sql.DbTable{Db: table.Qualifier.String(), Table: table.Name.String()}
+	}
+	outScope.node = plan.NewAnalyze(names)
+	return
+}
+
 func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope) {
 	outScope = inScope.push()
 	expr := n.Expr

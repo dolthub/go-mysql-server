@@ -123,7 +123,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		}
 		if col.scalar == nil {
 			gf := expression.NewGetFieldWithTable(0, col.typ, col.table, col.col, col.nullable)
-			id, ok := fromScope.getExpr(gf.String())
+			id, ok := fromScope.getExpr(gf.String(), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(gf.String())
 				b.handleErr(err)
@@ -293,7 +293,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	}
 
 	aggName := strings.ToLower(agg.String())
-	if id, ok := gb.outScope.getExpr(aggName); ok {
+	if id, ok := gb.outScope.getExpr(aggName, true); ok {
 		// if we've already computed use reference here
 		gf := expression.NewGetFieldWithTable(int(id), aggType, "", agg.String(), agg.IsNullable())
 		return gf

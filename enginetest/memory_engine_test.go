@@ -788,7 +788,6 @@ func TestStoredProcedures(t *testing.T) {
 }
 
 func TestStoredProcedures_Exp(t *testing.T) {
-	t.Skip("panic")
 	for i, test := range queries.ProcedureLogicTests {
 		//TODO: the RowIter returned from a SELECT should not take future changes into account
 		if test.Name == "FETCH captures state at OPEN" {
