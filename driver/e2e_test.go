@@ -14,6 +14,7 @@ func TestQuery(t *testing.T) {
 	mtb, records := personMemTable("db", "person")
 	db := sqlOpen(t, mtb, t.Name()+"?jsonAs=object")
 
+	var id uint64
 	var name, email string
 	var numbers []any
 	var created time.Time
@@ -24,12 +25,12 @@ func TestQuery(t *testing.T) {
 		Pointers    Pointers
 		Expect      Records
 	}{
-		{"Select All", "SELECT * FROM db.person", []any{&name, &email, &numbers, &created}, records},
-		{"Select First", "SELECT * FROM db.person LIMIT 1", []any{&name, &email, &numbers, &created}, records.Rows(0)},
-		{"Select Name", "SELECT name FROM db.person", []any{&name}, records.Columns(0)},
+		{"Select All", "SELECT * FROM db.person", []any{&id, &name, &email, &numbers, &created}, records},
+		{"Select First", "SELECT * FROM db.person LIMIT 1", []any{&id, &name, &email, &numbers, &created}, records.Rows(0)},
+		{"Select Name", "SELECT name FROM db.person", []any{&name}, records.Columns(1)},
 		{"Select Count", "SELECT COUNT(1) FROM db.person", []any{&count}, Records{{len(records)}}},
 
-		{"Insert", `INSERT INTO db.person VALUES ('foo', 'bar', '["baz"]', NOW())`, []any{}, Records{}},
+		{"Insert", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('foo', 'bar', '["baz"]', NOW())`, []any{}, Records{}},
 		{"Select Inserted", "SELECT name, email, phone_numbers FROM db.person WHERE name = 'foo'", []any{&name, &email, &numbers}, Records{{"foo", "bar", []any{"baz"}}}},
 
 		{"Update", "UPDATE db.person SET name = 'asdf' WHERE name = 'foo'", []any{}, Records{}},
@@ -82,7 +83,7 @@ func TestExec(t *testing.T) {
 		Name, Statement string
 		RowsAffected    int
 	}{
-		{"Insert", `INSERT INTO db.person VALUES ('asdf', 'qwer', '["zxcv"]', NOW())`, 1},
+		{"Insert", `INSERT INTO db.person (name, email, phone_numbers, created_at) VALUES ('asdf', 'qwer', '["zxcv"]', NOW())`, 1},
 		{"Update", "UPDATE db.person SET name = 'foo' WHERE name = 'asdf'", 1},
 		{"Delete", "DELETE FROM db.person WHERE name = 'foo'", 1},
 		{"Delete All", "DELETE FROM db.person WHERE LENGTH(name) < 100", len(records)},
