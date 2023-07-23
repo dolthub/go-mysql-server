@@ -240,23 +240,17 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "trigger with signal and user var",
 			SetUpScript: []string{
-				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"INSERT INTO t0 VALUES (1, 2, 'abc'), (2, 3, 'def');",
-				`CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
-SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
-INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
-				"CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-				"CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
+				"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
+				"INSERT INTO sales VALUES (1981);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "CALL add_entry(4, 'aaa');",
+					Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
 
 					Expected: []sql.Row{},
 				},
@@ -265,7 +259,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
@@ -878,28 +872,48 @@ func TestDropColumnKeylessTables(t *testing.T) {
 	enginetest.TestDropColumnKeylessTables(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDropColumnKeylessTables_Exp(t *testing.T) {
+	enginetest.TestDropColumnKeylessTables(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestCreateDatabase(t *testing.T) {
 	enginetest.TestCreateDatabase(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestCreateDatabase_Exp(t *testing.T) {
+	enginetest.TestCreateDatabase(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestPkOrdinalsDDL(t *testing.T) {
 	enginetest.TestPkOrdinalsDDL(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestPkOrdinalsDDL_Exp(t *testing.T) {
+	enginetest.TestPkOrdinalsDDL(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestPkOrdinalsDML(t *testing.T) {
 	enginetest.TestPkOrdinalsDML(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestPkOrdinalsDML_Exp(t *testing.T) {
+	enginetest.TestPkOrdinalsDML(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestDropDatabase(t *testing.T) {
 	enginetest.TestDropDatabase(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDropDatabase_Exp(t *testing.T) {
+	enginetest.TestDropDatabase(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestCreateForeignKeys(t *testing.T) {
-	enginetest.TestCreateForeignKeys(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestCreateForeignKeys(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestDropForeignKeys(t *testing.T) {
-	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestCreateForeignKeys_Exp(t *testing.T) {
@@ -944,8 +958,16 @@ func TestChecksOnInsert(t *testing.T) {
 	enginetest.TestChecksOnInsert(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestChecksOnInsert_Exp(t *testing.T) {
+	enginetest.TestChecksOnInsert(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestChecksOnUpdate(t *testing.T) {
 	enginetest.TestChecksOnUpdate(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestChecksOnUpdate_Exp(t *testing.T) {
+	enginetest.TestChecksOnUpdate(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestDisallowedCheckConstraints(t *testing.T) {

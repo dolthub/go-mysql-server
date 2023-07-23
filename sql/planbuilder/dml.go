@@ -156,15 +156,6 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	outScope = b.buildFrom(inScope, u.TableExprs)
 
-	var checks []*sql.CheckConstraint
-	transform.Inspect(outScope.node, func(n sql.Node) bool {
-		// todo maybe this should be later stage
-		if rt, ok := n.(*plan.ResolvedTable); ok {
-			checks = append(checks, b.loadChecksFromTable(inScope, rt.Table)...)
-		}
-		return true
-	})
-
 	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
 
 	b.buildWhere(outScope, u.Where)
@@ -184,11 +175,155 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	//}
 
 	ignore := u.Ignore != ""
-
 	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
+
+	var checks []*sql.CheckConstraint
+	if join, ok := outScope.node.(*plan.JoinNode); ok {
+		source := plan.NewUpdateSource(
+			join,
+			ignore,
+			updateExprs,
+		)
+		updaters, err := rowUpdatersByTable(b.ctx, source, join)
+		if err != nil {
+			b.handleErr(err)
+		}
+		updateJoin := plan.NewUpdateJoin(updaters, source)
+		update.Child = updateJoin
+		transform.Inspect(update, func(n sql.Node) bool {
+			// todo maybe this should be later stage
+			switch n := n.(type) {
+			case sql.NameableNode:
+				if _, ok := updaters[n.Name()]; ok {
+					rt := getResolvedTable(n)
+					tableScope := inScope.push()
+					for _, c := range rt.Schema() {
+						tableScope.addColumn(scopeColumn{
+							db:       rt.Database.Name(),
+							table:    strings.ToLower(n.Name()),
+							col:      strings.ToLower(c.Name),
+							typ:      c.Type,
+							nullable: c.Nullable,
+						})
+					}
+					checks = append(checks, b.loadChecksFromTable(tableScope, rt.Table)...)
+				}
+			default:
+			}
+			return true
+		})
+	} else {
+		transform.Inspect(update, func(n sql.Node) bool {
+			// todo maybe this should be later stage
+			if rt, ok := n.(*plan.ResolvedTable); ok {
+				checks = append(checks, b.loadChecksFromTable(outScope, rt.Table)...)
+			}
+			return true
+		})
+	}
 	update.Checks = checks
 	outScope.node = update
 	return
+}
+
+// rowUpdatersByTable maps a set of tables to their RowUpdater objects.
+func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[string]sql.RowUpdater, error) {
+	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
+	resolvedTables := getTablesByName(ij)
+
+	rowUpdatersByTable := make(map[string]sql.RowUpdater)
+	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
+		resolvedTable, ok := resolvedTables[tableToBeUpdated]
+		if !ok {
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
+		}
+
+		var table = resolvedTable.Table
+		if t, ok := table.(sql.TableWrapper); ok {
+			table = t.Underlying()
+		}
+
+		// If there is no UpdatableTable for a table being updated, error out
+		updatable, ok := table.(sql.UpdatableTable)
+		if !ok && updatable == nil {
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
+		}
+
+		keyless := sql.IsKeyless(updatable.Schema())
+		if keyless {
+			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
+		}
+
+		rowUpdatersByTable[tableToBeUpdated] = updatable.Updater(ctx)
+	}
+
+	return rowUpdatersByTable, nil
+}
+
+// getTablesByName takes a node and returns all found resolved tables in a map.
+func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
+	ret := make(map[string]*plan.ResolvedTable)
+
+	transform.Inspect(node, func(node sql.Node) bool {
+		switch n := node.(type) {
+		case *plan.ResolvedTable:
+			ret[n.Table.Name()] = n
+		case *plan.IndexedTableAccess:
+			ret[n.ResolvedTable.Name()] = n.ResolvedTable
+		case *plan.TableAlias:
+			rt := getResolvedTable(n)
+			if rt != nil {
+				ret[n.Name()] = rt
+			}
+		default:
+		}
+		return true
+	})
+
+	return ret
+}
+
+// Finds first ResolvedTable node that is a descendant of the node given
+func getResolvedTable(node sql.Node) *plan.ResolvedTable {
+	var table *plan.ResolvedTable
+	transform.Inspect(node, func(node sql.Node) bool {
+		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
+		// only want the first ResolvedTable match.
+		if table != nil {
+			return false
+		}
+
+		switch n := node.(type) {
+		case *plan.ResolvedTable:
+			if !plan.IsDualTable(n) {
+				table = n
+				return false
+			}
+		case *plan.IndexedTableAccess:
+			table = n.ResolvedTable
+			return false
+		}
+		return true
+	})
+	return table
+}
+
+// getTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
+func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
+	ret := make(map[string]struct{})
+
+	transform.InspectExpressions(node, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.SetField:
+			gf := e.Left.(*expression.GetField)
+			ret[gf.Table()] = struct{}{}
+			return false
+		}
+
+		return true
+	})
+
+	return ret
 }
 
 func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
