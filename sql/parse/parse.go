@@ -4383,13 +4383,16 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 			v = strings.Trim(v[1:], "'")
 		}
 
-		valBytes := []byte(v)
-		dst := make([]byte, hex.DecodedLen(len(valBytes)))
-		_, err := hex.Decode(dst, valBytes)
+		// pad string to even length
+		if len(v) % 2 == 1 {
+			v = "0" + v;
+		}
+
+		val, err := hex.DecodeString(v)
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewLiteral(dst, types.LongBlob), nil
+		return expression.NewLiteral(val, types.LongBlob), nil
 	case sqlparser.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()
