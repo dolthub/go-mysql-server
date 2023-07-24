@@ -2883,7 +2883,7 @@ var ViewsData = []SetupScript{{
 }}
 
 var XyData = []SetupScript{{
-	`CREATE table xy (x int primary key, y int, index y_idx(y));`,
+	`CREATE table xy (x int primary key, y int, unique index y_idx(y));`,
 	`CREATE table uv (u int primary key, v int);`,
 	`CREATE table ab (a int primary key, b int);`,
 	`CREATE table pq (p int primary key, q int);`,
