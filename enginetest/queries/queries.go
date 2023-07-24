@@ -5003,11 +5003,11 @@ Select * from (
 		},
 	},
 	{
-		Query: `SHOW VARIABLES WHERE "0" and variable_name = 'autocommit'`,
+		Query:    `SHOW VARIABLES WHERE "0" and variable_name = 'autocommit'`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query: `SHOW VARIABLES WHERE "abc" and variable_name = 'autocommit'`,
+		Query:    `SHOW VARIABLES WHERE "abc" and variable_name = 'autocommit'`,
 		Expected: []sql.Row{},
 	},
 	{
