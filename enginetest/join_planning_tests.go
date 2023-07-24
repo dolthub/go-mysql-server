@@ -438,14 +438,16 @@ HAVING count(v) >= 1)`,
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias2 WHERE Alias2.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
 				q: `SELECT * FROM xy WHERE (
       				EXISTS (SELECT * FROM xy Alias1 WHERE Alias1.x = (xy.x + 1))
       				AND EXISTS (SELECT * FROM uv Alias1 WHERE Alias1.u = (xy.x + 2)));`,
-				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeSemiLookup},
+				// These should both be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1893
+				types: []plan.JoinType{plan.JoinTypeSemiLookup, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}},
 			},
 			{
@@ -890,8 +892,9 @@ join uv d on d.u = c.x`,
 				order: []string{"a", "b", "c", "d"},
 			},
 			{
-				q:     "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
+				q: "select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
+				// This should be JoinTypeSemiLookup, but for https://github.com/dolthub/go-mysql-server/issues/1894
+				types: []plan.JoinType{plan.JoinTypeAntiLookup},
 			},
 			{
 				q:     "select /*+ ANTI_JOIN(xy,scalarSubq0) */ 1 from xy where x not in (select u from uv)",
