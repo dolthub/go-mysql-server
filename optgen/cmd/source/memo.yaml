@@ -13,10 +13,10 @@ exprs:
   join: true
   attrs:
   - [lookup, "*Lookup"]
-- name: "SlidingRangeJoin"
+- name: "RangeHeapJoin"
   join: true
   attrs:
-    - [slidingRange, "*SlidingRange"]
+    - [rangeHeap, "*RangeHeap"]
 - name: "ConcatJoin"
   join: true
   attrs:

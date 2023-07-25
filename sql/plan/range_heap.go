@@ -23,10 +23,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// SlidingRange is a Node that wraps a table with min and max range columns. When used as a secondary provider in Join
+// RangeHeap is a Node that wraps a table with min and max range columns. When used as a secondary provider in Join
 // operations, it can efficiently compute the rows whose ranges bound the value from the other table. When the ranges
 // don't overlap, the amortized complexity is O(1) for each result row.
-type SlidingRange struct {
+type RangeHeap struct {
 	UnaryNode
 	childRowIter       sql.RowIter
 	activeRanges       priorityQueue
@@ -40,17 +40,17 @@ type SlidingRange struct {
 }
 
 type priorityQueue struct {
-	slidingRange *SlidingRange
-	rows         []sql.Row
-	err          error
+	rangeHeap *RangeHeap
+	rows      []sql.Row
+	err       error
 }
 
-var _ sql.Node = (*SlidingRange)(nil)
+var _ sql.Node = (*RangeHeap)(nil)
 
-func NewSlidingRange(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max string, rangeIsClosedBelow, rangeIsClosedAbove bool) (*SlidingRange, error) {
+func NewRangeHeap(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max string, rangeIsClosedBelow, rangeIsClosedAbove bool) (*RangeHeap, error) {
 	// TODO: IndexOfColName is Only safe for schemas corresponding to a single table, where the source of the column is irrelevant.
 	maxColumnIndex := rhsSchema.IndexOfColName(max)
-	newSr := &SlidingRange{
+	newSr := &RangeHeap{
 		activeRanges:       priorityQueue{},
 		pendingRow:         nil,
 		valueColumnIndex:   lhsSchema.IndexOfColName(value),
@@ -61,15 +61,15 @@ func NewSlidingRange(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema,
 		rangeIsClosedAbove: rangeIsClosedAbove,
 	}
 	newSr.Child = child
-	newSr.activeRanges.slidingRange = newSr
+	newSr.activeRanges.rangeHeap = newSr
 	return newSr, nil
 }
 
-func (s *SlidingRange) String() string {
+func (s *RangeHeap) String() string {
 	return s.Child.String()
 }
 
-func (s *SlidingRange) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *RangeHeap) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, fmt.Errorf("ds")
 	}
@@ -79,28 +79,28 @@ func (s *SlidingRange) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &s2, nil
 }
 
-func (s *SlidingRange) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (s *RangeHeap) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return s.Child.CheckPrivileges(ctx, opChecker)
 }
 
-var _ sql.Node = (*SlidingRange)(nil)
+var _ sql.Node = (*RangeHeap)(nil)
 
-func (s *SlidingRange) Initialize(ctx *sql.Context, childRowIter sql.RowIter) (err error) {
+func (s *RangeHeap) Initialize(ctx *sql.Context, childRowIter sql.RowIter) (err error) {
 	s.childRowIter = childRowIter
 	s.activeRanges = priorityQueue{
-		slidingRange: s,
-		rows:         nil,
-		err:          nil,
+		rangeHeap: s,
+		rows:      nil,
+		err:       nil,
 	}
 	s.pendingRow, err = childRowIter.Next(ctx)
 	return err
 }
 
-func (s *SlidingRange) IsInitialized() bool {
+func (s *RangeHeap) IsInitialized() bool {
 	return s.childRowIter != nil
 }
 
-func (s *SlidingRange) AcceptRow(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (s *RangeHeap) AcceptRow(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Remove rows from the heap if we've advanced beyond their max value.
 	for s.activeRanges.Len() > 0 {
 		maxValue := s.activeRanges.Peek()
@@ -147,8 +147,8 @@ func (s *SlidingRange) AcceptRow(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 func (pq priorityQueue) Len() int { return len(pq.rows) }
 
 func (pq *priorityQueue) Less(i, j int) bool {
-	lhs := pq.rows[i][pq.slidingRange.maxColumnIndex]
-	rhs := pq.rows[j][pq.slidingRange.maxColumnIndex]
+	lhs := pq.rows[i][pq.rangeHeap.maxColumnIndex]
+	rhs := pq.rows[j][pq.rangeHeap.maxColumnIndex]
 	// compareResult will be 0 if lhs==rhs, -1 if lhs < rhs, and +1 if lhs > rhs.
 	compareResult, err := pq.SortedType().Compare(lhs, rhs)
 	if pq.err == nil && err != nil {
@@ -175,9 +175,9 @@ func (pq *priorityQueue) Pop() any {
 
 func (pq *priorityQueue) Peek() interface{} {
 	n := len(pq.rows)
-	return pq.rows[n-1][pq.slidingRange.maxColumnIndex]
+	return pq.rows[n-1][pq.rangeHeap.maxColumnIndex]
 }
 
 func (pq *priorityQueue) SortedType() sql.Type {
-	return pq.slidingRange.comparisonType
+	return pq.rangeHeap.comparisonType
 }

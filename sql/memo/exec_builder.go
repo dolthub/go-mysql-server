@@ -133,22 +133,22 @@ func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, input sql.Schema, children 
 	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
 }
 
-func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, leftSch, rightSch sql.Schema, children ...sql.Node) (ret sql.Node, err error) {
+func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema, children ...sql.Node) (ret sql.Node, err error) {
 	switch n := children[0].(type) {
 	case *plan.TableAlias:
-		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
-		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewDistinct(ret)
 	case *plan.Filter:
-		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewFilter(n.Expression, ret)
 	case *plan.Project:
-		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewProject(n.Projections, ret)
 	case *plan.Limit:
-		ret, err = b.buildSlidingRange(sr, leftSch, rightSch, n.Child)
+		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewLimit(n.Limit, ret)
 	default:
 		var childNode sql.Node
@@ -170,7 +170,7 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, leftSch, rightSch sql.
 		if err != nil {
 			return nil, err
 		}
-		ret, err = plan.NewSlidingRange(
+		ret, err = plan.NewRangeHeap(
 			childNode,
 			leftSch,
 			rightSch,
@@ -186,19 +186,19 @@ func (b *ExecBuilder) buildSlidingRange(sr *SlidingRange, leftSch, rightSch sql.
 	return ret, nil
 }
 
-func (b *ExecBuilder) buildSlidingRangeJoin(j *SlidingRangeJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, input sql.Schema, children ...sql.Node) (sql.Node, error) {
 	leftSch := input[:len(input)-len(j.Right.RelProps.OutputCols())]
 	rightSch := input[len(j.Left.RelProps.OutputCols()):]
 
 	var left sql.Node
 	var err error
-	if j.SlidingRange.LeftIndex != nil {
-		left, err = b.buildIndexScan(j.SlidingRange.LeftIndex, input, children[0])
+	if j.RangeHeap.LeftIndex != nil {
+		left, err = b.buildIndexScan(j.RangeHeap.LeftIndex, input, children[0])
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		sortExpr, err := b.buildScalar(*j.SlidingRange.ValueExpr, leftSch)
+		sortExpr, err := b.buildScalar(*j.RangeHeap.ValueExpr, leftSch)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +210,7 @@ func (b *ExecBuilder) buildSlidingRangeJoin(j *SlidingRangeJoin, input sql.Schem
 		left = plan.NewSort(sf, children[0])
 	}
 
-	right, err := b.buildSlidingRange(j.SlidingRange, leftSch, rightSch, children[1])
+	right, err := b.buildRangeHeap(j.RangeHeap, leftSch, rightSch, children[1])
 	if err != nil {
 		return nil, err
 	}

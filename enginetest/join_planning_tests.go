@@ -926,7 +926,7 @@ join uv d on d.u = c.x`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from vals join ranges on val between min and max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{0, 0, 2},
 					{1, 0, 2},
@@ -947,7 +947,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val > min and val < max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{1, 0, 2},
 					{2, 1, 3},
@@ -958,7 +958,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val >= min and val < max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{0, 0, 2},
 					{1, 0, 2},
@@ -974,7 +974,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val > min and val <= max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{1, 0, 2},
 					{2, 0, 2},
@@ -990,7 +990,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val >= min and val <= max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{0, 0, 2},
 					{1, 0, 2},
@@ -1022,7 +1022,7 @@ join uv d on d.u = c.x`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from vals join ranges on val between min and max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{0, 0, 2},
 					{1, 0, 2},
@@ -1043,7 +1043,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val > min and val < max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{1, 0, 2},
 					{2, 1, 3},
@@ -1054,7 +1054,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val >= min and val < max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{0, 0, 2},
 					{1, 0, 2},
@@ -1070,7 +1070,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val > min and val <= max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{1, 0, 2},
 					{2, 0, 2},
@@ -1086,7 +1086,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals join ranges on val >= min and val <= max",
-				types: []plan.JoinType{plan.JoinTypeSlidingRange},
+				types: []plan.JoinType{plan.JoinTypeRangeHeap},
 				exp: []sql.Row{
 					{0, 0, 2},
 					{1, 0, 2},

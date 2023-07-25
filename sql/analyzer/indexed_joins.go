@@ -201,7 +201,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	err = addSlidingRangeJoin(m)
+	err = addRangeHeapJoin(m)
 	if err != nil {
 		return nil, err
 	}
@@ -728,7 +728,7 @@ func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 	return ranges
 }
 
-func addSlidingRangeJoin(m *memo.Memo) error {
+func addRangeHeapJoin(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.InnerJoin, *memo.LeftJoin:
@@ -778,10 +778,10 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 					rightIndexScans = []*memo.IndexScan{nil}
 				}
 				for _, rIdx := range rightIndexScans {
-					rel := &memo.SlidingRangeJoin{
+					rel := &memo.RangeHeapJoin{
 						JoinBase: join.Copy(),
 					}
-					rel.SlidingRange = &memo.SlidingRange{
+					rel.RangeHeap = &memo.RangeHeap{
 						LeftIndex:               lIdx,
 						RightIndex:              rIdx,
 						ValueExpr:               &filter.value.Scalar,
@@ -793,7 +793,7 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 						RangeClosedOnLowerBound: filter.closedOnLowerBound,
 						RangeClosedOnUpperBound: filter.closedOnUpperBound,
 					}
-					rel.Op = rel.Op.AsSlidingRange()
+					rel.Op = rel.Op.AsRangeHeap()
 					e.Group().Prepend(rel)
 				}
 			}

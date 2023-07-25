@@ -102,19 +102,19 @@ func (r *LookupJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
-type SlidingRangeJoin struct {
+type RangeHeapJoin struct {
 	*JoinBase
-	SlidingRange *SlidingRange
+	RangeHeap *RangeHeap
 }
 
-var _ RelExpr = (*SlidingRangeJoin)(nil)
-var _ JoinRel = (*SlidingRangeJoin)(nil)
+var _ RelExpr = (*RangeHeapJoin)(nil)
+var _ JoinRel = (*RangeHeapJoin)(nil)
 
-func (r *SlidingRangeJoin) String() string {
+func (r *RangeHeapJoin) String() string {
 	return FormatExpr(r)
 }
 
-func (r *SlidingRangeJoin) JoinPrivate() *JoinBase {
+func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
 	return r.JoinBase
 }
 
@@ -947,7 +947,7 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id)
 	case *LookupJoin:
 		return fmt.Sprintf("lookupjoin %d %d", r.Left.Id, r.Right.Id)
-	case *SlidingRangeJoin:
+	case *RangeHeapJoin:
 		return fmt.Sprintf("slidingrangejoin %d %d", r.Left.Id, r.Right.Id)
 	case *ConcatJoin:
 		return fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id)
@@ -1051,8 +1051,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, input sql.Schema, children ...sql.N
 		result, err = b.buildAntiJoin(r, input, children...)
 	case *LookupJoin:
 		result, err = b.buildLookupJoin(r, input, children...)
-	case *SlidingRangeJoin:
-		result, err = b.buildSlidingRangeJoin(r, input, children...)
+	case *RangeHeapJoin:
+		result, err = b.buildRangeHeapJoin(r, input, children...)
 	case *ConcatJoin:
 		result, err = b.buildConcatJoin(r, input, children...)
 	case *HashJoin:

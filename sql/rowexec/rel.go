@@ -735,9 +735,9 @@ func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, 
 	return sql.RowsToRowIter(sql.Row{int64(n.Count())}), nil
 }
 
-func (b *BaseBuilder) buildSlidingRange(ctx *sql.Context, n *plan.SlidingRange, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildRangeHeap(ctx *sql.Context, n *plan.RangeHeap, row sql.Row) (sql.RowIter, error) {
 	// The first time, initialize the child rowIter and the heap
-	span, ctx := ctx.Span("plan.SlidingRange")
+	span, ctx := ctx.Span("plan.RangeHeap")
 	if !n.IsInitialized() {
 		i, err := b.buildNodeExec(ctx, n.Child, row)
 		if err != nil {

@@ -71,8 +71,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costMergeJoin(ctx, n, s)
 	case *LookupJoin:
 		return c.costLookupJoin(ctx, n, s)
-	case *SlidingRangeJoin:
-		return c.costSlidingRangeJoin(ctx, n, s)
+	case *RangeHeapJoin:
+		return c.costRangeHeapJoin(ctx, n, s)
 	case *LateralCrossJoin:
 		return c.costLateralCrossJoin(ctx, n, s)
 	case *LateralInnerJoin:
@@ -191,7 +191,7 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
-func (c *coster) costSlidingRangeJoin(_ *sql.Context, n *SlidingRangeJoin, _ sql.StatsReader) (float64, error) {
+func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 
@@ -524,17 +524,17 @@ func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.St
 	}
 }
 
-type slidingRangeBiasedCoster struct {
+type rangeHeapBiasedCoster struct {
 	*coster
 }
 
-func NewSlidingRangeBiasedCoster() Coster {
-	return &slidingRangeBiasedCoster{coster: &coster{}}
+func NewRangeHeapBiasedCoster() Coster {
+	return &rangeHeapBiasedCoster{coster: &coster{}}
 }
 
-func (c *slidingRangeBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+func (c *rangeHeapBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
-	case *SlidingRangeJoin:
+	case *RangeHeapJoin:
 		return -biasFactor, nil
 	default:
 		return c.costRel(ctx, r, s)

@@ -45,8 +45,8 @@ const (
 	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludeNulls
 	JoinTypeMerge                                     // MergeJoin
 	JoinTypeLeftOuterMerge                            // LeftOuterMergeJoin
-	JoinTypeSlidingRange                              // SlidingRangeJoin
-	JoinTypeLeftOuterSlidingRange                     // LeftOuterSlidingRangeJoin
+	JoinTypeRangeHeap                                 // RangeHeapJoin
+	JoinTypeLeftOuterRangeHeap                        // LeftOuterRangeHeapJoin
 	JoinTypeSemiHash                                  // SemiHashJoin
 	JoinTypeAntiHash                                  // AntiHashJoin
 	JoinTypeSemiLookup                                // SemiLookupJoin
@@ -63,7 +63,7 @@ const (
 
 func (i JoinType) IsLeftOuter() bool {
 	switch i {
-	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge, JoinTypeLeftOuterSlidingRange:
+	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge, JoinTypeLeftOuterRangeHeap:
 		return true
 	default:
 		return false
@@ -95,7 +95,7 @@ func (i JoinType) IsPhysical() bool {
 		JoinTypeSemiLookup, JoinTypeSemiMerge, JoinTypeSemiHash,
 		JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls,
 		JoinTypeMerge, JoinTypeLeftOuterMerge,
-		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash, JoinTypeSlidingRange, JoinTypeLeftOuterSlidingRange:
+		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash, JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
 		return true
 	default:
 		return false
@@ -211,12 +211,12 @@ func (i JoinType) AsHash() JoinType {
 	}
 }
 
-func (i JoinType) AsSlidingRange() JoinType {
+func (i JoinType) AsRangeHeap() JoinType {
 	switch i {
 	case JoinTypeInner:
-		return JoinTypeSlidingRange
+		return JoinTypeRangeHeap
 	case JoinTypeLeftOuter:
-		return JoinTypeLeftOuterSlidingRange
+		return JoinTypeLeftOuterRangeHeap
 	default:
 		return i
 	}

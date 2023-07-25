@@ -31,12 +31,12 @@ type JoinOpTests struct {
 }
 
 var biasedCosters = map[string]memo.Coster{
-	"inner":        memo.NewInnerBiasedCoster(),
-	"lookup":       memo.NewLookupBiasedCoster(),
-	"hash":         memo.NewHashBiasedCoster(),
-	"merge":        memo.NewMergeBiasedCoster(),
-	"partial":      memo.NewPartialBiasedCoster(),
-	"slidingRange": memo.NewSlidingRangeBiasedCoster(),
+	"inner":     memo.NewInnerBiasedCoster(),
+	"lookup":    memo.NewLookupBiasedCoster(),
+	"hash":      memo.NewHashBiasedCoster(),
+	"merge":     memo.NewMergeBiasedCoster(),
+	"partial":   memo.NewPartialBiasedCoster(),
+	"rangeHeap": memo.NewRangeHeapBiasedCoster(),
 }
 
 func TestJoinOps(t *testing.T, harness Harness) {

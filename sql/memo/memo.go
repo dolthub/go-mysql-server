@@ -397,8 +397,8 @@ func (m *Memo) MemoizeLookupJoin(grp, left, right *ExprGroup, op plan.JoinType, 
 	return grp
 }
 
-func (m *Memo) MemoizeSlidingRangeJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr, slidingRange *SlidingRange) *ExprGroup {
-	newJoin := &SlidingRangeJoin{
+func (m *Memo) MemoizeRangeHeapJoin(grp, left, right *ExprGroup, op plan.JoinType, filter []ScalarExpr, rangeHeap *RangeHeap) *ExprGroup {
+	newJoin := &RangeHeapJoin{
 		JoinBase: &JoinBase{
 			relBase: &relBase{},
 			Left:    left,
@@ -406,9 +406,9 @@ func (m *Memo) MemoizeSlidingRangeJoin(grp, left, right *ExprGroup, op plan.Join
 			Op:      op,
 			Filter:  filter,
 		},
-		SlidingRange: slidingRange,
+		RangeHeap: rangeHeap,
 	}
-	newJoin.SlidingRange.Parent = newJoin.JoinBase
+	newJoin.RangeHeap.Parent = newJoin.JoinBase
 
 	if grp == nil {
 		return m.NewExprGroup(newJoin)
@@ -950,7 +950,7 @@ type IndexScan struct {
 	Parent *JoinBase
 }
 
-type SlidingRange struct {
+type RangeHeap struct {
 	LeftIndex               *IndexScan
 	RightIndex              *IndexScan
 	ValueCol                *ColRef

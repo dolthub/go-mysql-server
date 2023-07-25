@@ -26,8 +26,8 @@ func _() {
 	_ = x[JoinTypeLeftOuterHashExcludeNulls-15]
 	_ = x[JoinTypeMerge-16]
 	_ = x[JoinTypeLeftOuterMerge-17]
-	_ = x[JoinTypeSlidingRange-18]
-	_ = x[JoinTypeLeftOuterSlidingRange-19]
+	_ = x[JoinTypeRangeHeap-18]
+	_ = x[JoinTypeLeftOuterRangeHeap-19]
 	_ = x[JoinTypeSemiHash-20]
 	_ = x[JoinTypeAntiHash-21]
 	_ = x[JoinTypeSemiLookup-22]
@@ -41,7 +41,7 @@ func _() {
 	_ = x[JoinTypeLateralRight-30]
 }
 
-const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinSlidingRangeJoinLeftOuterSlidingRangeJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoinLateralCrossJoinLateralInnerJoinLateralLeftJoinLateralLeftJoin"
+const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinRangeHeapJoinLeftOuterRangeHeapJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoinLateralCrossJoinLateralInnerJoinLateralLeftJoinLateralLeftJoin"
 
 var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 71, 98, 111, 122, 131, 141, 160, 168, 185, 214, 223, 241, 257, 282, 294, 306, 320, 334, 347, 360, 371, 387, 403, 418, 433}
 
