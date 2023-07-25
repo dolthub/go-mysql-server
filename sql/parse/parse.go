@@ -4384,8 +4384,8 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		}
 
 		// pad string to even length
-		if len(v) % 2 == 1 {
-			v = "0" + v;
+		if len(v)%2 == 1 {
+			v = "0" + v
 		}
 
 		val, err := hex.DecodeString(v)
