@@ -326,7 +326,7 @@ where
 			"     │       │       └─ org1 (longtext)\n" +
 			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
-			"     │               ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"     │               └─ columns: [orgid assetid name val]\n" +
 			"     └─ Filter\n" +
 			"         ├─ AND\n" +
@@ -342,7 +342,7 @@ where
 			"         │       └─ org1 (longtext)\n" +
 			"         └─ TableAlias(style)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
-			"                 ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"                 └─ columns: [orgid assetid name val]\n" +
 			"",
 	},
