@@ -4997,6 +4997,20 @@ Select * from (
 		},
 	},
 	{
+		Query: `SHOW VARIABLES WHERE "1" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{
+			{"autocommit", 1},
+		},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "0" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW VARIABLES WHERE "abc" and variable_name = 'autocommit'`,
+		Expected: []sql.Row{},
+	},
+	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
 		Expected: []sql.Row{
 			{"block_encryption_mode", "aes-128-ecb"},
