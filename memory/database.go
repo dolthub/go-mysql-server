@@ -415,7 +415,7 @@ func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, cr
 func (d *Database) DropView(ctx *sql.Context, name string) error {
 	_, ok := d.views[name]
 	if !ok {
-		return sql.ErrViewDoesNotExist.New(name)
+		return sql.ErrViewDoesNotExist.New(d.name, name)
 	}
 
 	delete(d.views, name)
