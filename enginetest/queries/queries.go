@@ -3958,6 +3958,10 @@ Select * from (
 		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
+		Query:	  "SELECT 0x12345;",
+		Expected: []sql.Row{{[]uint8{0x1, 0x23, 0x45}}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
 		Expected: []sql.Row{{int64(1)}, {int64(2)}},
 	},
