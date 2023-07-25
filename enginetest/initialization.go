@@ -118,10 +118,12 @@ func NewBaseSession() *sql.BaseSession {
 func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
 
+	var version sql.AnalyzerVersion
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
 	} else if h, ok := harness.(VersionedHarness); ok {
 		a = analyzer.NewDefaultWithVersion(provider, h.Version())
+		version = h.Version()
 	} else {
 		a = analyzer.NewDefault(provider)
 	}
@@ -133,6 +135,9 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	a.Catalog.InfoSchema = information_schema.NewUpdatableInformationSchemaDatabase()
 
 	engine := sqle.New(a, new(sqle.Config))
+	if version != sql.VersionUnknown {
+		engine.Version = version
+	}
 
 	if idh, ok := harness.(IndexDriverHarness); ok {
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(NewContext(harness)))

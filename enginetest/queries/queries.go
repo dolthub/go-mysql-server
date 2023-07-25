@@ -8709,11 +8709,11 @@ var ErrorQueries = []QueryErrorTest{
 	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
 	{
 		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
+		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		ExpectedErr: analyzererrors.ErrAggregationUnsupported,
+		ExpectedErr: sql.ErrAggregationUnsupported,
 	},
 	{
 		Query:       "select ((1, 2)) from dual",

@@ -63,14 +63,4 @@ var (
 
 	// ErrReadOnlyDatabase is returned when a write is attempted to a ReadOnlyDatabse.
 	ErrReadOnlyDatabase = errors.NewKind("Database %s is read-only.")
-
-	// ErrAggregationUnsupported is returned when the analyzer has failed
-	// to push down an Aggregation in an expression to a GroupBy node.
-	ErrAggregationUnsupported = errors.NewKind(
-		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
-	)
-
-	ErrWindowUnsupported = errors.NewKind(
-		"a window function '%s' is in a context where it cannot be evaluated.",
-	)
 )

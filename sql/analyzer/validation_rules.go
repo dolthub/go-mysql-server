@@ -850,7 +850,7 @@ func checkForAggregationFunctions(exprs []sql.Expression) error {
 	for _, e := range exprs {
 		sql.Inspect(e, func(ie sql.Expression) bool {
 			if _, ok := ie.(sql.Aggregation); ok {
-				validationErr = analyzererrors.ErrAggregationUnsupported.New(e.String())
+				validationErr = sql.ErrAggregationUnsupported.New(e.String())
 			}
 			return validationErr == nil
 		})

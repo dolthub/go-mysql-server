@@ -119,10 +119,30 @@ func (b *Builder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
 
 func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
 	res := make([]sql.Expression, len(e))
+	var startAggCnt int
+	if inScope.groupBy != nil {
+		startAggCnt = len(inScope.groupBy.aggs)
+	}
+	var startWinCnt int
+	if inScope.windowFuncs != nil {
+		startWinCnt = len(inScope.windowFuncs)
+	}
 	for i, updateExpr := range e {
 		colName := b.buildScalar(inScope, updateExpr.Name)
 		innerExpr := b.buildScalar(inScope, updateExpr.Expr)
 		res[i] = expression.NewSetField(colName, innerExpr)
+		if inScope.groupBy != nil {
+			if len(inScope.groupBy.aggs) > startAggCnt {
+				err := sql.ErrAggregationUnsupported.New(res[i])
+				b.handleErr(err)
+			}
+		}
+		if inScope.windowFuncs != nil {
+			if len(inScope.windowFuncs) > startWinCnt {
+				err := sql.ErrWindowUnsupported.New(res[i])
+				b.handleErr(err)
+			}
+		}
 	}
 	return res
 }
