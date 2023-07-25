@@ -2,12 +2,9 @@ package planbuilder
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
-	"unicode"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -15,56 +12,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func (b *Builder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpatialRefSys, query string) (outScope *scope) {
-	outScope = inScope.push()
-	srid, err := strconv.ParseInt(string(n.SRID.Val), 10, 16)
-	if err != nil {
-		b.handleErr(err)
-	}
-
-	if n.SrsAttr == nil {
-		b.handleErr(fmt.Errorf("missing attribute"))
-	}
-
-	if n.SrsAttr.Name == "" {
-		b.handleErr(fmt.Errorf("missing mandatory attribute NAME"))
-	}
-	if unicode.IsSpace(rune(n.SrsAttr.Name[0])) || unicode.IsSpace(rune(n.SrsAttr.Name[len(n.SrsAttr.Name)-1])) {
-		b.handleErr(fmt.Errorf("the spatial reference system name can't be an empty string or start or end with whitespace"))
-	}
-	// TODO: there are additional rules to validate the attribute definition
-	if n.SrsAttr.Definition == "" {
-		b.handleErr(fmt.Errorf("missing mandatory attribute DEFINITION"))
-	}
-	if n.SrsAttr.Organization == "" {
-		b.handleErr(fmt.Errorf("missing mandatory attribute ORGANIZATION NAME"))
-	}
-	if unicode.IsSpace(rune(n.SrsAttr.Organization[0])) || unicode.IsSpace(rune(n.SrsAttr.Organization[len(n.SrsAttr.Organization)-1])) {
-		b.handleErr(fmt.Errorf("the organization name can't be an empty string or start or end with whitespace"))
-	}
-	if n.SrsAttr.OrgID == nil {
-		b.handleErr(fmt.Errorf("missing mandatory attribute ORGANIZATION ID"))
-	}
-	orgID, err := strconv.ParseInt(string(n.SrsAttr.OrgID.Val), 10, 16)
-	if err != nil {
-		b.handleErr(err)
-	}
-
-	srsAttr := plan.SrsAttribute{
-		Name:         n.SrsAttr.Name,
-		Definition:   n.SrsAttr.Definition,
-		Organization: n.SrsAttr.Organization,
-		OrgID:        uint32(orgID),
-		Description:  n.SrsAttr.Description,
-	}
-	newN, err := plan.NewCreateSpatialRefSys(uint32(srid), n.OrReplace, n.IfNotExists, srsAttr)
-	if err != nil {
-		b.handleErr(err)
-	}
-	outScope.node = newN
-	return outScope
-}
 
 func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope *scope) {
 	showType := strings.ToLower(s.Type)
@@ -122,15 +69,16 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope
 
 func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (outScope *scope) {
 	outScope = inScope.push()
-	var asOfLit interface{}
+	var asOf *ast.AsOf
 	var asOfExpr sql.Expression
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-		var err error
+		//var err error
 		asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
-		asOfLit, err = asOfExpr.Eval(b.ctx, nil)
-		if err != nil {
-			b.handleErr(err)
-		}
+		//asOfLit, err = asOfExpr.Eval(b.ctx, nil)
+		//if err != nil {
+		//	b.handleErr(err)
+		//}
+		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 	}
 
 	db := s.Database
@@ -141,8 +89,15 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		db = b.currentDb().Name()
 	}
 
-	rt := b.resolveTable(s.Table.Name.String(), db, asOfLit)
-	for _, c := range rt.Schema() {
+	//table = b.resolveTable(s.Table.Name.String(), db, asOfLit)
+	tableName := strings.ToLower(s.Table.Name.String())
+	tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+	if !ok {
+		err := sql.ErrTableNotFound.New()
+		b.handleErr(err)
+	}
+	rt, _ := tableScope.node.(*plan.ResolvedTable)
+	for _, c := range tableScope.node.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(db),
 			table:    strings.ToLower(c.Source),
@@ -152,19 +107,22 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		})
 	}
 
-	checks := b.loadChecksFromTable(outScope, rt.Table)
-	// To match MySQL output format, transform the column names and wrap with backticks
-	for i, check := range checks {
-		checks[i].Expr, _, _ = transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			if t, ok := e.(*expression.GetField); ok {
-				return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
-			}
-			return e, transform.SameTree, nil
-		})
+	showCreate := plan.NewShowCreateTableWithAsOf(tableScope.node, showType == "create view", asOfExpr)
+
+	if rt != nil {
+		checks := b.loadChecksFromTable(outScope, rt.Table)
+		// To match MySQL output format, transform the column names and wrap with backticks
+		for i, check := range checks {
+			checks[i].Expr, _, _ = transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if t, ok := e.(*expression.GetField); ok {
+					return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
+			})
+		}
+		showCreate.Checks = checks
 	}
 
-	showCreate := plan.NewShowCreateTableWithAsOf(rt, showType == "create view", asOfExpr)
-	showCreate.Checks = checks
 	outScope.node = showCreate
 	return
 }
@@ -417,8 +375,11 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	dbName := s.Table.Qualifier.String()
-	tableName := s.Table.Name.String()
-	table := b.resolveTable(tableName, dbName, nil)
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	tableName := strings.ToLower(s.Table.Name.String())
+	table := b.resolveTable(tableName, strings.ToLower(dbName), nil)
 	outScope.node = plan.NewShowIndexes(table)
 	return
 }
@@ -440,18 +401,6 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
 			filter = b.buildScalar(outScope, s.Filter.Filter)
-			//filter, _, _ = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			//	// TODO this isn't gonna work, will need to inject column
-			//	switch e.(type) {
-			//	case *expression.UnresolvedColumn:
-			//		if strings.ToLower(e.String()) != "variable_name" {
-			//			return nil, transform.SameTree, sql.ErrUnsupportedFeature.New("WHERE clause supports only 'variable_name' column for SHOW VARIABLES")
-			//		}
-			//		return expression.NewGetField(0, types.Text, "variable_name", true), transform.NewTree, nil
-			//	default:
-			//		return e, transform.SameTree, nil
-			//	}
-			//})
 		}
 		if s.Filter.Like != "" {
 			like = expression.NewLike(
@@ -478,10 +427,8 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	var dbName string
 	var filter sql.Expression
 	var asOf sql.Expression
-	var full bool
-	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+	if s.ShowTablesOpt != nil {
 		dbName = s.ShowTablesOpt.DbName
-		full = s.Full
 		if s.ShowTablesOpt.AsOf != nil {
 			asOf = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
 		}
@@ -492,7 +439,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	}
 	db := b.resolveDb(dbName)
 
-	showTabs := plan.NewShowTables(db, full, asOf)
+	showTabs := plan.NewShowTables(db, s.Full, asOf)
 	for _, c := range showTabs.Schema() {
 		outScope.newColumn(scopeColumn{table: c.Source, col: c.Name, typ: c.Type, nullable: c.Nullable})
 	}
@@ -549,15 +496,17 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	full := s.Full
 	var table sql.Node
 	{
-		var asOfLit interface{}
-		var asOfExpr sql.Expression
+		//var asOfLit interface{}
+		//var asOfExpr sql.Expression
+		var asOf *ast.AsOf
 		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
-			var err error
-			asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
-			asOfLit, err = asOfExpr.Eval(b.ctx, nil)
-			if err != nil {
-				b.handleErr(err)
-			}
+			//var err error
+			//asOfExpr = b.buildScalar(inScope, s.ShowTablesOpt.AsOf)
+			//asOfLit, err = asOfExpr.Eval(b.ctx, nil)
+			//if err != nil {
+			//	b.handleErr(err)
+			//}
+			asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 		}
 
 		db := s.Database
@@ -568,7 +517,14 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 			db = b.currentDb().Name()
 		}
 
-		table = b.resolveTable(s.Table.Name.String(), db, asOfLit)
+		//table = b.resolveTable(s.Table.Name.String(), db, asOfLit)
+		tableName := strings.ToLower(s.Table.Name.String())
+		tableScope, ok := b.buildTablescan(inScope, db, tableName, asOf)
+		if !ok {
+			err := sql.ErrTableNotFound.New()
+			b.handleErr(err)
+		}
+		table = tableScope.node
 	}
 	var node sql.Node = plan.NewShowColumns(full, table)
 
@@ -647,7 +603,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	}
 
 	if s.ShowCollationFilterOpt != nil {
-		filterExpr := b.buildScalar(inScope, s.ShowCollationFilterOpt)
+		filterExpr := b.buildScalar(outScope, s.ShowCollationFilterOpt)
 		// TODO: once collations are properly implemented, we should better be able to handle utf8 -> utf8mb3 comparisons as they're aliases
 		filterExpr, _, _ = transform.Expr(filterExpr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if exprLiteral, ok := expr.(*expression.Literal); ok {

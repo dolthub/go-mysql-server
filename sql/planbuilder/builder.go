@@ -92,6 +92,8 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return outScope
 	case *ast.Analyze:
 		return b.buildAnalyze(inScope, n, query)
+	case *ast.CreateSpatialRefSys:
+		return b.buildCreateSpatialRefSys(inScope, n)
 	case *ast.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -109,10 +111,22 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 	case *ast.Explain:
 		return b.buildExplain(inScope, n)
 	case *ast.Insert:
+		if n.With != nil {
+			cteScope := b.buildWith(inScope, n.With)
+			return b.buildInsert(cteScope, n)
+		}
 		return b.buildInsert(inScope, n)
 	case *ast.Delete:
+		if n.With != nil {
+			cteScope := b.buildWith(inScope, n.With)
+			return b.buildDelete(cteScope, n)
+		}
 		return b.buildDelete(inScope, n)
 	case *ast.Update:
+		if n.With != nil {
+			cteScope := b.buildWith(inScope, n.With)
+			return b.buildUpdate(cteScope, n)
+		}
 		return b.buildUpdate(inScope, n)
 	case *ast.Load:
 		return b.buildLoad(inScope, n)

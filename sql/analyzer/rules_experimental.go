@@ -28,10 +28,8 @@ var OnceBeforeDefault_Exp = []Rule{
 	{resolveDropConstraintId, resolveDropConstraint},
 	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
-	{pruneDropTablesId, pruneDropTables}, //TODO
-	//{resolveCreateLikeId, resolveCreateLike},
+	//{pruneDropTablesId, pruneDropTables}, //TODO
 	{resolveCreateSelectId, resolveCreateSelect},
-	//{parseColumnDefaultsId, parseColumnDefaults},
 	{validateDropConstraintId, validateDropConstraint},
 	{setViewTargetSchemaId, setViewTargetSchema},
 	{resolveUnionsId, resolveUnions},
@@ -80,7 +78,6 @@ var OnceAfterDefault_Experimental = []Rule{
 	{pushFiltersId, pushFilters},
 	{optimizeJoinsId, optimizeJoins},
 	{generateIndexScansId, generateIndexScans},
-	//{pruneColumnsId, pruneColumns},
 	{finalizeSubqueriesId, finalizeSubqueries},
 	{subqueryIndexesId, applyIndexesFromOuterScope},
 	{replaceSortPkId, replacePkSort},

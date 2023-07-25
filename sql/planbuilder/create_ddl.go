@@ -36,7 +36,11 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 
-	tableScope := b.buildTablescan(inScope, dbName, c.Table.Name.String(), nil)
+	tableName := strings.ToLower(c.Table.Name.String())
+	tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 
 	// todo scope with new and old columns provided
 	// insert/update have "new"

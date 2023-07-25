@@ -237,7 +237,30 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			}
 
 			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-			gb.outScope.newColumn(col)
+			id := gb.outScope.newColumn(col)
+			col.id = id
+			gb.addAggStr(col)
+			return col.scalarGf()
+		}
+	}
+
+	if name == "jsonarray" {
+		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
+			var agg sql.Aggregation
+			agg = aggregation.NewJsonArray(expression.NewLiteral(expression.NewStar(), types.Int64))
+			//if e.Distinct {
+			//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
+			//}
+			aggName := strings.ToLower(agg.String())
+			gf := gb.getAggRef(aggName)
+			if gf != nil {
+				// if we've already computed use reference here
+				return gf
+			}
+
+			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+			id := gb.outScope.newColumn(col)
+			col.id = id
 			gb.addAggStr(col)
 			return col.scalarGf()
 		}
@@ -252,7 +275,8 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			col := scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
 		case *expression.Star:
-			panic("todo custom handle count(*)")
+			err := fmt.Errorf("a '*' is in a context where it is not allowed")
+			b.handleErr(err)
 		default:
 			args = append(args, e)
 			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type()}
@@ -301,8 +325,8 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 
 	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: aggType, nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
-	gb.addAggStr(col)
 	col.id = id
+	gb.addAggStr(col)
 	return col.scalarGf()
 }
 

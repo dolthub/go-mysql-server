@@ -126,7 +126,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.Union, name strin
 	distinct := union.Type != ast.UnionAllStr
 	limit := b.buildLimit(inScope, union.Limit)
 
-	orderByScope := b.analyzeOrderBy(cteScope, inScope, union.OrderBy)
+	orderByScope := b.analyzeOrderBy(cteScope, leftScope, union.OrderBy)
 	var sortFields sql.SortFields
 	for _, c := range orderByScope.cols {
 		so := sql.Ascending

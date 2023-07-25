@@ -1425,6 +1425,24 @@ Project
 		{
 			Query: "select - SUM(DISTINCT - - 71) as col2 from xy cor0",
 		},
+		{
+			Query: "select x as y, y from xy s order by x desc",
+		},
+		{
+			Query: "select x+1 as x, (select x) from xy;",
+		},
+		{
+			Query: `
+SELECT fi, COUNT(*) FROM (
+			SELECT tbl.x AS fi
+			FROM xy tbl
+		) t
+		GROUP BY fi
+		ORDER BY COUNT(*) ASC, fi`,
+		},
+		{
+			Query: "select y as k from xy union select x from xy order by k",
+		},
 	}
 
 	var verbose, rewrite bool

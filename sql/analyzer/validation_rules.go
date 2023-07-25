@@ -495,7 +495,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 					}
 					switch e.(type) {
 					case *expression.Star:
-						err = analyzererrors.ErrStarUnsupported.New()
+						err = sql.ErrStarUnsupported.New()
 						return false
 					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {

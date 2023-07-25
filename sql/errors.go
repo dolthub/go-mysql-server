@@ -798,6 +798,11 @@ var (
 
 	// ErrInvalidIndexName is called when we try to create an index with an unusable name.
 	ErrInvalidIndexName = errors.NewKind("invalid index name '%s'")
+
+	// ErrStarUnsupported is called for * expressions seen outside: raw projections, count(*), and arrayagg(*)
+	ErrStarUnsupported = errors.NewKind(
+		"a '*' is in a context where it is not allowed.",
+	)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

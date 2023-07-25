@@ -8596,6 +8596,10 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidAsOfExpression,
 	},
 	{
+		Query:       "SELECT i FROM myhistorytable AS OF MAX(i)",
+		ExpectedErr: sql.ErrInvalidAsOfExpression,
+	},
+	{
 		Query:       "SELECT pk FROM one_pk WHERE pk > ?",
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
@@ -8898,7 +8902,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select SUM(*) from dual;",
-		ExpectedErr: analyzererrors.ErrStarUnsupported,
+		ExpectedErr: sql.ErrStarUnsupported,
 	},
 	{
 		Query:          "create table vb_tbl (vb varbinary(123456789));",

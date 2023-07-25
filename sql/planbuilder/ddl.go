@@ -173,8 +173,10 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 			}
 		}
 
-		tableScope := b.buildTablescan(inScope, dbName, t.Name.String(), nil)
-		dropTables = append(dropTables, tableScope.node)
+		tableScope, ok := b.buildTablescan(inScope, dbName, t.Name.String(), nil)
+		if ok {
+			dropTables = append(dropTables, tableScope.node)
+		}
 	}
 
 	outScope.node = plan.NewDropTable(dropTables, c.IfExists)
@@ -185,7 +187,10 @@ func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scop
 	outScope = inScope.push()
 	dbName := c.Table.Qualifier.String()
 	tabName := c.Table.Name.String()
-	tableScope := b.buildTablescan(inScope, dbName, tabName, nil)
+	tableScope, ok := b.buildTablescan(inScope, dbName, tabName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tabName))
+	}
 	outScope.node = plan.NewTruncate(
 		c.Table.Qualifier.String(),
 		tableScope.node,
@@ -245,7 +250,10 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	if likeDbName == "" {
 		likeDbName = b.ctx.GetCurrentDatabase()
 	}
-	outScope := b.buildTablescan(inScope, likeDbName, tableName, nil)
+	outScope, ok := b.buildTablescan(inScope, likeDbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 	likeTable, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
 		err := fmt.Errorf("expected resolved table: %s", tableName)
@@ -379,11 +387,15 @@ func (b *Builder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *scope
 	}
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
 		dbName := ddl.Table.Qualifier.String()
-		tabName := ddl.Table.Name.String()
-		outScope = b.buildTablescan(inScope, dbName, tabName, nil)
+		tableName := ddl.Table.Name.String()
+		var ok bool
+		outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+		if !ok {
+			b.handleErr(sql.ErrTableNotFound.New(tableName))
+		}
 		table, ok := outScope.node.(*plan.ResolvedTable)
 		if !ok {
-			err := fmt.Errorf("expected resolved table: %s", tabName)
+			err := fmt.Errorf("expected resolved table: %s", tableName)
 			b.handleErr(err)
 		}
 		parsedConstraint := b.convertConstraintDefinition(outScope, ddl.TableSpec.Constraints[0])
@@ -425,11 +437,15 @@ func (b *Builder) buildAlterTable(inScope *scope, ddl *ast.DDL) (outScope *scope
 	}
 	if ddl.ColumnAction != "" {
 		dbName := ddl.Table.Qualifier.String()
-		tabName := ddl.Table.Name.String()
-		outScope = b.buildTablescan(inScope, dbName, tabName, nil)
+		tableName := ddl.Table.Name.String()
+		var ok bool
+		outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+		if !ok {
+			b.handleErr(sql.ErrTableNotFound.New(tableName))
+		}
 		table, ok := outScope.node.(*plan.ResolvedTable)
 		if !ok {
-			err := fmt.Errorf("expected resolved table: %s", tabName)
+			err := fmt.Errorf("expected resolved table: %s", tableName)
 			b.handleErr(err)
 		}
 
@@ -646,11 +662,15 @@ func (b *Builder) buildReferentialAction(action ast.ReferenceAction) sql.Foreign
 // todo drop column, rename column
 func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	dbName := ddl.Table.Qualifier.String()
-	tabName := ddl.Table.Name.String()
-	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
+	tableName := ddl.Table.Name.String()
+	var ok bool
+	outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 	table, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tabName)
+		err := fmt.Errorf("expected resolved table: %s", tableName)
 		b.handleErr(err)
 	}
 	switch strings.ToLower(ddl.IndexSpec.Action) {
@@ -778,11 +798,14 @@ func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL) (outScop
 	}
 
 	dbName := ddl.Table.Qualifier.String()
-	tabName := ddl.Table.Name.String()
-	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
+	tableName := ddl.Table.Name.String()
+	outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 	table, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tabName)
+		err := fmt.Errorf("expected resolved table: %s", tableName)
 		b.handleErr(err)
 	}
 	outScope.node = plan.NewAlterAutoIncrement(table.Database, table, autoVal)
@@ -791,11 +814,15 @@ func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL) (outScop
 
 func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	dbName := ddl.Table.Qualifier.String()
-	tabName := ddl.Table.Name.String()
-	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
+	tableName := ddl.Table.Name.String()
+	var ok bool
+	outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 	table, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tabName)
+		err := fmt.Errorf("expected resolved table: %s", tableName)
 		b.handleErr(err)
 	}
 	switch strings.ToLower(ddl.DefaultSpec.Action) {
@@ -816,11 +843,15 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL) (outScope *sco
 
 func (b *Builder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL) (outScope *scope) {
 	dbName := ddl.Table.Qualifier.String()
-	tabName := ddl.Table.Name.String()
-	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
+	tableName := ddl.Table.Name.String()
+	var ok bool
+	outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 	table, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tabName)
+		err := fmt.Errorf("expected resolved table: %s", tableName)
 		b.handleErr(err)
 	}
 	var charSetStr *string
@@ -895,17 +926,21 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 	}
 
 	dbName := ddl.Table.Qualifier.String()
-	tabName := ddl.Table.Name.String()
-	outScope = b.buildTablescan(inScope, dbName, tabName, nil)
+	tableName := ddl.Table.Name.String()
+	var ok bool
+	outScope, ok = b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 	table, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tabName)
+		err := fmt.Errorf("expected resolved table: %s", tableName)
 		b.handleErr(err)
 	}
 
 	cols := make([]sql.Expression, len(ddl.IndexSpec.Columns))
 	for i, col := range ddl.IndexSpec.Columns {
-		c, ok := inScope.resolveColumn(tabName, strings.ToLower(col.Column.String()), true)
+		c, ok := inScope.resolveColumn(tableName, strings.ToLower(col.Column.String()), true)
 		if !ok {
 			b.handleErr(sql.ErrColumnNotFound.New(col.Column.String()))
 		}

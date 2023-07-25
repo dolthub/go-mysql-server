@@ -128,6 +128,14 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		lhs := b.buildScalar(inScope, v.Left)
 		rhs := b.buildScalar(inScope, v.Right)
 		return expression.NewXor(lhs, rhs)
+	case *ast.ConvertUsingExpr:
+		expr := b.buildScalar(inScope, v.Expr)
+		collation, err := sql.ParseCollation(&v.Type, nil, false)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		return expression.NewCollatedExpression(expr, collation)
 	case *ast.ConvertExpr:
 		var err error
 		typeLength := 0

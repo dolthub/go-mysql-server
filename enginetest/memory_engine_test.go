@@ -199,12 +199,17 @@ func TestSingleQuery(t *testing.T) {
 	//t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `SELECT - SUM( DISTINCT - - 71 ) AS col2 FROM xy cor0`,
+		Query: `SELECT fi, COUNT(*) FROM (
+			SELECT tbl.s AS fi
+			FROM mytable tbl
+		) t
+		GROUP BY fi
+		ORDER BY COUNT(*) ASC, fi`,
 		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil).WithVersion(sql.VersionExperimental)
 	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
@@ -453,8 +458,17 @@ func TestQueryErrors(t *testing.T) {
 	enginetest.TestQueryErrors(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestQueryErrors_Exp(t *testing.T) {
+	t.Skip("mostly different error messages, some queries still need to be fixed")
+	enginetest.TestQueryErrors(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestInfoSchema(t *testing.T) {
 	enginetest.TestInfoSchema(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestInfoSchema_Exp(t *testing.T) {
+	enginetest.TestInfoSchema(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
 }
 
 func TestInfoSchemaPrepared(t *testing.T) {
@@ -463,6 +477,10 @@ func TestInfoSchemaPrepared(t *testing.T) {
 
 func TestReadOnlyDatabases(t *testing.T) {
 	enginetest.TestReadOnlyDatabases(t, enginetest.NewReadOnlyMemoryHarness())
+}
+
+func TestReadOnlyDatabases_Exp(t *testing.T) {
+	enginetest.TestReadOnlyDatabases(t, enginetest.NewReadOnlyMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
 func TestReadOnlyVersionedQueries(t *testing.T) {

@@ -12,10 +12,20 @@ import (
 // to compensate for the new name resolution expression overloading GetField
 // indexes.
 func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		default:
 			return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
+		case *plan.ShowVariables:
+			if n.Filter != nil {
+				newF, same, err := fixidx.FixFieldIndexes(scope, a.LogFn(), n.Schema(), n.Filter)
+				if same || err != nil {
+					return n, transform.SameTree, err
+				}
+				n.Filter = newF
+				return n, transform.NewTree, nil
+			}
+			return n, transform.SameTree, nil
 		//case *plan.Set:
 		//	exprs, same, err := fixidx.FixFieldIndexesOnExpressions(scope, a.LogFn(), nil, n.Exprs...)
 		//	if err != nil || same {

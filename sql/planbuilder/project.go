@@ -19,28 +19,35 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	// we want to in-place identify aggregations, expand stars.
 	// use inScope to construct projections for projScope
 
-	tempScope := inScope.push()
+	// interleave tempScope between inScope and parent, namespace for
+	// alias accumulation within SELECT
+	tempScope := inScope.replace()
+	inScope.parent = tempScope
+
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
 	for _, se := range selectExprs {
-		pe := b.selectExprToExpression(tempScope, se)
+		pe := b.selectExprToExpression(inScope, se)
+		// alias coverup
+
 		switch e := pe.(type) {
 		case *expression.GetField:
-			gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), strings.ToLower(e.Table()), strings.ToLower(e.Name()), e.IsNullable())
-			exprs = append(exprs, gf)
-			id, ok := tempScope.getExpr(gf.String(), true)
+			//gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), strings.ToLower(e.Table()), strings.ToLower(e.Name()), e.IsNullable())
+			exprs = append(exprs, e)
+			id, ok := inScope.getExpr(e.String(), true)
 			if !ok {
-				err := sql.ErrColumnNotFound.New(gf.String())
+				err := sql.ErrColumnNotFound.New(e.String())
 				b.handleErr(err)
 			}
-			gf = gf.WithIndex(int(id)).(*expression.GetField)
-			outScope.addColumn(scopeColumn{table: gf.Table(), col: gf.Name(), scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
+			e = e.WithIndex(int(id)).(*expression.GetField)
+			outScope.addColumn(scopeColumn{table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable(), id: id})
 		case *expression.Star:
 			tableName := strings.ToLower(e.Table)
 			if tableName == "" && len(inScope.cols) == 0 {
 				err := sql.ErrNoTablesUsed.New()
 				b.handleErr(err)
 			}
+			startLen := len(outScope.cols)
 			for _, c := range inScope.cols {
 				if c.table == tableName || tableName == "" {
 					gf := expression.NewGetFieldWithTable(int(c.id), c.typ, c.table, c.col, c.nullable)
@@ -53,10 +60,14 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					outScope.addColumn(scopeColumn{table: c.table, col: c.col, scalar: gf, typ: gf.Type(), nullable: gf.IsNullable(), id: id})
 				}
 			}
+			if tableName != "" && len(outScope.cols) == startLen {
+				err := sql.ErrTableNotFound.New(tableName)
+				b.handleErr(err)
+			}
 		case *expression.Alias:
 			var col scopeColumn
 			if gf, ok := e.Child.(*expression.GetField); ok {
-				id, ok := tempScope.getExpr(gf.String(), true)
+				id, ok := inScope.getExpr(gf.String(), true)
 				if !ok {
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
@@ -82,21 +93,25 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		}
 	}
 
+	inScope.parent = tempScope.parent
 	// move aggregates, windows from tempScope->inScope
-	if tempScope.groupBy != nil {
-		if inScope.groupBy == nil {
-			inScope.initGroupBy()
-		}
-		for _, col := range tempScope.groupBy.aggregations() {
-			inScope.groupBy.addAggStr(col)
-		}
-		for _, col := range tempScope.groupBy.inCols {
-			inScope.groupBy.addInCol(col)
-		}
-	}
-	inScope.windowFuncs = append(inScope.windowFuncs, tempScope.windowFuncs...)
+	//if tempScope.groupBy != nil {
+	//	if inScope.groupBy == nil {
+	//		inScope.initGroupBy()
+	//	}
+	//	for _, col := range tempScope.groupBy.aggregations() {
+	//		inScope.groupBy.addAggStr(col)
+	//	}
+	//	for _, col := range tempScope.groupBy.inCols {
+	//		inScope.groupBy.addInCol(col)
+	//	}
+	//}
+	//inScope.windowFuncs = append(inScope.windowFuncs, tempScope.windowFuncs...)
 }
 
+// selectExprToExpression binds dependencies in a scalar expression in a SELECT clause.
+// We differentiate inScope from localScope in cases where we want to differentiate
+// leading aliases in the same SELECT clause from inner-scope columns of the same name.
 func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
 	switch e := se.(type) {
 	case *ast.StarExpr:
@@ -105,7 +120,17 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 		}
 		return expression.NewQualifiedStar(strings.ToLower(e.TableName.Name.String()))
 	case *ast.AliasedExpr:
-		expr := b.buildScalar(inScope, e.Expr)
+		var expr sql.Expression
+		//if col, ok := e.Expr.(*ast.ColName); ok {
+		//	localCol, ok := localScope.resolveColumn(col.Qualifier.String(), col.Name.Lowered(), false)
+		//	if ok {
+		//		expr = localCol.scalarGf()
+		//
+		//	}
+		//}
+		if expr == nil {
+			expr = b.buildScalar(inScope, e.Expr)
+		}
 
 		if !e.As.IsEmpty() {
 			return expression.NewAlias(e.As.String(), expr)

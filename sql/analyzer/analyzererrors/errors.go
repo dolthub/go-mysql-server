@@ -73,8 +73,4 @@ var (
 	ErrWindowUnsupported = errors.NewKind(
 		"a window function '%s' is in a context where it cannot be evaluated.",
 	)
-
-	ErrStarUnsupported = errors.NewKind(
-		"a '*' is in a context where it is not allowed.",
-	)
 )

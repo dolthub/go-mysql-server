@@ -166,11 +166,16 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 	case *ast.AliasedTableExpr:
 		switch e := t.Expr.(type) {
 		case ast.TableName:
-			if cteScope := inScope.getCte(e.Name.String()); cteScope != nil {
+			tableName := strings.ToLower(e.Name.String())
+			if cteScope := inScope.getCte(tableName); cteScope != nil {
 				outScope = cteScope.copy()
 				outScope.parent = inScope
 			} else {
-				outScope = b.buildTablescan(inScope, e.Qualifier.String(), e.Name.String(), t.AsOf)
+				var ok bool
+				outScope, ok = b.buildTablescan(inScope, e.Qualifier.String(), tableName, t.AsOf)
+				if !ok {
+					b.handleErr(sql.ErrTableNotFound.New(tableName))
+				}
 			}
 			if t.As.String() != "" {
 				tAlias := strings.ToLower(t.As.String())
@@ -198,6 +203,10 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			outScope = inScope.push()
 			outScope.node = sq
 
+			if len(renameCols) > 0 && len(fromScope.cols) != len(renameCols) {
+				err := sql.ErrColumnCountMismatch.New()
+				b.handleErr(err)
+			}
 			for i, c := range fromScope.cols {
 				col := c.col
 				if len(renameCols) > 0 {
@@ -327,7 +336,7 @@ func (b *Builder) buildUnion(inScope *scope, u *ast.Union) (outScope *scope) {
 			so = sql.Descending
 		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: c.scalarGf(),
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
@@ -511,7 +520,7 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 	return outScope
 }
 
-func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope) {
+func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
 	// lookup table in catalog
@@ -549,7 +558,6 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 	var tab sql.Table
 	var database sql.Database
 	var err error
-	// views first
 	database, err = b.cat.Database(b.ctx, db)
 	if err != nil {
 		b.handleErr(err)
@@ -566,7 +574,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 				nullable: c.Nullable,
 			})
 		}
-		return outScope
+		return outScope, true
 	}
 
 	if asOfLit != nil {
@@ -586,7 +594,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 			outScope.node = plan.NewUnresolvedTable(name, db)
 			return
 		}
-		b.handleErr(sql.ErrTableNotFound.New(name))
+		return outScope, false
 	}
 
 	rt := plan.NewResolvedTable(tab, database, asOfLit)
@@ -608,7 +616,7 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 			nullable: c.Nullable,
 		})
 	}
-	return outScope
+	return outScope, true
 }
 
 func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {

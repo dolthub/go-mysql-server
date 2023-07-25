@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -61,7 +62,7 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 				"SELECT * FROM mytable",
 				plan.NewProject([]sql.Expression{
 					expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
-					expression.NewGetFieldWithTable(1, types.Text, "mytable", "s", false),
+					expression.NewGetFieldWithTable(1, types.MustCreateStringWithDefaults(sqltypes.VarChar, 20), "mytable", "s", false),
 				}, plan.NewUnresolvedTable("mytable", "mydb")),
 			).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 

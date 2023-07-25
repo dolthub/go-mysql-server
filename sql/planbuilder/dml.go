@@ -17,8 +17,11 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		inScope = b.buildWith(inScope, i.With)
 	}
 	dbName := i.Table.Qualifier.String()
-	tabName := i.Table.Name.String()
-	destScope := b.buildTablescan(inScope, dbName, tabName, nil)
+	tableName := i.Table.Name.String()
+	destScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 	var db sql.Database
 	var rt *plan.ResolvedTable
 	switch n := destScope.node.(type) {
@@ -32,9 +35,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	if rt == nil {
 		if b.TriggerCtx().Active {
-			b.TriggerCtx().ResolveErr = sql.ErrTableNotFound.New(tabName)
+			b.TriggerCtx().ResolveErr = sql.ErrTableNotFound.New(tableName)
 		} else {
-			err := fmt.Errorf("expected resolved table: %s", tabName)
+			err := fmt.Errorf("expected resolved table: %s", tableName)
 			b.handleErr(err)
 		}
 	}
@@ -127,7 +130,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	outScope = b.buildFrom(inScope, d.TableExprs)
 	b.buildWhere(outScope, d.Where)
-	orderByScope := b.analyzeOrderBy(outScope, nil, d.OrderBy)
+	orderByScope := b.analyzeOrderBy(outScope, b.newScope(), d.OrderBy)
 	b.buildOrderBy(outScope, orderByScope)
 	limit := b.buildLimit(outScope, d.Limit)
 	if limit != nil {
@@ -143,7 +146,10 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 			if dbName == "" {
 				dbName = b.ctx.GetCurrentDatabase()
 			}
-			tableScope := b.buildTablescan(inScope, dbName, tabName, nil)
+			tableScope, ok := b.buildTablescan(inScope, dbName, tabName, nil)
+			if !ok {
+				b.handleErr(sql.ErrTableNotFound.New(tabName))
+			}
 			targets[i] = tableScope.node
 		}
 	}
