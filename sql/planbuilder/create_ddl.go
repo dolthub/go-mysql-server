@@ -41,6 +41,10 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}
+	if _, ok := tableScope.node.(*plan.UnresolvedTable); ok {
+		// unknown table in trigger body is OK, but the target table must exist
+		b.handleErr(sql.ErrTableNotFound.New(tableName))
+	}
 
 	// todo scope with new and old columns provided
 	// insert/update have "new"
@@ -66,9 +70,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	triggerScope.addColumns(oldScope.cols)
 
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	b.TriggerCtx().Active = true
 	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
-	b.TriggerCtx().Active = false
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
 	db := b.resolveDb(dbName)
 

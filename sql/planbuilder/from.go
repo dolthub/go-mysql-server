@@ -590,9 +590,10 @@ func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf
 		}
 		b.handleErr(err)
 	} else if tab == nil {
-		if b.TriggerCtx().Active {
+		if !b.TriggerCtx().Call {
 			outScope.node = plan.NewUnresolvedTable(name, db)
-			return
+			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, name)
+			return outScope, true
 		}
 		return outScope, false
 	}

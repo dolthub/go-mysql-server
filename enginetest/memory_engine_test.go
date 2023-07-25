@@ -201,15 +201,15 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `with t (n) as (select (1) from dual) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)`,
+		Query:    `drop table notesits`,
 		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil).WithVersion(sql.VersionExperimental)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil).WithVersion(sql.VersionStable)
 	harness.Setup(setup.SimpleSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
@@ -876,7 +876,7 @@ func TestTriggersErrors(t *testing.T) {
 }
 
 func TestTriggersErrors_Exp(t *testing.T) {
-	t.Skip("different error message (OK)")
+	t.Skip("different errors, but flaky to changes for passing triggers")
 	enginetest.TestTriggerErrors(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 

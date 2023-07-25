@@ -159,13 +159,14 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 			err := sql.ErrUnsupportedFeature.New("dropping tables on multiple databases in the same statement")
 			b.handleErr(err)
 		}
+		tableName := strings.ToLower(t.Name.String())
 		if c.IfExists {
-			_, _, err := b.cat.Table(b.ctx, dbName, t.Name.String())
+			_, _, err := b.cat.Table(b.ctx, dbName, tableName)
 			if sql.ErrTableNotFound.Is(err) {
 				b.ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    mysql.ERBadTable,
-					Message: fmt.Sprintf("Can't drop table %s; table doesn't exist ", t.Name.String()),
+					Message: fmt.Sprintf("Can't drop table %s; table doesn't exist ", tableName),
 				})
 				continue
 			} else if err != nil {
@@ -173,9 +174,12 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 			}
 		}
 
-		tableScope, ok := b.buildTablescan(inScope, dbName, t.Name.String(), nil)
+		tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
 		if ok {
 			dropTables = append(dropTables, tableScope.node)
+		} else if !c.IfExists {
+			err := sql.ErrTableNotFound.New(tableName)
+			b.handleErr(err)
 		}
 	}
 

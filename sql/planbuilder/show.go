@@ -339,7 +339,9 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 	}
 	db := b.resolveDb(dbName)
 
-	var node sql.Node = plan.NewShowTableStatus(db)
+	showStatus := plan.NewShowTableStatus(db)
+	showStatus.Catalog = b.cat
+	var node sql.Node = showStatus
 
 	outScope = inScope.push()
 	for _, c := range node.Schema() {
