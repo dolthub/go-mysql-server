@@ -731,6 +731,8 @@ func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 	return ranges
 }
 
+// addRangeHeapJoin checks whether the join can be implemented as a RangeHeap, and if so, adds a memo.RangeHeap plan
+// to the memo.
 func addRangeHeapJoin(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
@@ -765,9 +767,6 @@ func addRangeHeapJoin(m *memo.Memo) error {
 			}
 			maxColRef, ok := filter.max.Scalar.(*memo.ColRef)
 			if !ok {
-				return nil
-			}
-			if valueColRef == nil || minColRef == nil || maxColRef == nil {
 				return nil
 			}
 
