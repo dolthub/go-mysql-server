@@ -19,7 +19,12 @@ insert into asset values
     (3, 'org1', 'small', 'retries', 'curve'),
     (4, 'org1', 'medium', 'style', 'straight'),
     (5, 'org1', 'medium', 'color', 'green'),
-    (6, 'org1', 'medium', 'dimension', 'narrow');
+    (6, 'org1', 'medium', 'dimension', 'narrow'),
+    (7, 'org1', 'medium', 'retries', 'straight'),
+    (8, 'org1', 'large', 'style', 'bendy'),
+    (9, 'org1', 'large', 'color', 'red'),
+    (10, 'org1', 'large', 'dimension', 'round'),
+    (11, 'org1', 'large', 'retries', 'bendy');
 ----
 
 exec

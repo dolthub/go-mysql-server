@@ -233,12 +233,8 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 // of 1 will return n rows. It is possible for join selectivity to be below 1
 // if source table filters limit the number of rows returned by the left table.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	var sel float64 = 1
-	if len(l.Index.SqlIdx().Expressions()) == len(l.KeyExprs) {
-		sel = 0.1
-	} else {
-		sel = math.Pow(0.5, float64(len(l.KeyExprs)))
-	}
+	sel := math.Pow(0.5, float64(len(l.KeyExprs)))
+
 	if !l.Index.SqlIdx().IsUnique() {
 		return sel
 	}
