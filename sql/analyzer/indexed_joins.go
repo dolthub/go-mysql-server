@@ -748,11 +748,22 @@ func addSlidingRangeJoin(m *memo.Memo) error {
 				satisfiesScalarRefs(filter.max.Scalar, join.Right)) {
 				return nil
 			}
-			// TODO: Is this safe? If the expression references multiple columns, does this reference one
-			// arbitrarily?
-			valueColRef := getColumnRefFromScalar(filter.value.Scalar)
-			minColRef := getColumnRefFromScalar(filter.min.Scalar)
-			maxColRef := getColumnRefFromScalar(filter.max.Scalar)
+			// For now, only match expressions that are exactly a column reference.
+			// TODO: We may be able to match more complicated expressions if they meet the necessary criteria, such as:
+			// - References exactly one column
+			// - Is monotonically increasing
+			valueColRef, ok := filter.value.Scalar.(*memo.ColRef)
+			if !ok {
+				return nil
+			}
+			minColRef, ok := filter.min.Scalar.(*memo.ColRef)
+			if !ok {
+				return nil
+			}
+			maxColRef, ok := filter.max.Scalar.(*memo.ColRef)
+			if !ok {
+				return nil
+			}
 			if valueColRef == nil || minColRef == nil || maxColRef == nil {
 				return nil
 			}
