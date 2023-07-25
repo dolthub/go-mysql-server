@@ -660,6 +660,9 @@ type rangeFilter struct {
 	closedOnLowerBound, closedOnUpperBound bool
 }
 
+// getRangeFilters takes the filter expressions on a join and identifies "ranges" where a given expression
+// is constrained between two other expressions. (For instance, detecting "x > 5" and "x <= 10" and creating a range
+// object representing "5 < x <= 10". See range_filter_test.go for examples.
 func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 	type candidateMap struct {
 		group    *memo.ExprGroup
@@ -722,7 +725,7 @@ func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 		case *memo.Leq:
 			findLowerBounds(f.Left, f.Right, true)
 			findUpperBounds(f.Right, f.Left, true)
-			addBounds(f.Left, f.Right, false)
+			addBounds(f.Left, f.Right, true)
 		}
 	}
 	return ranges
@@ -809,6 +812,7 @@ func satisfiesScalarRefs(e memo.ScalarExpr, grp *memo.ExprGroup) bool {
 	return e.Group().ScalarProps().Tables.Difference(grp.RelProps.OutputTables()).Len() == 0
 }
 
+// getColumnRefFromScalar returns the first column reference used in a scalar expression.
 func getColumnRefFromScalar(s memo.ScalarExpr) *memo.ColRef {
 	var result *memo.ColRef
 	memo.DfsScalar(s, func(e memo.ScalarExpr) (err error) {
