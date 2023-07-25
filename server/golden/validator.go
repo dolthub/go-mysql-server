@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -35,6 +36,10 @@ type Validator struct {
 	handler mysql.Handler
 	golden  MySqlProxy
 	logger  *logrus.Logger
+}
+
+func (v Validator) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
 }
 
 // NewValidatingHandler creates a new Validator wrapping a MySQL connection.

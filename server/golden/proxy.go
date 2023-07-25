@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	mysql2 "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 	"github.com/sirupsen/logrus"
@@ -39,6 +40,10 @@ type MySqlProxy struct {
 	connStr string
 	logger  *logrus.Logger
 	conns   map[uint32]proxyConn
+}
+
+func (h MySqlProxy) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
 }
 
 type proxyConn struct {
