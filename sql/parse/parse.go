@@ -3713,10 +3713,18 @@ func offsetToOffset(
 	ctx *sql.Context,
 	offset sqlparser.Expr,
 	child sql.Node,
-) (*plan.Offset, error) {
+) (sql.Node, error) {
 	rowCount, err := ExprToExpression(ctx, offset)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if offset starts at 0, if so, we can just remove the offset node.
+	// Only cast to int8, as a larger int type just means a non-zero offset.
+	if val, err := rowCount.Eval(ctx, nil); err == nil {
+		if v, ok := val.(int8); ok && v == 0 {
+			return child, nil
+		}
 	}
 
 	return plan.NewOffset(rowCount, child), nil
@@ -4346,7 +4354,11 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 		// use the value as string format to keep precision and scale as defined for DECIMAL data type to avoid rounded up float64 value
 		if ps := strings.Split(string(v.Val), "."); len(ps) == 2 {
 			ogVal := string(v.Val)
-			floatVal := fmt.Sprintf("%v", val)
+			var fmtStr byte = 'f'
+			if strings.Contains(ogVal, "e") {
+				fmtStr = 'e'
+			}
+			floatVal := strconv.FormatFloat(val, fmtStr, -1, 64)
 			if len(ogVal) >= len(floatVal) && ogVal != floatVal {
 				p, s := expression.GetDecimalPrecisionAndScale(ogVal)
 				dt, err := types.CreateDecimalType(p, s)
@@ -4371,13 +4383,16 @@ func convertVal(ctx *sql.Context, v *sqlparser.SQLVal) (sql.Expression, error) {
 			v = strings.Trim(v[1:], "'")
 		}
 
-		valBytes := []byte(v)
-		dst := make([]byte, hex.DecodedLen(len(valBytes)))
-		_, err := hex.Decode(dst, valBytes)
+		// pad string to even length
+		if len(v)%2 == 1 {
+			v = "0" + v
+		}
+
+		val, err := hex.DecodeString(v)
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewLiteral(dst, types.LongBlob), nil
+		return expression.NewLiteral(val, types.LongBlob), nil
 	case sqlparser.HexVal:
 		//TODO: binary collation?
 		val, err := v.HexDecode()

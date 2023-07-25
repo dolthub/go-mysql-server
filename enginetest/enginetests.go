@@ -20,6 +20,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -137,6 +138,12 @@ func TestJoinQueries(t *testing.T, harness Harness) {
 	t.Skip()
 	for _, tt := range queries.SkippedJoinQueryTests {
 		TestQuery2(t, harness, e, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+	}
+}
+
+func TestLateralJoinQueries(t *testing.T, harness Harness) {
+	for _, ts := range queries.LateralJoinScriptTests {
+		TestScript(t, harness, ts)
 	}
 }
 
@@ -301,6 +308,20 @@ func TestInfoSchema(t *testing.T, h Harness) {
 			t.Skip()
 			TestScript(t, h, script)
 		})
+	}
+}
+
+func TestMySqlDb(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, tt := range queries.MySqlDbTests {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestMySqlDbPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, tt := range queries.MySqlDbTests {
+		TestScriptPrepared(t, harness, tt)
 	}
 }
 
@@ -4923,6 +4944,69 @@ func TestTransactionScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.TransactionTests {
 		TestTransactionScript(t, harness, script)
 	}
+}
+
+func TestConcurrentProcessList(t *testing.T, harness Harness) {
+	require := require.New(t)
+	pl := sqle.NewProcessList()
+	numSessions := 2
+
+	for i := 0; i < numSessions; i++ {
+		pl.AddConnection(uint32(i), "foo")
+		sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: "", User: ""}, uint32(i))
+		pl.ConnectionReady(sess)
+
+		var err error
+		ctx := sql.NewContext(context.Background(), sql.WithPid(uint64(i)), sql.WithSession(sess), sql.WithProcessList(pl))
+		_, err = pl.BeginQuery(ctx, "foo")
+		require.NoError(err)
+	}
+
+	var wg sync.WaitGroup
+
+	// Read concurrently
+	for i := 0; i < numSessions; i++ {
+		wg.Add(1)
+		go func(x int) {
+			defer wg.Done()
+			procs := pl.Processes()
+			for _, proc := range procs {
+				for prog, part := range proc.Progress {
+					if prog == "" {
+					}
+					for p, pp := range part.PartitionsProgress {
+						if p == "" {
+						}
+						if pp.Name == "" {
+						}
+					}
+				}
+			}
+		}(i)
+	}
+
+	// Writes concurrently
+	for i := 0; i < numSessions; i++ {
+		wg.Add(4)
+		go func(x int) {
+			defer wg.Done()
+			pl.AddTableProgress(uint64(x), "foo", 100)
+		}(i)
+		go func(x int) {
+			defer wg.Done()
+			pl.AddPartitionProgress(uint64(x), "foo", "bar", 100)
+		}(i)
+		go func(x int) {
+			defer wg.Done()
+			pl.UpdateTableProgress(uint64(x), "foo", 100)
+		}(i)
+		go func(x int) {
+			defer wg.Done()
+			pl.UpdatePartitionProgress(uint64(x), "foo", "bar", 100)
+		}(i)
+	}
+
+	wg.Wait()
 }
 
 func TestNoDatabaseSelected(t *testing.T, harness Harness) {

@@ -137,6 +137,14 @@ func TestJoinQueries(t *testing.T) {
 	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+func TestJoinQueries_Experimental(t *testing.T) {
+	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
+func TestLateralJoin_Experimental(t *testing.T) {
+	enginetest.TestLateralJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
+}
+
 // TestJoinQueriesPrepared runs the canonical test queries against a single threaded index enabled harness.
 func TestJoinQueriesPrepared(t *testing.T) {
 	enginetest.TestJoinQueriesPrepared(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
@@ -177,7 +185,7 @@ func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-// TestJSONTableScripts_Experiemental runs the canonical test queries against new name resolution engine
+// TestJSONTableScripts_Experimental runs the canonical test queries against new name resolution engine
 func TestJSONTableScripts_Experimental(t *testing.T) {
 	t.Skip("getfield indexing is incorrect")
 	enginetest.TestJSONTableScripts(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental))
@@ -265,6 +273,43 @@ func TestSingleScript(t *testing.T) {
 		engine.Analyzer.Debug = true
 		engine.Analyzer.Verbose = true
 
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
+}
+
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleScript_Experimental(t *testing.T) {
+	t.Skip()
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "lateral join basic",
+			SetUpScript: []string{
+				"create table t (i int primary key)",
+				"create table t1 (j int primary key)",
+				"insert into t values (1), (2), (3)",
+				"insert into t1 values (1), (4), (5)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
+					Expected: []sql.Row{
+						{1, 1},
+						{2, 2},
+						{3, 3},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range scripts {
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil).WithVersion(sql.VersionExperimental)
+		engine, err := harness.NewEngine(t)
+		if err != nil {
+			panic(err)
+		}
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
@@ -457,6 +502,14 @@ func TestInfoSchema(t *testing.T) {
 
 func TestInfoSchemaPrepared(t *testing.T) {
 	enginetest.TestInfoSchemaPrepared(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestMySqlDb(t *testing.T) {
+	enginetest.TestMySqlDb(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestMySqlDbPrepared(t *testing.T) {
+	enginetest.TestMySqlDbPrepared(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestReadOnlyDatabases(t *testing.T) {

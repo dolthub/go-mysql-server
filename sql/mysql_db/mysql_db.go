@@ -58,9 +58,15 @@ type MySQLDb struct {
 	role_edges          *mysqlTable
 	replica_source_info *mysqlTable
 
+	help_topic    *mysqlTable
+	help_keyword  *mysqlTable
+	help_category *mysqlTable
+	help_relation *mysqlTable
+
 	db            *mysqlTableShim
 	tables_priv   *mysqlTableShim
 	global_grants *mysqlTableShim
+
 	//TODO: add the rest of these tables
 	//columns_priv     *mysqlTable
 	//procs_priv       *mysqlTable
@@ -105,6 +111,24 @@ func CreateEmptyMySQLDb() *MySQLDb {
 		&ReplicaSourceInfo{},
 		ReplicaSourceInfoPrimaryKey{},
 	)
+
+	// Help tables
+	mysqlDb.help_topic = newEmptyMySQLTable(
+		"help_topic",
+		helpTopicSchema,
+		mysqlDb)
+	mysqlDb.help_keyword = newEmptyMySQLTable(
+		"help_keyword",
+		helpKeywordSchema,
+		mysqlDb)
+	mysqlDb.help_category = newEmptyMySQLTable(
+		"help_category",
+		helpCategorySchema,
+		mysqlDb)
+	mysqlDb.help_relation = newEmptyMySQLTable(
+		"help_relation",
+		helpRelationSchema,
+		mysqlDb)
 
 	// mysqlTable shims
 	mysqlDb.db = newMySQLTableShim(dbTblName, dbTblSchema, mysqlDb.user, DbConverter{})
@@ -409,6 +433,14 @@ func (db *MySQLDb) GetTableInsensitive(_ *sql.Context, tblName string) (sql.Tabl
 		return db.tables_priv, true, nil
 	case replicaSourceInfoTblName:
 		return db.replica_source_info, true, nil
+	case helpTopicTableName:
+		return db.help_topic, true, nil
+	case helpKeywordTableName:
+		return db.help_keyword, true, nil
+	case helpCategoryTableName:
+		return db.help_category, true, nil
+	case helpRelationTableName:
+		return db.help_relation, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -422,6 +454,10 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 		tablesPrivTblName,
 		roleEdgesTblName,
 		replicaSourceInfoTblName,
+		helpTopicTableName,
+		helpKeywordTableName,
+		helpCategoryTableName,
+		helpRelationTableName,
 	}, nil
 }
 

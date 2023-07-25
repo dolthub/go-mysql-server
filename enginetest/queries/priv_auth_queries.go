@@ -596,6 +596,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		SetUpScript: []string{
 			"CREATE USER testuser@localhost;",
 			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO testuser@localhost;",
+			"GRANT CLONE_ADMIN ON *.* TO testuser@localhost;",
 		},
 		Assertions: []UserPrivilegeTestAssertion{
 			{
@@ -611,7 +612,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query: "SHOW GRANTS FOR testuser@localhost;",
 				Expected: []sql.Row{
 					{"GRANT USAGE ON *.* TO `testuser`@`localhost`"},
-					{"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
+					{"GRANT CLONE_ADMIN, REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
 				},
 			},
 			{

@@ -669,3 +669,203 @@ func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
 
 	return err
 }
+
+// lateralJoinIter is an iterator that performs a lateral join.
+// A LateralJoin is a join where the right side is a subquery that can reference the left side, like through a filter.
+// MySQL Docs: https://dev.mysql.com/doc/refman/8.0/en/lateral-derived-tables.html
+// Example:
+// select * from t;
+// +---+
+// | i |
+// +---+
+// | 1 |
+// | 2 |
+// | 3 |
+// +---+
+// select * from t1;
+// +---+
+// | i |
+// +---+
+// | 1 |
+// | 4 |
+// | 5 |
+// +---+
+// select * from t, lateral (select * from t1 where t.i = t1.j) tt;
+// +---+---+
+// | i | j |
+// +---+---+
+// | 1 | 1 |
+// +---+---+
+// cond is passed to the filter iter to be evaluated.
+type lateralJoinIterator struct {
+	pRow  sql.Row
+	lRow  sql.Row
+	rRow  sql.Row
+	lIter sql.RowIter
+	rIter sql.RowIter
+	rNode sql.Node
+	cond  sql.Expression
+	jType plan.JoinType
+
+	rowSize  int
+	scopeLen int
+
+	foundMatch bool
+
+	b sql.NodeExecBuilder
+}
+
+func newLateralJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
+	var left, right string
+	if leftTable, ok := j.Left().(sql.Nameable); ok {
+		left = leftTable.Name()
+	} else {
+		left = reflect.TypeOf(j.Left()).String()
+	}
+	if rightTable, ok := j.Right().(sql.Nameable); ok {
+		right = rightTable.Name()
+	} else {
+		right = reflect.TypeOf(j.Right()).String()
+	}
+
+	span, ctx := ctx.Span("plan.LateralJoin", trace.WithAttributes(
+		attribute.String("left", left),
+		attribute.String("right", right),
+	))
+
+	l, err := b.Build(ctx, j.Left(), row)
+	if err != nil {
+		span.End()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, &lateralJoinIterator{
+		pRow:     row,
+		lIter:    l,
+		rNode:    j.Right(),
+		cond:     j.Filter,
+		jType:    j.Op,
+		rowSize:  len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		scopeLen: j.ScopeLen,
+		b:        b,
+	}), nil
+}
+
+func (i *lateralJoinIterator) loadLeft(ctx *sql.Context) error {
+	if i.lRow == nil {
+		lRow, err := i.lIter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		i.lRow = lRow
+		i.foundMatch = false
+	}
+	return nil
+}
+
+func (i *lateralJoinIterator) buildRight(ctx *sql.Context) error {
+	if i.rIter == nil {
+		iter, err := i.b.Build(ctx, i.rNode, i.lRow)
+		if err != nil {
+			return err
+		}
+
+		// Prepend node doesn't work over filter, because it calls filter.Next(), then prepends the row
+		if _, ok := iter.(*plan.FilterIter); ok {
+			iter.(*plan.FilterIter).ParentRow = i.lRow
+		}
+		i.rIter = iter
+	}
+	return nil
+}
+
+func (i *lateralJoinIterator) loadRight(ctx *sql.Context) error {
+	if i.rRow == nil {
+		rRow, err := i.rIter.Next(ctx)
+		if err != nil {
+			return err
+		}
+		i.rRow = rRow
+	}
+	return nil
+}
+
+func (i *lateralJoinIterator) buildRow(lRow, rRow sql.Row) sql.Row {
+	row := make(sql.Row, i.rowSize)
+	copy(row, lRow)
+	copy(row[len(lRow):], rRow)
+	return row
+}
+
+func (i *lateralJoinIterator) removeParentRow(r sql.Row) sql.Row {
+	copy(r[i.scopeLen:], r[len(i.pRow):])
+	r = r[:len(r)-len(i.pRow)+i.scopeLen]
+	return r
+}
+
+func (i *lateralJoinIterator) reset(ctx *sql.Context) (err error) {
+	if i.rIter != nil {
+		err = i.rIter.Close(ctx)
+		i.rIter = nil
+	}
+	i.lRow = nil
+	i.rRow = nil
+	return
+}
+
+func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
+	for {
+		if err := i.loadLeft(ctx); err != nil {
+			return nil, err
+		}
+		if err := i.buildRight(ctx); err != nil {
+			return nil, err
+		}
+		if err := i.loadRight(ctx); err != nil {
+			if errors.Is(err, io.EOF) {
+				if !i.foundMatch && i.jType == plan.JoinTypeLateralLeft {
+					res := i.buildRow(i.lRow, nil)
+					if rerr := i.reset(ctx); rerr != nil {
+						return nil, rerr
+					}
+					return i.removeParentRow(res), nil
+				}
+				if rerr := i.reset(ctx); rerr != nil {
+					return nil, rerr
+				}
+				continue
+			}
+			return nil, err
+		}
+
+		row := i.buildRow(i.lRow, i.rRow)
+		i.rRow = nil
+		if i.cond != nil {
+			if res, err := i.cond.Eval(ctx, row); err != nil {
+				return nil, err
+			} else if res == false {
+				continue
+			}
+		}
+
+		i.foundMatch = true
+		return i.removeParentRow(row), nil
+	}
+}
+
+func (i *lateralJoinIterator) Close(ctx *sql.Context) error {
+	var lerr, rerr error
+	if i.lIter != nil {
+		lerr = i.lIter.Close(ctx)
+	}
+	if i.rIter != nil {
+		rerr = i.rIter.Close(ctx)
+	}
+	if lerr != nil {
+		return lerr
+	}
+	if rerr != nil {
+		return rerr
+	}
+	return nil
+}

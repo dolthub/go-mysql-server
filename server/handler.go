@@ -133,16 +133,7 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) {
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
-	ctx, err := h.sm.NewContext(c)
-	if err != nil {
-		return sqlparser.ParserOptions{}, err
-	}
-
-	options := sqlparser.ParserOptions{
-		AnsiQuotes: parse.UseAnsiQuotes(ctx),
-	}
-
-	return options, nil
+	return sqlparser.ParserOptions{}, nil
 }
 
 // ConnectionClosed reports that a connection has been closed.

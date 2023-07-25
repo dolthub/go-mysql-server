@@ -2391,6 +2391,17 @@ CREATE TABLE t2
 			),
 		},
 		{
+			input: `SELECT 0x12345`,
+			plan: plan.NewProject(
+				[]sql.Expression{
+					expression.NewAlias("0x12345",
+						expression.NewLiteral([]byte{1, 35, 69}, types.LongBlob),
+					),
+				},
+				plan.NewResolvedDualTable(),
+			),
+		},
+		{
 			input: `SELECT X'41'`,
 			plan: plan.NewProject(
 				[]sql.Expression{

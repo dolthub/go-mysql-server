@@ -156,6 +156,10 @@ func (v Validator) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
+func (v Validator) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
+}
+
 func (v Validator) getLogger(c *mysql.Conn) *logrus.Entry {
 	return logrus.NewEntry(v.logger).WithField(
 		sql.ConnectionIdLogField, c.ConnectionID)
