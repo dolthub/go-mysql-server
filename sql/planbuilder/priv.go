@@ -345,7 +345,12 @@ func (b *Builder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *
 		}
 	}
 	outScope = inScope.push()
-	outScope.node = plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...))
+	outScope.node = &plan.ShowGrants{
+		CurrentUser: currentUser,
+		For:         user,
+		Using:       convertAccountName(n.Using...),
+		MySQLDb:     b.resolveDb("mysql"),
+	}
 	return
 }
 
@@ -361,10 +366,111 @@ func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 
 	switch strings.ToLower(f.Option.Name) {
 	case "privileges":
-		outScope.node = plan.NewFlushPrivileges(writesToBinlog)
+		node, _ := plan.NewFlushPrivileges(writesToBinlog).WithDatabase(b.resolveDb("mysql"))
+		outScope.node = node
 	default:
 		err := fmt.Errorf("%s not supported", f.Option.Name)
 		b.handleErr(err)
 	}
 	return outScope
+}
+
+func (b *Builder) buildCreateRole(inScope *scope, n *ast.CreateRole) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = &plan.CreateRole{
+		IfNotExists: n.IfNotExists,
+		Roles:       convertAccountName(n.Roles...),
+		MySQLDb:     b.resolveDb("mysql"),
+	}
+	return
+}
+
+func (b *Builder) buildDropRole(inScope *scope, n *ast.DropRole) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = &plan.DropRole{
+		IfExists: n.IfExists,
+		Roles:    convertAccountName(n.Roles...),
+		MySQLDb:  b.resolveDb("mysql"),
+	}
+	return
+}
+
+func (b *Builder) buildDropUser(inScope *scope, n *ast.DropUser) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = &plan.DropUser{
+		IfExists: n.IfExists,
+		Users:    convertAccountName(n.AccountNames...),
+		MySQLDb:  b.resolveDb("mysql"),
+	}
+	return
+}
+
+func (b *Builder) buildGrantRole(inScope *scope, n *ast.GrantRole) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = &plan.GrantRole{
+		Roles:           convertAccountName(n.Roles...),
+		TargetUsers:     convertAccountName(n.To...),
+		WithAdminOption: n.WithAdminOption,
+		MySQLDb:         b.resolveDb("mysql"),
+	}
+	return
+}
+
+func (b *Builder) buildGrantProxy(inScope *scope, n *ast.GrantProxy) (outScope *scope) {
+	outScope = inScope.push()
+
+	outScope.node = plan.NewGrantProxy(
+		convertAccountName(n.On)[0],
+		convertAccountName(n.To...),
+		n.WithGrantOption,
+	)
+	return
+}
+
+func (b *Builder) buildRevokePrivilege(inScope *scope, n *ast.RevokePrivilege) (outScope *scope) {
+	privs := convertPrivilege(n.Privileges...)
+	objType := convertObjectType(n.ObjectType)
+	level := convertPrivilegeLevel(n.PrivilegeLevel)
+	users := convertAccountName(n.From...)
+	revoker := b.ctx.Session.Client().User
+	if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
+		b.handleErr(sql.ErrDatabaseAccessDeniedForUser.New(revoker, level.Database))
+	}
+	outScope = inScope.push()
+	outScope.node = &plan.Revoke{
+		Privileges:     privs,
+		ObjectType:     objType,
+		PrivilegeLevel: level,
+		Users:          users,
+		MySQLDb:        b.resolveDb("mysql"),
+	}
+	return
+}
+
+func (b *Builder) buildRevokeAllPrivileges(inScope *scope, n *ast.RevokeAllPrivileges) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = plan.NewRevokeAll(convertAccountName(n.From...))
+	return
+}
+
+func (b *Builder) buildRevokeRole(inScope *scope, n *ast.RevokeRole) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = &plan.RevokeRole{
+		Roles:       convertAccountName(n.Roles...),
+		TargetUsers: convertAccountName(n.From...),
+		MySQLDb:     b.resolveDb("mysql"),
+	}
+	return
+}
+
+func (b *Builder) buildRevokeProxy(inScope *scope, n *ast.RevokeProxy) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
+	return
+}
+
+func (b *Builder) buildShowPrivileges(inScope *scope, n *ast.ShowPrivileges) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.node = plan.NewShowPrivileges()
+	return
 }

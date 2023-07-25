@@ -64,7 +64,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.String()), strings.ToLower(v.Name.String()), true)
+		c, ok := inScope.resolveColumn(strings.ToLower(v.Qualifier.Name.String()), strings.ToLower(v.Name.String()), true)
 		if !ok {
 			sysVar, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {

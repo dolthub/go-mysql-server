@@ -152,6 +152,10 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, b.newScope(), d.OrderBy)
 	b.buildOrderBy(outScope, orderByScope)
+	offset := b.buildOffset(outScope, d.Limit)
+	if offset != nil {
+		outScope.node = plan.NewOffset(offset, outScope.node)
+	}
 	limit := b.buildLimit(outScope, d.Limit)
 	if limit != nil {
 		outScope.node = plan.NewLimit(limit, outScope.node)
@@ -166,11 +170,27 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 			if dbName == "" {
 				dbName = b.ctx.GetCurrentDatabase()
 			}
-			tableScope, ok := b.buildTablescan(inScope, dbName, tabName, nil)
-			if !ok {
-				b.handleErr(sql.ErrTableNotFound.New(tabName))
+			var target sql.Node
+			if _, ok := outScope.tables[tabName]; ok {
+				transform.InspectUp(outScope.node, func(n sql.Node) bool {
+					switch n := n.(type) {
+					case sql.NameableNode:
+						if strings.EqualFold(n.Name(), tabName) {
+							target = n
+							return true
+						}
+					default:
+					}
+					return false
+				})
+			} else {
+				tableScope, ok := b.buildTablescan(inScope, dbName, tabName, nil)
+				if !ok {
+					b.handleErr(sql.ErrTableNotFound.New(tabName))
+				}
+				target = tableScope.node
 			}
-			targets[i] = tableScope.node
+			targets[i] = target
 		}
 	}
 
@@ -189,6 +209,11 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	orderByScope := b.analyzeOrderBy(outScope, b.newScope(), u.OrderBy)
 
 	b.buildOrderBy(outScope, orderByScope)
+	offset := b.buildOffset(outScope, u.Limit)
+	if offset != nil {
+		outScope.node = plan.NewOffset(offset, outScope.node)
+	}
+
 	limit := b.buildLimit(outScope, u.Limit)
 	if limit != nil {
 		outScope.node = plan.NewLimit(limit, outScope.node)

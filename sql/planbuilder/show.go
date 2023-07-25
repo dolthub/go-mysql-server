@@ -59,6 +59,7 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show, query string) (outScope
 	case ast.KeywordString(ast.STATUS):
 		return b.buildShowStatus(inScope, s)
 	case "replica status":
+		outScope = inScope.push()
 		outScope.node = plan.NewShowReplicaStatus()
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)

@@ -23,10 +23,26 @@ func (b *Builder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
 func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
 	outScope = inScope.push()
 	names := make([]sql.DbTable, len(n.Tables))
+	defaultDb := b.ctx.GetCurrentDatabase()
 	for i, table := range n.Tables {
-		names[i] = sql.DbTable{Db: table.Qualifier.String(), Table: table.Name.String()}
+		dbName := table.Qualifier.String()
+		if dbName == "" {
+			if defaultDb == "" {
+				err := sql.ErrNoDatabaseSelected.New()
+				b.handleErr(err)
+			}
+			dbName = defaultDb
+		}
+		names[i] = sql.DbTable{Db: dbName, Table: strings.ToLower(table.Name.String())}
 	}
-	outScope.node = plan.NewAnalyze(names)
+	analyze := plan.NewAnalyze(names)
+
+	stats, err := b.cat.Statistics(b.ctx)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	outScope.node = analyze.WithDb(defaultDb).WithStats(stats)
 	return
 }
 

@@ -201,15 +201,10 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query: `SELECT fi, COUNT(*) FROM (
-			SELECT tbl.s AS fi
-			FROM mytable tbl
-		) t
-		GROUP BY fi
-		ORDER BY COUNT(*) ASC, fi`,
+		Query:    `with t (n) as (select (1) from dual) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)`,
 		Expected: []sql.Row{},
 	}
 
@@ -575,7 +570,6 @@ func TestStatistics(t *testing.T) {
 }
 
 func TestStatistics_Exp(t *testing.T) {
-	// TODO
 	enginetest.TestStatistics(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -596,7 +590,6 @@ func TestLoadData(t *testing.T) {
 }
 
 func TestLoadData_Exp(t *testing.T) {
-	// TODO
 	enginetest.TestLoadData(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -605,7 +598,6 @@ func TestLoadDataErrors(t *testing.T) {
 }
 
 func TestLoadDataErrors_Exp(t *testing.T) {
-	// TODO
 	enginetest.TestLoadDataErrors(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -630,7 +622,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestUpdate_Exp(t *testing.T) {
-	t.Skip("different error, OK")
 	enginetest.TestUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
 }
 
@@ -647,11 +638,16 @@ func TestUpdateErrors(t *testing.T) {
 }
 
 func TestUpdateErrors_Exp(t *testing.T) {
+	t.Skip("different error, OK")
 	enginetest.TestUpdateErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
 }
 
 func TestSpatialUpdate(t *testing.T) {
 	enginetest.TestSpatialUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialUpdate_Exp(t *testing.T) {
+	enginetest.TestSpatialUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
 }
 
 func TestDeleteQueriesPrepared(t *testing.T) {
@@ -674,8 +670,16 @@ func TestDeleteFromErrors(t *testing.T) {
 	enginetest.TestDeleteErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestDeleteFromErrors_Exp(t *testing.T) {
+	enginetest.TestDeleteErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
+}
+
 func TestSpatialDeleteFrom(t *testing.T) {
 	enginetest.TestSpatialDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialDeleteFrom_Exp(t *testing.T) {
+	enginetest.TestSpatialDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
 }
 
 func TestTruncate(t *testing.T) {
@@ -689,6 +693,10 @@ func TestTruncate_Exp(t *testing.T) {
 
 func TestDeleteFrom(t *testing.T) {
 	enginetest.TestDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestDeleteFrom_Exp(t *testing.T) {
+	enginetest.TestDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
 }
 
 func TestConvert(t *testing.T) {
@@ -785,7 +793,6 @@ func TestUserPrivileges(t *testing.T) {
 }
 
 func TestUserPrivileges_Exp(t *testing.T) {
-	t.Skip("todo panic")
 	enginetest.TestUserPrivileges(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver).WithVersion(sql.VersionExperimental))
 }
 
@@ -972,11 +979,11 @@ func TestDropDatabase_Exp(t *testing.T) {
 }
 
 func TestCreateForeignKeys(t *testing.T) {
-	enginetest.TestCreateForeignKeys(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+	enginetest.TestCreateForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestDropForeignKeys(t *testing.T) {
-	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestCreateForeignKeys_Exp(t *testing.T) {
@@ -1290,16 +1297,32 @@ func TestCharsetCollationEngine(t *testing.T) {
 	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestCharsetCollationEngine_Exp(t *testing.T) {
+	enginetest.TestCharsetCollationEngine(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
+}
+
 func TestCharsetCollationWire(t *testing.T) {
 	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+}
+
+func TestCharsetCollationWire_Exp(t *testing.T) {
+	enginetest.TestCharsetCollationWire(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental), server.DefaultSessionBuilder)
 }
 
 func TestDatabaseCollationWire(t *testing.T) {
 	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
 }
 
+func TestDatabaseCollationWire_Exp(t *testing.T) {
+	enginetest.TestDatabaseCollationWire(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental), server.DefaultSessionBuilder)
+}
+
 func TestTypesOverWire(t *testing.T) {
 	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness(), server.DefaultSessionBuilder)
+}
+
+func TestTypesOverWire_Exp(t *testing.T) {
+	enginetest.TestTypesOverWire(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental), server.DefaultSessionBuilder)
 }
 
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

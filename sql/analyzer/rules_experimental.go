@@ -90,6 +90,7 @@ var OnceAfterDefault_Experimental = []Rule{
 	{applyTriggersId, applyTriggers},
 	{applyProceduresId, applyProcedures},
 	{assignRoutinesId, assignRoutines},
+	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
 	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
 	{wrapWithRollbackId, wrapWritesWithRollback},
 	{applyFKsId, applyForeignKeys},

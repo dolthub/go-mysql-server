@@ -1,8 +1,6 @@
 package planbuilder
 
 import (
-	"strings"
-
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -164,7 +162,6 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 	case *ast.StartReplica:
 		outScope = inScope.push()
 		outScope.node = plan.NewStartReplica()
-		outScope = inScope.push()
 	case *ast.StopReplica:
 		outScope = inScope.push()
 		outScope.node = plan.NewStopReplica()
@@ -210,51 +207,29 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 	case *ast.RenameUser:
 		return b.buildRenameUser(inScope, n)
 	case *ast.DropUser:
-		outScope.node = plan.NewDropUser(n.IfExists, convertAccountName(n.AccountNames...))
+		return b.buildDropUser(inScope, n)
 	case *ast.CreateRole:
-		outScope.node = plan.NewCreateRole(n.IfNotExists, convertAccountName(n.Roles...))
+		return b.buildCreateRole(inScope, n)
 	case *ast.DropRole:
-		outScope.node = plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...))
+		return b.buildDropRole(inScope, n)
 	case *ast.GrantPrivilege:
 		return b.buildGrantPrivilege(inScope, n)
 	case *ast.GrantRole:
-		outScope.node = plan.NewGrantRole(
-			convertAccountName(n.Roles...),
-			convertAccountName(n.To...),
-			n.WithAdminOption,
-		)
+		return b.buildGrantRole(inScope, n)
 	case *ast.GrantProxy:
-		outScope.node = plan.NewGrantProxy(
-			convertAccountName(n.On)[0],
-			convertAccountName(n.To...),
-			n.WithGrantOption,
-		)
+		return b.buildGrantProxy(inScope, n)
 	case *ast.RevokePrivilege:
-		privs := convertPrivilege(n.Privileges...)
-		objType := convertObjectType(n.ObjectType)
-		level := convertPrivilegeLevel(n.PrivilegeLevel)
-		users := convertAccountName(n.From...)
-		revoker := b.ctx.Session.Client().User
-		if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
-			b.handleErr(sql.ErrDatabaseAccessDeniedForUser.New(revoker, level.Database))
-		}
-		outScope.node = &plan.Revoke{
-			Privileges:     privs,
-			ObjectType:     objType,
-			PrivilegeLevel: level,
-			Users:          users,
-			MySQLDb:        sql.UnresolvedDatabase("mysql"),
-		}
+		return b.buildRevokePrivilege(inScope, n)
 	case *ast.RevokeAllPrivileges:
-		outScope.node = plan.NewRevokeAll(convertAccountName(n.From...))
+		return b.buildRevokeAllPrivileges(inScope, n)
 	case *ast.RevokeRole:
-		outScope.node = plan.NewRevokeRole(convertAccountName(n.Roles...), convertAccountName(n.From...))
+		return b.buildRevokeRole(inScope, n)
 	case *ast.RevokeProxy:
-		outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
+		return b.buildRevokeProxy(inScope, n)
 	case *ast.ShowGrants:
 		return b.buildShowGrants(inScope, n)
 	case *ast.ShowPrivileges:
-		outScope.node = plan.NewShowPrivileges()
+		return b.buildShowPrivileges(inScope, n)
 	case *ast.Flush:
 		return b.buildFlush(inScope, n)
 	case *ast.Prepare:

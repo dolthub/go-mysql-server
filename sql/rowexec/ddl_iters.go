@@ -17,7 +17,9 @@ package rowexec
 import (
 	"bufio"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"io"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -37,7 +39,7 @@ import (
 
 type loadDataIter struct {
 	scanner                 *bufio.Scanner
-	destination             sql.Node
+	destination             *plan.ResolvedTable
 	reader                  io.ReadCloser
 	columnCount             int
 	fieldToColumnMap        []int
@@ -64,7 +66,7 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 		}
 
 		line := l.scanner.Text()
-		exprs, err = l.parseFields(line)
+		exprs, err = l.parseFields(ctx, line)
 
 		if err != nil {
 			return nil, err
@@ -115,7 +117,7 @@ func (l loadDataIter) parseLinePrefix(line string) string {
 	}
 }
 
-func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
+func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expression, error) {
 	// Step 1. Start by Searching for prefix if there is one
 	line = l.parseLinePrefix(line)
 	if line == "" {
@@ -187,7 +189,27 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 	if l.columnCount == 0 {
 		for i, expr := range exprs {
 			if expr == nil && destSch[i].Default != nil {
-				exprs[i] = destSch[i].Default
+				f := destSch[i]
+				if !f.Nullable && f.Default == nil && !f.AutoIncrement {
+					return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
+				}
+				var def sql.Expression = f.Default
+				if ctx.Version == sql.VersionExperimental {
+					var err error
+					def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+						switch e := e.(type) {
+						case *expression.GetField:
+							//return e.WithIndex(e.Index() - 1), transform.NewTree, nil
+							return fixidx.FixFieldIndexes(nil, log.Printf, l.destination.Schema(), e.WithTable(l.destination.Name()))
+						default:
+							return e, transform.SameTree, nil
+						}
+					})
+					if err != nil {
+						return nil, err
+					}
+				}
+				exprs[i] = def
 			}
 		}
 	}

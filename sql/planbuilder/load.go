@@ -2,17 +2,18 @@ package planbuilder
 
 import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
-	db := b.currentDatabase.Name()
-	if d.Table.Qualifier.String() != "" {
-		db = d.Table.Qualifier.String()
+	dbName := strings.ToLower(d.Table.Qualifier.String())
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
 	}
-	table := b.resolveTable(d.Table.Name.String(), db, nil)
+	database := b.resolveDb(dbName)
+	table := b.resolveTable(d.Table.Name.String(), database.Name(), nil)
 
 	var ignoreNumVal int64 = 0
 	if d.IgnoreNum != nil {
@@ -22,6 +23,6 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, table, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal, d.IgnoreOrReplace)
 
 	outScope = inScope.push()
-	outScope.node = plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), table, ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
+	outScope.node = plan.NewInsertInto(database, table, ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
 	return outScope
 }
