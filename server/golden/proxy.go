@@ -205,10 +205,6 @@ func (h MySqlProxy) ComQuery(
 	return err
 }
 
-func (h MySqlProxy) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
-	return sqlparser.ParserOptions{}, nil
-}
-
 func (h MySqlProxy) processQuery(
 	c *mysql.Conn,
 	proxy proxyConn,

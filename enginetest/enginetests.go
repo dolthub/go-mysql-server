@@ -381,6 +381,18 @@ func TestReadOnlyVersionedQueries(t *testing.T, harness Harness) {
 	}
 }
 
+func TestAnsiQuotesSqlMode(t *testing.T, harness Harness) {
+	for _, tt := range queries.AnsiQuotesTests {
+		TestScript(t, harness, tt)
+	}
+}
+
+func TestAnsiQuotesSqlModePrepared(t *testing.T, harness Harness) {
+	for _, tt := range queries.AnsiQuotesTests {
+		TestScriptPrepared(t, harness, tt)
+	}
+}
+
 // TestQueryPlans tests generating the correct query plans for various queries using databases and tables provided by
 // the given harness.
 func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {

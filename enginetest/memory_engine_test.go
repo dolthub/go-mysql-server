@@ -424,6 +424,14 @@ func TestVersionedQueriesPrepared(t *testing.T) {
 	}
 }
 
+func TestAnsiQuotesSqlMode(t *testing.T) {
+	enginetest.TestAnsiQuotesSqlMode(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAnsiQuotesSqlModePrepared(t *testing.T) {
+	enginetest.TestAnsiQuotesSqlModePrepared(t, enginetest.NewDefaultMemoryHarness())
+}
+
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {

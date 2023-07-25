@@ -38,10 +38,6 @@ type Validator struct {
 	logger  *logrus.Logger
 }
 
-func (v Validator) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
-	return sqlparser.ParserOptions{}, nil
-}
-
 // NewValidatingHandler creates a new Validator wrapping a MySQL connection.
 func NewValidatingHandler(handler mysql.Handler, mySqlConn string, logger *logrus.Logger) (Validator, error) {
 	golden, err := NewMySqlProxyHandler(logger, mySqlConn)
@@ -156,7 +152,7 @@ func (v Validator) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
-func (v Validator) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
+func (v Validator) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
 	return sqlparser.ParserOptions{}, nil
 }
 
