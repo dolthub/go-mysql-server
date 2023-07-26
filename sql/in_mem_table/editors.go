@@ -35,13 +35,13 @@ func (e StatementLockingTableEditor) StatementBegin(ctx *sql.Context) {
 // DiscardChanges implements the sql.TableEditor interface.
 func (e StatementLockingTableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
 	defer e.L.Unlock()
-        return e.E.DiscardChanges(ctx, errorEncountered)
+	return e.E.DiscardChanges(ctx, errorEncountered)
 }
 
 // StatementComplete implements the sql.TableEditor interface.
 func (e StatementLockingTableEditor) StatementComplete(ctx *sql.Context) error {
 	defer e.L.Unlock()
-        return e.E.StatementComplete(ctx)
+	return e.E.StatementComplete(ctx)
 }
 
 // Insert implements the sql.RowInserter interface.
@@ -76,12 +76,12 @@ func (e OperationLockingTableEditor) StatementBegin(ctx *sql.Context) {
 
 // DiscardChanges implements the sql.TableEditor interface.
 func (e OperationLockingTableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-        return e.E.DiscardChanges(ctx, errorEncountered)
+	return e.E.DiscardChanges(ctx, errorEncountered)
 }
 
 // OperationComplete implements the sql.TableEditor interface.
 func (e OperationLockingTableEditor) StatementComplete(ctx *sql.Context) error {
-        return e.E.StatementComplete(ctx)
+	return e.E.StatementComplete(ctx)
 }
 
 // Insert implements the sql.RowInserter interface.
@@ -109,4 +109,3 @@ func (e OperationLockingTableEditor) Delete(ctx *sql.Context, row sql.Row) error
 func (e OperationLockingTableEditor) Close(ctx *sql.Context) error {
 	return e.E.Close(ctx)
 }
-

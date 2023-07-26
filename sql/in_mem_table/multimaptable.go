@@ -109,18 +109,18 @@ func (t *IndexedSetTable[V]) Collation() sql.CollationID {
 	return t.coll
 }
 
-func (t *IndexedSetTable[V]) Partitions(ctx *sql.Context)  (sql.PartitionIter, error) {
-        return sql.PartitionsToPartitionIter(partition{}), nil
+func (t *IndexedSetTable[V]) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	return sql.PartitionsToPartitionIter(partition{}), nil
 }
 
-func (t *IndexedSetTable[V]) PartitionRows(ctx *sql.Context, partition sql.Partition)  (sql.RowIter, error) {
+func (t *IndexedSetTable[V]) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	t.rlock.Lock()
 	defer t.rlock.Unlock()
 	rows, err := ToRows[V](ctx, &t.ops, t.set)
 	if err != nil {
 		return nil, err
 	}
-        return sql.RowsToRowIter(rows...), nil
+	return sql.RowsToRowIter(rows...), nil
 }
 
 func (t *IndexedSetTable[V]) Inserter(ctx *sql.Context) sql.RowInserter {
@@ -214,18 +214,18 @@ func (t *MultiIndexedSetTable[V]) Collation() sql.CollationID {
 	return t.coll
 }
 
-func (t *MultiIndexedSetTable[V]) Partitions(ctx *sql.Context)  (sql.PartitionIter, error) {
-        return sql.PartitionsToPartitionIter(partition{}), nil
+func (t *MultiIndexedSetTable[V]) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
+	return sql.PartitionsToPartitionIter(partition{}), nil
 }
 
-func (t *MultiIndexedSetTable[V]) PartitionRows(ctx *sql.Context, partition sql.Partition)  (sql.RowIter, error) {
+func (t *MultiIndexedSetTable[V]) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	t.rlock.Lock()
 	defer t.rlock.Unlock()
 	rows, err := MultiToRows[V](ctx, &t.ops, t.set)
 	if err != nil {
 		return nil, err
 	}
-        return sql.RowsToRowIter(rows...), nil
+	return sql.RowsToRowIter(rows...), nil
 }
 
 func (t *MultiIndexedSetTable[V]) Inserter(ctx *sql.Context) sql.RowInserter {
@@ -259,5 +259,5 @@ type partition struct{}
 var _ sql.Partition = partition{}
 
 func (partition) Key() []byte {
-        return nil
+	return nil
 }

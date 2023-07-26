@@ -2017,7 +2017,7 @@ func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 		reader := mysqlDb.Reader()
 		defer reader.Close()
 
-		reader.VisitUsers(func (u *mysql_db.User) {
+		reader.VisitUsers(func(u *mysql_db.User) {
 			users[u] = struct{}{}
 		})
 
@@ -2067,7 +2067,7 @@ func userPrivilegesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 		reader := mysqlDb.Reader()
 		defer reader.Close()
 
-		reader.VisitUsers(func (u *mysql_db.User) {
+		reader.VisitUsers(func(u *mysql_db.User) {
 			users[u] = struct{}{}
 		})
 

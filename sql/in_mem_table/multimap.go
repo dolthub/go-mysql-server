@@ -145,7 +145,7 @@ func (is IndexedSet[V]) RemoveMany(keyer Keyer[V], k any) {
 
 func (is IndexedSet[V]) Count() int {
 	var c int
-	is.Indexes[0].VisitEntries(func (V) {
+	is.Indexes[0].VisitEntries(func(V) {
 		c += 1
 	})
 	return c
