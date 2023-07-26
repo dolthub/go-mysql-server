@@ -162,7 +162,7 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema
 			sf := []sql.SortField{{
 				Column:       sortExpr,
 				Order:        sql.Ascending,
-				NullOrdering: sql.NullsFirst,
+				NullOrdering: sql.NullsLast, // Due to https://github.com/dolthub/go-mysql-server/issues/1903
 			}}
 			childNode = plan.NewSort(sf, n)
 		}
@@ -205,7 +205,7 @@ func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, input sql.Schema, chi
 		sf := []sql.SortField{{
 			Column:       sortExpr,
 			Order:        sql.Ascending,
-			NullOrdering: sql.NullsFirst,
+			NullOrdering: sql.NullsLast, // Due to https://github.com/dolthub/go-mysql-server/issues/1903
 		}}
 		left = plan.NewSort(sf, children[0])
 	}
