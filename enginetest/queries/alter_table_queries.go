@@ -332,4 +332,17 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "add column unique index",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+			"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table t1 add column j int unique",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
 }

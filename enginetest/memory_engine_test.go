@@ -248,17 +248,18 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger with signal and user var",
+			Name: "add column unique index",
 			SetUpScript: []string{
-				"create table auctions (ai int auto_increment, id varchar(32), data json, primary key (ai));",
+				"CREATE TABLE t1 (i bigint primary key, s varchar(20))",
+				"INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c')",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    `select data from auctions order by ai desc limit 1;`,
-					Expected: []sql.Row{},
+					Query: "alter table t1 add column j int unique",
+					Expected: []sql.Row{{types.NewOkResult(0)}},
 				},
 			},
 		},
