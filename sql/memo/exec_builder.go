@@ -135,9 +135,6 @@ func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, input sql.Schema, children 
 
 func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema, children ...sql.Node) (ret sql.Node, err error) {
 	switch n := children[0].(type) {
-	case *plan.TableAlias:
-		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
-		ret = plan.NewTableAlias(n.Name(), ret)
 	case *plan.Distinct:
 		ret, err = b.buildRangeHeap(sr, leftSch, rightSch, n.Child)
 		ret = plan.NewDistinct(ret)
