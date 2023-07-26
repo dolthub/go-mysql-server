@@ -204,7 +204,7 @@ func TestSingleQuery(t *testing.T) {
 	//t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `drop table notesits`,
+		Query:    `select 1 as a, (select a) as a`,
 		Expected: []sql.Row{},
 	}
 
@@ -496,6 +496,7 @@ func TestColumnAliases(t *testing.T) {
 }
 
 func TestColumnAliases_Experimental(t *testing.T) {
+	// TODO
 	enginetest.TestColumnAliases(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 
@@ -504,6 +505,7 @@ func TestDerivedTableOuterScopeVisibility(t *testing.T) {
 }
 
 func TestDerivedTableOuterScopeVisibility_Experimental(t *testing.T) {
+	// TODO
 	enginetest.TestDerivedTableOuterScopeVisibility(t, enginetest.NewDefaultMemoryHarness().WithVersion(sql.VersionExperimental))
 }
 

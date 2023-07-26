@@ -1443,6 +1443,12 @@ SELECT fi, COUNT(*) FROM (
 		{
 			Query: "select y as k from xy union select x from xy order by k",
 		},
+		{
+			Query: "SELECT sum(y) over w FROM xy WINDOW w as (partition by z order by x rows unbounded preceding) order by x",
+		},
+		{
+			Query: "select 1 as a, (select a) as a",
+		},
 	}
 
 	var verbose, rewrite bool

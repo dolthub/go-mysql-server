@@ -28,11 +28,8 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	var exprs []sql.Expression
 	for _, se := range selectExprs {
 		pe := b.selectExprToExpression(inScope, se)
-		// alias coverup
-
 		switch e := pe.(type) {
 		case *expression.GetField:
-			//gf := expression.NewGetFieldWithTable(e.Index(), e.Type(), strings.ToLower(e.Table()), strings.ToLower(e.Name()), e.IsNullable())
 			exprs = append(exprs, e)
 			id, ok := inScope.getExpr(e.String(), true)
 			if !ok {
@@ -66,7 +63,20 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			}
 		case *expression.Alias:
 			var col scopeColumn
-			if gf, ok := e.Child.(*expression.GetField); ok {
+			if a, ok := e.Child.(*expression.Alias); ok {
+				if _, ok := tempScope.exprs[a.Name()]; ok {
+					// can't ref alias within the same scope
+					// TODO we use alias
+					err := sql.ErrMisusedAlias.New(e.Name())
+					b.handleErr(err)
+				}
+				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+			} else if gf, ok := e.Child.(*expression.GetField); ok {
+				if _, ok := tempScope.exprs[gf.Name()]; ok {
+					// can't ref alias within the same scope
+					err := sql.ErrMisusedAlias.New(e.Name())
+					b.handleErr(err)
+				}
 				id, ok := inScope.getExpr(gf.String(), true)
 				if !ok {
 					err := sql.ErrColumnNotFound.New(gf.String())

@@ -150,7 +150,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	outScope = b.buildFrom(inScope, d.TableExprs)
 	b.buildWhere(outScope, d.Where)
-	orderByScope := b.analyzeOrderBy(outScope, b.newScope(), d.OrderBy)
+	orderByScope := b.analyzeOrderBy(outScope, outScope, d.OrderBy)
 	b.buildOrderBy(outScope, orderByScope)
 	offset := b.buildOffset(outScope, d.Limit)
 	if offset != nil {

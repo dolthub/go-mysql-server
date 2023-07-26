@@ -56,6 +56,9 @@ func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn,
 					}
 				}
 				err := sql.ErrAmbiguousColumnName.New(col, []string{c.table, found.table})
+				if c.table == "" {
+					err = sql.ErrAmbiguousColumnOrAliasName.New(c.col)
+				}
 				s.handleErr(err)
 			}
 			found = c

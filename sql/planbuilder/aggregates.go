@@ -503,7 +503,7 @@ func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
 	}
 
 	var topo []*ast.WindowDef
-	seen := make(map[string]bool)
+	var seen map[string]bool
 	var dfs func(string)
 	dfs = func(name string) {
 		if ok, _ := seen[name]; ok {
@@ -516,7 +516,8 @@ func (b *Builder) buildNamedWindows(fromScope *scope, window ast.Window) {
 		}
 		topo = append(topo, cur)
 	}
-	for _, w := range topo {
+	for _, w := range adj {
+		seen = make(map[string]bool)
 		dfs(w.Name.Lowered())
 	}
 

@@ -78,7 +78,6 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		}
 	}
 
-	tblFound := false
 	currentDb, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -87,6 +86,7 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
+	tblFound := false
 	for _, dbTblName := range dbTblNames {
 		if strings.ToLower(dbTblName) == tblName {
 			if tblFound == false {
@@ -108,12 +108,16 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		if trigger.TriggerEvent != sqlparser.DeleteStr {
 			continue
 		}
-		triggerTblName, ok := trigger.Table.(*plan.UnresolvedTable)
-		if !ok {
+		var triggerTblName string
+		switch trigger.Table.(type) {
+		case *plan.UnresolvedTable, *plan.ResolvedTable:
+			triggerTblName = trigger.Table.(sql.NameableNode).Name()
+		default:
 			// If we can't determine the name of the table that the trigger is on, we just abort to be safe
+			// TODO error?
 			return deletePlan, transform.SameTree, nil
 		}
-		if strings.ToLower(triggerTblName.Name()) == tblName {
+		if strings.ToLower(triggerTblName) == tblName {
 			// An ON DELETE trigger is present so we can't use TRUNCATE
 			return deletePlan, transform.SameTree, nil
 		}
