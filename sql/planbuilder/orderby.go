@@ -147,7 +147,7 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 			so = sql.Descending
 		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: c.scalarGf(),
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
