@@ -43,7 +43,7 @@ func _() {
 
 const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinRangeHeapJoinLeftOuterRangeHeapJoinSemiHashJoinAntiHashJoinSemiLookupJoinAntiLookupJoinSemiMergeJoinAntiMergeJoinNaturalJoinLateralCrossJoinLateralInnerJoinLateralLeftJoinLateralLeftJoin"
 
-var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 71, 98, 111, 122, 131, 141, 160, 168, 185, 214, 223, 241, 257, 282, 294, 306, 320, 334, 347, 360, 371, 387, 403, 418, 433}
+var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 71, 98, 111, 122, 131, 141, 160, 168, 185, 214, 223, 241, 254, 276, 288, 300, 314, 328, 341, 354, 365, 381, 397, 412, 427}
 
 func (i JoinType) String() string {
 	if i >= JoinType(len(_JoinType_index)-1) {
