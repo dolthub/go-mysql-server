@@ -90,7 +90,6 @@ func (j *JSONContains) Resolved() bool {
 			return false
 		}
 	}
-
 	return true
 }
 
