@@ -731,8 +731,13 @@ func getRangeFilters(filters []memo.ScalarExpr) (ranges []rangeFilter) {
 	return ranges
 }
 
-// addRangeHeapJoin checks whether the join can be implemented as a RangeHeap, and if so, adds a memo.RangeHeap plan
-// to the memo.
+// addRangeHeapJoin checks whether the join can be implemented as a RangeHeap, and if so, prefixes a memo.RangeHeap plan
+// to the memo join group. We can apply a range heap join for any join plan where a filter (or pair of filters) restricts a column the left child
+// to be between two columns the right child.
+//
+// Some example joins that can be implemented as RangeHeap joins:
+// - SELECT * FROM a JOIN b on a.value BETWEEN b.min AND b.max
+// - SELECT * FROM a JOIN b on b.min <= a.value AND a.value < b.max
 func addRangeHeapJoin(m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
