@@ -784,8 +784,8 @@ func addRangeHeapJoin(m *memo.Memo) error {
 						JoinBase: join.Copy(),
 					}
 					rel.RangeHeap = &memo.RangeHeap{
-						LeftIndex:               lIdx,
-						RightIndex:              rIdx,
+						ValueIndex:              lIdx,
+						MinIndex:                rIdx,
 						ValueExpr:               &filter.value.Scalar,
 						MinExpr:                 &filter.min.Scalar,
 						ValueCol:                valueColRef,

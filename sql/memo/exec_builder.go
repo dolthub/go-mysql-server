@@ -152,8 +152,8 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema
 		ret = plan.NewLimit(n.Limit, ret)
 	default:
 		var childNode sql.Node
-		if sr.RightIndex != nil {
-			childNode, err = b.buildIndexScan(sr.RightIndex, rightSch, n)
+		if sr.MinIndex != nil {
+			childNode, err = b.buildIndexScan(sr.MinIndex, rightSch, n)
 		} else {
 			sortExpr, err := b.buildScalar(*sr.MinExpr, rightSch)
 			if err != nil {
@@ -192,8 +192,8 @@ func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, input sql.Schema, chi
 
 	var left sql.Node
 	var err error
-	if j.RangeHeap.LeftIndex != nil {
-		left, err = b.buildIndexScan(j.RangeHeap.LeftIndex, input, children[0])
+	if j.RangeHeap.ValueIndex != nil {
+		left, err = b.buildIndexScan(j.RangeHeap.ValueIndex, input, children[0])
 		if err != nil {
 			return nil, err
 		}

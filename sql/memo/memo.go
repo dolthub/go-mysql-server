@@ -950,14 +950,21 @@ type IndexScan struct {
 	Parent *JoinBase
 }
 
+// RangeHeap contains all the information necessary to construct a RangeHeap join.
+// Because both sides of the join can be implemented either by an index or a sorted node,
+// we require that exactly one of ValueIndex and ValueExpr is non-nil, and exactly one
+// of MinIndex and MinExpr is non-nil. If the index is non-nil, we will use it to construct
+// a plan.IndexedTableAccess. Otherwise we use the expression to construct a plan.Sort.
 type RangeHeap struct {
-	LeftIndex               *IndexScan
-	RightIndex              *IndexScan
+	ValueIndex *IndexScan
+	ValueExpr  *ScalarExpr
+
+	MinIndex *IndexScan
+	MinExpr  *ScalarExpr
+
 	ValueCol                *ColRef
 	MinColRef               *ColRef
 	MaxColRef               *ColRef
-	MinExpr                 *ScalarExpr
-	ValueExpr               *ScalarExpr
 	RangeClosedOnLowerBound bool
 	RangeClosedOnUpperBound bool
 	Parent                  *JoinBase
