@@ -195,7 +195,10 @@ func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.Stats
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
 
-	return l*(cpuCostFactor+randIOCostFactor) + r*seqIOCostFactor, nil
+	// TODO: We can probably get a better estimate somehow.
+	expectedNumberOfOverlappingJoins := r * perKeyCostReductionFactor
+
+	return (l+r)*randIOCostFactor + l*expectedNumberOfOverlappingJoins*(cpuCostFactor), nil
 }
 
 func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
@@ -237,6 +240,8 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
+const perKeyCostReductionFactor = 0.5
+
 // lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
@@ -245,7 +250,7 @@ func lookupJoinSelectivity(l *Lookup) float64 {
 	if len(l.Index.SqlIdx().Expressions()) == len(l.KeyExprs) {
 		sel = 0.1
 	} else {
-		sel = math.Pow(0.5, float64(len(l.KeyExprs)))
+		sel = math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
 	}
 	if !l.Index.SqlIdx().IsUnique() {
 		return sel
