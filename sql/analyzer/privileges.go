@@ -41,9 +41,9 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 	client := ctx.Session.Client()
 	user := func() *mysql_db.User {
-		ed := mysqlDb.Editor()
-		defer ed.Close()
-		return mysqlDb.GetUser(ed, client.User, client.Address, false)
+		rd := mysqlDb.Reader()
+		defer rd.Close()
+		return mysqlDb.GetUser(rd, client.User, client.Address, false)
 	}()
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
