@@ -30,13 +30,13 @@ func ueq(l, r *user) bool {
 	return l.username == r.username && l.email == r.email
 }
 
-type usernameKeyer struct {}
+type usernameKeyer struct{}
 
 func (usernameKeyer) GetKey(u *user) any {
 	return u.username
 }
 
-type emailKeyer struct {}
+type emailKeyer struct{}
 
 func (emailKeyer) GetKey(u *user) any {
 	return u.email

@@ -175,8 +175,8 @@ func TestTableEditorUpdate(t *testing.T) {
 }
 
 const (
-	userPetDog = 1
-	userPetCat = 1 << 1
+	userPetDog  = 1
+	userPetCat  = 1 << 1
 	userPetFish = 1 << 2
 )
 
@@ -280,7 +280,7 @@ func TestMultiTableEditorInsert(t *testing.T) {
 		require.Equal(t, 1, set.Count())
 		res := set.GetMany(usernameKeyer{}, "aaron")
 		require.Len(t, res, 1)
-		require.Equal(t, userPetDog | userPetFish, res[0].sidecar)
+		require.Equal(t, userPetDog|userPetFish, res[0].sidecar)
 	})
 }
 
@@ -318,7 +318,7 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 		require.Equal(t, 1, set.Count())
 		res := set.GetMany(usernameKeyer{}, "aaron")
 		require.Len(t, res, 1)
-		require.Equal(t, userPetFish | userPetCat, res[0].sidecar)
+		require.Equal(t, userPetFish|userPetCat, res[0].sidecar)
 
 		// Here we see the email address was _not_ updated.
 		require.Equal(t, "aaron@dolthub.com", res[0].email)
@@ -347,6 +347,6 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 		require.Equal(t, userPetCat, res[0].sidecar)
 		res = set.GetMany(usernameKeyer{}, "brian")
 		require.Len(t, res, 1)
-		require.Equal(t, userPetCat | userPetDog, res[0].sidecar)
+		require.Equal(t, userPetCat|userPetDog, res[0].sidecar)
 	})
 }
