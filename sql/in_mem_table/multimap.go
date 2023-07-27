@@ -100,14 +100,6 @@ func NewIndexedSet[V any](eqf func(V, V) bool, keyers []Keyer[V]) IndexedSet[V] 
 	}
 }
 
-func (is IndexedSet[V]) PrimaryKeyer() Keyer[V] {
-	return is.Keyers[0]
-}
-
-func (is IndexedSet[V]) ByPrimaryKey() MultiMap[V] {
-	return is.Indexes[0]
-}
-
 func (is IndexedSet[V]) Put(v V) {
 	for i, keyer := range is.Keyers {
 		k := keyer.GetKey(v)
@@ -159,10 +151,17 @@ func (is IndexedSet[V]) Count() int {
 	return c
 }
 
-func (is IndexedSet[V]) Clear() {
-	is.Indexes = make([]MultiMap[V], len(is.Keyers))
+func (is *IndexedSet[V]) Clear() {
+	idxs := make([]MultiMap[V], len(is.Keyers))
+	for i := range idxs {
+		idxs[i] = NewMultiMap[V](is.Indexes[i].Equals)
+	}
+	is.Indexes = idxs
 }
 
 func (is IndexedSet[V]) VisitEntries(f func(v V)) {
-	is.ByPrimaryKey().VisitEntries(f)
+	// Every multimap has every entry, so you we just iterate over the entries of the first one.
+	if len(is.Indexes) > 0 {
+		is.Indexes[0].VisitEntries(f)
+	}
 }

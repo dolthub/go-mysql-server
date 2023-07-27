@@ -20,6 +20,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// Given operations for converting an IndexedSet entry into a sql.Row, these
+// editors converted and IndexedSet into a table editor.
+//
+// These editors treat the first first Keyer in the IndexedSet as a primary
+// key. It is an internal coding error if other operations on the IndexedSet
+// result in multiple entries for a single key for entries keyed by the first
+// keyer.
+
 type ValueOps[V any] struct {
 	ToRow         func(*sql.Context, V) (sql.Row, error)
 	FromRow       func(*sql.Context, sql.Row) (V, error)
