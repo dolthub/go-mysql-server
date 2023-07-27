@@ -757,27 +757,27 @@ var JoinScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			// Basic tests
 			{
-				Query:    "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i);",
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
-				Query:    "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (j);",
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (j);",
 				Expected: []sql.Row{
 					{3, 30, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
-				Query:    "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
 				Expected: []sql.Row{
 					{2, 20, 2, 20},
 				},
 			},
 			{
-				Query:    "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
@@ -785,7 +785,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
 				Expected: []sql.Row{
 					{1, 10, nil, nil},
 					{2, 20, 2, 20},
@@ -793,7 +793,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
@@ -801,7 +801,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
+				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
 				Expected: []sql.Row{
 					{nil, nil, 1, 30},
 					{2, 20, 2, 20},
@@ -810,20 +810,18 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				// TODO: need to find a better way to handle table names
-				Skip:     true,
-				Query:    "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
+				Skip:  true,
+				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30, 1, 200},
 					{2, 20, 2, 20, 2, 20},
 				},
 			},
 
-
-
 			{
 				// TODO: need projection to remove the duplicate column(s) from the left table
-				Skip:     true,
-				Query:    "select * from t1 join t2 using (i);",
+				Skip:  true,
+				Query: "select * from t1 join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 30},
 					{2, 20, 20},
@@ -831,8 +829,8 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				// TODO: need projection to remove the duplicate column(s) from the left table
-				Skip:     true,
-				Query:    "select * from t1 join t2 using (i, j);",
+				Skip:  true,
+				Query: "select * from t1 join t2 using (i, j);",
 				Expected: []sql.Row{
 					{2, 20},
 				},
@@ -840,20 +838,20 @@ var JoinScriptTests = []ScriptTest{
 
 			// Subquery Tests
 			{
-				Query:    "select t1.i, t1.j, tt.i from t1 join (select 1 as i) tt using (i);",
+				Query: "select t1.i, t1.j, tt.i from t1 join (select 1 as i) tt using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1},
 				},
 			},
 			{
-				Query:    "select t1.i, t1.j, tt.i, tt.j from t1 join (select * from t2) tt using (i);",
+				Query: "select t1.i, t1.j, tt.i, tt.j from t1 join (select * from t2) tt using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
-				Query:    "select tt1.i, tt1.j, tt2.i, tt2.j from (select * from t1) tt1 join (select * from t2) tt2 using (i);",
+				Query: "select tt1.i, tt1.j, tt2.i, tt2.j from (select * from t1) tt1 join (select * from t2) tt2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
@@ -862,21 +860,21 @@ var JoinScriptTests = []ScriptTest{
 
 			// CTE Tests
 			{
-				Query:    "with cte as (select * from t1) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
+				Query: "with cte as (select * from t1) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
-				Query:    "with cte1 as (select * from t1), cte2 as (select * from t2) select cte1.i, cte1.j, cte2.i, cte2.j from cte1 join cte2 using (i);",
+				Query: "with cte1 as (select * from t1), cte2 as (select * from t2) select cte1.i, cte1.j, cte2.i, cte2.j from cte1 join cte2 using (i);",
 				Expected: []sql.Row{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
-				Query:    "WITH cte(i, j) AS (SELECT 1, 1 UNION ALL SELECT i, j from t1) SELECT cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
+				Query: "WITH cte(i, j) AS (SELECT 1, 1 UNION ALL SELECT i, j from t1) SELECT cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 1, 1, 30},
 					{1, 10, 1, 30},
@@ -884,7 +882,7 @@ var JoinScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "with recursive cte(i, j) AS (select 1, 1 union all select i + 1, j * 10 from cte where i < 3) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
+				Query: "with recursive cte(i, j) AS (select 1, 1 union all select i + 1, j * 10 from cte where i < 3) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
 				Expected: []sql.Row{
 					{1, 1, 1, 30},
 					{2, 10, 2, 20},
@@ -892,18 +890,17 @@ var JoinScriptTests = []ScriptTest{
 			},
 
 			{
-				Skip:     true,
-				Query:    "with cte as (select * from t1 join t2 using (i)) select * from cte;",
+				Skip:        true,
+				Query:       "with cte as (select * from t1 join t2 using (i)) select * from cte;",
 				ExpectedErr: sql.ErrDuplicateColumn,
 			},
 			{
-				Skip:     true,
-				Query:    "select * from (select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i)) tt;",
+				Skip:        true,
+				Query:       "select * from (select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i)) tt;",
 				ExpectedErr: sql.ErrDuplicateColumn,
 			},
 		},
 	},
-
 }
 
 var SkippedJoinQueryTests = []QueryTest{
