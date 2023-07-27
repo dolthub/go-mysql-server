@@ -73,6 +73,11 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		unqualifiedStar = beforeUnq
 	}
 
+	// MATCH ... AGAINST ... prevents pruning due to its internal reliance on an expected and consistent schema in all situations
+	if ma := findMatchAgainstExpr(n); ma != nil {
+		return n, transform.SameTree, nil
+	}
+
 	var pruneWalk func(n sql.Node) (sql.Node, transform.TreeIdentity, error)
 	pruneWalk = func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
@@ -158,6 +163,19 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 		}
 	}
 	return nil
+}
+
+// findMatchAgainstExpr searches for an *expression.MatchAgainst within the node, returning the node or nil.
+func findMatchAgainstExpr(n sql.Node) *expression.MatchAgainst {
+	var maExpr *expression.MatchAgainst
+	transform.InspectExpressionsWithNode(n, func(n sql.Node, expr sql.Expression) bool {
+		if matchAgainstExpr, ok := expr.(*expression.MatchAgainst); ok {
+			maExpr = matchAgainstExpr
+			return false
+		}
+		return true
+	})
+	return maExpr
 }
 
 // pruneTableCols uses a list of parent dependencies columns and stars

@@ -543,11 +543,13 @@ func (b *BaseBuilder) buildAlterPK(ctx *sql.Context, n *plan.AlterPK, row sql.Ro
 			targetSchema: n.TargetSchema(),
 			columns:      n.Columns,
 			pkAlterable:  pkAlterable,
+			db:           n.Database(),
 		}, nil
 	case plan.PrimaryKeyAction_Drop:
 		return &dropPkIter{
 			targetSchema: n.TargetSchema(),
 			pkAlterable:  pkAlterable,
+			db:           n.Database(),
 		}, nil
 	default:
 		panic("unreachable")
