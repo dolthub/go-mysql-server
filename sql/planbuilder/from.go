@@ -88,7 +88,7 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 	outScope.appendColumnsFromScope(rightScope)
 
 	// cross join
-	if te.Condition.On == nil || te.Condition.On == ast.BoolVal(true) {
+	if (te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) && te.Condition.Using == nil {
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
 			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
@@ -97,7 +97,19 @@ func (b *PlanBuilder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope
 		return
 	}
 
-	filter := b.buildScalar(outScope, te.Condition.On)
+	var filter sql.Expression
+	if te.Condition.On != nil {
+		filter = b.buildScalar(outScope, te.Condition.On)
+	} else {
+		condParts := make([]sql.Expression, len(te.Condition.Using))
+		for i, col := range te.Condition.Using {
+			colName := ast.NewColName(col.String())
+			leftGet := b.buildScalar(leftScope, colName)
+			rightGet := b.buildScalar(rightScope, colName)
+			condParts[i] = expression.NewEquals(leftGet, rightGet)
+		}
+		filter = expression.JoinAnd(condParts...)
+	}
 
 	var op plan.JoinType
 	switch strings.ToLower(te.Join) {

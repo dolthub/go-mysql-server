@@ -3548,14 +3548,14 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 			colName := col.String()
 			var lName string
 			switch l := left.(type) {
-			case *plan.UnresolvedTable:
+			case sql.Nameable:
 				lName = l.Name()
 			default:
 				lName = l.String()
 			}
 			var rName string
 			switch r := right.(type) {
-			case *plan.UnresolvedTable:
+			case sql.Nameable:
 				rName = r.Name()
 			default:
 				rName = r.String()
