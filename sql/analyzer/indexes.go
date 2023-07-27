@@ -291,11 +291,9 @@ func getIndexes(
 		}
 
 		return result, nil
-	}
 
 	// TODO (james): add all other spatial index supported functions here
 	// TODO: make generalizable to all functions?
-	switch e := e.(type) {
 	case *spatial.Intersects, *spatial.Within, *spatial.STEquals:
 		// don't pushdown functions with bindvars
 		if exprHasBindVar(e) {
@@ -356,6 +354,28 @@ func getIndexes(
 			indexes: []sql.Index{idx},
 			lookup:  lookup,
 			expr:    e,
+		}
+	case *expression.MatchAgainst:
+		ftIndex := e.GetIndex()
+		if ftIndex != nil {
+			getFields := e.ColumnsAsGetFields()
+			exprFields := make([]sql.Expression, len(getFields))
+			for i, getField := range getFields {
+				exprFields[i] = getField
+			}
+			result[getFields[0].Table()] = &indexLookup{
+				fields:  exprFields,
+				indexes: []sql.Index{ftIndex},
+				lookup: sql.IndexLookup{
+					Index:           ftIndex,
+					Ranges:          nil,
+					IsPointLookup:   false,
+					IsEmptyRange:    true,
+					IsSpatialLookup: false,
+					IsReverse:       false,
+				},
+				expr: e,
+			}
 		}
 	}
 
@@ -1098,7 +1118,9 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 func containsColumns(e sql.Expression) bool {
 	var result bool
 	sql.Inspect(e, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.GetField); ok {
+		_, ok1 := e.(*expression.GetField)
+		_, ok2 := e.(*expression.UnresolvedColumn)
+		if ok1 || ok2 {
 			result = true
 			return false
 		}

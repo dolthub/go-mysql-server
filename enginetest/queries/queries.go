@@ -8814,14 +8814,6 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
 	{
-		Query:       `alter table a add fulltext index idx (id)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
-		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
 		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
 		ExpectedErr: types.ErrConvertingToTime,
 	},
