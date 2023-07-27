@@ -171,9 +171,9 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, leftSch, rightSch sql.Schema
 			childNode,
 			leftSch,
 			rightSch,
-			sr.ValueCol.Gf.Name(),
-			sr.MinColRef.Gf.Name(),
-			sr.MaxColRef.Gf.Name(),
+			sr.ValueCol.Gf,
+			sr.MinColRef.Gf,
+			sr.MaxColRef.Gf,
 			sr.RangeClosedOnLowerBound,
 			sr.RangeClosedOnUpperBound)
 	}

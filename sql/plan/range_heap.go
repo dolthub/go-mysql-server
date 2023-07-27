@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // RangeHeap is a Node that wraps a table with min and max range columns. When used as a secondary provider in Join
@@ -34,12 +35,11 @@ type RangeHeap struct {
 
 var _ sql.Node = (*RangeHeap)(nil)
 
-func NewRangeHeap(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max string, rangeIsClosedBelow, rangeIsClosedAbove bool) (*RangeHeap, error) {
-	// TODO: IndexOfColName is Only safe for schemas corresponding to a single table, where the source of the column is irrelevant.
-	maxColumnIndex := rhsSchema.IndexOfColName(max)
+func NewRangeHeap(child sql.Node, lhsSchema sql.Schema, rhsSchema sql.Schema, value, min, max *expression.GetField, rangeIsClosedBelow, rangeIsClosedAbove bool) (*RangeHeap, error) {
+	maxColumnIndex := rhsSchema.IndexOf(max.Name(), max.Table())
 	newSr := &RangeHeap{
-		ValueColumnIndex:   lhsSchema.IndexOfColName(value),
-		MinColumnIndex:     rhsSchema.IndexOfColName(min),
+		ValueColumnIndex:   lhsSchema.IndexOf(value.Name(), value.Table()),
+		MinColumnIndex:     rhsSchema.IndexOf(min.Name(), min.Table()),
 		MaxColumnIndex:     maxColumnIndex,
 		RangeIsClosedBelow: rangeIsClosedBelow,
 		RangeIsClosedAbove: rangeIsClosedAbove,
