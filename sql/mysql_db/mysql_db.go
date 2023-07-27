@@ -81,7 +81,7 @@ type MySQLDb struct {
 	plugins   map[string]PlaintextAuthPlugin
 
 	lock          sync.RWMutex
-	updateCounter uint64
+	updateCounter atomic.Uint64
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -123,7 +123,7 @@ func CreateEmptyMySQLDb() *MySQLDb {
 	mysqlDb.global_grants = NewUserGlobalGrantsIndexedSetTable(userSet, lock, rlock)
 
 	// Start the counter at 1, all new sessions will start at zero so this forces an update for any new session
-	mysqlDb.updateCounter = 1
+	mysqlDb.updateCounter.Store(1)
 
 	return mysqlDb
 }
@@ -277,7 +277,7 @@ func (ed *Editor) PutReplicaSourceInfo(rsi *ReplicaSourceInfo) {
 }
 
 func (ed *Editor) Close() {
-	ed.db.updateCounter++
+	ed.db.updateCounter.Add(1)
 	ed.reader.Close()
 	ed.db.lock.Unlock()
 }
@@ -506,7 +506,7 @@ func (db *MySQLDb) GetUser(fetcher UserFetcher, user string, host string, roleSe
 // UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
 // active roles, which are set in the context, therefore the user is also pulled from the context.
 func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
-	if privSet, counter := ctx.Session.GetPrivilegeSet(); db.updateCounter == counter {
+	if privSet, counter := ctx.Session.GetPrivilegeSet(); db.updateCounter.Load() == counter {
 		// If the counters are equal, we can guarantee that the privilege set exists and is valid
 		return privSet.(PrivilegeSet)
 	}
@@ -535,7 +535,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 		}
 	}
 
-	ctx.Session.SetPrivilegeSet(privSet, db.updateCounter)
+	ctx.Session.SetPrivilegeSet(privSet, db.updateCounter.Load())
 	return privSet
 }
 
