@@ -667,7 +667,6 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
 
-	// TODO: Locking
 	reader := mysqlDb.Reader()
 	defer reader.Close()
 	user := mysqlDb.GetUser(reader, client.User, client.Address, false)

@@ -100,6 +100,14 @@ func NewIndexedSet[V any](eqf func(V, V) bool, keyers []Keyer[V]) IndexedSet[V] 
 	}
 }
 
+func (is IndexedSet[V]) PrimaryKeyer() Keyer[V] {
+	return is.Keyers[0]
+}
+
+func (is IndexedSet[V]) ByPrimaryKey() MultiMap[V] {
+	return is.Indexes[0]
+}
+
 func (is IndexedSet[V]) Put(v V) {
 	for i, keyer := range is.Keyers {
 		k := keyer.GetKey(v)
@@ -145,7 +153,7 @@ func (is IndexedSet[V]) RemoveMany(keyer Keyer[V], k any) {
 
 func (is IndexedSet[V]) Count() int {
 	var c int
-	is.Indexes[0].VisitEntries(func(V) {
+	is.VisitEntries(func(V) {
 		c += 1
 	})
 	return c
@@ -156,5 +164,5 @@ func (is IndexedSet[V]) Clear() {
 }
 
 func (is IndexedSet[V]) VisitEntries(f func(v V)) {
-	is.Indexes[0].VisitEntries(f)
+	is.ByPrimaryKey().VisitEntries(f)
 }

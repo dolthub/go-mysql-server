@@ -1201,13 +1201,12 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			return nil, ErrDatabaseNotFound.New("mysql")
 		}
 
-		var keys []mysql_db.UserPrimaryKey
-
 		dbTbl, _, err := mysqlDb.GetTableInsensitive(ctx, "db")
 		if err != nil {
 			return nil, err
 		}
 
+		var keys []mysql_db.UserPrimaryKey
 		err = iterRows(ctx, dbTbl, func(r Row) error {
 			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
 			keys = append(keys, mysql_db.UserPrimaryKey{
@@ -1661,13 +1660,12 @@ func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			return nil, ErrDatabaseNotFound.New("mysql")
 		}
 
-		var keys []mysql_db.UserPrimaryKey
-
 		tblsPriv, _, err := mysqlDb.GetTableInsensitive(ctx, "tables_priv")
 		if err != nil {
 			return nil, err
 		}
 
+		var keys []mysql_db.UserPrimaryKey
 		err = iterRows(ctx, tblsPriv, func(r Row) error {
 			keys = append(keys, mysql_db.UserPrimaryKey{
 				Host: r[0].(string),

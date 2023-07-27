@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	flatbuffers "github.com/dolthub/flatbuffers/v23/go"
 	"github.com/dolthub/vitess/go/mysql"
@@ -54,7 +55,7 @@ type PlaintextAuthPlugin interface {
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
-	Enabled bool
+	enabled atomic.Bool
 
 	user                *in_mem_table.IndexedSetTable[*User]
 	role_edges          *in_mem_table.IndexedSetTable[*RoleEdge]
@@ -276,8 +277,8 @@ func (ed *Editor) PutReplicaSourceInfo(rsi *ReplicaSourceInfo) {
 }
 
 func (ed *Editor) Close() {
-	ed.reader.Close()
 	ed.db.updateCounter++
+	ed.reader.Close()
 	ed.db.lock.Unlock()
 }
 
@@ -310,10 +311,18 @@ func (db *MySQLDb) Editor() *Editor {
 	}
 }
 
+func (db *MySQLDb) Enabled() bool {
+	return db.enabled.Load()
+}
+
+func (db *MySQLDb) SetEnabled(v bool) {
+	db.enabled.Store(v)
+}
+
 // LoadPrivilegeData adds the given data to the MySQL Tables. It does not remove any current data, but will overwrite any
 // pre-existing data. This has been deprecated in favor of LoadData.
 func (db *MySQLDb) LoadPrivilegeData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
-	db.Enabled = true
+	db.SetEnabled(true)
 
 	ed := db.Editor()
 	defer ed.Close()
@@ -355,7 +364,7 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 	}
 
 	// Indicate that mysql db exists
-	db.Enabled = true
+	db.SetEnabled(true)
 
 	// Recover from panics
 	defer func() {
@@ -432,7 +441,7 @@ func (db *MySQLDb) AddRootAccount() {
 // meant to replace the "auth.New..." functions while the remaining functions are added.
 func (db *MySQLDb) AddSuperUser(ed *Editor, username string, host string, password string) {
 	//TODO: remove this function and the called function
-	db.Enabled = true
+	db.SetEnabled(true)
 	if len(password) > 0 {
 		hash := sha1.New()
 		hash.Write([]byte(password))
@@ -534,7 +543,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.
 func (db *MySQLDb) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
-	if !db.Enabled {
+	if !db.Enabled() {
 		return true
 	}
 	privSet := db.UserActivePrivilegeSet(ctx)
@@ -629,7 +638,7 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 
 // AuthMethod implements the interface mysql.AuthServer.
 func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
-	if !db.Enabled {
+	if !db.Enabled() {
 		return "mysql_native_password", nil
 	}
 	var host string
@@ -679,7 +688,7 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 	rd := db.Reader()
 	defer rd.Close()
 
-	if !db.Enabled {
+	if !db.Enabled() {
 		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
@@ -716,7 +725,7 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 	defer rd.Close()
 
 	connUser := MysqlConnectionUser{User: user, Host: host}
-	if !db.Enabled {
+	if !db.Enabled() {
 		return connUser, nil
 	}
 	userEntry := db.GetUser(rd, user, host, false)
@@ -743,10 +752,12 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 }
 
 // Persist passes along all changes to the integrator.
+//
+// This takes an Editor, instead of a Reader, since presumably we have just
+// done a write. In any case, it's nice to not ACK a write until it is
+// persisted, and the write lock which the Editor takes can help with not
+// making these changes visible until it is persisted as well.
 func (db *MySQLDb) Persist(ctx *sql.Context, ed *Editor) error {
-	// TODO: Why is this an editor? Just paranoid safeguard? This should
-	// use ideally use a Reader
-
 	// Extract all user entries from table, and sort
 	var users []*User
 	ed.VisitUsers(func(u *User) {

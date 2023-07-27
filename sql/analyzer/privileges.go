@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -29,24 +30,21 @@ import (
 func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	mysqlDb := a.Catalog.MySQLDb
 
-	// TODO: The management around closing this editor is sad. If you add
-	// an early exit before the Close after the GetUser below, make sure to
-	// close this editor.
-	ed := mysqlDb.Editor()
-
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
-		mysqlDb.Enabled = true
+		mysqlDb.SetEnabled(true)
 	}
-	if !mysqlDb.Enabled {
-		ed.Close()
+	if !mysqlDb.Enabled() {
 		return n, transform.SameTree, nil
 	}
 
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(ed, client.User, client.Address, false)
-	ed.Close()
+	user := func() *mysql_db.User {
+		ed := mysqlDb.Editor()
+		defer ed.Close()
+		return mysqlDb.GetUser(ed, client.User, client.Address, false)
+	}()
 	if user == nil {
 		return nil, transform.SameTree, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
@@ -58,7 +56,8 @@ func validatePrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	if rt := getResolvedTable(n); rt != nil && rt.Database.Name() == sql.InformationSchemaDatabaseName {
 		return n, transform.SameTree, nil
 	}
-	if !n.CheckPrivileges(ctx, a.Catalog.MySQLDb) {
+
+	if !n.CheckPrivileges(ctx, mysqlDb) {
 		return nil, transform.SameTree, sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))
 	}
 	return n, transform.SameTree, nil
