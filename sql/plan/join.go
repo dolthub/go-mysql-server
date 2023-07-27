@@ -192,6 +192,15 @@ func (i JoinType) IsLateral() bool {
 	}
 }
 
+func (i JoinType) IsRange() bool {
+	switch i {
+	case JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
+		return true
+	default:
+		return false
+	}
+}
+
 func (i JoinType) AsHash() JoinType {
 	switch i {
 	case JoinTypeInner:

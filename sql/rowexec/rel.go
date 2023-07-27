@@ -265,6 +265,8 @@ func (b *BaseBuilder) buildJoinNode(ctx *sql.Context, n *plan.JoinNode, row sql.
 		return newMergeJoinIter(ctx, b, n, row)
 	case n.Op.IsLateral():
 		return newLateralJoinIter(ctx, b, n, row)
+	case n.Op.IsRange():
+		return newRangeHeapJoinIter(ctx, b, n, row)
 	default:
 		return newJoinIter(ctx, b, n, row)
 	}
@@ -733,21 +735,4 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(sql.Row{int64(n.Count())}), nil
-}
-
-func (b *BaseBuilder) buildRangeHeap(ctx *sql.Context, n *plan.RangeHeap, row sql.Row) (sql.RowIter, error) {
-	// The first time, initialize the child rowIter and the heap
-	span, ctx := ctx.Span("plan.RangeHeap")
-	if !n.IsInitialized() {
-		i, err := b.buildNodeExec(ctx, n.Child, row)
-		if err != nil {
-			span.End()
-			return nil, err
-		}
-		err = n.Initialize(ctx, i)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return n.AcceptRow(ctx, row)
 }
