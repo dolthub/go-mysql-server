@@ -36,6 +36,12 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 
+	prevTriggerCtx := b.TriggerCtx().Active
+	b.TriggerCtx().Active = true
+	defer func() {
+		b.TriggerCtx().Active = prevTriggerCtx
+	}()
+
 	tableName := strings.ToLower(c.Table.Name.String())
 	tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
 	if !ok {

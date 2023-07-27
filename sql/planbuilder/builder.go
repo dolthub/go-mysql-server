@@ -25,6 +25,7 @@ type ViewContext struct {
 }
 
 type TriggerContext struct {
+	Active           bool
 	Call             bool
 	UnresolvedTables []string
 	ResolveErr       error

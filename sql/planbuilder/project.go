@@ -105,19 +105,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	}
 
 	inScope.parent = tempScope.parent
-	// move aggregates, windows from tempScope->inScope
-	//if tempScope.groupBy != nil {
-	//	if inScope.groupBy == nil {
-	//		inScope.initGroupBy()
-	//	}
-	//	for _, col := range tempScope.groupBy.aggregations() {
-	//		inScope.groupBy.addAggStr(col)
-	//	}
-	//	for _, col := range tempScope.groupBy.inCols {
-	//		inScope.groupBy.addInCol(col)
-	//	}
-	//}
-	//inScope.windowFuncs = append(inScope.windowFuncs, tempScope.windowFuncs...)
 }
 
 // selectExprToExpression binds dependencies in a scalar expression in a SELECT clause.

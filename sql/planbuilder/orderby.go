@@ -79,6 +79,13 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				if scalar == nil {
 					scalar = target.scalarGf()
 				}
+				if a, ok := target.scalar.(*expression.Alias); ok && a.Unreferencable() && fromScope.groupBy != nil {
+					for _, c := range fromScope.groupBy.outScope.cols {
+						if target.id == c.id {
+							target = c
+						}
+					}
+				}
 				outScope.addColumn(scopeColumn{
 					table:      target.table,
 					col:        target.col,
@@ -146,8 +153,12 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
 		sf := sql.SortField{
-			Column: c.scalarGf(),
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)

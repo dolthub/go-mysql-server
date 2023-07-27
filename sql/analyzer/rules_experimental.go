@@ -97,6 +97,7 @@ var OnceAfterDefault_Experimental = []Rule{
 }
 
 var OnceAfterAll_Experimental = []Rule{
+	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 	{cacheSubqueryResultsId, cacheSubqueryResults},
 	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 	{AutocommitId, addAutocommitNode},

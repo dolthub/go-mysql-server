@@ -49,13 +49,13 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 				if same {
 					return node, transform.SameTree, nil
 				}
-				node, _, err = pushdownFixIndices(a, table, scope)
+				node, _, err = pushdownFixIndices(ctx, a, table, scope)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 				return node, transform.NewTree, nil
 			default:
-				return pushdownFixIndices(a, node, scope)
+				return pushdownFixIndices(ctx, a, node, scope)
 			}
 		})
 	}
@@ -422,10 +422,10 @@ func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression 
 
 // pushdownFixIndices fixes field indices for non-join expressions (replanJoin
 // is responsible for join filters and conditions.)
-func pushdownFixIndices(a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
+func pushdownFixIndices(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.JoinNode, *plan.HashLookup:
 		return n, transform.SameTree, nil
 	}
-	return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, scope)
+	return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, ctx, scope)
 }

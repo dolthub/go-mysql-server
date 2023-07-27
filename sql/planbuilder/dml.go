@@ -34,7 +34,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		b.handleErr(fmt.Errorf("expected insert destination to be resolved or unresolved table"))
 	}
 	if rt == nil {
-		if !b.TriggerCtx().Call {
+		if b.TriggerCtx().Active && !b.TriggerCtx().Call {
 			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, tableName)
 		} else {
 			err := fmt.Errorf("expected resolved table: %s", tableName)

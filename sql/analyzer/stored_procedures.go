@@ -321,17 +321,22 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 				return nil, transform.SameTree, err
 			}
-			b := planbuilder.New(ctx, a.Catalog)
-			if call.AsOf() != nil {
-				asOf, err := call.AsOf().Eval(ctx, nil)
-				if err != nil {
-					return n, transform.SameTree, err
+			var parsedProcedure sql.Node
+			if ctx.Version == sql.VersionExperimental {
+				b := planbuilder.New(ctx, a.Catalog)
+				if call.AsOf() != nil {
+					asOf, err := call.AsOf().Eval(ctx, nil)
+					if err != nil {
+						return n, transform.SameTree, err
+					}
+					b.ViewCtx().AsOf = asOf
 				}
-				b.ViewCtx().AsOf = asOf
+				b.ProcCtx().Active = true
+				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
+				b.ProcCtx().Active = false
+			} else {
+				parsedProcedure, err = parse.Parse(ctx, procedure.CreateStatement)
 			}
-			b.ProcCtx().Active = true
-			parsedProcedure, _, _, err := b.Parse(procedure.CreateStatement, false)
-			b.ProcCtx().Active = false
 
 			if err != nil {
 				return nil, transform.SameTree, err

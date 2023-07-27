@@ -266,11 +266,16 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, input sql.Schema, children ..
 		return nil, fmt.Errorf("index scan type mismatch")
 	}
 	if j.SwapCmp {
-		cmp, ok := j.Filter[0].(*Equal)
-		if !ok {
-			return nil, fmt.Errorf("unexpected non-equals comparison in merge join")
+		switch cmp := j.Filter[0].(type) {
+		case *Equal:
+			j.Filter[0] = &Equal{Left: cmp.Right, Right: cmp.Left}
+		case *Lt:
+			j.Filter[0] = &Gt{Left: cmp.Right, Right: cmp.Left}
+		case *Leq:
+			j.Filter[0] = &Geq{Left: cmp.Right, Right: cmp.Left}
+		default:
+			return nil, fmt.Errorf("unexpected non-comparison condition in merge join, %T", cmp)
 		}
-		j.Filter[0] = &Equal{Left: cmp.Right, Right: cmp.Left}
 	}
 	filters, err := b.buildFilterConjunction(j.g.m.scope, input, j.Filter...)
 	if err != nil {

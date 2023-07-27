@@ -196,12 +196,18 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) sql.Expression {
 		return b.buildUnaryScalar(inScope, v)
 	case *ast.Subquery:
 		sqScope := inScope.push()
+		selectString := ast.String(v.Select)
+		//if c, ok := inScope.subqueries[strings.ToLower(selectString)]; ok {
+		//	return c.scalar
+		//}
 		sqScope.subquery = true
 		selScope := b.buildSelectStmt(sqScope, v.Select)
 		// TODO: get the original select statement, not the reconstruction
-		selectString := ast.String(v.Select)
 		sq := plan.NewSubquery(selScope.node, selectString)
 		return sq
+		//col := scopeColumn{col: selectString, scalar: sq, typ: sq.Type(), nullable: sq.IsNullable()}
+		//inScope.subqueries[strings.ToLower(selectString)] = col
+		//return col.scalarGf()
 	case *ast.CaseExpr:
 		return b.buildCaseExpr(inScope, v)
 	case *ast.IntervalExpr:

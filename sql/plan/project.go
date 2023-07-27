@@ -43,17 +43,6 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
-//func NewProjectSimplify(expressions []sql.Expression, child sql.Node) sql.Node {
-//	if len(expressions) == len(child.Schema()) {
-//
-//	}
-//
-//	proj := &Project{
-//		UnaryNode:   UnaryNode{child},
-//		Projections: expressions,
-//	}
-//}
-
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))

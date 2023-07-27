@@ -1449,6 +1449,9 @@ SELECT fi, COUNT(*) FROM (
 		{
 			Query: "select 1 as a, (select a) as a",
 		},
+		{
+			Query: "SELECT max(x), (select max(dt.a) from (SELECT x as a) as dt(a)) as a1 from xy group by a1;",
+		},
 	}
 
 	var verbose, rewrite bool
