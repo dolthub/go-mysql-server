@@ -3518,12 +3518,6 @@ func tableExprToTable(
 }
 
 func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, error) {
-	// TODO: add support for using, once we have proper table
-	// qualification of fields
-	if len(t.Condition.Using) > 0 {
-		return nil, sql.ErrUnsupportedFeature.New("USING clause on join")
-	}
-
 	left, err := tableExprToTable(ctx, t.LeftExpr)
 	if err != nil {
 		return nil, err
@@ -3538,13 +3532,41 @@ func joinTableExpr(ctx *sql.Context, t *sqlparser.JoinTableExpr) (sql.Node, erro
 		return plan.NewNaturalJoin(left, right), nil
 	}
 
-	if t.Condition.On == nil {
+	if t.Condition.On == nil && t.Condition.Using == nil {
 		return plan.NewCrossJoin(left, right), nil
 	}
 
-	cond, err := ExprToExpression(ctx, t.Condition.On)
-	if err != nil {
-		return nil, err
+	var cond sql.Expression
+	if t.Condition.On != nil {
+		cond, err = ExprToExpression(ctx, t.Condition.On)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		condParts := make([]sql.Expression, len(t.Condition.Using))
+		for i, col := range t.Condition.Using {
+			colName := col.String()
+			var lName string
+			switch l := left.(type) {
+			case *plan.UnresolvedTable:
+				lName = l.Name()
+			default:
+				lName = l.String()
+			}
+			var rName string
+			switch r := right.(type) {
+			case *plan.UnresolvedTable:
+				rName = r.Name()
+			default:
+				rName = r.String()
+			}
+			c := expression.NewEquals(
+				expression.NewUnresolvedQualifiedColumn(lName, colName),
+				expression.NewUnresolvedQualifiedColumn(rName, colName),
+			)
+			condParts[i] = c
+		}
+		cond = expression.JoinAnd(condParts...)
 	}
 
 	switch strings.ToLower(t.Join) {
