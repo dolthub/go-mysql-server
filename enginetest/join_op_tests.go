@@ -1538,4 +1538,32 @@ var rangeJoinOpTests = []JoinOpTests{
 			{10, 8, 12},
 		},
 	},
+	{
+		// This tests that the RangeHeapJoin node functions correctly even if its rows are iterated over multiple times.
+		Query: "select * from (select 1 union select 2) as l left join (select * from vals join ranges on val > min and val < max) as r on max = max",
+		Expected: []sql.Row{
+			{1, 1, 0, 2},
+			{1, 2, 1, 3},
+			{1, 3, 2, 4},
+			{1, 4, 3, 5},
+			{1, 5, 4, 6},
+			{2, 1, 0, 2},
+			{2, 2, 1, 3},
+			{2, 3, 2, 4},
+			{2, 4, 3, 5},
+			{2, 5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals left join (select * from ranges where 0) as newRanges on val > min and val < max;",
+		Expected: []sql.Row{
+			{0, nil, nil},
+			{1, nil, nil},
+			{2, nil, nil},
+			{3, nil, nil},
+			{4, nil, nil},
+			{5, nil, nil},
+			{6, nil, nil},
+		},
+	},
 }
