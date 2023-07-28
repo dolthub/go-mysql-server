@@ -358,6 +358,12 @@ func (c *carder) cardRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		if jp.Op.IsPartial() {
 			return optimisticJoinSel * jp.Left.RelProps.card, nil
 		}
+		if jp.Op.IsLeftOuter() {
+			return math.Max(jp.Left.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
+		}
+		if jp.Op.IsRightOuter() {
+			return math.Max(jp.Right.RelProps.card, optimisticJoinSel*jp.Left.RelProps.card*jp.Right.RelProps.card), nil
+		}
 		return optimisticJoinSel * jp.Left.RelProps.card * jp.Right.RelProps.card, nil
 	case *Project:
 		return n.Child.RelProps.card, nil
