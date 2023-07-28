@@ -407,7 +407,17 @@ func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, cr
 		return sql.ErrExistingView.New(name)
 	}
 
-	d.views[name] = sql.ViewDefinition{Name: name, TextDefinition: selectStatement, CreateViewStatement: createViewStmt}
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return err
+	}
+
+	d.views[name] = sql.ViewDefinition{
+		Name:                name,
+		TextDefinition:      selectStatement,
+		CreateViewStatement: createViewStmt,
+		AnsiQuotes:          sqlMode.AnsiQuotes(),
+	}
 	return nil
 }
 

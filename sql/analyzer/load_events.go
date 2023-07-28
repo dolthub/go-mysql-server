@@ -15,11 +15,12 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // loadEvents loads any events that are required for a plan node to operate properly (except for nodes dealing with
@@ -86,7 +87,8 @@ func loadEventFromDb(ctx *sql.Context, db sql.Database, name string) (sql.EventD
 }
 
 func getEventDetailsFromEventDefinition(ctx *sql.Context, event sql.EventDefinition) (sql.EventDetails, error) {
-	parsedCreateEvent, err := parse.Parse(ctx, event.CreateStatement)
+	parsedCreateEvent, err := parse.ParseWithOptions(ctx, event.CreateStatement,
+		sqlparser.ParserOptions{AnsiQuotes: event.AnsiQuotes})
 	if err != nil {
 		return sql.EventDetails{}, err
 	}

@@ -184,7 +184,8 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		}
 
 		for _, trigger := range triggers {
-			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+			parsedTrigger, err := parse.ParseWithOptions(ctx, trigger.CreateStatement,
+				sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

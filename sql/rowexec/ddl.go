@@ -925,11 +925,17 @@ func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProce
 }
 
 func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger, row sql.Row) (sql.RowIter, error) {
+	sqlMode, err := sql.LoadSqlMode(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &createTriggerIter{
 		definition: sql.TriggerDefinition{
 			Name:            n.TriggerName,
 			CreateStatement: n.CreateTriggerString,
 			CreatedAt:       n.CreatedAt,
+			AnsiQuotes:      sqlMode.AnsiQuotes(),
 		},
 		db: n.Database(),
 	}, nil

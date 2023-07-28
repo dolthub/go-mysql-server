@@ -32,6 +32,8 @@ type EventDefinition struct {
 	CreatedAt time.Time
 	// The time that the event was last altered.
 	LastAltered time.Time
+	// True if this event definition relies on ANSI_QUOTES mode for parsing its SQL
+	AnsiQuotes bool
 }
 
 // EventDetails are the details of the event.

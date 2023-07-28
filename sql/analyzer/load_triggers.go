@@ -17,11 +17,12 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // loadTriggers loads any triggers that are required for a plan node to operate properly (except for nodes dealing with
@@ -104,7 +105,8 @@ func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigge
 			return nil, err
 		}
 		for _, trigger := range triggers {
-			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+			parsedTrigger, err := parse.ParseWithOptions(ctx, trigger.CreateStatement,
+				sqlparser.ParserOptions{AnsiQuotes: trigger.AnsiQuotes})
 			if err != nil {
 				return nil, err
 			}

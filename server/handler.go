@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/log"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/go-kit/kit/metrics/discard"
@@ -64,6 +65,14 @@ const (
 	MultiStmtModeOff MultiStmtMode = 0
 	MultiStmtModeOn  MultiStmtMode = 1
 )
+
+func init() {
+	// Set the log.Error and log.Errorf functions in Vitess so that any errors
+	// logged by Vitess will appear in our logs. Without this, errors from Vitess
+	// can be silently swallowed, which makes debugging failures harder.
+	log.Error = logrus.StandardLogger().Error
+	log.Errorf = logrus.StandardLogger().Errorf
+}
 
 // Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {

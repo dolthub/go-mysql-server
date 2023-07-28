@@ -17,6 +17,8 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -56,7 +58,8 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 					return nil, transform.SameTree, verr
 				}
 				if vdok {
-					query, qerr := parse.Parse(ctx, viewDef.TextDefinition)
+					query, qerr := parse.ParseWithOptions(ctx, viewDef.TextDefinition,
+						sqlparser.ParserOptions{AnsiQuotes: viewDef.AnsiQuotes})
 					if qerr != nil {
 						return nil, transform.SameTree, qerr
 					}
