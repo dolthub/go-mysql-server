@@ -2,10 +2,12 @@ package planbuilder
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"strconv"
 	"unicode"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 func (b *Builder) buildCreateSpatialRefSys(inScope *scope, n *ast.CreateSpatialRefSys) (outScope *scope) {
