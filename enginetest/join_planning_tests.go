@@ -1230,7 +1230,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals left join (select * from ranges where 0) as newRanges on val > min and val < max;",
-				types: []plan.JoinType{plan.JoinTypeRangeHeap},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterRangeHeap},
 				exp: []sql.Row{
 					{0, nil, nil},
 					{1, nil, nil},
