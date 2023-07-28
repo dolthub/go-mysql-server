@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -24,8 +25,9 @@ import (
 // SystemVar is an expression that returns the value of a system variable. It's also used as the expression on the left
 // hand side of a SET statement for a system variable.
 type SystemVar struct {
-	Name  string
-	Scope sql.SystemVariableScope
+	Name      string
+	Collation sql.CollationID
+	Scope     sql.SystemVariableScope
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
@@ -33,7 +35,7 @@ var _ sql.CollationCoercible = (*SystemVar)(nil)
 
 // NewSystemVar creates a new SystemVar expression.
 func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
-	return &SystemVar{name, scope}
+	return &SystemVar{name, sql.CollationID(0), scope}
 }
 
 // Children implements the sql.Expression interface.
@@ -43,11 +45,24 @@ func (v *SystemVar) Children() []sql.Expression { return nil }
 func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	switch v.Scope {
 	case sql.SystemVariableScope_Session:
-		val, err := ctx.GetSessionVariable(ctx, v.Name)
-		if err != nil {
-			return nil, err
+		// "character_set_database" and "collation_database" are special system variables, in that they're set whenever
+		// the current database is changed. Rather than attempting to synchronize the session variables of all
+		// outstanding contexts whenever a database's collation is updated, we just pull the values from the database
+		// directly. MySQL also plans to make these system variables immutable (from the user's perspective). This isn't
+		// exactly the same as MySQL's behavior, but this is the intent of their behavior, which is also way easier to
+		// implement.
+		switch strings.ToLower(v.Name) {
+		case "character_set_database":
+			return v.Collation.CharacterSet().String(), nil
+		case "collation_database":
+			return v.Collation.String(), nil
+		default:
+			val, err := ctx.GetSessionVariable(ctx, v.Name)
+			if err != nil {
+				return nil, err
+			}
+			return val, nil
 		}
-		return val, nil
 	case sql.SystemVariableScope_Global:
 		_, val, ok := sql.SystemVariables.GetGlobal(v.Name)
 		if !ok {

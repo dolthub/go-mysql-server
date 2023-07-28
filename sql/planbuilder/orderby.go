@@ -13,7 +13,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
+func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy) (outScope *scope) {
 	// Order by resolves to
 	// 1) alias in projScope
 	// 2) column name in fromScope
@@ -45,7 +45,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 			}
 
 			// fromScope col
-			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), false)
+			c, ok = fromScope.resolveColumn(strings.ToLower(e.Qualifier.String()), strings.ToLower(e.Name.String()), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
@@ -79,6 +79,13 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 				if scalar == nil {
 					scalar = target.scalarGf()
 				}
+				if a, ok := target.scalar.(*expression.Alias); ok && a.Unreferencable() && fromScope.groupBy != nil {
+					for _, c := range fromScope.groupBy.outScope.cols {
+						if target.id == c.id {
+							target = c
+						}
+					}
+				}
 				outScope.addColumn(scopeColumn{
 					table:      target.table,
 					col:        target.col,
@@ -94,7 +101,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 			// replace aggregations with refs
 			// pick up auxiliary cols
 			expr := b.buildScalar(fromScope, e)
-			_, ok := outScope.getExpr(expr.String())
+			_, ok := outScope.getExpr(expr.String(), true)
 			if ok {
 				continue
 			}
@@ -112,7 +119,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 					fromScope.addExtraColumn(c)
 				case sql.WindowAdaptableExpression:
 					// has to have been ref'd already
-					id, ok := fromScope.getExpr(e.String())
+					id, ok := fromScope.getExpr(e.String(), true)
 					if !ok {
 						err := fmt.Errorf("faild to ref aggregate expression: %s", e.String())
 						b.handleErr(err)
@@ -136,7 +143,7 @@ func (b *PlanBuilder) analyzeOrderBy(fromScope, projScope *scope, order ast.Orde
 	return
 }
 
-func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
+func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	if len(orderByScope.cols) == 0 {
 		return
 	}
@@ -146,8 +153,12 @@ func (b *PlanBuilder) buildOrderBy(inScope, orderByScope *scope) {
 		if c.descending {
 			so = sql.Descending
 		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
 		sf := sql.SortField{
-			Column: c.scalar,
+			Column: scalar,
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)

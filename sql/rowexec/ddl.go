@@ -130,8 +130,12 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		fieldToColumnMap[fieldIndex] = sch.IndexOf(columnName, source)
 	}
 
+	dest, ok := n.Destination.(*plan.ResolvedTable)
+	if !ok {
+		return nil, fmt.Errorf("expected destination to be a table, found %T", n.Destination)
+	}
 	return &loadDataIter{
-		destination:             n.Destination,
+		destination:             dest,
 		reader:                  reader,
 		scanner:                 scanner,
 		columnCount:             len(n.ColumnNames), // Needs to be the original column count

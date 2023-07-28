@@ -144,9 +144,9 @@ func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-
-	l.Destination = children[0]
-	return l, nil
+	ret := *l
+	ret.Destination = children[0]
+	return &ret, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

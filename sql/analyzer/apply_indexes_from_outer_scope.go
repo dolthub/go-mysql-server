@@ -214,7 +214,7 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 IndexExpressions:
 	for i, idxExpr := range idxPrefixExpressions {
 		for j := range joinExprs {
-			if idxExpr == normalizedJoinExprStrs[j] {
+			if strings.EqualFold(idxExpr, normalizedJoinExprStrs[j]) {
 				keyExprs[i] = joinExprs[j].comparand
 				nullmask[i] = joinExprs[j].matchnull
 				continue IndexExpressions

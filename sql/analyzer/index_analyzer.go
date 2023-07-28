@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
@@ -41,6 +42,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 	indexes := make(map[string][]sql.Index)
 
 	var indexesForTable = func(name string, rt *plan.ResolvedTable) error {
+		name = strings.ToLower(name)
 		table := rt.Table
 		if w, ok := table.(sql.TableWrapper); ok {
 			table = w.Underlying()
@@ -154,7 +156,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 	distinctExprs := make(map[string]struct{})
 	var exprStrs []string
 	for _, e := range exprs {
-		es := e.String()
+		es := strings.ToLower(e.String())
 		if _, ok := distinctExprs[es]; !ok {
 			distinctExprs[es] = struct{}{}
 			exprStrs = append(exprStrs, es)
@@ -168,7 +170,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 	}
 
 	var indexes []idxWithLen
-	for _, idx := range r.indexesByTable[table] {
+	for _, idx := range r.indexesByTable[strings.ToLower(table)] {
 		indexExprs := idx.Expressions()
 		if ok, prefixCount := exprsAreIndexSubset(exprStrs, indexExprs); ok && prefixCount >= 1 {
 			indexes = append(indexes, idxWithLen{idx, len(indexExprs), prefixCount})
@@ -231,7 +233,7 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 						continue
 					}
 
-					if ie == e.String() {
+					if strings.EqualFold(ie, e.String()) {
 						used[i] = struct{}{}
 						found = true
 						matched = append(matched, e)
@@ -301,7 +303,7 @@ func exprsAreIndexSubset(exprs, indexExprs []string) (ok bool, prefixCount int) 
 			if visitedIndexExprs[j] {
 				continue
 			}
-			if expr == indexExpr {
+			if strings.EqualFold(expr, indexExpr) {
 				visitedIndexExprs[j] = true
 				found = true
 				break
