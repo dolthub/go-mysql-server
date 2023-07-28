@@ -32,6 +32,8 @@ const (
 	degeneratePenalty = 2.0
 	optimisticJoinSel = .10
 	biasFactor        = 1e5
+
+	perKeyCostReductionFactor = 0.5
 )
 
 func NewDefaultCoster() Coster {
@@ -71,6 +73,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsReader) (float6
 		return c.costMergeJoin(ctx, n, s)
 	case *LookupJoin:
 		return c.costLookupJoin(ctx, n, s)
+	case *RangeHeapJoin:
+		return c.costRangeHeapJoin(ctx, n, s)
 	case *LateralCrossJoin:
 		return c.costLateralCrossJoin(ctx, n, s)
 	case *LateralInnerJoin:
@@ -189,6 +193,16 @@ func (c *coster) costLookupJoin(_ *sql.Context, n *LookupJoin, _ sql.StatsReader
 	return l*r*sel*(cpuCostFactor+randIOCostFactor) - r*seqIOCostFactor, nil
 }
 
+func (c *coster) costRangeHeapJoin(_ *sql.Context, n *RangeHeapJoin, _ sql.StatsReader) (float64, error) {
+	l := n.Left.RelProps.card
+	r := n.Right.RelProps.card
+
+	// TODO: We can probably get a better estimate somehow.
+	expectedNumberOfOverlappingJoins := r * perKeyCostReductionFactor
+
+	return (l+r)*randIOCostFactor + l*expectedNumberOfOverlappingJoins*(cpuCostFactor), nil
+}
+
 func (c *coster) costLateralCrossJoin(ctx *sql.Context, n *LateralCrossJoin, _ sql.StatsReader) (float64, error) {
 	l := n.Left.RelProps.card
 	r := n.Right.RelProps.card
@@ -228,12 +242,11 @@ func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (f
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
 
-// lookupJoinSelectivity estimates the selectivity of a join condition.
-// A join with no selectivity will return n x m rows. A join with a selectivity
-// of 1 will return n rows. It is possible for join selectivity to be below 1
-// if source table filters limit the number of rows returned by the left table.
+// lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
+// A join with a selectivity of k will return k*(n*m) rows.
+// Special case: A join with a selectivity of 0 will return n rows.
 func lookupJoinSelectivity(l *Lookup) float64 {
-	sel := math.Pow(0.5, float64(len(l.KeyExprs)))
+	sel := math.Pow(perKeyCostReductionFactor, float64(len(l.KeyExprs)))
 
 	if !l.Index.SqlIdx().IsUnique() {
 		return sel
@@ -512,6 +525,23 @@ func NewPartialBiasedCoster() Coster {
 func (c *partialBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
 	switch r.(type) {
 	case *AntiJoin, *SemiJoin:
+		return -biasFactor, nil
+	default:
+		return c.costRel(ctx, r, s)
+	}
+}
+
+type rangeHeapBiasedCoster struct {
+	*coster
+}
+
+func NewRangeHeapBiasedCoster() Coster {
+	return &rangeHeapBiasedCoster{coster: &coster{}}
+}
+
+func (c *rangeHeapBiasedCoster) EstimateCost(ctx *sql.Context, r RelExpr, s sql.StatsReader) (float64, error) {
+	switch r.(type) {
+	case *RangeHeapJoin:
 		return -biasFactor, nil
 	default:
 		return c.costRel(ctx, r, s)
