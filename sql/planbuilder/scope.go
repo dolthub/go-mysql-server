@@ -41,8 +41,6 @@ type scope struct {
 	windowDefs  map[string]*sql.WindowDefinition
 	// exprs collects unique expression ids for reference
 	exprs map[string]columnId
-	// subqueries is a workaround for execution limitations
-	subqueries map[string]scopeColumn
 }
 
 func (s *scope) resolveColumn(table, col string, checkParent bool) (scopeColumn, bool) {

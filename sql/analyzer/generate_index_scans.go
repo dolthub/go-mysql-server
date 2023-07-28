@@ -123,9 +123,9 @@ func convertFiltersToIndexedAccess(
 			filters.markFiltersHandled(handled...)
 			newF := removePushedDownPredicates(ctx, a, n, filters)
 			if newF == nil {
-				return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, ctx, scope)
+				return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 			}
-			ret, _, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), newF, ctx, scope)
+			ret, _, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), newF, scope)
 			if err != nil {
 				return n, transform.SameTree, err
 			}

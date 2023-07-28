@@ -18,7 +18,7 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	return transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		default:
-			ret, same1, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, ctx, scope)
+			ret, same1, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -76,7 +76,7 @@ func fixupAuxiliaryExprs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 			}
 			return n, allSame, nil
 		case *plan.InsertInto:
-			newN, same1, err := fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, ctx, scope)
+			newN, same1, err := fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -97,10 +97,9 @@ type aliasScope struct {
 }
 
 func (a *aliasScope) push() *aliasScope {
-	ret := &aliasScope{
+	return &aliasScope{
 		parent: a,
 	}
-	return ret
 }
 
 func (a *aliasScope) addRef(alias *expression.Alias) {
@@ -110,20 +109,20 @@ func (a *aliasScope) addRef(alias *expression.Alias) {
 	a.aliases[alias.Name()] = alias.Child
 }
 
-func (a *aliasScope) isOuterRef(name string) (bool, sql.Expression) {
+func (a *aliasScope) isOuterRef(name string) (sql.Expression, bool) {
 	if a.aliases != nil {
 		if a, ok := a.aliases[name]; ok {
-			return false, a
+			return a, false
 		}
 	}
 	if a.parent == nil {
-		return false, nil
+		return nil, false
 	}
-	_, found := a.parent.isOuterRef(name)
+	found, _ := a.parent.isOuterRef(name)
 	if found != nil {
-		return true, found
+		return found, true
 	}
-	return false, nil
+	return nil, false
 }
 
 // inlineSubqueryAliasRefs matches the pattern:
@@ -135,11 +134,11 @@ func (a *aliasScope) isOuterRef(name string) (bool, sql.Expression) {
 // TODO: extend subquery search to WHERE filters and other scalar expressions
 // TODO: convert subquery expressions to lateral joins to avoid this hack
 func inlineSubqueryAliasRefs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	aliasScope := &aliasScope{}
-	return inlineSubqueryAliasRefsHelper(aliasScope, n), transform.NewTree, nil
+	ret, err := inlineSubqueryAliasRefsHelper(&aliasScope{}, n)
+	return ret, transform.NewTree, err
 }
 
-func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) sql.Node {
+func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) (sql.Node, error) {
 	ret := n
 	switch n := n.(type) {
 	case *plan.Project:
@@ -156,12 +155,15 @@ func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) sql.Node {
 				case *expression.GetField:
 					// is an alias ref?
 					// check if in parent scope
-					if inOuter, alias := scope.isOuterRef(strings.ToLower(e.Name())); e.Table() == "" && alias != nil && inOuter {
+					if alias, inOuter := scope.isOuterRef(strings.ToLower(e.Name())); e.Table() == "" && alias != nil && inOuter {
 						return alias, transform.NewTree, nil
 					}
 				case *plan.Subquery:
 					subqScope := scope.push()
-					newQ := inlineSubqueryAliasRefsHelper(subqScope, e.Query)
+					newQ, err := inlineSubqueryAliasRefsHelper(subqScope, e.Query)
+					if err != nil {
+						return e, transform.SameTree, err
+					}
 					ret := *e
 					ret.Query = newQ
 					return &ret, transform.NewTree, nil
@@ -170,7 +172,7 @@ func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) sql.Node {
 				return e, transform.SameTree, nil
 			})
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			if !same {
 				if newProj == nil {
@@ -187,12 +189,19 @@ func inlineSubqueryAliasRefsHelper(scope *aliasScope, n sql.Node) sql.Node {
 	}
 
 	newChildren := make([]sql.Node, len(n.Children()))
+	var err error
 	for i, c := range ret.Children() {
-		newChildren[i] = inlineSubqueryAliasRefsHelper(scope, c)
+		newChildren[i], err = inlineSubqueryAliasRefsHelper(scope, c)
+		if err != nil {
+			return nil, err
+		}
 	}
-	ret, err := ret.WithChildren(newChildren...)
+	ret, err = ret.WithChildren(newChildren...)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		panic(err)
 	}
-	return ret
+	return ret, nil
 }

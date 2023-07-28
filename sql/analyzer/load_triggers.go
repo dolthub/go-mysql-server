@@ -34,7 +34,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node
-			loadedTriggers, err := loadTriggersFromDb(ctx, newShowTriggers.Database(), a)
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, newShowTriggers.Database())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -45,7 +45,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			}
 			return &newShowTriggers, transform.NewTree, nil
 		case *plan.DropTrigger:
-			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database(), a)
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, node.Database())
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -71,7 +71,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				dropTableDb = t.Database
 			}
 
-			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb, a)
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, dropTableDb)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -96,7 +96,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 	})
 }
 
-func loadTriggersFromDb(ctx *sql.Context, db sql.Database, a *Analyzer) ([]*plan.CreateTrigger, error) {
+func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan.CreateTrigger, error) {
 	var loadedTriggers []*plan.CreateTrigger
 	if triggerDb, ok := db.(sql.TriggerDatabase); ok {
 		triggers, err := triggerDb.GetTriggers(ctx)

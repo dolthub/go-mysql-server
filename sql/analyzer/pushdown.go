@@ -427,5 +427,5 @@ func pushdownFixIndices(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	case *plan.JoinNode, *plan.HashLookup:
 		return n, transform.SameTree, nil
 	}
-	return fixidx.FixFieldIndexesForExpressions(a.LogFn(), n, ctx, scope)
+	return fixidx.FixFieldIndexesForExpressions(ctx, a.LogFn(), n, scope)
 }
