@@ -17,7 +17,6 @@ package rowexec
 import (
 	"bufio"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"io"
 	"log"
 	"strings"
@@ -32,6 +31,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fixidx"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"

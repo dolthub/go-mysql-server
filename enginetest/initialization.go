@@ -16,11 +16,11 @@ package enginetest
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"

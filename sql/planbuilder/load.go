@@ -1,8 +1,9 @@
 package planbuilder
 
 import (
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"strings"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
