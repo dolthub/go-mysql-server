@@ -170,7 +170,7 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table strin
 	}
 
 	var indexes []idxWithLen
-	for _, idx := range r.indexesByTable[table] {
+	for _, idx := range r.indexesByTable[strings.ToLower(table)] {
 		indexExprs := idx.Expressions()
 		if ok, prefixCount := exprsAreIndexSubset(exprStrs, indexExprs); ok && prefixCount >= 1 {
 			indexes = append(indexes, idxWithLen{idx, len(indexExprs), prefixCount})
@@ -233,7 +233,7 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 						continue
 					}
 
-					if ie == e.String() {
+					if strings.EqualFold(ie, e.String()) {
 						used[i] = struct{}{}
 						found = true
 						matched = append(matched, e)

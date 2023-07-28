@@ -690,6 +690,7 @@ func getMultiColumnIndexes(
 	usedExprs := make(map[sql.Expression]struct{})
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
+		table = strings.ToLower(table)
 		colExprs := make([]sql.Expression, len(exps))
 
 		nilColExpr := false
@@ -717,7 +718,7 @@ func getMultiColumnIndexes(
 				if !ok {
 					continue
 				}
-				exprList[0][i] = gf.WithTable(firstGf.Table())
+				exprList[0][i] = gf.WithTable(strings.ToLower(firstGf.Table()))
 			}
 		}
 		lookup, err := getMultiColumnIndexForExpressions(ctx, ia, table, exprList[0], exps, tableAliases)
@@ -750,7 +751,7 @@ func getMultiColumnIndexes(
 			result[table] = lookup
 		}
 		for _, e := range exps {
-			if _, ok := exprMap[e.col.String()]; ok {
+			if _, ok := exprMap[strings.ToLower(e.col.String())]; ok {
 				usedExprs[e.comparison] = struct{}{}
 			}
 		}
@@ -951,7 +952,7 @@ func extractComparands(colExprs []*joinColExpr) []sql.Expression {
 func findColumns(cols []joinColExpr, column string) []*joinColExpr {
 	var returnedCols []*joinColExpr
 	for _, col := range cols {
-		if col.col.String() == column {
+		if strings.EqualFold(col.col.String(), column) {
 			jce := col
 			returnedCols = append(returnedCols, &jce)
 		}
