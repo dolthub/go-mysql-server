@@ -32,6 +32,8 @@ const (
 	degeneratePenalty = 2.0
 	optimisticJoinSel = .10
 	biasFactor        = 1e5
+
+	perKeyCostReductionFactor = 0.5
 )
 
 func NewDefaultCoster() Coster {
@@ -239,8 +241,6 @@ func (c *coster) costProject(_ *sql.Context, n *Project, _ sql.StatsReader) (flo
 func (c *coster) costDistinct(_ *sql.Context, n *Distinct, _ sql.StatsReader) (float64, error) {
 	return n.Child.Cost * (cpuCostFactor + .75*memCostFactor), nil
 }
-
-const perKeyCostReductionFactor = 0.5
 
 // lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
 // A join with a selectivity of k will return k*(n*m) rows.
