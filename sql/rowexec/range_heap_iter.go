@@ -80,7 +80,10 @@ func (iter *rangeHeapJoinIter) loadPrimary(ctx *sql.Context) error {
 		iter.primaryRow = iter.parentRow.Append(r)
 		iter.foundMatch = false
 
-		iter.initializeHeap(ctx, iter.b, iter.primaryRow)
+		err = iter.initializeHeap(ctx, iter.b, iter.primaryRow)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -216,6 +219,10 @@ func (iter *rangeHeapJoinIter) initializeHeap(ctx *sql.Context, builder sql.Node
 	iter.rangeHeapPlan.ComparisonType = iter.rangeHeapPlan.Schema()[iter.rangeHeapPlan.MaxColumnIndex].Type
 
 	iter.pendingRow, err = iter.childRowIter.Next(ctx)
+	if err == io.EOF {
+		iter.pendingRow = nil
+		return nil
+	}
 	return err
 }
 
