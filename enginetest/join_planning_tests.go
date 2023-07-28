@@ -1163,6 +1163,23 @@ join uv d on d.u = c.x`,
 					{10, 8, 12},
 				},
 			},
+			{
+				// This tests that the RangeHeapJoin node functions correctly even if its rows are iterated over multiple times.
+				q:     "select * from (select 1 union select 2) as l left join (select * from vals join ranges on val > min and val < max) as r on max = max",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter, plan.JoinTypeRangeHeap},
+				exp: []sql.Row{
+					{1, 1, 0, 2},
+					{1, 2, 1, 3},
+					{1, 3, 2, 4},
+					{1, 4, 3, 5},
+					{1, 5, 4, 6},
+					{2, 1, 0, 2},
+					{2, 2, 1, 3},
+					{2, 3, 2, 4},
+					{2, 4, 3, 5},
+					{2, 5, 4, 6},
+				},
+			},
 		},
 	},
 }
